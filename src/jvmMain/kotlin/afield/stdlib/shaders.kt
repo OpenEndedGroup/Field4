@@ -6,6 +6,8 @@ import afield.findWithNameOrNull
 import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
+import afield.four.texture.HasImageView
+import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
@@ -323,18 +325,24 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     p.vertex = this._vertex!!
     p.fragment = this._fragment!!
 
-    if (p.name=="unnamed module") p.name = "module in box '${name}' (${id})"
+    if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
     // todo, how to specify sampler
     p.textureResolver = {
         println(" searching for texture ${it.name}")
         val name = it.name
         var r = findWithNameOrNull<ImageView>(this@_moduleHere, name)?.let {
+            arrayOf(it) to TextureSampler(renderer = fromContext(), 4, true)
+        } ?: findWithNameOrNull<Array<ImageView>>(this@_moduleHere, name)?.let {
             it to TextureSampler(renderer = fromContext(), 4, true)
         } ?: findWithNameOrNull<LoadedTexture>(this@_moduleHere, name)?.let {
-            it.imageView to TextureSampler(renderer = fromContext(), 4, true)
+            arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 4, true)
         } ?: findWithNameOrNull<RenderToTexture>(this@_moduleHere, name)?.let {
-            it.imageView to TextureSampler(renderer = fromContext(), 4, true)
+            arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 4, true)
+        } ?: findWithNameOrNull<HasImageView>(this@_moduleHere, name)?.let {
+            arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 1, true)
+        } ?: findWithNameOrNull<HasImageViewArray>(this@_moduleHere, name)?.let {
+            it.imageViewArray to TextureSampler(renderer = fromContext(), 1, true)
         } ?: throw Exception(" can't find anything to build a texture out of from this box to ${it.name}")
         println(" found ${r}")
         r
@@ -475,7 +483,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
         throwable?.printStackTrace()
     }
 
-    if (p.name=="unnamed module") p.name = "module in box '${name}' (${id})"
+    if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
     val pp = ComputeModule(p).pointer()
 

@@ -48,7 +48,7 @@ class NewMain7_errorChecking {
             fragment = File("resources/shaders/fwd_fragment.glsl").readText(),
             depth = 0,
             textureResolver = {
-                texture.imageView to TextureSampler(renderer, 4, true)
+                arrayOf(texture.imageView) to TextureSampler(renderer, 4, true)
             },
             ssboSizer = {
 //                println(" resolving size for ssob $it @ ${it.memberSize()}")
@@ -79,7 +79,7 @@ class NewMain7_errorChecking {
             fragment = File("resources/shaders/plain_fragment_error.glsl").readText(),
             depth = 0,
             textureResolver = {
-                rt2.imageView to TextureSampler(renderer, 4, true)
+                arrayOf(rt2.imageView) to TextureSampler(renderer, 4, true)
             },
             name = "onscreen shader",
             errorHandler = { description, exception ->

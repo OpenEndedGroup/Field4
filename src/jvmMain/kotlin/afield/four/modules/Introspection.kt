@@ -128,7 +128,7 @@ open class Introspected {
         fun memberSize(): Long = members.sumOf { it.memberSize() }
     }
 
-    class Texture(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
+    class Texture(name: String, val type: String, set: Int, binding: Int, val arrayCount : Int = 0 /*0 means not an array*/) : Bindable(name, set, binding)
 
     class Image(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
 
@@ -301,12 +301,25 @@ class Introspection(
             if (j.has("textures")) {
                 val ui = j.getJSONArray("textures")
                 for (i in 0 until ui.length()) {
+
+
                     val uo = ui.getJSONObject(i)
-                    val name = uo.getString("name")
-                    val type = uo.getString("type")
-                    val binding = uo.getInt("binding")
-                    val set = uo.getInt("set")
-                    textures.add(Texture(name, type, set, binding))
+                    // only do 1d arrays of textures
+                    if (uo.has("array_size_is_literal") && uo.getJSONArray("array_size_is_literal").getBoolean(0) && uo.getJSONArray("array_size_is_literal").length()==1)
+                    {
+                        val name = uo.getString("name")
+                        val type = uo.getString("type")
+                        val binding = uo.getInt("binding")
+                        val set = uo.getInt("set")
+                        textures.add(Texture(name, type, set, binding, uo.getJSONArray("array").getInt(0)))
+                    }
+                    else {
+                        val name = uo.getString("name")
+                        val type = uo.getString("type")
+                        val binding = uo.getInt("binding")
+                        val set = uo.getInt("set")
+                        textures.add(Texture(name, type, set, binding))
+                    }
                 }
             }
 

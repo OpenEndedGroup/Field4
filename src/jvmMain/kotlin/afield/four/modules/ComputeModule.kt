@@ -68,7 +68,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
             try {
-                (current.uniforms[it.name] as TexturePointer).texture to (current.uniforms[it.name] as TexturePointer).sampler
+                arrayOf( (current.uniforms[it.name] as TexturePointer).texture) to (current.uniforms[it.name] as TexturePointer).sampler
             } catch (e: Exception) {
                 lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
@@ -309,9 +309,18 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 tag.forEach {
                     println(" resolving texture resource $it")
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
-                    uniforms[it.name] = TexturePointer(
-                        it.name, it as Introspected.Texture, descriptorSet, source = null, texture, sampler
-                    )
+                    if (it.arrayCount==0) {
+                        uniforms[it.name] = TexturePointer(
+                            it.name, it as Introspected.Texture, descriptorSet, source = null, texture[0], sampler
+                        )
+                    }
+                    else
+                    {
+                        if (texture.size != it.arrayCount) throw IllegalArgumentException("can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}")
+                        uniforms[it.name] = TextureArrayPointer(
+                            it.name, it as Introspected.Texture, descriptorSet, source = null, texture, sampler
+                        )
+                    }
                 }
             }
 

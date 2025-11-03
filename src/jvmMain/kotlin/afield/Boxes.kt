@@ -424,23 +424,22 @@ fun makeKI(box: Box): KotlinInterface {
         inMain {
             if (box.properties.containsKey("_tombstone")) return@inMain
 
-            launch(Runloop.runLoop.main) {
-                lblock("executing stdlib import ") {
-                    println(" $box executing imports")
-                    ki.exec(
-                        intro, implicits = listOf(box)
-                    )
-                    println(" $box executing preamble")
-                    try {
-                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
-                    } catch (t: Throwable) {
-                        println(" -- preamble threw an exception, so we're going to clear it")
-                        t.printStackTrace()
-                        box.preamble = ""
-                    }
-                    println(" $box box is no longer online")
-                    box.offline = false
-                    si?.topologyGeneration++
+            launch(Runloop.miscPool.asCoroutineDispatcher()) {
+
+            lblock("executing stdlib import ") {
+//                    if (box.properties.containsKey("_tombstone")) return@launch
+                if (box.properties.containsKey("_tombstone")) return@launch
+                println(" $box executing imports")
+                ki.exec(
+                    intro, implicits = listOf(box)
+                )
+                println(" $box executing preamble")
+                try {
+                    box.preamble.let { ki.exec(it, implicits = listOf(box)) }
+                } catch (t: Throwable) {
+                    println(" -- preamble threw an exception, so we're going to clear it")
+                    t.printStackTrace()
+                    box.preamble = ""
                 }
             }
         }

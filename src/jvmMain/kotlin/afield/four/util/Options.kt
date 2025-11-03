@@ -4,20 +4,23 @@ import org.lwjgl.system.Configuration
 
 object Options {
 
+    val isWindows = System.getProperty("os.name").lowercase().contains("win")
+
     val target = System.getProperty("os.name").lowercase().let {
         if ("mac" in it) "macosx"
         else if ("win" in it) "win-x64"
         else throw IllegalStateException("Unsupported OS: $it")
     }
 
-    val spirv_cross_path = "./bin/spirv-cross-$target"
+
+    val spirv_cross_path = "./bin/spirv-cross-$target" + (if (isWindows) ".exe"  else "")
 
     var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.328.1/macOS/lib/libvulkan.1.dylib"
     var useVulkanSDK = true
     var robustness = true
 
     fun doVulkanSDK() {
-        if (useVulkanSDK) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
+        if (useVulkanSDK && !isWindows) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
     }
 
     var validate = true

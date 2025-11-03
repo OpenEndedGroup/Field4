@@ -2,6 +2,7 @@ package afield.four.buffers
 
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
+import afield.four.device.Fence
 import org.lwjgl.BufferUtils
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
@@ -110,14 +111,22 @@ class VertexBuffer(
         transfer(cmd)
         cmd.endRecording()
 
-        val fence = afield.four.device.Fence(renderer.device, true)
-        fence.reset()
+        // apparently we should be reusing a fence here
+        if (fence==null)
+            fence = afield.four.device.Fence(renderer.device, true)
+
+        fence!!.reset()
         MemoryStack.stackPush().use { stack ->
             renderer.graphQueue.submit(stack.pointers(cmd.vkCommandBuffer), null, null, null, fence)
         }
-        fence.fenceWait()
-        fence.cleanup()
+        fence!!.fenceWait()
+//        fence!!.cleanup()
         cmd.cleanup()
+    }
+
+    companion object {
+        var fence : Fence? = null
+
     }
 
     fun cleanup() {

@@ -43,6 +43,9 @@ class RenderTarget(val renderer: Renderer) : Target {
         others[m.first] = m.second
     }
 
+
+    var seenBefore = mutableSetOf<Int>()
+
     override fun render(command: CommandBuffer, index: Int) {
         val swapChainExtent = renderer.swapChain.swapChainExtent
         val width = swapChainExtent.width()
@@ -59,7 +62,7 @@ class RenderTarget(val renderer: Renderer) : Target {
                 .layerCount(VK_REMAINING_ARRAY_LAYERS)
 
             val depthRange = VkImageSubresourceRange.calloc(stack)
-                .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT or VK_IMAGE_ASPECT_STENCIL_BIT)
                 .baseMipLevel(0)
                 .levelCount(VK_REMAINING_MIP_LEVELS)
                 .baseArrayLayer(0)
@@ -69,14 +72,16 @@ class RenderTarget(val renderer: Renderer) : Target {
             image_layout_transition(
                 command.vkCommandBuffer,
                 renderer.swapChain.imageViews[index].vkImage,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 0,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                VK_IMAGE_LAYOUT_UNDEFINED,
+                if (seenBefore.contains(index)) VK_IMAGE_LAYOUT_PRESENT_SRC_KHR else VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 colorRange
             )
+
+            // this logic isn't quite true with a resize is it?
 
             image_layout_transition(
                 command.vkCommandBuffer,
@@ -86,9 +91,10 @@ class RenderTarget(val renderer: Renderer) : Target {
                 0,
                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 depthRange
             )
+            seenBefore.add(index)
 
             // Rendering attachments (KHR)
             val colorAttachment =

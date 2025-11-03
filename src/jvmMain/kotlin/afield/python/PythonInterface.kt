@@ -12,6 +12,7 @@ import afield.python.PythonInterface.Companion.thisBox
 import afield.python.PythonInterface.Companion.thisLineOffset
 import afield.remotejs.code_language
 import afield.stdlib.Delegation
+import afield.stdlib.invoke
 import io.ktor.utils.io.core.ByteOrder
 import io.ktor.websocket.*
 import jep.*
@@ -60,7 +61,9 @@ fun install() {
                     }
                 }
             }
-            yield()
+            5 {
+                yield()
+            }
         }
     }
 }

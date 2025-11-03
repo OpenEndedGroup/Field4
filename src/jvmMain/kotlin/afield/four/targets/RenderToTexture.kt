@@ -7,6 +7,7 @@ import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
+import afield.four.texture.HasImageView
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
@@ -41,7 +42,7 @@ data class RTTParameters(
 
     // --- Depth/Stencil options ---
     var useDepth: Boolean = false,
-    var depthFormat: Int = VK_FORMAT_D32_SFLOAT_S8_UINT, // depth+stencil by default
+    var depthFormat: Int = VK_FORMAT_D24_UNORM_S8_UINT, // depth+stencil by default
     var clearDepth: Float = 1f,
     var clearStencil: Int = 0,
     var depthLoadOp: Int = VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -56,11 +57,11 @@ data class RTTParameters(
 class RenderToTexture(
     val renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
-) : Target {
+) : Target, HasImageView {
 
     var parameters = RTTParameters().apply(parameters)
 
-    var imageView: ImageView
+    override var imageView: ImageView
     val imageData: ImageData
     val image: Image
 

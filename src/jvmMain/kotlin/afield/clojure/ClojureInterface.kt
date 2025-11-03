@@ -9,6 +9,7 @@ import afield.logger.lprint
 import afield.python.PythonExecution
 import afield.remotejs.code_language
 import afield.stdlib.Delegation
+import afield.stdlib.invoke
 import clojure.java.api.Clojure
 import clojure.lang.*
 import io.ktor.websocket.*
@@ -417,7 +418,9 @@ fun install() {
                     }
                 }
             }
-            yield()
+            5 {
+                yield()
+            }
         }
     }
 }

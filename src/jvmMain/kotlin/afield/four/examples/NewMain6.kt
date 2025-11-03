@@ -50,7 +50,7 @@ class NewMain6 {
                 fragment = File("resources/shaders/fwd_fragment.glsl").readText(),
                 depth = 0,
                 textureResolver = {
-                    texture.imageView to TextureSampler(renderer, 4, true)
+                    arrayOf(texture.imageView) to TextureSampler(renderer, 4, true)
                 },
                 name = "inner square shader"
             )
@@ -66,7 +66,7 @@ class NewMain6 {
                 fragment = File("resources/shaders/plain_fragment.glsl").readText(),
                 depth = 0,
                 textureResolver = {
-                    rt2.imageView to TextureSampler(renderer, 4, true)
+                    arrayOf(rt2.imageView) to TextureSampler(renderer, 4, true)
                 },
                 name = "onscreen shader"
             )

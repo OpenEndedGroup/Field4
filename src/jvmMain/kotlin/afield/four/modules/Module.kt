@@ -49,7 +49,7 @@ data class Parameters(
     var color: Int = 1,
     var depth: Int = 1,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    var textureResolver: (Introspected.Texture) -> Pair<ImageView, TextureSampler>? = {
+    var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
         throw Exception("Cannot resolve texture ${it.name}")
     },
     var uboResolver: (BufferParameters) -> BufferParameters? = {
@@ -150,7 +150,7 @@ class ModulePointer(var current: Module) : Renderable {
             if (forceReresolve) oTextureResolver(it)
             else
                 try {
-                    (current.uniforms[it.name] as Module.TexturePointer).texture to (current.uniforms[it.name] as Module.TexturePointer).sampler
+                    arrayOf((current.uniforms[it.name] as Module.TexturePointer).texture) to (current.uniforms[it.name] as Module.TexturePointer).sampler
                 } catch (e: Exception) {
                     lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
                     oTextureResolver(it)
@@ -237,6 +237,20 @@ class Module(val parameters: Parameters) : Renderable {
             target.updateTexture(binding.binding, texture, sampler)
         }
     }
+
+    class TextureArrayPointer(
+        val name: String,
+        override val binding: Bindable,
+        override var target: SimpleDescriptorSet,
+        override var source: BufferParameters? = null,
+        val texture: Array<ImageView>,
+        val sampler: TextureSampler,
+    ) : UpdatesDescriptorSet {
+        override fun updateDescriptorSet() {
+            target.updateTextures(binding.binding, texture, sampler)
+        }
+    }
+
 
     class ImagePointer(
         val name: String,
@@ -326,6 +340,7 @@ class Module(val parameters: Parameters) : Renderable {
                 var where = 0
                 var tag = mutableListOf<Introspected.Bindable>()
                 var kinds = mutableListOf<Int>()
+                var lens = mutableListOf<Int>()
                 bindingList.forEach { bind ->
                     var kind = 0
                     vi.ubos.forEach {
@@ -333,6 +348,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_VERTEX_BIT
                             kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
                             tag.add(it)
+                            lens.add(1)
                         }
                     }
                     fi.ubos.forEach {
@@ -340,6 +356,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
                             tag.add(it)
+                            lens.add(1)
                         }
                     }
 
@@ -348,6 +365,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_VERTEX_BIT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
                             tag.add(it)
+                            lens.add(1)
                         }
                     }
                     fi.ssbo.forEach {
@@ -355,6 +373,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
                             tag.add(it)
+                            lens.add(1)
                         }
                     }
                     vi.textures.forEach {
@@ -362,6 +381,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_VERTEX_BIT
                             kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
                             tag.add(it)
+                            lens.add(Math.max(1, it.arrayCount))
                         }
                     }
                     fi.textures.forEach {
@@ -369,6 +389,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
                             tag.add(it)
+                            lens.add(Math.max(1, it.arrayCount))
                         }
                     }
                     vi.images.forEach {
@@ -376,6 +397,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_VERTEX_BIT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
                             tag.add(it)
+                            lens.add(1)
                         }
                     }
                     fi.images.forEach {
@@ -383,6 +405,7 @@ class Module(val parameters: Parameters) : Renderable {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
                             tag.add(it)
+                            lens.add(1)
                         }
                     }
                     if (kind == 0) throw IllegalArgumentException(" couldn't find ${bind} for ${bindingList}")
@@ -390,7 +413,7 @@ class Module(val parameters: Parameters) : Renderable {
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
-                    parameters.renderer.device, kinds, set, bindingList, where
+                    parameters.renderer.device, kinds, set, bindingList, where, lens
                 )
 
                 val descriptorSet = layout.makeDescriptorSet(parameters.renderer.device.pool)
@@ -521,15 +544,33 @@ class Module(val parameters: Parameters) : Renderable {
                 tag.forEach {
                     println(" resolving texture resource $it")
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
-                    uniforms[it.name] =
-                        TexturePointer(
-                            it.name,
-                            it as Introspected.Texture,
-                            descriptorSet,
-                            source = null /* todo */,
-                            texture,
-                            sampler
-                        )
+
+                    if (it.arrayCount == 0) {
+
+                        uniforms[it.name] =
+                            TexturePointer(
+                                it.name,
+                                it as Introspected.Texture,
+                                descriptorSet,
+                                source = null /* todo */,
+                                texture[0],
+                                sampler
+                            )
+                    }
+                    else {
+
+                        if (texture.size != it.arrayCount) throw IllegalArgumentException("can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}")
+
+                        uniforms[it.name] =
+                            TextureArrayPointer(
+                                it.name,
+                                it as Introspected.Texture,
+                                descriptorSet,
+                                source = null /* todo */,
+                                texture,
+                                sampler
+                            )
+                    }
                 }
             }
 
@@ -692,7 +733,7 @@ class Module(val parameters: Parameters) : Renderable {
                 colorAttachmentFormats.flip()
                 renderInfo.colorAttachmentCount(parameters.color)
                 renderInfo.pColorAttachmentFormats(colorAttachmentFormats)
-                if (parameters.depth > 0) renderInfo.depthAttachmentFormat(VK_FORMAT_D32_SFLOAT)
+                if (parameters.depth > 0) renderInfo.depthAttachmentFormat(VK_FORMAT_D24_UNORM_S8_UINT)
                 else renderInfo.depthAttachmentFormat(VK_FORMAT_UNDEFINED)
                 renderInfo.stencilAttachmentFormat(0)
 
@@ -775,6 +816,8 @@ class Module(val parameters: Parameters) : Renderable {
                 val descriptorSets = stack.mallocLong(setCount)
                 // default to 0 for gaps (valid "null" set)
                 for (i in 0 until setCount) descriptorSets.put(i, 0L)
+
+
 
                 uniforms.values.forEach { upd ->
                     val slot = upd.binding.set - firstSet

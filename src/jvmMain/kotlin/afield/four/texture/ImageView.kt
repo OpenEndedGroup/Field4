@@ -7,13 +7,23 @@ import org.lwjgl.vulkan.VkImageViewCreateInfo
 import afield.four.device.Device
 import afield.four.util.vkCheck
 
-class ImageView(private val device: Device, val vkImage: Long, imageViewData: ImageViewData?) {
+interface HasImageView {
+    val imageView: ImageView
+}
+
+
+interface HasImageViewArray {
+    val imageViewArray: Array<ImageView>
+}
+
+
+class ImageView(private val device: Device, val vkImage: Long, imageViewData: ImageViewData) : HasImageView{
     val aspectMask: Int
     val mipLevels: Int
     var vkImageView: Long = 0
 
     init {
-        this.aspectMask = imageViewData!!.aspectMask
+        this.aspectMask = imageViewData.aspectMask
         this.mipLevels = imageViewData.mipLevels
         MemoryStack.stackPush().use { stack ->
             val lp = stack.mallocLong(1)
@@ -42,6 +52,9 @@ class ImageView(private val device: Device, val vkImage: Long, imageViewData: Im
     fun cleanup() {
         VK10.vkDestroyImageView(device.vkDevice, vkImageView, null)
     }
+
+    override val imageView: ImageView
+        get() = this
 
     class ImageViewData {
         var aspectMask: Int = 0
@@ -85,4 +98,6 @@ class ImageView(private val device: Device, val vkImage: Long, imageViewData: Im
             return this
         }
     }
+
+
 }

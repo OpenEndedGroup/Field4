@@ -18,13 +18,13 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
     }
 
     open class SimpleDescriptorSetLayout(
-        val device: Device, val descriptorType: List<Int>, val set: Int, val binding: List<Int>, val stage: Int
+        val device: Device, val descriptorType: List<Int>, val set: Int, val binding: List<Int>, val stage: Int, val descriptorCount: List<Int> = List(binding.size) { 1 }
     ) : DescriptorSetLayout(device) {
         init {
             MemoryStack.stackPush().use { stack ->
                 val layoutBindings = VkDescriptorSetLayoutBinding.calloc(binding.size, stack)
                 binding.forEachIndexed { index, it ->
-                    layoutBindings[index].binding(it).descriptorType(descriptorType[index]).descriptorCount(1)
+                    layoutBindings[index].binding(it).descriptorType(descriptorType[index]).descriptorCount(descriptorCount[index])
                         .stageFlags(stage)
 
                 }

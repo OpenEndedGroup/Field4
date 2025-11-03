@@ -19,6 +19,8 @@ class Device(val physicalDevice: PhysicalDevice) {
     @JvmField
     var vkDevice: VkDevice
 
+    var usePresentIndexing = false
+
     init {
 
         MemoryStack.stackPush().use { stack ->
@@ -27,7 +29,13 @@ class Device(val physicalDevice: PhysicalDevice) {
             val deviceExtensions = deviceExtensions
             val usePortability =
                 deviceExtensions.contains(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) && OS == OSType.MACOS
-            val numExtensions = if (usePortability) 7 else 6
+
+            val useExternalMemory = OS == OSType.WINDOWS
+            usePresentIndexing = OS == OSType.WINDOWS
+            var numExtensions = if (usePortability) 7 else 6
+            if (useExternalMemory) numExtensions+=2
+            if (usePresentIndexing) numExtensions+=2
+
             val requiredExtensions = stack.mallocPointer(numExtensions)
             requiredExtensions.put(stack.ASCII(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME))
             requiredExtensions.put(stack.ASCII(KHRDynamicRendering.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME))
@@ -35,6 +43,21 @@ class Device(val physicalDevice: PhysicalDevice) {
             requiredExtensions.put(stack.ASCII(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME))
             requiredExtensions.put(stack.ASCII(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME))
             requiredExtensions.put(stack.ASCII(EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME))
+
+//            requiredExtensions.put(stack.ASCII(EXTMemoryPriority.VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME))
+
+
+            if (useExternalMemory) {
+                requiredExtensions.put(stack.ASCII(KHRExternalMemory.VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME))
+                requiredExtensions.put(stack.ASCII(KHRExternalMemoryWin32.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME))
+            }
+
+            if (usePresentIndexing) {
+                requiredExtensions.put(stack.ASCII(KHRPresentId.VK_KHR_PRESENT_ID_EXTENSION_NAME))
+                requiredExtensions.put(stack.ASCII(KHRPresentWait.VK_KHR_PRESENT_WAIT_EXTENSION_NAME))
+
+            }
+
             // not on MVK yet?
 //            requiredExtensions.put(stack.ASCII(EXTDynamicRenderingUnusedAttachments.VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME))
 
@@ -100,7 +123,23 @@ class Device(val physicalDevice: PhysicalDevice) {
             f2.pNext(f0.address())
             f0.pNext(features12.address())
             features12.pNext(features13.address())
-//            f0.pNext(features0.address())
+
+
+
+
+            if (usePresentIndexing) {
+                val presentIdFeat = VkPhysicalDevicePresentIdFeaturesKHR.calloc(stack)
+                    .sType(KHRPresentId.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR)
+
+                val presentWaitFeat = VkPhysicalDevicePresentWaitFeaturesKHR.calloc(stack)
+                    .sType(KHRPresentWait.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR)
+
+                features13.pNext(presentIdFeat.address())
+                presentIdFeat.pNext(presentWaitFeat.address())
+
+                presentIdFeat.presentId(true)
+                presentWaitFeat.presentWait(true)
+            }
 
             val pp = stack.mallocPointer(1)
             vkCheck(

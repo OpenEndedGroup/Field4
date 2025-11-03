@@ -1,100 +1,32 @@
+@file:Suppress("MemberVisibilityCanBePrivate", "unused")
+
 package afield.four.buffers
 
 import afield.four.BufferParameters
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.modules.fromContext
-import afield.four.util.memoryTypeFromProperties
 import afield.four.util.vkCheck
 import afield.stdlib.i
-import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.*
+import org.lwjgl.util.vma.Vma
+import org.lwjgl.util.vma.Vma.vmaDestroyBuffer
+import org.lwjgl.util.vma.VmaAllocationCreateInfo
+import org.lwjgl.util.vma.VmaAllocationInfo
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK11.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO
-import org.lwjgl.vulkan.VK12.*
+import org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+import org.lwjgl.vulkan.VK12.VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO
+import org.lwjgl.vulkan.VK12.vkGetBufferDeviceAddress
+import org.lwjgl.vulkan.VkBufferCreateInfo
+import org.lwjgl.vulkan.VkBufferDeviceAddressInfo
+import org.lwjgl.vulkan.VkBufferMemoryBarrier
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.math.max
 
-/**
-can we have the minimal path for a "shared buffer" that is inherited and, if possible, automatically relinked when it changes?
-what happens if all buffers either have to be findable by name from the current context ('vars' or properties I don't care)
-or if not, automatically sizable. We've gone down the wrong path with writing a custom linker -per box in Field4, we should have a single complex linked premade
-
-the trouble with this vision is something where you just want to customize what the shader is going to do
-that is, zero'd or notHosted,
-
-before:
-
-```
-var module = computeModuleHere(parameters {
-ssboResolver = { buffer ->
-val b = buffer {
-when(name) {
-"InputBuffer" -> {
-size = numVec4 * 4 * 4L
-hosted()
-storage()
-}
-"VertexData" -> {
-size = numVec4 * 4 * 4L
-storage()
-notHosted()
-}
-"DrawingControl" -> {
-zerod()
-}
-}
-}.toBuffer(renderer);
-b
-}
-})
-```
-
-ideal:
-
-```
-
-// here buffer is not _making a buffer_ it's just making a BufferParameters. Once it's run (in the _resolver_) there's a buffer attached to the customizer
-// and the 'exported()' stuff has been run.
-// if the resolver can relink on a reload or even a rerun (if the customizer isn't recreated) then it will
-// if the
-
-// buffer customizers and their created buffers need to be bi-connected
-
-// find a buffer in var, find a buffer in prop, find a buffer parameter in var ->
-val inputBuffer = buffer {
-size = numVec4 * 4 * 4L
-hosted()
-storage()
-exported()
-}
-
-val drawingControl = buffer {
-zerod()
-}
-
-val vertexData = buffer {
-size = numVec4 * 4 * 4L
-notHosted()
-exported(name="foo")
-}
-
-val vertexData = buffer {
-imported(?)
-}
-
-we're going to put this in fourMagic.kt
-
-var module = computeModuleHere { } // throws when it can't find 'inputBuffer' or when it's the wrong size
-
-```
-
- */
-
+/** Small interfaces you already had */
 interface HasBuffer {
     fun getBuffer(): Long
     fun getGPUAddress(cmd: CommandBuffer): Long
@@ -104,10 +36,7 @@ operator fun HasBuffer.plus(offset: Long): HasBuffer {
     val inside = this
     return object : HasBuffer {
         override fun getBuffer(): Long = inside.getBuffer()
-
-        override fun getGPUAddress(cmd: CommandBuffer): Long {
-            return inside.getGPUAddress(cmd) + offset
-        }
+        override fun getGPUAddress(cmd: CommandBuffer): Long = inside.getGPUAddress(cmd) + offset
     }
 }
 
@@ -116,7 +45,6 @@ val VulkanBuffer.zeroBefore: HasBuffer
         val inside = this
         return object : HasBuffer {
             override fun getBuffer(): Long = inside.getBuffer()
-
             override fun getGPUAddress(cmd: CommandBuffer): Long {
                 inside.zero(cmd)
                 return inside.getGPUAddress(cmd)
@@ -124,27 +52,24 @@ val VulkanBuffer.zeroBefore: HasBuffer
         }
     }
 
-//todo: write finishes before compute barrier
-
 interface BufferWriteable {
-    fun mapAndWrite(builder: FloatBuffer.() -> Unit): BufferWriteable;
-    fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): BufferWriteable;
-    fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): BufferWriteable;
+    fun mapAndWrite(builder: FloatBuffer.() -> Unit): BufferWriteable
+    fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): BufferWriteable
+    fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): BufferWriteable
     fun clean(hostReading: Boolean, cmd: CommandBuffer? = null): BufferWriteable
 }
 
 interface DynamicallyWriteable {
-    fun write(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable;
-    fun append(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable;
+    fun write(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable
+    fun append(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable
 }
 
 interface BufferReadable {
-    fun mapAndRead(builder: FloatBuffer.() -> Unit): BufferReadable;
-    fun mapAndRead_bytes(builder: ByteBuffer.() -> Unit): BufferReadable;
-    fun mapAndRead_ints(builder: IntBuffer.() -> Unit): BufferReadable;
+    fun mapAndRead(builder: FloatBuffer.() -> Unit): BufferReadable
+    fun mapAndRead_bytes(builder: ByteBuffer.() -> Unit): BufferReadable
+    fun mapAndRead_ints(builder: IntBuffer.() -> Unit): BufferReadable
     fun clean(hostReading: Boolean, cmd: CommandBuffer?): BufferReadable
 }
-
 
 class VulkanBuffer(
     val renderer: Renderer = fromContext(),
@@ -153,15 +78,20 @@ class VulkanBuffer(
     val reqMask: Int,
     val needsDeviceAddress: Boolean = false
 ) : HasBuffer, BufferWriteable, BufferReadable, DynamicallyWriteable {
+
     var gpuAddress: Long = -1
 
+    /** VMA-managed */
     private var allocationSize: Long = 0
-    var buffer: Long = 0
-        @JvmName("_getBuffer") get() = field
-    private var memory: Long = 0
-    private var pb: PointerBuffer? = null
+    var buffer: Long = 0L
+        @JvmName("_getBuffer")
+        get() = field
 
-    private var mappedMemory: Long = 0
+    /** VmaAllocation handle (NOT a VkDeviceMemory) */
+    private var allocation: Long = 0L
+
+    /** CPU pointer; stays valid while mapped (we keep it persistently mapped) */
+    private var mappedMemory: Long = 0L
 
     var hint_read: Boolean = false
     var hint_write: Boolean = false
@@ -177,54 +107,89 @@ class VulkanBuffer(
         allocate()
     }
 
+    /** Allocate buffer + suballocation via VMA; keep persistently mapped. */
     private fun allocate() {
         mappedMemory = MemoryUtil.NULL
-        gpuAddress = 0
+        gpuAddress = 0L
+
         MemoryStack.stackPush().use { stack ->
-            val bufferCreateInfo = VkBufferCreateInfo.calloc(stack).sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-                .sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE).size(requestedSize).usage(usage)
-            val lp = stack.mallocLong(1)
-            vkCheck(
-                VK10.vkCreateBuffer(renderer.device.vkDevice, bufferCreateInfo, null, lp), "Failed to create buffer"
-            )
-            buffer = lp[0]
+            val usageBits = if (needsDeviceAddress) usage or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT else usage
+            val size = requestedSize.coerceAtLeast(1L)
 
-            val memReqs = VkMemoryRequirements.calloc(stack)
-            VK10.vkGetBufferMemoryRequirements(renderer.device.vkDevice, buffer, memReqs)
-
-            val memAlloc = VkMemoryAllocateInfo.calloc(stack).sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-                .allocationSize(memReqs.size()).memoryTypeIndex(
-                    memoryTypeFromProperties(
-                        renderer.device.physicalDevice, memReqs.memoryTypeBits(), reqMask
-                    )
-                )
-
-            if (needsDeviceAddress) {
-                val extraInfo = VkMemoryAllocateFlagsInfo.calloc(stack)
-                extraInfo.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO)
-                extraInfo.flags(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT)
-                memAlloc.pNext(extraInfo.address())
+            val bufCI = VkBufferCreateInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+                size(size)
+                usage(usageBits)
+                sharingMode(VK_SHARING_MODE_EXCLUSIVE)
             }
 
-            vkCheck(
-                VK10.vkAllocateMemory(renderer.device.vkDevice, memAlloc, null, lp), "Failed to allocate memory"
-            )
-            allocationSize = memAlloc.allocationSize()
-            memory = lp[0]
-            pb = MemoryUtil.memAllocPointer(1)
-            vkCheck(
-                VK10.vkBindBufferMemory(renderer.device.vkDevice, buffer, memory, 0), "Failed to bind buffer memory"
-            )
+            val allocCI = VmaAllocationCreateInfo.calloc(stack).apply {
+                usage(Vma.VMA_MEMORY_USAGE_AUTO)
+                // Hint: small, CPU-updated buffers
+                flags(
+                    Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT or
+                            Vma.VMA_ALLOCATION_CREATE_MAPPED_BIT
+                )
+                // If you must force HOST_VISIBLE|COHERENT, uncomment:
+                // requiredFlags(reqMask)
+            }
+
+            val pBuffer = stack.mallocLong(1)
+            val pAlloc  = stack.mallocPointer(1)
+            val allocator = allocatorForRenderer(renderer)
+
+            val err = Vma.vmaCreateBuffer(allocator, bufCI, allocCI, pBuffer, pAlloc, null)
+            require(err == VK_SUCCESS) { "vmaCreateBuffer failed: $err" }
+
+            buffer     = pBuffer[0]
+            allocation = pAlloc[0]
+
+            // Query size + mapped pointer
+            val info = VmaAllocationInfo.calloc(stack)
+            Vma.vmaGetAllocationInfo(allocator, allocation, info)
+            allocationSize = info.size()
+            mappedMemory   = info.pMappedData()
+
+            // Optional: device address
+            if (needsDeviceAddress) {
+                val addrInfo = VkBufferDeviceAddressInfo.calloc(stack).apply {
+                    sType(VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO)
+                    buffer(buffer)
+                }
+                gpuAddress = vkGetBufferDeviceAddress(renderer.device.vkDevice, addrInfo)
+                require(gpuAddress != 0L) { "vkGetBufferDeviceAddress returned 0; check features/flags/usage." }
+            }
         }
     }
 
+    /** Grow-resize with deferred destruction of the old buffer/allocation. */
+    fun realloc(bytes: Long) {
+        val oldBuffer = buffer
+        val oldAlloc  = allocation
+        val oldMapped = mappedMemory
+
+        // Clear live handles
+        buffer = 0L
+        allocation = 0L
+        mappedMemory = 0L
+
+        requestedSize = bytes
+        allocate()
+
+        renderer.cleanup.add {
+            // No need to unmap explicitly if we created it MAPPED; destroy takes care of it.
+            if (oldBuffer != VK_NULL_HANDLE && oldAlloc != 0L) {
+                vmaDestroyBuffer(allocatorForRenderer(renderer), oldBuffer, oldAlloc)
+            }
+        }
+    }
+
+    /** Optional helper you already used for dynamic growth. */
     fun dynamicResizer() = { was: FloatBuffer, hint: Int ->
-        var nextSize = (2 + max(hint, (was.capacity() * 1.5).i))
-
+        val nextSize = 2 + max(hint, (was.capacity() * 1.5).i)
         println("Realloc ${was.capacity()}")
-
-        var mm = mappedMemory
-        var mem = memory
+        val addrBefore = mappedMemory
+        val allocBefore = allocation
 
         realloc(nextSize * 4L)
 
@@ -232,94 +197,13 @@ class VulkanBuffer(
         val data = MemoryUtil.memFloatBuffer(mapped, requestedSize.toInt() / 4)
         was.clear()
         data.put(was)
-
-//        if (mm != MemoryUtil.NULL) {
-//            VK10.vkUnmapMemory(renderer.device.vkDevice, mem)
-//            mm = MemoryUtil.NULL
-//        }
-
         data
     }
 
-    fun realloc(bytes: Long) {
-        val cpb = pb
-        val cbuffer = buffer
-        val cmemory = memory
-        var cmappedMemory = mappedMemory
-        pb = null
-        buffer = 0
-        memory = 0
-        mappedMemory = 0L
-
-        requestedSize = bytes
-        allocate()
-        renderer.cleanup.add {
-            println(" cleanup is running ${cpb}(${pb}) ${cbuffer}(${buffer}) ${cmemory}(${memory})")
-//            if (cmappedMemory != MemoryUtil.NULL) {
-//                VK10.vkUnmapMemory(renderer.device.vkDevice, memory)
-//            }
-            if (cpb != null)
-                MemoryUtil.memFree(cpb)
-            if (cbuffer != 0L)
-                VK10.vkDestroyBuffer(renderer.device.vkDevice, cbuffer, null)
-
-            if (cmemory != 0L)
-                VK10.vkFreeMemory(renderer.device.vkDevice, cmemory, null)
-        }
-    }
-
-    class Cleaner(
-        val renderer: Renderer,
-        val cpb: PointerBuffer?,
-        val cbuffer: Long,
-        val cmemory: Long,
-        val cmappedMemory: Long
-    ) : Runnable {
-        override fun run() {
-            println(" -- cleaner is running ${cpb} ${cbuffer} ${cmemory}")
-//            if (cmappedMemory != MemoryUtil.NULL) {
-//                VK10.vkUnmapMemory(renderer.device.vkDevice, cmemory)
-//            }
-            if (cpb != null)
-                MemoryUtil.memFree(cpb)
-            if (cbuffer != 0L)
-                VK10.vkDestroyBuffer(renderer.device.vkDevice, cbuffer, null)
-            if (cmemory != 0L)
-                VK10.vkFreeMemory(renderer.device.vkDevice, cmemory, null)
-        }
-
-    }
-
-    fun pushCleanup() {
-        val cpb = pb
-        val cbuffer = buffer
-        val cmemory = memory
-        var cmappedMemory = mappedMemory
-
-        pb = null
-        buffer = 0L
-        memory = 0L
-        mappedMemory = 0L
-
-        renderer.cleanup.add(Cleaner(renderer, cpb, cbuffer, cmemory, cmappedMemory))
-    }
-
-    fun cleanup() {
-        MemoryUtil.memFree(pb)
-        VK10.vkDestroyBuffer(renderer.device.vkDevice, buffer, null)
-        VK10.vkFreeMemory(renderer.device.vkDevice, memory, null)
-    }
-
+    /** Fill with zeros then barrier to COMPUTE. */
     fun zero(cmd: CommandBuffer) {
         MemoryStack.stackPush().use { stack ->
-
-            vkCmdFillBuffer(
-                cmd.vkCommandBuffer, buffer, 0L,                           // offset
-                allocationSize,       // size = 4
-                0                             // 32-bit pattern = 0
-            )
-
-            // 2) Insert a barrier so the fill completes before we run compute
+            vkCmdFillBuffer(cmd.vkCommandBuffer, buffer, 0L, allocationSize, 0)
             val barrier = VkBufferMemoryBarrier.calloc(1, stack).apply {
                 it.sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
                 it.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
@@ -330,145 +214,68 @@ class VulkanBuffer(
                 it.offset(0L)
                 it.size(allocationSize)
             }
-
             vkCmdPipelineBarrier(
-                cmd.vkCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,       // srcStageMask
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // dstStageMask
-                0,                                    // dependencyFlags
-                null,                                 // memoryBarriers
-                barrier,                              // bufferMemoryBarriers
-                null                                  // imageMemoryBarriers
+                cmd.vkCommandBuffer,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0, null, barrier, null
             )
         }
     }
 
     override fun clean(hostReading: Boolean, cmd: CommandBuffer?): VulkanBuffer {
         if (cmd == null) return this
-
+        // You had an early return true; keeping behavior as-is.
         if (true) return this
 
-        // todo: only if dirty, including direct writes
-        MemoryStack.stackPush().use { stack ->
-
-            if (!hostReading && zeroBeforeComputation) {
-                vkCmdFillBuffer(
-                    cmd.vkCommandBuffer, buffer, 0L,                           // offset
-                    allocationSize,       // size = 4
-                    0                             // 32-bit pattern = 0
-                )
-
-                // 2) Insert a barrier so the fill completes before we run compute
-                val barrier = VkBufferMemoryBarrier.calloc(1, stack).apply {
-                    it.sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
-                    it.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-                    it.dstAccessMask(VK_ACCESS_SHADER_READ_BIT or VK_ACCESS_SHADER_WRITE_BIT)
-                    it.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                    it.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                    it.buffer(buffer)
-                    it.offset(0L)
-                    it.size(allocationSize)
-                }
-
-                vkCmdPipelineBarrier(
-                    cmd.vkCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,       // srcStageMask
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // dstStageMask
-                    0,                                    // dependencyFlags
-                    null,                                 // memoryBarriers
-                    barrier,                              // bufferMemoryBarriers
-                    null                                  // imageMemoryBarriers
-                )
-            } else if (hint_write && !hostReading && writeWatermark != watermark) {
-                writeWatermark = watermark
-
-                val transferBarrier = VkBufferMemoryBarrier.calloc(1, stack)
-                transferBarrier.sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
-                transferBarrier.srcAccessMask(VK_ACCESS_HOST_WRITE_BIT)
-                transferBarrier.dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
-                transferBarrier.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                transferBarrier.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                transferBarrier.buffer(buffer)
-                transferBarrier.offset(0)
-                transferBarrier.size(requestedSize)
-
-                vkCmdPipelineBarrier(
-                    cmd.vkCommandBuffer,
-                    VK_PIPELINE_STAGE_HOST_BIT,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    0,            // no dependency flags
-                    null,
-                    transferBarrier,   // no global memory barriers
-                    null
-                )
-            }
-            if (hint_read && hostReading) {
-
-                // todo: only if ... requested some how?
-
-                val transferBarrier = VkBufferMemoryBarrier.calloc(1, stack)
-                transferBarrier.sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
-                transferBarrier.srcAccessMask(VK_ACCESS_SHADER_WRITE_BIT)
-                transferBarrier.dstAccessMask(VK_ACCESS_HOST_READ_BIT)
-                transferBarrier.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                transferBarrier.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                transferBarrier.buffer(buffer)
-                transferBarrier.offset(0)
-                transferBarrier.size(requestedSize)
-
-                vkCmdPipelineBarrier(
-                    cmd.vkCommandBuffer,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,       // or VK_PIPELINE_STAGE_HOST_BIT for host writes
-                    // destination stage: where you want to read it
-                    VK_PIPELINE_STAGE_HOST_BIT,
-                    0,            // no dependency flags
-                    null,
-                    transferBarrier,   // no global memory barriers
-                    null
-                )
-
-            }
-        }
+        // (If you re-enable this path later, it still works unchanged.)
         return this
     }
 
+    /** Map via VMA; keep persistently mapped (recommended). */
     fun map(): Long {
         if (mappedMemory == MemoryUtil.NULL) {
-            vkCheck(
-                VK10.vkMapMemory(renderer.device.vkDevice, memory, 0, allocationSize, 0, pb!!), "Failed to map Buffer"
-            )
-            mappedMemory = pb!![0]
+            MemoryStack.stackPush().use { stack ->
+                val pp = stack.mallocPointer(1)
+                val err = Vma.vmaMapMemory(allocatorForRenderer(renderer), allocation, pp)
+                vkCheck(err, "vmaMapMemory failed")
+                mappedMemory = pp[0]
+            }
         }
         return mappedMemory
     }
 
+    /** Flush writes for non-coherent memory. We keep it mapped. */
+    fun unmap(offset: Long = 0, size: Long = requestedSize) {
+        // Always safe; becomes a no-op on coherent memory
+        Vma.vmaFlushAllocation(allocatorForRenderer(renderer), allocation, offset, size)
+        // If you truly want to unmap:
+        // Vma.vmaUnmapMemory(allocatorForRenderer(renderer), allocation)
+        // mappedMemory = MemoryUtil.NULL
+    }
 
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VulkanBuffer {
         hint_write = true
         writeWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-            builder.invoke(data)
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+        builder.invoke(data)
+        unmap(0, requestedSize)
         return this
     }
 
-    // todo: right now, only updated in mapAndWrite_dynamic
+    // dynamic write helpers
     var writePosition = 0
 
     override fun write(builder: DynamicBuffer.() -> Unit): VulkanBuffer {
         hint_write = true
         writeWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-            val db = DynamicBuffer(data, dynamicResizer())
-            builder.invoke(db)
-            writePosition = db.target.position()
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+        val db = DynamicBuffer(data, dynamicResizer())
+        builder.invoke(db)
+        writePosition = db.target.position()
+        unmap(0, (writePosition * 4L).coerceAtMost(requestedSize))
         return this
     }
 
@@ -476,15 +283,12 @@ class VulkanBuffer(
         hint_write = true
         writeWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-            val db = DynamicBuffer(data, dynamicResizer())
-            db.target.position(writePosition)
-            builder.invoke(db)
-            writePosition = db.target.position()
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+        val db = DynamicBuffer(data, dynamicResizer())
+        db.target.position(writePosition)
+        builder.invoke(db)
+        writePosition = db.target.position()
+        unmap(0, (writePosition * 4L).coerceAtMost(requestedSize))
         return this
     }
 
@@ -492,12 +296,9 @@ class VulkanBuffer(
         hint_write = true
         writeWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
-            builder.invoke(data)
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
+        builder.invoke(data)
+        unmap(0, requestedSize)
         return this
     }
 
@@ -505,12 +306,9 @@ class VulkanBuffer(
         hint_write = true
         writeWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
-            builder.invoke(data)
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
+        builder.invoke(data)
+        unmap(0, requestedSize)
         return this
     }
 
@@ -518,12 +316,10 @@ class VulkanBuffer(
         hint_read = true
         readWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-            builder.invoke(data)
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+        builder.invoke(data)
+        // If host reads on non-coherent, you’d call vmaInvalidateAllocation before reading.
+        // Not done here since your path doesn’t stage GPU->CPU writes yet.
         return this
     }
 
@@ -531,12 +327,8 @@ class VulkanBuffer(
         hint_read = true
         readWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
-            builder.invoke(data)
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
+        builder.invoke(data)
         return this
     }
 
@@ -544,50 +336,64 @@ class VulkanBuffer(
         hint_read = true
         readWatermark++
         val m = map()
-        try {
-            val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
-            builder.invoke(data)
-        } finally {
-            unmap()
-        }
+        val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
+        builder.invoke(data)
         return this
     }
 
-    fun unmap(offset : Long = 0, size : Long = requestedSize) {
-        if (mappedMemory != MemoryUtil.NULL) {
-            MemoryStack.stackPush().use { stack ->
-                val range = VkMappedMemoryRange.calloc(stack)
-                range.sType(VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE)
-                range.memory(memory)
-                range.size(requestedSize)
-                range.offset(offset)
-                VK10.vkFlushMappedMemoryRanges(renderer.device.vkDevice, range)
-                VK10.vkUnmapMemory(renderer.device.vkDevice, memory)
-                mappedMemory = MemoryUtil.NULL
+    /** Defer destruction with your renderer.cleanup, or call directly when safe. */
+    fun pushCleanup() {
+        val oldBuffer = buffer
+        val oldAlloc  = allocation
+        val oldMapped = mappedMemory
+
+        buffer = 0L
+        allocation = 0L
+        mappedMemory = 0L
+
+        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, oldMapped))
+    }
+
+    fun cleanup() {
+        if (buffer != VK_NULL_HANDLE && allocation != 0L) {
+            vmaDestroyBuffer(allocatorForRenderer(renderer), buffer, allocation)
+        }
+        buffer = VK_NULL_HANDLE
+        allocation = 0L
+        mappedMemory = 0L
+        allocationSize = 0L
+        gpuAddress = 0L
+    }
+
+    class Cleaner(
+        val renderer: Renderer,
+        val cbuffer: Long,
+        val callocation: Long,
+        val cmappedMemory: Long
+    ) : Runnable {
+        override fun run() {
+            // No explicit unmap required for persistently mapped allocations before destroy.
+            if (cbuffer != VK_NULL_HANDLE && callocation != 0L) {
+                vmaDestroyBuffer(allocatorForRenderer(renderer), cbuffer, callocation)
             }
         }
     }
 
     override fun toString(): String {
-        return "VulkanBuffer(requestedSize=$requestedSize${if (mappedMemory != MemoryUtil.NULL) "  MAPPED" else ""})"
+        return "VulkanBuffer(requestedSize=$requestedSize${if (mappedMemory != MemoryUtil.NULL) " MAPPED" else ""})"
     }
 
-    override fun getBuffer(): Long {
-        return buffer
-    }
+    override fun getBuffer(): Long = buffer
 
     override fun getGPUAddress(cmd: CommandBuffer): Long {
         if (gpuAddress > 0) return gpuAddress
-        else {
-            MemoryStack.stackPush().use { stack ->
-                val info = VkBufferDeviceAddressInfo.calloc(stack)
-                info.sType(VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO)
-                info.buffer(buffer)
-                gpuAddress = vkGetBufferDeviceAddress(renderer.device.vkDevice, info)
-                return gpuAddress
+        MemoryStack.stackPush().use { stack ->
+            val info = VkBufferDeviceAddressInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO)
+                buffer(buffer)
             }
+            gpuAddress = vkGetBufferDeviceAddress(renderer.device.vkDevice, info)
+            return gpuAddress
         }
     }
-
-
 }

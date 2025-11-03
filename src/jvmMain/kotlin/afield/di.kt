@@ -25,7 +25,7 @@ annotation class RunsAt(val value: String, val priority : Int = 0)
 
 val fieldSourceCache: Map<String, List<Pair<Int, Method>>> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val v = ConcurrentHashMap<String, MutableList<Pair<Int, Method>>>()
-    ClassGraph().enableClassInfo().enableAnnotationInfo().enableMethodInfo().enableMemoryMapping().addClassLoader(Thread.currentThread().contextClassLoader).acceptPackages("afield").disableJarScanning()
+    ClassGraph().enableClassInfo().enableAnnotationInfo().enableMethodInfo().enableMemoryMapping().addClassLoader(Thread.currentThread().contextClassLoader).acceptPackages("afield")//.disableJarScanning()
 //        .scanAsync(Runloop.miscPool, Runtime.getRuntime().availableProcessors()).get()
         .scan()
         .use { scanResult ->

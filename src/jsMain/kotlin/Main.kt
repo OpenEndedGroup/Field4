@@ -499,18 +499,45 @@ suspend fun main() {
     }
 
     mainViewport.onmousedown = { event ->
-        console.log("-onmousedown d", event.target == mainViewport, event)
-        if (event.target == mainViewport) {
-            canvasGestures.down(event)
-        } else {
+        if (event.buttons.toInt()==4) {}
+        else {
+            console.log("-onmousedown d", event.target == mainViewport, event)
+            if (event.target == mainViewport) {
+                canvasGestures.down(event)
+            } else {
 
+            }
         }
     }
     mainViewport.onmouseup = { event ->
-        canvasGestures.up(event)
+        if (event.buttons.toInt()==4) {} else {
+            canvasGestures.up(event)
+        }
     }
     mainViewport.onmousemove = { event ->
-        canvasGestures.move(event)
+        if (event.buttons.toInt() ===4) {
+            // this is actually a drag gesture
+            event.preventDefault()
+            event.stopPropagation()
+
+            var mc = mainCanvas.unsafeCast<dynamic>()
+            val x: Number = (mc.data_x ?: 0.0) + event.unsafeCast<dynamic>().movementX
+            val y: Number = (mc.data_y ?: 0.0) + event.unsafeCast<dynamic>().movementY
+
+            (mc as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
+            mainTranslation = listOf(x.toDouble(), y.toDouble())
+
+            println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
+
+            mc.data_x = x
+            mc.data_y = y
+
+            send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
+
+            canvasGestures.rebuildConnectionGroup()
+        }
+        else
+            canvasGestures.move(event)
     }
 
 

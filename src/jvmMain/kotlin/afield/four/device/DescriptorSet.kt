@@ -92,6 +92,28 @@ abstract class DescriptorSet {
             }
         }
 
+        fun updateTextures(binding: Int, textures: Array<ImageView>, textureSampler: TextureSampler) {
+            MemoryStack.stackPush().use { stack ->
+                textures.forEachIndexed { index, iv ->
+                    val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
+                        .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .imageView(iv.vkImageView)
+                        .sampler(textureSampler.vkSampler)
+
+                    val descrBuffer = VkWriteDescriptorSet.calloc(1, stack)
+                    descrBuffer[0]
+                        .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                        .dstSet(vkDescriptorSet)
+                        .dstBinding(binding)
+                        .dstArrayElement(index)
+                        .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                        .descriptorCount(1)
+                        .pImageInfo(imageInfo)
+                    vkUpdateDescriptorSets(device.vkDevice, descrBuffer, null)
+                }
+            }
+        }
+
         fun updateImage(binding: Int, texture: ImageView) {
             MemoryStack.stackPush().use { stack ->
                 val imageInfo = VkDescriptorImageInfo.calloc(1, stack)

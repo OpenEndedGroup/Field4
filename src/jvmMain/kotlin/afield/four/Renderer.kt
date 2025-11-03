@@ -10,6 +10,7 @@ import afield.four.modules.ModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
+import afield.four.util.MapOfSequences
 import afield.four.util.Options
 import afield.four.util.Window
 import afield.logTime
@@ -64,6 +65,11 @@ class Renderer(val window: Window) {
     var cleanupStack = mutableListOf<MutableList<Runnable>>()
 
     var referenceQueue: ReferenceQueue<VulkanBuffer> = ReferenceQueue<VulkanBuffer>()
+
+
+    var renderStart = MapOfSequences<String>()
+    var renderEnd = MapOfSequences<String>()
+    var currentCommandBuffer: CommandBuffer? = null
 
 
     init {
@@ -147,6 +153,7 @@ class Renderer(val window: Window) {
             computeFences[imageIndex].fenceWait()
             computeFences[imageIndex].reset()
 
+
             val ccmd = computeCommandBuffers[imageIndex]
             ccmd.reset()
             ccmd.beginRecording()
@@ -161,6 +168,9 @@ class Renderer(val window: Window) {
             val cmd = commandBuffers[imageIndex]
             cmd.reset()
             cmd.beginRecording()
+
+            currentCommandBuffer = cmd
+            renderStart.update()
 
             renderList?.render(cmd, imageIndex)
             cmd.endRecording()
@@ -184,7 +194,11 @@ class Renderer(val window: Window) {
                 }
             }
 
+            renderEnd.update()
+
             currentImage = (imageIndex + 1) % numImages
+
+            currentCommandBuffer = null
 
         } catch (e: ImageNotAvailable) {
             println(e.message)
@@ -244,7 +258,7 @@ class Renderer(val window: Window) {
                         device,
                         swapChainExtent.width(),
                         swapChainExtent.height(),
-                        VK10.VK_FORMAT_D32_SFLOAT,
+                        VK10.VK_FORMAT_D24_UNORM_S8_UINT,
                         VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                     )
                 )

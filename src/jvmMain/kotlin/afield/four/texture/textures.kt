@@ -15,11 +15,11 @@ import afield.four.modules.fromContext
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import java.nio.ByteBuffer
 
-class LoadedTexture(fileName: String, val renderer: Renderer = fromContext(), imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB) {
+class LoadedTexture(fileName: String, val renderer: Renderer = fromContext(), imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB) : HasImageView {
     val fileName: String
     var height = 0
     lateinit var image: Image
-    lateinit var imageView: ImageView
+    override lateinit var imageView: ImageView
     var mipLevels = 0
     var width = 0
     var recordedTransition: Boolean

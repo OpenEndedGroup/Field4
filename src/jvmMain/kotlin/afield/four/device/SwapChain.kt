@@ -10,6 +10,7 @@ import afield.logTime
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.VK_TIMEOUT
 import java.util.*
 import java.util.function.Consumer
 import kotlin.math.max
@@ -61,7 +62,7 @@ class SwapChain(
                 .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                 .clipped(true)
             if (vsync) {
-                vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR)
+                vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
             } else {
                 vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR)
             }
@@ -99,9 +100,30 @@ class SwapChain(
         }
     }
 
+    var nextPresentId: Long = 1 // must be > 0
+
+
     fun acquireNextImage() = logTime("ani") {
         var imageIndex: Int
         MemoryStack.stackPush().use { stack ->
+
+
+            if (device.usePresentIndexing) {
+                val idToWait = nextPresentId - 1
+                if (idToWait <= 0) {}
+                else {
+
+                    // timeout: e.g., 50 ms in nanoseconds (tune as you like)
+                    val timeoutNs = 50_000_000L
+
+                    val result = KHRPresentWait.vkWaitForPresentKHR(
+                        device.vkDevice, vkSwapChain, idToWait, timeoutNs
+                    )
+                    if (result == VK_TIMEOUT) {
+                        println(" -- warning, waitForPresent timed out")
+                    }
+                }
+            }
             val ip = stack.mallocInt(1)
             val err = KHRSwapchain.vkAcquireNextImageKHR(
                 device.vkDevice, vkSwapChain, 0L.inv(),
@@ -232,6 +254,8 @@ class SwapChain(
     fun presentImage(queue: Queue, imageIndex: Int): Boolean {
         var resize = false
         MemoryStack.stackPush().use { stack ->
+
+
             val present = VkPresentInfoKHR.calloc(stack)
                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
                 .pWaitSemaphores(
@@ -242,6 +266,19 @@ class SwapChain(
                 .swapchainCount(1)
                 .pSwapchains(stack.longs(vkSwapChain))
                 .pImageIndices(stack.ints(imageIndex))
+
+
+            if (device.usePresentIndexing)
+            {
+                val presentId = VkPresentIdKHR.calloc(stack)
+                    .sType(KHRPresentId.VK_STRUCTURE_TYPE_PRESENT_ID_KHR)
+                    .swapchainCount(1)
+                    .pPresentIds(stack.longs(nextPresentId))
+
+                present.pNext(presentId.address())
+                nextPresentId++
+            }
+
             val err = KHRSwapchain.vkQueuePresentKHR(queue.vkQueue, present)
             if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
                 resize = true

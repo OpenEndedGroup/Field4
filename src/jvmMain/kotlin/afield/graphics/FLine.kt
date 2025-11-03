@@ -7,7 +7,6 @@ import earcut4j.Earcut
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.Cursor
 import org.joml.Vector3d
-import org.joml.Vector3f
 import org.joml.minus
 import org.joml.plus
 import org.joml.times
@@ -589,7 +588,6 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
         }
     }
 
-
     private fun execRep(rep: Rep, suffixMin: Int) {
         val minBody = minPoints(rep.body)
         if (minBody == 0) return // avoid infinite loop on e.g. 'z+'
@@ -638,5 +636,3 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
         }
     }
 }
-
-
