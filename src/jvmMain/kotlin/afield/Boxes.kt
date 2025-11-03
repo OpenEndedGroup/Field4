@@ -1,6 +1,5 @@
 package afield
 
-import afield.logger.lblock
 import afield.stdlib.Action
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
@@ -11,10 +10,7 @@ import downloadAndUnzip
 import fetchUpdateInfo
 import formatKotlinCode
 import io.ktor.util.collections.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import promoteStagingToLive
 import writeLocalVersion
 import kotlin.script.experimental.api.KotlinType
@@ -36,8 +32,6 @@ interface HasHierarchy : HasProperties {
 
 open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : HasOutput by output, HasProperties,
     HasHierarchy {
-
-
 
 
     lateinit var inside: SessionInformation
@@ -426,7 +420,6 @@ fun makeKI(box: Box): KotlinInterface {
 
             launch(Runloop.miscPool.asCoroutineDispatcher()) {
 
-            lblock("executing stdlib import ") {
 //                    if (box.properties.containsKey("_tombstone")) return@launch
                 if (box.properties.containsKey("_tombstone")) return@launch
                 println(" $box executing imports")
