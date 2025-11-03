@@ -1,0 +1,88 @@
+package afield.four.texture
+
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VkImageSubresourceRange
+import org.lwjgl.vulkan.VkImageViewCreateInfo
+import afield.four.device.Device
+import afield.four.util.vkCheck
+
+class ImageView(private val device: Device, val vkImage: Long, imageViewData: ImageViewData?) {
+    val aspectMask: Int
+    val mipLevels: Int
+    var vkImageView: Long = 0
+
+    init {
+        this.aspectMask = imageViewData!!.aspectMask
+        this.mipLevels = imageViewData.mipLevels
+        MemoryStack.stackPush().use { stack ->
+            val lp = stack.mallocLong(1)
+            val viewCreateInfo = VkImageViewCreateInfo.calloc(stack)
+                .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+                .image(vkImage)
+                .viewType(imageViewData.viewType)
+                .format(imageViewData.format)
+                .subresourceRange { it: VkImageSubresourceRange ->
+                    it
+                        .aspectMask(aspectMask)
+                        .baseMipLevel(0)
+                        .levelCount(mipLevels)
+                        .baseArrayLayer(imageViewData.baseArrayLayer)
+                        .layerCount(imageViewData.layerCount)
+                }
+
+            vkCheck(
+                VK10.vkCreateImageView(device.vkDevice, viewCreateInfo, null, lp),
+                "Failed to create image view"
+            )
+            vkImageView = lp[0]
+        }
+    }
+
+    fun cleanup() {
+        VK10.vkDestroyImageView(device.vkDevice, vkImageView, null)
+    }
+
+    class ImageViewData {
+        var aspectMask: Int = 0
+        var baseArrayLayer: Int = 0
+        var format: Int = 0
+        var layerCount: Int = 1
+        var mipLevels: Int = 1
+        var viewType: Int
+
+        init {
+            this.viewType = VK10.VK_IMAGE_VIEW_TYPE_2D
+        }
+
+        fun aspectMask(aspectMask: Int): ImageViewData {
+            this.aspectMask = aspectMask
+            return this
+        }
+
+        fun baseArrayLayer(baseArrayLayer: Int): ImageViewData {
+            this.baseArrayLayer = baseArrayLayer
+            return this
+        }
+
+        fun format(format: Int): ImageViewData {
+            this.format = format
+            return this
+        }
+
+        fun layerCount(layerCount: Int): ImageViewData {
+            this.layerCount = layerCount
+            return this
+        }
+
+        fun mipLevels(mipLevels: Int): ImageViewData {
+            this.mipLevels = mipLevels
+            return this
+        }
+
+        fun viewType(viewType: Int): ImageViewData {
+            this.viewType = viewType
+            return this
+        }
+    }
+}

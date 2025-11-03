@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Field | 4</title>
+    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
+    <style>
+        @import url("https://pvinis.github.io/iosevka-webfont/3.4.1/iosevka.css");
+
+        body {
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            margin: 10px;
+            padding: 10px;
+
+            background: rgba(20, 20, 20, 1);
+            color: rgba(200, 200, 200, 1);
+            font-weight: 300;
+            font-size: 14px;
+        }
+
+        tr.not-matched {
+            opacity: 0.0;
+            transform: scaleY(0);
+            display: none;
+        }
+
+        td {
+            vertical-align: top;
+            padding-bottom: 10px;
+        }
+
+        th {
+            opacity: 0.5;
+            font-weight: 100;
+            font-style: italic;
+            text-align: left;
+            font-size: 10px;
+            border-bottom: 1px solid rgba(200, 200, 200, 1);
+        }
+
+        .title {
+            background: rgba(0, 0, 0, 1);
+            padding: 5px;
+            margin: 4px;
+        }
+
+        .title-text {
+            float: right;
+            background: black;
+            background: rgba(20, 20, 20, 1);
+            padding: 10px;
+            margin: -5px;
+            z-index: 5;
+            position: relative;
+            right: 0;
+        }
+
+        .code {
+            white-space: pre-wrap;
+            font-size: 75%;
+            padding-left: 10px;
+        }
+
+        .date {
+            opacity: 0.5;
+            font-size: 75%;
+        }
+
+        .boxes {
+            opacity: 0.5;
+            font-size: 75%;
+        }
+
+        a {
+            text-decoration: none;
+            border-bottom: 0.5px dashed rgba(200, 200, 200, 0.5);
+            color: inherit;
+        }
+
+        * {
+            box-sizing: border-box;
+
+            scrollbar-gutter: stable;
+
+            transition: 250ms linear opacity;
+
+            &::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+                background: rgba(1, 1, 1, 0.5);
+                border-radius: 8px;
+            }
+
+            &::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            &::-webkit-scrollbar-button {
+                display: none;
+            }
+        }
+
+        input {
+            right: -10px;
+            top: 0px;
+            padding: 9px;
+            width: 500px;
+            position: fixed;
+            background: black;
+            border: 1px solid black;
+            color: white;
+            z-index: 1;
+        }
+
+        input:focus {
+            outline: none !important;
+        }
+
+        .codeline {
+            display: none;
+            /*white-space: pre;*/
+            /*transform: scaleY(0);*/
+            /*height:0;*/
+            /*opacity: 0;*/
+            /*margin-top: 0;*/
+            /*margin-bottom: 0;*/
+            /*padding-top: 0;*/
+            /*padding-bottom: 0;*/
+        }
+
+
+        .codeline.also-matches {
+            transform: scaleY(1);
+            display: block;
+            height:100%;
+            opacity: 1.0 !important;
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+            border-bottom: none !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            border-top: none !important;
+        }
+
+        .codeline.matches {
+            display: block;
+            height:100%;
+            opacity: 1 !important;
+            transform: scaleY(1);
+        }
+
+        .title {
+            display: none;
+        }
+
+        .title.matches {
+            display: block;
+        }
+
+        .codeline.context-end {
+            display: block;
+            opacity: 0.5;
+            padding-bottom: 3px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transform: scaleY(1);
+        }
+
+        .codeline.context-start {
+            display: block;
+            opacity: 0.5;
+            padding-top: 3px;
+            margin-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            transform: scaleY(1);
+        }
+
+        .highlight {
+            background-color: rgba(150, 0, 0, 1);
+            color: rgba(255, 255, 255, 1);
+            font-weight: bold;
+        }
+
+        .tags {
+            float: right;
+            font-size: 50%;
+            padding: 5px;
+            padding-right: 10px;
+        }
+
+        .token-keyword {
+            color: #569cd6;
+            font-weight: 500;
+        }
+
+        .token-bracket {
+            color: #d7ba7d;
+        }
+
+        .token-number {
+            color: #b5cea8;
+        }
+
+        .token-punctuation {
+            color: #9cdcfe;
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="search-container">
+    <input
+            type="text"
+            id="searchBox"
+            class="search-box"
+            placeholder="Search code…"
+            autocomplete="off"
+    />
+</div>
+
+
+<table id="root">
+    <tr>
+        <th style="min-width:400px">name</th>
+        <th style="width:30px">boxes</th>
+        <th style="min-width:100px">last modified</th>
+        <th style="width:100%; border: none"></th>
+    </tr>
+</table>
+
+
+
+<script>
+
+        function highlightLine(line) {
+                return line
+                    // escape HTML
+                    // .replace(/&/g, "&amp;")
+                    // .replace(/</g, "&lt;")
+                    // .replace(/>/g, "&gt;")
+                    // keywords
+
+                    // // keywords
+                    .replace(/\b(var|val|fun|import)\b/g, match =>
+                        `<span class="token-keyword">${match}</span>`)
+                    // brackets
+                    .replace(/[\[\]\(\)\{\}]/g, match =>
+                        `<span class="token-bracket">${match}</span>`)
+                    // // numbers (int & float)
+                    .replace(/\b\d+(?:\.\d+)?\b/g, match =>
+                        `<span class="token-number">${match}</span>`)
+                    // // // punctuation
+                    // .replace(/[,;:!?]/g, match =>
+                    //     `<span class="token-punctuation">${match}</span>`);
+        }
+
+
+        function formatDuration(ms) {
+                const msPerSecond = 1000;
+                const msPerMinute = msPerSecond * 60;
+                const msPerHour = msPerMinute * 60;
+                const msPerDay = msPerHour * 24;
+                const msPerWeek = msPerDay * 7;
+                const msPerMonth = msPerDay * 28;   // approximate month
+                const msPerYear = msPerDay * 365;  // approximate year
+
+                // helper to pluralize unit names
+                const plural = (n, unit) => `${unit}${n === 1 ? "" : "s"}`;
+
+                if (ms < msPerSecond) {
+                        return "just now";
+                }
+
+                if (ms < msPerMinute) {
+                        const secs = Math.floor(ms / msPerSecond);
+                        return `${secs}s}`;
+                }
+
+                if (ms < msPerHour) {
+                        const mins = Math.floor(ms / msPerMinute);
+                        const secs = Math.floor((ms % msPerMinute) / msPerSecond);
+                        return secs
+                            ? `${mins}m + ${secs}s`
+                            : `${mins}m`;
+                }
+
+                if (ms < msPerDay) {
+                        const hrs = Math.floor(ms / msPerHour);
+                        const mins = Math.floor((ms % msPerHour) / msPerMinute);
+                        return mins
+                            ? `${hrs}${plural(hrs, "hr")} + ${mins}m`
+                            : `${hrs}${plural(hrs, "hr")}`;
+                }
+
+                if (ms < msPerWeek) {
+                        const days = Math.floor(ms / msPerDay);
+                        const hrs = Math.floor((ms % msPerDay) / msPerHour);
+                        return hrs
+                            ? `${days}${plural(days, "d")} + ${hrs}${plural(hrs, "hr")}`
+                            : `${days}${plural(days, "d")}`;
+                }
+
+                if (ms < msPerMonth) {
+                        const weeks = Math.floor(ms / msPerWeek);
+                        const days = Math.floor((ms % msPerWeek) / msPerDay);
+                        return days
+                            ? `${weeks}${plural(weeks, "wk")} + ${days}${plural(days, "d")}`
+                            : `${weeks}${plural(weeks, "wk")}`;
+                }
+
+                if (ms < msPerYear) {
+                        const months = Math.floor(ms / msPerMonth);
+                        const weeks = Math.floor((ms % msPerMonth) / msPerWeek);
+                        return weeks
+                            ? `${months}${plural(months, "mn")} + ${weeks}${plural(weeks, "wk")}`
+                            : `${months}${plural(months, "mn")}`;
+                }
+
+                const years = Math.floor(ms / msPerYear);
+                const months = Math.floor((ms % msPerYear) / msPerMonth);
+                return months
+                    ? `${years}${plural(years, "yr")} + ${months}${plural(months, "mn")}`
+                    : `${years}${plural(years, "yr")}`;
+        }
+
+        var everything = {{dir_json}}
+
+        var root = document.getElementById('root');
+
+        function escapeHTML(str) {
+                const map = {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#39;'
+                };
+                return String(str).replace(/[&<>"']/g, ch => map[ch]);
+        }
+
+        const local = true
+        function formulateLink(name) {
+                if (local) {
+                        return `<a href="/?file=${name}">${name}</a>`
+                }
+                else {
+                        const e = `http://localhost:9091/?file=${encodeURIComponent(`http://${document.location.hostname}:${location.port}/${name}.git`)}`;
+                        return `<a href="${e}">${name} [clone]</a>`
+                }
+        }
+
+        everything.forEach((item) => {
+
+                var contents = ""
+                var allTags = new Set()
+                if (item.boxes) {
+                        let index = 0
+                        item.boxes.forEach((box) => {
+                                var lines = ""
+                                let tags = item.metadata[index]
+                                tags.second.forEach( e => allTags.add(e))
+                                let theseTags = ""
+                                tags.second.forEach( e => {
+                                        theseTags += "#"+e+", "
+                                } )
+                                theseTags = theseTags.trim()
+                                theseTags = theseTags.substring(0, theseTags.length-1)
+                                lines += "<div class='codeline'><div class='tags' style='font-size:100%;'>"+theseTags+"</div></div>";
+
+                                box.second.split("\n").forEach((line) => {
+                                        if (line.trim() === "") {
+                                        } else
+                                                lines += "<div class='codeline'>" + highlightLine(escapeHTML(line)) + "</div>";
+                                })
+
+
+                                // console.log("these tags -- ", theseTags, "<- ", allTags, tags.second)
+
+                                contents += "<div class='title'><div class='title-text'>" + box.first + "</div><div class='code'>" + lines + "</div></div>";
+                                index++
+                        })
+                }
+
+                var tags = ""
+                allTags.forEach( e=> tags += "#"+e+", " )
+                tags = tags.trim()
+                tags = tags.substring(0, tags.length-1)
+
+                const div = document.createElement('tr');
+                div.className = 'entry';
+                const link = formulateLink(item.filename)
+                div.innerHTML = `<td class="filename">`+link+`<div class="tags">${tags}</div></td>
+                                 <td class="boxes">${item.numBoxes}</td>
+                                 <td class="date">${formatDuration(item.lastModified)}</td>
+                                 <td class="contents">${contents}</td>
+                                `;
+                div.querySelector("td.date").sortTime = item.lastModified;
+                root.appendChild(div);
+        })
+
+        function sortTableBySortTime(tableOrSelector) {
+                // 1) Resolve the table
+                const table = typeof tableOrSelector === 'string'
+                    ? document.querySelector(tableOrSelector)
+                    : tableOrSelector;
+                if (!table) throw new Error('Table not found');
+
+                const container =  table;
+
+                // 3) Pull out the rows into an array
+                const rows = Array.from(container.querySelectorAll('tr'));
+                rows.splice(0,1)
+                console.log(container, rows);
+
+                // 4) Sort by the numeric .sortTime on the <td class="date">
+                rows.sort((rowA, rowB) => {
+                        const aTime = parseFloat(
+                            rowA.querySelector('td.date').sortTime
+                        );
+                        const bTime = parseFloat(
+                            rowB.querySelector('td.date').sortTime
+                        );
+                        return aTime - bTime;
+                });
+
+                // 5) Re-append in sorted order
+                rows.forEach(row => container.appendChild(row));
+        }
+
+        sortTableBySortTime("#root")
+
+        document.querySelectorAll('.title').forEach(title => {
+                title.addEventListener('mouseenter', () => {
+                        title.querySelectorAll('.codeline').forEach(line =>
+                            line.classList.add('also-matches')
+                        );
+                });
+        });
+
+        function highlightMatches(query) {
+                const raw = query;
+                const contents = document.querySelectorAll('td.contents');
+                const allRows = document.querySelectorAll('tr');
+
+                // 1) Reset every .codeline's innerHTML from data-original (stash on first run)
+                contents.forEach(td => {
+                        td.querySelectorAll('.codeline').forEach(line => {
+                                if (line.dataset.original == null) {
+                                        line.dataset.original = line.innerHTML;
+                                }
+                                line.innerHTML = line.dataset.original;
+                                line.classList.remove('matches', 'context-start', 'context-end', 'also-matches');
+                        });
+                        td.querySelectorAll('.title.matches').forEach(t => t.classList.remove('matches'));
+                });
+
+                // 2) If the box is completely empty, clear not-matched + exit
+                if (raw.length === 0) {
+                        allRows.forEach(tr => tr.classList.remove('not-matched'));
+                        return;
+                }
+
+                // 3) Try to build the regex; if invalid, bail (no highlights)
+                let re;
+                try {
+                        re = new RegExp(raw, 'gi');
+                } catch (e) {
+                        console.warn('Invalid regex:', e);
+                        return;
+                }
+
+                // 4) Mark matches & titles
+                contents.forEach(td => {
+                        td.querySelectorAll('.codeline').forEach(line => {
+                                if (re.test(line.textContent)) {
+                                        line.classList.add('matches');
+                                        const title = line.closest('.title');
+                                        if (title) title.classList.add('matches');
+                                }
+                                re.lastIndex = 0; // reset for next test
+                        });
+                });
+
+                // 5) Wrap all matching substrings in <span class="highlight">
+                contents.forEach(td => {
+                        td.querySelectorAll('.codeline.matches').forEach(line => {
+                                const original = line.dataset.original;
+                                line.innerHTML = original.replace(re, `<span class="highlight">$&</span>`);
+                                re.lastIndex = 0;
+                        });
+                });
+
+                // 6) Tag one-line context around each run of matches
+                contents.forEach(td => {
+                        td.querySelectorAll('.title').forEach(title => {
+                                const lines = Array.from(title.querySelectorAll('.codeline'));
+                                const isMatch = i => lines[i].classList.contains('matches');
+                                let i = 0;
+                                while (i < lines.length) {
+                                        if (!isMatch(i)) {
+                                                i++;
+                                                continue;
+                                        }
+                                        const start = i;
+                                        while (i < lines.length && isMatch(i)) i++;
+                                        const end = i - 1;
+                                        if (start > 0 && !isMatch(start - 1)) {
+                                                lines[start - 1].classList.add('context-start');
+                                        }
+                                        if (end < lines.length - 1 && !isMatch(end + 1)) {
+                                                lines[end + 1].classList.add('context-end');
+                                        }
+                                }
+                        });
+                });
+
+                // 7) Since raw.length > 0, tag rows without any .matches as .not-matched
+                var first = true
+                allRows.forEach(tr => {
+                        if (first) {
+                                first = false
+                                return;
+                        }
+                        if (tr.querySelector('.matches')) {
+                                tr.classList.remove('not-matched');
+                        } else {
+                                tr.classList.add('not-matched');
+                        }
+                });
+        }
+
+        // --- wiring it up to an input box ---
+        const searchBox = document.getElementById('searchBox');
+        searchBox.addEventListener('input', e => {
+                console.log(e.target.value);
+                highlightMatches(e.target.value);
+        });
+
+
+</script>
+
+</body>
+
+
+</html>

@@ -1,0 +1,87 @@
+:root {
+    --bg:        #1e1e1e;
+    --fg:        #ddd;
+    --fg-hover:  #fff;
+    --border:    #000;
+    --header-bg: #000;
+    --header-hover: rgba(255,255,255,0.1);
+}
+
+/* Reset & globals */
+/**, *::before, *::after { box-sizing: border-box; }*/
+
+/*body {*/
+/*    margin: 0;*/
+/*    padding: 20px;*/
+/*    background: var(--bg);*/
+/*    color: var(--fg);*/
+/*    font-family: 'Iosevka', monospace;*/
+/*    line-height: 1.1;*/
+/*    font-size: 10px;*/
+/*}*/
+
+.disclosure-group {
+    max-width: 280px;
+    min-width: 100px;
+    margin: auto;
+    /*margin-bottom: 20px;*/
+    width: 100%;
+}
+
+/* Minimal disclosure styling */
+.disclosure {
+    border-left: 2px solid var(--border);
+    margin-bottom: 1px;
+    display: block;
+    width: auto;
+    /* animate border color and width */
+    transition: border-color 0.2s ease, width 0.2s ease;
+}
+/* Change border-left when header hovered via JS class */
+.disclosure.hover {
+    border-left-color: var(--header-hover);
+}
+.disclosure-header {
+    display: flex;
+    align-items: center;
+    background: var(--header-bg);
+    padding: 4px 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+    min-height: 24px;
+    /*margin-right: -12px;*/
+}
+.disclosure-header:hover {
+    background: var(--header-hover);
+}
+.disclosure-header.no-hover:hover {
+    background: var(--header-bg);
+    cursor: default;
+}
+.disclosure-header .arrow {
+    width: 0; height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid black;
+    margin-right: 8px;
+    transition: transform 0.2s ease, border-left-color 0.2s ease;
+    opacity: 1.0;
+    margin-left:-24px;
+}
+.disclosure-header.hide-arrow .arrow { visibility: hidden; }
+.disclosure-header:hover .arrow { border-left-color: var(--fg-hover); opacity:1; }
+.disclosure.open .disclosure-header .arrow { transform: rotate(90deg); opacity:1; }
+.disclosure-header .title { flex:1; font-size: 70%; padding-left: 6px;}
+
+/* Content */
+.disclosure-content {
+    overflow: hidden;
+    height: 0;
+    display: none;
+    /*transition: height 0.2s ease;*/
+    padding: 4px 4px;
+    font-size: 10px;
+    /*margin-right: -12px;*/
+    background: rgba(0, 0, 0, 0.15);
+}
