@@ -4,6 +4,7 @@ import afield.four.Renderer
 import afield.four.device.Queue.PresentQueue
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.util.Options
 import afield.four.util.Window
 import afield.four.util.vkCheck
 import afield.logTime
@@ -62,7 +63,10 @@ class SwapChain(
                 .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                 .clipped(true)
             if (vsync) {
-                vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
+                if (Options.isWindows)
+                    vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
+                else
+                    vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR)
             } else {
                 vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR)
             }

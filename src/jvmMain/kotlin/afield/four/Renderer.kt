@@ -258,7 +258,7 @@ class Renderer(val window: Window) {
                         device,
                         swapChainExtent.width(),
                         swapChainExtent.height(),
-                        VK10.VK_FORMAT_D24_UNORM_S8_UINT,
+                        Options.defaultDepthFormat,
                         VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                     )
                 )

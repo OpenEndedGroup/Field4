@@ -173,8 +173,7 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-glfw::$lwjglNatives")
                 implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-openvr:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
-
+                implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-stb::$lwjglNatives")
                 implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
@@ -188,6 +187,7 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
                 if (!lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-openvr::${lwjglNatives}")
+                implementation("org.lwjgl:lwjgl-vma::${lwjglNatives}")
 
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")

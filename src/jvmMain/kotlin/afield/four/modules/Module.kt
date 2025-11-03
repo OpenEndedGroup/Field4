@@ -17,6 +17,7 @@ import afield.four.linkBuffer
 import afield.four.modules.Introspected.Bindable
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
+import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.d
@@ -733,7 +734,7 @@ class Module(val parameters: Parameters) : Renderable {
                 colorAttachmentFormats.flip()
                 renderInfo.colorAttachmentCount(parameters.color)
                 renderInfo.pColorAttachmentFormats(colorAttachmentFormats)
-                if (parameters.depth > 0) renderInfo.depthAttachmentFormat(VK_FORMAT_D24_UNORM_S8_UINT)
+                if (parameters.depth > 0) renderInfo.depthAttachmentFormat(Options.defaultDepthFormat)
                 else renderInfo.depthAttachmentFormat(VK_FORMAT_UNDEFINED)
                 renderInfo.stencilAttachmentFormat(0)
 

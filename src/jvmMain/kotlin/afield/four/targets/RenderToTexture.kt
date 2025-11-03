@@ -12,6 +12,7 @@ import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.util.Options
 import afield.stdlib.Vec4
 import afield.stdlib.f
 import afield.stdlib.vec
@@ -42,7 +43,7 @@ data class RTTParameters(
 
     // --- Depth/Stencil options ---
     var useDepth: Boolean = false,
-    var depthFormat: Int = VK_FORMAT_D24_UNORM_S8_UINT, // depth+stencil by default
+    var depthFormat: Int = Options.defaultDepthFormat, // depth+stencil by default
     var clearDepth: Float = 1f,
     var clearStencil: Int = 0,
     var depthLoadOp: Int = VK_ATTACHMENT_LOAD_OP_CLEAR,

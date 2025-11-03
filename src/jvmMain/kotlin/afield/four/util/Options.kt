@@ -1,6 +1,8 @@
 package afield.four.util
 
 import org.lwjgl.system.Configuration
+import org.lwjgl.vulkan.VK10.VK_FORMAT_D24_UNORM_S8_UINT
+import org.lwjgl.vulkan.VK10.VK_FORMAT_D32_SFLOAT_S8_UINT
 
 object Options {
 
@@ -22,6 +24,8 @@ object Options {
     fun doVulkanSDK() {
         if (useVulkanSDK && !isWindows) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
     }
+
+    var defaultDepthFormat: Int = if (isWindows) VK_FORMAT_D24_UNORM_S8_UINT else VK_FORMAT_D32_SFLOAT_S8_UINT
 
     var validate = true
     var preferredDevice: String? = null

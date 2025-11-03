@@ -63,6 +63,7 @@ class KotlinInterface(
 
     var evaluator: BasicJvmReplEvaluator
     var compiler: KJvmReplCompilerWithIdeServices
+//    var compiler: K2KJvmReplCompilerWithCompletion
 
     //    var evalConfig: ScriptEvaluationConfiguration
     var compilerConfig: ScriptCompilationConfiguration
@@ -166,7 +167,8 @@ class KotlinInterface(
 //        if (r2!=null) return r2
 
         coroutineScope {
-            async(compilationThread) {
+//            async(Runloop.miscPool.asCoroutineDispatcher()) { // Not until K2
+                async(compilationThread) {
                 val ns = measureNanoTime {
                     r = compiler.compile(code, compilerConfig)
                 }
