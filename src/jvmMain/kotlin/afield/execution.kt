@@ -494,6 +494,7 @@ class KotlinExecution : BoxExecution {
 
         fun importHelpFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
             val s = allCode.substring(c.bounds.start, c.bounds.end)
+            if (s.length>0)
             return classesWithPrefix(s).map {
                 Metadata(
                     icon = "method",
@@ -504,6 +505,7 @@ class KotlinExecution : BoxExecution {
                     prefix = "import ${it.second}"
                 )
             }
+            else return emptyList()
         }
 
         runBlocking {

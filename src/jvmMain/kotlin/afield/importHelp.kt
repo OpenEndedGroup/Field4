@@ -19,9 +19,9 @@ fun findClassesNamed(name: String): List<String>? {
     return cache[name]
 }
 
-fun classesWithPrefix(name: String): List<Pair<String, String>> {
+fun classesWithPrefix(name: String, hideDollarSignClasses : Boolean = true): List<Pair<String, String>> {
     return cache.entries.mapNotNull {
-        if (it.key.startsWith(name)) {
+        if (it.key.startsWith(name) && (!hideDollarSignClasses || !(it.key.contains("$") || it.value.contains("$")))) {
             it.key.removePrefix(name) to it.value
         } else null
     }.flatMap { (suffix, l) ->

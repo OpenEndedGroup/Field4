@@ -38,18 +38,14 @@ val logbackVersion = "1.2.11"
 
 plugins {
     kotlin("multiplatform") version "2.2.10"
-//    application
     kotlin("plugin.serialization") version "2.2.10"
-//    id("org.jetbrains.kotlinx.rpc.plugin") version "0.2.4"
-
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
 }
 
 jvmWrapper {
     unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
-    linuxAarch64JvmUrl =
-        "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
+    linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
     linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
     macAarch64JvmUrl = "https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz"
     macX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-macos-jdk.tar.gz"
@@ -63,7 +59,7 @@ java {
 }
 
 group = "afield"
-version = "1.0-SNAPSHOT"
+version = "1.1-SNAPSHOT"
 
 repositories {
     mavenCentral()

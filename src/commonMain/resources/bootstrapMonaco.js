@@ -172,6 +172,7 @@ const initMonaco = () => {
         window.globalMonacoEditor = ed
         window.globalMonaco = monaco
         window.globalMonacoEditor._domElement.parentElement.parentElement.style.borderRadius = "5px"
+        globalEditor.getModel().setEOL(0)
 
         window.addOutput = addOutput
         window.clear = clear
@@ -888,7 +889,8 @@ function monitorSelection() {
                                 });
                         }
                         pauseLineTracking()
-                        globalEditor.setValue(code)
+                        globalEditor.setValue(code.replaceAll("\r\n", "\n"))
+                        globalEditor.getModel().setEOL(0)
                         unpauseLineTracking()
                         currentValueAtOrigination = code
                 } else {
