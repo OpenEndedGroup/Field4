@@ -415,6 +415,14 @@ suspend fun main() {
                 found.unsafeCast<dynamic>().fragment = set.value
             }
 
+            "task" -> {
+                found.unsafeCast<dynamic>().task = set.value
+            }
+
+            "mesh" -> {
+                found.unsafeCast<dynamic>().mesh = set.value
+            }
+
             "metadata" -> {
                 found.unsafeCast<dynamic>().metadata = set.value
             }

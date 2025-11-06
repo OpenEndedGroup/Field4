@@ -8,6 +8,7 @@ import afield.macro_printHere
 import afield.marco_printlnHere
 import afield.stdlib.Delegation
 import afield.stdlib.macro_computeModuleHere
+import afield.stdlib.macro_meshModuleHere
 import afield.stdlib.macro_moduleHere
 import afield.stdlib.macro_prop
 import afield.stdlib.macro_root_prop
@@ -167,6 +168,9 @@ object MacroRegistry {
     init {
         callRewrite["moduleHere"] = { box, id, args ->
             box.macro_moduleHere(args)
+        }
+        callRewrite["meshModuleHere"] = { box, id, args ->
+            box.macro_meshModuleHere(args)
         }
         callRewrite["computeModuleHere"] = { box, id, args ->
             box.macro_computeModuleHere(args)

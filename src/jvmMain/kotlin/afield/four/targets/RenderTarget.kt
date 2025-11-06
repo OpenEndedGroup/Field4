@@ -12,6 +12,8 @@ import afield.four.Target
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.modules.ComputeModulePointer
+import afield.four.modules.MeshModule
+import afield.four.modules.MeshModulePointer
 import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.pointer
@@ -21,6 +23,7 @@ import org.lwjgl.system.MemoryStack
 class RenderTarget(val renderer: Renderer) : Target {
 
     var modules = mutableMapOf<String, ModulePointer>()
+    var meshModules = mutableMapOf<String, MeshModulePointer>()
     var others = mutableMapOf<String, Target>()
 
     @JvmName("plusAssign")
@@ -36,6 +39,22 @@ class RenderTarget(val renderer: Renderer) : Target {
     @JvmName("plusAssign_module")
     operator fun plusAssign(m : Pair<String, Module>) {
         modules[m.first] = m.second.pointer()
+    }
+
+
+    @JvmName("plusAssign_mesh")
+    operator fun plusAssign(m : Pair<String, MeshModulePointer>) {
+        meshModules[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_mmp")
+    operator fun plusAssign(m : MeshModulePointer) {
+        meshModules[m.current.parameters.name] = m
+    }
+
+    @JvmName("plusAssign_mmodule")
+    operator fun plusAssign(m : Pair<String, MeshModule>) {
+        meshModules[m.first] = m.second.pointer()
     }
 
     @JvmName("plusAssign_target")
@@ -147,6 +166,10 @@ class RenderTarget(val renderer: Renderer) : Target {
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
             modules.forEach { (_, mp) ->
+                mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+            }
+
+            meshModules.forEach { (_, mp) ->
                 mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
             }
 

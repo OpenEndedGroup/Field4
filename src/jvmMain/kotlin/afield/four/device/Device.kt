@@ -8,6 +8,7 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import org.lwjgl.system.Struct
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
@@ -20,6 +21,7 @@ class Device(val physicalDevice: PhysicalDevice) {
     var vkDevice: VkDevice
 
     var usePresentIndexing = false
+    var enableMeshShading = false
 
     init {
 
@@ -32,9 +34,11 @@ class Device(val physicalDevice: PhysicalDevice) {
 
             val useExternalMemory = OS == OSType.WINDOWS
             usePresentIndexing = OS == OSType.WINDOWS
+            enableMeshShading = OS == OSType.WINDOWS
             var numExtensions = if (usePortability) 7 else 6
             if (useExternalMemory) numExtensions+=2
             if (usePresentIndexing) numExtensions+=2
+            if (enableMeshShading) numExtensions+=1
 
             val requiredExtensions = stack.mallocPointer(numExtensions)
             requiredExtensions.put(stack.ASCII(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME))
@@ -43,6 +47,8 @@ class Device(val physicalDevice: PhysicalDevice) {
             requiredExtensions.put(stack.ASCII(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME))
             requiredExtensions.put(stack.ASCII(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME))
             requiredExtensions.put(stack.ASCII(EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME))
+
+            requiredExtensions.put(stack.ASCII(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME))
 
 //            requiredExtensions.put(stack.ASCII(EXTMemoryPriority.VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME))
 
@@ -87,10 +93,6 @@ class Device(val physicalDevice: PhysicalDevice) {
             features13.sType(VK13.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES)
             features13.dynamicRendering(true)
 
-
-//            val f = VkPhysicalDeviceDynamicRenderingFeaturesKHR.calloc()
-//            f.sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR)
-
             val f0 = VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT.calloc()
             f0.sType(EXTDynamicRenderingUnusedAttachments.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT)
             f0.dynamicRenderingUnusedAttachments(true) // not on mac
@@ -116,25 +118,33 @@ class Device(val physicalDevice: PhysicalDevice) {
             val deviceCreateInfo = VkDeviceCreateInfo.calloc(stack).sType(VK12.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
                 .ppEnabledExtensionNames(requiredExtensions)
                 .pQueueCreateInfos(queueCreationInfoBuf)
-//                .pEnabledFeatures(features0)
                 .pNext(features)
+
+
 
             features.pNext(f2.address())
             f2.pNext(f0.address())
             f0.pNext(features12.address())
             features12.pNext(features13.address())
 
+            // type system doesn't know about pNext
+            if (enableMeshShading && usePresentIndexing) {
+                val meshShaderFeatures = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
+                    .sType(EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT).meshShader(true)
+                    .multiviewMeshShader(true).taskShader(true)
 
+                val mv = VkPhysicalDeviceMultiviewFeaturesKHR.calloc(stack).sType(KHRMultiview.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR).multiview(true)
 
+                features13.pNext(meshShaderFeatures.address())
+                meshShaderFeatures.pNext(mv.address())
 
-            if (usePresentIndexing) {
                 val presentIdFeat = VkPhysicalDevicePresentIdFeaturesKHR.calloc(stack)
                     .sType(KHRPresentId.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR)
 
                 val presentWaitFeat = VkPhysicalDevicePresentWaitFeaturesKHR.calloc(stack)
                     .sType(KHRPresentWait.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR)
 
-                features13.pNext(presentIdFeat.address())
+                mv.pNext(presentIdFeat.address())
                 presentIdFeat.pNext(presentWaitFeat.address())
 
                 presentIdFeat.presentId(true)

@@ -47,6 +47,8 @@ data class Parameters(
     var vertex: String = "",
     var fragment: String = "",
     var compute: String = "",
+    var mesh: String = "",
+    var task: String = "",
     var color: Int = 1,
     var depth: Int = 1,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,

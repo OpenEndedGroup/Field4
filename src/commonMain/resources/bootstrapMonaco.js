@@ -95,9 +95,9 @@ const kindForIcon = (iconName) => {
         }
 }
 
-let allPossibleProperties = ["code", "vertex", "fragment", "compute", "preamble", "metadata"]
-let allPossibleProperties_descriptions = ["Kotlin (main)", "Vertex Shader", "Fragment Shader", "Compute Shader", "Kotlin (preamble)", "Metadata about this box"]
-let allPossibleProperties_languages = ["kotlin", "glsl", "glsl", "glsl", "kotlin", "yaml"]
+let allPossibleProperties = ["code", "vertex", "fragment", "compute", "task", "mesh", "preamble", "metadata"]
+let allPossibleProperties_descriptions = ["Kotlin (main)", "Vertex Shader", "Fragment Shader", "Compute Shader", "Task Shader", "Mesh Shader", "Kotlin (preamble)", "Metadata about this box"]
+let allPossibleProperties_languages = ["kotlin", "glsl", "glsl", "glsl", "glsl", "glsl", "kotlin", "yaml"]
 
 const findLanguageForPropertyName = (name) => {
         for (var i = 0; i < allPossibleProperties.length; i++) {

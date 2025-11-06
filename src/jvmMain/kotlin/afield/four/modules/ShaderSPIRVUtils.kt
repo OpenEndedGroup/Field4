@@ -3,6 +3,8 @@ package afield.four.modules
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.NativeResource
 import org.lwjgl.util.shaderc.Shaderc
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.VK10
 import java.io.File
 import java.io.IOException
@@ -16,7 +18,10 @@ enum class ShaderKind(internal val kind: Int) {
     VERTEX_SHADER(Shaderc.shaderc_glsl_vertex_shader), GEOMETRY_SHADER(Shaderc.shaderc_glsl_geometry_shader), FRAGMENT_SHADER(
         Shaderc.shaderc_glsl_fragment_shader
     ),
-    COMPUTE_SHADER(Shaderc.shaderc_glsl_compute_shader);
+    COMPUTE_SHADER(Shaderc.shaderc_glsl_compute_shader),
+
+    MESH_SHADER(Shaderc.shaderc_glsl_mesh_shader),
+    TASK_SHADER(Shaderc.shaderc_glsl_task_shader);
 
     fun toVulkan(): Int {
         return when(kind) {
@@ -24,6 +29,8 @@ enum class ShaderKind(internal val kind: Int) {
             Shaderc.shaderc_glsl_fragment_shader -> VK10.VK_SHADER_STAGE_FRAGMENT_BIT
             Shaderc.shaderc_glsl_geometry_shader -> VK10.VK_SHADER_STAGE_GEOMETRY_BIT
             Shaderc.shaderc_glsl_compute_shader -> VK10.VK_SHADER_STAGE_COMPUTE_BIT
+            Shaderc.shaderc_glsl_mesh_shader -> VK_SHADER_STAGE_MESH_BIT_EXT
+            Shaderc.shaderc_glsl_task_shader ->VK_SHADER_STAGE_TASK_BIT_EXT
             else -> throw RuntimeException(" unknown shader type $kind")
         }
     }

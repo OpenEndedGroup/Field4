@@ -6,6 +6,7 @@ import afield.four.device.*
 import afield.four.device.Queue.GraphicsQueue
 import afield.four.device.Queue.PresentQueue
 import afield.four.modules.ComputeModulePointer
+import afield.four.modules.MeshModulePointer
 import afield.four.modules.ModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
@@ -332,44 +333,31 @@ class Renderer(val window: Window) {
 
     @JvmName("plusAssign_modulePointer")
     operator fun plusAssign(a: Pair<String, ModulePointer>) {
-        renderList.apply {
-            when (this) {
-                is RenderTarget -> this += a
-                is RenderToTexture -> this += a
-                else -> throw IllegalArgumentException("Unsupported type ${a.first}, ${a.second}")
-            }
-        }
+        renderList += a
     }
 
     @JvmName("plusAssign_modulePointer_defaultName")
     operator fun plusAssign(a: ModulePointer) {
-        renderList.apply {
-            when (this) {
-                is RenderTarget -> this += a
-                is RenderToTexture -> this += a
-                else -> throw IllegalArgumentException("Unsupported type ${this}")
-            }
-        }
+        renderList += a
+    }
+
+    @JvmName("plusAssign_meshModulePointer")
+    operator fun plusAssign(a: Pair<String, MeshModulePointer>) {
+        renderList += a
+    }
+
+    @JvmName("plusAssign_modulePointer_defaultName")
+    operator fun plusAssign(a: MeshModulePointer) {
+        renderList += a
     }
 
     operator fun plusAssign(a: Named<ModulePointer>) {
-        renderList.apply {
-            when (this) {
-                is RenderTarget -> this += a.name to a.value
-                is RenderToTexture -> this += a.name to a.value
-                else -> throw IllegalArgumentException("Unsupported type ${a}")
-            }
-        }
+        this += a.name to a.value
     }
 
     @JvmName("plusAssign_computeModulePointer")
     operator fun plusAssign(a: Pair<String, ComputeModulePointer>) {
-        computeList.apply {
-            when (this) {
-                is ComputeTarget -> this += a
-                else -> throw IllegalArgumentException("Unsupported type ${a.first}, ${a.second}")
-            }
-        }
+        computeList += a
     }
 
 }
