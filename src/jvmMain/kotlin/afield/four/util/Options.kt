@@ -18,8 +18,9 @@ object Options {
     val spirv_cross_path = "./bin/spirv-cross-$target" + (if (isWindows) ".exe"  else "")
 
     var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.328.1/macOS/lib/libvulkan.1.dylib"
-    var useVulkanSDK = true
-    var robustness = true
+    val useVulkanSDK = true
+    val robustness = !isWindows
+    val profiling = false
 
     fun doVulkanSDK() {
         if (useVulkanSDK && !isWindows) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)

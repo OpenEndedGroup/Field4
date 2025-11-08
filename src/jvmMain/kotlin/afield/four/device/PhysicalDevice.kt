@@ -156,4 +156,30 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
             return pPhysicalDevices
         }
     }
+
+    fun hasDeviceExtension(name: String): Boolean {
+        val count = vkDeviceExtensions.capacity()
+        for (i in 0 until count) {
+            if (vkDeviceExtensions[i].extensionNameString() == name) return true
+        }
+        return false
+    }
+
+    fun requireExtensionsIfProfiling(profilingEnabled: Boolean): Boolean {
+        if (!profilingEnabled) return true
+        // swapchain already required by your code
+        val perfOK = hasDeviceExtension(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
+        val hostResetOK = hasDeviceExtension(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME) // optional
+        if (!perfOK) {
+            println("ERROR: Profiling requested, but device '${deviceName}' lacks VK_KHR_performance_query")
+            return false
+        }
+        // Host query reset is optional; just report:
+        if (!hostResetOK) {
+            println("WARN: No VK_EXT_host_query_reset; will use cmd-side resets or avoid reuse.")
+        }
+        return true
+    }
+
+
 }

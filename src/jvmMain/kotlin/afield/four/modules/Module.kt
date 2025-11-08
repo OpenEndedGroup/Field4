@@ -13,6 +13,7 @@ import afield.four.device.DescriptorSet.SimpleDescriptorSet
 import afield.four.device.DescriptorSet.UpdatesDescriptorSet
 import afield.four.device.DescriptorSetLayout
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
+import afield.four.device.GpuProfiler
 import afield.four.linkBuffer
 import afield.four.modules.Introspected.Bindable
 import afield.four.texture.ImageView
@@ -27,7 +28,6 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
-import java.nio.LongBuffer
 import kotlin.reflect.KProperty
 
 /**
@@ -74,19 +74,19 @@ data class Parameters(
         println(" error ${desc} while creating Module:\n\t${it}")
         it?.printStackTrace()
     },
-    var colorMask : Array<Boolean> = arrayOf(true, true, true, true),
-    var blend : Boolean  = true,
-    var srcColor : Int = VK_BLEND_FACTOR_SRC_ALPHA,
-    var dstColor : Int = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-    var colorBlendOp : Int = VK_BLEND_OP_ADD,
-    var srcAlpha : Int = VK_BLEND_FACTOR_SRC_ALPHA,
-    var dstAlpha : Int = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-    var alphaBlendOp : Int = VK_BLEND_OP_ADD,
-    var depthTest : Boolean = true,
-    var viewport : Rect? = null,
-    var fillMode : Int = VK_POLYGON_MODE_FILL,
-    var imageFormat : Int = renderer.swapChain.surfaceFormat.imageFormat
-    ) {
+    var colorMask: Array<Boolean> = arrayOf(true, true, true, true),
+    var blend: Boolean = true,
+    var srcColor: Int = VK_BLEND_FACTOR_SRC_ALPHA,
+    var dstColor: Int = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    var colorBlendOp: Int = VK_BLEND_OP_ADD,
+    var srcAlpha: Int = VK_BLEND_FACTOR_SRC_ALPHA,
+    var dstAlpha: Int = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    var alphaBlendOp: Int = VK_BLEND_OP_ADD,
+    var depthTest: Boolean = true,
+    var viewport: Rect? = null,
+    var fillMode: Int = VK_POLYGON_MODE_FILL,
+    var imageFormat: Int = renderer.swapChain.surfaceFormat.imageFormat
+) {
 
     // todo, a few of these parameters that you can dynamically swap
     val triangles = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
@@ -97,7 +97,7 @@ data class Parameters(
     val line_strip = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
 
     val filled = VK_POLYGON_MODE_FILL
-    val wireframe  = VK_POLYGON_MODE_LINE
+    val wireframe = VK_POLYGON_MODE_LINE
 }
 
 fun parameters(renderer: Renderer = fromContext(), build: Parameters.() -> Unit): Parameters {
@@ -120,17 +120,14 @@ class FromUniform {
 
 class ModulePointer(var current: Module) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (current.valid)
-            current.render(command, bounds)
+        if (current.valid) current.render(command, bounds)
         else {
             println("module '${current.parameters.name}' not valid / not rendering")
         }
     }
 
     fun reload(
-        p: Parameters,
-        forceReresolve: Boolean = true,
-        onError: (String, Throwable?) -> Unit = p.errorHandler
+        p: Parameters, forceReresolve: Boolean = true, onError: (String, Throwable?) -> Unit = p.errorHandler
     ): Boolean {
         if (current.valid && p.equals(current.parameters) && !forceReresolve) return false
         p.errorHandler = onError
@@ -151,13 +148,12 @@ class ModulePointer(var current: Module) : Renderable {
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
             if (forceReresolve) oTextureResolver(it)
-            else
-                try {
-                    arrayOf((current.uniforms[it.name] as Module.TexturePointer).texture) to (current.uniforms[it.name] as Module.TexturePointer).sampler
-                } catch (e: Exception) {
-                    lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
-                    oTextureResolver(it)
-                }
+            else try {
+                arrayOf((current.uniforms[it.name] as Module.TexturePointer).texture) to (current.uniforms[it.name] as Module.TexturePointer).sampler
+            } catch (e: Exception) {
+                lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                oTextureResolver(it)
+            }
         }
 
         val m = Module(p)
@@ -514,8 +510,7 @@ class Module(val parameters: Parameters) : Renderable {
                         } catch (e: NullPointerException) {
                             throw IllegalArgumentException("buffer ${it.name} resolved to null")
                         }
-                    } else
-                        throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    } else throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
 
                 }
             }
@@ -550,29 +545,26 @@ class Module(val parameters: Parameters) : Renderable {
 
                     if (it.arrayCount == 0) {
 
-                        uniforms[it.name] =
-                            TexturePointer(
-                                it.name,
-                                it as Introspected.Texture,
-                                descriptorSet,
-                                source = null /* todo */,
-                                texture[0],
-                                sampler
-                            )
-                    }
-                    else {
+                        uniforms[it.name] = TexturePointer(
+                            it.name,
+                            it as Introspected.Texture,
+                            descriptorSet,
+                            source = null /* todo */,
+                            texture[0],
+                            sampler
+                        )
+                    } else {
 
                         if (texture.size != it.arrayCount) throw IllegalArgumentException("can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}")
 
-                        uniforms[it.name] =
-                            TextureArrayPointer(
-                                it.name,
-                                it as Introspected.Texture,
-                                descriptorSet,
-                                source = null /* todo */,
-                                texture,
-                                sampler
-                            )
+                        uniforms[it.name] = TextureArrayPointer(
+                            it.name,
+                            it as Introspected.Texture,
+                            descriptorSet,
+                            source = null /* todo */,
+                            texture,
+                            sampler
+                        )
                     }
                 }
             }
@@ -645,9 +637,7 @@ class Module(val parameters: Parameters) : Renderable {
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
                     .topology(parameters.primitiveType)
                 when (parameters.primitiveType) {
-                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
-                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> vkPipelineInputAssemblyStateCreateInfo.primitiveRestartEnable(
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> vkPipelineInputAssemblyStateCreateInfo.primitiveRestartEnable(
                         true
                     )
                 }
@@ -673,13 +663,10 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val blendAttState = VkPipelineColorBlendAttachmentState.calloc(parameters.color, stack)
                 for (i in 0 until parameters.color) {
-                    blendAttState[i].colorWriteMask((if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0) )
-                        .blendEnable(parameters.blend)
-                        .srcColorBlendFactor(parameters.srcColor)
-                        .dstColorBlendFactor(parameters.dstColor)
-                        .colorBlendOp(parameters.colorBlendOp)
-                        .srcAlphaBlendFactor(parameters.srcAlpha)
-                        .dstAlphaBlendFactor(parameters.dstColor)
+                    blendAttState[i].colorWriteMask((if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0))
+                        .blendEnable(parameters.blend).srcColorBlendFactor(parameters.srcColor)
+                        .dstColorBlendFactor(parameters.dstColor).colorBlendOp(parameters.colorBlendOp)
+                        .srcAlphaBlendFactor(parameters.srcAlpha).dstAlphaBlendFactor(parameters.dstColor)
                         .alphaBlendOp(parameters.alphaBlendOp)
                 }
                 val colorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
@@ -785,15 +772,26 @@ class Module(val parameters: Parameters) : Renderable {
 
             val cmdHandle = command.vkCommandBuffer
 
+            val renderer = parameters.renderer
+            val frameIndex = renderer.currentImage
+            val profiler = renderer.getProfiler()
+
+            val marks = if (profiler != null) Renderer.ModuleMarks(parameters.name) else null
+            var psScope: GpuProfiler.PipeStatScope? = null
+            var perfScope: GpuProfiler.PerfScope? = null
+
+            if (profiler != null) {
+                marks!!.tsBegin = profiler.writeTimestamp(cmdHandle, frameIndex, VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+                psScope = profiler.beginPipelineStats(cmdHandle, frameIndex)
+                perfScope = profiler.beginPerfCounters(cmdHandle, frameIndex)
+            }
+
             VK10.vkCmdBindPipeline(cmdHandle, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
 
             val viewportNow = parameters.viewport ?: Rect(0.0, 0.0, bounds.lengthX().d, bounds.lengthY().d)
-            val viewport = VkViewport.calloc(1, stack)
-                .x(viewportNow.x.f)
-                .y(viewportNow.y.f + viewportNow.h.f)
+            val viewport = VkViewport.calloc(1, stack).x(viewportNow.x.f).y(viewportNow.y.f + viewportNow.h.f)
                 .height(-viewportNow.h.f)   // flip Y
-                .width(viewportNow.w.f)
-                .minDepth(0.0f).maxDepth(1.0f)
+                .width(viewportNow.w.f).minDepth(0.0f).maxDepth(1.0f)
             VK10.vkCmdSetViewport(cmdHandle, 0, viewport)
 
             val scissor = VkRect2D.calloc(1, stack)
@@ -813,7 +811,7 @@ class Module(val parameters: Parameters) : Renderable {
             if (uniforms.isNotEmpty()) {
                 val uniqueSets = uniforms.values.map { it.binding.set }.toSet()
                 val firstSet = uniqueSets.minOrNull()!!
-                val lastSet  = uniqueSets.maxOrNull()!!
+                val lastSet = uniqueSets.maxOrNull()!!
                 val setCount = lastSet - firstSet + 1
 
                 val descriptorSets = stack.mallocLong(setCount)
@@ -828,12 +826,7 @@ class Module(val parameters: Parameters) : Renderable {
                 }
 
                 vkCmdBindDescriptorSets(
-                    cmdHandle,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipelineLayout,
-                    firstSet,
-                    descriptorSets,
-                    null
+                    cmdHandle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, firstSet, descriptorSets, null
                 )
             }
 
@@ -854,7 +847,20 @@ class Module(val parameters: Parameters) : Renderable {
             meshes.forEach { (_, mesh) ->
                 mesh.draw(this, command, pushConstantBuffer)
             }
+
+
+            if (profiler != null) {
+                profiler.endPipelineStats(cmdHandle, psScope)
+                profiler.endPerfCounters(cmdHandle, frameIndex, perfScope)
+                marks!!.tsEnd =
+                    profiler.writeTimestamp(cmdHandle, frameIndex, VK10.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+                if (psScope != null) marks.pipeStatsIndex = psScope.index
+                if (perfScope != null) marks.perfIndex = perfScope.index
+                renderer.registerModuleMarks(frameIndex, marks)
+            }
         }
+
+
     }
 
     fun copyMeshesFrom(old: Module) {
@@ -906,8 +912,7 @@ fun parseCompilerException(exception: CompilerError, accept: (String, Int, Strin
             val (file, message) = it.split(regex)
             accept(file.split("/").last(), line, message)
         } else {
-            if (it.trim().length > 0)
-                accept("", -1, it)
+            if (it.trim().length > 0) accept("", -1, it)
         }
     }
 }

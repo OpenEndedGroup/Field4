@@ -10,6 +10,11 @@ import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT
 import org.lwjgl.vulkan.EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT
+import org.lwjgl.system.MemoryUtil.memPutAddress
+import org.lwjgl.vulkan.KHRPortabilityEnumeration.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+import org.lwjgl.vulkan.VkBaseOutStructure
+import org.lwjgl.vulkan.EXTCalibratedTimestamps
+import org.lwjgl.vulkan.KHRCalibratedTimestamps // for KHR constants (domains)
 
 class Instance(validate: Boolean) {
     var vkInstance: VkInstance
@@ -49,64 +54,84 @@ class Instance(validate: Boolean) {
                 }
             }
 
-            val instanceExtensions = instanceExtensions
+// --- Discover supported instance extensions
+            val supported = instanceExtensions
 
-            // GLFW Extension
+// --- GLFW-required instance extensions
             val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
                 ?: throw RuntimeException("Failed to find the GLFW platform surface extensions")
 
-            val requiredExtensions: PointerBuffer
+            val usePortability = OS == OSType.MACOS // save us KosmicKrisp
+            val hasDebugUtils = supported.contains(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+            val hasLayerSettings = supported.contains("VK_EXT_layer_settings")
 
-            val usePortability = instanceExtensions.contains(PORTABILITY_EXTENSION) &&
-                    OS == OSType.MACOS
-            if (supportsValidation) {
-                val vkDebugUtilsExtension = stack.UTF8(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-                val numExtensions =
-                    if (usePortability) glfwExtensions.remaining() + 2 else glfwExtensions.remaining() + 1
-                requiredExtensions = stack.mallocPointer(numExtensions)
-                requiredExtensions.put(glfwExtensions).put(vkDebugUtilsExtension)
-                if (usePortability) {
-                    requiredExtensions.put(stack.UTF8(PORTABILITY_EXTENSION))
-                }
-            } else {
-                val numExtensions = if (usePortability) glfwExtensions.remaining() + 1 else glfwExtensions.remaining()
-                requiredExtensions = stack.mallocPointer(numExtensions)
-                requiredExtensions.put(glfwExtensions)
-                if (usePortability) {
-                    requiredExtensions.put(stack.UTF8(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
-                }
+// --- Build list dynamically
+            val extNames = ArrayList<String>(glfwExtensions.remaining() + 4)
+
+// 1) Always add GLFW surface extensions
+            while (glfwExtensions.hasRemaining()) {
+                extNames += MemoryUtil.memUTF8(glfwExtensions.get())
             }
+
+// 2) Debug utils if validating AND supported
+            if (supportsValidation && hasDebugUtils) {
+                extNames += EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+            }
+
+// 3) Portability (MoltenVK/macOS)
+            if (usePortability) {
+                extNames += PORTABILITY_EXTENSION // VK_KHR_portability_enumeration
+            }
+
+// 4) Layer settings only if supported AND validating (since we’d attach its pNext)
+            if (supportsValidation && hasLayerSettings) {
+                extNames += "VK_EXT_layer_settings"
+            }
+
+// Convert to LWJGL pointer buffer
+            val requiredExtensions = stack.mallocPointer(extNames.size)
+            for (name in extNames) requiredExtensions.put(stack.ASCII(name))
             requiredExtensions.flip()
 
-            var extension = MemoryUtil.NULL
-            if (supportsValidation) {
+// --- Optional pNext chain pieces
+            var pNextHead: Long = MemoryUtil.NULL
+
+// Debug utils create-info only if extension present AND validating
+            if (supportsValidation && hasDebugUtils) {
                 debugUtils = createDebugCallBack()
-                extension = debugUtils?.address() ?: 0
+                pNextHead = debugUtils!!.address()
             }
 
-            val settings = VkLayerSettingEXT.calloc(1)
-            settings.get(0).pLayerName(stack.UTF8("VK_LAYER_KHRONOS_validation"))
-                .pSettingName(stack.UTF8("enable_message_limit")).type(VK_LAYER_SETTING_TYPE_BOOL32_EXT).valueCount(1)
-                .pValues(stack.bytes(0, 0, 0, 0))
+// Layer settings only if extension present AND validating
+            if (supportsValidation && hasLayerSettings) {
+                val settings = VkLayerSettingEXT.calloc(1, stack)
+                settings[0]
+                    .pLayerName(stack.UTF8("VK_LAYER_KHRONOS_validation"))
+                    .pSettingName(stack.UTF8("enable_message_limit"))
+                    .type(VK_LAYER_SETTING_TYPE_BOOL32_EXT)
+                    .valueCount(1)
+                    .pValues(stack.bytes(0, 0, 0, 0))
 
-
-            val layerSettings =
-                VkLayerSettingsCreateInfoEXT.calloc(stack).sType(VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT)
+                val layerSettings = VkLayerSettingsCreateInfoEXT.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT)
                     .pSettings(settings)
+                    .pNext(pNextHead)
 
-            layerSettings.pNext(extension)
+                pNextHead = layerSettings.address()
+            }
 
-            // Create instance info
+// --- Create instance info
             val instanceInfo = VkInstanceCreateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
-                .pNext(layerSettings)
+                .pNext(pNextHead) // may be 0, or layer_settings -> debug_utils, or just debug_utils
                 .pApplicationInfo(appInfo)
                 .ppEnabledLayerNames(requiredLayers)
                 .ppEnabledExtensionNames(requiredExtensions)
 
             if (usePortability) {
-                instanceInfo.flags(0x00000001) // VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+                instanceInfo.flags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)
             }
+
 
             val pInstance = stack.mallocPointer(1)
             vkCheck(VK10.vkCreateInstance(instanceInfo, null, pInstance), "Error creating instance")
@@ -234,4 +259,8 @@ class Instance(validate: Boolean) {
                 }
         }
     }
+
+
+
+
 }

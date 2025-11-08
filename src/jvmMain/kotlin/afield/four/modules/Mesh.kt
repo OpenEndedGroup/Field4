@@ -319,6 +319,19 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
         MemoryStack.stackPush().use { stack ->
 
+            val profiler = renderer.getProfiler()
+            val frameIndex = renderer.currentImage
+            // reuse renderer’s ModuleMarks to keep plumbing minimal
+            var marks: Renderer.ModuleMarks? = null
+            if (profiler != null) {
+                marks = Renderer.ModuleMarks(
+                    name = "${inside.parameters.name}:mesh"
+                )
+                marks.tsBegin = profiler.writeTimestamp(
+                    cmd.vkCommandBuffer, frameIndex, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                )
+            }
+
             val vertexBuffer = stack.mallocLong(inside.vi.inputs.size)
             inside.vi.inputs.forEachIndexed { index, it ->
                 val buffer = v.get(it.location)
@@ -392,6 +405,13 @@ class Mesh(var renderer: Renderer = fromContext()) {
                 } else {
                     println(" mesh has no verts in it, skipping the actual draw call")
                 }
+            }
+
+            if (profiler != null && marks != null) {
+                marks.tsEnd = profiler.writeTimestamp(
+                    cmd.vkCommandBuffer, frameIndex, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                )
+                renderer.registerModuleMarks(frameIndex, marks)
             }
         }
     }

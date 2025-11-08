@@ -34,4 +34,7 @@ class Fence(private val device: afield.four.device.Device, signaled: Boolean) {
     fun reset() {
         VK10.vkResetFences(device.vkDevice, vkFence)
     }
+    fun isSignaled(): Boolean =
+        VK10.vkGetFenceStatus(device.vkDevice, vkFence) == VK10.VK_SUCCESS
+
 }
