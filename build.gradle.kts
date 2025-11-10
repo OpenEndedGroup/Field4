@@ -18,12 +18,16 @@ val lwjglNatives = Pair(
     System.getProperty("os.name")!!,
     System.getProperty("os.arch")!!
 ).let { (name, arch) ->
+    println("$name, $arch")
     when {
         arrayOf("Mac OS X", "Darwin").any { name.startsWith(it) } ->
             "natives-macos-arm64"
 
         arrayOf("Windows").any { name.startsWith(it) } ->
             "natives-windows"
+
+        arrayOf("Linux").any { name.startsWith(it) } ->
+            "natives-linux"
 
         else ->
             throw Error("Unrecognized or unsupported platform. Please set \"lwjglNatives\" manually")
@@ -72,15 +76,14 @@ repositories {
 
 kotlin {
     jvm {
-//        withJava()
         binaries {
             executable {
                 mainClass.set("afield.Server")
-//                mainClass.set("afield.four.examples.NewMain7_dynamicNumberOfVerts")
 
                 println(System.getProperty("os.name"))
                 var args = if (System.getProperty("os.name").lowercase()
-                        .contains("windows")
+                        .contains("windows") || System.getProperty("os.name").lowercase()
+                        .contains("linux")
                 ) listOf("--add-opens=java.base/java.net=ALL-UNNAMED") else listOf(
                     "-XstartOnFirstThread",
                     "--add-opens=java.base/java.net=ALL-UNNAMED",

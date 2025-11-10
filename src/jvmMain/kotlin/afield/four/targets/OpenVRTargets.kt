@@ -25,7 +25,7 @@ import org.lwjgl.vulkan.VK10.*
 
 data class OpenVREyeParams(
     var format: Int = VK_FORMAT_B8G8R8A8_SRGB,
-    var clearColor: org.joml.Vector4f = vec(0, 0, 0, 1),
+    var clearColor: org.joml.Vector4f = vec(0.3, 0.5, 0.4, 1),
     var useDepth: Boolean = false,
     var depthFormat: Int = Options.defaultDepthFormat
 )

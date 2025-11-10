@@ -6,7 +6,10 @@ import afield.four.util.Options
 import afield.four.util.vkCheck
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
+import org.lwjgl.openvr.OpenVR
 import org.lwjgl.openvr.OpenVR.VRCompositor
+import org.lwjgl.openvr.VR
+import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanDeviceExtensionsRequired
 import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanInstanceExtensionsRequired
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
@@ -94,8 +97,7 @@ class Instance(validate: Boolean) {
                 extNames += "VK_EXT_layer_settings"
             }
             if (Options.enableVR) {
-                extNames += VRCompositor_GetVulkanInstanceExtensionsRequired(4096)
-                    .split(' ').filter { it.isNotBlank() }
+                extNames += getOpenVRRequiredInstanceExts()
             }
 
 // Convert to LWJGL pointer buffer
@@ -236,6 +238,60 @@ class Instance(validate: Boolean) {
         }
 
     companion object {
+        private fun tryInitOpenVR(): Boolean {
+            // Avoid double-inits if someone already initialized elsewhere
+            if (org.lwjgl.openvr.OpenVR.VRSystem != null) {
+                println(" VR already initialized")
+                return true
+            }
+
+            if (!VR.VR_IsRuntimeInstalled()) {
+                println(" VR runtime not installed")
+                return false
+            } // SteamVR runtime not present
+            // Optional: don’t require HMD to be present just to read strings
+            // if (!VR.VR_IsHmdPresent()) return false
+
+            org.lwjgl.system.MemoryStack.stackPush().use { s ->
+                val pe = s.mallocInt(1)
+                VR.VR_InitInternal(pe, VR.EVRApplicationType_VRApplication_Scene)
+                val err = pe[0]
+                if (err != VR.EVRInitError_VRInitError_None) {
+                    println("OpenVR init failed: $err")
+                    return false
+                }
+            }
+
+            OpenVR.create(1)
+            return true
+        }
+
+
+        fun getOpenVRRequiredInstanceExts(): List<String> {
+            if (!tryInitOpenVR()) return emptyList()
+            return try {
+                val s = VRCompositor_GetVulkanInstanceExtensionsRequired(4096)
+                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                emptyList()
+            } finally {
+//                shutdownOpenVRIfWeBootstrapped()
+            }
+        }
+
+        fun getOpenVRRequiredDeviceExts(physicalDeviceAddr: Long): List<String> {
+            if (!tryInitOpenVR()) return emptyList()
+            return try {
+                val s = VRCompositor_GetVulkanDeviceExtensionsRequired(physicalDeviceAddr, 4096)
+                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                emptyList()
+            } finally {
+//                shutdownOpenVRIfWeBootstrapped()
+            }
+        }
         const val MESSAGE_SEVERITY_BITMASK: Int = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT or
                 EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
         const val MESSAGE_TYPE_BITMASK: Int = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT or
@@ -312,5 +368,6 @@ class Instance(validate: Boolean) {
             }
         }
     }
+
 
 }

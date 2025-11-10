@@ -64,7 +64,11 @@ class SwapChain(
                 .clipped(true)
             if (vsync) {
                 if (Options.isWindows)
+                // we'll do frame pacing some other way
                     vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
+                else if (Options.isLinux){
+                    vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+                }
                 else
                     vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR)
             } else {

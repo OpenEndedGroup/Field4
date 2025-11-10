@@ -1,6 +1,7 @@
 package afield.four.device
 
 import afield.four.device.DescriptorPool.DescriptorTypeCount
+import afield.four.device.Instance.Companion.getOpenVRRequiredDeviceExts
 import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
@@ -17,8 +18,8 @@ class Device(val physicalDevice: PhysicalDevice) {
     val vkDevice: VkDevice
     val pool: DescriptorPool
 
-    var usePresentIndexing = false
-    var enableMeshShading = false
+    var usePresentIndexing = !Options.isMac
+    var enableMeshShading = !Options.isMac
 
     // Cache the device's supported extensions once.
     private val supportedExtensions: Set<String> by lazy { enumerateDeviceExtensions() }
@@ -70,9 +71,9 @@ class Device(val physicalDevice: PhysicalDevice) {
                 }
 
                 if (Options.enableVR) {
-                    VRCompositor_GetVulkanDeviceExtensionsRequired(
-                        physicalDevice.vkPhysicalDevice.address(), 4096
-                    ).split(' ').filter { it.isNotBlank() }.forEach {
+                    getOpenVRRequiredDeviceExts(
+                        physicalDevice.vkPhysicalDevice.address()
+                    ).filter { it.isNotBlank() }.forEach {
                         addIfSupported(it)
                     }
                 }

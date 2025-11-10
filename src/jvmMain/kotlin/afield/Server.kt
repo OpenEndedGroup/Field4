@@ -308,7 +308,7 @@ class Server {
 
             registerTemplate(home)
 
-            val port = System.getenv("PORT")?.toInt() ?: 9091
+            val port = System.getenv("PORT")?.toInt() ?: 9092
             ourServer = embeddedServer(Netty, port) {
                 install(ContentNegotiation) {
                     json()
