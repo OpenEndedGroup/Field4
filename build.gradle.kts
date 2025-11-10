@@ -178,7 +178,7 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-shaderc::${lwjglNatives}")
                 implementation("org.lwjgl:lwjgl:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl::$lwjglNatives")
-                implementation("org.lwjgl:lwjgl-assimp:$lwjglVersion")
+                implementation("org.lwjgl:lwjgl-assimp::$lwjglNatives")
                 implementation("org.lwjgl:lwjgl-glfw:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-opengl::${lwjglNatives}")

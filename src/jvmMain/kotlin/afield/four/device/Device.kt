@@ -5,214 +5,170 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanDeviceExtensionsRequired
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.EXTCalibratedTimestamps
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_KHR
-import org.lwjgl.vulkan.KHRCalibratedTimestamps
-
+import org.lwjgl.vulkan.VK10.*
 
 class Device(val physicalDevice: PhysicalDevice) {
-    var pool: DescriptorPool
-
-    @JvmField
-    var vkDevice: VkDevice
+    val vkDevice: VkDevice
+    val pool: DescriptorPool
 
     var usePresentIndexing = false
     var enableMeshShading = false
 
+    // Cache the device's supported extensions once.
+    private val supportedExtensions: Set<String> by lazy { enumerateDeviceExtensions() }
+
     init {
-
         MemoryStack.stackPush().use { stack ->
+            val hasExt = { name: String -> supportedExtensions.contains(name) }
+            val ascii = { name: String -> stack.ASCII(name) }
 
-            val deviceExts = deviceExtensions
             val usePortability =
-                deviceExts.contains(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) && OS == OSType.MACOS
+                hasExt(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) && OS == OSType.MACOS
             val useExternalMemory = OS == OSType.WINDOWS
             usePresentIndexing = OS == OSType.WINDOWS
-            enableMeshShading = OS == OSType.WINDOWS
+            enableMeshShading =
+                OS == OSType.WINDOWS && hasExt(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
 
-// --- Profiling master switch (change to a ctor param if you prefer)
-            val profilingEnabled = afield.four.util.Options.profiling
+            val profilingEnabled = Options.profiling
+            val hasPerfQuery = hasExt(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
+            val hasHostQueryReset = hasExt(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
+            val hasCalibrated = hasExt(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
 
-// These two must exist on the selected device for profiling extras
-            val hasPerfQuery = deviceExts.contains(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
-            val hasHostQueryReset = deviceExts.contains(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
-            val hasCalibrated = deviceExts.contains(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
+            // Build extension list defensively.
+            val extNames = ArrayList<String>(12).apply {
+                add(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME) // not optional
+                addIfSupported(KHRDynamicRendering.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
+                addIfSupported(KHRDepthStencilResolve.VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
+                addIfSupported(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
+                addIfSupported(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)
 
-// --- Build the device extension name list dynamically
-            val extNames = ArrayList<String>(12)
-            extNames += KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME
-            extNames += KHRDynamicRendering.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
-            extNames += KHRDepthStencilResolve.VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME
-            extNames += KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
-            extNames += KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME
-            extNames += EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME
+                if (enableMeshShading) {
+                    add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME) // already gated by feature flag
+                }
 
-            if (enableMeshShading) {
-                extNames += EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME
+                if (OS == OSType.WINDOWS) {
+                    addIfSupported(KHRExternalMemory.VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME)
+                    addIfSupported(KHRExternalMemoryWin32.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME)
+                    addIfSupported(KHRPresentId.VK_KHR_PRESENT_ID_EXTENSION_NAME)
+                    addIfSupported(KHRPresentWait.VK_KHR_PRESENT_WAIT_EXTENSION_NAME)
+                }
+
+                if (OS == OSType.MACOS) {
+                    addIfSupported(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+                }
+
+                if (Options.profiling) {
+                    addIfSupported(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
+                    addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
+                    addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
+                }
+
+                if (Options.enableVR) {
+                    VRCompositor_GetVulkanDeviceExtensionsRequired(
+                        physicalDevice.vkPhysicalDevice.address(), 4096
+                    ).split(' ').filter { it.isNotBlank() }.forEach {
+                        addIfSupported(it)
+                    }
+                }
             }
 
-            if (useExternalMemory) {
-                extNames += KHRExternalMemory.VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME
-                extNames += KHRExternalMemoryWin32.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME
+            val requiredExtensions = stack.mallocPointer(extNames.size).apply {
+                extNames.forEach { put(ascii(it)) }
+                flip()
             }
 
-            if (usePresentIndexing) {
-                extNames += KHRPresentId.VK_KHR_PRESENT_ID_EXTENSION_NAME
-                extNames += KHRPresentWait.VK_KHR_PRESENT_WAIT_EXTENSION_NAME
+            // Core features via VkPhysicalDeviceFeatures2
+            val features = VkPhysicalDeviceFeatures2.calloc(stack).apply {
+                sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
+                features().fragmentStoresAndAtomics(true)
+                features().vertexPipelineStoresAndAtomics(true)
+                features().robustBufferAccess(Options.robustness)
+                // Request pipeline statistics only when profiling is on; driver may ignore if unsupported
+                features().pipelineStatisticsQuery(profilingEnabled)
             }
 
-            if (usePortability) {
-                extNames += KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+            val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack).apply {
+                sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES)
+                bufferDeviceAddress(true)
+            }
+            val features13 = VkPhysicalDeviceVulkan13Features.calloc(stack).apply {
+                sType(VK13.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES)
+                dynamicRendering(true)
             }
 
-// --- Profiling-related extensions (only when requested AND supported)
-            if (profilingEnabled && hasPerfQuery) {
-                extNames += KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME
-            }
-            if (profilingEnabled && hasHostQueryReset) {
-                extNames += EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME
-            }
-            if (profilingEnabled && hasCalibrated) {
-                extNames += EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME
-            }
-
-// Convert to LWJGL pointer buffer
-            val requiredExtensions = stack.mallocPointer(extNames.size)
-            for (name in extNames) requiredExtensions.put(stack.ASCII(name))
-            requiredExtensions.flip()
-
-//            val features0 = VkPhysicalDeviceFeatures.calloc(stack)
-
-            // Set up required features
-            // --- Core features via Features2 ---
-            val features = VkPhysicalDeviceFeatures2.calloc(stack)
-            features.sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
-            features.features().fragmentStoresAndAtomics(true)
-            features.features().vertexPipelineStoresAndAtomics(true)
-            features.features().robustBufferAccess(Options.robustness)
-
-// Enable pipeline statistics if profiling is on
-            features.features().pipelineStatisticsQuery(profilingEnabled)
-
-// Vulkan 1.1/1.2/1.3 feature structs
-            val features11 = VkPhysicalDeviceVulkan11Features.calloc(stack)
-            features11.sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES)
-
-            val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack)
-            features12.sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES)
-            features12.bufferDeviceAddress(true)
-
-            val features13 = VkPhysicalDeviceVulkan13Features.calloc(stack)
-            features13.sType(VK13.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES)
-            features13.dynamicRendering(true)
-
-// Optional (you had these)
-            val f0 = VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT.calloc(stack)
-            f0.sType(EXTDynamicRenderingUnusedAttachments.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT)
-            f0.dynamicRenderingUnusedAttachments(true) // may be ignored on mac
-
-            VK12.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, features)
-
-            val f2 = VkPhysicalDeviceExtendedDynamicStateFeaturesEXT.calloc(stack)
-            f2.sType(EXTExtendedDynamicState.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT)
-            f2.extendedDynamicState(true)
-
-// --- Profiling feature structs (conditionally set) ---
-            val perfFeat = VkPhysicalDevicePerformanceQueryFeaturesKHR.calloc(stack)
-                .sType(KHRPerformanceQuery.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR)
-            if (profilingEnabled && hasPerfQuery) {
-                perfFeat.performanceCounterQueryPools(true)
-                perfFeat.performanceCounterMultipleQueryPools(true) // optional convenience
-            }
-
-            val hostResetFeat = VkPhysicalDeviceHostQueryResetFeatures.calloc(stack)
-                .sType(EXTHostQueryReset.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT)
-            if (profilingEnabled && hasHostQueryReset) {
-                hostResetFeat.hostQueryReset(true)
-            }
-
-// --- Build a safe pNext chain ---
-// Base chain
-            features.pNext(f2.address())
-            f2.pNext(f0.address())
-            f0.pNext(features12.address())
+            // Link base chain.
+            features.pNext(features12.address())
             features12.pNext(features13.address())
+            var tail = features13.address()
 
-// Optional mesh/present features (as you had), but keep a handle to the tail:
-            var tailAddr = features13.address()
-
+            // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading && usePresentIndexing) {
-                val meshShaderFeatures = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
+                val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
                     .sType(EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT)
-                    .meshShader(true).multiviewMeshShader(true).taskShader(true)
+                    .meshShader(true).taskShader(true).multiviewMeshShader(true)
 
                 val mv = VkPhysicalDeviceMultiviewFeaturesKHR.calloc(stack)
                     .sType(KHRMultiview.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR)
                     .multiview(true)
 
-                val presentIdFeat = VkPhysicalDevicePresentIdFeaturesKHR.calloc(stack)
+                val presentId = VkPhysicalDevicePresentIdFeaturesKHR.calloc(stack)
                     .sType(KHRPresentId.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR)
                     .presentId(true)
 
-                val presentWaitFeat = VkPhysicalDevicePresentWaitFeaturesKHR.calloc(stack)
+                val presentWait = VkPhysicalDevicePresentWaitFeaturesKHR.calloc(stack)
                     .sType(KHRPresentWait.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR)
                     .presentWait(true)
 
-                // Chain them
-                memPutAddress(tailAddr + VkBaseOutStructure.PNEXT, meshShaderFeatures.address()); tailAddr =
-                    meshShaderFeatures.address()
-                memPutAddress(tailAddr + VkBaseOutStructure.PNEXT, mv.address()); tailAddr = mv.address()
-                memPutAddress(tailAddr + VkBaseOutStructure.PNEXT, presentIdFeat.address()); tailAddr =
-                    presentIdFeat.address()
-                memPutAddress(tailAddr + VkBaseOutStructure.PNEXT, presentWaitFeat.address()); tailAddr =
-                    presentWaitFeat.address()
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, mesh.address()); tail = mesh.address()
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, mv.address()); tail = mv.address()
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, presentId.address()); tail = presentId.address()
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, presentWait.address()); tail = presentWait.address()
             }
 
-// Append profiling features (if any) AFTER mesh/present tail (or features13 if that branch didn’t run)
+            // Profiling features (conditionally).
             if (profilingEnabled && hasPerfQuery) {
-                memPutAddress(tailAddr + VkBaseOutStructure.PNEXT, perfFeat.address())
-                tailAddr = perfFeat.address()
-            }
-            if (profilingEnabled && hasHostQueryReset) {
-                memPutAddress(tailAddr + VkBaseOutStructure.PNEXT, hostResetFeat.address())
-                tailAddr = hostResetFeat.address()
+                val perf = VkPhysicalDevicePerformanceQueryFeaturesKHR.calloc(stack)
+                    .sType(KHRPerformanceQuery.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR)
+                    .performanceCounterQueryPools(true)
+                    .performanceCounterMultipleQueryPools(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, perf.address()); tail = perf.address()
             }
 
-// --- Queues (unchanged)
-            val queuePropsBuff = physicalDevice.vkQueueFamilyProps
-            val numQueuesFamilies = queuePropsBuff.capacity()
-            val queueCreationInfoBuf = VkDeviceQueueCreateInfo.calloc(numQueuesFamilies, stack)
-            for (i in 0 until numQueuesFamilies) {
-                val priorities = stack.callocFloat(queuePropsBuff[i].queueCount())
-                queueCreationInfoBuf[i]
-                    .sType(VK10.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
+            if (profilingEnabled && hasHostQueryReset) {
+                val hostReset = VkPhysicalDeviceHostQueryResetFeatures.calloc(stack)
+                    .sType(EXTHostQueryReset.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT)
+                    .hostQueryReset(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, hostReset.address()); tail = hostReset.address()
+            }
+
+            // Enable all queue families.
+            val qProps = physicalDevice.vkQueueFamilyProps
+            val qInfos = VkDeviceQueueCreateInfo.calloc(qProps.capacity(), stack)
+            for (i in 0 until qProps.capacity()) {
+                val priorities = stack.callocFloat(qProps[i].queueCount())
+                qInfos[i]
+                    .sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
                     .queueFamilyIndex(i)
                     .pQueuePriorities(priorities)
             }
 
-// --- DeviceCreateInfo
-            val deviceCreateInfo = VkDeviceCreateInfo.calloc(stack)
+            val ci = VkDeviceCreateInfo.calloc(stack)
                 .sType(VK12.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
                 .ppEnabledExtensionNames(requiredExtensions)
-                .pQueueCreateInfos(queueCreationInfoBuf)
-                .pNext(features.address()) // <- features2 is the head of our chain
+                .pQueueCreateInfos(qInfos)
+                .pNext(features.address())
 
+            val pDev = stack.mallocPointer(1)
+            vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, ci, null, pDev), "Failed to create device")
+            vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
 
-            val pp = stack.mallocPointer(1)
-            vkCheck(
-                VK10.vkCreateDevice(physicalDevice.vkPhysicalDevice, deviceCreateInfo, null, pp),
-                "Failed to create device"
-            )
-            vkDevice = VkDevice(pp[0], physicalDevice.vkPhysicalDevice, deviceCreateInfo)
-
-            // TODO — this is daft
-            // we've all but removed pressure on ubo (using pushconstants) and ssbo (using bindless instead)
-            // aim towards the single array of textures trick I suppose
+            // Descriptor pool (tuned for current usage).
             pool = DescriptorPool(
                 this, listOf(
                     DescriptorTypeCount(100, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -221,41 +177,38 @@ class Device(val physicalDevice: PhysicalDevice) {
                     DescriptorTypeCount(100, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                 )
             )
-
         }
+    }
+
+    fun waitIdle() {
+        vkDeviceWaitIdle(vkDevice)
     }
 
     fun cleanup() {
-        VK10.vkDestroyDevice(vkDevice, null)
+        vkDestroyDevice(vkDevice, null)
     }
 
-    private val deviceExtensions: Set<String>
-        get() {
-            val deviceExtensions: MutableSet<String> = HashSet()
-            MemoryStack.stackPush().use { stack ->
-                val numExtensionsBuf = stack.callocInt(1)
-                VK10.vkEnumerateDeviceExtensionProperties(
-                    physicalDevice.vkPhysicalDevice, null as String?, numExtensionsBuf, null
-                )
-                val numExtensions = numExtensionsBuf[0]
-                val propsBuff = VkExtensionProperties.calloc(numExtensions, stack)
-                VK10.vkEnumerateDeviceExtensionProperties(
-                    physicalDevice.vkPhysicalDevice, null as String?, numExtensionsBuf, propsBuff
-                )
-                for (i in 0 until numExtensions) {
-                    val props = propsBuff[i]
-                    val extensionName = props.extensionNameString()
-                    deviceExtensions.add(extensionName)
-                }
-            }
-            return deviceExtensions
+    private fun MutableList<String>.addIfSupported(name: String) {
+        if (name in supportedExtensions) add(name)
+    }
+
+    private fun enumerateDeviceExtensions(): Set<String> {
+        val out = HashSet<String>()
+        MemoryStack.stackPush().use { stack ->
+            val countBuf = stack.callocInt(1)
+            vkEnumerateDeviceExtensionProperties(physicalDevice.vkPhysicalDevice, null as String?, countBuf, null)
+            val props = VkExtensionProperties.calloc(countBuf[0], stack)
+            vkEnumerateDeviceExtensionProperties(physicalDevice.vkPhysicalDevice, null as String?, countBuf, props)
+            repeat(props.capacity()) { i -> out += props[i].extensionNameString() }
         }
-
-    fun waitIdle() {
-        VK10.vkDeviceWaitIdle(vkDevice)
+        return out
     }
-    /** True if both DEVICE and CLOCK_MONOTONIC time domains are calibrateable. */
+
+    /** True if DEVICE and CLOCK_MONOTONIC time domains are calibrateable (guarded by extension presence). */
     fun hasCalibrateableDomains(): Boolean {
+        if (!supportedExtensions.contains(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) {
+            return false
+        }
         MemoryStack.stackPush().use { stack ->
             val countBuf = stack.mallocInt(1)
             EXTCalibratedTimestamps.vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(
@@ -280,8 +233,14 @@ class Device(val physicalDevice: PhysicalDevice) {
         }
     }
 
-    /** Returns (hostMonotonicNS, gpuNS). Requires VK_EXT_calibrated_timestamps enabled on the device. */
+    /**
+     * Returns (hostMonotonicNS, gpuNS). Requires VK_EXT_calibrated_timestamps.
+     * Callers should gate on [hasCalibrateableDomains].
+     */
     fun calibratedHostGpuTimeNS(): Pair<Long, Long> {
+        require(supportedExtensions.contains(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) {
+            "VK_EXT_calibrated_timestamps not enabled"
+        }
         MemoryStack.stackPush().use { stack ->
             val infos = VkCalibratedTimestampInfoKHR.calloc(2, stack)
             infos[0]
@@ -292,13 +251,10 @@ class Device(val physicalDevice: PhysicalDevice) {
                 .timeDomain(VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR)
 
             val timestamps = stack.mallocLong(2)
-            val maxDeviation = stack.mallocLong(1) // spec allows single entry as an upper bound
+            val maxDeviation = stack.mallocLong(1)
 
             val res = EXTCalibratedTimestamps.vkGetCalibratedTimestampsEXT(
-                vkDevice, // DEVICE-level call
-                infos,
-                timestamps,
-                maxDeviation
+                vkDevice, infos, timestamps, maxDeviation
             )
             vkCheck(res, "vkGetCalibratedTimestampsEXT failed")
 
@@ -307,5 +263,4 @@ class Device(val physicalDevice: PhysicalDevice) {
             return hostNS to gpuNS
         }
     }
-
 }

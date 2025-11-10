@@ -452,6 +452,7 @@ fun makeKI(box: Box): KotlinInterface {
         return ki
     }
 }
+
 suspend fun makeKIHere(box: Box): KotlinInterface {
     val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
     val si = thisSessionInfo.get()

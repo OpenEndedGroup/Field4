@@ -1,17 +1,19 @@
 package afield.four.buffers
 
 import afield.stdlib.*
+import java.lang.foreign.MemorySegment
 import java.nio.BufferOverflowException
 import java.nio.BufferUnderflowException
 import java.nio.FloatBuffer
+import java.nio.IntBuffer
 
 /* std430 rules  vec3 -> vec4 _aligned_, vec4 is _aligned_, vec2 is aligned to 2, floats are floats*/
 class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -> FloatBuffer) {
 
     val at: Int get() = target.position()
 
-    fun put(f: FloatBuffer): DynamicBuffer {
-        pad4(0f)
+    fun put(f: FloatBuffer, padding: Boolean = true): DynamicBuffer {
+        if (padding) pad4(0f)
         val a = target.position()
         val b = f.position()
         try {
@@ -20,10 +22,29 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
             target = onOverrun(target, f.capacity())
             target.position(a)
             f.position(b)
-            put(f)
+            put(f, false)
         }
         return this
     }
+
+    fun put(f: IntBuffer, padding: Boolean = true): DynamicBuffer {
+        if (padding) pad4(0f)
+        val a = target.position()
+        val b = f.position()
+        if (target.remaining()<f.remaining())
+        {
+            target = onOverrun(target, f.capacity())
+            target.position(a)
+            f.position(b)
+            put(f, false)
+        }
+        else {
+            putIntBitsIntoFloatBuffer(f, target)
+        }
+        return this
+    }
+
+
 
     fun put(d: DoubleArray): DynamicBuffer {
         d.forEach { put(it.f) }
@@ -140,4 +161,33 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
             this.putScalar(zero)
     }
 
+    /** todo, we need to realloc if it doesn't fit */
+    fun putIntBitsIntoFloatBuffer(src: IntBuffer, dst: FloatBuffer) {
+        require(src.isDirect) { "src must be a direct IntBuffer" }
+        require(dst.isDirect) { "dst must be a direct FloatBuffer" }
+
+        val count = src.remaining()
+        require(dst.remaining() >= count) {
+            "dst has only ${dst.remaining()} floats remaining, need $count"
+        }
+
+        // Work on duplicates so we don't disturb mark/limit of the originals while computing offsets.
+        val s = src.duplicate()
+        val d = dst.duplicate()
+
+        // Wrap the buffers with MemorySegments and byte-copy the payload.
+        val sSeg = MemorySegment.ofBuffer(s)
+        val dSeg = MemorySegment.ofBuffer(d)
+
+        val byteCount = count.toLong() * 4L
+        val sOffset   = s.position().toLong() * 4L
+        val dOffset   = d.position().toLong() * 4L
+
+        // Raw byte copy: preserves the 32-bit patterns exactly.
+        MemorySegment.copy(sSeg, sOffset, dSeg, dOffset, byteCount)
+
+        // Put-like semantics: advance the original buffers' positions.
+        src.position(src.position() + count)
+        dst.position(dst.position() + count)
+    }
 }

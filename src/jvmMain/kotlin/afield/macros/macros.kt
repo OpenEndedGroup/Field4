@@ -4,8 +4,10 @@ import afield.Box
 import afield.HasHierarchy
 import afield.KotlinInterface
 import afield.logger.lprintln
+import afield.macroRegistration
 import afield.macro_printHere
 import afield.marco_printlnHere
+import afield.runAll
 import afield.stdlib.Delegation
 import afield.stdlib.macro_computeModuleHere
 import afield.stdlib.macro_meshModuleHere
@@ -166,6 +168,7 @@ object MacroRegistry {
     }
 
     init {
+
         callRewrite["moduleHere"] = { box, id, args ->
             box.macro_moduleHere(args)
         }
@@ -187,6 +190,8 @@ object MacroRegistry {
         callRewrite["_println"] = { box, id, args ->
             box.marco_printlnHere(args)
         }
+
+        runAll(macroRegistration)
     }
 }
 

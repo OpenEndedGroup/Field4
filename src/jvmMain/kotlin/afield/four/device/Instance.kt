@@ -2,9 +2,12 @@ package afield.four.device
 
 import afield.four.util.OS
 import afield.four.util.OSType
+import afield.four.util.Options
 import afield.four.util.vkCheck
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
+import org.lwjgl.openvr.OpenVR.VRCompositor
+import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanInstanceExtensionsRequired
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
@@ -14,7 +17,10 @@ import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.KHRPortabilityEnumeration.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
 import org.lwjgl.vulkan.VkBaseOutStructure
 import org.lwjgl.vulkan.EXTCalibratedTimestamps
+import org.lwjgl.vulkan.EXTToolingInfo.*
 import org.lwjgl.vulkan.KHRCalibratedTimestamps // for KHR constants (domains)
+import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
+import org.lwjgl.vulkan.VK10.VK_SUCCESS
 
 class Instance(validate: Boolean) {
     var vkInstance: VkInstance
@@ -59,7 +65,7 @@ class Instance(validate: Boolean) {
 
 // --- GLFW-required instance extensions
             val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
-                ?: throw RuntimeException("Failed to find the GLFW platform surface extensions")
+                ?: throw RuntimeException("Failed to find the GLFW platform surface extensions. This only happens if something is seriously wrong with Vulkan on your machine, or you are launching this graphics system in an environment that has impossible requests of the Vulkan API (like asking for MoltenVK on Linux).")
 
             val usePortability = OS == OSType.MACOS // save us KosmicKrisp
             val hasDebugUtils = supported.contains(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
@@ -87,6 +93,10 @@ class Instance(validate: Boolean) {
             if (supportsValidation && hasLayerSettings) {
                 extNames += "VK_EXT_layer_settings"
             }
+            if (Options.enableVR) {
+                extNames += VRCompositor_GetVulkanInstanceExtensionsRequired(4096)
+                    .split(' ').filter { it.isNotBlank() }
+            }
 
 // Convert to LWJGL pointer buffer
             val requiredExtensions = stack.mallocPointer(extNames.size)
@@ -101,6 +111,7 @@ class Instance(validate: Boolean) {
                 debugUtils = createDebugCallBack()
                 pNextHead = debugUtils!!.address()
             }
+
 
 // Layer settings only if extension present AND validating
             if (supportsValidation && hasLayerSettings) {
@@ -261,6 +272,45 @@ class Instance(validate: Boolean) {
     }
 
 
+    fun dumpToolingInfo(instance: VkInstance, phys: VkPhysicalDevice, deviceOrNull: VkDevice? = null) {
+        MemoryStack.stackPush().use { stack ->
+            fun purposesToString(bits: Int): String {
+                val out = ArrayList<String>(7)
+                if ((bits and VK_TOOL_PURPOSE_VALIDATION_BIT_EXT) != 0) out += "validation"
+                if ((bits and VK_TOOL_PURPOSE_PROFILING_BIT_EXT) != 0) out += "profiling"
+                if ((bits and VK_TOOL_PURPOSE_TRACING_BIT_EXT) != 0) out += "tracing"
+                if ((bits and VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT_EXT) != 0) out += "adds_features"
+                if ((bits and VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT_EXT) != 0) out += "modifies_features"
+                if ((bits and VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT) != 0) out += "debug_reporting"
+                if ((bits and VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT) != 0) out += "debug_markers"
+                return if (out.isEmpty()) "none" else out.joinToString("|")
+            }
 
+            // --- Physical-device query (instance-level extension) ---
+            if (instance.capabilities.vkGetPhysicalDeviceToolPropertiesEXT != 0L) {
+                val pCount = stack.mallocInt(1)
+                var res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(
+                    phys, pCount, null as VkPhysicalDeviceToolPropertiesEXT.Buffer?
+                )
+                if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
+                    val count = pCount[0]
+                    if (count > 0) {
+                        val props = VkPhysicalDeviceToolPropertiesEXT.calloc(count, stack)
+                        res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(phys, pCount, props)
+                        if (res == VK_SUCCESS) {
+                            println("== Tooling (physical device) ==")
+                            for (i in 0 until count) {
+                                val t = props[i]
+                                println(" - ${t.nameString()} ${t.versionString()}")
+                                println("    layer='${t.layerString() ?: ""}'")
+                                println("    desc='${t.descriptionString() ?: ""}'")
+                                println("    purposes=${purposesToString(t.purposes())}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 }

@@ -67,6 +67,7 @@ fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
     throw MacroRegistry.MacroNotExpandedException("meshModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+
 // ------------------------------
 // Utilities
 // ------------------------------
@@ -134,8 +135,8 @@ fun reloadShader(box: Box) {
         return
     }
 
-    // keep consistent with Module path: build Insert and apply to preamble
-    val insert = insertForShader(vi!!, fi!!, listOf("()"))
+    // keep consistent with the Module path: build Insert and apply to preamble
+    val insert = insertForShader(vi!!, fi!!, "_moduleHere",listOf("()"))
     applyInsertToPreamble(box, insert)
 
     box.error(null, "fragment", -1)
@@ -288,42 +289,50 @@ fun reloadMeshShader(box: Box) {
 // ------------------------------
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_moduleHere(args: List<String>): Insert? {
+    return macro_moduleHereWithDefaultShaders(args)
+}
 
+
+val defaultVertexShader = """
+    #version 450
+    layout (location = 0) in vec3 pos;
+
+    layout(push_constant) uniform matrices {
+        mat4 p;
+        mat4 m;
+    } pc;
+
+    void main()
+    {
+        gl_Position = pc.p * pc.m * vec4(pos, 1);
+    }
+""".trimIndent()
+
+val defaultFragmentShader = """
+    #version 450
+    layout(location = 0) out vec4 uFragColor;
+    void main()
+    {
+        uFragColor = vec4(1.0, 0.8, 0.4, 1.0);
+    }
+""".trimIndent()
+
+fun Box.macro_moduleHereWithDefaultShaders(args: List<String>, vertex : String = defaultVertexShader, fragment : String = defaultFragmentShader, resolvesToCall : String = "_moduleHere"): Insert? {
     this.actions += "moduleHere_reload" to Action("Reload Shader|alt r") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
-                val here = this@macro_moduleHere
+                val here = this@macro_moduleHereWithDefaultShaders
                 it.forEach { reloadShader(it) }
             }
         }
     }
 
-    if (this.fragment == null || this.vertex == null) {
+    if ((this.fragment?.trim()?.length ?: 0) == 0 || (this.vertex?.trim()?.length ?: 0) == 0) {
         this.setPropertyRaw(
-            "fragment", """
-            #version 450
-            layout(location = 0) out vec4 uFragColor;
-            void main()
-            {
-                uFragColor = vec4(1.0, 0.8, 0.4, 1.0);
-            }
-        """.trimIndent()
+            "fragment", fragment
         )
         this.setPropertyRaw(
-            "vertex", """
-            #version 450
-            layout (location = 0) in vec3 pos;
-
-            layout(push_constant) uniform matrices {
-                mat4 p;
-                mat4 m;
-            } pc;
-
-            void main()
-            {
-                gl_Position = pc.p * pc.m * vec4(pos, 1);
-            }
-        """.trimIndent()
+            "vertex", vertex
         )
     }
 
@@ -348,19 +357,22 @@ fun Box.macro_moduleHere(args: List<String>): Insert? {
     if (hasError) {
         var here = args[0]
         if (args.size == 2) here += args[1]
-        return Insert(here = "_moduleHere$here")
+        return Insert(here = "$resolvesToCall$here")
     } else {
         this.error(null, "fragment", -1)
-        return insertForShader(vi, fi, args)
+        return insertForShader(vi, fi, resolvesToCall, args)
     }
 }
+
+
 
 // ------------------------------
 // Graphics helpers for Insert
 // ------------------------------
-private fun insertForShader(
+fun insertForShader(
     vi: Introspection,
     fi: Introspection,
+    resolvesToCall: String = "_moduleHere",
     args: List<String>
 ): Insert {
     var postImport = ""
@@ -392,7 +404,7 @@ private fun insertForShader(
         postImport += "val ModulePointer.${it.name} by FromUniform()\n"
     }
 
-    var here = "_moduleHere${args[0]}"
+    var here = "$resolvesToCall${args[0]}"
     if (args.size == 2) here += args[1]
 
     return Insert(

@@ -21,6 +21,7 @@ object Options {
     val useVulkanSDK = true
     val robustness = !isWindows
     val profiling = false
+    val enableVR = false
 
     fun doVulkanSDK() {
         if (useVulkanSDK && !isWindows) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)

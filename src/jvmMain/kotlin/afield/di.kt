@@ -14,6 +14,7 @@ const val early = "early" // early on in the startup
 const val installHandlers = "installHandlers" // install message handlers for websockets
 const val templatesRegistration = "templatesRegistration" // install KTor resource templates
 const val newRoot = "newRoot" // whenever a new root is made
+const val macroRegistration = "macroRegistration" // whenever a new root is made
 
 /**
  * this is the world's smallest DI framework

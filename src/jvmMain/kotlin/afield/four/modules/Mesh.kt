@@ -353,6 +353,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
             if (pushConstantBuffer.limit() > 0) {
 
+                // todo: this needs to be the unification of both otherwise vertex wins
                 for (pc in inside.fi.pushConstants) {
                     push.setMembers(pc.members)
                 }

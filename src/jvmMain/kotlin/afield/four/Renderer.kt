@@ -124,6 +124,7 @@ class Renderer(val window: Window) {
         instance = Instance(Options.validate)
         physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
         device = Device(physicalDevice)
+        instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)
         surface = Surface(physicalDevice, window.windowHandle)
         graphQueue = GraphicsQueue(device, 0)
         presentQueue = PresentQueue(device, surface, 0)

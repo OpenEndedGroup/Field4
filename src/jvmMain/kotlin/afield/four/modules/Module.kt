@@ -134,10 +134,17 @@ class ModulePointer(var current: Module) : Renderable {
 
         // should we copy the buffers that back other uniforms as well
         // if they have the correct size?
+        // TODO — this should be working, but it's not and that's really confusing when you are reloading
+        // shaders
 
         val oUboResolver = p.uboResolver
         p.uboResolver = {
-            oUboResolver(it)
+            val already = current.uniforms[it.name]
+            if (already is Module.Uniform) {
+                already.source!!
+            }
+            else
+                oUboResolver(it)
         }
 
         val oSsboResolver = p.ssboResolver
@@ -800,9 +807,11 @@ class Module(val parameters: Parameters) : Renderable {
             VK10.vkCmdSetScissor(cmdHandle, 0, scissor)
 
             // dynamic depth test (requires EXT_extended_dynamic_state enabled at device creation)
-            EXTExtendedDynamicState.vkCmdSetDepthTestEnableEXT(
-                cmdHandle, if (parameters.depth == 0) false else parameters.depthTest
-            )
+//            EXTExtendedDynamicState.vkCmdSetDepthTestEnableEXT(
+//                cmdHandle, if (parameters.depth == 0) false else parameters.depthTest
+//            )
+
+            VK13.vkCmdSetDepthTestEnable( cmdHandle, if (parameters.depth == 0) false else parameters.depthTest)
 
             // Push constant scratch buffer for meshes (stack-owned; valid for this call)
             val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
