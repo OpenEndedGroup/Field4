@@ -10,6 +10,3 @@ plugins {
 }
 rootProject.name = "afield"
 
-include(":personal")
-project(":personal").projectDir = file("src/personal")
-

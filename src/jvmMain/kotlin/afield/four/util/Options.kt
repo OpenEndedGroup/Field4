@@ -23,7 +23,7 @@ object Options {
     val useVulkanSDK = true
     val robustness = false
     val profiling = false
-    val enableVR = true
+    val enableVR = false
 
     fun doVulkanSDK() {
         if (useVulkanSDK && isMac) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)

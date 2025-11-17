@@ -1,6 +1,7 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalDistributionDsl::class)
 
 import org.gradle.kotlin.dsl.getting
+import org.gradle.kotlin.dsl.kotlin
 import org.gradle.kotlin.dsl.provideDelegate
 import org.gradle.kotlin.dsl.sourceSets
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
@@ -158,8 +159,18 @@ kotlin {
 
         val jvmMain by getting {
 
+            val personalSrc = file("src/personal")
+            if (personalSrc.exists()) {
+                kotlin.srcDir("src/personal/kotlin")
+                resources.srcDir("src/personal/resources")
+            }
+
             dependencies {
 
+                val personalDeps = file("src/personal/dependencies.gradle.kts")
+                if (personalDeps.exists()) {
+                    apply(from = personalDeps.path)
+                }
 
                 implementation("org.slf4j:slf4j-api:2.0.16")
                 runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
@@ -302,7 +313,6 @@ kotlin {
         }
 
 
-
         val jsMain by getting {
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-html-js:0.11.0")
@@ -442,22 +452,5 @@ tasks.named("jvmDistZip") {
     enabled = false
 }
 
-val personalDeps = file("src/personal/dependencies.gradle.kts")
-if (personalDeps.exists()) {
-    apply(from = personalDeps.path)
-}
 
-val personalSrc = file("src/personal")
-if (personalSrc.exists()) {
-    // add personal sources to jvmMain
-    kotlin.sourceSets.named("jvmMain") {
-        kotlin.srcDir("src/personal/kotlin")
-        resources.srcDir("src/personal/resources")
-    }
 
-    // load personal-only dependencies from a file inside src/personal/
-    val personalDeps = file("src/personal/dependencies.gradle.kts")
-    if (personalDeps.exists()) {
-        apply(from = personalDeps.path)
-    }
-}
