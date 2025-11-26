@@ -9,10 +9,9 @@ import afield.four.buffers.buffer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.device.CommandBuffer
-import afield.four.device.DescriptorSet.SimpleDescriptorSet
-import afield.four.device.DescriptorSet.UpdatesDescriptorSet
 import afield.four.device.DescriptorSetLayout
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
+import afield.four.device.UpdatesDescriptorSet
 import afield.four.device.beginLabel
 import afield.four.device.endLabel
 import afield.four.device.nameObject
@@ -26,7 +25,6 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
-import kotlin.math.max
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
@@ -109,9 +107,6 @@ class MeshModule(val parameters: Parameters) : Renderable {
         try {
             if (!ti.valid || !mi.valid || !fi.valid) throw IllegalStateException("Can't make a module without valid programs")
 
-            // Reserve/validate set=0 usage for global bindless sampled-image array (binding 0) + sampler (binding 1)
-            validateAndReserveSet0(ti, mi, fi)
-
             tsm = createShaderModule(ti.code.bytecode()!!)
             msm = createShaderModule(mi.code.bytecode()!!)
             fsm = createShaderModule(fi.code.bytecode()!!)
@@ -154,7 +149,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
             mi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
 
-            val layouts = mutableMapOf<Int, Pair<SimpleDescriptorSetLayout, SimpleDescriptorSet>>()
+            val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 
             // Build layouts for sets >= 1
             setsNeeded.entries.forEach { (set, bindingList) ->
@@ -259,36 +254,34 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
-                    parameters.renderer.device, kinds, set, bindingList, where, lens
+                    parameters.renderer.device, kinds, set, bindingList, where, lens, pushDescriptor = true
                 )
-                val descriptorSet = layout.makeDescriptorSet(parameters.renderer.device.pool)
-                layouts[set] = layout to descriptorSet
+                layouts[set] = layout
             }
 
             // UBOs (sets >= 1)
             setsNeeded.entries.forEach { (set, _) ->
                 var found = false
-                val (_, descriptorSet) = layouts.getValue(set)
                 ti.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = (it as Introspected.UBO).size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 mi.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = (it as Introspected.UBO).size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 fi.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = (it as Introspected.UBO).size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 if (!found) return@forEach
             }
@@ -296,14 +289,13 @@ class MeshModule(val parameters: Parameters) : Renderable {
             // SSBOs (sets >= 1)
             setsNeeded.entries.forEach { (set, _) ->
                 var found = false
-                val (_, descriptorSet) = layouts.getValue(set)
                 ti.ssbo.forEach { if (it.set == set) {
                     found = true
                     var sz = (it as Introspected.UBO).size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 } }
                 mi.ssbo.forEach { if (it.set == set) {
                     found = true
@@ -311,7 +303,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 } }
                 fi.ssbo.forEach { if (it.set == set) {
                     found = true
@@ -319,7 +311,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 } }
                 if (!found) return@forEach
             }
@@ -327,41 +319,40 @@ class MeshModule(val parameters: Parameters) : Renderable {
             // Sampled textures (sets >= 1)
             setsNeeded.entries.forEach { (set, _) ->
                 var found = false
-                val (_, descriptorSet) = layouts.getValue(set)
                 ti.textures.forEach { if (it.set == set) {
                     found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = Module.TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture[0], sampler)
                     } else {
                         require(texture.size == it.arrayCount) {
                             "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
                         }
-                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
+                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
                 } }
                 mi.textures.forEach { if (it.set == set) {
                     found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = Module.TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture[0], sampler)
                     } else {
                         require(texture.size == it.arrayCount) {
                             "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
                         }
-                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
+                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
                 } }
                 fi.textures.forEach { if (it.set == set) {
                     found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = Module.TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture[0], sampler)
                     } else {
                         require(texture.size == it.arrayCount) {
                             "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
                         }
-                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
+                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
                 } }
                 if (!found) return@forEach
@@ -370,27 +361,23 @@ class MeshModule(val parameters: Parameters) : Renderable {
             // Storage images (sets >= 1)
             setsNeeded.entries.forEach { (set, _) ->
                 var found = false
-                val (_, descriptorSet) = layouts.getValue(set)
                 ti.images.forEach { if (it.set == set) {
                     found = true
                     val image = parameters.imageResolver(it as Introspected.Image)!!
-                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null, image)
+                    uniforms[it.name] = Module.ImagePointer(it.name, it, source = null, image)
                 } }
                 mi.images.forEach { if (it.set == set) {
                     found = true
                     val image = parameters.imageResolver(it as Introspected.Image)!!
-                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null, image)
+                    uniforms[it.name] = Module.ImagePointer(it.name, it, source = null, image)
                 } }
                 fi.images.forEach { if (it.set == set) {
                     found = true
                     val image = parameters.imageResolver(it as Introspected.Image)!!
-                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null, image)
+                    uniforms[it.name] = Module.ImagePointer(it.name, it, source = null, image)
                 } }
                 if (!found) return@forEach
             }
-
-            uniforms.values.forEach { it.updateDescriptorSet() }
-
             MemoryStack.stackPush().use { stack ->
                 val shaderStages = VkPipelineShaderStageCreateInfo.calloc(3, stack)
 
@@ -477,25 +464,24 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 }
 
                 // ---- Pipeline layout includes global set=0 at index 0
-                val moduleHighestSet = if (layouts.isEmpty()) 0 else layouts.keys.maxOrNull()!!
-                val highestSet = max(0, moduleHighestSet) // ensure room for set 0
+                val highestSet = layouts.keys.maxOrNull() ?: -1
 
-                val ppLayout = stack.callocLong(highestSet + 1)
-                // set 0: global bindless sampled-image array (binding 0) + sampler (binding 1)
-                ppLayout.put(0, parameters.renderer.set0Layout.vkDescriptorLayout)
-                // sets 1..highestSet must be contiguous in this module
-                for (s in 1..highestSet) {
-                    val pair = layouts[s]
-                        ?: throw IllegalArgumentException(
-                            "Pipeline layout is missing descriptor set $s (set 0 is reserved globally). " +
-                                    "Make your module sets contiguous starting at set=1."
-                        )
-                    ppLayout.put(s, pair.first.vkDescriptorLayout)
+                val ppLayout = if (highestSet >= 0) stack.callocLong(highestSet + 1) else null
+                if (highestSet >= 0) {
+                    ppLayout?.let { buf ->
+                        for (s in 0..highestSet) {
+                            val layout = layouts[s]
+                                ?: throw IllegalArgumentException(
+                                    "Pipeline layout is missing descriptor set $s. Make your module sets contiguous starting at set=0."
+                                )
+                            buf.put(s, layout.vkDescriptorLayout)
+                        }
+                    }
                 }
 
                 val pli = VkPipelineLayoutCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                    .pSetLayouts(ppLayout)
+                ppLayout?.let { pli.pSetLayouts(it) }
                 vpcr?.let { pli.pPushConstantRanges(it) }
 
                 val lp = stack.mallocLong(1)
@@ -573,9 +559,6 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
 
-            // Bind global set 0 (sampled-image array + sampler) for this pipeline layout
-            parameters.renderer.bindGlobalSet0(command, pipelineLayout)
-
             val viewportNow = parameters.viewport ?: Rect(0.0, 0.0, bounds.lengthX().d, bounds.lengthY().d)
             val viewport = VkViewport.calloc(1, stack)
                 .x(viewportNow.x.f)
@@ -594,26 +577,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
 
-            // Bind module-local sets (>=1) as a dense window
-            if (uniforms.isNotEmpty()) {
-                val uniqueSets = uniforms.values.map { it.binding.set }.toSet()
-                val firstSet = uniqueSets.minOrNull()!!
-                val lastSet  = uniqueSets.maxOrNull()!!
-                val setCount = lastSet - firstSet + 1
-
-                // (4/7) Use callocLong + absolute puts; do not advance position
-                val descriptorSets = stack.callocLong(setCount)
-
-                uniforms.values.forEach { upd ->
-                    val slot = upd.binding.set - firstSet
-                    descriptorSets.put(slot, upd.target.vkDescriptorSet)
-                }
-
-                descriptorSets.position(0)
-
-                vkCmdBindDescriptorSets(
-                    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, firstSet, descriptorSets, null
-                )
+            uniforms.values.forEach { upd ->
+                upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)
             }
 
             // Update dirty UBO/SSBOs
@@ -666,55 +631,4 @@ class MeshModule(val parameters: Parameters) : Renderable {
         m.second.inside = this.pointer()
     }
 
-    /**
-     * Separate-sampler model for set=0:
-     *  - Sampled images at binding 0 (global array).
-     *  - Sampler at binding 1.
-     *  - No UBO/SSBO/storage image in set=0.
-     */
-    private fun validateAndReserveSet0(ti: Introspection, mi: Introspection, fi: Introspection) {
-        val illegal = mutableListOf<String>()
-
-        listOf(ti, mi, fi).forEach { ins ->
-            ins.ubos  .filter { it.set == 0 }.forEach { illegal += "UBO '${it.name}' (binding ${it.binding})" }
-            ins.ssbo  .filter { it.set == 0 }.forEach { illegal += "SSBO '${it.name}' (binding ${it.binding})" }
-            ins.images.filter { it.set == 0 }.forEach { illegal += "storage image '${it.name}' (binding ${it.binding})" }
-        }
-
-        if (illegal.isNotEmpty()) {
-            val msg = buildString {
-                appendLine("set=0 is reserved for the global bindless sampled-image array (binding 0) and a single sampler binding (binding 1).")
-                appendLine("These declarations in set=0 are not allowed:")
-                illegal.forEach { appendLine("  - $it") }
-                appendLine("Fix: move them to set>=1, or sample via the global array at set=0.")
-            }
-            throw IllegalArgumentException(msg)
-        }
-
-        val allTexturesSet0 = (ti.textures + mi.textures + fi.textures).filter { it.set == 0 }
-        if (allTexturesSet0.isNotEmpty()) {
-            val distinctBindings = allTexturesSet0.map { it.binding }.toSet()
-            if (distinctBindings.size != 1 || distinctBindings.first() != 0) {
-                val msg = buildString {
-                    appendLine("set=0 sampled images must use **binding 0** across all stages.")
-                    appendLine("Found bindings: ${distinctBindings.sorted()}")
-                    appendLine("Fix: declare textures at set=0,binding=0 (sampler is set=0,binding=1).")
-                }
-                throw IllegalArgumentException(msg)
-            }
-        }
-
-        val allSet0Samplers = (ti.samplers + mi.samplers + fi.samplers).filter { it.set == 0 }
-        if (allSet0Samplers.isNotEmpty()) {
-            val samplerBindings = allSet0Samplers.map { it.location }.toSet()
-            if (samplerBindings.size != 1 || samplerBindings.first() != 1) {
-                val msg = buildString {
-                    appendLine("set=0 separate samplers must use **binding 1** across all stages.")
-                    appendLine("Found sampler bindings: ${samplerBindings.sorted()}")
-                    appendLine("Fix: declare the sampler at set=0,binding=1.")
-                }
-                throw IllegalArgumentException(msg)
-            }
-        }
-    }
 }

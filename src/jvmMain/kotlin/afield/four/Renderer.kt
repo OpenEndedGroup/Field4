@@ -11,7 +11,6 @@ import afield.four.modules.ModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
 import afield.four.texture.ImageView
-import afield.four.texture.TextureSampler
 import afield.four.util.MapOfSequences
 import afield.four.util.Options
 import afield.four.util.Window
@@ -26,7 +25,6 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
 import org.lwjgl.vulkan.VK13.*
-import org.lwjgl.vulkan.VkPhysicalDeviceProperties
 import java.lang.ref.ReferenceQueue
 import kotlin.coroutines.coroutineContext
 import org.lwjgl.vulkan.VK13.vkQueueSubmit2
@@ -68,8 +66,6 @@ object CPUSpan {
 
 class Renderer(val window: Window) {
 
-    /** Max descriptors for the global bindless texture array (set=0, binding=0). */
-    private val BINDLESS_MAX_TEXTURES: Int = Options.bindlessTextureCap
     // --- Core Vulkan objects ---
     val commandPool: CommandPool
     val computeCommandPool: CommandPool
@@ -104,20 +100,6 @@ class Renderer(val window: Window) {
     var renderStart = MapOfSequences<String>()
     var renderEnd = MapOfSequences<String>()
     var currentCommandBuffer: CommandBuffer? = null
-
-    // --- Global bindless (set=0) ---
-    /** Descriptor set layout for the global bindless sampled-image array + separate sampler (set=0). */
-    private lateinit var globalTextureSetLayout: DescriptorSetLayout.SimpleDescriptorSetLayout
-    /** Descriptor set instance for set=0. */
-    private lateinit var globalTextureSet: DescriptorSet.SimpleDescriptorSet
-    /** Expose as `set0Layout` for modules to reference in their pipeline layouts. */
-    val set0Layout: DescriptorSetLayout.SimpleDescriptorSetLayout get() = globalTextureSetLayout
-
-    /** Bindings inside set=0 */
-    private val globalSampledImageBinding: Int = 0  // SAMPLED_IMAGE[]
-    private val globalSamplerBinding: Int = 1       // SAMPLER
-    /** The set index for the global bindless textures (always 0 here). */
-    private val globalTextureSetIndex: Int = 0
 
     // Profiling
     private var profiler: GpuProfiler? = null
@@ -212,66 +194,6 @@ class Renderer(val window: Window) {
             device.nameObject(a.imageView.vkImageView, VK10.VK_OBJECT_TYPE_IMAGE_VIEW, "DepthView[$i]")
         }
 
-        MemoryStack.stackPush().use { s ->
-            val props = VkPhysicalDeviceProperties.calloc(s)
-            VK10.vkGetPhysicalDeviceProperties(physicalDevice.vkPhysicalDevice, props)
-            val lim = props.limits()
-
-            // We size the array by the *sampled-image* budgets only (sampler is a single binding).
-            val perStageSampledImageCap = lim.maxPerStageDescriptorSampledImages()
-            val setSampledImageCap      = lim.maxDescriptorSetSampledImages()
-
-            // For logging only (not used to clamp array size)
-            val perStageSamplerCap = lim.maxPerStageDescriptorSamplers()
-            val setSamplerCap      = lim.maxDescriptorSetSamplers()
-
-            val requested = BINDLESS_MAX_TEXTURES
-            val safeImageCap = maxOf(
-                1,
-                minOf(requested, perStageSampledImageCap, setSampledImageCap)
-            )
-
-            // Include stages where you need sampling from the global set.
-            var set0Stages = VK10.VK_SHADER_STAGE_FRAGMENT_BIT or
-                    VK10.VK_SHADER_STAGE_COMPUTE_BIT  or
-                    VK10.VK_SHADER_STAGE_VERTEX_BIT
-            if (device.enableMeshShading) {
-                set0Stages = set0Stages or
-                        org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT or
-                        org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
-            }
-
-            if (safeImageCap < requested) {
-                println(
-                    "Renderer: clamping global sampled-image array from $requested to $safeImageCap " +
-                            "(perStageSampled=$perStageSampledImageCap, setSampled=$setSampledImageCap; " +
-                            "sampler budgets: perStage=$perStageSamplerCap, set=$setSamplerCap)"
-                )
-            }
-
-            // set=0 has two bindings:
-            //   binding 0: SAMPLED_IMAGE[]  (array, PARTIALLY_BOUND)
-            //   binding 1: SAMPLER          (single)
-            globalTextureSetLayout = DescriptorSetLayout.SimpleDescriptorSetLayout(
-                device = device,
-                descriptorType = listOf(
-                    VK10.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                    VK10.VK_DESCRIPTOR_TYPE_SAMPLER
-                ),
-                set = globalTextureSetIndex,                            // 0
-                binding = listOf(globalSampledImageBinding, globalSamplerBinding), // 0,1
-                stage = set0Stages,
-                descriptorCount = listOf(safeImageCap, 1),
-                enablePartiallyBound = true,     // sparse bindless array
-                variableBindingIndex = -1,       // keep static-sized for now
-                enableUpdateAfterBind = false    // pool not created with UAB; flip when you add it
-            )
-            globalTextureSet = globalTextureSetLayout.makeDescriptorSet(device.pool)
-
-            device.nameObject(globalTextureSetLayout.vkDescriptorLayout, VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Set0 BindlessLayout")
-            device.nameObject(globalTextureSet.vkDescriptorSet,           VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET,       "Set0 BindlessSet")
-        }
-
         if (Options.profiling) {
             val opts = ProfilingOptions(
                 enabled = true,
@@ -291,49 +213,11 @@ class Renderer(val window: Window) {
         }
     }
 
-    /** Update the global bindless sampled-image array (set=0, binding=0). */
-    fun updateGlobalSampledImages(textures: Array<ImageView>) {
-        globalTextureSet.updateSampledImages(globalSampledImageBinding, textures)
-    }
-
-    /** Update the global sampler (set=0, binding=1). */
-    fun updateGlobalSampler(sampler: TextureSampler) {
-        globalTextureSet.updateSampler(globalSamplerBinding, sampler)
-    }
-
-    /** Back-compat shim: fills both the array and the single sampler binding. */
-    @Deprecated("Call updateGlobalSampledImages(...) and updateGlobalSampler(...) separately.")
-    fun updateGlobalTextures(textures: Array<ImageView>, sampler: TextureSampler) {
-        updateGlobalSampledImages(textures)
-        updateGlobalSampler(sampler)
-    }
-
-    /**
-     * Bind the global set=0 (images + sampler) for a given pipeline layout.
-     * Call this from modules that sample from the global set.
-     */
-    fun bindGlobalSet0(command: CommandBuffer, pipelineLayout: Long, bindPoint: Int = VK10.VK_PIPELINE_BIND_POINT_GRAPHICS) {
-        MemoryStack.stackPush().use { stack ->
-            val sets = stack.longs(globalTextureSet.vkDescriptorSet)
-            VK10.vkCmdBindDescriptorSets(
-                command.vkCommandBuffer,
-                bindPoint,
-                pipelineLayout,
-                /* firstSet = */ 0,
-                sets,
-                null
-            )
-        }
-    }
-
     fun cleanup() {
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
         profiler?.destroy()
-        if (this::globalTextureSetLayout.isInitialized) {
-            globalTextureSetLayout.cleanup()
-        }
         pipelineCache.cleanup()
         commandPool.cleanup()
         swapChain.cleanup()

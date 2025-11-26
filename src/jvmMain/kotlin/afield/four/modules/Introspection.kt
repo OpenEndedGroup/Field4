@@ -379,6 +379,23 @@ class Introspection(
                     }
                 }
             }
+            // Enforce contiguous descriptor sets starting at 0 so pipeline layouts can be built deterministically.
+            run {
+                val sets = mutableSetOf<Int>()
+                sets += ubos.map { it.set }
+                sets += ssbo.map { it.set }
+                sets += textures.map { it.set }
+                sets += images.map { it.set }
+                sets += samplers.map { it.set }
+                if (sets.isNotEmpty()) {
+                    val minSet = sets.minOrNull()!!
+                    val maxSet = sets.maxOrNull()!!
+                    require(minSet == 0 && sets.size == maxSet + 1) {
+                        "Descriptor sets must be contiguous starting at set=0 (found sets=${sets.sorted()})"
+                    }
+                }
+            }
+
             valid = true
         } catch (e: CompilerError) {
             errorHandler(e.message, e)
@@ -410,4 +427,3 @@ class Introspection(
         }
     }
 }
-

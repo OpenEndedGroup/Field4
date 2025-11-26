@@ -1,13 +1,26 @@
 package afield.four.device
 
-import afield.four.device.DescriptorSet.SimpleDescriptorSet
+import afield.four.buffers.BufferParameters
+import afield.four.modules.Introspected
 import afield.four.util.vkCheck
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.KHRPushDescriptor
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK12.* // descriptor indexing enums/structs promoted to core in 1.2
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBindingFlagsCreateInfo
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo
+
+interface UpdatesDescriptorSet {
+    val binding: Introspected.Bindable
+    val source: BufferParameters?
+    fun pushDescriptorSet(
+        command: CommandBuffer,
+        pipelineLayout: Long,
+        bindPoint: Int = VK_PIPELINE_BIND_POINT_GRAPHICS
+    )
+}
+
 
 abstract class DescriptorSetLayout protected constructor(private val device: Device) {
     var vkDescriptorLayout: Long = 0
@@ -41,7 +54,8 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
         val enablePartiallyBound: Boolean = true,
         val variableBindingIndex: Int = -1,
         val enableUpdateAfterBind: Boolean = false,
-        val immutableSamplers: Map<Int, LongArray>? = null
+        val immutableSamplers: Map<Int, LongArray>? = null,
+        val pushDescriptor: Boolean = false
     ) : DescriptorSetLayout(device) {
 
         init {
@@ -73,6 +87,16 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
                 val declaredCount = descriptorCount[idx]
                 require(samplers.size == declaredCount) {
                     "immutableSamplers count (${samplers.size}) must match descriptorCount ($declaredCount) for binding=$vkBinding"
+                }
+            }
+
+            if (pushDescriptor) {
+                require(device.supportsPushDescriptors) {
+                    "VK_KHR_push_descriptor not supported on this device"
+                }
+                val totalDescriptors = descriptorCount.sum()
+                require(totalDescriptors <= device.pushDescriptorMax) {
+                    "Requested $totalDescriptors push descriptors, but device maxPushDescriptors=${device.pushDescriptorMax}"
                 }
             }
 
@@ -126,6 +150,9 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
                 if (enableUpdateAfterBind) {
                     layoutInfo.flags(layoutInfo.flags() or VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT)
                 }
+                if (pushDescriptor) {
+                    layoutInfo.flags(layoutInfo.flags() or KHRPushDescriptor.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR)
+                }
                 if (flagsBuf != null) {
                     layoutInfo.pNext(flagsBuf.address())
                 }
@@ -142,16 +169,8 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
         override fun toString(): String {
             return "SimpleDescriptorSetLayout(set=$set, binding=$binding, types=$descriptorType, " +
                     "count=$descriptorCount, varIdx=$variableBindingIndex, stage=$stage, " +
-                    "updateAfterBind=$enableUpdateAfterBind, partiallyBound=$enablePartiallyBound)"
+                    "updateAfterBind=$enableUpdateAfterBind, partiallyBound=$enablePartiallyBound, " +
+                    "pushDescriptor=$pushDescriptor)"
         }
-
-        /**
-         * Allocate a descriptor set.
-         * @param pool the pool
-         * @param variableCount actual count for the variable binding (if [variableBindingIndex] >= 0).
-         *        If null, LWJGL/Vulkan will use the layout's descriptorCount for that binding.
-         */
-        fun makeDescriptorSet(pool: DescriptorPool, variableCount: Int? = null): SimpleDescriptorSet =
-            SimpleDescriptorSet(device, pool, this, variableCount)
     }
 }

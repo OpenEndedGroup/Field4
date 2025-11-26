@@ -9,8 +9,6 @@ import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.device.*
-import afield.four.device.DescriptorSet.SimpleDescriptorSet
-import afield.four.device.DescriptorSet.UpdatesDescriptorSet
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.buffers.linkBuffer
 import afield.four.modules.Introspected.Bindable
@@ -26,8 +24,8 @@ import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.KHRPushDescriptor.vkCmdPushDescriptorSetKHR
 import java.nio.ByteBuffer
-import kotlin.math.max
 import kotlin.reflect.KProperty
 
 data class Parameters(
@@ -179,51 +177,150 @@ class Module(val parameters: Parameters) : Renderable {
     class Uniform(
         val name: String,
         override val binding: Bindable,
-        override var target: SimpleDescriptorSet,
         override var source: BufferParameters? = null,
         val buffer: FrameBufferGroup,
         val kind: Int = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
     ) : UpdatesDescriptorSet {
-        override fun updateDescriptorSet() {
-            target.updateBuffer(binding.binding, buffer.get(), kind)
+        override fun pushDescriptorSet(
+            command: CommandBuffer,
+            pipelineLayout: Long,
+            bindPoint: Int
+        ) {
+            MemoryStack.stackPush().use { stack ->
+                val targetBuffer = buffer.get()
+                val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack)
+                    .buffer(targetBuffer.buffer)
+                    .offset(0)
+                    .range(targetBuffer.requestedSize)
+
+                val write = VkWriteDescriptorSet.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding)
+                    .dstArrayElement(0)
+                    .descriptorType(kind)
+                    .descriptorCount(1)
+                    .pBufferInfo(bufferInfo)
+
+                vkCmdPushDescriptorSetKHR(
+                    command.vkCommandBuffer,
+                    bindPoint,
+                    pipelineLayout,
+                    binding.set,
+                    write
+                )
+            }
         }
     }
 
     class TexturePointer(
         val name: String,
         override val binding: Bindable,
-        override var target: SimpleDescriptorSet,
         override var source: BufferParameters? = null,
         val texture: ImageView,
         val sampler: TextureSampler,
     ) : UpdatesDescriptorSet {
-        override fun updateDescriptorSet() {
-            target.updateTexture(binding.binding, texture, sampler)
+        override fun pushDescriptorSet(
+            command: CommandBuffer,
+            pipelineLayout: Long,
+            bindPoint: Int
+        ) {
+            MemoryStack.stackPush().use { stack ->
+                val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
+                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .imageView(texture.vkImageView)
+                    .sampler(sampler.vkSampler)
+
+                val write = VkWriteDescriptorSet.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding)
+                    .dstArrayElement(0)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .descriptorCount(1)
+                    .pImageInfo(imageInfo)
+
+                vkCmdPushDescriptorSetKHR(
+                    command.vkCommandBuffer,
+                    bindPoint,
+                    pipelineLayout,
+                    binding.set,
+                    write
+                )
+            }
         }
     }
 
     class TextureArrayPointer(
         val name: String,
         override val binding: Bindable,
-        override var target: SimpleDescriptorSet,
         override var source: BufferParameters? = null,
         val texture: Array<ImageView>,
         val sampler: TextureSampler,
     ) : UpdatesDescriptorSet {
-        override fun updateDescriptorSet() {
-            target.updateTextures(binding.binding, texture, sampler)
+        override fun pushDescriptorSet(
+            command: CommandBuffer,
+            pipelineLayout: Long,
+            bindPoint: Int
+        ) {
+            MemoryStack.stackPush().use { stack ->
+                val infos = VkDescriptorImageInfo.calloc(texture.size, stack)
+                for (i in texture.indices) {
+                    infos[i]
+                        .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .imageView(texture[i].vkImageView)
+                        .sampler(sampler.vkSampler)
+                }
+
+                val write = VkWriteDescriptorSet.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding)
+                    .dstArrayElement(0)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .descriptorCount(texture.size)
+                    .pImageInfo(infos)
+
+                vkCmdPushDescriptorSetKHR(
+                    command.vkCommandBuffer,
+                    bindPoint,
+                    pipelineLayout,
+                    binding.set,
+                    write
+                )
+            }
         }
     }
 
     class ImagePointer(
         val name: String,
         override val binding: Bindable,
-        override var target: SimpleDescriptorSet,
         override var source: BufferParameters? = null,
         val texture: ImageView,
     ) : UpdatesDescriptorSet {
-        override fun updateDescriptorSet() {
-            target.updateImage(binding.binding, texture)
+        override fun pushDescriptorSet(
+            command: CommandBuffer,
+            pipelineLayout: Long,
+            bindPoint: Int
+        ) {
+            MemoryStack.stackPush().use { stack ->
+                val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
+                    .imageLayout(VK_IMAGE_LAYOUT_GENERAL)
+                    .imageView(texture.vkImageView)
+
+                val write = VkWriteDescriptorSet.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding)
+                    .dstArrayElement(0)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .descriptorCount(1)
+                    .pImageInfo(imageInfo)
+
+                vkCmdPushDescriptorSetKHR(
+                    command.vkCommandBuffer,
+                    bindPoint,
+                    pipelineLayout,
+                    binding.set,
+                    write
+                )
+            }
         }
     }
 
@@ -241,9 +338,6 @@ class Module(val parameters: Parameters) : Renderable {
         try {
             if (!vi.valid || !fi.valid) throw IllegalStateException("Can't make a module without valid programs")
 
-            // Reserve set=0 for the global bindless sampled-image array (+ sampler). Validate shaders.
-            validateAndReserveSet0(vi, fi)
-
             vsm = createShaderModule(vi.code.bytecode()!!)
             fsm = createShaderModule(fi.code.bytecode()!!)
 
@@ -253,23 +347,15 @@ class Module(val parameters: Parameters) : Renderable {
 
             val setsNeeded = mutableMapOf<Int, MutableList<Int>>()
 
-            // Build per-module sets for set >= 1 only (set=0 is global)
-            vi.ubos.forEach { if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.ubos.forEach { if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            vi.ssbo.forEach { if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.ssbo.forEach { if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            vi.textures.forEach {
-                if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding)
-            }
-            fi.textures.forEach {
-                if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding)
-            }
-            vi.images.forEach {
-                if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding)
-            }
-            fi.images.forEach {
-                if (it.set != 0) setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding)
-            }
+            // Build per-module sets for all sets used (including set 0)
+            vi.ubos.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ubos.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            vi.ssbo.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ssbo.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            vi.textures.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.textures.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            vi.images.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.images.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
             // --- Dedup and sort per-set bindings (fix #2)
             if (setsNeeded.isNotEmpty()) {
@@ -287,7 +373,7 @@ class Module(val parameters: Parameters) : Renderable {
             vi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
 
-            val layouts = mutableMapOf<Int, Pair<SimpleDescriptorSetLayout, SimpleDescriptorSet>>()
+            val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 
             // Create layouts/sets for each set >= 1
             setsNeeded.entries.forEach { (set, bindingList) ->
@@ -364,10 +450,9 @@ class Module(val parameters: Parameters) : Renderable {
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
-                    parameters.renderer.device, kinds, set, bindingList, where, lens
+                    parameters.renderer.device, kinds, set, bindingList, where, lens, pushDescriptor = true
                 )
-                val descriptorSet = layout.makeDescriptorSet(parameters.renderer.device.pool)
-                layouts[set] = layout to descriptorSet
+                layouts[set] = layout
             }
 
             // UBOs (sets >= 1)
@@ -386,7 +471,6 @@ class Module(val parameters: Parameters) : Renderable {
                 }
                 if (kind == 0) return@forEach
 
-                val (_, descriptorSet) = layouts.getValue(set)
                 tag.forEach {
                     var sz = (it as Introspected.UBO).size.toLong()
                     val bp = buffer(it, it.name) {
@@ -395,7 +479,7 @@ class Module(val parameters: Parameters) : Renderable {
                     val buf = parameters.uboResolver(bp)
                         ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     try {
-                        uniforms[it.name] = Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), kind)
+                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(), kind)
                     } catch (_: NullPointerException) {
                         throw IllegalArgumentException("UBO ${it.name}, no longer resolves")
                     }
@@ -418,7 +502,6 @@ class Module(val parameters: Parameters) : Renderable {
                 }
                 if (kind == 0) return@forEach
 
-                val (_, descriptorSet) = layouts.getValue(set)
                 tag.forEach {
                     var sz = (it as Introspected.UBO).size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
@@ -428,7 +511,7 @@ class Module(val parameters: Parameters) : Renderable {
                     val buf = parameters.ssboResolver(bp)
                         ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
                     try {
-                        uniforms[it.name] = Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, kind)
+                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.buffer, kind)
                     } catch (_: NullPointerException) {
                         throw IllegalArgumentException("buffer ${it.name} resolved to null")
                     }
@@ -451,18 +534,17 @@ class Module(val parameters: Parameters) : Renderable {
                 }
                 if (kind == 0) return@forEach
 
-                val (_, descriptorSet) = layouts.getValue(set)
                 tag.forEach {
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
                     if (it.arrayCount == 0) {
                         uniforms[it.name] =
-                            TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                            TexturePointer(it.name, it, source = null, texture[0], sampler)
                     } else {
                         require(texture.size == it.arrayCount) {
                             "can't link texture resource ${it.name} of length ${texture.size} but the shader expects ${it.arrayCount}"
                         }
                         uniforms[it.name] =
-                            TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
+                            TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
                 }
             }
@@ -483,14 +565,11 @@ class Module(val parameters: Parameters) : Renderable {
                 }
                 if (kind == 0) return@forEach
 
-                val (_, descriptorSet) = layouts.getValue(set)
                 tag.forEach {
                     val image = parameters.imageResolver(it as Introspected.Image)!!
-                    uniforms[it.name] = ImagePointer(it.name, it, descriptorSet, source = null, image)
+                    uniforms[it.name] = ImagePointer(it.name, it, source = null, image)
                 }
             }
-
-            uniforms.values.forEach { it.updateDescriptorSet() }
 
             // --- Vertex input (unchanged)
             vertexInputAttributes = VkVertexInputAttributeDescription.calloc(vi.inputs.size)
@@ -593,27 +672,23 @@ class Module(val parameters: Parameters) : Renderable {
                         .offset(0).size(pushConstantSize)
                 }
 
-                // ---- Build pipeline layout including global set=0
-                val moduleHighestSet = if (layouts.isEmpty()) 0 else layouts.keys.maxOrNull()!!
-                val highestSet = max(0, moduleHighestSet) // ensure room for set 0
-
-                val ppLayout = stack.callocLong(highestSet + 1)
-                // Always put the global set 0 at index 0
-                ppLayout.put(0, parameters.renderer.set0Layout.vkDescriptorLayout)
-
-                // Require contiguous sets from 1..highestSet for module-local sets
-                for (s in 1..highestSet) {
-                    val pair = layouts[s]
-                        ?: throw IllegalArgumentException(
-                            "Pipeline layout is missing descriptor set $s (set 0 is reserved globally). " +
-                                    "Make your module sets contiguous starting at set=1."
-                        )
-                    ppLayout.put(s, pair.first.vkDescriptorLayout)
+                // ---- Build pipeline layout for module-owned sets (starting at 0)
+                val highestSet = layouts.keys.maxOrNull() ?: -1
+                val ppLayout = if (highestSet >= 0) stack.callocLong(highestSet + 1) else null
+                if (highestSet >= 0) {
+                    ppLayout?.let { buf ->
+                        for (s in 0..highestSet) {
+                            val layout = layouts[s] ?: throw IllegalArgumentException(
+                                "Pipeline layout is missing descriptor set $s. Make sets contiguous starting at set=0."
+                            )
+                            buf.put(s, layout.vkDescriptorLayout)
+                        }
+                    }
                 }
 
                 val pli = VkPipelineLayoutCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                    .pSetLayouts(ppLayout)
+                ppLayout?.let { pli.pSetLayouts(it) }
                 vpcr?.let { pli.pPushConstantRanges(it) }
 
                 val lp = stack.mallocLong(1)
@@ -715,10 +790,6 @@ class Module(val parameters: Parameters) : Renderable {
 
                 VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
 
-
-                // Bind the global set=0 (sampled-image array + sampler) once for this pipeline layout
-                renderer.bindGlobalSet0(command, pipelineLayout)
-
                 val viewportNow = parameters.viewport ?: Rect(0.0, 0.0, bounds.lengthX().d, bounds.lengthY().d)
                 val viewport = VkViewport.calloc(1, stack)
                     .x(viewportNow.x.f)
@@ -737,23 +808,8 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
 
-                if (uniforms.isNotEmpty()) {
-                    val uniqueSets = uniforms.values.map { it.binding.set }.toSet()
-                    val firstSet = uniqueSets.minOrNull()!!
-                    val lastSet = uniqueSets.maxOrNull()!!
-                    val setCount = lastSet - firstSet + 1
-
-                    // zeroed + absolute puts (fix #4)
-                    val descriptorSets = stack.callocLong(setCount)
-                    uniforms.values.forEach { upd ->
-                        val slot = upd.binding.set - firstSet
-                        descriptorSets.put(slot, upd.target.vkDescriptorSet)
-                    }
-                    descriptorSets.position(0)
-
-                    vkCmdBindDescriptorSets(
-                        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, firstSet, descriptorSets, null
-                    )
+                uniforms.values.forEach { upd ->
+                    upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)
                 }
 
                 liveUniformStructures.forEach { (name, structure) ->
@@ -817,59 +873,6 @@ class Module(val parameters: Parameters) : Renderable {
         m.second.inside = this.pointer()
     }
 
-    /**
-     * set=0 is reserved for: sampled-image array (binding=0) and a single sampler binding (binding=1).
-     * No UBO/SSBO/storage image in set=0.
-     */
-    private fun validateAndReserveSet0(vi: Introspection, fi: Introspection) {
-        val illegalSet0 = mutableListOf<String>()
-
-        // Disallow anything but sampled images / sampler at set=0
-        vi.ubos.filter { it.set == 0 }.forEach { illegalSet0 += "UBO '${it.name}' (binding ${it.binding})" }
-        fi.ubos.filter { it.set == 0 }.forEach { illegalSet0 += "UBO '${it.name}' (binding ${it.binding})" }
-        vi.ssbo.filter { it.set == 0 }.forEach { illegalSet0 += "SSBO '${it.name}' (binding ${it.binding})" }
-        fi.ssbo.filter { it.set == 0 }.forEach { illegalSet0 += "SSBO '${it.name}' (binding ${it.binding})" }
-        vi.images.filter { it.set == 0 }.forEach { illegalSet0 += "storage image '${it.name}' (binding ${it.binding})" }
-        fi.images.filter { it.set == 0 }.forEach { illegalSet0 += "storage image '${it.name}' (binding ${it.binding})" }
-
-        if (illegalSet0.isNotEmpty()) {
-            val msg = buildString {
-                appendLine("set=0 is reserved for the global bindless sampled-image array (binding 0) and a single sampler binding (binding 1).")
-                appendLine("These declarations in set=0 are not allowed:")
-                illegalSet0.forEach { appendLine("  - $it") }
-                appendLine("Fix: move them to set>=1.")
-            }
-            throw IllegalArgumentException(msg)
-        }
-
-        // Sampled images in set=0 must be binding 0
-        val set0Textures = (vi.textures + fi.textures).filter { it.set == 0 }
-        if (set0Textures.isNotEmpty()) {
-            val distinctBindings = set0Textures.map { it.binding }.toSet()
-            if (distinctBindings.size != 1 || distinctBindings.first() != 0) {
-                val msg = buildString {
-                    appendLine("set=0 sampled images must use **binding 0** (global array).")
-                    appendLine("Found bindings: ${distinctBindings.sorted()}")
-                    appendLine("Fix: declare textures at set=0,binding=0 (the sampler is set=0,binding=1).")
-                }
-                throw IllegalArgumentException(msg)
-            }
-        }
-
-        // Separate samplers in set=0 must be binding 1
-        val set0Samplers = (vi.samplers + fi.samplers).filter { it.set == 0 }
-        if (set0Samplers.isNotEmpty()) {
-            val samplerBindings = set0Samplers.map { it.location }.toSet()
-            if (samplerBindings.size != 1 || samplerBindings.first() != 1) {
-                val msg = buildString {
-                    appendLine("set=0 separate samplers must use **binding 1** (single global sampler binding).")
-                    appendLine("Found sampler bindings: ${samplerBindings.sorted()}")
-                    appendLine("Fix: declare the sampler at set=0,binding=1 (textures at set=0,binding=0).")
-                }
-                throw IllegalArgumentException(msg)
-            }
-        }
-    }
 }
 
 // ---------- helper (unchanged) ----------

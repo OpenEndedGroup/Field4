@@ -1,21 +1,26 @@
 package afield.four.device
 
-import afield.four.device.DescriptorPool.DescriptorTypeCount
 import afield.four.device.Instance.Companion.getOpenVRRequiredDeviceExts
 import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import org.lwjgl.vulkan.KHRPushDescriptor
+import org.lwjgl.vulkan.VkPhysicalDevicePushDescriptorPropertiesKHR
+import org.lwjgl.vulkan.VkPhysicalDeviceProperties2
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_KHR
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
+import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
 
 class Device(val physicalDevice: PhysicalDevice) {
     val vkDevice: VkDevice
-    val pool: DescriptorPool
+    val supportsPushDescriptors: Boolean
+    val pushDescriptorMax: Int
 
     var usePresentIndexing = !Options.isMac
     var enableMeshShading = !Options.isMac
@@ -39,6 +44,8 @@ class Device(val physicalDevice: PhysicalDevice) {
             val hasPerfQuery = hasExt(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
             val hasHostQueryReset = hasExt(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
             val hasCalibrated = hasExt(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
+            val hasPushDescriptor = hasExt(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
+            supportsPushDescriptors = hasPushDescriptor
 
             // Build extension list defensively.
             val extNames = ArrayList<String>(12).apply {
@@ -47,6 +54,7 @@ class Device(val physicalDevice: PhysicalDevice) {
                 addIfSupported(KHRDepthStencilResolve.VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
                 addIfSupported(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
                 addIfSupported(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)
+                addIfSupported(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
 
                 if (enableMeshShading) {
                     add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
@@ -196,21 +204,17 @@ class Device(val physicalDevice: PhysicalDevice) {
             vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, ci, null, pDev), "Failed to create device")
             vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
 
-            // Descriptor pool (tuned for current usage).
-            // NOTE: If you later enable any *UpdateAfterBind feature(s) above and create layouts with
-            // VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, your pool must be created with
-            // VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT. Adjust DescriptorPool accordingly.
-            pool = DescriptorPool(
-                this, listOf(
-                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-
-                    DescriptorTypeCount(Options.bindlessTextureCap, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                    DescriptorTypeCount(8, VK_DESCRIPTOR_TYPE_SAMPLER)
-                )
-            )
+            // Query push-descriptor limits (0 if unsupported)
+            pushDescriptorMax = if (hasPushDescriptor) {
+                val props2 = VkPhysicalDeviceProperties2.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2)
+                val pushProps = VkPhysicalDevicePushDescriptorPropertiesKHR.calloc(stack)
+                    .sType(KHRPushDescriptor.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR)
+                props2.pNext(pushProps.address().toLong())
+                vkGetPhysicalDeviceProperties2(physicalDevice.vkPhysicalDevice, props2)
+                pushProps.maxPushDescriptors()
+            } else 0
+            println("Device push descriptors: supported=$supportsPushDescriptors, maxPushDescriptors=$pushDescriptorMax")
         }
     }
 

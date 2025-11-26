@@ -23,10 +23,7 @@ object Options {
     val useVulkanSDK = true
     val robustness = false
     val profiling = false
-<<<<<<< HEAD
-    val enableVR = false
-=======
->>>>>>> 4866be3 (major debugging / introspection / keyframe push; major timing and profiling and validation push for Four)
+    val enableVR = true && !isMac
 
     fun doVulkanSDK() {
         if (useVulkanSDK && isMac) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
