@@ -1,6 +1,7 @@
 package afield.four.targets
 
 import org.joml.primitives.Rectanglef
+import afield.Rect
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 import org.lwjgl.vulkan.KHRDynamicRendering
@@ -169,11 +170,15 @@ class RenderTarget(val renderer: Renderer) : Target {
             // Begin/End dynamic rendering (KHR)
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
+            val fullRect = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
+
             modules.forEach { (_, mp) ->
+                setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)
                 mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
             }
 
             meshModules.forEach { (_, mp) ->
+                setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)
                 mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
             }
 
@@ -196,5 +201,24 @@ class RenderTarget(val renderer: Renderer) : Target {
 
         // Render any chained targets after we've finished this one
         others.forEach { it.value.render(command, index) }
+    }
+
+    private fun setViewportAndScissor(cmd: VkCommandBuffer, rect: Rect, stack: MemoryStack) {
+        val viewport = VkViewport.calloc(1, stack)
+            .x(rect.x.toFloat())
+            .y((rect.y + rect.h).toFloat()) // flip Y
+            .height((-rect.h).toFloat())
+            .width(rect.w.toFloat())
+            .minDepth(0f).maxDepth(1f)
+        VK10.vkCmdSetViewport(cmd, 0, viewport)
+
+        val scissor = VkRect2D.calloc(1, stack)
+            .extent(
+                VkExtent2D.calloc(stack)
+                    .width(rect.w.toInt())
+                    .height(rect.h.toInt())
+            )
+            .offset(VkOffset2D.calloc(stack).x(rect.x.toInt()).y(rect.y.toInt()))
+        VK10.vkCmdSetScissor(cmd, 0, scissor)
     }
 }

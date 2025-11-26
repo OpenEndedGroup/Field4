@@ -235,6 +235,7 @@ class FLine : HasProperties {
         nodes.forEach {
             r.nodes.add(it.copy(by))
         }
+        r.properties.putAll(properties)
         return r
     }
 
@@ -247,6 +248,10 @@ class FLine : HasProperties {
     }
 
     operator fun times(n: Vec3): FLine {
+        return transform { it * n }
+    }
+
+    operator fun times(n: Number): FLine {
         return transform { it * n }
     }
 

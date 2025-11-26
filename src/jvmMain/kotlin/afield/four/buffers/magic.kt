@@ -59,6 +59,8 @@ class BufferParameters(
 
     val customize = mutableListOf<BufferParameters.() -> Unit>()
 
+    var inlined = false
+
     var size: Long = 0
     var usage: Int = 0
     var memory: Int = 0
@@ -69,6 +71,10 @@ class BufferParameters(
 
     fun storage() {
         usage = usage or VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    }
+
+    fun inlined() {
+        this.inlined = true
     }
 
     fun addressable() {
@@ -120,7 +126,7 @@ class BufferParameters(
         result.customize.forEach { result.it() }
 
         //TODO — zeroed? binding?
-        return result.usage == usage && result.memory == memory && result.size == size
+        return result.usage == usage && result.memory == memory && result.size == size && result.inlined == inlined
     }
 
     fun store(): BufferParameters {
@@ -140,6 +146,11 @@ class BufferParameters(
         get() = toBuffer()
 
     fun toBuffer(renderer: Renderer = fromContext()): FrameBufferGroup {
+
+        if (inlined && (usage and VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT !=0)) {
+            throw RuntimeException("Cannot have a descriptor push buffer that is also gpu addressable")
+        }
+
         if (result != null) {
             if (checkCompatibility(result!!.get().source)) {
                 return result!!
@@ -152,7 +163,7 @@ class BufferParameters(
 
         val buffer = FrameBufferGroup(renderer, n = if (perFrame) renderer.numImages else 1)
         buffer.build {
-            val buffer = VulkanBuffer(renderer, size, usage, memory, needsDeviceAddress = needsDeviceAddress)
+            val buffer = VulkanBuffer(renderer, size, usage, memory, needsDeviceAddress = needsDeviceAddress, cpuOnly = inlined)
             postAdaptation.forEach { it(buffer) }
             buffer
         }

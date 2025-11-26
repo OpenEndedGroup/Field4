@@ -8,6 +8,7 @@ import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
 import afield.four.texture.HasImageView
+import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
@@ -16,6 +17,7 @@ import afield.four.util.Options
 import afield.stdlib.Vec4
 import afield.stdlib.f
 import afield.stdlib.vec
+import afield.Rect
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
@@ -30,6 +32,10 @@ data class RTTParameters(
     var height: Int = 1024,
     var mipLevels: Int = 1,
     var format: Int = VK_FORMAT_B8G8R8A8_SRGB,
+    var colorAttachments: Int = 1,
+    var colorFormats: List<Int> = emptyList(),
+    var colorLayers: List<Int> = emptyList(),       // per-attachment layer count; 0/empty -> single layer
+    var viewports: List<afield.Rect> = emptyList(), // optional viewport array override
     var clearColor: Vec4 = vec(0, 0, 0, 1),
 
     // --- Color QoL ---
@@ -52,35 +58,38 @@ data class RTTParameters(
 )
 
 /**
- * single-buffered image (with multi-buffered commandbuffers).
+ * single-buffered offscreen target (with multi-buffered commandbuffers), supporting N color attachments.
  * Optional depth+stencil buffer for depth testing while rendering to texture.
  */
 class RenderToTexture(
     val renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
-) : Target, HasImageView {
+) : Target, HasImageView, HasImageViewArray {
 
     var parameters = RTTParameters().apply(parameters)
 
     override var imageView: ImageView
-    val imageData: ImageData
-    val image: Image
+    val colorImageData: List<ImageData>
+    val colorImages: List<Image>
+    override val imageViewArray: List<ImageView>
+    val colorFormats: List<Int>
+    val colorLayers: List<Int>
 
     // depth (optional)
     var depthImageView: ImageView? = null
     var depthImage: Image? = null
 
     // Track current layouts across frames (base color level and depth).
-    private var colorLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED   // tracks mip level 0
+    private var colorLayout: IntArray = intArrayOf()   // tracks mip level 0 per attachment
     private var depthLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
 
     // Track whether mips (levels 1..N-1) have ever been initialized (affects oldLayout for barriers)
-    private var colorMipsInitialized: Boolean = false
+    private var colorMipsInitialized: BooleanArray = booleanArrayOf()
 
     // Cached format capabilities & chosen filter
-    private var colorFormatCanBlit: Boolean = true
-    private var colorFormatLinearBlit: Boolean = true
-    private var chosenMipFilter: Int = this.parameters.mipBlitFilter
+    private var colorFormatCanBlit: BooleanArray = booleanArrayOf()
+    private var colorFormatLinearBlit: BooleanArray = booleanArrayOf()
+    private var chosenMipFilter: IntArray = intArrayOf()
 
     val width: Int get() = parameters.width
     val height: Int get() = parameters.height
@@ -94,44 +103,79 @@ class RenderToTexture(
     val numImages = renderer.swapChain.imageViews.size
 
     init {
-        // --- Query blit/filter support for the color format and pick a safe filter ---
+
+        val resolvedColorFormats =
+            if (this.parameters.colorFormats.isNotEmpty()) this.parameters.colorFormats
+            else List(this.parameters.colorAttachments) { this@RenderToTexture.parameters.format }
+        require(resolvedColorFormats.isNotEmpty()) { "RenderToTexture needs at least one color format" }
+        require(resolvedColorFormats.size == this.parameters.colorAttachments) {
+            "colorFormats size (${resolvedColorFormats.size}) must match colorAttachments (${this.parameters.colorAttachments})"
+        }
+        colorFormats = resolvedColorFormats
+        val resolvedLayers =
+            if (this.parameters.colorLayers.isNotEmpty()) this.parameters.colorLayers
+            else List(this.parameters.colorAttachments) { 1 }
+        require(resolvedLayers.size == this.parameters.colorAttachments) {
+            "colorLayers size (${resolvedLayers.size}) must match colorAttachments (${this.parameters.colorAttachments})"
+        }
+        colorLayers = resolvedLayers
+
+        // --- Query blit/filter support for each color format and pick a safe filter ---
         MemoryStack.stackPush().use { stack ->
-            val props = VkFormatProperties.calloc(stack)
-            vkGetPhysicalDeviceFormatProperties(renderer.device.physicalDevice.vkPhysicalDevice, this.parameters.format, props)
-            val feats = props.optimalTilingFeatures()
-            val canSrc = (feats and VK_FORMAT_FEATURE_BLIT_SRC_BIT) != 0
-            val canDst = (feats and VK_FORMAT_FEATURE_BLIT_DST_BIT) != 0
-            colorFormatCanBlit = canSrc && canDst
-            colorFormatLinearBlit = (feats and VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0
-            chosenMipFilter = when (this.parameters.mipBlitFilter) {
-                VK_FILTER_LINEAR -> if (colorFormatLinearBlit) VK_FILTER_LINEAR else VK_FILTER_NEAREST
-                else -> VK_FILTER_NEAREST
+            colorFormatCanBlit = BooleanArray(resolvedColorFormats.size)
+            colorFormatLinearBlit = BooleanArray(resolvedColorFormats.size)
+            chosenMipFilter = IntArray(resolvedColorFormats.size)
+            resolvedColorFormats.forEachIndexed { idx, fmt ->
+                val props = VkFormatProperties.calloc(stack)
+                vkGetPhysicalDeviceFormatProperties(renderer.device.physicalDevice.vkPhysicalDevice, fmt, props)
+                val feats = props.optimalTilingFeatures()
+                val canSrc = (feats and VK_FORMAT_FEATURE_BLIT_SRC_BIT) != 0
+                val canDst = (feats and VK_FORMAT_FEATURE_BLIT_DST_BIT) != 0
+                val canBlit = canSrc && canDst
+                colorFormatCanBlit[idx] = canBlit
+                colorFormatLinearBlit[idx] = (feats and VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0
+                chosenMipFilter[idx] = when (this.parameters.mipBlitFilter) {
+                    VK_FILTER_LINEAR -> if (colorFormatLinearBlit[idx]) VK_FILTER_LINEAR else VK_FILTER_NEAREST
+                    else -> VK_FILTER_NEAREST
+                }
             }
         }
 
-        // COLOR
+        // COLOR (one image/view per attachment)
         val wantsMips = this.parameters.mipLevels > 1 && this.parameters.generateColorMipmaps
-        val needsTransfer = wantsMips && colorFormatCanBlit
-        imageData = ImageData()
-            .width(width)
-            .height(height)
-            .usage(
-                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
-                        (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
-                        (if (needsTransfer) VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
-            )
-            .format(this.parameters.format)
-            .mipLevels(mipLevels)
-
-        image = Image(renderer.device, imageData)
-
-        val imageViewData: ImageViewData =
-            ImageViewData()
-                .format(image.format)
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+        colorImageData = resolvedColorFormats.mapIndexed { idx, fmt ->
+            val needsTransfer = wantsMips && colorFormatCanBlit[idx]
+            ImageData()
+                .width(width)
+                .height(height)
+                .arrayLayers(colorLayers[idx].coerceAtLeast(1))
+                .usage(
+                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
+                            (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
+                            (if (needsTransfer) VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
+                )
+                .format(fmt)
                 .mipLevels(mipLevels)
+        }
 
-        imageView = ImageView(renderer.device, image.vkImage, imageViewData)
+        colorImages = colorImageData.map { Image(renderer.device, it) }
+
+        val imageViewData = colorImageData.map {
+            ImageViewData()
+                .format(it.format)
+                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .layerCount(it.arrayLayers)
+                .mipLevels(mipLevels)
+        }
+
+        imageViewArray = colorImages.zip(imageViewData).map { (img, ivd) ->
+            // pick array view type if needed
+            if (ivd.layerCount > 1) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+            ImageView(renderer.device, img.vkImage, ivd)
+        }
+        imageView = imageViewArray.first()
+        colorLayout = IntArray(colorImages.size) { VK_IMAGE_LAYOUT_UNDEFINED }
+        colorMipsInitialized = BooleanArray(colorImages.size) { false }
 
         // DEPTH+STENCIL (optional)
         if (this.parameters.useDepth) {
@@ -179,41 +223,44 @@ class RenderToTexture(
                 .layerCount(VK_REMAINING_ARRAY_LAYERS)
 
             // Initial COLOR transition for mip 0 based on tracked layout + ops
-            if (!parameters.clearFirst) {
-                val (srcStage, srcAccess) = when (colorLayout) {
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
-                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-                    else ->
-                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
+            colorImages.forEachIndexed { idx, img ->
+                val layout = colorLayout[idx]
+                if (!parameters.clearFirst) {
+                    val (srcStage, srcAccess) = when (layout) {
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
+                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                        else ->
+                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
+                    }
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        img.vkImage,
+                        srcStage,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        srcAccess,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        layout,
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        colorBaseRange
+                    )
+                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                } else {
+                    // CLEAR path
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        img.vkImage,
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        0L,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        colorBaseRange
+                    )
+                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                 }
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    image.vkImage,
-                    srcStage,
-                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    srcAccess,
-                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    colorLayout,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    colorBaseRange
-                )
-                colorLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-            } else {
-                // CLEAR path
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    image.vkImage,
-                    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    0L,
-                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    colorBaseRange
-                )
-                colorLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
             }
 
             // DEPTH (optional) subresource range + transition
@@ -265,10 +312,11 @@ class RenderToTexture(
             }
 
             // COLOR attachment info (KHR)
-            val colorAttachmentInfo =
-                VkRenderingAttachmentInfoKHR.calloc(1, stack)
+            val colorAttachmentInfo = VkRenderingAttachmentInfoKHR.calloc(colorImages.size, stack)
+            colorImages.indices.forEach { i ->
+                colorAttachmentInfo[i]
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
-                    .imageView(imageView.vkImageView)
+                    .imageView(imageViewArray[i].vkImageView)
                     .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(if (parameters.clearFirst) VK_ATTACHMENT_LOAD_OP_CLEAR else VK_ATTACHMENT_LOAD_OP_LOAD)
@@ -282,6 +330,7 @@ class RenderToTexture(
                                 .float32(3, this.parameters.clearColor.w.f)
                         )
                     )
+            }
 
             // DEPTH attachment info (KHR) (optional)
             val depthAttachmentInfo =
@@ -307,6 +356,9 @@ class RenderToTexture(
             }
 
             // Rendering info (KHR)
+            val maxColorLayers = colorLayers.maxOrNull() ?: 1
+            val renderLayers = maxColorLayers
+
             val renderInfo = VkRenderingInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_RENDERING_INFO_KHR)
                 .renderArea(
@@ -314,12 +366,35 @@ class RenderToTexture(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
-                .layerCount(1)
+                .layerCount(renderLayers)
                 .pColorAttachments(colorAttachmentInfo)
                 .pDepthAttachment(depthAttachmentInfo.get(0))
 
             // KHR dynamic rendering
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
+
+            // Set viewport/scissor array (default to full size)
+            val vpRects = if (parameters.viewports.isNotEmpty()) parameters.viewports
+            else listOf(Rect(0.0, 0.0, width.toDouble(), height.toDouble()))
+
+            val viewports = VkViewport.calloc(vpRects.size, stack)
+            vpRects.forEachIndexed { i, r ->
+                viewports[i]
+                    .x(r.x.toFloat())
+                    .y((r.y + r.h).toFloat()) // flip Y
+                    .width(r.w.toFloat())
+                    .height((-r.h).toFloat())
+                    .minDepth(0f).maxDepth(1f)
+            }
+            VK10.vkCmdSetViewport(command.vkCommandBuffer, 0, viewports)
+
+            val scissors = VkRect2D.calloc(vpRects.size, stack)
+            vpRects.forEachIndexed { i, r ->
+                scissors[i]
+                    .offset(VkOffset2D.calloc(stack).x(r.x.toInt()).y(r.y.toInt()))
+                    .extent(VkExtent2D.calloc(stack).width(r.w.toInt()).height(r.h.toInt()))
+            }
+            VK10.vkCmdSetScissor(command.vkCommandBuffer, 0, scissors)
 
             modules.values.forEach {
                 it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
@@ -328,48 +403,50 @@ class RenderToTexture(
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
 
             // --- Automatic color mipmap recompute (if requested & supported) ---
-            val doMips = parameters.generateColorMipmaps &&
-                    parameters.mipLevels > 1 &&
-                    parameters.colorSampled &&
-                    colorFormatCanBlit
-            if (doMips) {
-                generateColorMipChain(
-                    commandBuffer = command.vkCommandBuffer,
-                    image = image.vkImage,
-                    width = width,
-                    height = height,
-                    mipLevels = mipLevels,
-                    filter = chosenMipFilter,
-                    mipsWereInitialized = colorMipsInitialized
-                )
-                colorMipsInitialized = true
-                colorLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
-            } else if (parameters.colorSampled) {
-                // No mip gen: transition ALL mips to SRV so samplers see a consistent layout
-                val allLevelsRange = MemoryStack.stackGet().let { st ->
-                    VkImageSubresourceRange.calloc(st)
-                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .baseMipLevel(0)
-                        .levelCount(mipLevels)
-                        .baseArrayLayer(0)
-                        .layerCount(VK_REMAINING_ARRAY_LAYERS)
-                }
+            colorImages.forEachIndexed { idx, img ->
+                val doMips = parameters.generateColorMipmaps &&
+                        parameters.mipLevels > 1 &&
+                        parameters.colorSampled &&
+                        colorFormatCanBlit.getOrElse(idx) { false }
+                if (doMips) {
+                    generateColorMipChain(
+                        commandBuffer = command.vkCommandBuffer,
+                        image = img.vkImage,
+                        width = width,
+                        height = height,
+                        mipLevels = mipLevels,
+                        filter = chosenMipFilter.getOrElse(idx) { VK_FILTER_NEAREST },
+                        mipsWereInitialized = colorMipsInitialized.getOrElse(idx) { false }
+                    )
+                    colorMipsInitialized[idx] = true
+                    colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
+                } else if (parameters.colorSampled) {
+                    // No mip gen: transition ALL mips to SRV so samplers see a consistent layout
+                    val allLevelsRange = MemoryStack.stackGet().let { st ->
+                        VkImageSubresourceRange.calloc(st)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .baseMipLevel(0)
+                            .levelCount(mipLevels)
+                            .baseArrayLayer(0)
+                            .layerCount(VK_REMAINING_ARRAY_LAYERS)
+                    }
 
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    image.vkImage,
-                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    allLevelsRange
-                )
-                colorLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            } else {
-                // Not sampling: keep mip 0 as color attachment
-                colorLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        img.vkImage,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        allLevelsRange
+                    )
+                    colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                } else {
+                    // Not sampling: keep mip 0 as color attachment
+                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                }
             }
 
             // Transition DEPTH after render ONLY if we intend to sample it
@@ -394,17 +471,27 @@ class RenderToTexture(
 
     @JvmName("plusAssign")
     operator fun plusAssign(m: Pair<String, ModulePointer>) {
+        validateModule(m.second.current)
         modules[m.first] = m.second
     }
 
     @JvmName("plusAssign_module")
     operator fun plusAssign(m: Pair<String, Module>) {
+        validateModule(m.second)
         modules[m.first] = m.second.pointer()
+    }
+
+    private fun validateModule(module: Module) {
+        val moduleColorCount = if (module.parameters.colorFormats.isNotEmpty())
+            module.parameters.colorFormats.size else module.parameters.color
+        require(moduleColorCount == colorImages.size) {
+            "RenderToTexture expects ${colorImages.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
+        }
     }
 
     override fun toString(): String {
         val ds = if (parameters.useDepth) " +Depth" + (if (hasStencil(parameters.depthFormat)) "+Stencil" else "") else ""
-        return "RenderToTexture[${width}x${height}$ds, mips=${mipLevels}]"
+        return "RenderToTexture[${width}x${height}, colors=${colorImages.size}$ds, mips=${mipLevels}]"
     }
 
     // --- Mip generation (color) ---

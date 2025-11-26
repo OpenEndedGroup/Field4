@@ -24,6 +24,7 @@ import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.EXTExtendedDynamicState3
 import java.nio.ByteBuffer
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
@@ -423,8 +424,13 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         .stencilTestEnable(false)
                 }
 
-                val blendAtt = VkPipelineColorBlendAttachmentState.calloc(parameters.color, stack)
-                for (i in 0 until parameters.color) {
+                val colorFormats = if (parameters.colorFormats.isNotEmpty()) parameters.colorFormats
+                else List(parameters.color) { parameters.imageFormat }
+                require(colorFormats.isNotEmpty()) { "Must specify at least one color attachment" }
+                val colorCount = colorFormats.size
+
+                val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
+                for (i in 0 until colorCount) {
                     blendAtt[i]
                         .colorWriteMask(
                             (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or
@@ -445,15 +451,26 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
                     .pAttachments(blendAtt)
 
+                val dynList = mutableListOf(
+                    VK_DYNAMIC_STATE_VIEWPORT,
+                    VK_DYNAMIC_STATE_SCISSOR,
+                    VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+                )
+                if (parameters.renderer.device.supportsExtendedDynamicState) {
+                    dynList += listOf(
+                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+                        VK_DYNAMIC_STATE_CULL_MODE,
+                        VK_DYNAMIC_STATE_FRONT_FACE
+                    )
+                }
+                if (parameters.renderer.device.supportsExtendedDynamicState3) {
+                    dynList += EXTExtendedDynamicState3.VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT
+                }
+                val dynStates = stack.ints(*dynList.toIntArray())
+
                 val dyn = VkPipelineDynamicStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
-                    .pDynamicStates(
-                        stack.ints(
-                            VK_DYNAMIC_STATE_VIEWPORT,
-                            VK_DYNAMIC_STATE_SCISSOR,
-                            VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
-                        )
-                    )
+                    .pDynamicStates(dynStates)
 
                 var vpcr: VkPushConstantRange.Buffer? = null
                 if (pushConstantSize > 0) {
@@ -497,12 +514,12 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 val renderInfo = VkPipelineRenderingCreateInfoKHR.calloc(1, stack)
                     .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR)
 
-                val colorAttachmentFormats = stack.callocInt(parameters.color)
-                repeat(parameters.color) { colorAttachmentFormats.put(parameters.imageFormat) }
+                val colorAttachmentFormats = stack.callocInt(colorCount)
+                colorFormats.forEach { colorAttachmentFormats.put(it) }
                 colorAttachmentFormats.flip()
 
                 renderInfo
-                    .colorAttachmentCount(parameters.color)
+                    .colorAttachmentCount(colorCount)
                     .pColorAttachmentFormats(colorAttachmentFormats)
                     .depthAttachmentFormat(if (parameters.depth > 0) Options.defaultDepthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
@@ -559,21 +576,15 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
 
-            val viewportNow = parameters.viewport ?: Rect(0.0, 0.0, bounds.lengthX().d, bounds.lengthY().d)
-            val viewport = VkViewport.calloc(1, stack)
-                .x(viewportNow.x.f)
-                .y(viewportNow.y.f + viewportNow.h.f)
-                .height(-viewportNow.h.f)   // flip Y
-                .width(viewportNow.w.f)
-                .minDepth(0.0f).maxDepth(1.0f)
-            VK10.vkCmdSetViewport(cmd, 0, viewport)
-
-            val scissor = VkRect2D.calloc(1, stack)
-                .extent(VkExtent2D.calloc(stack).width(bounds.lengthX().toInt()).height(bounds.lengthY().toInt()))
-                .offset(VkOffset2D.calloc(stack).x(0).y(0))
-            VK10.vkCmdSetScissor(cmd, 0, scissor)
-
             VK13.vkCmdSetDepthTestEnable(cmd, if (parameters.depth == 0) false else parameters.depthTest)
+            if (parameters.renderer.device.supportsExtendedDynamicState) {
+                VK13.vkCmdSetPrimitiveTopology(cmd, parameters.primitiveType)
+                VK13.vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)
+                VK13.vkCmdSetFrontFace(cmd, VK_FRONT_FACE_CLOCKWISE)
+            }
+            if (parameters.renderer.device.supportsExtendedDynamicState3) {
+                EXTExtendedDynamicState3.vkCmdSetDepthClampEnableEXT(cmd, false)
+            }
 
             val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
 

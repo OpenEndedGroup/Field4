@@ -12,31 +12,12 @@ import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanDeviceExtensionsRequi
 import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanInstanceExtensionsRequired
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.system.MemoryUtil.memPutAddress
-import org.lwjgl.vulkan.EXTDebugUtils
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT
 import org.lwjgl.vulkan.EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT
-import org.lwjgl.vulkan.EXTToolingInfo
-import org.lwjgl.vulkan.EXTValidationFeatures
-import org.lwjgl.vulkan.KHRCalibratedTimestamps // kept for domain constants if you need elsewhere
 import org.lwjgl.vulkan.KHRPortabilityEnumeration.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
-import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
 import org.lwjgl.vulkan.VK10.VK_SUCCESS
-import org.lwjgl.vulkan.VK13
-import org.lwjgl.vulkan.VkApplicationInfo
-import org.lwjgl.vulkan.VkBaseOutStructure
-import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT
-import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT
-import org.lwjgl.vulkan.VkExtensionProperties
-import org.lwjgl.vulkan.VkInstance
-import org.lwjgl.vulkan.VkInstanceCreateInfo
-import org.lwjgl.vulkan.VkLayerProperties
-import org.lwjgl.vulkan.VkLayerSettingEXT
-import org.lwjgl.vulkan.VkLayerSettingsCreateInfoEXT
-import org.lwjgl.vulkan.VkPhysicalDevice
-import org.lwjgl.vulkan.VkPhysicalDeviceToolPropertiesEXT
-import org.lwjgl.vulkan.VkValidationFeaturesEXT
 
 class Instance(validate: Boolean) {
 
@@ -201,7 +182,8 @@ class Instance(validate: Boolean) {
                 VK10.vkEnumerateInstanceLayerProperties(count, null)
                 val props = VkLayerProperties.calloc(count[0], stack)
                 VK10.vkEnumerateInstanceLayerProperties(count, props)
-                val supported = buildList(props.capacity()) { repeat(props.capacity()) { i -> add(props[i].layerNameString()) } }
+                val supported =
+                    buildList(props.capacity()) { repeat(props.capacity()) { i -> add(props[i].layerNameString()) } }
 
                 return when {
                     "VK_LAYER_KHRONOS_validation" in supported -> listOf("VK_LAYER_KHRONOS_validation")
@@ -264,7 +246,6 @@ class Instance(validate: Boolean) {
                             idName.contains("DebugPrintf", ignoreCase = true)
 
 
-
                     // Active label stacks (outer..inner)
 
                     val queueLabels: List<String> = buildList {
@@ -287,7 +268,7 @@ class Instance(validate: Boolean) {
                     // Mention any named objects the layer attached to this message
                     val objectsStr: String = buildList {
                         val buf = cb.pObjects()
-                        if (buf!=null) {
+                        if (buf != null) {
                             val n = cb.objectCount()
                             for (i in 0 until n) {
                                 val o = buf.get(i)
@@ -307,13 +288,22 @@ class Instance(validate: Boolean) {
                         isPrintf -> println("PRINTF$where: $msg")
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ->
                             println("ERROR$where: $msg")
+
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ->
                             println("WARNING$where: $msg")
+
                         else -> println("INFO$where: $msg")
                     }
 
-                    // If you route elsewhere, send the enriched text:
-                    globalAsyncDebugHandler?.invoke((if (isPrintf) "PRINTF" else "VK") + where + ": " + msg)
+                    if (msg.contains(
+                            "VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart",
+                            ignoreCase = true
+                        )
+                    ) {
+                    } else {
+                        globalAsyncDebugHandler?.invoke((if (isPrintf) "PRINTF" else "VK") + where + ": " + msg)
+                    }
+
 
                     VK10.VK_FALSE
                 }
@@ -358,7 +348,7 @@ class Instance(validate: Boolean) {
         }
     }
 
-    // --- Tooling info dump (optional) ----------------------------------------
+// --- Tooling info dump (optional) ----------------------------------------
 
     fun dumpToolingInfo(instance: VkInstance, phys: VkPhysicalDevice) {
         MemoryStack.stackPush().use { stack ->

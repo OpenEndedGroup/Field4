@@ -6,8 +6,12 @@ import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
 import org.lwjgl.vulkan.KHRPushDescriptor
+import org.lwjgl.vulkan.VK12
 import org.lwjgl.vulkan.VkPhysicalDevicePushDescriptorPropertiesKHR
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties2
+import org.lwjgl.vulkan.VkPhysicalDeviceTimelineSemaphoreFeatures
+import org.lwjgl.vulkan.VkPhysicalDeviceExtendedDynamicStateFeaturesEXT
+import org.lwjgl.vulkan.VkPhysicalDeviceExtendedDynamicState3FeaturesEXT
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
@@ -21,6 +25,8 @@ class Device(val physicalDevice: PhysicalDevice) {
     val vkDevice: VkDevice
     val supportsPushDescriptors: Boolean
     val pushDescriptorMax: Int
+    val supportsExtendedDynamicState3: Boolean
+    val supportsExtendedDynamicState: Boolean
 
     var usePresentIndexing = !Options.isMac
     var enableMeshShading = !Options.isMac
@@ -46,6 +52,10 @@ class Device(val physicalDevice: PhysicalDevice) {
             val hasCalibrated = hasExt(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
             val hasPushDescriptor = hasExt(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
             supportsPushDescriptors = hasPushDescriptor
+            val hasExtDynamicState = hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
+            val hasExtDynamicState3 = hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+            supportsExtendedDynamicState = hasExtDynamicState
+            supportsExtendedDynamicState3 = hasExtDynamicState3
 
             // Build extension list defensively.
             val extNames = ArrayList<String>(12).apply {
@@ -72,12 +82,14 @@ class Device(val physicalDevice: PhysicalDevice) {
                 }
 
                 if (Options.profiling) {
-                    addIfSupported(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
-                    addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
-                    addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
-                }
+                addIfSupported(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
+                addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
+                addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
+            }
 
-                addIfSupported(KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+            addIfSupported(KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+            addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
+            addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
 
                 if (Options.enableVR) {
                     getOpenVRRequiredDeviceExts(
@@ -104,8 +116,12 @@ class Device(val physicalDevice: PhysicalDevice) {
             val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack).apply {
                 sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES)
 
+                shaderOutputLayer(true)
+                shaderOutputViewportIndex(true)
+
                 // What you already had
                 bufferDeviceAddress(true)
+                timelineSemaphore(true)
 
                 // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
                 descriptorIndexing(true)
@@ -138,10 +154,27 @@ class Device(val physicalDevice: PhysicalDevice) {
                 synchronization2(true)
             }
 
+            val eds3 = VkPhysicalDeviceExtendedDynamicState3FeaturesEXT.calloc(stack)
+                .sType(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT)
+                .extendedDynamicState3PolygonMode(true)
+                .extendedDynamicState3DepthClampEnable(true)
+
+            val eds = VkPhysicalDeviceExtendedDynamicStateFeaturesEXT.calloc(stack)
+                .sType(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT)
+                .extendedDynamicState(true)
+
             // Link pNext chain: features2 -> v12 -> v13
             features.pNext(features12.address())
             features12.pNext(features13.address())
             var tail = features13.address()
+
+            if (supportsExtendedDynamicState) {
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, eds.address()); tail = eds.address()
+            }
+
+            if (supportsExtendedDynamicState3) {
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, eds3.address()); tail = eds3.address()
+            }
 
             // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading && usePresentIndexing) {

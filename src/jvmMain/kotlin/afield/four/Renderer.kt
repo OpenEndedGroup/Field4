@@ -431,12 +431,12 @@ class Renderer(val window: Window) {
             val waits = VkSemaphoreSubmitInfo.calloc(2, stack)
             waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                 .semaphore(sync.imgAcquisitionSemaphore.vkSemaphore)
-                .value(0) // binary
+                .value(sync.imgAcquisitionSemaphore.currentValue())
                 .stageMask(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
                 .deviceIndex(0)
             waits[1].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                 .semaphore(computeSemaphore.vkSemaphore)
-                .value(0) // binary
+                .value(computeSemaphore.currentValue())
                 // conservative: ensure graphics won't start any stage before compute finished
                 .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                 .deviceIndex(0)
@@ -445,7 +445,7 @@ class Renderer(val window: Window) {
             val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
             signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                 .semaphore(sync.renderCompleteSemaphore.vkSemaphore)
-                .value(0) // binary
+                .value(sync.renderCompleteSemaphore.nextSignalValue())
                 .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                 .deviceIndex(0)
 
@@ -480,7 +480,7 @@ class Renderer(val window: Window) {
             val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
             signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                 .semaphore(signalSemaphore.vkSemaphore)
-                .value(0) // binary
+                .value(signalSemaphore.nextSignalValue())
                 .stageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
                 .deviceIndex(0)
 

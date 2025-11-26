@@ -95,7 +95,8 @@ enum class PrimitiveType(
 }
 
 enum class TextureType(val dimensions: Int) {
-    texture2D(2)
+    texture2D(2),
+    texture2DArray(3)
 }
 
 open class Introspected {

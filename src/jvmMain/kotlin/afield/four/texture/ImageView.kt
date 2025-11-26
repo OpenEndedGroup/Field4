@@ -11,13 +11,11 @@ interface HasImageView {
     val imageView: ImageView
 }
 
-
 interface HasImageViewArray {
-    val imageViewArray: Array<ImageView>
+    val imageViewArray: List<ImageView>
 }
 
-
-class ImageView(private val device: Device, val vkImage: Long, imageViewData: ImageViewData) : HasImageView{
+class ImageView(private val device: Device, val vkImage: Long, val imageViewData: ImageViewData) : HasImageView{
     val aspectMask: Int
     val mipLevels: Int
     var vkImageView: Long = 0
@@ -29,6 +27,8 @@ class ImageView(private val device: Device, val vkImage: Long, imageViewData: Im
             val lp = stack.mallocLong(1)
             val viewCreateInfo = VkImageViewCreateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+                .pNext(0)
+                .flags(imageViewData.flags)
                 .image(vkImage)
                 .viewType(imageViewData.viewType)
                 .format(imageViewData.format)
@@ -63,6 +63,7 @@ class ImageView(private val device: Device, val vkImage: Long, imageViewData: Im
         var layerCount: Int = 1
         var mipLevels: Int = 1
         var viewType: Int
+        var flags: Int = 0
 
         init {
             this.viewType = VK10.VK_IMAGE_VIEW_TYPE_2D
@@ -85,6 +86,11 @@ class ImageView(private val device: Device, val vkImage: Long, imageViewData: Im
 
         fun layerCount(layerCount: Int): ImageViewData {
             this.layerCount = layerCount
+            return this
+        }
+
+        fun flags(flags: Int): ImageViewData {
+            this.flags = flags
             return this
         }
 

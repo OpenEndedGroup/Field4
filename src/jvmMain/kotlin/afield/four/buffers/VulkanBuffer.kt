@@ -77,7 +77,8 @@ class VulkanBuffer(
     var requestedSize: Long,
     val usage: Int,
     val reqMask: Int,
-    val needsDeviceAddress: Boolean = false
+    val needsDeviceAddress: Boolean = false,
+    val cpuOnly: Boolean = false,
 ) : HasBuffer, BufferWriteable, BufferReadable, DynamicallyWriteable {
 
     var gpuAddress: Long = -1
@@ -93,6 +94,7 @@ class VulkanBuffer(
 
     /** CPU pointer; stays valid while mapped (we keep it persistently mapped) */
     private var mappedMemory: Long = 0L
+    private var hostBuffer: ByteBuffer? = null
 
     var hint_read: Boolean = false
     var hint_write: Boolean = false
@@ -112,6 +114,17 @@ class VulkanBuffer(
     private fun allocate() {
         mappedMemory = MemoryUtil.NULL
         gpuAddress = 0L
+        hostBuffer = null
+
+        if (cpuOnly) {
+            val size = requestedSize.coerceAtLeast(1L).toInt()
+            hostBuffer = MemoryUtil.memAlloc(size)
+            allocationSize = size.toLong()
+            mappedMemory = MemoryUtil.memAddress(hostBuffer!!)
+            buffer = 0L
+            allocation = 0L
+            return
+        }
 
         MemoryStack.stackPush().use { stack ->
             val usageBits = if (needsDeviceAddress) usage or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT else usage
@@ -167,16 +180,19 @@ class VulkanBuffer(
     fun realloc(bytes: Long) {
         val oldBuffer = buffer
         val oldAlloc  = allocation
+        val oldHost   = hostBuffer
 
         // Clear live handles
         buffer = 0L
         allocation = 0L
         mappedMemory = 0L
+        hostBuffer = null
 
         requestedSize = bytes
         allocate()
 
         renderer.cleanup.add {
+            if (oldHost != null) MemoryUtil.memFree(oldHost)
             if (oldBuffer != VK_NULL_HANDLE && oldAlloc != 0L) {
                 vmaDestroyBuffer(allocatorForRenderer(renderer), oldBuffer, oldAlloc)
             }
@@ -204,6 +220,10 @@ class VulkanBuffer(
      * dstStageMask to the appropriate stage(s).
      */
     fun zero(cmd: CommandBuffer) {
+        if (cpuOnly) {
+            hostBuffer?.let { MemoryUtil.memSet(it, 0) }
+            return
+        }
         MemoryStack.stackPush().use { stack ->
             vkCmdFillBuffer(cmd.vkCommandBuffer, buffer, 0L, allocationSize, 0)
 
@@ -234,8 +254,9 @@ class VulkanBuffer(
         return this
     }
 
-    /** Map via VMA; keep persistently mapped (recommended). */
+    /** Map via VMA (or host-only); keep persistently mapped (recommended). */
     fun map(): Long {
+        if (cpuOnly) return mappedMemory
         if (mappedMemory == MemoryUtil.NULL) {
             MemoryStack.stackPush().use { stack ->
                 val pp = stack.mallocPointer(1)
@@ -249,7 +270,9 @@ class VulkanBuffer(
 
     /** Flush writes for non-coherent memory. We keep it mapped. */
     fun unmap(offset: Long = 0, size: Long = requestedSize) {
-        Vma.vmaFlushAllocation(allocatorForRenderer(renderer), allocation, offset, size)
+        if (!cpuOnly) {
+            Vma.vmaFlushAllocation(allocatorForRenderer(renderer), allocation, offset, size)
+        }
     }
 
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VulkanBuffer {
@@ -341,15 +364,18 @@ class VulkanBuffer(
     fun pushCleanup() {
         val oldBuffer = buffer
         val oldAlloc  = allocation
+        val oldHost   = hostBuffer
 
         buffer = 0L
         allocation = 0L
         mappedMemory = 0L
+        hostBuffer = null
 
-        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, 0L))
+        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, oldHost))
     }
 
     fun cleanup() {
+        if (hostBuffer != null) MemoryUtil.memFree(hostBuffer)
         if (buffer != VK_NULL_HANDLE && allocation != 0L) {
             vmaDestroyBuffer(allocatorForRenderer(renderer), buffer, allocation)
         }
@@ -358,15 +384,17 @@ class VulkanBuffer(
         mappedMemory = 0L
         allocationSize = 0L
         gpuAddress = 0L
+        hostBuffer = null
     }
 
     class Cleaner(
         val renderer: Renderer,
         val cbuffer: Long,
         val callocation: Long,
-        @Suppress("UNUSED_PARAMETER") val cmappedMemory: Long
+        val chostBuffer: ByteBuffer?
     ) : Runnable {
         override fun run() {
+            if (chostBuffer != null) MemoryUtil.memFree(chostBuffer)
             if (cbuffer != VK_NULL_HANDLE && callocation != 0L) {
                 vmaDestroyBuffer(allocatorForRenderer(renderer), cbuffer, callocation)
             }
@@ -380,6 +408,7 @@ class VulkanBuffer(
     override fun getBuffer(): Long = buffer
 
     override fun getGPUAddress(cmd: CommandBuffer): Long {
+        if (cpuOnly) return 0L
         if (gpuAddress > 0) return gpuAddress
         MemoryStack.stackPush().use { stack ->
             val info = VkBufferDeviceAddressInfo.calloc(stack).apply {

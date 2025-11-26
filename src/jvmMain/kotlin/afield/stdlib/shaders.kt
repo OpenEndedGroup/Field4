@@ -447,7 +447,7 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
             } ?: findWithNameOrNull<HasImageView>(this@_moduleHere, name)?.let {
                 arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 1, true)
             } ?: findWithNameOrNull<HasImageViewArray>(this@_moduleHere, name)?.let {
-                it.imageViewArray to TextureSampler(renderer = fromContext(), 1, true)
+                it.imageViewArray.toTypedArray() to TextureSampler(renderer = fromContext(), 1, true)
             } ?: throw Exception(" can't find anything to build a texture out of from this box to ${it.name}")
         println(" found $r")
         r

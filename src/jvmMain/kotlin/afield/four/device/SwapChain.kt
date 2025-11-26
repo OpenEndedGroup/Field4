@@ -137,6 +137,8 @@ class SwapChain(
                 device.vkDevice, vkSwapChain, 0L.inv(),
                 syncSemaphoresList[currentFrame].imgAcquisitionSemaphore.vkSemaphore, MemoryUtil.NULL, ip
             )
+            // timeline semaphore is signaled by acquire; bump our tracking value
+            syncSemaphoresList[currentFrame].imgAcquisitionSemaphore.markExternallySignaled()
             if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
                 return@logTime -1
             } else if (err == KHRSwapchain.VK_SUBOPTIMAL_KHR) {
@@ -312,7 +314,7 @@ class SwapChain(
 
     @JvmRecord
     data class SyncSemaphores(val imgAcquisitionSemaphore: Semaphore, val renderCompleteSemaphore: Semaphore) {
-        constructor(device: Device) : this(Semaphore(device), Semaphore(device))
+        constructor(device: Device) : this(Semaphore(device, timeline = false), Semaphore(device, timeline = false))
 
         fun cleanup() {
             imgAcquisitionSemaphore.cleanup()
