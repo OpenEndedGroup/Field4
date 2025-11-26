@@ -397,6 +397,34 @@ class Server {
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
                     }
+                    route("/browse") {
+                        handle {
+                            val originalContent = File("./src/commonMain/resources/browser.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/tree") {
+                        handle {
+                            val originalContent = File("./src/commonMain/resources/tree.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/inspect") {
+                        handle {
+                            val originalContent = File("./src/commonMain/resources/inspector.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/keyframe") {
+                        handle {
+                            val originalContent = File("./src/commonMain/resources/keyframe_editor.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
 
                     files("./build/js/packages/afield/kotlin")
                     files("./src/jsChatMain/resources/static/")

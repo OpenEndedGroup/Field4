@@ -1,6 +1,7 @@
 package afield
 
 import afield.macros.Insert
+import afield.server.Inspector
 
 /**
  * printing inside a for loop just gives the last output?
@@ -68,4 +69,20 @@ fun Box.marco_printlnHere(contents: List<String>): Insert? {
     return Insert(
         here = "_printlnHere(__line__+1, $args)"
     )
+}
+
+fun Box.tree(channel: String = "debug", a : Any?) {
+    val aa = a ?: "null"
+    val ln = Inspector.linkFor(aa, "/tree")
+    display(channel, """
+<iframe src='${ln}' style='border:none;padding:0;margin:0'>
+""")
+}
+
+fun Box.column(channel: String = "debug", a : Any?) {
+    val aa = a ?: "null"
+    val ln = Inspector.linkFor(aa, "/browse")
+    display(channel, """
+<iframe src='${ln}' style='border:none;padding:0;margin:0'>
+""")
 }

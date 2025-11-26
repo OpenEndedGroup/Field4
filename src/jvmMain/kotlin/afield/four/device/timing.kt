@@ -1,11 +1,13 @@
 package afield.four.device
 
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRPerformanceQuery.*
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceFeatures2
 import org.lwjgl.vulkan.VK12.vkResetQueryPool
-import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK13.vkCmdWriteTimestamp2
 import java.nio.ByteBuffer
 
 data class ProfilingOptions(
@@ -41,8 +43,11 @@ class FrameAllocator(private val max: Int) {
         next = nn
         return n
     }
+
     fun capacity(): Int = max
-    fun reset() { next = 0 }
+    fun reset() {
+        next = 0
+    }
 }
 
 class GpuProfiler(
@@ -54,6 +59,7 @@ class GpuProfiler(
 ) {
 
     data class PerfCounterMeta(val name: String, val unit: Int, val scope: Int)
+
     val perfMeta: List<PerfCounterMeta> get() = _perfMeta
     private var _perfMeta: List<PerfCounterMeta> = emptyList()
 
@@ -65,8 +71,8 @@ class GpuProfiler(
     val timestampPeriodNs: Double
 
     private val timestampPools = LongArray(framesInFlight)
-    private val pipeStatPools  = LongArray(framesInFlight)
-    private val perfPools      = LongArray(framesInFlight)
+    private val pipeStatPools = LongArray(framesInFlight)
+    private val perfPools = LongArray(framesInFlight)
 
     private val tsAlloc = arrayOfNulls<FrameAllocator>(framesInFlight)
     private val psAlloc = arrayOfNulls<FrameAllocator>(framesInFlight)
@@ -182,13 +188,49 @@ class GpuProfiler(
 
     fun endFrame(@Suppress("UNUSED_PARAMETER") frameIndex: Int) = Unit
 
-    // Timestamps
-    fun writeTimestamp(cmd: VkCommandBuffer, frameIndex: Int, stage: Int): Int {
+
+    private fun legacyStageToStage2(stageLegacy: Int): Long = when (stageLegacy) {
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT -> VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT -> VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT -> VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT -> VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT
+//        VK_PIPELINE_STAGE_TESSELLATION_CONTROL_BIT -> VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT
+//        VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_BIT -> VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT
+        VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT -> VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT -> VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT -> VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT -> VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT -> VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT -> VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+        VK_PIPELINE_STAGE_TRANSFER_BIT -> VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT -> VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+        VK_PIPELINE_STAGE_HOST_BIT -> VK_PIPELINE_STAGE_2_HOST_BIT
+        // Safe default
+        else -> VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+    }
+
+    /**
+     * Backwards-compatible entry point: same signature, but uses sync2 when available.
+     */
+    fun writeTimestamp(cmd: VkCommandBuffer, frameIndex: Int, stageLegacy: Int): Int {
         if (!timestampsEnabled) return -1
         val idx = tsAlloc[frameIndex]!!.alloc()
-        vkCmdWriteTimestamp(cmd, stage, timestampPools[frameIndex], idx)
+
+        val stage2: Long = legacyStageToStage2(stageLegacy)
+        vkCmdWriteTimestamp2(cmd, stage2, timestampPools[frameIndex], idx)
         return idx
     }
+
+    /**
+     * Optional: a native sync2 overload if you want callers to pass stage2 directly.
+     */
+    fun writeTimestamp2(cmd: VkCommandBuffer, frameIndex: Int, stage2: Long): Int {
+        if (!timestampsEnabled) return -1
+        val idx = tsAlloc[frameIndex]!!.alloc()
+        vkCmdWriteTimestamp2(cmd, stage2, timestampPools[frameIndex], idx)
+        return idx
+    }
+
 
     // Pipeline stats
     data class PipeStatScope internal constructor(val pool: Long, val index: Int)
@@ -394,7 +436,9 @@ class GpuProfiler(
 
         var found = false
         for (i in 0 until count) {
-            if (name == props[i].extensionNameString()) { found = true; break }
+            if (name == props[i].extensionNameString()) {
+                found = true; break
+            }
         }
         props.free()
         return found
@@ -404,8 +448,8 @@ class GpuProfiler(
         if (!enabled) return
         for (i in 0 until framesInFlight) {
             if (timestampPools[i] != 0L) vkDestroyQueryPool(device, timestampPools[i], null)
-            if (pipeStatPools[i]  != 0L) vkDestroyQueryPool(device, pipeStatPools[i], null)
-            if (perfPools[i]      != 0L) vkDestroyQueryPool(device, perfPools[i], null)
+            if (pipeStatPools[i] != 0L) vkDestroyQueryPool(device, pipeStatPools[i], null)
+            if (perfPools[i] != 0L) vkDestroyQueryPool(device, perfPools[i], null)
         }
     }
 
@@ -425,7 +469,9 @@ class GpuProfiler(
     }
 
     private fun humanBytes(v: Long): String {
-        val kb = 1024.0; val mb = kb * 1024; val gb = mb * 1024
+        val kb = 1024.0;
+        val mb = kb * 1024;
+        val gb = mb * 1024
         val dv = v.toDouble()
         return when {
             dv >= gb -> "%.2f GiB".format(dv / gb)
@@ -434,5 +480,6 @@ class GpuProfiler(
             else -> "$v B"
         }
     }
+
     private fun humanBytesPerSec(v: Long): String = humanBytes(v) + "/s"
 }

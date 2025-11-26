@@ -42,8 +42,8 @@ data class RTTParameters(
     var mipBlitFilter: Int = VK_FILTER_LINEAR,      // auto-downgraded to NEAREST if linear not supported
 
     // --- Depth/Stencil options ---
-    var useDepth: Boolean = false,
-    var depthFormat: Int = Options.defaultDepthFormat, // depth+stencil by default
+    var useDepth: Boolean = true,
+    var depthFormat: Int = Options.defaultDepthFormat,//Options.defaultDepthFormat, // depth+stencil by default
     var clearDepth: Float = 1f,
     var clearStencil: Int = 0,
     var depthLoadOp: Int = VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -182,19 +182,19 @@ class RenderToTexture(
             if (!parameters.clearFirst) {
                 val (srcStage, srcAccess) = when (colorLayout) {
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT to VK_ACCESS_SHADER_READ_BIT
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
-                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
                     else ->
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to 0
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
                 }
                 image_layout_transition(
                     command.vkCommandBuffer,
                     image.vkImage,
                     srcStage,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                     srcAccess,
-                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                     colorLayout,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                     colorBaseRange
@@ -205,10 +205,10 @@ class RenderToTexture(
                 image_layout_transition(
                     command.vkCommandBuffer,
                     image.vkImage,
-                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    0,
-                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    0L,
+                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                     colorBaseRange
@@ -230,19 +230,19 @@ class RenderToTexture(
                 if (parameters.depthLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
                     val (srcStage, srcAccess) = when (depthLayout) {
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
-                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT to VK_ACCESS_SHADER_READ_BIT
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
-                            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT to VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT to VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                         else ->
-                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to 0
+                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
                     }
                     image_layout_transition(
                         command.vkCommandBuffer,
                         depthImage!!.vkImage,
                         srcStage,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                         srcAccess,
-                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         depthLayout,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         depthRange
@@ -252,10 +252,10 @@ class RenderToTexture(
                     image_layout_transition(
                         command.vkCommandBuffer,
                         depthImage!!.vkImage,
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                         0,
-                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                         VK_IMAGE_LAYOUT_UNDEFINED,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         depthRange
@@ -346,20 +346,22 @@ class RenderToTexture(
                 colorLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
             } else if (parameters.colorSampled) {
                 // No mip gen: transition ALL mips to SRV so samplers see a consistent layout
-                val allLevelsRange = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0)
-                    .levelCount(mipLevels)
-                    .baseArrayLayer(0)
-                    .layerCount(VK_REMAINING_ARRAY_LAYERS)
+                val allLevelsRange = MemoryStack.stackGet().let { st ->
+                    VkImageSubresourceRange.calloc(st)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0)
+                        .levelCount(mipLevels)
+                        .baseArrayLayer(0)
+                        .layerCount(VK_REMAINING_ARRAY_LAYERS)
+                }
 
                 image_layout_transition(
                     command.vkCommandBuffer,
                     image.vkImage,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     allLevelsRange
@@ -375,10 +377,10 @@ class RenderToTexture(
                 image_layout_transition(
                     command.vkCommandBuffer,
                     depthImage!!.vkImage,
-                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
                     depthRange
@@ -433,10 +435,10 @@ class RenderToTexture(
                 image_layout_transition(
                     commandBuffer,
                     image,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                    VK_ACCESS_2_TRANSFER_READ_BIT,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     range
@@ -452,17 +454,25 @@ class RenderToTexture(
 
                 val (srcStage, srcAccess, oldLayout) =
                     if (mipsWereInitialized)
-                        Triple(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        Triple(
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                        )
                     else
-                        Triple(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_IMAGE_LAYOUT_UNDEFINED)
+                        Triple(
+                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                            0L,
+                            VK_IMAGE_LAYOUT_UNDEFINED
+                        )
 
                 image_layout_transition(
                     commandBuffer,
                     image,
                     srcStage,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
                     srcAccess,
-                    VK_ACCESS_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
                     oldLayout,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     range
@@ -510,10 +520,10 @@ class RenderToTexture(
                 image_layout_transition(
                     commandBuffer,
                     image,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_2_TRANSFER_READ_BIT,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     dstToSrc
@@ -533,10 +543,10 @@ class RenderToTexture(
                 image_layout_transition(
                     commandBuffer,
                     image,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_TRANSFER_READ_BIT or VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     allLevels
@@ -554,39 +564,38 @@ private fun hasStencil(format: Int): Boolean =
 private fun aspectMaskForDepth(format: Int): Int =
     VK_IMAGE_ASPECT_DEPTH_BIT or (if (hasStencil(format)) VK_IMAGE_ASPECT_STENCIL_BIT else 0)
 
-// --- barrier util (leak-free with MemoryStack) ---
+// --- barrier util (now sync2) ---
 
 fun image_layout_transition(
     command_buffer: VkCommandBuffer,
     image: Long,
-    src_stage_mask: Int,
-    dst_stage_mask: Int,
-    src_access_mask: Int,
-    dst_access_mask: Int,
+    src_stage_mask: Long,
+    dst_stage_mask: Long,
+    src_access_mask: Long,
+    dst_access_mask: Long,
     old_layout: Int,
     new_layout: Int,
     sub_resource_range: VkImageSubresourceRange
 ) {
     MemoryStack.stackPush().use { stack ->
-        val barrier = VkImageMemoryBarrier.calloc(1, stack)
-        barrier.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-        barrier.srcAccessMask(src_access_mask)
-        barrier.dstAccessMask(dst_access_mask)
-        barrier.oldLayout(old_layout)
-        barrier.newLayout(new_layout)
-        barrier.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-        barrier.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-        barrier.image(image)
-        barrier.subresourceRange(sub_resource_range)
+        val barrier2 = VkImageMemoryBarrier2.calloc(1, stack)
+        barrier2[0]
+            .sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2)
+            .srcStageMask(src_stage_mask)
+            .srcAccessMask(src_access_mask)
+            .dstStageMask(dst_stage_mask)
+            .dstAccessMask(dst_access_mask)
+            .oldLayout(old_layout)
+            .newLayout(new_layout)
+            .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .image(image)
+            .subresourceRange(sub_resource_range)
 
-        vkCmdPipelineBarrier(
-            command_buffer,
-            src_stage_mask,
-            dst_stage_mask,
-            0,
-            null,
-            null,
-            barrier
-        )
+        val dep = VkDependencyInfo.calloc(stack)
+            .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+            .pImageMemoryBarriers(barrier2)
+
+        vkCmdPipelineBarrier2(command_buffer, dep)
     }
 }

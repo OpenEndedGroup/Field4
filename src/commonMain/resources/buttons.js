@@ -1,3 +1,4 @@
+
 let canvas, ctx
 
 var originatingMouseDown = null
@@ -75,11 +76,16 @@ function initMenuSupport() {
                         console.log(" master mousedown event ", event)
                         originatingMouseDown = event
 
-                        event.target.classList.forEach( x => {
-                                let cb = masterMousedownCallbackTable[x]
-                                if (cb) {
-                                        afield.send("perform-action", {uid_action:cb, uid_currentSelection:[currentSelectedCode[0].uid]})
-                                }
+                        import("./afield.mjs").then( (afield) => {
+                                event.target.classList.forEach(x => {
+                                        let cb = masterMousedownCallbackTable[x]
+                                        if (cb) {
+                                                afield.send("perform-action", {
+                                                        uid_action: cb,
+                                                        uid_currentSelection: [currentSelectedCode[0].uid]
+                                                })
+                                        }
+                                })
                         })
                         // if (live)
                         //         console.log(" window drag ", event, live)

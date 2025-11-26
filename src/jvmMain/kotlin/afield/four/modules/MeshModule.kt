@@ -5,7 +5,7 @@ import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 
 import afield.Named
 import afield.Rect
-import afield.four.buffer
+import afield.four.buffers.buffer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.device.CommandBuffer
@@ -13,6 +13,9 @@ import afield.four.device.DescriptorSet.SimpleDescriptorSet
 import afield.four.device.DescriptorSet.UpdatesDescriptorSet
 import afield.four.device.DescriptorSetLayout
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
+import afield.four.device.beginLabel
+import afield.four.device.endLabel
+import afield.four.device.nameObject
 import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
@@ -23,15 +26,12 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
-
+import kotlin.math.max
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (current.valid)
-            current.render(command, bounds)
-        else {
-            println("module '${current.parameters.name}' not valid / not rendering")
-        }
+        if (current.valid) current.render(command, bounds)
+        else println("module '${current.parameters.name}' not valid / not rendering")
     }
 
     fun reload(
@@ -39,32 +39,24 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         forceReresolve: Boolean = true,
         onError: (String, Throwable?) -> Unit = p.errorHandler
     ): Boolean {
-        if (current.valid && p.equals(current.parameters) && !forceReresolve) return false
+        if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
 
-        // should we copy the buffers that back other uniforms as well
-        // if they have the correct size?
-
         val oUboResolver = p.uboResolver
-        p.uboResolver = {
-            oUboResolver(it)
-        }
+        p.uboResolver = { oUboResolver(it) }
 
         val oSsboResolver = p.ssboResolver
-        p.ssboResolver = {
-            oSsboResolver(it)
-        }
+        p.ssboResolver = { oSsboResolver(it) }
 
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
-            if (forceReresolve) oTextureResolver(it)
-            else
-                try {
-                    arrayOf((current.uniforms[it.name] as Module.TexturePointer).texture) to (current.uniforms[it.name] as Module.TexturePointer).sampler
-                } catch (e: Exception) {
-                    lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
-                    oTextureResolver(it)
-                }
+            if (forceReresolve) oTextureResolver(it) else try {
+                val tp = current.uniforms[it.name] as Module.TexturePointer
+                arrayOf(tp.texture) to tp.sampler
+            } catch (_: Exception) {
+                lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                oTextureResolver(it)
+            }
         }
 
         val m = MeshModule(p)
@@ -76,7 +68,6 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         return false
     }
 
-
     operator fun plusAssign(m: Pair<String, MeshMesh>) {
         current.meshes[m.first] = m.second
         m.second.inside = this
@@ -87,10 +78,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         m.value.inside = this
     }
 
-    override fun toString(): String {
-        if (!current.valid) return "Invalid Module"
-        return "Module"
-    }
+    override fun toString(): String = if (!current.valid) "Invalid Module" else "Module"
 }
 
 fun MeshModule.pointer() = MeshModulePointer(this)
@@ -100,129 +88,87 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
     var meshes = mutableMapOf<String, MeshMesh>()
 
-    val ti = Introspection(
-        parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler
-    )
-    val mi = Introspection(
-        parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler
-    )
-    val fi = Introspection(
-        parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler
-    )
-
-
-    val namedInputs = ti.inputs.map { it.name to it }.toMap()
+    val ti = Introspection(parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler)
+    val mi = Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
+    val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
 
     val pushConstantSize =
         (ti.pushConstants.associateBy { it.name } + mi.pushConstants.associateBy { it.name }).values.sumOf { it.size }
 
-    var layouts: List<Pair<DescriptorSetLayout.SimpleDescriptorSetLayout, MutableList<Introspected.Bindable>>> =
-        listOf()
-
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
-
 
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
 
-    // TODO? free theses?
     var tsm: Long = 0L
     var msm: Long = 0L
     var fsm: Long = 0L
 
     init {
-
         try {
-
-
             if (!ti.valid || !mi.valid || !fi.valid) throw IllegalStateException("Can't make a module without valid programs")
+
+            // Reserve/validate set=0 usage for global bindless sampled-image array (binding 0) + sampler (binding 1)
+            validateAndReserveSet0(ti, mi, fi)
 
             tsm = createShaderModule(ti.code.bytecode()!!)
             msm = createShaderModule(mi.code.bytecode()!!)
             fsm = createShaderModule(fi.code.bytecode()!!)
 
+            parameters.renderer.device.nameObject(tsm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} TS")
+            parameters.renderer.device.nameObject(msm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} MS")
+            parameters.renderer.device.nameObject(fsm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} FS")
 
-            val setsNeeded = mutableMapOf<Int, MutableList<Int>>()
+            // Collect sets -> bindings (may contain dups from multiple stages)
+            val setsNeededRaw = mutableMapOf<Int, MutableList<Int>>()
 
-            ti.ubos.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            mi.ubos.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            fi.ubos.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
+            // Build required sets for set >= 1 only (set=0 is global)
+            ti.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.ssbo.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            mi.ssbo.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            fi.ssbo.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
+            ti.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.textures.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            mi.textures.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            fi.textures.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
+            ti.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.images.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            mi.images.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
-            fi.images.forEach {
-                setsNeeded.computeIfAbsent(it.set) { mutableListOf<Int>() }.add(it.binding)
-            }
+            ti.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            uniforms = mutableMapOf<String, UpdatesDescriptorSet>()
+            // (2) Dedup + sort per-set binding lists so DescriptorSetLayout is deterministic & gap-free
+            val setsNeeded = setsNeededRaw.mapValues { (_, v) -> v.distinct().sorted().toMutableList() }
 
-            liveUniformStructures = mutableMapOf<String, Structure>()
+            uniforms = mutableMapOf()
+            liveUniformStructures = mutableMapOf()
 
-            ti.ubos.forEach {
-                liveUniformStructures[it.name] = Structure().setMembers(it.members)
-            }
-            mi.ubos.forEach {
-                liveUniformStructures[it.name] = Structure().setMembers(it.members)
-            }
-            fi.ubos.forEach {
-                liveUniformStructures[it.name] = Structure().setMembers(it.members)
-            }
+            ti.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            mi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            fi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
 
-            ti.ssbo.forEach {
-                liveUniformStructures[it.name] = Structure().setMembers(it.members) // TODO: array types
-            }
-            mi.ssbo.forEach {
-                liveUniformStructures[it.name] = Structure().setMembers(it.members) // TODO: array types
-            }
-            fi.ssbo.forEach {
-                liveUniformStructures[it.name] = Structure().setMembers(it.members) // TODO: array types
-            }
+            ti.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            mi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
 
             val layouts = mutableMapOf<Int, Pair<SimpleDescriptorSetLayout, SimpleDescriptorSet>>()
 
+            // Build layouts for sets >= 1
             setsNeeded.entries.forEach { (set, bindingList) ->
                 var where = 0
-                var tag = mutableListOf<Introspected.Bindable>()
-                var kinds = mutableListOf<Int>()
-                var lens = mutableListOf<Int>()
+                val kinds = mutableListOf<Int>()
+                val lens  = mutableListOf<Int>()
+
                 bindingList.forEach { bind ->
                     var kind = 0
+
                     ti.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_TASK_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
@@ -230,7 +176,6 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_MESH_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
@@ -238,7 +183,6 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
@@ -247,7 +191,6 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_TASK_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
@@ -255,7 +198,6 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_MESH_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
@@ -263,420 +205,354 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
+
+                    // (1) Match on binding for textures/images too
                     ti.textures.forEach {
-                        if (it.set == set) {
+                        if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_TASK_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it)
-                            lens.add(Math.max(1, it.arrayCount))
+                            lens.add(maxOf(1, it.arrayCount))
                         }
                     }
                     mi.textures.forEach {
-                        if (it.set == set) {
+                        if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_MESH_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it)
-                            lens.add(Math.max(1, it.arrayCount))
+                            lens.add(maxOf(1, it.arrayCount))
                         }
                     }
                     fi.textures.forEach {
-                        if (it.set == set) {
+                        if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it)
-                            lens.add(Math.max(1, it.arrayCount))
+                            lens.add(maxOf(1, it.arrayCount))
                         }
                     }
+
                     ti.images.forEach {
-                        if (it.set == set) {
+                        if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_TASK_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
                     mi.images.forEach {
-                        if (it.set == set) {
+                        if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_MESH_BIT_EXT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
                     fi.images.forEach {
-                        if (it.set == set) {
+                        if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_FRAGMENT_BIT
                             kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it)
                             lens.add(1)
                         }
                     }
-                    if (kind == 0) throw IllegalArgumentException(" couldn't find ${bind} for ${bindingList}")
+
+                    if (kind == 0) throw IllegalArgumentException(" couldn't find $bind for $bindingList")
                     kinds.add(kind)
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
                     parameters.renderer.device, kinds, set, bindingList, where, lens
                 )
-
                 val descriptorSet = layout.makeDescriptorSet(parameters.renderer.device.pool)
-
-                layouts.put(set, layout to descriptorSet)
+                layouts[set] = layout to descriptorSet
             }
 
-
-            setsNeeded.entries.forEach { (set, bindingList) ->
-                var where = 0
-                var kind = 0
-                var tag = mutableListOf<Introspected.Bindable>()
-                ti.ubos.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                        tag.add(it)
-                    }
-                }
-                mi.ubos.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                        tag.add(it)
-                    }
-                }
-                fi.ubos.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                        kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                        tag.add(it)
-                    }
-                }
-
-
-                if (kind == 0) return@forEach
-
-                val (layout, descriptorSet) = layouts.get(set)!!
-
-                tag.forEach {
-                    var sz = (it as Introspected.UBO).size.toLong()
-                    var bp = buffer(it, it.name) {
-                        size = sz
-                        source = it
-                        uniform()
-                        hosted()
-                    }
-
-                    val buf = parameters.uboResolver(bp)
-
-                    if (buf != null) {
-                        try {
-                            uniforms[it.name] =
-                                Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), kind)
-                        } catch (n: NullPointerException) {
-                            throw IllegalArgumentException("UBO ${it.name}, no longer resolves")
-                        }
-                    } else {
-                        throw IllegalArgumentException("can't link UBO ${it.name}")
-                    }
-                }
+            // UBOs (sets >= 1)
+            setsNeeded.entries.forEach { (set, _) ->
+                var found = false
+                val (_, descriptorSet) = layouts.getValue(set)
+                ti.ubos.forEach { if (it.set == set) {
+                    found = true
+                    val sz = (it as Introspected.UBO).size.toLong()
+                    val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
+                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                } }
+                mi.ubos.forEach { if (it.set == set) {
+                    found = true
+                    val sz = (it as Introspected.UBO).size.toLong()
+                    val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
+                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                } }
+                fi.ubos.forEach { if (it.set == set) {
+                    found = true
+                    val sz = (it as Introspected.UBO).size.toLong()
+                    val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
+                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                } }
+                if (!found) return@forEach
             }
 
-            setsNeeded.entries.forEach { (set, bindingList) ->
-                var where = 0
-                var kind = 0
-                var tag = mutableListOf<Introspected.Bindable>()
-                ti.ssbo.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                        tag.add(it)
-                    }
-                }
-                mi.ssbo.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                        tag.add(it)
-                    }
-                }
-                fi.ssbo.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                        kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                        tag.add(it)
-                    }
-                }
-
-                if (kind == 0) return@forEach
-
-                val (layout, descriptorSet) = layouts.get(set)!!
-
-                tag.forEach {
+            // SSBOs (sets >= 1)
+            setsNeeded.entries.forEach { (set, _) ->
+                var found = false
+                val (_, descriptorSet) = layouts.getValue(set)
+                ti.ssbo.forEach { if (it.set == set) {
+                    found = true
                     var sz = (it as Introspected.UBO).size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
-
-                    var bp = buffer(it, it.name) {
-                        size = sz
-                        source = it
-                        storage()
-                        hosted()
-                    }
-
-                    val buf = parameters.ssboResolver(bp)
-
-                    if (buf != null) {
-
-                        try {
-                            uniforms[it.name] =
-                                Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, kind)
-                        } catch (e: NullPointerException) {
-                            throw IllegalArgumentException("buffer ${it.name} resolved to null")
-                        }
-                    } else
-                        throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-
-                }
+                    val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
+                    val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                } }
+                mi.ssbo.forEach { if (it.set == set) {
+                    found = true
+                    var sz = (it as Introspected.UBO).size.toLong()
+                    if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
+                    val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
+                    val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                } }
+                fi.ssbo.forEach { if (it.set == set) {
+                    found = true
+                    var sz = (it as Introspected.UBO).size.toLong()
+                    if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
+                    val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
+                    val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    uniforms[it.name] = Module.Uniform(it.name, it, descriptorSet, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                } }
+                if (!found) return@forEach
             }
 
-            setsNeeded.entries.forEach { (set, bindingList) ->
-                var where = 0
-                var kind = 0
-                var tag = mutableListOf<Introspected.Bindable>()
-                ti.textures.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                        tag.add(it)
-                    }
-                }
-                mi.textures.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                        tag.add(it)
-                    }
-                }
-                fi.textures.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                        kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                        tag.add(it)
-                    }
-                }
-
-
-                if (kind == 0) return@forEach
-
-                val (layout, descriptorSet) = layouts.get(set)!!
-
-                tag.forEach {
-                    println(" resolving texture resource $it")
+            // Sampled textures (sets >= 1)
+            setsNeeded.entries.forEach { (set, _) ->
+                var found = false
+                val (_, descriptorSet) = layouts.getValue(set)
+                ti.textures.forEach { if (it.set == set) {
+                    found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
-
                     if (it.arrayCount == 0) {
-
-                        uniforms[it.name] =
-                            Module.TexturePointer(
-                                it.name,
-                                it as Introspected.Texture,
-                                descriptorSet,
-                                source = null /* todo */,
-                                texture[0],
-                                sampler
-                            )
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                    } else {
+                        require(texture.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        }
+                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
                     }
-                    else {
-
-                        if (texture.size != it.arrayCount) throw IllegalArgumentException("can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}")
-
-                        uniforms[it.name] =
-                            Module.TextureArrayPointer(
-                                it.name,
-                                it as Introspected.Texture,
-                                descriptorSet,
-                                source = null /* todo */,
-                                texture,
-                                sampler
-                            )
+                } }
+                mi.textures.forEach { if (it.set == set) {
+                    found = true
+                    val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    if (it.arrayCount == 0) {
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                    } else {
+                        require(texture.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        }
+                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
                     }
-                }
+                } }
+                fi.textures.forEach { if (it.set == set) {
+                    found = true
+                    val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    if (it.arrayCount == 0) {
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, descriptorSet, source = null, texture[0], sampler)
+                    } else {
+                        require(texture.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        }
+                        uniforms[it.name] = Module.TextureArrayPointer(it.name, it, descriptorSet, source = null, texture, sampler)
+                    }
+                } }
+                if (!found) return@forEach
             }
 
-            setsNeeded.entries.forEach { (set, bindingList) ->
-                var where = 0
-                var kind = 0
-                var tag = mutableListOf<Introspected.Bindable>()
-                ti.images.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                        tag.add(it)
-                    }
-                }
-                mi.images.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                        kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                        tag.add(it)
-                    }
-                }
-                fi.images.forEach {
-                    if (it.set == set) {
-                        where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                        kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                        tag.add(it)
-                    }
-                }
-
-                if (kind == 0) return@forEach
-
-                val (layout, descriptorSet) = layouts.get(set)!!
-
-                tag.forEach {
-                    println(" resolving image resource $it")
+            // Storage images (sets >= 1)
+            setsNeeded.entries.forEach { (set, _) ->
+                var found = false
+                val (_, descriptorSet) = layouts.getValue(set)
+                ti.images.forEach { if (it.set == set) {
+                    found = true
                     val image = parameters.imageResolver(it as Introspected.Image)!!
-                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null /* todo */, image)
-                }
-
+                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null, image)
+                } }
+                mi.images.forEach { if (it.set == set) {
+                    found = true
+                    val image = parameters.imageResolver(it as Introspected.Image)!!
+                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null, image)
+                } }
+                fi.images.forEach { if (it.set == set) {
+                    found = true
+                    val image = parameters.imageResolver(it as Introspected.Image)!!
+                    uniforms[it.name] = Module.ImagePointer(it.name, it, descriptorSet, source = null, image)
+                } }
+                if (!found) return@forEach
             }
 
-            uniforms.forEach {
-                it.value.updateDescriptorSet()
-            }
-
+            uniforms.values.forEach { it.updateDescriptorSet() }
 
             MemoryStack.stackPush().use { stack ->
-
                 val shaderStages = VkPipelineShaderStageCreateInfo.calloc(3, stack)
 
                 shaderStages[0].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                    .stage(VK_SHADER_STAGE_TASK_BIT_EXT).pName(stack.UTF8("main")).module(tsm)
+                    .stage(VK_SHADER_STAGE_TASK_BIT_EXT)
+                    .pName(stack.UTF8("main"))
+                    .module(tsm)
 
                 shaderStages[1].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                    .stage(VK_SHADER_STAGE_MESH_BIT_EXT).pName(stack.UTF8("main")).module(msm)
+                    .stage(VK_SHADER_STAGE_MESH_BIT_EXT)
+                    .pName(stack.UTF8("main"))
+                    .module(msm)
 
                 shaderStages[2].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                    .stage(VK_SHADER_STAGE_FRAGMENT_BIT).pName(stack.UTF8("main")).module(fsm)
+                    .stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .pName(stack.UTF8("main"))
+                    .module(fsm)
 
-                val vkPipelineViewportStateCreateInfo = VkPipelineViewportStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO).viewportCount(1).scissorCount(1)
+                val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+                    .viewportCount(1)
+                    .scissorCount(1)
 
-                val vkPipelineRasterizationStateCreateInfo = VkPipelineRasterizationStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO).polygonMode(parameters.fillMode)
-                    .cullMode(VK_CULL_MODE_NONE).frontFace(VK_FRONT_FACE_CLOCKWISE).lineWidth(1.0f)
+                val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
+                    .polygonMode(parameters.fillMode)
+                    .cullMode(VK_CULL_MODE_NONE)
+                    .frontFace(VK_FRONT_FACE_CLOCKWISE)
+                    .lineWidth(1.0f)
 
-                val vkPipelineMultisampleStateCreateInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+                val ms = VkPipelineMultisampleStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
                     .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
 
                 var ds: VkPipelineDepthStencilStateCreateInfo? = null
                 if (parameters.depth > 0) {
                     ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
-                        .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO).depthTestEnable(true)
-                        .depthWriteEnable(true).depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL).depthBoundsTestEnable(false)
+                        .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+                        .depthTestEnable(true)
+                        .depthWriteEnable(true)
+                        .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+                        .depthBoundsTestEnable(false)
                         .stencilTestEnable(false)
                 }
 
-                val blendAttState = VkPipelineColorBlendAttachmentState.calloc(parameters.color, stack)
+                val blendAtt = VkPipelineColorBlendAttachmentState.calloc(parameters.color, stack)
                 for (i in 0 until parameters.color) {
-                    blendAttState[i].colorWriteMask((if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0) )
+                    blendAtt[i]
+                        .colorWriteMask(
+                            (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or
+                                    (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or
+                                    (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or
+                                    (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
+                        )
                         .blendEnable(parameters.blend)
                         .srcColorBlendFactor(parameters.srcColor)
                         .dstColorBlendFactor(parameters.dstColor)
                         .colorBlendOp(parameters.colorBlendOp)
                         .srcAlphaBlendFactor(parameters.srcAlpha)
-                        .dstAlphaBlendFactor(parameters.dstColor)
+                        // (3) BUGFIX: use dstAlpha, not dstColor
+                        .dstAlphaBlendFactor(parameters.dstAlpha)
                         .alphaBlendOp(parameters.alphaBlendOp)
                 }
-                val colorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO).pAttachments(blendAttState)
+                val cb = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
+                    .pAttachments(blendAtt)
 
-                val vkPipelineDynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO).pDynamicStates(
+                val dyn = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
+                    .pDynamicStates(
                         stack.ints(
-                            VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+                            VK_DYNAMIC_STATE_VIEWPORT,
+                            VK_DYNAMIC_STATE_SCISSOR,
+                            VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
                         )
                     )
 
                 var vpcr: VkPushConstantRange.Buffer? = null
                 if (pushConstantSize > 0) {
                     vpcr = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT).offset(0)
+                        .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT)
+                        .offset(0)
                         .size(pushConstantSize)
                 }
 
-                val numLayouts = layouts.size
-                val maxSet = if (numLayouts == 0) 0 else (layouts.values.maxOf { it.first.set } + 1)
-                if (numLayouts != maxSet) throw IllegalArgumentException("layout for a module is missing a set ${layouts.keys}")
-                val ppLayout = stack.callocLong(maxSet)
+                // ---- Pipeline layout includes global set=0 at index 0
+                val moduleHighestSet = if (layouts.isEmpty()) 0 else layouts.keys.maxOrNull()!!
+                val highestSet = max(0, moduleHighestSet) // ensure room for set 0
 
-                for (i in 0 until numLayouts) {
-                    if (layouts[i] == null) throw IllegalArgumentException("layout for a module is missing a set ${i}")
-                    ppLayout.put(layouts[i]!!.first.set, layouts[i]!!.first.vkDescriptorLayout)
+                val ppLayout = stack.callocLong(highestSet + 1)
+                // set 0: global bindless sampled-image array (binding 0) + sampler (binding 1)
+                ppLayout.put(0, parameters.renderer.set0Layout.vkDescriptorLayout)
+                // sets 1..highestSet must be contiguous in this module
+                for (s in 1..highestSet) {
+                    val pair = layouts[s]
+                        ?: throw IllegalArgumentException(
+                            "Pipeline layout is missing descriptor set $s (set 0 is reserved globally). " +
+                                    "Make your module sets contiguous starting at set=1."
+                        )
+                    ppLayout.put(s, pair.first.vkDescriptorLayout)
                 }
 
-                val pPipelineLayoutCreateInfo =
-                    VkPipelineLayoutCreateInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                        .pSetLayouts(ppLayout)
-                vpcr?.let {
-                    pPipelineLayoutCreateInfo.pPushConstantRanges(it) // work around IntelliJ's nullability issue
-                }
+                val pli = VkPipelineLayoutCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                    .pSetLayouts(ppLayout)
+                vpcr?.let { pli.pPushConstantRanges(it) }
+
                 val lp = stack.mallocLong(1)
-
                 vkCheck(
-                    vkCreatePipelineLayout(parameters.renderer.device.vkDevice, pPipelineLayoutCreateInfo, null, lp),
+                    vkCreatePipelineLayout(parameters.renderer.device.vkDevice, pli, null, lp),
                     "Failed to create pipeline layout"
                 )
                 pipelineLayout = lp[0]
+                parameters.renderer.device.nameObject(
+                    pipelineLayout, VK10.VK_OBJECT_TYPE_PIPELINE_LAYOUT, "${parameters.name} PipelineLayout"
+                )
 
                 val renderInfo = VkPipelineRenderingCreateInfoKHR.calloc(1, stack)
-                renderInfo.sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR)
+                    .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR)
 
                 val colorAttachmentFormats = stack.callocInt(parameters.color)
-                (0 until parameters.color).forEach {
-                    // this is only true if we are rendering to the screen, if we're RTT then we need to override this
-                    colorAttachmentFormats.put(parameters.imageFormat)
-                }
+                repeat(parameters.color) { colorAttachmentFormats.put(parameters.imageFormat) }
                 colorAttachmentFormats.flip()
-                renderInfo.colorAttachmentCount(parameters.color)
-                renderInfo.pColorAttachmentFormats(colorAttachmentFormats)
-                if (parameters.depth > 0) renderInfo.depthAttachmentFormat(Options.defaultDepthFormat)
-                else renderInfo.depthAttachmentFormat(VK_FORMAT_UNDEFINED)
-                renderInfo.stencilAttachmentFormat(0)
 
-                val pipeline =
-                    VkGraphicsPipelineCreateInfo.calloc(1, stack).sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
-                        .pStages(shaderStages)
-                        .pViewportState(vkPipelineViewportStateCreateInfo)
-                        .pRasterizationState(vkPipelineRasterizationStateCreateInfo)
-                        .pMultisampleState(vkPipelineMultisampleStateCreateInfo).pColorBlendState(colorBlendState)
-                        .pDynamicState(vkPipelineDynamicStateCreateInfo).layout(pipelineLayout).renderPass(0)
-                        .pNext(renderInfo.address())
+                renderInfo
+                    .colorAttachmentCount(parameters.color)
+                    .pColorAttachmentFormats(colorAttachmentFormats)
+                    .depthAttachmentFormat(if (parameters.depth > 0) Options.defaultDepthFormat else VK_FORMAT_UNDEFINED)
+                    .stencilAttachmentFormat(0)
 
-                if (ds != null) {
-                    pipeline.pDepthStencilState(ds)
-                }
+                val gp = VkGraphicsPipelineCreateInfo.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+                    .pStages(shaderStages)
+                    .pViewportState(vp)
+                    .pRasterizationState(rs)
+                    .pMultisampleState(ms)
+                    .pColorBlendState(cb)
+                    .pDynamicState(dyn)
+                    .layout(pipelineLayout)
+                    .renderPass(0)
+                    .pNext(renderInfo.address())
+
+                ds?.let { gp.pDepthStencilState(it) }
+
                 vkCheck(
                     vkCreateGraphicsPipelines(
                         parameters.renderer.device.vkDevice,
                         parameters.renderer.pipelineCache.vkPipelineCache,
-                        pipeline,
-                        null,
-                        lp
-                    ), "Error creating graphics pipeline"
+                        gp, null, lp
+                    ),
+                    "Error creating graphics pipeline"
+                )
+                this.pipeline = lp[0]
+                parameters.renderer.device.nameObject(
+                    pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
                 )
 
-
+                // hook structures to backing buffers
                 liveUniformStructures.forEach { (name, structure) ->
                     val target = (uniforms[name] as Module.Uniform).buffer
                     structure.proxying = target
                 }
-
-
-                this.pipeline = lp[0]
             }
 
             valid = true
@@ -688,10 +564,17 @@ class MeshModule(val parameters: Parameters) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (!valid) return
         MemoryStack.stackPush().use { stack ->
+            val labelColor = stack.floats(
+                parameters.labelColor.x.f, parameters.labelColor.y.f, parameters.labelColor.z.f, parameters.labelColor.w.f
+            )
+            command.beginLabel(parameters.name, labelColor)
 
-            val cmdHandle = command.vkCommandBuffer
+            val cmd = command.vkCommandBuffer
 
-            VK10.vkCmdBindPipeline(cmdHandle, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
+            VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
+
+            // Bind global set 0 (sampled-image array + sampler) for this pipeline layout
+            parameters.renderer.bindGlobalSet0(command, pipelineLayout)
 
             val viewportNow = parameters.viewport ?: Rect(0.0, 0.0, bounds.lengthX().d, bounds.lengthY().d)
             val viewport = VkViewport.calloc(1, stack)
@@ -700,50 +583,40 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 .height(-viewportNow.h.f)   // flip Y
                 .width(viewportNow.w.f)
                 .minDepth(0.0f).maxDepth(1.0f)
-            VK10.vkCmdSetViewport(cmdHandle, 0, viewport)
+            VK10.vkCmdSetViewport(cmd, 0, viewport)
 
             val scissor = VkRect2D.calloc(1, stack)
                 .extent(VkExtent2D.calloc(stack).width(bounds.lengthX().toInt()).height(bounds.lengthY().toInt()))
                 .offset(VkOffset2D.calloc(stack).x(0).y(0))
-            VK10.vkCmdSetScissor(cmdHandle, 0, scissor)
+            VK10.vkCmdSetScissor(cmd, 0, scissor)
 
-            // dynamic depth test (requires EXT_extended_dynamic_state enabled at device creation)
-            EXTExtendedDynamicState.vkCmdSetDepthTestEnableEXT(
-                cmdHandle, if (parameters.depth == 0) false else parameters.depthTest
-            )
+            VK13.vkCmdSetDepthTestEnable(cmd, if (parameters.depth == 0) false else parameters.depthTest)
 
-            // Push constant scratch buffer for meshes (stack-owned; valid for this call)
             val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
 
-            // --- Descriptor sets: build a dense window [firstSet .. lastSet] and bind once ---
+            // Bind module-local sets (>=1) as a dense window
             if (uniforms.isNotEmpty()) {
                 val uniqueSets = uniforms.values.map { it.binding.set }.toSet()
                 val firstSet = uniqueSets.minOrNull()!!
                 val lastSet  = uniqueSets.maxOrNull()!!
                 val setCount = lastSet - firstSet + 1
 
-                val descriptorSets = stack.mallocLong(setCount)
-                // default to 0 for gaps (valid "null" set)
-                for (i in 0 until setCount) descriptorSets.put(i, 0L)
-
-
+                // (4/7) Use callocLong + absolute puts; do not advance position
+                val descriptorSets = stack.callocLong(setCount)
 
                 uniforms.values.forEach { upd ->
                     val slot = upd.binding.set - firstSet
                     descriptorSets.put(slot, upd.target.vkDescriptorSet)
                 }
 
+                descriptorSets.position(0)
+
                 vkCmdBindDescriptorSets(
-                    cmdHandle,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipelineLayout,
-                    firstSet,
-                    descriptorSets,
-                    null
+                    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, firstSet, descriptorSets, null
                 )
             }
 
-            // Update any dirty UBO/SSBO structures before drawing
+            // Update dirty UBO/SSBOs
             liveUniformStructures.forEach { (name, structure) ->
                 val target = (uniforms[name] as Module.Uniform).buffer
                 structure.proxying = target
@@ -756,43 +629,34 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 }
             }
 
-            // Issue draws for all meshes (each writes its own push constants into the shared buffer)
+            // Dispatch per-mesh work
             meshes.forEach { (_, mesh) ->
-                //mesh.draw(this, command, pushConstantBuffer)
-
                 mesh.compute(this, command, pushConstantBuffer)
-
             }
+
+            command.endLabel()
         }
     }
 
     fun copyMeshesFrom(old: MeshModule) {
         old.meshes.entries.removeIf {
-            this.meshes.put(it.key, it.value)
-            (it.value as? MeshMesh)?.let {
-                it.inside = this.pointer()
-            }
+            meshes[it.key] = it.value
+            (it.value as? MeshMesh)?.let { mm -> mm.inside = this.pointer() }
             true
         }
     }
 
-
-    fun cleanup() {
-
-    }
+    fun cleanup() { /* lifetime handled by renderer; no-op */ }
 
     private fun createShaderModule(code: ByteBuffer): Long {
         MemoryStack.stackPush().use { stack ->
             val pCode = stack.malloc(code.limit()).put(code).flip()
-            val moduleCreateInfo =
-                VkShaderModuleCreateInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO).pCode(pCode)
-
-
+            val ci = VkShaderModuleCreateInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
+                .pCode(pCode)
             val lp = stack.mallocLong(1)
-            vkCheck(
-                vkCreateShaderModule(parameters.renderer.device.vkDevice, moduleCreateInfo, null, lp),
-                "Failed to create shader module"
-            )
+            vkCheck(vkCreateShaderModule(parameters.renderer.device.vkDevice, ci, null, lp),
+                "Failed to create shader module")
             return lp[0]
         }
     }
@@ -802,6 +666,55 @@ class MeshModule(val parameters: Parameters) : Renderable {
         m.second.inside = this.pointer()
     }
 
+    /**
+     * Separate-sampler model for set=0:
+     *  - Sampled images at binding 0 (global array).
+     *  - Sampler at binding 1.
+     *  - No UBO/SSBO/storage image in set=0.
+     */
+    private fun validateAndReserveSet0(ti: Introspection, mi: Introspection, fi: Introspection) {
+        val illegal = mutableListOf<String>()
 
+        listOf(ti, mi, fi).forEach { ins ->
+            ins.ubos  .filter { it.set == 0 }.forEach { illegal += "UBO '${it.name}' (binding ${it.binding})" }
+            ins.ssbo  .filter { it.set == 0 }.forEach { illegal += "SSBO '${it.name}' (binding ${it.binding})" }
+            ins.images.filter { it.set == 0 }.forEach { illegal += "storage image '${it.name}' (binding ${it.binding})" }
+        }
+
+        if (illegal.isNotEmpty()) {
+            val msg = buildString {
+                appendLine("set=0 is reserved for the global bindless sampled-image array (binding 0) and a single sampler binding (binding 1).")
+                appendLine("These declarations in set=0 are not allowed:")
+                illegal.forEach { appendLine("  - $it") }
+                appendLine("Fix: move them to set>=1, or sample via the global array at set=0.")
+            }
+            throw IllegalArgumentException(msg)
+        }
+
+        val allTexturesSet0 = (ti.textures + mi.textures + fi.textures).filter { it.set == 0 }
+        if (allTexturesSet0.isNotEmpty()) {
+            val distinctBindings = allTexturesSet0.map { it.binding }.toSet()
+            if (distinctBindings.size != 1 || distinctBindings.first() != 0) {
+                val msg = buildString {
+                    appendLine("set=0 sampled images must use **binding 0** across all stages.")
+                    appendLine("Found bindings: ${distinctBindings.sorted()}")
+                    appendLine("Fix: declare textures at set=0,binding=0 (sampler is set=0,binding=1).")
+                }
+                throw IllegalArgumentException(msg)
+            }
+        }
+
+        val allSet0Samplers = (ti.samplers + mi.samplers + fi.samplers).filter { it.set == 0 }
+        if (allSet0Samplers.isNotEmpty()) {
+            val samplerBindings = allSet0Samplers.map { it.location }.toSet()
+            if (samplerBindings.size != 1 || samplerBindings.first() != 1) {
+                val msg = buildString {
+                    appendLine("set=0 separate samplers must use **binding 1** across all stages.")
+                    appendLine("Found sampler bindings: ${samplerBindings.sorted()}")
+                    appendLine("Fix: declare the sampler at set=0,binding=1.")
+                }
+                throw IllegalArgumentException(msg)
+            }
+        }
+    }
 }
-

@@ -5,7 +5,7 @@ package afield.four.modules
 import afield.Box
 import afield.RunsAt
 import afield.four.Renderer
-import afield.four.defaultBuffer
+import afield.four.buffers.defaultBuffer
 import afield.four.modules.GltfSupport.gltVertexShader
 import afield.four.modules.GltfSupport.gltfFragmentShader
 import afield.four.util.Camera

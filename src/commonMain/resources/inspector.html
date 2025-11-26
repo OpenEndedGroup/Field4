@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>JSON Tree Inspector - Socket Demo</title>
+</head>
+<body style="margin:0;">
+<div id="app"></div>
+<script type="module">
+        import { initTreeInspector } from "inspector.js";
+
+        const params = new URLSearchParams(location.search);
+        const debugUid = params.get("uid") || "dev";
+        const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`;
+
+        let state = {};
+
+        const typeDefs = [];
+
+        const app = document.getElementById("app");
+        app.style.height = "100vh";
+        const inspector = initTreeInspector(app, state, typeDefs, {
+                theme: "light",
+                onChangeRoot: (roots) => {
+                        state = roots;
+                        sendMessage({ action: "stateUpdate", state: roots });
+                },
+                onActionRoot: (info) => {
+                        sendMessage({ action: "pathAction", path: info.path });
+                }
+        });
+
+        let ws;
+        function connectSocket() {
+                ws = new WebSocket(wsUrl);
+                ws.addEventListener("open", () => {
+                        sendMessage({ action: "hello" });
+                });
+                ws.addEventListener("message", (event) => {
+                        try {
+                                const msg = JSON.parse(event.data);
+                                if (msg.action === "setState" && msg.state) {
+                                        state = msg.state;
+                                        if (msg.typeDefs) {
+                                                typeDefs.length = 0;
+                                                Array.prototype.push.apply(typeDefs, msg.typeDefs);
+                                        }
+                                        inspector.editor.setData(state);
+                                        inspector.editor.setTypeDefs(typeDefs);
+                                } else if (msg.action === "typeDefs" && msg.typeDefs) {
+                                        typeDefs.length = 0;
+                                        Array.prototype.push.apply(typeDefs, msg.typeDefs);
+                                        inspector.editor.setTypeDefs(typeDefs);
+                                } else if (msg.action === "setPath" && msg.path) {
+                                        applyPathUpdate(msg.path, msg.newValue);
+                                }
+                                inspector.editor.refresh();
+                        } catch (e) {
+                                console.error("Bad message", e);
+                        }
+                });
+                ws.addEventListener("close", () => {
+                        setTimeout(connectSocket, 1000);
+                });
+        }
+
+        function sendMessage(payload) {
+                const packet = Object.assign({}, payload, { debug_uid: debugUid });
+                const text = JSON.stringify(packet);
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(text);
+                }
+        }
+
+        function applyPathUpdate(pathStr, newValue) {
+                const segs = pathStr.split("/").filter(Boolean);
+                if (!segs.length) return;
+                let obj = state;
+                for (let i = 0; i < segs.length - 1; i++) {
+                        const k = segs[i];
+                        if (obj[k] == null || typeof obj[k] !== "object") obj[k] = {};
+                        obj = obj[k];
+                }
+                obj[segs[segs.length - 1]] = newValue;
+        }
+
+        connectSocket();
+
+</script>
+</body>
+</html>

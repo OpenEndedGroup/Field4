@@ -127,6 +127,8 @@ fun install() {
             }
         } else {
             println(" =-- remote sent a message that I don't understand ${o}")
+            return@mutableSetOf       Handled.no
+
         }
 
         Handled.yes

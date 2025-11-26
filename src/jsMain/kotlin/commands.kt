@@ -48,6 +48,16 @@ fun deleteSelectedBoxes() {
     canvasGestures.rebuildConnectionGroup()
 }
 
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun moveSelectedBoxesForward() {
+    selected.forEach {
+        it.parentNode?.appendChild(it)
+    }
+    canvasGestures.rebuildConnectionGroup()
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport()
 fun insertFromWorkspace() {
@@ -88,7 +98,10 @@ fun insertFromWorkspace() {
 @JsExport
 fun editHashtag() {
     var selectedBoxes = selected.map { it.id }
-    sendWithReply(Message("request-hashtag").payload(RequestHashtags(boxes = selectedBoxes, getOrSet = true)), "hashes") { message, payload ->
+    sendWithReply(
+        Message("request-hashtag").payload(RequestHashtags(boxes = selectedBoxes, getOrSet = true)),
+        "hashes"
+    ) { message, payload ->
 
         println(" request templates got $message $payload")
 
@@ -278,6 +291,12 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.keyCode==8 || event.keyCode==46) && (event.ctrlKey || event.metaKey),
             run: () => {
                 deleteSelectedBoxes()
+            }
+        },{
+            id:'move-forward',
+            label:"Move selected boxes forward",
+            run: () => {
+                    moveSelectedBoxesForward()
             }
         },{
             id:'insert-from-workspace',

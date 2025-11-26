@@ -53,16 +53,9 @@ fun insertHTMLWithScripts(container: Element, htmlString: String, isModule : Boo
 fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
 
     val outputArea = box.getElementsByClassName("outputArea").asList()[0] as HTMLElement
-//    val outputArea_content = outputArea.getElementsByClassName("outputArea_content").asList()[0] as HTMLElement
-
-
     outputArea.style.visibility = "visible"
-//    outputArea_content.innerHTML = ""
-
-    var preferredWidth = 100.0
 
     val contain = outputArea.querySelector(".disclosure-group")
-//    console.log(" output Area to disclosure group", outputArea, contain)
     val inter = disclosureInterface(contain!!)
 
     insertHTMLWithScripts(

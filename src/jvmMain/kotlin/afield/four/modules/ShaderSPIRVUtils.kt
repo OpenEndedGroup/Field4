@@ -1,5 +1,6 @@
 package afield.four.modules
 
+import afield.four.util.Options
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.NativeResource
 import org.lwjgl.util.shaderc.Shaderc
@@ -68,6 +69,11 @@ object ShaderSPIRVUtils {
 
         val opts = Shaderc.shaderc_compile_options_initialize()
 //        Shaderc.shaderc_compile_options_set_target_env(opts, Shaderc.shaderc_target_env_webgpu, Shaderc.shaderc_env_version_webgpu)
+
+        if (Options.validate) {
+            Shaderc.shaderc_compile_options_set_generate_debug_info(opts)
+        }
+
         Shaderc.shaderc_compile_options_set_target_env(
             opts, Shaderc.shaderc_target_env_vulkan, Shaderc.shaderc_env_version_vulkan_1_3
         )

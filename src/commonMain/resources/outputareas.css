@@ -50,6 +50,7 @@
     user-select: none;
     transition: background 0.2s ease;
     min-height: 24px;
+    font-style: italic;
     /*margin-right: -12px;*/
 }
 .disclosure-header:hover {

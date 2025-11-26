@@ -2,7 +2,6 @@
 
 package afield.four.buffers
 
-import afield.four.BufferParameters
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.modules.fromContext
@@ -18,9 +17,11 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 import org.lwjgl.vulkan.VK12.VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO
 import org.lwjgl.vulkan.VK12.vkGetBufferDeviceAddress
+import org.lwjgl.vulkan.VK13.*          // sync2 API + *_2_* flags
 import org.lwjgl.vulkan.VkBufferCreateInfo
 import org.lwjgl.vulkan.VkBufferDeviceAddressInfo
-import org.lwjgl.vulkan.VkBufferMemoryBarrier
+import org.lwjgl.vulkan.VkBufferMemoryBarrier2
+import org.lwjgl.vulkan.VkDependencyInfo
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
@@ -166,7 +167,6 @@ class VulkanBuffer(
     fun realloc(bytes: Long) {
         val oldBuffer = buffer
         val oldAlloc  = allocation
-        val oldMapped = mappedMemory
 
         // Clear live handles
         buffer = 0L
@@ -177,7 +177,6 @@ class VulkanBuffer(
         allocate()
 
         renderer.cleanup.add {
-            // No need to unmap explicitly if we created it MAPPED; destroy takes care of it.
             if (oldBuffer != VK_NULL_HANDLE && oldAlloc != 0L) {
                 vmaDestroyBuffer(allocatorForRenderer(renderer), oldBuffer, oldAlloc)
             }
@@ -188,7 +187,6 @@ class VulkanBuffer(
     fun dynamicResizer() = { was: FloatBuffer, hint: Int ->
         val nextSize = 2 + max(hint, (was.capacity() * 1.5).i)
         println("Realloc ${was.capacity()}")
-        val addrBefore = mappedMemory
         val allocBefore = allocation
 
         realloc(nextSize * 4L)
@@ -200,35 +198,39 @@ class VulkanBuffer(
         data
     }
 
-    /** Fill with zeros then barrier to COMPUTE. */
+    /**
+     * Fill with zeros then make the writes visible to subsequent **compute shader** reads/writes
+     * using **synchronization2**. If you need this to precede graphics-stage use instead, change
+     * dstStageMask to the appropriate stage(s).
+     */
     fun zero(cmd: CommandBuffer) {
         MemoryStack.stackPush().use { stack ->
             vkCmdFillBuffer(cmd.vkCommandBuffer, buffer, 0L, allocationSize, 0)
-            val barrier = VkBufferMemoryBarrier.calloc(1, stack).apply {
-                it.sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
-                it.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-                it.dstAccessMask(VK_ACCESS_SHADER_READ_BIT or VK_ACCESS_SHADER_WRITE_BIT)
-                it.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                it.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                it.buffer(buffer)
-                it.offset(0L)
-                it.size(allocationSize)
-            }
-            vkCmdPipelineBarrier(
-                cmd.vkCommandBuffer,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                0, null, barrier, null
-            )
+
+            val bufBarrier = VkBufferMemoryBarrier2.calloc(1, stack)
+            bufBarrier[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
+                .srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer)
+                .offset(0L)
+                .size(allocationSize)
+
+            val dep = VkDependencyInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+                .pBufferMemoryBarriers(bufBarrier)
+
+            vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
         }
     }
 
     override fun clean(hostReading: Boolean, cmd: CommandBuffer?): VulkanBuffer {
         if (cmd == null) return this
-        // You had an early return true; keeping behavior as-is.
         if (true) return this
-
-        // (If you re-enable this path later, it still works unchanged.)
         return this
     }
 
@@ -247,11 +249,7 @@ class VulkanBuffer(
 
     /** Flush writes for non-coherent memory. We keep it mapped. */
     fun unmap(offset: Long = 0, size: Long = requestedSize) {
-        // Always safe; becomes a no-op on coherent memory
         Vma.vmaFlushAllocation(allocatorForRenderer(renderer), allocation, offset, size)
-        // If you truly want to unmap:
-        // Vma.vmaUnmapMemory(allocatorForRenderer(renderer), allocation)
-        // mappedMemory = MemoryUtil.NULL
     }
 
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VulkanBuffer {
@@ -318,8 +316,6 @@ class VulkanBuffer(
         val m = map()
         val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
         builder.invoke(data)
-        // If host reads on non-coherent, you’d call vmaInvalidateAllocation before reading.
-        // Not done here since your path doesn’t stage GPU->CPU writes yet.
         return this
     }
 
@@ -345,13 +341,12 @@ class VulkanBuffer(
     fun pushCleanup() {
         val oldBuffer = buffer
         val oldAlloc  = allocation
-        val oldMapped = mappedMemory
 
         buffer = 0L
         allocation = 0L
         mappedMemory = 0L
 
-        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, oldMapped))
+        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, 0L))
     }
 
     fun cleanup() {
@@ -369,10 +364,9 @@ class VulkanBuffer(
         val renderer: Renderer,
         val cbuffer: Long,
         val callocation: Long,
-        val cmappedMemory: Long
+        @Suppress("UNUSED_PARAMETER") val cmappedMemory: Long
     ) : Runnable {
         override fun run() {
-            // No explicit unmap required for persistently mapped allocations before destroy.
             if (cbuffer != VK_NULL_HANDLE && callocation != 0L) {
                 vmaDestroyBuffer(allocatorForRenderer(renderer), cbuffer, callocation)
             }

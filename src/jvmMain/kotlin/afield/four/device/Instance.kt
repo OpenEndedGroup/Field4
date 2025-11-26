@@ -7,34 +7,48 @@ import afield.four.util.vkCheck
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.openvr.OpenVR
-import org.lwjgl.openvr.OpenVR.VRCompositor
 import org.lwjgl.openvr.VR
 import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanDeviceExtensionsRequired
 import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanInstanceExtensionsRequired
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.*
+import org.lwjgl.system.MemoryUtil.memPutAddress
+import org.lwjgl.vulkan.EXTDebugUtils
 import org.lwjgl.vulkan.EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT
 import org.lwjgl.vulkan.EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT
-import org.lwjgl.system.MemoryUtil.memPutAddress
+import org.lwjgl.vulkan.EXTToolingInfo
+import org.lwjgl.vulkan.EXTValidationFeatures
+import org.lwjgl.vulkan.KHRCalibratedTimestamps // kept for domain constants if you need elsewhere
 import org.lwjgl.vulkan.KHRPortabilityEnumeration.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
-import org.lwjgl.vulkan.VkBaseOutStructure
-import org.lwjgl.vulkan.EXTCalibratedTimestamps
-import org.lwjgl.vulkan.EXTToolingInfo.*
-import org.lwjgl.vulkan.KHRCalibratedTimestamps // for KHR constants (domains)
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
 import org.lwjgl.vulkan.VK10.VK_SUCCESS
+import org.lwjgl.vulkan.VK13
+import org.lwjgl.vulkan.VkApplicationInfo
+import org.lwjgl.vulkan.VkBaseOutStructure
+import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT
+import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT
+import org.lwjgl.vulkan.VkExtensionProperties
+import org.lwjgl.vulkan.VkInstance
+import org.lwjgl.vulkan.VkInstanceCreateInfo
+import org.lwjgl.vulkan.VkLayerProperties
+import org.lwjgl.vulkan.VkLayerSettingEXT
+import org.lwjgl.vulkan.VkLayerSettingsCreateInfoEXT
+import org.lwjgl.vulkan.VkPhysicalDevice
+import org.lwjgl.vulkan.VkPhysicalDeviceToolPropertiesEXT
+import org.lwjgl.vulkan.VkValidationFeaturesEXT
 
 class Instance(validate: Boolean) {
+
     var vkInstance: VkInstance
+        private set
 
-    private var debugUtils: VkDebugUtilsMessengerCreateInfoEXT? = null
+    private var debugUtilsCreateInfo: VkDebugUtilsMessengerCreateInfoEXT? = null
     private var vkDebugHandle: Long = 0
-
 
     init {
         MemoryStack.stackPush().use { stack ->
-            // Create application information
+            // --- Application info
             val appShortName = stack.UTF8("VulkanBook")
             val appInfo = VkApplicationInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO)
@@ -44,78 +58,70 @@ class Instance(validate: Boolean) {
                 .engineVersion(0)
                 .apiVersion(VK13.VK_API_VERSION_1_3)
 
-            // Validation layers
+            // --- Layers
             val validationLayers = supportedValidationLayers
-            val numValidationLayers = validationLayers.size
-            var supportsValidation = validate
-            if (validate && numValidationLayers == 0) {
-                supportsValidation = false
-                println(" Requested validation, but no supported layers found")
-//                Logger.warn("Request validation but no supported validation layers found. Falling back to no validation")
+            var supportsValidation = validate && validationLayers.isNotEmpty()
+            if (validate && !supportsValidation) {
+                println("Requested validation, but no supported layers found")
             }
 
-            // Set required  layers
             var requiredLayers: PointerBuffer? = null
             if (supportsValidation) {
-                requiredLayers = stack.mallocPointer(numValidationLayers)
-                for (i in 0 until numValidationLayers) {
-                    requiredLayers.put(i, stack.ASCII(validationLayers[i]))
-                }
+                requiredLayers = stack.mallocPointer(validationLayers.size)
+                validationLayers.forEachIndexed { i, name -> requiredLayers.put(i, stack.ASCII(name)) }
             }
 
-// --- Discover supported instance extensions
-            val supported = instanceExtensions
+            // --- Discover supported instance extensions
+            val supportedExts = instanceExtensions
 
-// --- GLFW-required instance extensions
-            val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
-                ?: throw RuntimeException("Failed to find the GLFW platform surface extensions. This only happens if something is seriously wrong with Vulkan on your machine, or you are launching this graphics system in an environment that has impossible requests of the Vulkan API (like asking for MoltenVK on Linux).")
+            // --- GLFW-required instance extensions
+            val glfwExts = GLFWVulkan.glfwGetRequiredInstanceExtensions()
+                ?: throw RuntimeException(
+                    "Failed to find GLFW platform surface extensions. " +
+                            "Either Vulkan is not set up or this platform configuration is unsupported."
+                )
 
-            val usePortability = OS == OSType.MACOS // save us KosmicKrisp
-            val hasDebugUtils = supported.contains(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-            val hasLayerSettings = supported.contains("VK_EXT_layer_settings")
+            val usePortability = (OS == OSType.MACOS)
+            val hasDebugUtils = EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME in supportedExts
+            val hasLayerSettings = "VK_EXT_layer_settings" in supportedExts
+            val hasValidationFeatures =
+                EXTValidationFeatures.VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME in supportedExts
 
-// --- Build list dynamically
-            val extNames = ArrayList<String>(glfwExtensions.remaining() + 4)
-
-// 1) Always add GLFW surface extensions
-            while (glfwExtensions.hasRemaining()) {
-                extNames += MemoryUtil.memUTF8(glfwExtensions.get())
+            // --- Build extension list
+            val extNames = ArrayList<String>(glfwExts.remaining() + 6).apply {
+                while (glfwExts.hasRemaining()) add(MemoryUtil.memUTF8(glfwExts.get()))
+                if (supportsValidation && hasDebugUtils) add(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+                if (supportsValidation && hasValidationFeatures) add(EXTValidationFeatures.VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME)
+                if (supportsValidation && hasLayerSettings) add("VK_EXT_layer_settings")
+                if (usePortability) add(PORTABILITY_EXTENSION) // VK_KHR_portability_enumeration
+                if (Options.enableVR) addAll(getOpenVRRequiredInstanceExts())
             }
 
-// 2) Debug utils if validating AND supported
-            if (supportsValidation && hasDebugUtils) {
-                extNames += EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+            val requiredExtensions = stack.mallocPointer(extNames.size).apply {
+                extNames.forEach { put(stack.ASCII(it)) }
+                flip()
             }
 
-// 3) Portability (MoltenVK/macOS)
-            if (usePortability) {
-                extNames += PORTABILITY_EXTENSION // VK_KHR_portability_enumeration
-            }
-
-// 4) Layer settings only if supported AND validating (since we’d attach its pNext)
-            if (supportsValidation && hasLayerSettings) {
-                extNames += "VK_EXT_layer_settings"
-            }
-            if (Options.enableVR) {
-                extNames += getOpenVRRequiredInstanceExts()
-            }
-
-// Convert to LWJGL pointer buffer
-            val requiredExtensions = stack.mallocPointer(extNames.size)
-            for (name in extNames) requiredExtensions.put(stack.ASCII(name))
-            requiredExtensions.flip()
-
-// --- Optional pNext chain pieces
+            // --- Optional pNext chain
             var pNextHead: Long = MemoryUtil.NULL
 
-// Debug utils create-info only if extension present AND validating
+            // Debug utils callback create-info
             if (supportsValidation && hasDebugUtils) {
-                debugUtils = createDebugCallBack()
-                pNextHead = debugUtils!!.address()
+                debugUtilsCreateInfo = createDebugCallBack()
+                pNextHead = debugUtilsCreateInfo!!.address()
             }
 
+            // Validation features (enable shader printf)
+            if (supportsValidation && hasValidationFeatures) {
+                val enables = stack.ints(EXTValidationFeatures.VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
+                val vfeat = VkValidationFeaturesEXT.calloc(stack)
+                    .sType(EXTValidationFeatures.VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT)
+                    .pEnabledValidationFeatures(enables)
+                    .pNext(pNextHead)
+                pNextHead = vfeat.address()
+            }
 
-// Layer settings only if extension present AND validating
+            // Layer settings (optional)
             if (supportsValidation && hasLayerSettings) {
                 val settings = VkLayerSettingEXT.calloc(1, stack)
                 settings[0]
@@ -133,10 +139,10 @@ class Instance(validate: Boolean) {
                 pNextHead = layerSettings.address()
             }
 
-// --- Create instance info
+            // --- Instance create info
             val instanceInfo = VkInstanceCreateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
-                .pNext(pNextHead) // may be 0, or layer_settings -> debug_utils, or just debug_utils
+                .pNext(pNextHead)
                 .pApplicationInfo(appInfo)
                 .ppEnabledLayerNames(requiredLayers)
                 .ppEnabledExtensionNames(requiredExtensions)
@@ -145,23 +151,21 @@ class Instance(validate: Boolean) {
                 instanceInfo.flags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)
             }
 
-
             val pInstance = stack.mallocPointer(1)
             vkCheck(VK10.vkCreateInstance(instanceInfo, null, pInstance), "Error creating instance")
             vkInstance = VkInstance(pInstance[0], instanceInfo)
 
+            // --- Debug messenger (if validation on)
             vkDebugHandle = VK10.VK_NULL_HANDLE
-            if (supportsValidation) {
-                val longBuff = stack.mallocLong(1)
+            if (supportsValidation && hasDebugUtils) {
+                val p = stack.mallocLong(1)
                 vkCheck(
                     EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(
-                        vkInstance,
-                        debugUtils!!,
-                        null,
-                        longBuff
-                    ), "Error creating debug utils"
+                        vkInstance, debugUtilsCreateInfo!!, null, p
+                    ),
+                    "Error creating debug utils messenger"
                 )
-                vkDebugHandle = longBuff[0]
+                vkDebugHandle = p[0]
             }
         }
     }
@@ -171,178 +175,205 @@ class Instance(validate: Boolean) {
             EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vkInstance, vkDebugHandle, null)
         }
         VK10.vkDestroyInstance(vkInstance, null)
-        if (debugUtils != null) {
-            debugUtils?.pfnUserCallback()?.free()
-            debugUtils?.free()
-        }
+        debugUtilsCreateInfo?.pfnUserCallback()?.free()
+        debugUtilsCreateInfo?.free()
     }
+
+    // --- Helpers -------------------------------------------------------------
 
     private val instanceExtensions: Set<String>
         get() {
-            val instanceExtensions: MutableSet<String> = HashSet()
+            val out = HashSet<String>()
             MemoryStack.stackPush().use { stack ->
-                val numExtensionsBuf = stack.callocInt(1)
-                VK10.vkEnumerateInstanceExtensionProperties(null as String?, numExtensionsBuf, null)
-                val numExtensions = numExtensionsBuf[0]
-
-                val instanceExtensionsProps = VkExtensionProperties.calloc(numExtensions, stack)
-                VK10.vkEnumerateInstanceExtensionProperties(null as String?, numExtensionsBuf, instanceExtensionsProps)
-                for (i in 0 until numExtensions) {
-                    val props = instanceExtensionsProps[i]
-                    val extensionName = props.extensionNameString()
-                    instanceExtensions.add(extensionName)
-                }
+                val count = stack.callocInt(1)
+                VK10.vkEnumerateInstanceExtensionProperties(null as String?, count, null)
+                val props = VkExtensionProperties.calloc(count[0], stack)
+                VK10.vkEnumerateInstanceExtensionProperties(null as String?, count, props)
+                repeat(props.capacity()) { i -> out += props[i].extensionNameString() }
             }
-            return instanceExtensions
+            return out
         }
 
     private val supportedValidationLayers: List<String>
         get() {
             MemoryStack.stackPush().use { stack ->
-                val numLayersArr = stack.callocInt(1)
-                VK10.vkEnumerateInstanceLayerProperties(numLayersArr, null)
-                val numLayers = numLayersArr[0]
+                val count = stack.callocInt(1)
+                VK10.vkEnumerateInstanceLayerProperties(count, null)
+                val props = VkLayerProperties.calloc(count[0], stack)
+                VK10.vkEnumerateInstanceLayerProperties(count, props)
+                val supported = buildList(props.capacity()) { repeat(props.capacity()) { i -> add(props[i].layerNameString()) } }
 
-                val propsBuf = VkLayerProperties.calloc(numLayers, stack)
-                VK10.vkEnumerateInstanceLayerProperties(numLayersArr, propsBuf)
-                val supportedLayers: MutableList<String> = ArrayList()
-                for (i in 0 until numLayers) {
-                    val props = propsBuf[i]
-                    val layerName = props.layerNameString()
-                    supportedLayers.add(layerName)
+                return when {
+                    "VK_LAYER_KHRONOS_validation" in supported -> listOf("VK_LAYER_KHRONOS_validation")
+                    "VK_LAYER_LUNARG_standard_validation" in supported -> listOf("VK_LAYER_LUNARG_standard_validation")
+                    else -> listOf(
+                        "VK_LAYER_GOOGLE_threading",
+                        "VK_LAYER_LUNARG_parameter_validation",
+                        "VK_LAYER_LUNARG_object_tracker",
+                        "VK_LAYER_LUNARG_core_validation",
+                        "VK_LAYER_GOOGLE_unique_objects"
+                    ).filter { it in supported }
                 }
-
-                val layersToUse: MutableList<String> = ArrayList()
-
-                // Main validation layer
-                if (supportedLayers.contains("VK_LAYER_KHRONOS_validation")) {
-                    layersToUse.add("VK_LAYER_KHRONOS_validation")
-                    return layersToUse
-                }
-
-                // Fallback 1
-                if (supportedLayers.contains("VK_LAYER_LUNARG_standard_validation")) {
-                    layersToUse.add("VK_LAYER_LUNARG_standard_validation")
-                    return layersToUse
-                }
-
-                // Fallback 2 (set)
-                val requestedLayers: MutableList<String> = ArrayList()
-                requestedLayers.add("VK_LAYER_GOOGLE_threading")
-                requestedLayers.add("VK_LAYER_LUNARG_parameter_validation")
-                requestedLayers.add("VK_LAYER_LUNARG_object_tracker")
-                requestedLayers.add("VK_LAYER_LUNARG_core_validation")
-                requestedLayers.add("VK_LAYER_GOOGLE_unique_objects")
-                return requestedLayers.stream().filter { o: String -> supportedLayers.contains(o) }.toList()
             }
         }
 
     companion object {
-        private fun tryInitOpenVR(): Boolean {
-            // Avoid double-inits if someone already initialized elsewhere
-            if (org.lwjgl.openvr.OpenVR.VRSystem != null) {
-                println(" VR already initialized")
-                return true
-            }
-
-            if (!VR.VR_IsRuntimeInstalled()) {
-                println(" VR runtime not installed")
-                return false
-            } // SteamVR runtime not present
-            // Optional: don’t require HMD to be present just to read strings
-            // if (!VR.VR_IsHmdPresent()) return false
-
-            org.lwjgl.system.MemoryStack.stackPush().use { s ->
-                val pe = s.mallocInt(1)
-                VR.VR_InitInternal(pe, VR.EVRApplicationType_VRApplication_Scene)
-                val err = pe[0]
-                if (err != VR.EVRInitError_VRInitError_None) {
-                    println("OpenVR init failed: $err")
-                    return false
-                }
-            }
-
-            OpenVR.create(1)
-            return true
-        }
-
-
-        fun getOpenVRRequiredInstanceExts(): List<String> {
-            if (!tryInitOpenVR()) return emptyList()
-            return try {
-                val s = VRCompositor_GetVulkanInstanceExtensionsRequired(4096)
-                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
-            } catch (t: Throwable) {
-                t.printStackTrace()
-                emptyList()
-            } finally {
-//                shutdownOpenVRIfWeBootstrapped()
-            }
-        }
-
-        fun getOpenVRRequiredDeviceExts(physicalDeviceAddr: Long): List<String> {
-            if (!tryInitOpenVR()) return emptyList()
-            return try {
-                val s = VRCompositor_GetVulkanDeviceExtensionsRequired(physicalDeviceAddr, 4096)
-                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
-            } catch (t: Throwable) {
-                t.printStackTrace()
-                emptyList()
-            } finally {
-//                shutdownOpenVRIfWeBootstrapped()
-            }
-        }
-        const val MESSAGE_SEVERITY_BITMASK: Int = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT or
-                EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-        const val MESSAGE_TYPE_BITMASK: Int = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT or
-                EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT or
-                EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
         private const val PORTABILITY_EXTENSION = "VK_KHR_portability_enumeration"
 
         var globalAsyncDebugHandler: ((String) -> Unit)? = null
 
         private fun createDebugCallBack(): VkDebugUtilsMessengerCreateInfoEXT {
+            fun objectTypeName(t: Int) = when (t) {
+                VK10.VK_OBJECT_TYPE_INSTANCE -> "Instance"
+                VK10.VK_OBJECT_TYPE_DEVICE -> "Device"
+                VK10.VK_OBJECT_TYPE_QUEUE -> "Queue"
+                VK10.VK_OBJECT_TYPE_COMMAND_BUFFER -> "CmdBuf"
+                VK10.VK_OBJECT_TYPE_IMAGE -> "Image"
+                VK10.VK_OBJECT_TYPE_IMAGE_VIEW -> "ImageView"
+                VK10.VK_OBJECT_TYPE_BUFFER -> "Buffer"
+                VK10.VK_OBJECT_TYPE_BUFFER_VIEW -> "BufferView"
+                VK10.VK_OBJECT_TYPE_SHADER_MODULE -> "ShaderModule"
+                VK10.VK_OBJECT_TYPE_PIPELINE_LAYOUT -> "PipelineLayout"
+                VK10.VK_OBJECT_TYPE_PIPELINE -> "Pipeline"
+                VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT -> "DSL"
+                VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET -> "DS"
+                else -> "Object($t)"
+            }
+
             return VkDebugUtilsMessengerCreateInfoEXT
                 .calloc()
                 .sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT)
-                .messageSeverity(MESSAGE_SEVERITY_BITMASK)
-                .messageType(MESSAGE_TYPE_BITMASK)
-                .pfnUserCallback { messageSeverity: Int, _: Int, pCallbackData: Long, _: Long ->
-                    val callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
-                    if ((messageSeverity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
-                        println("INFO: VkDebugUtilsCallback, ${callbackData.pMessageString()}")
-                    } else if ((messageSeverity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
-                        println("WARNING: VkDebugUtilsCallback, ${callbackData.pMessageString()}")
-                    } else if ((messageSeverity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
-                        println("ERROR: VkDebugUtilsCallback, ${callbackData.pMessageString()}")
-                    } else {
-                        println("VkDebugUtilsCallback, ${callbackData.pMessageString()}")
+                .messageSeverity(
+                    EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT or
+                            EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT or
+                            EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT or
+                            EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT // optional: nice during bring-up
+                )
+                .messageType(
+                    EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT or
+                            EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT or
+                            EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+                )
+                .pfnUserCallback { severity: Int, _: Int, pCallbackData: Long, _: Long ->
+                    val cb = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
+
+                    val msg = cb.pMessageString() ?: ""
+                    val idName = cb.pMessageIdNameString() ?: ""
+                    val isPrintf = idName.contains("DEBUG-PRINTF") ||
+                            msg.contains("DEBUG-PRINTF") ||  // some layers put it only in the text
+                            idName.contains("DebugPrintf", ignoreCase = true)
+
+
+
+                    // Active label stacks (outer..inner)
+
+                    val queueLabels: List<String> = buildList {
+                        val buf = cb.pQueueLabels()
+                        val n = cb.queueLabelCount()
+                        for (i in 0 until n) add(buf?.get(i)?.pLabelNameString() ?: "")
                     }
 
-                    globalAsyncDebugHandler?.let {
-                        it(callbackData.pMessageString()!!)
+                    val cmdLabels: List<String> = buildList {
+                        val buf = cb.pCmdBufLabels()
+                        val n = cb.cmdBufLabelCount()
+                        for (i in 0 until n) add(buf?.get(i)?.pLabelNameString() ?: "")
                     }
+
+// attached objects (if any)
+
+                    // It’s handy to render as “outer > inner”
+                    val labelTrail = (queueLabels + cmdLabels).filter { it.isNotEmpty() }.joinToString(" > ")
+
+                    // Mention any named objects the layer attached to this message
+                    val objectsStr: String = buildList {
+                        val buf = cb.pObjects()
+                        if (buf!=null) {
+                            val n = cb.objectCount()
+                            for (i in 0 until n) {
+                                val o = buf.get(i)
+                                val name = o.pObjectNameString()
+                                val handle = java.lang.Long.toUnsignedString(o.objectHandle())
+                                add("${objectTypeName(o.objectType())}:${name ?: "0x$handle"}")
+                            }
+                        }
+                    }.joinToString(", ")
+
+                    val where = buildString {
+                        if (labelTrail.isNotEmpty()) append(" | labels: $labelTrail")
+                        if (objectsStr.isNotEmpty()) append(" | objects: $objectsStr")
+                    }
+
+                    when {
+                        isPrintf -> println("PRINTF$where: $msg")
+                        (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ->
+                            println("ERROR$where: $msg")
+                        (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ->
+                            println("WARNING$where: $msg")
+                        else -> println("INFO$where: $msg")
+                    }
+
+                    // If you route elsewhere, send the enriched text:
+                    globalAsyncDebugHandler?.invoke((if (isPrintf) "PRINTF" else "VK") + where + ": " + msg)
+
                     VK10.VK_FALSE
                 }
         }
+
+
+        // --- OpenVR helpers (optional) --------------------------------------
+
+        private fun tryInitOpenVR(): Boolean {
+            if (org.lwjgl.openvr.OpenVR.VRSystem != null) return true
+            if (!VR.VR_IsRuntimeInstalled()) return false
+            MemoryStack.stackPush().use { s ->
+                val pe = s.mallocInt(1)
+                VR.VR_InitInternal(pe, VR.EVRApplicationType_VRApplication_Scene)
+                if (pe[0] != VR.EVRInitError_VRInitError_None) return false
+            }
+            OpenVR.create(1)
+            return true
+        }
+
+        fun getOpenVRRequiredInstanceExts(): List<String> {
+            if (!Options.enableVR) return emptyList()
+            if (!tryInitOpenVR()) return emptyList()
+            return try {
+                val s = VRCompositor_GetVulkanInstanceExtensionsRequired(4096)
+                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        }
+
+        @Suppress("unused")
+        fun getOpenVRRequiredDeviceExts(physicalDeviceAddr: Long): List<String> {
+            if (!Options.enableVR) return emptyList()
+            if (!tryInitOpenVR()) return emptyList()
+            return try {
+                val s = VRCompositor_GetVulkanDeviceExtensionsRequired(physicalDeviceAddr, 4096)
+                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        }
     }
 
+    // --- Tooling info dump (optional) ----------------------------------------
 
-    fun dumpToolingInfo(instance: VkInstance, phys: VkPhysicalDevice, deviceOrNull: VkDevice? = null) {
+    fun dumpToolingInfo(instance: VkInstance, phys: VkPhysicalDevice) {
         MemoryStack.stackPush().use { stack ->
-            fun purposesToString(bits: Int): String {
+            fun purposes(bits: Int): String {
                 val out = ArrayList<String>(7)
-                if ((bits and VK_TOOL_PURPOSE_VALIDATION_BIT_EXT) != 0) out += "validation"
-                if ((bits and VK_TOOL_PURPOSE_PROFILING_BIT_EXT) != 0) out += "profiling"
-                if ((bits and VK_TOOL_PURPOSE_TRACING_BIT_EXT) != 0) out += "tracing"
-                if ((bits and VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT_EXT) != 0) out += "adds_features"
-                if ((bits and VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT_EXT) != 0) out += "modifies_features"
-                if ((bits and VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT) != 0) out += "debug_reporting"
-                if ((bits and VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT) != 0) out += "debug_markers"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_VALIDATION_BIT_EXT) != 0) out += "validation"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_PROFILING_BIT_EXT) != 0) out += "profiling"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_TRACING_BIT_EXT) != 0) out += "tracing"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT_EXT) != 0) out += "adds_features"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT_EXT) != 0) out += "modifies_features"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT) != 0) out += "debug_reporting"
+                if ((bits and EXTToolingInfo.VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT) != 0) out += "debug_markers"
                 return if (out.isEmpty()) "none" else out.joinToString("|")
             }
 
-            // --- Physical-device query (instance-level extension) ---
             if (instance.capabilities.vkGetPhysicalDeviceToolPropertiesEXT != 0L) {
                 val pCount = stack.mallocInt(1)
                 var res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(
@@ -360,7 +391,7 @@ class Instance(validate: Boolean) {
                                 println(" - ${t.nameString()} ${t.versionString()}")
                                 println("    layer='${t.layerString() ?: ""}'")
                                 println("    desc='${t.descriptionString() ?: ""}'")
-                                println("    purposes=${purposesToString(t.purposes())}")
+                                println("    purposes=${purposes(t.purposes())}")
                             }
                         }
                     }
@@ -368,6 +399,4 @@ class Instance(validate: Boolean) {
             }
         }
     }
-
-
 }

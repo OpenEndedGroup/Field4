@@ -3,33 +3,36 @@ package afield.four.util
 import afield.Box
 import afield.four.Renderer
 import afield.four.modules.fromContext
-import afield.stdlib.quat
-import afield.stdlib.rem
-import afield.stdlib.times
 import org.joml.Math
 import org.joml.Vector3f
-import org.joml.minus
-import org.joml.plus
 import org.lwjgl.glfw.GLFW
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 class KeyCamera(
-    val renderer: Renderer = fromContext(), val camera: Camera = fromContext(), val name: String = "__keycamera__"
+    val renderer: Renderer = fromContext(),
+    val camera: Camera = fromContext(),
+    val name: String = "__keycamera__"
 ) {
 
     // key → (currentAmount, action)
     var actions = mutableMapOf<String, Pair<Double, (Double) -> Unit>>()
+    var perActionDecays = mutableMapOf<String, Double>()
 
     var decay = 0.95
     var movementSpeed = 0.01
     var rotationSpeed = 0.05
 
+    // right-shift double-tap detection
+    private var lastRightShiftDownTimeMs: Long = 0L
+    private var wasRightShiftDown: Boolean = false
+    private var actionsFrozen: Boolean = false
+
     // snapshot for reset
     private val initialAt = Vector3f(camera.at)
     private val initialTarget = Vector3f(camera.target)
     private val initialUp = Vector3f(camera.up)
-    private val initialFov = camera.p.fov           // 👈 new
+    private val initialFov = camera.p.fov
     private val initialDecay = decay
     private val initialMovementSpeed = movementSpeed
     private val initialRotationSpeed = rotationSpeed
@@ -42,15 +45,16 @@ class KeyCamera(
                 // decay & run actions
                 actions.entries.retainAll { entry ->
                     var (amount, action) = entry.value
-                    amount *= decay
+                    val localDecay = perActionDecays.computeIfAbsent(entry.key) { decay }
+                    amount *= localDecay
                     entry.setValue(amount to action)
-                    actions[entry.key] = Pair(amount, action)
+                    actions[entry.key] = amount to action
                     action(amount)
                     amount > 0.01
                 }
 
                 // keep up ⟂ forward so rotations stay sane
-                reorthogonalizeUp()
+                camera.reorthogonalizeUp()
 
                 yield(true)
             }
@@ -59,34 +63,36 @@ class KeyCamera(
 
     private fun checkKeys() {
         val window = renderer.window
+
+        // handle right-shift double tap before computing general "shift" state
+        handleRightShiftDoubleTap()
+
         val shift = isShiftDown()
 
         // base movement scale w/ distance
-        val baseDistance = camera.at.distance(camera.target)
+        val baseDistance = camera.distanceToTarget().toDouble()
         val moveStep = baseDistance * movementSpeed
 
         // ---------- forward / back (UP / DOWN) ----------
         if (window.isKeyPressed(GLFW.GLFW_KEY_UP)) {
             enqueue(if (!shift) "up_target" else "up_at") { amount ->
-                val delta = camera.forward.times(moveStep * amount)
+                val step = moveStep * amount
                 if (!shift) {
-                    // pan: move both
-                    camera.at.add(delta)
-                    camera.target.add(delta)
+                    // pan: move both camera and target forward
+                    camera.moveLocal(forward = step, moveTarget = true)
                 } else {
-                    // move camera
-                    camera.at.add(delta)
+                    // move camera only (change distance to target)
+                    camera.moveLocal(forward = step, moveTarget = false)
                 }
             }
         }
         if (window.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
             enqueue(if (!shift) "down_target" else "down_at") { amount ->
-                val delta = camera.forward.times(moveStep * -amount)
+                val step = -moveStep * amount
                 if (!shift) {
-                    camera.at.add(delta)
-                    camera.target.add(delta)
+                    camera.moveLocal(forward = step, moveTarget = true)
                 } else {
-                    camera.at.add(delta)
+                    camera.moveLocal(forward = step, moveTarget = false)
                 }
             }
         }
@@ -96,11 +102,21 @@ class KeyCamera(
             enqueue(if (!shift) "left_target" else "left_at") { amount ->
                 val ang = rotationSpeed * amount
                 if (!shift) {
-                    // rotate TARGET around CAMERA
-                    camera.target %= (camera.target - camera.at) * quat(angle = ang, axis = camera.up) + camera.at
+                    // rotate TARGET around CAMERA (yaw in place)
+                    camera.yaw(
+                        angle = ang,
+                        aroundTarget = false,
+                        rotateUp = false,
+                        reorthogonalizeUp = false
+                    )
                 } else {
-                    // rotate CAMERA around TARGET
-                    camera.at %= (camera.at - camera.target) * quat(angle = ang, axis = camera.up) + camera.target
+                    // rotate CAMERA around TARGET (orbit)
+                    camera.yaw(
+                        angle = ang,
+                        aroundTarget = true,
+                        rotateUp = false,
+                        reorthogonalizeUp = false
+                    )
                 }
             }
         }
@@ -108,9 +124,19 @@ class KeyCamera(
             enqueue(if (!shift) "right_target" else "right_at") { amount ->
                 val ang = rotationSpeed * -amount
                 if (!shift) {
-                    camera.target %= (camera.target - camera.at) * quat(angle = ang, axis = camera.up) + camera.at
+                    camera.yaw(
+                        angle = ang,
+                        aroundTarget = false,
+                        rotateUp = false,
+                        reorthogonalizeUp = false
+                    )
                 } else {
-                    camera.at %= (camera.at - camera.target) * quat(angle = ang, axis = camera.up) + camera.target
+                    camera.yaw(
+                        angle = ang,
+                        aroundTarget = true,
+                        rotateUp = false,
+                        reorthogonalizeUp = false
+                    )
                 }
             }
         }
@@ -118,39 +144,28 @@ class KeyCamera(
         // ---------- vertical rotate (PAGE UP / PAGE DOWN) ----------
         if (window.isKeyPressed(GLFW.GLFW_KEY_PAGE_UP)) {
             enqueue(if (!shift) "pageup_target" else "pageup_at") { amount ->
-                val forward = Vector3f(camera.target).sub(camera.at)
-                if (forward.lengthSquared() > 1e-12f) {
-                    val right = forward.cross(Vector3f(camera.up)).normalize()
-                    val ang = rotationSpeed * amount
-                    if (shift) {
-                        // rotate CAMERA around TARGET
-                        camera.at %= (camera.at - camera.target) * quat(angle = ang, axis = right) + camera.target
-                    } else {
-                        // rotate TARGET around CAMERA
-                        camera.target %= (camera.target - camera.at) * quat(angle = ang, axis = right) + camera.at
-                    }
-                }
+                val ang = rotationSpeed * amount
+                camera.pitch(
+                    angle = ang,
+                    aroundTarget = shift,
+                    rotateUp = false,
+                    reorthogonalizeUp = false
+                )
             }
         }
         if (window.isKeyPressed(GLFW.GLFW_KEY_PAGE_DOWN)) {
             enqueue(if (!shift) "pagedown_target" else "pagedown_at") { amount ->
-                val forward = Vector3f(camera.target).sub(camera.at)
-                if (forward.lengthSquared() > 1e-12f) {
-                    val right = forward.cross(Vector3f(camera.up)).normalize()
-                    val ang = rotationSpeed * -amount
-                    if (shift) {
-                        // rotate CAMERA around TARGET
-                        camera.at %= (camera.at - camera.target) * quat(angle = ang, axis = right) + camera.target
-                    } else {
-                        // rotate TARGET around CAMERA
-                        camera.target %= (camera.target - camera.at) * quat(angle = ang, axis = right) + camera.at
-                    }
-                }
+                val ang = rotationSpeed * -amount
+                camera.pitch(
+                    angle = ang,
+                    aroundTarget = shift,
+                    rotateUp = false,
+                    reorthogonalizeUp = false
+                )
             }
         }
 
-
-        // ---------- zoom ([ and ]) → NOW: change camera.p.fov ----------
+        // ---------- zoom ([ and ]) → change camera.p.fov ----------
         if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_BRACKET)) {
             // zoom in → smaller fov
             enqueue("zoom_fov_in") { amount ->
@@ -167,12 +182,12 @@ class KeyCamera(
         // ---------- roll ( , and . ) ----------
         if (window.isKeyPressed(GLFW.GLFW_KEY_COMMA)) {
             enqueue("roll_left") { amount ->
-                rollAroundView(rotationSpeed * amount)
+                camera.roll(rotationSpeed * amount)
             }
         }
         if (window.isKeyPressed(GLFW.GLFW_KEY_PERIOD)) {
             enqueue("roll_right") { amount ->
-                rollAroundView(rotationSpeed * -amount)
+                camera.roll(rotationSpeed * -amount)
             }
         }
 
@@ -180,11 +195,14 @@ class KeyCamera(
         if (window.isKeyPressed(GLFW.GLFW_KEY_R)) {
             resetToInitial()
             actions.clear()
+            perActionDecays.clear()
+            actionsFrozen = false
         }
     }
 
     private fun enqueue(key: String, action: (Double) -> Unit) {
         actions[key] = 1.0 to action
+        perActionDecays.remove(key)
     }
 
     private fun isShiftDown(): Boolean {
@@ -193,76 +211,83 @@ class KeyCamera(
     }
 
     /**
+     * Detect double-tap on RIGHT SHIFT (two key-down events within 500ms).
+     * Toggles between:
+     *  - freezing current actions (perActionDecays[key] = 1.0)
+     *  - clearing perActionDecays (back to global decay)
+     */
+    private fun handleRightShiftDoubleTap() {
+        val window = renderer.window
+        val rightShiftDown = window.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT)
+
+        // edge detection: key-down event
+        if (rightShiftDown && !wasRightShiftDown) {
+            val nowMs = System.nanoTime() / 1_000_000L
+            val delta = nowMs - lastRightShiftDownTimeMs
+
+            if (delta in 1..DOUBLE_TAP_WINDOW_MS) {
+                toggleActionDecayFreeze()
+                // reset to avoid triple-tap being counted as 2 double-taps
+                lastRightShiftDownTimeMs = 0L
+            } else {
+                lastRightShiftDownTimeMs = nowMs
+            }
+        }
+
+        wasRightShiftDown = rightShiftDown
+    }
+
+    private fun toggleActionDecayFreeze() {
+        if (!actionsFrozen) {
+            // Freeze currently active actions (no decay)
+            actions.keys.forEach { key ->
+                perActionDecays[key] = 1.0
+            }
+            actionsFrozen = perActionDecays.size>0
+        } else {
+            // Restore default behavior
+            perActionDecays.clear()
+            actionsFrozen = false
+        }
+    }
+
+    /**
      * FOV-based zoom: shrink/enlarge camera.p.fov.
      *
      * - inward = true  → zoom in  → fov goes down
      * - inward = false → zoom out → fov goes up
      * - fine = true    → smaller step (when Shift is held)
-     *
-     * Tries to auto-detect if projection is in degrees or radians.
      */
     private fun zoomFov(amount: Double, inward: Boolean, fine: Boolean) {
         val proj = camera.p
         val current = proj.fov
 
-        // radians
-        val baseStep = Math.toRadians(5.0)          // ~0.087 rad
-        val step = if (fine) baseStep * 0.25f else baseStep   // fine → ~0.0217 rad
+        // radians (JOML Math is double-based)
+        val baseStep = Math.toRadians(5.0)                    // ~0.087 rad
+        val step = if (fine) baseStep * 0.25 else baseStep    // fine → ~0.0217 rad
 
-        val minFov = Math.toRadians(5.0)            // 0.087 rad
-        val maxFov = Math.toRadians(120.0)          // 2.094 rad
+        val minFov = Math.toRadians(5.0)                      // 0.087 rad
+        val maxFov = Math.toRadians(120.0)                    // 2.094 rad
 
-        val dir = if (inward) -1f else 1f
-        val next = current + dir * step * amount
+        val dir = if (inward) -1.0 else 1.0
+        val next = current + (dir * step * amount).toFloat()
 
         proj.fov = next.coerceIn(minFov, maxFov)
-    }
-
-
-    private fun rollAroundView(angle: Double) {
-        // view dir = target - at
-        val forward = Vector3f(camera.target).sub(camera.at)
-        if (forward.lengthSquared() < 1e-12f) return
-        forward.normalize()
-
-        val q = quat(angle = angle, axis = forward)
-        camera.up %= camera.up * q
-    }
-
-    private fun reorthogonalizeUp() {
-        val forward = Vector3f(camera.target).sub(camera.at)
-        if (forward.lengthSquared() < 1e-12f) {
-            return
-        }
-        forward.normalize()
-
-        val up = Vector3f(camera.up)
-        val proj = up.dot(forward)
-        up.fma(-proj, forward)
-
-        if (up.lengthSquared() < 1e-6f) {
-            if (kotlin.math.abs(forward.y) > 0.9f) {
-                up.set(1f, 0f, 0f)
-            } else {
-                up.set(0f, 1f, 0f)
-                val p2 = up.dot(forward)
-                up.fma(-p2, forward)
-            }
-        }
-
-        up.normalize()
-        camera.up.set(up)
     }
 
     private fun resetToInitial() {
         camera.at.set(initialAt)
         camera.target.set(initialTarget)
         camera.up.set(initialUp)
-        camera.p.fov = initialFov      // 👈 restore fov
+        camera.p.fov = initialFov
 
         decay = initialDecay
         movementSpeed = initialMovementSpeed
         rotationSpeed = initialRotationSpeed
+    }
+
+    companion object {
+        private const val DOUBLE_TAP_WINDOW_MS: Long = 500L
     }
 }
 
@@ -275,7 +300,11 @@ class KeyCameraDelegateProvider(
     private val box: Box = fromContext()
 ) {
     operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): ReadWriteProperty<Any?, KeyCamera> {
-        val instance = KeyCamera(renderer = renderer, camera = camera, name = property.name + "__${box.id}")
+        val instance = KeyCamera(
+            renderer = renderer,
+            camera = camera,
+            name = property.name + "__${box.id}"
+        )
         return object : ReadWriteProperty<Any?, KeyCamera> {
             private var value: KeyCamera = instance
             override fun getValue(thisRef: Any?, property: KProperty<*>): KeyCamera = value
@@ -290,5 +319,6 @@ class KeyCameraDelegateProvider(
  * Factory function to create a delegate for KeyCamera using the property's name.
  */
 fun keyCamera(
-    renderer: Renderer = fromContext(), camera: Camera = fromContext()
+    renderer: Renderer = fromContext(),
+    camera: Camera = fromContext()
 ): KeyCameraDelegateProvider = KeyCameraDelegateProvider(renderer, camera)

@@ -142,7 +142,7 @@ function initMarkerSupport(globalEditor) {
         globalEditor.addAction({
                 id: "insert-stack-marker",
                 label: "Insert Stack Mark",
-                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Period],
+                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Period | monaco.KeyMod.Shift],
                 precondition: undefined,
                 keybindingContext: undefined,
                 contextMenuGroupId: "navigation",

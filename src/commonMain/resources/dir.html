@@ -350,7 +350,7 @@
                         return `<a href="/?file=${name}">${name}</a>`
                 }
                 else {
-                        const e = `http://localhost:9091/?file=${encodeURIComponent(`http://${document.location.hostname}:${location.port}/${name}.git`)}`;
+                        const e = `${document.location.protocol}//${document.location.host}/?file=${encodeURIComponent(`http://${document.location.hostname}:${location.port}/${name}.git`)}`;
                         return `<a href="${e}">${name} [clone]</a>`
                 }
         }

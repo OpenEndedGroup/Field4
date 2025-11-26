@@ -150,9 +150,10 @@ fun selectBox(it: HTMLElement) {
     if (!selected.contains(it)) {
         selected.add(it)
 
-        val p = it.parentNode!!
-        p.removeChild(it)
-        p.appendChild(it)
+//        val p = it.parentNode!!
+//        if (p.lastChild != it) {
+//            p.appendChild(it)
+//        }
 
         selectedList = eval("[]")
         selected.forEach { selectedList.push(it) }
@@ -362,6 +363,7 @@ suspend fun main() {
 
         var found = defaultCreate(u)
 
+        println(" got set-output request for ${u} with ${set.value}")
         when (set.property) {
             "outputarea" -> {
                 handleOutputAreaRequest(found as HTMLElement, set)

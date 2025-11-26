@@ -1,551 +1,696 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Field | 4</title>
-    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-
+    <meta charset="utf-8" />
+    <title>Lazy Inspector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        @import url("https://pvinis.github.io/iosevka-webfont/3.4.1/iosevka.css");
+        @import url("/iosevka.css");
 
-        body {
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
-            margin: 10px;
-            padding: 10px;
+        /* ===== unified palette & spacing (matches tree.html) ===== */
+        :root{
+            --col-w:280px; --col-min-w:180px; --gap:4px;
 
-            background: rgba(20, 20, 20, 1);
-            color: rgba(200, 200, 200, 1);
-            font-weight: 300;
-            font-size: 14px;
+            --bg:        #1e1e1e;               /* page background if needed */
+            --fg:        #ddd;                   /* main text */
+            --fg-hover:  #fff;                   /* hover text accent */
+            --border:    #000;                   /* hard edges */
+            --header-bg: #000;                   /* panels/headers body */
+            --header-hover: rgba(255,255,255,0.10);
+
+            --sep:       rgba(0,0,0,0.65);       /* thin row separators */
+
+            --pad-x:10px; --pad-y:8px;
+
+            /* row feel (sync with tree) */
+            --row-pad-y: 4px;
+            --row-pad-x: 8px;
+            --row-min-h: 24px;
+
+            /* thin scrollbars (sync with tree) */
+            --sb-size: 8px;
+            --sb-thumb: rgba(255,255,255,.22);
+            --sb-thumb-hover: rgba(255,255,255,.35);
         }
 
-        tr.not-matched {
-            opacity: 0.0;
-            transform: scaleY(0);
-            display: none;
+        *{ box-sizing:border-box; font-family:"Iosevka Web",system-ui,Avenir,Helvetica,Arial,sans-serif; }
+
+        /* Match tree: transparent surface (can sit on any background) */
+        body{
+            margin:0; background:transparent; color:var(--fg);
+            font-size:12px; line-height:1.15;
         }
 
-        td {
-            vertical-align: top;
-            padding-bottom: 10px;
+        /* ==== Columns layout =================================================== */
+        #columns{
+            display:flex; gap:var(--gap); padding:var(--gap);
+            overflow-x:auto; overflow-y:visible;
+            align-items:flex-start; outline:none;
         }
 
-        th {
-            opacity: 0.5;
-            font-weight: 100;
-            font-style: italic;
-            text-align: left;
-            font-size: 10px;
-            border-bottom: 1px solid rgba(200, 200, 200, 1);
+        .column{
+            flex:0 0 var(--col-w);
+            min-width:var(--col-min-w);
+            display:flex; flex-direction:column;
+            max-height: calc(100vh - 2*var(--gap));
+            overflow:hidden;                     /* inner scrollers own scroll */
+            background: var(--header-bg);
+            border: 2px solid var(--border);     /* thinner to match tree */
+            border-radius:5px;
+            background-clip: padding-box;
+            min-height:0; outline:none;
+            color: var(--fg);
         }
 
-        .title {
-            background: rgba(0, 0, 0, 1);
-            padding: 5px;
-            margin: 4px;
+        /* column header — same weight/height as tree rows */
+        .col-header{
+            padding: var(--row-pad-y) var(--row-pad-x);
+            border-bottom:1px solid var(--border);
+            background: var(--header-bg);
+            font-weight:650;
+            min-height: var(--row-min-h);
+            display:flex; align-items:center;
+        }
+        .column.active .col-header{ background: var(--header-hover); }
+
+        /* inner scrollers */
+        .list, .leaf{
+            flex:1 1 auto; min-height:0;
+            overflow:auto; outline:none;
+            background: var(--header-bg);
         }
 
-        .title-text {
-            float: right;
-            background: black;
-            background: rgba(20, 20, 20, 1);
-            padding: 10px;
-            margin: -5px;
-            z-index: 5;
-            position: relative;
-            right: 0;
+        /* list items: compact, with thin separators & hover backdrop */
+        .item{
+            width:100%; text-align:left; background:transparent; color:var(--fg);
+            padding: var(--row-pad-y) var(--row-pad-x);
+            border:none; border-radius:0; cursor:pointer; display:block;
+            border-bottom:1px solid var(--sep);
+            min-height: var(--row-min-h);
+            outline:none;
+        }
+        .item:last-child{ border-bottom:none; }
+        .item:hover{ background: var(--header-hover); }
+        .item:active{ background: rgba(255,255,255,0.14); }
+
+        /* left selection stripe (sync with tree) */
+        .item.selected{ position:relative; }
+        .column.active .item.selected::before{
+            content:""; position:absolute; left:0; top:0; bottom:0; width:2px;
+            background: var(--fg);
         }
 
-        .code {
-            white-space: pre-wrap;
-            font-size: 75%;
-            padding-left: 10px;
+        /* inactive columns (kept, but gentler) */
+        .column { transition: filter .12s ease, box-shadow .12s ease; }
+        .column:not(.active){ filter: brightness(.92) contrast(.98); }
+        .column:not(.active) .item.selected{
+            border-right: 2px solid rgba(255,255,255,0.45);
         }
 
-        .date {
-            opacity: 0.5;
-            font-size: 75%;
+        /* resizer */
+        .sep{ flex:0 0 6px; align-self:stretch; position:relative; cursor:col-resize; background:transparent; }
+        .sep::before{
+            content:""; position:absolute; top:8px; bottom:8px; left:2px; width:2px;
+            background: var(--border); border-radius:1px;
+        }
+        .sep:hover::before{ background: rgba(255,255,255,0.6); }
+        .sep.is-left-of-active::before{ background: rgba(255,255,255,0.6); }
+
+        body.noselect{ user-select:none; }
+        #columns.resizing, #columns.resizing *{ cursor:col-resize !important; }
+
+        /* leaf (HTML) — same box feel as tree leaves */
+        .leaf{
+            white-space:normal;
+            padding: 6px 8px; margin-top:0;
+            font-family:"Iosevka Web",ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+            color: var(--fg);
+            border-top: 0;
+        }
+        .leaf > .html, .leaf pre, .leaf div{
+            border:1px solid var(--border);
+            border-radius:4px;
+            background: rgba(255,255,255,0.05);
+            padding:6px 8px; margin:6px 0;
         }
 
-        .boxes {
-            opacity: 0.5;
-            font-size: 75%;
+        .error{ color:#ffb0a8; }
+        .hint{ color:var(--fg); opacity:.55; font-size:10px; padding:6px var(--row-pad-x); border-bottom:1px dashed var(--border); }
+
+        /* syntax token accents (unchanged, kept verbatim) */
+        .tostr .tok { opacity: .96 }
+        .tostr .tok.word  { color: rgba(255,255,255,.92);  }
+        .tostr .tok.sym   { color: rgba(220,230,255,.85);  text-decoration: none; }
+        .tostr .tok.num   { color: rgba(255,235,200,.95);  }
+        .tostr .tok.punc  { opacity: .7;  }
+
+        /* flash on push (disabled) */
+        @keyframes flashUpdate {
+            0%   { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); filter: brightness(1.06); }
+            100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0);   filter: none; }
         }
+        .column.flash-update { /* animation: flashUpdate 220ms ease-out 1; */ }
 
-        a {
-            text-decoration: none;
-            border-bottom: 0.5px dashed rgba(200, 200, 200, 0.5);
-            color: inherit;
+        /* thin scrollbars like tree (scoped) */
+        #columns, #columns * { scrollbar-width: thin; scrollbar-color: var(--sb-thumb) transparent; }
+        #columns::-webkit-scrollbar,
+        .list::-webkit-scrollbar,
+        .leaf::-webkit-scrollbar{ width: var(--sb-size); height: var(--sb-size); }
+        #columns::-webkit-scrollbar-thumb,
+        .list::-webkit-scrollbar-thumb,
+        .leaf::-webkit-scrollbar-thumb{
+            background-color: var(--sb-thumb);
+            border-radius: 6px;
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
-
-        * {
-            box-sizing: border-box;
-
-            scrollbar-gutter: stable;
-
-            transition: 250ms linear opacity;
-
-            &::-webkit-scrollbar {
-                width: 8px;
-                height: 8px;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                background: rgba(1, 1, 1, 0.5);
-                border-radius: 8px;
-            }
-
-            &::-webkit-scrollbar-track {
-                background: transparent;
-            }
-
-            &::-webkit-scrollbar-button {
-                display: none;
-            }
+        #columns::-webkit-scrollbar-thumb:hover,
+        .list::-webkit-scrollbar-thumb:hover,
+        .leaf::-webkit-scrollbar-thumb:hover{
+            background-color: var(--sb-thumb-hover);
         }
+        #columns::-webkit-scrollbar-track, .list::-webkit-scrollbar-track, .leaf::-webkit-scrollbar-track,
+        #columns::-webkit-scrollbar-corner, .list::-webkit-scrollbar-corner, .leaf::-webkit-scrollbar-corner{ background: transparent; }
 
-        input {
-            right: -10px;
-            top: 0px;
-            padding: 9px;
-            width: 500px;
-            position: fixed;
-            background: black;
-            border: 1px solid black;
-            color: white;
-            z-index: 1;
+        /* ==== Cheatsheet overlay (unchanged styling, just colors synced) ======= */
+        #helpOverlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+            background: rgba(0,0,0,0.45); backdrop-filter: blur(6px) brightness(.9); z-index: 1000; }
+        #helpOverlay.show{ display:flex; }
+        #helpCard{
+            min-width: 420px; max-width: 640px;
+            border:2px solid var(--border); border-radius:5px;
+            background: rgba(255,255,255,0.08); color: var(--fg);
+            box-shadow: 0 6px 24px rgba(0,0,0,.45);
         }
-
-        input:focus {
-            outline: none !important;
+        #helpCard header{
+            display:flex; align-items:center; justify-content:space-between;
+            padding:10px 12px; border-bottom:1px solid var(--border);
+            background: var(--header-bg); border-radius: 5px 5px 0 0; font-weight:650;
         }
-
-        .codeline {
-            display: none;
-            /*white-space: pre;*/
-            /*transform: scaleY(0);*/
-            /*height:0;*/
-            /*opacity: 0;*/
-            /*margin-top: 0;*/
-            /*margin-bottom: 0;*/
-            /*padding-top: 0;*/
-            /*padding-bottom: 0;*/
+        #helpList{ padding: 8px 12px 12px; }
+        .kb{ display:flex; gap:12px; padding:4px 0; }
+        .kb .leftKey{ width: 170px; text-align:right; font-variant-caps: all-small-caps; opacity:.9; }
+        .kb .rightKey{ opacity:.75; }
+        kbd{
+            display:inline-block; padding:2px 6px; border-radius:4px;
+            border:1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.08);
+            font-family: inherit; font-size: 12px;
         }
-
-
-        .codeline.also-matches {
-            transform: scaleY(1);
-            display: block;
-            height:100%;
-            opacity: 1.0 !important;
-            padding-bottom: 0 !important;
-            margin-bottom: 0 !important;
-            border-bottom: none !important;
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-            border-top: none !important;
-        }
-
-        .codeline.matches {
-            display: block;
-            height:100%;
-            opacity: 1 !important;
-            transform: scaleY(1);
-        }
-
-        .title {
-            display: none;
-        }
-
-        .title.matches {
-            display: block;
-        }
-
-        .codeline.context-end {
-            display: block;
-            opacity: 0.5;
-            padding-bottom: 3px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            transform: scaleY(1);
-        }
-
-        .codeline.context-start {
-            display: block;
-            opacity: 0.5;
-            padding-top: 3px;
-            margin-top: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            transform: scaleY(1);
-        }
-
-        .highlight {
-            background-color: rgba(150, 0, 0, 1);
-            color: rgba(255, 255, 255, 1);
-            font-weight: bold;
-        }
-
-        .tags {
-            float: right;
-            font-size: 50%;
-            padding: 5px;
-            padding-right: 10px;
-        }
-
-        .token-keyword {
-            color: #569cd6;
-            font-weight: 500;
-        }
-
-        .token-bracket {
-            color: #d7ba7d;
-        }
-
-        .token-number {
-            color: #b5cea8;
-        }
-
-        .token-punctuation {
-            color: #9cdcfe;
+        #helpClose{
+            border:1px solid rgba(255,255,255,.15); background: transparent;
+            color: var(--fg); border-radius:4px; padding:2px 6px; cursor: pointer;
         }
     </style>
 </head>
 <body>
-
-
-<div class="search-container">
-    <input
-            type="text"
-            id="searchBox"
-            class="search-box"
-            placeholder="Search code…"
-            autocomplete="off"
-    />
+<div class="status" style="display:none" id="status">disconnected</div>
+<div id="columns" tabindex="0" aria-label="Inspector columns"></div>
+<div id="helpOverlay" aria-hidden="true">
+    <div id="helpCard" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+        <header>
+            <div>Keyboard shortcuts</div>
+            <button id="helpClose" aria-label="Close">esc</button>
+        </header>
+        <div id="helpList"></div>
+    </div>
 </div>
 
-
-<table id="root">
-    <tr>
-        <th style="min-width:400px">name</th>
-        <th style="width:30px">boxes</th>
-        <th style="min-width:100px">last modified</th>
-        <th style="width:100%; border: none"></th>
-    </tr>
-</table>
-
-
-
 <script>
+        const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
 
-        function highlightLine(line) {
-                return line
-                    // escape HTML
-                    // .replace(/&/g, "&amp;")
-                    // .replace(/</g, "&lt;")
-                    // .replace(/>/g, "&gt;")
-                    // keywords
+        (() => {
+                const WS_URL = `ws://${document.location.host}/ws`;
+                const CHANNEL = "__browsing__";
 
-                    // // keywords
-                    .replace(/\b(var|val|fun|import)\b/g, match =>
-                        `<span class="token-keyword">${match}</span>`)
-                    // brackets
-                    .replace(/[\[\]\(\)\{\}]/g, match =>
-                        `<span class="token-bracket">${match}</span>`)
-                    // // numbers (int & float)
-                    .replace(/\b\d+(?:\.\d+)?\b/g, match =>
-                        `<span class="token-number">${match}</span>`)
-                    // // // punctuation
-                    // .replace(/[,;:!?]/g, match =>
-                    //     `<span class="token-punctuation">${match}</span>`);
-        }
+                const columnsEl = document.getElementById('columns');
+                const statusEl  = document.getElementById('status');
 
-
-        function formatDuration(ms) {
-                const msPerSecond = 1000;
-                const msPerMinute = msPerSecond * 60;
-                const msPerHour = msPerMinute * 60;
-                const msPerDay = msPerHour * 24;
-                const msPerWeek = msPerDay * 7;
-                const msPerMonth = msPerDay * 28;   // approximate month
-                const msPerYear = msPerDay * 365;  // approximate year
-
-                // helper to pluralize unit names
-                const plural = (n, unit) => `${unit}${n === 1 ? "" : "s"}`;
-
-                if (ms < msPerSecond) {
-                        return "just now";
+                /* ---------- resize handles (unchanged) ---------- */
+                const MIN_W = 160;
+                function setWidth(col, px){ const v = Math.max(MIN_W, Math.round(px)); col.style.flex = `0 0 ${v}px`; col.style.width = `${v}px`; }
+                function makeSep(){
+                        const sep = document.createElement('div'); sep.className = 'sep';
+                        sep.addEventListener('pointerdown', (e) => {
+                                const left  = sep.previousElementSibling && sep.previousElementSibling.classList.contains('column') ? sep.previousElementSibling : null;
+                                const right = sep.nextElementSibling && sep.nextElementSibling.classList.contains('column') ? sep.nextElementSibling : null;
+                                if (!left) return;
+                                const startX = e.clientX;
+                                const L0 = left.getBoundingClientRect().width;
+                                const R0 = right ? right.getBoundingClientRect().width : 0;
+                                columnsEl.classList.add('resizing'); document.body.classList.add('noselect'); sep.setPointerCapture(e.pointerId);
+                                const onMove = (ev) => {
+                                        const dx = ev.clientX - startX;
+                                        if (ev.altKey && right) { const total = L0 + R0; const newL = Math.min(total - MIN_W, Math.max(MIN_W, L0 + dx)); const newR = total - newL; setWidth(left, newL); setWidth(right, newR); }
+                                        else { setWidth(left, L0 + dx); }
+                                };
+                                const onUp = () => { sep.releasePointerCapture(e.pointerId); columnsEl.classList.remove('resizing'); document.body.classList.remove('noselect'); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+                                window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+                        });
+                        return sep;
                 }
 
-                if (ms < msPerMinute) {
-                        const secs = Math.floor(ms / msPerSecond);
-                        return `${secs}s}`;
-                }
-
-                if (ms < msPerHour) {
-                        const mins = Math.floor(ms / msPerMinute);
-                        const secs = Math.floor((ms % msPerMinute) / msPerSecond);
-                        return secs
-                            ? `${mins}m + ${secs}s`
-                            : `${mins}m`;
-                }
-
-                if (ms < msPerDay) {
-                        const hrs = Math.floor(ms / msPerHour);
-                        const mins = Math.floor((ms % msPerHour) / msPerMinute);
-                        return mins
-                            ? `${hrs}${plural(hrs, "hr")} + ${mins}m`
-                            : `${hrs}${plural(hrs, "hr")}`;
-                }
-
-                if (ms < msPerWeek) {
-                        const days = Math.floor(ms / msPerDay);
-                        const hrs = Math.floor((ms % msPerDay) / msPerHour);
-                        return hrs
-                            ? `${days}${plural(days, "d")} + ${hrs}${plural(hrs, "hr")}`
-                            : `${days}${plural(days, "d")}`;
-                }
-
-                if (ms < msPerMonth) {
-                        const weeks = Math.floor(ms / msPerWeek);
-                        const days = Math.floor((ms % msPerWeek) / msPerDay);
-                        return days
-                            ? `${weeks}${plural(weeks, "wk")} + ${days}${plural(days, "d")}`
-                            : `${weeks}${plural(weeks, "wk")}`;
-                }
-
-                if (ms < msPerYear) {
-                        const months = Math.floor(ms / msPerMonth);
-                        const weeks = Math.floor((ms % msPerMonth) / msPerWeek);
-                        return weeks
-                            ? `${months}${plural(months, "mn")} + ${weeks}${plural(weeks, "wk")}`
-                            : `${months}${plural(months, "mn")}`;
-                }
-
-                const years = Math.floor(ms / msPerYear);
-                const months = Math.floor((ms % msPerYear) / msPerMonth);
-                return months
-                    ? `${years}${plural(years, "yr")} + ${months}${plural(months, "mn")}`
-                    : `${years}${plural(years, "yr")}`;
-        }
-
-        var everything = {{dir_json}}
-
-        var root = document.getElementById('root');
-
-        function escapeHTML(str) {
-                const map = {
-                        '&': '&amp;',
-                        '<': '&lt;',
-                        '>': '&gt;',
-                        '"': '&quot;',
-                        "'": '&#39;'
-                };
-                return String(str).replace(/[&<>"']/g, ch => map[ch]);
-        }
-
-        const local = true
-        function formulateLink(name) {
-                if (local) {
-                        return `<a href="/?file=${name}">${name}</a>`
-                }
-                else {
-                        const e = `http://localhost:9091/?file=${encodeURIComponent(`http://${document.location.hostname}:${location.port}/${name}.git`)}`;
-                        return `<a href="${e}">${name} [clone]</a>`
-                }
-        }
-
-        everything.forEach((item) => {
-
-                var contents = ""
-                var allTags = new Set()
-                if (item.boxes) {
-                        let index = 0
-                        item.boxes.forEach((box) => {
-                                var lines = ""
-                                let tags = item.metadata[index]
-                                tags.second.forEach( e => allTags.add(e))
-                                let theseTags = ""
-                                tags.second.forEach( e => {
-                                        theseTags += "#"+e+", "
-                                } )
-                                theseTags = theseTags.trim()
-                                theseTags = theseTags.substring(0, theseTags.length-1)
-                                lines += "<div class='codeline'><div class='tags' style='font-size:100%;'>"+theseTags+"</div></div>";
-
-                                box.second.split("\n").forEach((line) => {
-                                        if (line.trim() === "") {
-                                        } else
-                                                lines += "<div class='codeline'>" + highlightLine(escapeHTML(line)) + "</div>";
-                                })
-
-
-                                // console.log("these tags -- ", theseTags, "<- ", allTags, tags.second)
-
-                                contents += "<div class='title'><div class='title-text'>" + box.first + "</div><div class='code'>" + lines + "</div></div>";
-                                index++
-                        })
-                }
-
-                var tags = ""
-                allTags.forEach( e=> tags += "#"+e+", " )
-                tags = tags.trim()
-                tags = tags.substring(0, tags.length-1)
-
-                const div = document.createElement('tr');
-                div.className = 'entry';
-                const link = formulateLink(item.filename)
-                div.innerHTML = `<td class="filename">`+link+`<div class="tags">${tags}</div></td>
-                                 <td class="boxes">${item.numBoxes}</td>
-                                 <td class="date">${formatDuration(item.lastModified)}</td>
-                                 <td class="contents">${contents}</td>
-                                `;
-                div.querySelector("td.date").sortTime = item.lastModified;
-                root.appendChild(div);
-        })
-
-        function sortTableBySortTime(tableOrSelector) {
-                // 1) Resolve the table
-                const table = typeof tableOrSelector === 'string'
-                    ? document.querySelector(tableOrSelector)
-                    : tableOrSelector;
-                if (!table) throw new Error('Table not found');
-
-                const container =  table;
-
-                // 3) Pull out the rows into an array
-                const rows = Array.from(container.querySelectorAll('tr'));
-                rows.splice(0,1)
-                console.log(container, rows);
-
-                // 4) Sort by the numeric .sortTime on the <td class="date">
-                rows.sort((rowA, rowB) => {
-                        const aTime = parseFloat(
-                            rowA.querySelector('td.date').sortTime
-                        );
-                        const bTime = parseFloat(
-                            rowB.querySelector('td.date').sortTime
-                        );
-                        return aTime - bTime;
-                });
-
-                // 5) Re-append in sorted order
-                rows.forEach(row => container.appendChild(row));
-        }
-
-        sortTableBySortTime("#root")
-
-        document.querySelectorAll('.title').forEach(title => {
-                title.addEventListener('mouseenter', () => {
-                        title.querySelectorAll('.codeline').forEach(line =>
-                            line.classList.add('also-matches')
-                        );
-                });
-        });
-
-        function highlightMatches(query) {
-                const raw = query;
-                const contents = document.querySelectorAll('td.contents');
-                const allRows = document.querySelectorAll('tr');
-
-                // 1) Reset every .codeline's innerHTML from data-original (stash on first run)
-                contents.forEach(td => {
-                        td.querySelectorAll('.codeline').forEach(line => {
-                                if (line.dataset.original == null) {
-                                        line.dataset.original = line.innerHTML;
+                function appendColumn(col, {activate=true, autoselectFirst=true, width=null} = {}) {
+                        const hasAnyColumn = !!columnsEl.querySelector('.column');
+                        if (hasAnyColumn) columnsEl.appendChild(makeSep());
+                        columnsEl.appendChild(col);
+                        if (width != null) setWidth(col, width);
+                        columnsEl.scrollLeft = columnsEl.scrollWidth;
+                        if (activate) {
+                                setActiveColumn(col);
+                                if (autoselectFirst) {
+                                        const first = col.querySelector('.item');
+                                        if (first) selectRow(first, {scroll:false});
                                 }
-                                line.innerHTML = line.dataset.original;
-                                line.classList.remove('matches', 'context-start', 'context-end', 'also-matches');
-                        });
-                        td.querySelectorAll('.title.matches').forEach(t => t.classList.remove('matches'));
-                });
-
-                // 2) If the box is completely empty, clear not-matched + exit
-                if (raw.length === 0) {
-                        allRows.forEach(tr => tr.classList.remove('not-matched'));
-                        return;
+                        }
+                        if (col.dataset.nodeId) openIds.add(col.dataset.nodeId);
                 }
 
-                // 3) Try to build the regex; if invalid, bail (no highlights)
-                let re;
-                try {
-                        re = new RegExp(raw, 'gi');
-                } catch (e) {
-                        console.warn('Invalid regex:', e);
-                        return;
+                // what we need to rebuild deterministically
+                function snapshotState() {
+                        const cols = [...columnsEl.querySelectorAll('.column')];
+                        const names = [];          // the selected item text per dir column
+                        const widths = [];         // current pixel widths per column
+                        let activeIdx = cols.findIndex(c => c.classList.contains('active'));
+                        if (activeIdx < 0) activeIdx = cols.length - 1;
+
+                        cols.forEach(col => {
+                                widths.push(col.getBoundingClientRect().width);
+                                const sel = selectedIn(col);
+                                if (sel) names.push(sel.textContent);
+                        });
+                        return { names, widths, activeIdx };
                 }
 
-                // 4) Mark matches & titles
-                contents.forEach(td => {
-                        td.querySelectorAll('.codeline').forEach(line => {
-                                if (re.test(line.textContent)) {
-                                        line.classList.add('matches');
-                                        const title = line.closest('.title');
-                                        if (title) title.classList.add('matches');
-                                }
-                                re.lastIndex = 0; // reset for next test
+                function clearAllColumns() {
+                        [...columnsEl.querySelectorAll('.column')].forEach(c => {
+                                const id = c.dataset.nodeId;
+                                if (id) { openIds.delete(id); fireAndForget('unsubscribe', { id }); }
                         });
-                });
+                        columnsEl.innerHTML = "";
+                }
 
-                // 5) Wrap all matching substrings in <span class="highlight">
-                contents.forEach(td => {
-                        td.querySelectorAll('.codeline.matches').forEach(line => {
-                                const original = line.dataset.original;
-                                line.innerHTML = original.replace(re, `<span class="highlight">$&</span>`);
-                                re.lastIndex = 0;
-                        });
-                });
+                // map pairs -> objects once
+                const mapEntries = pairs => (pairs || []).map(p => ({ name: p[0], id: p[1] }));
 
-                // 6) Tag one-line context around each run of matches
-                contents.forEach(td => {
-                        td.querySelectorAll('.title').forEach(title => {
-                                const lines = Array.from(title.querySelectorAll('.codeline'));
-                                const isMatch = i => lines[i].classList.contains('matches');
-                                let i = 0;
-                                while (i < lines.length) {
-                                        if (!isMatch(i)) {
-                                                i++;
-                                                continue;
-                                        }
-                                        const start = i;
-                                        while (i < lines.length && isMatch(i)) i++;
-                                        const end = i - 1;
-                                        if (start > 0 && !isMatch(start - 1)) {
-                                                lines[start - 1].classList.add('context-start');
-                                        }
-                                        if (end < lines.length - 1 && !isMatch(end + 1)) {
-                                                lines[end + 1].classList.add('context-end');
-                                        }
-                                }
-                        });
-                });
+                async function refreshAll() {
+                        const { names, widths, activeIdx } = snapshotState();
+                        clearAllColumns();
 
-                // 7) Since raw.length > 0, tag rows without any .matches as .not-matched
-                var first = true
-                allRows.forEach(tr => {
-                        if (first) {
-                                first = false
+                        // 1) start fresh at roots
+                        const rootResp = await sendReq('getRoots', ROOT_TOKEN ? { root: ROOT_TOKEN } : {});
+                        if (!rootResp || !rootResp.ok) { showError(rootResp?.error || 'refresh failed'); return; }
+
+                        if (rootResp.type === 'dir') {
+                                const mapped = mapEntries(rootResp.entries);
+                                renderDir(
+                                    { id: rootResp.id || null, heading: rootResp.heading || 'Root', entries: mapped },
+                                    null,
+                                    { activate:true, autoselectFirst:false, width: widths[0] }
+                                );
+                                if (rootResp.id) fireAndForget('open', { id: rootResp.id, watch: true });
+                        } else if (rootResp.type === 'leaf') {
+                                renderLeaf({ id: rootResp.nodeId, html: rootResp.html ?? rootResp.value, title: rootResp.heading || 'Root' },
+                                    null, { activate:true, width: widths[0] });
                                 return;
                         }
-                        if (tr.querySelector('.matches')) {
-                                tr.classList.remove('not-matched');
-                        } else {
-                                tr.classList.add('not-matched');
+
+                        // 2) replay the selection path (match by title)
+                        for (let depth = 0; depth < names.length; depth++) {
+                                const col = columnsEl.querySelectorAll('.column')[depth];
+                                if (!col) break;
+                                const want = names[depth];
+                                if (!want) break;
+
+                                const btn = [...col.querySelectorAll('.item')].find(b => b.textContent === want);
+                                if (!btn) break;
+
+                                selectRow(btn, { scroll:false });
+                                const id = btn.dataset.id;
+                                if (!id) break;
+
+                                const resp = await sendReq('open', { id, watch: true });
+                                if (!resp || !resp.ok) break;
+
+                                if (resp.type === 'dir') {
+                                        renderDir(
+                                            { id, heading: resp.heading, entries: mapEntries(resp.entries) },
+                                            depth,
+                                            { activate:true, autoselectFirst:false, width: widths[depth+1] }
+                                        );
+                                } else if (resp.type === 'leaf') {
+                                        renderLeaf({ id, html: resp.html, title: want }, depth,
+                                            { activate:true, width: widths[depth+1] });
+                                        break;
+                                }
+                        }
+
+                        // 3) restore active column
+                        const colsNow = columnsEl.querySelectorAll('.column');
+                        const idx = Math.min(activeIdx, colsNow.length - 1);
+                        if (colsNow[idx]) setActiveColumn(colsNow[idx], { smooth:false });
+                }
+
+                function clearRightOfColumn(colIndex){
+                        const cols = [...columnsEl.querySelectorAll('.column')];
+                        for (let i = cols.length - 1; i > colIndex; i--) {
+                                const c = cols[i];
+                                const id = c.dataset.nodeId;
+                                if (id) { openIds.delete(id); fireAndForget('unsubscribe', { id }); }
+                                const sepBefore = c.previousElementSibling;
+                                if (sepBefore && sepBefore.classList.contains('sep')) sepBefore.remove();
+                                c.remove();
+                        }
+                }
+                function colIndexOf(colEl){ return [...columnsEl.querySelectorAll('.column')].indexOf(colEl); }
+                function columnFor(id){ return columnsEl.querySelector(`.column[data-node-id="${id}"]`); }
+
+                /* ---------- selection & keyboard ---------- */
+                function highlightLeftSep(col) {
+                        columnsEl.querySelectorAll('.sep.is-left-of-active').forEach(el => el.classList.remove('is-left-of-active'));
+                        const sep = col && col.previousElementSibling;
+                        if (sep && sep.classList.contains('sep')) sep.classList.add('is-left-of-active');
+                }
+                function scrollColumnIntoView(col, {smooth=true} = {}) {
+                        const r = col.getBoundingClientRect();
+                        const cr = columnsEl.getBoundingClientRect();
+                        const targetLeft = columnsEl.scrollLeft + (r.left - cr.left) - (cr.width - r.width)/2;
+                        columnsEl.scrollTo({ left: Math.max(0, targetLeft), behavior: smooth ? 'smooth' : 'auto' });
+                }
+                function setActiveColumn(col, {smooth=true} = {}) {
+                        [...columnsEl.querySelectorAll('.column')].forEach(c => c.classList.remove('active'));
+                        if (!col) return;
+                        col.classList.add('active');
+                        highlightLeftSep(col);
+                        columnsEl.focus({ preventScroll:true });
+                        scrollColumnIntoView(col, {smooth});
+                }
+                function itemsIn(col){ return Array.from(col.querySelectorAll('.item')); }
+                function selectedIn(col){ return col.querySelector('.item.selected'); }
+                function selectRow(btn, {scroll=true} = {}){
+                        const col = btn.closest('.column');
+                        itemsIn(col).forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        if (scroll) btn.scrollIntoView({ block:'nearest', inline:'nearest' });
+                        setActiveColumn(col);
+                        return btn;
+                }
+                function moveSelection(col, delta){
+                        const list = itemsIn(col); if (!list.length) return null;
+                        let idx = list.findIndex(b => b.classList.contains('selected')); if (idx < 0) idx = 0;
+                        idx = Math.max(0, Math.min(list.length - 1, idx + delta));
+                        return selectRow(list[idx]);
+                }
+                function neighborColumn(col, dir){
+                        if (dir < 0) { const sep = col.previousElementSibling; return sep && sep.previousElementSibling && sep.previousElementSibling.classList.contains('column') ? sep.previousElementSibling : null; }
+                        else { const sep = col.nextElementSibling; return sep && sep.nextElementSibling && sep.nextElementSibling.classList.contains('column') ? sep.nextElementSibling : null; }
+                }
+
+                document.addEventListener('keydown', (e) => {
+                        const ov = document.getElementById('helpOverlay');
+                        if (ov.classList.contains('show')) {
+                                if (e.key === 'Escape') { e.preventDefault(); toggleHelp(false); }
+                                return;
+                        }
+                        if ((e.key === '?' || (e.key === '/' && e.shiftKey)) ||
+                            (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+                                e.preventDefault();
+                                toggleHelp(true);
+                                return;
+                        }
+                        if (columnsEl.classList.contains('resizing')) return;
+                        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
+                        const active = columnsEl.querySelector('.column.active') || columnsEl.querySelector('.column:last-of-type');
+                        if (!active) return;
+
+                        switch (e.key) {
+                                case 'ArrowDown': e.preventDefault(); moveSelection(active, +1); break;
+                                case 'ArrowUp':   e.preventDefault(); moveSelection(active, -1); break;
+                                case 'ArrowRight':
+                                case 'Enter': {
+                                        const sel = selectedIn(active) || moveSelection(active, 0);
+                                        if (sel) { e.preventDefault(); sel.click(); }
+                                        break;
+                                }
+                                case 'ArrowLeft': {
+                                        const prev = neighborColumn(active, -1);
+                                        if (prev) { e.preventDefault(); setActiveColumn(prev, {smooth:true}); const sel = selectedIn(prev) || prev.querySelector('.item'); if (sel) selectRow(sel); prev.scrollIntoView({inline:'nearest'}); }
+                                        break;
+                                }
+                                case 'r': { e.preventDefault(); refreshAll(); break; }
+                                default: break;
                         }
                 });
-        }
 
-        // --- wiring it up to an input box ---
-        const searchBox = document.getElementById('searchBox');
-        searchBox.addEventListener('input', e => {
-                console.log(e.target.value);
-                highlightMatches(e.target.value);
-        });
+                columnsEl.addEventListener('pointerdown', () => columnsEl.focus({preventScroll:true}));
 
+                /* ---------- websocket & live updates ---------- */
+                let ws; let reqSeq = 1; const pending = new Map();
+                const openIds = new Set();
 
+                function connect(){
+                        ws = new WebSocket(WS_URL);
+                        statusEl.textContent = "connecting…";
+                        ws.onopen = () => { statusEl.textContent = "connected"; getRoots(); };
+                        ws.onmessage = (ev) => {
+                                let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+                                if (msg.reqId && pending.has(msg.reqId)) { const resolve = pending.get(msg.reqId); pending.delete(msg.reqId); resolve(msg); return; }
+                                if (msg.type === "changed" && msg.nodeId) { reopenNode(msg.nodeId, msg.version); }
+                        };
+                        ws.onclose = () => { statusEl.textContent = "disconnected"; openIds.clear(); setTimeout(connect, 1200); };
+                        ws.onerror = () => { statusEl.textContent = "error"; };
+                }
+
+                function sendReq(op, payload = {}){
+                        const reqId = String(reqSeq++);
+                        const msg = { channel: CHANNEL, op, reqId, ...payload };
+                        return new Promise((resolve) => { pending.set(reqId, resolve); ws.send(JSON.stringify(msg)); });
+                }
+
+                function fireAndForget(op, payload = {}){
+                        const reqId = String(reqSeq++);
+                        const msg = { channel: CHANNEL, op, reqId, ...payload };
+                        try { ws && ws.readyState === 1 && ws.send(JSON.stringify(msg)); } catch {}
+                }
+
+                const lastVersion = new Map();
+                const reopenBusy  = new Set();
+                const reopenAgain = new Set();
+
+                async function reopenNode(id, version) {
+                        const last = lastVersion.get(id);
+                        if (typeof version === 'number' && typeof last === 'number' && version <= last) return;
+
+                        if (reopenBusy.has(id)) { reopenAgain.add(id); return; }
+                        reopenBusy.add(id);
+
+                        const col = columnFor(id);
+                        if (!col) { reopenBusy.delete(id); reopenAgain.delete(id); return; }
+
+                        const width      = col.getBoundingClientRect().width;
+                        const wasActive  = col.classList.contains('active');
+                        const colIdx     = colIndexOf(col);
+
+                        clearRightOfColumn(colIdx);
+
+                        const resp = await sendReq('open', { id, watch: true });
+
+                        if (resp && resp.ok) {
+                                if (resp.type === 'dir') {
+                                        const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
+                                        rebuildDirColumn(col, { heading: resp.heading, entries: mapped });
+                                } else if (resp.type === 'leaf') {
+                                        const title = col.dataset.title || 'Leaf';
+                                        rebuildLeafColumn(col, { title, html: resp.html });
+                                }
+
+                                setWidth(col, width);
+                                col.classList.add('flash-update');
+                                setTimeout(() => col.classList.remove('flash-update'), 260);
+
+                                if (typeof resp.version === 'number') lastVersion.set(id, resp.version);
+
+                                if (wasActive) setActiveColumn(col, { smooth: false });
+                                const sel = selectedIn(col) || col.querySelector('.item');
+                                if (sel) selectRow(sel, { scroll: false });
+                        }
+
+                        reopenBusy.delete(id);
+                        if (reopenAgain.delete(id)) reopenNode(id, lastVersion.get(id) ?? undefined);
+                }
+
+                function renderDir({ id, heading, entries }, fromColIndex, opts = {}) {
+                        const { skipClear = false } = opts;
+                        if (!skipClear && Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
+
+                        const col = document.createElement('section'); col.className = 'column';
+                        if (id) col.dataset.nodeId = id;
+                        col.dataset.title = heading || '';
+
+                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = heading ?? '…';
+                        const list = document.createElement('div'); list.className = 'list';
+
+                        if (!entries.length) {
+                                const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
+                                col.appendChild(header); col.appendChild(hint); appendColumn(col, opts); return;
+                        }
+
+                        entries.forEach(({ name, id: childId }) => {
+                                const btn = document.createElement('button');
+                                btn.className = 'item'; btn.textContent = name; btn.tabIndex = -1; btn.dataset.id = childId;
+                                btn.addEventListener('click', async () => {
+                                        selectRow(btn);
+                                        const idx = colIndexOf(col);
+                                        const resp = await sendReq('open', { id: childId, watch: true });
+                                        if (!resp.ok) { showError(resp.error, idx); return; }
+                                        if (resp.type === 'dir') {
+                                                const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
+                                                renderDir({ id: childId, heading: resp.heading, entries: mapped }, idx);
+                                        } else if (resp.type === 'leaf') {
+                                                renderLeaf({ id: childId, html: resp.html, title: name }, idx);
+                                        }
+                                });
+                                list.appendChild(btn);
+                        });
+
+                        col.appendChild(header); col.appendChild(list);
+                        appendColumn(col, opts);
+                }
+
+                function rebuildDirColumn(col, { heading, entries }) {
+                        col.innerHTML = '';
+                        col.dataset.title = heading || '';
+
+                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = heading ?? '…';
+                        const list = document.createElement('div'); list.className = 'list';
+
+                        if (!entries.length) {
+                                const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
+                                col.appendChild(header); col.appendChild(hint); return;
+                        }
+
+                        entries.forEach(({ name, id: childId }) => {
+                                const btn = document.createElement('button');
+                                btn.className = 'item'; btn.textContent = name; btn.tabIndex = -1; btn.dataset.id = childId;
+                                btn.addEventListener('click', async () => {
+                                        selectRow(btn);
+                                        const idx = colIndexOf(col);
+                                        const resp = await sendReq('open', { id: childId, watch: true });
+                                        if (!resp.ok) { showError(resp.error, idx); return; }
+                                        if (resp.type === 'dir') {
+                                                const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
+                                                renderDir({ id: childId, heading: resp.heading, entries: mapped }, idx);
+                                        } else if (resp.type === 'leaf') {
+                                                renderLeaf({ id: childId, html: resp.html, title: name }, idx);
+                                        }
+                                });
+                                list.appendChild(btn);
+                        });
+
+                        col.appendChild(header); col.appendChild(list);
+                }
+
+                function rebuildLeafColumn(col, { title, html }) {
+                        col.innerHTML = '';
+                        if (title) col.dataset.title = title;
+
+                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = title ?? 'Leaf';
+                        const div = document.createElement('div'); div.className = 'leaf'; div.innerHTML = String(html ?? '');
+
+                        col.appendChild(header); col.appendChild(div);
+                }
+
+                function renderLeaf({ id, html, title }, fromColIndex, opts = {}) {
+                        const { skipClear = false } = opts;
+                        if (!skipClear && Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
+
+                        const col = document.createElement('section'); col.className = 'column';
+                        if (id) col.dataset.nodeId = id;
+                        if (title) col.dataset.title = title;
+
+                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = title ?? 'Leaf';
+                        const div = document.createElement('div'); div.className = 'leaf'; div.innerHTML = String(html ?? '');
+                        col.appendChild(header); col.appendChild(div);
+                        appendColumn(col, opts);
+                }
+
+                function showError(err, fromColIndex){
+                        if (Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
+                        const col = document.createElement('section'); col.className = 'column';
+                        const header = document.createElement('div'); header.className = 'col-header error'; header.textContent = 'Error';
+                        const pre = document.createElement('pre'); pre.className = 'leaf'; pre.textContent = String(err ?? 'unknown');
+                        col.appendChild(header); col.appendChild(pre); appendColumn(col);
+                }
+
+                async function getRoots(){
+                        const resp = await sendReq('getRoots', ROOT_TOKEN ? { root: ROOT_TOKEN } : {});
+                        if (!resp.ok) { showError(resp.error); return; }
+
+                        if (resp.type === 'dir') {
+                                const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
+                                renderDir({ id: resp.id, heading: resp.heading || 'Root', entries: mapped }, undefined);
+                                if (resp.id) fireAndForget('open', { id: resp.id, watch: true });
+                        } else if (resp.type === 'leaf') {
+                                renderLeaf({ id: resp.nodeId, html: resp.html ?? resp.value, title: 'Root' }, undefined);
+                                if (resp.nodeId) fireAndForget('open', { id: resp.nodeId, watch: true });
+                        }
+                }
+
+                // unsubscribe everything on unload
+                window.addEventListener('beforeunload', () => {
+                        openIds.forEach(id => fireAndForget('unsubscribe', { id }));
+                        openIds.clear();
+                });
+
+                document.addEventListener('DOMContentLoaded', () => { columnsEl.focus({preventScroll:true}); connect(); });
+
+                /* ==== Cheatsheet data + helpers ======================================= */
+                const CHEATS = [
+                        ['↑ / ↓',          'Move selection'],
+                        ['←',              'Focus previous column'],
+                        ['→  /  Enter',    'Open selected item'],
+                        ['R',              'Refresh all open columns'],
+                        ['Alt + drag',     'Resize left/right columns together'],
+                        ['?  /  H',        'Toggle this help'],
+                        ['Esc',            'Close this help']
+                ];
+
+                function makeKeyHTML(label){
+                        if (label.includes(' / ')) return label.split(' / ').map(s => `<kbd>${s.trim()}</kbd>`).join(' / ');
+                        if (label.includes(' + ')) return label.split(' + ').map(s => `<kbd>${s.trim()}</kbd>`).join(' + ');
+                        return `<kbd>${label}</kbd>`;
+                }
+
+                function renderCheats(){
+                        const list = document.getElementById('helpList');
+                        list.innerHTML = '';
+                        CHEATS.forEach(([key, desc]) => {
+                                const row = document.createElement('div'); row.className = 'kb';
+                                const left = document.createElement('div'); left.className = 'leftKey';
+                                const right = document.createElement('div'); right.className = 'rightKey';
+                                left.innerHTML = makeKeyHTML(key);
+                                right.textContent = desc;
+                                row.appendChild(left); row.appendChild(right);
+                                list.appendChild(row);
+                        });
+                }
+
+                function toggleHelp(show){
+                        const ov = document.getElementById('helpOverlay');
+                        const open = ov.classList.contains('show');
+                        const want = (show === undefined) ? !open : !!show;
+                        if (want) { renderCheats(); ov.classList.add('show'); ov.setAttribute('aria-hidden', 'false'); }
+                        else { ov.classList.remove('show'); ov.setAttribute('aria-hidden', 'true'); columnsEl && columnsEl.focus({preventScroll:true}); }
+                }
+
+                document.addEventListener('click', (e) => {
+                        const ov = document.getElementById('helpOverlay');
+                        if (!ov.classList.contains('show')) return;
+                        if (e.target === ov) toggleHelp(false);
+                });
+                document.getElementById('helpClose').addEventListener('click', () => toggleHelp(false));
+
+        })();
 </script>
-
 </body>
-
-
 </html>

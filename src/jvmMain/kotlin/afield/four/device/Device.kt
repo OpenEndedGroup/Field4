@@ -6,7 +6,6 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
-import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanDeviceExtensionsRequired
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
@@ -50,7 +49,7 @@ class Device(val physicalDevice: PhysicalDevice) {
                 addIfSupported(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)
 
                 if (enableMeshShading) {
-                    add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME) // already gated by feature flag
+                    add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
                 }
 
                 if (OS == OSType.WINDOWS) {
@@ -70,12 +69,12 @@ class Device(val physicalDevice: PhysicalDevice) {
                     addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
                 }
 
+                addIfSupported(KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+
                 if (Options.enableVR) {
                     getOpenVRRequiredDeviceExts(
                         physicalDevice.vkPhysicalDevice.address()
-                    ).filter { it.isNotBlank() }.forEach {
-                        addIfSupported(it)
-                    }
+                    ).filter { it.isNotBlank() }.forEach { addIfSupported(it) }
                 }
             }
 
@@ -84,7 +83,7 @@ class Device(val physicalDevice: PhysicalDevice) {
                 flip()
             }
 
-            // Core features via VkPhysicalDeviceFeatures2
+            // --- Core features via VkPhysicalDeviceFeatures2 + Vulkan12/13
             val features = VkPhysicalDeviceFeatures2.calloc(stack).apply {
                 sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
                 features().fragmentStoresAndAtomics(true)
@@ -96,14 +95,42 @@ class Device(val physicalDevice: PhysicalDevice) {
 
             val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack).apply {
                 sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES)
+
+                // What you already had
                 bufferDeviceAddress(true)
+
+                // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
+                descriptorIndexing(true)
+                runtimeDescriptorArray(true)
+                descriptorBindingPartiallyBound(true)
+                descriptorBindingVariableDescriptorCount(true)
+
+                // Non-uniform indexing (use as needed)
+                shaderSampledImageArrayNonUniformIndexing(true)
+                shaderStorageImageArrayNonUniformIndexing(true)
+                shaderUniformBufferArrayNonUniformIndexing(true)
+                shaderStorageBufferArrayNonUniformIndexing(true)
+                // If you use texel buffers with non-uniform indexing, enable these too:
+                // shaderUniformTexelBufferArrayNonUniformIndexing(true)
+                // shaderStorageTexelBufferArrayNonUniformIndexing(true)
+
+                // Leave all *UpdateAfterBind* = false unless your pool/layouts use the corresponding flags.
+                // descriptorBindingSampledImageUpdateAfterBind(true)
+                // descriptorBindingStorageImageUpdateAfterBind(true)
+                // descriptorBindingUniformBufferUpdateAfterBind(true)
+                // descriptorBindingStorageBufferUpdateAfterBind(true)
+                // descriptorBindingUniformTexelBufferUpdateAfterBind(true)
+                // descriptorBindingStorageTexelBufferUpdateAfterBind(true)
+                // descriptorBindingUpdateUnusedWhilePending(true)
             }
+
             val features13 = VkPhysicalDeviceVulkan13Features.calloc(stack).apply {
                 sType(VK13.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES)
                 dynamicRendering(true)
+                synchronization2(true)
             }
 
-            // Link base chain.
+            // Link pNext chain: features2 -> v12 -> v13
             features.pNext(features12.address())
             features12.pNext(features13.address())
             var tail = features13.address()
@@ -170,12 +197,18 @@ class Device(val physicalDevice: PhysicalDevice) {
             vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
 
             // Descriptor pool (tuned for current usage).
+            // NOTE: If you later enable any *UpdateAfterBind feature(s) above and create layouts with
+            // VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, your pool must be created with
+            // VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT. Adjust DescriptorPool accordingly.
             pool = DescriptorPool(
                 this, listOf(
-                    DescriptorTypeCount(100, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                    DescriptorTypeCount(100, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                    DescriptorTypeCount(100, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                    DescriptorTypeCount(100, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                    DescriptorTypeCount(8192, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+
+                    DescriptorTypeCount(Options.bindlessTextureCap, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                    DescriptorTypeCount(8, VK_DESCRIPTOR_TYPE_SAMPLER)
                 )
             )
         }

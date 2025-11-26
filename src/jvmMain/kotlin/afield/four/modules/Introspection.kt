@@ -113,7 +113,7 @@ open class Introspected {
         val offset: Int,
         val type: Either<PrimitiveType, List<Member>>,
         val arrayStride: Int = 0, // 0 means not an array
-        var physicalPointer : Boolean = false
+        var physicalPointer: Boolean = false
     ) {
         fun memberSize(): Long =
             type.fold({ it.componentsSizeInBytes * it.components.toLong() }, { it.sumOf { it.memberSize() } })
@@ -128,11 +128,17 @@ open class Introspected {
         fun memberSize(): Long = members.sumOf { it.memberSize() }
     }
 
-    class Texture(name: String, val type: String, set: Int, binding: Int, val arrayCount : Int = 0 /*0 means not an array*/) : Bindable(name, set, binding)
+    class Texture(
+        name: String,
+        val type: String,
+        set: Int,
+        binding: Int,
+        val arrayCount: Int = 0 /*0 means not an array*/
+    ) : Bindable(name, set, binding)
 
     class Image(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
 
-    data class Sampler(val name: String, val type: String, val location: Int)
+    data class Sampler(val name: String, val type: String, val set: Int, val location: Int)
     data class PushConstant(val name: String, val size: Int, val members: List<Member>)
 
     val inputs = mutableListOf<Input>()
@@ -216,7 +222,8 @@ class Introspection(
                                 arrayStride = if (m.has("array_stride")) m.getInt("array_stride") else 0
                             )
                         } catch (e: java.lang.IllegalArgumentException) {
-                            val physical_pointer = if (m.has("physical_pointer")) m.getBoolean("physical_pointer") else false
+                            val physical_pointer =
+                                if (m.has("physical_pointer")) m.getBoolean("physical_pointer") else false
                             Member(
                                 n2, offset, types.get(m.getString("type"))!!.right(), 0, physical_pointer
                             )
@@ -305,15 +312,15 @@ class Introspection(
 
                     val uo = ui.getJSONObject(i)
                     // only do 1d arrays of textures
-                    if (uo.has("array_size_is_literal") && uo.getJSONArray("array_size_is_literal").getBoolean(0) && uo.getJSONArray("array_size_is_literal").length()==1)
-                    {
+                    if (uo.has("array_size_is_literal") && uo.getJSONArray("array_size_is_literal")
+                            .getBoolean(0) && uo.getJSONArray("array_size_is_literal").length() == 1
+                    ) {
                         val name = uo.getString("name")
                         val type = uo.getString("type")
                         val binding = uo.getInt("binding")
                         val set = uo.getInt("set")
                         textures.add(Texture(name, type, set, binding, uo.getJSONArray("array").getInt(0)))
-                    }
-                    else {
+                    } else {
                         val name = uo.getString("name")
                         val type = uo.getString("type")
                         val binding = uo.getInt("binding")
@@ -343,7 +350,8 @@ class Introspection(
                     val name = uo.getString("name")
                     val type = uo.getString("type")
                     val location = uo.getInt("binding")
-                    samplers.add(Sampler(name, type, location))
+                    val set = uo.getInt("set")
+                    samplers.add(Sampler(name, type, set, location))
                 }
             }
 

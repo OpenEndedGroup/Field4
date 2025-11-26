@@ -78,7 +78,6 @@ fun frames(block: suspend Frames.() -> Unit): Frames {
     return v
 }
 
-
 fun forever(block: suspend Frames.() -> Boolean): Frames {
     val v = Frames()
 

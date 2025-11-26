@@ -57,7 +57,7 @@ window.MonacoEnvironment = {
         self.MonacoEnvironment = {
           baseUrl: '${document.location.protocol}//${document.location.host}/min/'
         };
-        importScripts('http://localhost:9091/min/vs/base/worker/workerMain.js');`)}`;
+        importScripts('${document.location.protocol}//${document.location.host}/min/vs/base/worker/workerMain.js');`)}`;
         }
 };
 

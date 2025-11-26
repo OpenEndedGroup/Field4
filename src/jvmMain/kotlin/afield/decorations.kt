@@ -2,7 +2,6 @@
 
 package afield
 
-
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
 import kotlinx.coroutines.yield
@@ -81,20 +80,22 @@ fun <K, V> MutableMap<K, in V>.update(key: K, d: V, u: (V) -> V): V {
     return v
 }
 
-fun Marker.toggle() {
+fun Marker.toggle(cb: () -> Unit) {
     val location = locationForTextStringOnStack(".toggle(", this.box, end = true, offset = 1)
     if (location != null) this.box.decorationState.put(
         this.name + "toggle", RawDecoration(
-        location, "toggle${this.name}", mapOf(
-            "toggle${this.name}" to """
+            location, "toggle${this.name}", mapOf(
+                "toggle${this.name}" to """
                 .toggle${this.name} { border-bottom: 0px solid white; }
                 .toggle${this.name}:before {content:'X'; color:white;position:relative; left:-0px; font-size:100%}
                 .toggle${this.name}:hover::before {content:'X'; color:red;position:relative; left:-0px; font-size:100%}""".replace(
-                "\n", " "
-            )
-        ), clickCallback = {
-            println("!! clicked !!")
-        }))
+                    "\n", " "
+                )
+            ), clickCallback = {
+                println("!! clicked !!")
+                cb()
+            })
+    )
 }
 
 fun Marker.beep(
@@ -114,6 +115,33 @@ fun Marker.beep(
         ),
     )
 }
+
+class BoppableString(val s: String, val inside: Marker) : () -> String {
+    fun bop(index: Int, color: String = "white", filled: Boolean = true) {
+        val location = locationForTextStringOnStack(".bop(", inside.box, end = true, offset = 1)
+        val glyph = if (filled) "🞊" else "🞅"
+        val className = "d${index}_${inside.name}"
+        if (location != null) inside.box.decorationState.put(
+            inside.name + "_beep",
+            RawDecoration(
+                location,
+                className,
+                mapOf(className to ".${className} { border-bottom: 0px solid ${color};} .${className}:before {content:'${glyph}'; color:${color};position:relative; left:${(index + 2) * 7.5 + 4}px; top:-12px; font-size:100%}")
+            ),
+        )
+    }
+
+    override fun invoke(): String {
+        return s
+    }
+}
+
+fun Marker.bop(
+    text: String
+): BoppableString {
+    return BoppableString(text, this)
+}
+
 
 class LittleHistory {
 

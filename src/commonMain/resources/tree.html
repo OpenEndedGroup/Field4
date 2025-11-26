@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Lazy Inspector — Tree</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        @import url("/iosevka.css");
+
+        :root{
+            --bg:        #1e1e1e;
+            --fg:        #ddd;
+            --fg-hover:  #fff;
+            --border:    #000;
+            --header-bg: #000;
+            --header-hover: rgba(255,255,255,0.10);
+
+            --indent-step: 10px;
+            --row-gutter:  6px;
+            --rail-offset: 6px;
+            --row-pad-y:   4px;
+            --row-pad-x:   8px;
+
+            --sep:   rgba(0,0,0,0.65);
+            --rail:  rgba(0,0,0,0.65);
+
+            --sb-size: 8px;
+            --sb-thumb: rgba(255,255,255,.22);
+            --sb-thumb-hover: rgba(255,255,255,.35);
+        }
+
+        *{ box-sizing:border-box; font-family:"Iosevka Web",system-ui,Avenir,Helvetica,Arial,sans-serif;             outline:none;}
+        body{ margin:0; background:transparent; color:var(--fg); font-size:12px; line-height:1.15; }
+
+        .status{ display:none; }
+
+        #treeWrap{ padding: 6px; }
+        #tree{
+            list-style:none; margin:0; padding:0;
+            max-height: calc(100vh - 12px);
+            overflow:auto;
+            border:2px solid var(--border);
+            border-radius:5px;
+            background: var(--header-bg);
+            outline:none;
+            color: var(--fg);
+        }
+
+        li.node{ list-style:none; margin:0; padding:0; }
+
+        .row{
+            position: relative;
+            display:flex; align-items:center; gap:6px;
+            padding: var(--row-pad-y) var(--row-pad-x);
+            border-bottom:1px solid var(--sep);
+            cursor: default;
+            background: var(--header-bg);
+            user-select:none;
+            outline:none;
+            min-height: 24px;
+        }
+        .row:last-child{ border-bottom:none; }
+        .row:hover{ background: var(--header-hover); }
+
+        .row.selected::before{
+            content:""; position:absolute; left:0; top:0; bottom:0; width:2px;
+            background: var(--fg);
+        }
+
+        .row.has-rail::after{
+            content:""; position:absolute;
+            left: calc(var(--indentPx, 0px) + var(--rail-offset));
+            top: 50%;
+            width: calc(var(--indent-step) - var(--rail-offset));
+            height: 1px;
+            background: var(--rail);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .tw{
+            position: relative;
+            width: 14px; height: 14px;
+            display:inline-flex; align-items:center; justify-content:center;
+            cursor:pointer; background:transparent; border:none;
+            margin-left: -5px; margin-right: 6px; flex: 0 0 auto;
+        }
+        .row[data-kind="dir"] .tw::before{
+            content:"";
+            width:0; height:0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 7px solid var(--fg);
+            opacity:.9;
+            transition: transform .18s ease, border-left-color .18s ease, opacity .18s ease;
+        }
+        .row[data-kind="dir"]:hover .tw::before{ border-left-color: var(--fg-hover); opacity: 1; }
+        .row.open[data-kind="dir"] .tw::before{ transform: rotate(90deg); }
+
+        .row[data-kind="leaf"] .tw::before{
+            content:"+";
+            color: rgba(255,255,255,.35);
+            font-weight:700; font-size:12px; line-height:1;
+            transition: color .18s ease, opacity .18s ease;
+        }
+        .row[data-kind="leaf"]:hover .tw::before{ color: var(--fg-hover); }
+        .row.leaf-open[data-kind="leaf"] .tw::before{ content:"−"; }
+
+        .label{ background:transparent; border:none; color:var(--fg); text-align:left; cursor:pointer; padding:0; margin:0; font: inherit; flex: 1 1 auto; }
+        .name{ white-space:pre; padding-left: calc(var(--row-gutter)); font-style:italic; }
+
+        /* Children rail: ALWAYS at absolute left edge, no hover highlight */
+        ul.children{
+            position: relative;
+            list-style:none; margin:0; padding:0;
+            background: var(--header-bg);
+        }
+        ul.children::before{
+            content:"";
+            position:absolute; top:0; bottom:0;
+            left: 0;                                /* <-- fixed to left edge */
+            width: 2px;
+            background: var(--border);
+            opacity:.9;
+            pointer-events: none;
+        }
+
+        #tree:has(> .node > .row.open) > .node > .row:not(.open) {
+            opacity: 0.6;
+        }
+
+
+        .leaf{
+            margin: 4px 8px 10px 0;
+            padding: 4px 6px;
+            border:1px solid var(--border);
+            border-radius:4px;
+            background: rgba(255,255,255,0.05);
+            color: var(--fg);
+            overflow:auto;
+            max-height: 50vh;
+            white-space: normal;
+            margin-left: var(--leaf-left, 0px);
+            font-size: 10px;
+            outline:none;
+        }
+
+        .tostr .tok { opacity: .96 }
+
+        /* subtle distinctions; keep within your monochrome palette */
+        .tostr .tok.word  { /* pure letters */         color: rgba(255,255,255,.92);  }
+        .tostr .tok.sym   { /* words + symbols */      color: rgba(220,230,255,.85);  text-decoration: none; }
+        .tostr .tok.num   { /* numbers */              color: rgba(255,235,200,.95);  }
+        .tostr .tok.punc  { /* punctuation */          opacity: .7;  }
+
+        .hint{ color:var(--fg); opacity:.55; font-size:10px; padding:4px 8px; border-bottom:1px dashed var(--border); }
+
+        #tree, #tree * { scrollbar-width: thin; scrollbar-color: var(--sb-thumb) transparent; }
+        #tree::-webkit-scrollbar, .leaf::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
+        #tree::-webkit-scrollbar-thumb, .leaf::-webkit-scrollbar-thumb {
+            background-color: var(--sb-thumb); border-radius: 6px; border: 2px solid transparent; background-clip: content-box;
+        }
+        #tree::-webkit-scrollbar-thumb:hover, .leaf::-webkit-scrollbar-thumb:hover { background-color: var(--sb-thumb-hover); }
+        #tree::-webkit-scrollbar-track, .leaf::-webkit-scrollbar-track,
+        #tree::-webkit-scrollbar-corner, .leaf::-webkit-scrollbar-corner { background: transparent; }
+    </style>
+</head>
+<body>
+<div class="status" id="status">disconnected</div>
+<div id="treeWrap">
+    <ul id="tree" role="tree" tabindex="0" aria-label="Inspector tree"></ul>
+</div>
+
+<script>
+        const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
+
+        (() => {
+                const WS_URL = "ws://localhost:9092/ws";
+                const CHANNEL = "__browsing__";
+
+                const treeEl  = document.getElementById('tree');
+                const statusEl= document.getElementById('status');
+
+                let ws; let reqSeq = 1; const pending = new Map();
+                const openIds = new Set();
+
+                function connect(){
+                        ws = new WebSocket(WS_URL);
+                        statusEl.textContent = "connecting…";
+                        ws.onopen = () => { statusEl.textContent = "connected"; getRoots(); };
+                        ws.onmessage = (ev) => {
+                                let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+                                if (msg.reqId && pending.has(msg.reqId)) { const resolve = pending.get(msg.reqId); pending.delete(msg.reqId); resolve(msg); return; }
+                                if (msg.type === "changed" && msg.nodeId) {
+                                        const row = rowForId(msg.nodeId);
+                                        if (row && isRowOpen(row)) reopenRow(row, msg.version);
+                                }
+                        };
+                        ws.onclose = () => { statusEl.textContent = "disconnected"; openIds.clear(); setTimeout(connect, 1200); };
+                        ws.onerror = () => { statusEl.textContent = "error"; };
+                }
+
+                function sendReq(op, payload = {}){
+                        const reqId = String(reqSeq++);
+                        const msg = { channel: CHANNEL, op, reqId, ...payload };
+                        return new Promise((resolve) => { pending.set(reqId, resolve); ws.send(JSON.stringify(msg)); });
+                }
+                function fireAndForget(op, payload = {}){
+                        const reqId = String(reqSeq++);
+                        const msg = { channel: CHANNEL, op, reqId, ...payload };
+                        try { ws && ws.readyState === 1 && ws.send(JSON.stringify(msg)); } catch {}
+                }
+
+                const PROBE_LIMIT = 8;
+                let probeInflight = 0;
+                const probeQueue  = [];
+                function scheduleKindProbe(row, id){
+                        if (!id || row.dataset.kind) return;
+                        probeQueue.push({ row, id });
+                        pumpProbeQueue();
+                }
+                function pumpProbeQueue(){
+                        while (probeInflight < PROBE_LIMIT && probeQueue.length){
+                                const { row, id } = probeQueue.shift();
+                                probeInflight++;
+                                sendReq('open', { id, watch: false })
+                                    .then(resp => { if (resp && resp.ok) setRowKind(row, resp.type === 'dir' ? 'dir' : 'leaf'); })
+                                    .finally(() => { probeInflight--; pumpProbeQueue(); });
+                        }
+                }
+
+                function rowForId(id){ return treeEl.querySelector(`.row[data-id="${id}"]`); }
+                function liFromRow(row){ return row.closest('li.node'); }
+
+                // Rail is fixed at left edge now, so we don’t compute a depth-based left.
+                function childrenList(li){
+                        let ul = li.querySelector(':scope > ul.children');
+                        if (!ul){
+                                ul = document.createElement('ul');
+                                ul.className = 'children';
+                                ul.setAttribute('role','group');
+                                li.appendChild(ul);
+                        }
+                        return ul;
+                }
+                function leafView(li){ return li.querySelector(':scope > .leaf'); }
+
+                const INDENT_STEP = 10, GUTTER = 6;
+
+                function makeRow({ name, id, kind=null, depth=0 }){
+                        const li = document.createElement('li'); li.className = 'node';
+                        const row = document.createElement('div'); row.className = 'row'; row.tabIndex = -1;
+                        row.dataset.id = id || '';
+                        row.dataset.depth = String(depth);
+                        row.setAttribute('role','treeitem');
+                        row.setAttribute('aria-level', String(depth+1));
+                        if (kind) row.dataset.kind = kind;
+
+                        const tw = document.createElement('button'); tw.className = 'tw'; tw.tabIndex = -1;
+                        const label = document.createElement('button'); label.className = 'label'; label.tabIndex = -1;
+                        const txt = document.createElement('span'); txt.className = 'name'; txt.textContent = name || '…';
+                        label.appendChild(txt);
+
+                        const indentPx = GUTTER + depth * INDENT_STEP;
+                        row.style.setProperty('--indentPx', indentPx + 'px');
+                        txt.style.marginLeft = indentPx + 'px';
+                        if (depth > 0) row.classList.add('has-rail');
+
+                        tw.addEventListener('click', (e) => { e.stopPropagation(); toggleRow(row); });
+                        label.addEventListener('click', (e) => { e.stopPropagation(); toggleRow(row, true); });
+
+                        row.addEventListener('click', () => selectRow(row));
+                        row.addEventListener('dblclick', () => toggleRow(row, true));
+
+                        row.appendChild(tw); row.appendChild(label);
+                        li.appendChild(row);
+
+                        scheduleKindProbe(row, id);
+                        return li;
+                }
+
+                function setRowKind(row, k){ row.dataset.kind = k; }
+                function isRowOpen(row){ return row.classList.contains('open') || row.classList.contains('leaf-open'); }
+
+                function selectRow(row){
+                        treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
+                        row.classList.add('selected');
+                        row.scrollIntoView({ block:'nearest', inline:'nearest' });
+                        treeEl.focus({preventScroll:true});
+                }
+
+                function toggleRow(row, preferOpen=false){
+                        const k = row.dataset.kind;
+                        if (k === 'leaf'){
+                                if (row.classList.contains('leaf-open')) collapseRow(row);
+                                else expandRow(row);
+                        } else {
+                                if (preferOpen || !row.classList.contains('open')) expandRow(row);
+                                else collapseRow(row);
+                        }
+                }
+
+                function collapseRow(row){
+                        const li = liFromRow(row);
+                        unsubscribeSubtree(li);
+
+                        const ul = li.querySelector(':scope > ul.children');
+                        if (ul) ul.remove();
+                        const lv = leafView(li);
+                        if (lv) lv.remove();
+
+                        row.classList.remove('open','leaf-open');
+                        row.setAttribute('aria-expanded','false');
+                }
+
+                function unsubscribeSubtree(li){
+                        const rows = li.querySelectorAll(':scope .row, :scope > .row');
+                        rows.forEach(r => {
+                                const nid = r.dataset.id;
+                                if (nid && openIds.has(nid)){
+                                        openIds.delete(nid);
+                                        fireAndForget('unsubscribe', { id: nid });
+                                }
+                        });
+                }
+
+                async function expandRow(row){
+                        const id  = row.dataset.id;
+                        const li  = liFromRow(row);
+                        if (!id || !li) return;
+
+                        const resp = await sendReq('open', { id, watch: true });
+                        if (!resp || !resp.ok) return;
+
+                        openIds.add(id);
+
+                        const kind = (resp.type === 'dir') ? 'dir' : 'leaf';
+                        setRowKind(row, kind);
+
+                        const depth = parseInt(row.dataset.depth||'0',10);
+
+                        if (resp.type === 'dir'){
+                                row.classList.add('open'); row.setAttribute('aria-expanded','true');
+                                const ul = childrenList(li);
+                                ul.innerHTML = '';
+                                const entries = (resp.entries || []).map(p => ({ name: p[0], id: p[1] }));
+                                if (entries.length === 0){
+                                        const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
+                                        ul.appendChild(hint);
+                                } else {
+                                        entries.forEach(({name, id: childId}) => {
+                                                const child = makeRow({ name, id: childId, depth: depth + 1 });
+                                                ul.appendChild(child);
+                                        });
+                                }
+                        } else {
+                                row.classList.add('leaf-open'); row.setAttribute('aria-expanded','true');
+                                let lv = leafView(li);
+                                if (!lv){ lv = document.createElement('div'); lv.className = 'leaf'; li.appendChild(lv); }
+                                const leafLeft = 6 + (depth + 1) * 10;
+                                lv.style.setProperty('--leaf-left', leafLeft + 'px');
+                                lv.innerHTML = String(resp.html ?? resp.value ?? '');
+                        }
+                }
+
+                async function reopenRow(row){
+                        const id  = row.dataset.id;
+                        const li  = liFromRow(row);
+                        if (!id || !li) return;
+                        if (!isRowOpen(row)) return;
+
+                        const openChildNames = Array.from(li.querySelectorAll(':scope > ul.children > li > .row.open'))
+                            .map(r => r.querySelector('.name')?.textContent);
+                        const openLeafNames  = Array.from(li.querySelectorAll(':scope > ul.children > li > .row.leaf-open'))
+                            .map(r => r.querySelector('.name')?.textContent);
+
+                        const wasSelected = row.classList.contains('selected');
+
+                        const resp = await sendReq('open', { id, watch: true });
+                        if (!resp || !resp.ok) return;
+
+                        const depth = parseInt(row.dataset.depth||'0',10);
+
+                        if (resp.type === 'dir'){
+                                setRowKind(row, 'dir');
+                                row.classList.add('open'); row.classList.remove('leaf-open'); row.setAttribute('aria-expanded','true');
+
+                                const ul = childrenList(li);
+                                ul.innerHTML = '';
+                                const entries = (resp.entries || []).map(p => ({ name: p[0], id: p[1] }));
+                                entries.forEach(({name, id: childId}) => {
+                                        const child = makeRow({ name, id: childId, depth: depth + 1 });
+                                        ul.appendChild(child);
+                                });
+
+                                for (const nm of openChildNames){
+                                        const childRow = Array.from(ul.querySelectorAll(':scope > li > .row'))
+                                            .find(r => r.querySelector('.name')?.textContent === nm);
+                                        if (childRow) await expandRow(childRow);
+                                }
+                                for (const nm of openLeafNames){
+                                        const childRow = Array.from(ul.querySelectorAll(':scope > li > .row'))
+                                            .find(r => r.querySelector('.name')?.textContent === nm);
+                                        if (childRow){ await expandRow(childRow); }
+                                }
+                        } else {
+                                setRowKind(row, 'leaf');
+                                row.classList.add('leaf-open'); row.classList.remove('open'); row.setAttribute('aria-expanded','true');
+                                let lv = leafView(li);
+                                if (!lv){ lv = document.createElement('div'); lv.className = 'leaf'; li.appendChild(lv); }
+                                const leafLeft = 6 + (depth + 1) * 10;
+                                lv.style.setProperty('--leaf-left', leafLeft + 'px');
+                                lv.innerHTML = String(resp.html ?? resp.value ?? '');
+                        }
+
+                        if (wasSelected) selectRow(row);
+                }
+
+                async function getRoots(){
+                        const resp = await sendReq('getRoots', ROOT_TOKEN ? { root: ROOT_TOKEN } : {});
+                        if (!resp || !resp.ok){ showError(resp?.error || 'failed to load roots'); return; }
+
+                        treeEl.innerHTML = '';
+
+                        if (resp.type === 'dir'){
+                                const entries = (resp.entries || []).map(p => ({ name: p[0], id: p[1] }));
+                                const frag = document.createDocumentFragment();
+                                entries.forEach(({name, id}) => { frag.appendChild(makeRow({ name, id, depth:0 })); });
+                                treeEl.appendChild(frag);
+                                if (resp.id){ fireAndForget('open', { id: resp.id, watch: true }); }
+                        } else if (resp.type === 'leaf'){
+                                const li = makeRow({ name: 'Root', id: resp.nodeId, kind:'leaf', depth:0 });
+                                treeEl.appendChild(li);
+                                const row = li.querySelector('.row');
+                                await expandRow(row);
+                        }
+
+                        const first = treeEl.querySelector('.row');
+                        if (first) selectRow(first);
+                }
+
+                function showError(err){
+                        treeEl.innerHTML = '';
+                        const li = document.createElement('li'); li.className = 'node';
+                        const row = document.createElement('div'); row.className = 'row'; row.textContent = 'Error'; li.appendChild(row);
+                        const msg = document.createElement('div'); msg.className = 'leaf'; msg.textContent = String(err ?? 'unknown'); li.appendChild(msg);
+                        treeEl.appendChild(li);
+                }
+
+                function flatRows(){ return Array.from(treeEl.querySelectorAll('.row')); }
+                function nextRow(from, delta){
+                        const rows = flatRows(); if (!rows.length) return null;
+                        let idx = rows.indexOf(from); if (idx < 0) idx = 0;
+                        idx = Math.max(0, Math.min(rows.length - 1, idx + delta));
+                        return rows[idx];
+                }
+                function parentRow(row){
+                        const li = liFromRow(row); if (!li) return null;
+                        const parentLi = li.parentElement?.closest('li.node'); if (!parentLi) return null;
+                        return parentLi.querySelector(':scope > .row') || null;
+                }
+                function firstChildRow(row){
+                        const li = liFromRow(row); if (!li) return null;
+                        const first = li.querySelector(':scope > ul.children > li > .row'); return first || null;
+                }
+
+                document.addEventListener('keydown', async (e) => {
+                        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                        const sel = treeEl.querySelector('.row.selected') || treeEl.querySelector('.row');
+                        if (!sel) return;
+
+                        switch (e.key){
+                                case 'ArrowDown': e.preventDefault(); { const n = nextRow(sel, +1); if (n) selectRow(n); } break;
+                                case 'ArrowUp':   e.preventDefault(); { const n = nextRow(sel, -1); if (n) selectRow(n); } break;
+                                case 'ArrowRight':
+                                case 'Enter': {
+                                        e.preventDefault();
+                                        if (sel.dataset.kind === 'dir' && !sel.classList.contains('open')) { await expandRow(sel); }
+                                        else {
+                                                const ch = firstChildRow(sel);
+                                                if (ch) selectRow(ch);
+                                                else await expandRow(sel);
+                                        }
+                                        break;
+                                }
+                                case 'ArrowLeft': {
+                                        e.preventDefault();
+                                        if (sel.classList.contains('open') || sel.classList.contains('leaf-open')) {
+                                                collapseRow(sel);
+                                        } else {
+                                                const p = parentRow(sel);
+                                                if (p) selectRow(p);
+                                        }
+                                        break;
+                                }
+                                case 'r': { e.preventDefault(); await refreshAll(); break; }
+                                default: break;
+                        }
+                });
+
+                async function refreshAll(){
+                        const paths = [];
+                        const selectedPath = [];
+
+                        function pathForRow(row){
+                                const names = [];
+                                let r = row;
+                                while (r){
+                                        const nm = r.querySelector('.name')?.textContent || '';
+                                        names.push(nm);
+                                        r = parentRow(r);
+                                }
+                                return names.reverse();
+                        }
+
+                        treeEl.querySelectorAll('.row.open, .row.leaf-open').forEach(r => { paths.push(pathForRow(r)); });
+
+                        const sel = treeEl.querySelector('.row.selected');
+                        if (sel) selectedPath.push(...pathForRow(sel));
+
+                        await getRoots();
+
+                        paths.sort((a,b)=>a.length-b.length);
+                        for (const p of paths){ await openPathByNames(p); }
+
+                        if (selectedPath.length){
+                                const row = await openPathByNames(selectedPath, true);
+                                if (row) selectRow(row);
+                        }
+                }
+
+                async function openPathByNames(names, selectLast=false){
+                        if (!names || !names.length) return null;
+                        let parentUl = treeEl;
+                        let foundRow = null;
+
+                        for (let depth=0; depth<names.length; depth++){
+                                const want = names[depth];
+                                const row = Array.from(parentUl.querySelectorAll(':scope > li > .row'))
+                                    .find(r => r.querySelector('.name')?.textContent === want);
+                                if (!row) return foundRow;
+                                foundRow = row;
+                                selectRow(row);
+
+                                if (!isRowOpen(row)) await expandRow(row);
+
+                                const li = liFromRow(row);
+                                parentUl = li.querySelector(':scope > ul.children') || parentUl;
+                        }
+                        if (selectLast && foundRow) selectRow(foundRow);
+                        return foundRow;
+                }
+
+                treeEl.addEventListener('pointerdown', () => treeEl.focus({preventScroll:true}));
+                window.addEventListener('beforeunload', () => { openIds.forEach(id => fireAndForget('unsubscribe', { id })); openIds.clear(); });
+                document.addEventListener('DOMContentLoaded', () => { treeEl.focus({preventScroll:true}); connect(); });
+        })();
+</script>
+</body>
+</html>

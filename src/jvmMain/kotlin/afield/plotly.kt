@@ -1,15 +1,34 @@
 package afield
 
 import afield.stdlib.Vec2
+import afield.stdlib.Vec3
 import kotlinx.html.*
 import kotlinx.html.stream.createHTML
 import space.kscience.plotly.*
+import space.kscience.plotly.models.LegendOrientation
 import space.kscience.plotly.models.ScatterMode
+import space.kscience.plotly.models.SizeMode
 import space.kscience.plotly.models.ViolinPoints
+import space.kscience.plotly.models.XAnchor
+import space.kscience.plotly.models.YAnchor
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 
+@JvmName("linePlot_scalar")
+fun linePlot(vararg data: List<Number>): Plot {
+    return Plotly.plot {
+        data.forEach {
+            trace {
+                x.set(it.mapIndexed { index, _ -> index })
+                y.set(it)
+                line.width = 1.0
+            }
+        }
+    }.darkMode()
+}
+
+@JvmName("linePlot_vec2")
 fun linePlot(vararg data: List<Vec2>): Plot {
     return Plotly.plot {
         data.forEach {
@@ -31,6 +50,21 @@ fun scatter(vararg data: List<Vec2>): Plot {
                 mode = ScatterMode.markers
                 marker {
                     size = 3.0
+                }
+            }
+        }
+    }.darkMode()
+}
+
+fun scatterSized(vararg data: List<Vec3>): Plot {
+    return Plotly.plot {
+        data.forEach {
+            scatter {
+                x.set(it.map { it.x })
+                y.set(it.map { it.y })
+                mode = ScatterMode.markers
+                marker {
+                    sizesList = it.map { it.z }
                 }
             }
         }
@@ -59,29 +93,40 @@ fun Plot.darkMode(): Plot {
                 color("#f2f5fa")
             }
         }
+        legend {
+            orientation = LegendOrientation.horizontal
+            yanchor = YAnchor.top
+            xanchor= XAnchor.right
+            y = 0.2
+            x = 1.0
+        }
         paper_bgcolor("rgb(17,17,17)")
         plot_bgcolor("rgb(17,17,17)")
         xaxis {
             gridcolor("#283442")
-            linecolor("#506784")
+            linecolor("#000000")
             zerolinecolor("#283442")
-            zerolinewidth = 2
+            color("#aaaaaa")
+            tickangle = 20.0
+            zerolinewidth = 3
         }
         yaxis {
             gridcolor("#283442")
-            linecolor("#506784")
+            linecolor("#000000")
             zerolinecolor("#283442")
-            zerolinewidth = 2
+            color("#aaaaaa")
+            tickangle = 20.0
+            zerolinewidth = 3
         }
     }
 
     if (this.layout.title?.isEmpty() != false) {
         layout {
             margin {
-                t = 40
-                l = 50
-                b = 50
-                r = 50
+                t = 30
+                l = 30
+                b = 30
+                r = 30
             }
         }
     }

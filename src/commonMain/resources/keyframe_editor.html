@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Keyframe Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: transparent;
+            color: #e8ebf5;
+        }
+
+        body {
+            margin: 0;
+            min-height: 0;
+            background: transparent;
+            padding: 0;
+        }
+
+        #editor-host {
+            width: min(960px, 100%);
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+<div id="editor-host"></div>
+
+<script type="module">
+        import { KeyframeEditor, BUILTIN_KEYFRAME_TYPES } from "./keyframe_editor.js";
+
+        const host = document.getElementById('editor-host');
+        const timeRange = [0, 4];
+        const valueRange = [0, 1];
+
+        const syncState = {
+                ws: null,
+                reconnectTimer: null,
+                isApplyingRemote: false,
+                lastPlayheadPush: 0,
+                playheadThrottleMs: 50,
+        };
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientUid = (urlParams.get('uid') || '').trim() || 'anonymous';
+        console.log('Client UID:', clientUid, urlParams);
+        const editor = new KeyframeEditor(host, {
+                width: 500,
+                height: 200,
+                timeRange,
+                valueRange,
+                padding: 0,
+                keyframes: [],
+                types: {
+                        ...BUILTIN_KEYFRAME_TYPES,
+                },
+                evaluateGraph(keyframes, ctx) {
+                        return evaluateSketch(keyframes, ctx);
+                },
+                onChange() {
+                        broadcastKeyframes('change');
+                },
+        });
+
+        let playhead = timeRange[0];
+        editor.setPlayhead(playhead);
+
+
+        connectWebSocket();
+
+        function evaluateSketch(keyframes, ctx) {
+                const path = buildFunctionalPath(ctx);
+                const overlayPath = buildSampleOverlay(keyframes, ctx);
+                return overlayPath ? { path, elements: [overlayPath] } : { path };
+        }
+
+        function buildFunctionalPath(ctx) {
+                const samples = typeof ctx.sampleCurve === 'function' ? ctx.sampleCurve({ stepsPerSegment: 48 }) : [];
+                if (!samples.length) return '';
+                const keyFor = (a, b) => `${a.time.toFixed(6)}:${a.value.toFixed(6)}:${b.time.toFixed(6)}:${b.value.toFixed(6)}`;
+                const breakKeys = new Set((ctx.breakSegments ?? []).map(([start, end]) => keyFor(start, end)));
+                const commands = [];
+                let move = true;
+                for (let i = 0; i < samples.length; i += 1) {
+                        const sample = samples[i];
+                        const x = ctx.timeToX(sample.time);
+                        const y = ctx.valueToY(sample.value);
+                        commands.push(`${move ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
+                        move = false;
+                        if (i < samples.length - 1) {
+                                const next = samples[i + 1];
+                                if (breakKeys.has(keyFor(sample, next))) {
+                                        move = true;
+                                }
+                        }
+                }
+                return commands.join(' ');
+        }
+
+        function buildSampleOverlay(keyframes, ctx) {
+                const breaks = ctx.breakSegments ?? [];
+                if (!breaks.length) return null;
+                const commands = breaks
+                    .map(([start, end]) => {
+                            const sx = ctx.timeToX(start.time);
+                            const sy = ctx.valueToY(start.value);
+                            const ex = ctx.timeToX(end.time);
+                            const ey = ctx.valueToY(end.value);
+                            return `M ${sx.toFixed(2)} ${sy.toFixed(2)} L ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+                    })
+                    .join(' ');
+                return ctx.createElement('path', {
+                        d: commands,
+                        stroke: '#ffab47',
+                        'stroke-width': '2',
+                        'stroke-dasharray': '4 4',
+                        fill: 'none',
+                });
+        }
+
+        function connectWebSocket() {
+                const url = buildWsUrl();
+                const socket = new WebSocket(url);
+                syncState.ws = socket;
+
+                socket.addEventListener('open', () => {
+                        clearTimeout(syncState.reconnectTimer);
+                        syncState.reconnectTimer = null;
+                        sendMessage({ type: 'hello', source: 'keyframe-editor', capabilities: ['keyframes', 'playhead', 'requestState'] });
+                        // broadcastKeyframes('ws-open');
+                        // broadcastPlayhead(editor.getPlayhead(), { force: true, reason: 'ws-open' });
+                });
+
+                socket.addEventListener('message', (event) => handleIncomingMessage(event));
+
+                socket.addEventListener('close', () => {
+                        scheduleReconnect();
+                });
+
+                socket.addEventListener('error', () => {
+                        socket.close();
+                });
+        }
+
+        function scheduleReconnect() {
+                if (syncState.reconnectTimer) return;
+                syncState.reconnectTimer = window.setTimeout(() => {
+                        syncState.reconnectTimer = null;
+                        connectWebSocket();
+                }, 1000);
+        }
+
+        function buildWsUrl() {
+                const override = urlParams.get('ws');
+                if (override) return override;
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const overrideHost = urlParams.get('wsHost');
+                const hostBase = overrideHost ?? window.location.host;
+                const needsPort = !hostBase.includes(':') && window.location.port;
+                const host = needsPort ? `${hostBase}:${window.location.port}` : hostBase;
+                const path = urlParams.get('wsPath') ?? '/ws';
+                return `${protocol}//${host}${path}`;
+        }
+
+        function sendMessage(payload) {
+                if (!payload) return;
+                if (!syncState.ws || syncState.ws.readyState !== WebSocket.OPEN) return;
+                try {
+                        const message = { debug_uid: clientUid, ...payload };
+                        syncState.ws.send(JSON.stringify(message));
+                } catch (error) {
+                        console.warn('WebSocket send failed', error);
+                }
+        }
+
+        function broadcastKeyframes(reason = 'change') {
+                if (syncState.isApplyingRemote) return;
+                sendMessage({
+                        type: 'keyframes',
+                        keyframes: editor.toJSON(),
+                        playhead: editor.getPlayhead(),
+                        reason,
+                });
+        }
+
+        function broadcastPlayhead(time, { force = false, reason = 'tick' } = {}) {
+                if (syncState.isApplyingRemote) return;
+                const now = performance.now();
+                if (!force && now - syncState.lastPlayheadPush < syncState.playheadThrottleMs) return;
+                syncState.lastPlayheadPush = now;
+                sendMessage({
+                        type: 'playhead',
+                        time,
+                        reason,
+                });
+        }
+
+        function handleIncomingMessage(event) {
+                let message = null;
+                try {
+                        message = JSON.parse(event.data);
+                } catch (error) {
+                        console.warn('Ignoring non-JSON WebSocket message', error);
+                        return;
+                }
+                if (message?.uid && message.uid === clientUid) {
+                        return;
+                }
+
+                if (message.type === 'requestState') {
+                        broadcastKeyframes('requested');
+                        return;
+                }
+
+                if (Array.isArray(message.keyframes) || message.type === 'keyframes' || message.type === 'state') {
+                        applyRemoteKeyframes(message.keyframes, message.playhead);
+                        return;
+                }
+
+                if (message.type === 'playhead' && typeof message.time === 'number') {
+                        applyRemotePlayhead(message.time);
+                }
+        }
+
+        function applyRemoteKeyframes(keyframes = [], playheadOverride) {
+                if (!Array.isArray(keyframes)) return;
+                syncState.isApplyingRemote = true;
+                editor.keyframes = keyframes.map((kf) => editor.prepareKeyframe(kf));
+                fitViewToKeyframes(editor.keyframes);
+                editor.refresh({ notify: false });
+                syncState.isApplyingRemote = false;
+                if (typeof playheadOverride === 'number') {
+                        applyRemotePlayhead(playheadOverride);
+                }
+        }
+
+        function applyRemotePlayhead(time) {
+                if (!Number.isFinite(time)) return;
+                syncState.isApplyingRemote = true;
+                playhead = time;
+                editor.setPlayhead(time);
+                syncState.lastPlayheadPush = performance.now();
+                syncState.isApplyingRemote = false;
+        }
+
+        function fitViewToKeyframes(keyframes) {
+                if (!Array.isArray(keyframes) || !keyframes.length) return;
+                const times = keyframes.map((item) => item.time).filter(Number.isFinite);
+                const values = keyframes.map((item) => item.value).filter(Number.isFinite);
+                if (times.length) {
+                        const [min, max] = padRange(Math.min(...times), Math.max(...times), 0.05);
+                        if (max - min > 0) {
+                                editor.setViewTimeRange([min, max], { render: false });
+                        }
+                }
+                if (values.length) {
+                        const [min, max] = padRange(Math.min(...values), Math.max(...values), 0.1);
+                        if (max - min > 0) {
+                                editor.setViewValueRange([min, max], { render: false });
+                        }
+                }
+        }
+
+        function padRange(min, max, padRatio) {
+                if (!Number.isFinite(min) || !Number.isFinite(max)) return [min, max];
+                if (Math.abs(max - min) < 1e-6) {
+                        const delta = Math.max(Math.abs(min) * 0.1, 1);
+                        return [min - delta, max + delta];
+                }
+                const span = max - min;
+                const pad = span * padRatio;
+                return [min - pad, max + pad];
+        }
+</script>
+</body>
+</html>

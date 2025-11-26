@@ -1,7 +1,5 @@
 package afield.four.targets
 
-// use your barrier helper
-// for Module -> ModulePointer
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
@@ -22,6 +20,8 @@ import org.lwjgl.openvr.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK13.*          // sync2 flags
+import org.lwjgl.vulkan.KHRDynamicRendering
 
 data class OpenVREyeParams(
     var format: Int = VK_FORMAT_B8G8R8A8_SRGB,
@@ -44,26 +44,27 @@ private class EyeImage(
         val usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or VK_IMAGE_USAGE_SAMPLED_BIT or VK_IMAGE_USAGE_TRANSFER_SRC_BIT
 
         val img = ImageData().width(width).height(height).usage(usage).format(p.format).mipLevels(1)
-
         colorImage = Image(renderer.device, img)
 
         val viewInfo = ImageViewData().format(p.format).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(1)
-
         colorView = ImageView(renderer.device, colorImage.vkImage, viewInfo)
     }
 
     fun beginRendering(cmd: VkCommandBuffer) {
         MemoryStack.stackPush().use { stack ->
-            val baseRange = VkImageSubresourceRange.calloc(stack).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0)
-                .levelCount(1).baseArrayLayer(0).layerCount(1)
+            val baseRange = VkImageSubresourceRange.calloc(stack)
+                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .baseMipLevel(0).levelCount(1)
+                .baseArrayLayer(0).layerCount(1)
 
+            // UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL
             image_layout_transition(
                 cmd,
                 colorImage.vkImage,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 0,
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 baseRange
@@ -72,21 +73,30 @@ private class EyeImage(
 
             val colorAttach = VkRenderingAttachmentInfoKHR.calloc(1, stack)
                 .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
-                .imageView(colorView.vkImageView).imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                .resolveMode(VK13.VK_RESOLVE_MODE_NONE).loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
-                .storeOp(VK_ATTACHMENT_STORE_OP_STORE).clearValue(
+                .imageView(colorView.vkImageView)
+                .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                .resolveMode(VK_RESOLVE_MODE_NONE)
+                .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+                .storeOp(VK_ATTACHMENT_STORE_OP_STORE)
+                .clearValue(
                     VkClearValue.calloc(stack).color(
-                        VkClearColorValue.calloc(stack).float32(0, p.clearColor.x).float32(1, p.clearColor.y)
-                            .float32(2, p.clearColor.z).float32(3, p.clearColor.w)
+                        VkClearColorValue.calloc(stack)
+                            .float32(0, p.clearColor.x)
+                            .float32(1, p.clearColor.y)
+                            .float32(2, p.clearColor.z)
+                            .float32(3, p.clearColor.w)
                     )
                 )
 
-            val renderInfo =
-                VkRenderingInfoKHR.calloc(stack).sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_INFO_KHR)
-                    .renderArea(
-                        VkRect2D.calloc(stack).offset(VkOffset2D.calloc(stack).x(0).y(0))
-                            .extent(VkExtent2D.calloc(stack).width(width).height(height))
-                    ).layerCount(1).pColorAttachments(colorAttach)
+            val renderInfo = VkRenderingInfoKHR.calloc(stack)
+                .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_INFO_KHR)
+                .renderArea(
+                    VkRect2D.calloc(stack)
+                        .offset(VkOffset2D.calloc(stack).x(0).y(0))
+                        .extent(VkExtent2D.calloc(stack).width(width).height(height))
+                )
+                .layerCount(1)
+                .pColorAttachments(colorAttach)
 
             KHRDynamicRendering.vkCmdBeginRenderingKHR(cmd, renderInfo)
         }
@@ -96,20 +106,25 @@ private class EyeImage(
         KHRDynamicRendering.vkCmdEndRenderingKHR(cmd)
 
         MemoryStack.stackPush().use { stack ->
-            val range = VkImageSubresourceRange.calloc(stack).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0)
-                .levelCount(1).baseArrayLayer(0).layerCount(1)
+            val range = VkImageSubresourceRange.calloc(stack)
+                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .baseMipLevel(0).levelCount(1)
+                .baseArrayLayer(0).layerCount(1)
 
+            // COLOR_ATTACHMENT_OPTIMAL -> TRANSFER_SRC_OPTIMAL
+            // dstStage/Access can be NONE since no in-cmdbuf consumer follows.
             image_layout_transition(
                 cmd,
                 colorImage.vkImage,
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                VK_ACCESS_TRANSFER_READ_BIT,
+                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_2_NONE,
+                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                0,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                 range
             )
+            colorLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
         }
     }
 
@@ -419,7 +434,6 @@ class OpenVRRenderTarget(
         }
     }
 
-
     private fun updateControllerIndices() {
         leftControllerIdx = VRSystem.VRSystem_GetTrackedDeviceIndexForControllerRole(
             VR.ETrackedControllerRole_TrackedControllerRole_LeftHand
@@ -499,7 +513,10 @@ class OpenVRRenderTarget(
     private fun hmd34ToMatrix4f(src: HmdMatrix34, dst: Matrix4f = Matrix4f()): Matrix4f {
         val m = src.m() // FloatBuffer length 12, row-major: r0[0..3], r1[4..7], r2[8..11]
         return dst.set(
-            m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0f, 0f, 0f, 1f
+            m[0], m[1], m[2], m[3],
+            m[4], m[5], m[6], m[7],
+            m[8], m[9], m[10], m[11],
+            0f, 0f, 0f, 1f
         )
     }
 
@@ -507,7 +524,10 @@ class OpenVRRenderTarget(
     private fun hmd44ToMatrix4f(src: HmdMatrix44, dst: Matrix4f = Matrix4f()): Matrix4f {
         val m = src.m() // FloatBuffer length 16, row-major
         return dst.set(
-            m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]
+            m[0], m[1], m[2], m[3],
+            m[4], m[5], m[6], m[7],
+            m[8], m[9], m[10], m[11],
+            m[12], m[13], m[14], m[15]
         )
     }
 
@@ -613,7 +633,6 @@ class OpenVRRenderTarget(
 
         // --- helpers -------------------------------------------------------------
 
-
         private fun isWellFormed(key: String): Boolean =
             key.startsWith("left_") || key.startsWith("right_")
 
@@ -645,6 +664,4 @@ class OpenVRRenderTarget(
             return (state.ulButtonPressed() and mask) != 0L
         }
     }
-
-
 }
