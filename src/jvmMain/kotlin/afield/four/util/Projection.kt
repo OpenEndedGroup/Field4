@@ -3,7 +3,17 @@ package afield.four.util
 import afield.four.Renderer
 import afield.four.buffers.HasUniform
 import afield.four.modules.fromContext
+import org.ejml.data.Complex_F64
+import org.ejml.simple.SimpleMatrix
 import org.joml.Matrix4f
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.ln
+import kotlin.math.tan
+
+// ============================================================================
+// Simple perspective-only projection
+// ============================================================================
 
 class Projection : HasUniform<Matrix4f> {
     @JvmField
@@ -30,17 +40,18 @@ class Projection : HasUniform<Matrix4f> {
         }
     }
 
-
     fun resize(width: Int, height: Int): Projection {
         projectionMatrix.identity()
         aspect = width.toFloat() / height.toFloat()
-        projectionMatrix.perspective(
-            fov.toFloat(), aspect,
-            zNear.toFloat(), zFar.toFloat(), true
+        projectionMatrix.setPerspective(
+            fov.toFloat(),
+            aspect,
+            zNear.toFloat(),
+            zFar.toFloat(),
+            true // Vulkan-style depth [0,1]
         )
         return this
     }
-
 
     override fun evaluateUniform(): Matrix4f {
         auto()
@@ -48,7 +59,10 @@ class Projection : HasUniform<Matrix4f> {
     }
 }
 
+
+
 class SuperProjection : HasUniform<Matrix4f> {
+
     @JvmField
     val projectionMatrix: Matrix4f
 
@@ -56,133 +70,452 @@ class SuperProjection : HasUniform<Matrix4f> {
     var zNear = Options.zNear
     var zFar = Options.zFar
     var aspect = 1.0f
+
+    // Principal-point offsets at matchDepth, in units of "half width / half height".
+    // ox = 0, oy = 0   → centered
+    // ox = 1          → center shifted one half-width to +X at matchDepth
+    // oy = 1          → center shifted one half-height to +Y at matchDepth
     var ox = 0.0
     var oy = 0.0
-    var orthoness = 1.0
 
+    // 0 = pure perspective, 1 = pure ortho (endpoints of the Lie path)
+    var orthoness = 0.0
 
-    var auto: () -> Unit = {}
+    // Distance along -Z (in view space) where the ortho footprint should match
+    // the perspective footprint. If <= 0, we fall back to the midpoint between zNear/zFar.
+    var matchDepth = 5.0
 
+    // Optional callback to automatically choose matchDepth (e.g. focus distance).
+    var autoMatchDistance: () -> Double
     constructor(width: Int, height: Int, fov: Double = Options.fov) {
         this.projectionMatrix = Matrix4f()
         this.fov = fov
         this.resize(width, height)
+        this.autoMatchDistance = { matchDepth }
     }
 
-    constructor(renderer: Renderer = fromContext()) {
+    constructor(renderer: Renderer = fromContext(), autoMatchDistance: (() -> Double)? = null) {
         this.projectionMatrix = Matrix4f()
+        this.autoMatchDistance = autoMatchDistance ?: { matchDepth }
         resize(renderer.window.width, renderer.window.height)
         auto = {
+            matchDepth = this.autoMatchDistance()
             resize(renderer.window.width, renderer.window.height)
         }
     }
+    var auto: () -> Unit = {}
+
 
 
     fun resize(width: Int, height: Int): SuperProjection {
-        projectionMatrix.identity()
         aspect = width.toFloat() / height.toFloat()
-        projectionMatrix.set(projectionVulkanMorphing(fov, aspect.toDouble(), zNear, zFar, ox, oy, orthoness, zRef = (0.5*(zNear+zFar))))
+
+        val m = buildLieInterpolatedProjection()
+        projectionMatrix.set(m)
         return this
     }
-
 
     override fun evaluateUniform(): Matrix4f {
         auto()
         return projectionMatrix
     }
 
-    fun projectionVulkanMorphing(
-        fovYRadians: Double,
-        aspect: Double,
-        near: Double,
-        far: Double,
-        offsetX: Double = 0.0,
-        offsetY: Double = 0.0,
-        rho: Double = 1.0,
-        zRef: Double = 0.5 * (near + far),
-        flipY: Boolean = true
-    ): FloatArray {
-        require(near > 0.0 && far > near) { "Require 0 < near < far" }
-        require(aspect > 0.0) { "Require aspect > 0" }
-        val rclamp = rho.coerceIn(0.0, 1.0)
+    /**
+     * Build a projection by Lie-interpolating between:
+     *  - an off-center perspective matrix (with FOV, aspect, zNear, zFar, ox, oy)
+     *  - an off-center orthographic matrix whose footprint (l/r/b/t) at `matchDepth`
+     *    matches that perspective footprint at the same depth.
+     *
+     * Then apply:
+     *  - depth renormalization to [0,1]
+     *  - isotropic FOV renormalization so the vertical scale at `matchDepth`
+     *    matches the perspective's vertical scale there.
+     */
+    private fun buildLieInterpolatedProjection(): Matrix4f {
+        val fovF = fov.toFloat()
+        val nearF = zNear.toFloat()
+        val farF = zFar.toFloat()
 
-        // Near-plane half-extent
-        val t = near * kotlin.math.tan(0.5 * fovYRadians) // half-height
-        val b = -t
-        val r = t * aspect                                // half-width
-        val l = -r
+        // Choose the effective match depth (fallback to midpoint if needed).
+        val matchDepthD = if (matchDepth > 0.0) {
+            matchDepth
+        } else {
+            0.5 * (zNear + zFar)
+        }
+        val matchDepthF = matchDepthD.toFloat()
 
-        // Principal-point offsets in near-plane units
-        val dx = offsetX * r
-        val dy = offsetY * t
-        val lP = l + dx
-        val rP = r + dx
-        val bP = b + dy
-        val tP = t + dy
+        // At depth d along -Z, the symmetric perspective half-height is:
+        //   h(d) = d * tan(fov/2)
+        // and half-width = h(d) * aspect.
+        val halfHeightD = matchDepthD * tan(0.5 * fov)
+        val halfWidthD = halfHeightD * aspect
 
-        // Core scalars for off-center form
-        val ax = 2.0 * near / (rP - lP)
-        val ay = 2.0 * near / (tP - bP)
-        val bx = (rP + lP) / (rP - lP)
-        val by = (tP + bP) / (tP - bP)
+        // Base symmetric extents at match depth (Double for accuracy)
+        val lBaseD = -halfWidthD
+        val rBaseD = +halfWidthD
+        val bBaseD = -halfHeightD
+        val tBaseD = +halfHeightD
 
-        // We will enforce: w_clip = D(z) = rho*z + (1-rho)*zRef
-        val wZ = rclamp
-        val w1 = (1.0 - rclamp) * zRef
+        // Apply principal-point offsets at matchDepth.
+        // ox/oy are in "half-width/half-height units" at matchDepth.
+        val dxD = ox * halfWidthD
+        val dyD = oy * halfHeightD
 
-        // To keep x_ndc = (ax * x) / D + bx (and same for y), set:
-        // x_clip = ax * x + bx * D  => x_row: [ax, 0, bx*wZ, bx*w1]
-        // y_clip = ay * y + by * D  => y_row: [0, ay*(flip?), by*wZ*(flip?), by*w1*(flip?)]
-        val sY = if (flipY) -1.0 else 1.0
+        val lMatch = (lBaseD + dxD).toFloat()
+        val rMatch = (rBaseD + dxD).toFloat()
+        val bMatch = (bBaseD + dyD).toFloat()
+        val tMatch = (tBaseD + dyD).toFloat()
 
-        // Depth (z_clip): build something that is exact at the endpoints:
-        //  - rho=1: standard perspective z_clip = Ap*z + Bp, with w=z
-        //  - rho=0: scaled-ortho z_ndc = (z - near)/(far - near)
-        //           With w=zRef and z_clip_ortho = ((z - near)/(far - near)) * w
-        //
-        // Choose a simple blend in numerators:
-        val Ap = far / (far - near)         // perspective m33
-        val Bp = -near * far / (far - near) // perspective m43
-        val Ao = 1.0 / (far - near)         // orthographic slope (pre-multiplied by w later)
-        val Bo = -near / (far - near)
+        // Perspective: we need extents at the *near plane* for a frustum.
+        // Given extents at depth d, near-plane extents are scaled by (zNear / d).
+        val scaleToNear = nearF / matchDepthF
+        val lNear = lMatch * scaleToNear
+        val rNear = rMatch * scaleToNear
+        val bNear = bMatch * scaleToNear
+        val tNear = tMatch * scaleToNear
 
-        // z_clip = rho * (Ap*z + Bp) + (1-rho) * ((Ao*z + Bo) * D)
-        // Expand: z_row: [ 0, 0,  rho*Ap + (1-rho)*Ao*D_z,  rho*Bp + (1-rho)*Ao*D_1 + (1-rho)*Bo*D_? ]
-        // Where D = wZ*z + w1*1, so:
-        val z_col2 = rclamp * Ap + (1.0 - rclamp) * Ao * wZ       // multiplies 'z'
-        val z_col3 = rclamp * Bp + (1.0 - rclamp) * (Ao * w1 + Bo * (wZ * 0.0 + w1)) // constant part
-        // Note: we omit a z^2 term (can’t be expressed by a 4×4); this keeps things linear and monotone.
+        // Off-center perspective with Vulkan-style depth [0,1]
+        val persp = Matrix4f()
+            .identity()
+            .frustum(lNear, rNear, bNear, tNear, nearF, farF, true)
 
-        // Assemble column-major mat4
-        val m = FloatArray(16) { 0f }
-        fun set(c: Int, r0: Int, v: Double) {
-            m[c * 4 + r0] = v.toFloat()
+        // Off-center ortho with the same footprint (l/r/b/t) at matchDepth.
+        // Since ortho is a prism, these extents hold for all depths; objects at
+        // matchDepth see identical x/y mapping in perspective vs. ortho.
+        val ortho = Matrix4f()
+            .identity()
+            .ortho(lMatch, rMatch, bMatch, tMatch, nearF, farF)
+
+        val tBlend = orthoness.toFloat().coerceIn(0f, 1f)
+
+        // Lie interpolation in GL(4): P(t) = P0 * exp(t * log(P0^{-1} * P1))
+        // Here P0 = perspective, P1 = ortho.
+        val raw = lieInterpolateProjectionEJML(persp, ortho, tBlend)
+
+        // Renormalize depth and FOV.
+        val perspRef = Matrix4f().set(persp)
+        val zRefF = matchDepthF
+
+        raw
+            .renormDepth01(nearF, farF)
+            .renormVerticalFovAtDepth(perspRef, zRefF, weight = 1f)
+
+        return raw
+    }
+}
+
+// ============================================================================
+// JOML <-> EJML conversion
+// ============================================================================
+
+// JOML Matrix4f -> EJML SimpleMatrix (4x4, row-major)
+fun matrix4fToSimple(m: Matrix4f): SimpleMatrix {
+    return SimpleMatrix(
+        4, 4, true,
+        // Row 0 (x' row)
+        m.m00().toDouble(), m.m10().toDouble(), m.m20().toDouble(), m.m30().toDouble(),
+        // Row 1 (y' row)
+        m.m01().toDouble(), m.m11().toDouble(), m.m21().toDouble(), m.m31().toDouble(),
+        // Row 2 (z' row)
+        m.m02().toDouble(), m.m12().toDouble(), m.m22().toDouble(), m.m32().toDouble(),
+        // Row 3 (w' row)
+        m.m03().toDouble(), m.m13().toDouble(), m.m23().toDouble(), m.m33().toDouble()
+    )
+}
+
+// EJML SimpleMatrix (4x4) -> JOML Matrix4f
+fun simpleToMatrix4f(s: SimpleMatrix): Matrix4f {
+    require(s.numRows() == 4 && s.numCols() == 4) { "Expected 4x4 matrix" }
+
+    val m = Matrix4f()
+
+    // Row 0
+    m.m00(s.get(0, 0).toFloat())
+    m.m10(s.get(0, 1).toFloat())
+    m.m20(s.get(0, 2).toFloat())
+    m.m30(s.get(0, 3).toFloat())
+
+    // Row 1
+    m.m01(s.get(1, 0).toFloat())
+    m.m11(s.get(1, 1).toFloat())
+    m.m21(s.get(1, 2).toFloat())
+    m.m31(s.get(1, 3).toFloat())
+
+    // Row 2
+    m.m02(s.get(2, 0).toFloat())
+    m.m12(s.get(2, 1).toFloat())
+    m.m22(s.get(2, 2).toFloat())
+    m.m32(s.get(2, 3).toFloat())
+
+    // Row 3
+    m.m03(s.get(3, 0).toFloat())
+    m.m13(s.get(3, 1).toFloat())
+    m.m23(s.get(3, 2).toFloat())
+    m.m33(s.get(3, 3).toFloat())
+
+    return m
+}
+
+// ============================================================================
+// Matrix exp/log via eigen decomposition (EJML)
+// ============================================================================
+
+private const val IMAG_TOL = 1e-8
+private const val POS_TOL = 1e-12
+
+/**
+ * Matrix exponential via eigen decomposition:
+ *   A = V * diag(λ) * V^{-1}
+ *   exp(A) = V * diag(exp(λ)) * V^{-1}
+ *
+ * Assumptions:
+ *  - A has a full set of real eigenvectors (V invertible)
+ *  - eigenvalues are numerically real
+ */
+fun expmEigen(A: SimpleMatrix): SimpleMatrix {
+    require(A.numRows() == A.numCols()) { "expmEigen requires a square matrix" }
+    val n = A.numRows()
+
+    val evd = A.eig()
+    val V = SimpleMatrix(n, n)
+    val Dexp = SimpleMatrix(n, n)
+
+    for (i in 0 until evd.numberOfEigenvalues) {
+        val lambda: Complex_F64 = evd.getEigenvalue(i)
+        if (abs(lambda.imaginary) > IMAG_TOL) {
+            throw IllegalArgumentException(
+                "expmEigen: complex eigenvalue λ=$lambda — not supported in this real implementation"
+            )
+        }
+        val lam = lambda.real
+
+        val v: SimpleMatrix? = evd.getEigenVector(i)
+        require(v != null) { "expmEigen: missing eigenvector for eigenvalue index $i" }
+
+        // Place v as column i in V
+        for (r in 0 until n) {
+            V.set(r, i, v.get(r, 0))
         }
 
-        // Column 0 (multiplies x)
-        set(0, 0, ax)       // x -> x_clip
-        set(0, 1, 0.0)      // x -> y_clip
-        set(0, 2, 0.0)      // x -> z_clip
-        set(0, 3, 0.0)      // x -> w_clip
-
-        // Column 1 (multiplies y)
-        set(1, 0, 0.0)
-        set(1, 1, -ay * sY)
-        set(1, 2, 0.0)
-        set(1, 3, 0.0)
-
-        // Column 2 (multiplies z)
-        set(2, 0, bx * wZ)          // contributes bx * (wZ*z) to x_clip
-        set(2, 1, by * wZ * sY)     // contributes by * (wZ*z) to y_clip
-        set(2, 2, -z_col2)           // to z_clip
-        set(2, 3, -wZ)               // to w_clip
-
-        // Column 3 (multiplies 1)
-        set(3, 0, bx * w1)          // contributes bx * (w1*1) to x_clip
-        set(3, 1, by * w1 * sY)     // contributes by * (w1*1) to y_clip
-        set(3, 2, z_col3)           // to z_clip
-        set(3, 3, w1)               // to w_clip
-
-        return m
+        Dexp.set(i, i, exp(lam))
     }
+
+    val Vinv = V.invert()
+    return V.mult(Dexp).mult(Vinv)
+}
+
+/**
+ * Matrix logarithm via eigen decomposition (real principal log):
+ *   A = V * diag(λ) * V^{-1}
+ *   log(A) = V * diag(log(λ)) * V^{-1}
+ *
+ * Requires:
+ *  - all eigenvalues have |Im(λ)| < IMAG_TOL
+ *  - all eigenvalues have Re(λ) > POS_TOL (no nonpositive real eigenvalues)
+ *  - A has a full set of real eigenvectors (V invertible)
+ */
+fun logmEigen(A: SimpleMatrix): SimpleMatrix {
+    require(A.numRows() == A.numCols()) { "logmEigen requires a square matrix" }
+    val n = A.numRows()
+
+    val evd = A.eig()
+    val V = SimpleMatrix(n, n)
+    val Dlog = SimpleMatrix(n, n)
+
+    for (i in 0 until evd.numberOfEigenvalues) {
+        val lambda: Complex_F64 = evd.getEigenvalue(i)
+        if (abs(lambda.imaginary) > IMAG_TOL) {
+            throw IllegalArgumentException(
+                "logmEigen: complex eigenvalue λ=$lambda — real principal log not implemented here"
+            )
+        }
+        val lam = lambda.real
+        if (lam <= POS_TOL) {
+            throw IllegalArgumentException(
+                "logmEigen: non-positive eigenvalue λ=$lam — real log undefined"
+            )
+        }
+
+        val v: SimpleMatrix? = evd.getEigenVector(i)
+        require(v != null) { "logmEigen: missing eigenvector for eigenvalue index $i" }
+
+        for (r in 0 until n) {
+            V.set(r, i, v.get(r, 0))
+        }
+
+        Dlog.set(i, i, ln(lam))
+    }
+
+    val Vinv = V.invert()
+    return V.mult(Dlog).mult(Vinv)
+}
+
+/**
+ * Lie-group interpolation in GL(4, R) between P0 and P1:
+ *
+ *   M = P0^{-1} * P1
+ *   L = log(M)
+ *   P(t) = P0 * exp(t * L)
+ *
+ * t in [0,1], so P(0) = P0, P(1) = P1.
+ */
+fun lieInterpolateProjectionEJML(
+    P0: Matrix4f,
+    P1: Matrix4f,
+    t: Float
+): Matrix4f {
+    require(t in 0f..1f) { "t must be in [0,1], got $t" }
+
+    val A0 = matrix4fToSimple(P0)
+    val A1 = matrix4fToSimple(P1)
+
+    val M = A0.invert().mult(A1) // relative transform P0^{-1} P1
+
+    val L = logmEigen(M)
+    val Lt = L.scale(t.toDouble())
+    val E = expmEigen(Lt)
+
+    val At = A0.mult(E)
+    return simpleToMatrix4f(At)
+}
+
+// ============================================================================
+// Renormalization helpers (depth + FOV) on Matrix4f
+// ============================================================================
+
+// JOML transform (column-major):
+// x' = m00*x + m10*y + m20*z + m30*w
+// y' = m01*x + m11*y + m21*z + m31*w
+// z' = m02*x + m12*y + m22*z + m32*w
+// w' = m03*x + m13*y + m23*z + m33*w
+
+private fun Matrix4f.ndcDepthAt(zView: Float): Float {
+    val x = 0f
+    val y = 0f
+    val z = zView
+    val w = 1f
+
+    val cz = m02() * x + m12() * y + m22() * z + m32() * w
+    val cw = m03() * x + m13() * y + m23() * z + m33() * w
+
+    return cz / cw
+}
+
+private fun Matrix4f.ndcY(x: Float, y: Float, z: Float): Float {
+    val w = 1f
+    val cy = m01() * x + m11() * y + m21() * z + m31() * w
+    val cw = m03() * x + m13() * y + m23() * z + m33() * w
+    return cy / cw
+}
+
+/**
+ * Approximate vertical scale in NDC at a given view-space depth:
+ *   scale ≈ d(y_ndc) / d(y_view)
+ */
+private fun Matrix4f.verticalScaleAtDepth(zView: Float, sampleY: Float = 1f): Float {
+    val x = 0f
+    val y0 = 0f
+    val y1 = sampleY
+
+    val yNdc0 = ndcY(x, y0, zView)
+    val yNdc1 = ndcY(x, y1, zView)
+
+    return (yNdc1 - yNdc0) / sampleY
+}
+
+/**
+ * Remap depth so that:
+ *   z = -near → z_ndc = 0
+ *   z = -far  → z_ndc = 1
+ *
+ * Assumes right-handed view space (camera at origin, looking down -Z).
+ * Only adjusts the Z row; W row is preserved.
+ */
+fun Matrix4f.renormDepth01(near: Float, far: Float): Matrix4f {
+    val zn = ndcDepthAt(-near)
+    val zf = ndcDepthAt(-far)
+
+    val eps = 1e-6f
+    val denom = zf - zn
+    if (abs(denom) < eps) {
+        // Degenerate mapping; leave it alone.
+        return this
+    }
+
+    // z_ndc' = (z_ndc - zn) / (zf - zn) = a*z_ndc + b
+    val a = 1f / denom
+    val b = -zn / denom
+
+    // Old Z row and W row
+    val z0 = m02()
+    val w0 = m03()
+    val z1 = m12()
+    val w1 = m13()
+    val z2 = m22()
+    val w2 = m23()
+    val z3 = m32()
+    val w3 = m33()
+
+    // New Z row = a * oldZ + b * oldW
+    m02(a * z0 + b * w0)
+    m12(a * z1 + b * w1)
+    m22(a * z2 + b * w2)
+    m32(a * z3 + b * w3)
+
+    return this
+}
+
+/**
+ * Isotropic FOV renormalization at a given depth `zRef`.
+ *
+ * Adjusts both X and Y rows so that the vertical NDC scale at zRef matches
+ * that of the reference perspective matrix. The `weight` parameter blends
+ * between no change (0) and full correction (1).
+ */
+fun Matrix4f.renormVerticalFovAtDepth(
+    referencePersp: Matrix4f,
+    zRef: Float,
+    sampleY: Float = 1f,
+    weight: Float = 1f
+): Matrix4f {
+    val w = weight.coerceIn(0f, 1f)
+    if (w <= 0f) {
+        // No FOV correction requested
+        return this
+    }
+
+    val zView = -zRef
+
+    val targetScale = referencePersp.verticalScaleAtDepth(zView, sampleY)
+    val currentScale = this.verticalScaleAtDepth(zView, sampleY)
+
+    val eps = 1e-6f
+    if (kotlin.math.abs(currentScale) < eps) {
+        // Avoid dividing by ~0; skip in pathological cases
+        return this
+    }
+
+    // Full correction factor (what we'd apply with weight = 1)
+    val full = targetScale / currentScale
+
+    // Blend between 1 (no change) and full correction
+    // weight = 0 -> s = 1
+    // weight = 1 -> s = full
+    val s = 1f + w * (full - 1f)
+
+    // Isotropic: scale BOTH X and Y rows by the same factor s.
+
+    // X row: (m00, m10, m20, m30)
+    m00(m00() * s)
+    m10(m10() * s)
+    m20(m20() * s)
+    m30(m30() * s)
+
+    // Y row: (m01, m11, m21, m31)
+    m01(m01() * s)
+    m11(m11() * s)
+    m21(m21() * s)
+    m31(m31() * s)
+
+    return this
 }

@@ -115,6 +115,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
                 val r1 = from.getBoundingClientRect()
 
                 if (from.style.visibility === "hidden") return@forEach
+                if (from.asDynamic().offline ) return@forEach
 
                 r1.x -= ox
                 r1.y -= oy
@@ -125,6 +126,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
                         find(id)?.let { to ->
                             val r2 = to.getBoundingClientRect()
                             if (to.style.visibility === "hidden") return@forEach
+                            if (to.asDynamic().offline ) return@forEach
                             r2.x -= ox
                             r2.y -= oy
                             knownConnections[connectionName]?.invoke(from, r1, to, r2, svg)

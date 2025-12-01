@@ -295,8 +295,14 @@ suspend fun main() {
             "offline" -> {
                 console.log(" got offline message ", set)
                 if (found !=null) {
-                    if (set.number) found.unsafeCast<HTMLElement>().classList.add("offline")
-                    else found.unsafeCast<HTMLElement>().classList.remove("offline")
+                    if (set.number) {
+                        found.unsafeCast<HTMLElement>().classList.add("offline")
+                        found.asDynamic().offline = true
+                    }
+                    else {
+                        found.unsafeCast<HTMLElement>().classList.remove("offline")
+                        found.asDynamic().offline = false
+                    }
                 }
             }
          }
@@ -380,6 +386,7 @@ suspend fun main() {
 
         when (set.property) {
             "name" -> {
+                console.log(" got set-string name request for ${u} with ${set.value}")
                 if (found === null) {
                     mainCanvas.append {
                         createBox(set.value, frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
@@ -821,6 +828,7 @@ suspend fun main() {
             fun fireChange() {
                 box.unsafeCast<dynamic>().name = t.textContent
                 val uid = box.unsafeCast<dynamic>().uid as String
+                console.log(" sending set-string for name ${t.textContent} because the contenteditable has changed")
                 send(
                     Message("set-string").payload(
                         Set_string(
@@ -1011,6 +1019,7 @@ fun TagConsumer<HTMLElement>.createBox(
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement
 
     if (sendInitialSync) {
+        console.log(" sending initial sync for box ${name}")
         send(
             Message("set-string").payload(
                 Set_string(

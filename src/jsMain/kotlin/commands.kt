@@ -212,6 +212,23 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             val a = eval(e)
             all.push(a)
         }
+
+        run {
+            val e = """
+            ({
+                id:'-copy', label:'Copy box(es)', 
+                canvasKeybinding: (event) => (event.key=='D'||event.key=='d') && event.shiftKey && (event.ctrlKey || event.metaKey) && !event.altKey, 
+                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D],
+                run: () => { 
+                    import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
+                                uid_action: '-copy',
+                                uid_currentSelection: [${selId}]
+                        })})}
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
     }
     if (boxes.size == 2) {
         // todo, check connections before presenting // n1.box_children contains uid of n2?
@@ -236,7 +253,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'connect', label:'Disconnect `$n1` to `$n2`', 
+                id:'disconnect', label:'Disconnect `$n1` from `$n2`', 
                 canvasKeybinding: (event) => event.key=='u' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -277,9 +294,7 @@ fun registerBuiltinCommands() {
             id:'new-box',
             label:"New Box",
             canvasKeybinding: (event) => {
-                console.log(event)
                 let a = event.key=='n' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
-                console.log(" returning", a)
                 return a
             },
             run: () => {

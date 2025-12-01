@@ -9,6 +9,10 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.reflect.KProperty
 
+interface HasMatrix4f {
+    val m: Matrix4f
+}
+
 class Delegation<T>(
     var onGet: ((HasProperties, currentValue: T) -> Unit)? = null,
     var hook: ((inside: HasProperties, currentValue: T, incomingValue: T) -> T)? = null,

@@ -6,14 +6,21 @@ import afield.Box
 import afield.RunsAt
 import afield.four.Renderer
 import afield.four.buffers.defaultBuffer
+import afield.four.modules.GltfSupport.TRS
+import afield.four.modules.GltfSupport.TRSSample
 import afield.four.modules.GltfSupport.gltVertexShader
 import afield.four.modules.GltfSupport.gltfFragmentShader
+import afield.four.modules.GltfSupport.gltfFragmentShaderTextured
+import afield.four.texture.LoadedTexture
+import afield.four.texture.TextureSampler
 import afield.four.util.Camera
 import afield.macroRegistration
 import afield.macros.Insert
 import afield.macros.MacroRegistry
 import afield.macros.MacroRegistry.callRewrite
+import afield.stdlib.HasMatrix4f
 import afield.stdlib._moduleHere
+import afield.stdlib.invoke
 import afield.stdlib.macro_moduleHereWithDefaultShaders
 import kotlinx.coroutines.DelicateCoroutinesApi
 import org.joml.Matrix4f
@@ -21,7 +28,10 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.assimp.*
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.*
+import java.nio.file.Path
+import java.nio.file.Paths
 
 // the idea here is that this module can be customized (at least the first time!) for the (first?) model inside the gltf
 fun Box.gltfModelHere(p: Parameters.() -> Unit): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
@@ -31,16 +41,22 @@ fun Box.gltfModelHere(p: Parameters.() -> Unit): Pair<ModulePointer, List<GltfSu
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_modelHere(args: List<String>): Insert? {
     return macro_moduleHereWithDefaultShaders(
+        args, vertex = gltVertexShader, fragment = gltfFragmentShader, resolvesToCall = "_gltfModelHere"
+    )
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+fun Box.macro_modelWithTextureHere(args: List<String>): Insert? {
+    return macro_moduleHereWithDefaultShaders(
         args,
         vertex = gltVertexShader,
-        fragment = gltfFragmentShader,
-        resolvesToCall = "_gltfModelHere"
+        fragment = gltfFragmentShaderTextured,
+        resolvesToCall = "_gltfModelHereWithTexture"
     )
 }
 
 fun Box._gltfModelHere(
-    filename: String,
-    p: Parameters.() -> Unit = {}
+    filename: String, p: Parameters.() -> Unit = {}
 ): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
     val renderer: Renderer = fromContext()
     val module = _moduleHere(parameters(renderer = renderer, p))
@@ -48,10 +64,32 @@ fun Box._gltfModelHere(
     return module to listOf(loader)
 }
 
+fun Box._gltfModelHereWithTexture(
+    filename: String, p: Parameters.() -> Unit = {}
+): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
+    val renderer: Renderer = fromContext()
+    val loader = GltfSupport.loadGltfBasic(filename, GltfSupport.GltfLoadConfig(loadTextures = true))
+    val module = _moduleHere(parameters(renderer = renderer) {
+        p()
+        val was = textureResolver
+        textureResolver = { tex ->
+            if (tex.name == "uTextures") {
+                val iv = loader.meshes[2].material.textures.map { slot -> slot.texture.imageView }.toTypedArray()
+                val maxMip = iv.maxOf { imageView -> imageView.mipLevels }
+                iv to TextureSampler(renderer = fromContext(), maxMip, true)
+            } else was(tex)
+        }
+    })
+    return module to listOf(loader)
+}
+
 @RunsAt(macroRegistration)
 fun registerGLTFLoader() {
     callRewrite["gltfModelHere"] = { box, id, args ->
         box.macro_modelHere(args)
+    }
+    callRewrite["gltfModelWithTextureHere"] = { box, id, args ->
+        box.macro_modelWithTextureHere(args)
     }
 }
 
@@ -62,25 +100,38 @@ object GltfSupport {
     // ------------------------------------------------------------------------
 
     data class TRS(
-        val t: Vector3f,
-        val r: Quaternionf,
-        val s: Vector3f
-    )
+        val t: Vector3f, val r: Quaternionf, val s: Vector3f
+    ) : HasMatrix4f {
+        fun toMatrix(): Matrix4f {
+            return Matrix4f()
+                .translate(t)
+                .rotate(r)
+                .scale(s)
+        }
+
+        override val m: Matrix4f
+            get() = toMatrix()
+    }
 
     data class TRSSample(
-        val time: Float,
-        val trs: TRS
+        val time: Float, val trs: TRS
     )
 
     data class MeshBuffers(
         val vertexData: java.nio.ByteBuffer, // tightly packed floats
         val indexData: java.nio.IntBuffer,   // 32-bit indices
-        val vertexCount: Int,
-        val indexCount: Int
+        val vertexCount: Int, val indexCount: Int
     )
 
-    data class MaterialBasic(
-        val baseColor: Vector4f // RGBA (treat as linear in your pipeline)
+    data class TextureSlot(
+        val type: Int,         // Assimp aiTextureType_*
+        val uvSet: Int,        // which UV channel to use
+        val texture: LoadedTexture, val valid: Boolean
+    )
+
+    data class MaterialTextured(
+        val baseColor: Vector4f,            // RGBA (treat as linear in your pipeline)
+        val textures: List<TextureSlot> = emptyList()
     )
 
     data class MeshInstance(
@@ -88,7 +139,8 @@ object GltfSupport {
         val meshIndex: Int,                 // index into scene meshes as loaded
         val buffers: MeshBuffers,           // CPU-side; you decide how to pack into SSBOs
         val bindPose: TRS,                  // node transform at import time (world from root)
-        val material: MaterialBasic,
+        val material: MaterialTextured,
+        val doTextures: Boolean = false,
         val animationSamples: List<TRSSample>? // sampled TRS for this node, or null
     ) {
         fun applyToMesh(m: Mesh, camera: Camera = fromContext()) {
@@ -118,8 +170,7 @@ object GltfSupport {
             for (n in 0 until f.capacity()) {
                 val x = f.get(n)
                 print("$x ")
-                if (n % 12 == 11)
-                    println()
+                if (n % 12 == 11) println()
             }
             indexData.write {
                 // TODO!
@@ -127,12 +178,12 @@ object GltfSupport {
                     val x = buffers.indexData.get(n)
                     print("$x ")
                     this.putInt(x)
-                    if (n % 3 == 2)
-                        println()
+                    if (n % 3 == 2) println()
                 }
             }
 
             m.resize(buffers.indexCount) // not buffers.vertexCound, because we're not using any vertex / index buffers at all
+
         }
     }
 
@@ -144,6 +195,7 @@ object GltfSupport {
      * Config:
      * - sampleRate: Hz for animation sampling (if any)
      * - includeVertexColors: when true, always writes RGBA per-vertex.
+     * - loadTextures: when true, collect material textures (diffuse/baseColor/normal/etc.)
      *
      * NOTE: The default shaders below assume a fixed layout:
      *   [pos.xyz][normal.xyz][uv.xy][color.rgba] = 12 floats per vertex.
@@ -151,8 +203,7 @@ object GltfSupport {
      * (we fill white if source has no COLOR_0).
      */
     data class GltfLoadConfig(
-        val sampleRate: Float = 60f,
-        val includeVertexColors: Boolean = true
+        val sampleRate: Float = 60f, val includeVertexColors: Boolean = true, val loadTextures: Boolean = true
     )
 
     // ------------------------------------------------------------------------
@@ -160,15 +211,16 @@ object GltfSupport {
     // ------------------------------------------------------------------------
 
     private const val POST_FLAGS: Int =
-        Assimp.aiProcess_Triangulate or
-                Assimp.aiProcess_GenNormals or
-                Assimp.aiProcess_JoinIdenticalVertices or
-                Assimp.aiProcess_ImproveCacheLocality or
-                Assimp.aiProcess_SortByPType
+        Assimp.aiProcess_Triangulate or Assimp.aiProcess_GenNormals or Assimp.aiProcess_JoinIdenticalVertices or Assimp.aiProcess_ImproveCacheLocality or Assimp.aiProcess_SortByPType
 
     fun loadGltfBasic(path: String, config: GltfLoadConfig = GltfLoadConfig()): GltfModel {
         val scene = Assimp.aiImportFile(path, POST_FLAGS)
             ?: error("Assimp import failed for '$path': ${Assimp.aiGetErrorString()}")
+        val baseDir: Path? = try {
+            Paths.get(path).parent
+        } catch (_: Exception) {
+            null
+        }
 
         if (scene.mFlags() and Assimp.AI_SCENE_FLAGS_INCOMPLETE != 0 || scene.mRootNode() == null) {
             Assimp.aiReleaseImport(scene)
@@ -179,7 +231,7 @@ object GltfSupport {
         val root = scene.mRootNode()
         val identity = Matrix4f()
 
-        traverseNode(scene, root!!, identity, meshes, config)
+        traverseNode(scene, root!!, identity, meshes, config, baseDir)
 
         Assimp.aiReleaseImport(scene)
         return GltfModel(meshes)
@@ -190,7 +242,8 @@ object GltfSupport {
         node: AINode,
         parentTransform: Matrix4f,
         outMeshes: MutableList<MeshInstance>,
-        config: GltfLoadConfig
+        config: GltfLoadConfig,
+        baseDir: Path?
     ) {
         val local = aiToMatrix4f(node.mTransformation())
         val world = Matrix4f(parentTransform).mul(local)
@@ -203,7 +256,7 @@ object GltfSupport {
 
                 val buffers = extractMeshBuffers(aiMesh, config.includeVertexColors)
                 val bindTrs = decomposeToTRS(world)
-                val material = extractMaterialBasic(scene, aiMesh)
+                val material = extractMaterial(scene, aiMesh, baseDir, config)
                 val animSamples = buildAnimationSamplesForNode(scene, node, config.sampleRate)
 
                 outMeshes += MeshInstance(
@@ -212,8 +265,7 @@ object GltfSupport {
                     buffers = buffers,
                     bindPose = bindTrs,
                     material = material,
-                    animationSamples = animSamples.ifEmpty { null }
-                )
+                    animationSamples = animSamples.ifEmpty { null })
             }
         }
 
@@ -221,7 +273,7 @@ object GltfSupport {
         if (children != null) {
             for (i in 0 until children.remaining()) {
                 val child = AINode.create(children[i]) ?: continue
-                traverseNode(scene, child, world, outMeshes, config)
+                traverseNode(scene, child, world, outMeshes, config, baseDir)
             }
         }
     }
@@ -231,8 +283,7 @@ object GltfSupport {
     // ------------------------------------------------------------------------
 
     private fun extractMeshBuffers(
-        aiMesh: AIMesh,
-        includeVertexColors: Boolean
+        aiMesh: AIMesh, includeVertexColors: Boolean
     ): MeshBuffers {
         val vertexCount = aiMesh.mNumVertices()
         val posBuf = aiMesh.mVertices()
@@ -272,6 +323,7 @@ object GltfSupport {
             // uv or default
             if (hasTex) {
                 val t = texBuf!![i]
+                println(" tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
                 vertexData.putFloat(t.x())
                 vertexData.putFloat(t.y())
             } else {
@@ -313,30 +365,29 @@ object GltfSupport {
         indexData.flip()
 
         return MeshBuffers(
-            vertexData = vertexData,
-            indexData = indexData,
-            vertexCount = vertexCount,
-            indexCount = indexCount
+            vertexData = vertexData, indexData = indexData, vertexCount = vertexCount, indexCount = indexCount
         )
     }
 
     // ------------------------------------------------------------------------
-    // Material extraction (basic colors)
+    // Material extraction (colors + textures)
     // ------------------------------------------------------------------------
 
-    private fun extractMaterialBasic(scene: AIScene, aiMesh: AIMesh): MaterialBasic {
+    private fun extractMaterial(
+        scene: AIScene, aiMesh: AIMesh, baseDir: Path?, config: GltfLoadConfig
+    ): MaterialTextured {
         val defaultColor = Vector4f(1f, 1f, 1f, 1f)
 
         val matIndex = aiMesh.mMaterialIndex()
         if (matIndex < 0 || scene.mNumMaterials() == 0) {
-            return MaterialBasic(defaultColor)
+            return MaterialTextured(defaultColor)
         }
 
         if (scene.mMaterials() == null || matIndex >= scene.mNumMaterials()) {
-            return MaterialBasic(defaultColor)
+            return MaterialTextured(defaultColor)
         }
 
-        val aiMat = getMaterial(scene, matIndex) ?: return MaterialBasic(defaultColor)
+        val aiMat = getMaterial(scene, matIndex) ?: return MaterialTextured(defaultColor)
 
         val color = AIColor4D.calloc()
         val resultBase = Assimp.aiGetMaterialColor(aiMat, "\$clr.base", 0, 0, color)
@@ -349,9 +400,79 @@ object GltfSupport {
             resultDiffuse == 0 -> Vector4f(color.r(), color.g(), color.b(), color.a())
             else -> defaultColor
         }
-
         color.free()
-        return MaterialBasic(baseColor)
+
+        if (!config.loadTextures) return MaterialTextured(baseColor)
+
+        val slots = mutableListOf<TextureSlot>()
+        val renderer: Renderer = fromContext()
+
+        val types = listOf(
+            Assimp.aiTextureType_BASE_COLOR,
+            Assimp.aiTextureType_DIFFUSE,
+            Assimp.aiTextureType_NORMALS,
+            Assimp.aiTextureType_EMISSIVE,
+            Assimp.aiTextureType_METALNESS,
+            Assimp.aiTextureType_DIFFUSE_ROUGHNESS
+        )
+
+        val typeMapping = types.mapIndexed { i, type -> type to i }.toMap()
+
+        types.forEach {
+            slots += TextureSlot(
+                type = it,
+                uvSet = 0,
+                texture = LoadedTexture.stubTexture(renderer),
+                valid = false
+            )
+        }
+
+        fun loadSlot(type: Int) {
+            val count = Assimp.aiGetMaterialTextureCount(aiMat, type)
+            if (count <= 0) return
+            MemoryStack.stackPush().use { stack ->
+                for (i in 0 until count) {
+                    val path = AIString.calloc(stack)
+                    val uvIndex = stack.mallocInt(1)
+                    val res = Assimp.aiGetMaterialTexture(
+                        aiMat, type, i, path, null, uvIndex, null, null, null, null
+                    )
+                    if (res != Assimp.aiReturn_SUCCESS) {
+                        continue
+                    }
+                    val tex = loadTextureFromPathOrEmbedded(scene, path.dataString(), baseDir, renderer)
+                    if (tex != null) {
+                        slots[typeMapping[type]!!] = TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true)
+                    } else {
+                    }
+                }
+            }
+        }
+
+        types.forEach { loadSlot(it) }
+
+        return MaterialTextured(baseColor, slots)
+    }
+
+    private fun loadTextureFromPathOrEmbedded(
+        scene: AIScene, path: String, baseDir: Path?, renderer: Renderer
+    ): LoadedTexture? {
+        if (path.isEmpty()) return null
+        // Embedded texture reference: "*0", "*1", ...
+        if (path.startsWith("*")) {
+            println("Skipping embedded texture $path: embedded textures not yet handled")
+            return null
+        } else {
+            val p = Paths.get(path)
+            val resolved = if (p.isAbsolute) p else baseDir?.resolve(p) ?: p
+            return try {
+                val t = LoadedTexture.fromFile(resolved.toString(), renderer)
+                t.transferNow()
+                t
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -359,9 +480,7 @@ object GltfSupport {
     // ------------------------------------------------------------------------
 
     private fun buildAnimationSamplesForNode(
-        scene: AIScene,
-        node: AINode,
-        sampleRate: Float
+        scene: AIScene, node: AINode, sampleRate: Float
     ): List<TRSSample> {
         val animCount = scene.mNumAnimations()
         if (animCount == 0) return emptyList()
@@ -410,8 +529,7 @@ object GltfSupport {
             val scl = sampleVec3(channel.mScalingKeys(), channel.mNumScalingKeys(), tickTime)
 
             samples += TRSSample(
-                time = t,
-                trs = TRS(pos, rot.normalize(), scl)
+                time = t, trs = TRS(pos, rot.normalize(), scl)
             )
 
             t += dt
@@ -421,9 +539,7 @@ object GltfSupport {
     }
 
     private fun sampleVec3(
-        keys: AIVectorKey.Buffer?,
-        count: Int,
-        time: Double
+        keys: AIVectorKey.Buffer?, count: Int, time: Double
     ): Vector3f {
         if (keys == null || count == 0) return Vector3f(0f, 0f, 0f)
         if (count == 1) {
@@ -457,9 +573,7 @@ object GltfSupport {
 
 
     private fun sampleQuat(
-        keys: AIQuatKey.Buffer?,
-        count: Int,
-        time: Double
+        keys: AIQuatKey.Buffer?, count: Int, time: Double
     ): Quaternionf {
         if (keys == null || count == 0) return Quaternionf()
         if (count == 1) {
@@ -496,13 +610,24 @@ object GltfSupport {
     // Utilities
     // ------------------------------------------------------------------------
 
-    private fun aiToMatrix4f(m: AIMatrix4x4): Matrix4f =
-        Matrix4f(
-            m.a1(), m.b1(), m.c1(), m.d1(),
-            m.a2(), m.b2(), m.c2(), m.d2(),
-            m.a3(), m.b3(), m.c3(), m.d3(),
-            m.a4(), m.b4(), m.c4(), m.d4()
-        )
+    private fun aiToMatrix4f(m: AIMatrix4x4): Matrix4f = Matrix4f(
+        m.a1(),
+        m.b1(),
+        m.c1(),
+        m.d1(),
+        m.a2(),
+        m.b2(),
+        m.c2(),
+        m.d2(),
+        m.a3(),
+        m.b3(),
+        m.c3(),
+        m.d3(),
+        m.a4(),
+        m.b4(),
+        m.c4(),
+        m.d4()
+    )
 
     private fun decomposeToTRS(m: Matrix4f): TRS {
         val t = Vector3f()
@@ -640,4 +765,45 @@ void main()
     uFragColor = vec4(vNormalVS.rgb*d,1);
 }
 """.trimIndent()
+
+    // Simple textured fragment: samples first available texture; falls back to vertex color if none bound.
+    // Expects descriptor array of combined image samplers at set=0, binding=0, and a push constant for count.
+    val gltfFragmentShaderTextured = """
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 3) in vec4 vColor;
+layout(location = 2) in vec2 vUV;
+
+layout(set = 0, binding = 1) uniform sampler2D uTextures[6];
+
+void main()
+{
+    uFragColor = vColor*texture(uTextures[0], vUV);
 }
+""".trimIndent()
+}
+
+
+fun List<TRSSample>.sample(time: Float): TRS? {
+    if (isEmpty()) return null
+    if (size == 1) return this[0].trs
+    if (time <= this[0].time) return this[0].trs
+    if (time >= last().time) return last().trs
+
+    // Find this to interpolate between
+    var i = 0
+    while (i < size - 1 && time > this[i + 1].time) {
+        i++
+    }
+
+    val a = this[i]
+    val b = this[i + 1]
+    val t = ((time - a.time) / (b.time - a.time)).coerceIn(0f, 1f)
+
+    return TRS(
+        Vector3f(a.trs.t).lerp(b.trs.t, t),
+        Quaternionf(a.trs.r).slerp(b.trs.r, t),
+        Vector3f(a.trs.s).lerp(b.trs.s, t)
+    )
+}
+

@@ -12,9 +12,11 @@ import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.buffers.linkBuffer
 import afield.four.modules.Introspected.Bindable
+import afield.four.targets.RenderToTexture
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
 import afield.four.util.Options
+import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.Vec4
@@ -39,6 +41,7 @@ data class Parameters(
     var color: Int = 1,
     var colorFormats: List<Int> = emptyList(),
     var depth: Int = 1,
+    var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
         throw Exception("Cannot resolve texture ${it.name}")
@@ -82,6 +85,15 @@ data class Parameters(
     val line_strip = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
     val filled = VK_POLYGON_MODE_FILL
     val wireframe = VK_POLYGON_MODE_LINE
+
+
+
+    fun RenderToTexture.apply() {
+        this@Parameters.color = colorFormats.size
+        this@Parameters.colorFormats = colorFormats
+        this@Parameters.depth = if (parameters.useDepth) 1 else 0
+        this@Parameters.depthFormat = parameters.depthFormat
+    }
 }
 
 fun parameters(renderer: Renderer = fromContext(), build: Parameters.() -> Unit): Parameters {
@@ -332,6 +344,7 @@ class Module(val parameters: Parameters) : Renderable {
 
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
+    private val pipelineDisposeToken = AutoDisposer.register(this, "ModulePipeline(${parameters.name})") { }
 
     var vsm: Long = 0L
     var fsm: Long = 0L
@@ -417,7 +430,7 @@ class Module(val parameters: Parameters) : Renderable {
                         }
                     }
 
-                    vi.textures.forEach {                      // fix #1: match by set & binding
+                    vi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
                             where = where or VK_SHADER_STAGE_VERTEX_BIT
                             kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
@@ -731,7 +744,7 @@ class Module(val parameters: Parameters) : Renderable {
                 renderInfo
                     .colorAttachmentCount(colorCount)
                     .pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(if (parameters.depth > 0) Options.defaultDepthFormat else VK_FORMAT_UNDEFINED)
+                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
 
                 val gp = VkGraphicsPipelineCreateInfo.calloc(1, stack)
@@ -759,6 +772,20 @@ class Module(val parameters: Parameters) : Renderable {
                     "Error creating graphics pipeline"
                 )
                 this.pipeline = lp[0]
+                pipelineDisposeToken.updateCleanup {
+                    if (pipeline != 0L) {
+                        VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
+                    }
+                    if (pipelineLayout != 0L) {
+                        VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
+                    }
+                    if (vsm != 0L) {
+                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vsm, null)
+                    }
+                    if (fsm != 0L) {
+                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
+                    }
+                }
 
                 parameters.renderer.device.nameObject(
                     pipeline,
@@ -862,7 +889,24 @@ class Module(val parameters: Parameters) : Renderable {
         }
     }
 
-    fun cleanup() { /* pipeline and shaders are owned by renderer lifetime; no-op here */
+    fun cleanup() {
+        pipelineDisposeToken.disable()
+        if (pipeline != 0L) {
+            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
+            pipeline = 0L
+        }
+        if (pipelineLayout != 0L) {
+            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
+            pipelineLayout = 0L
+        }
+        if (vsm != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vsm, null)
+            vsm = 0L
+        }
+        if (fsm != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
+            fsm = 0L
+        }
     }
 
     private fun createShaderModule(code: ByteBuffer): Long {

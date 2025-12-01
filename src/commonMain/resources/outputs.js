@@ -135,6 +135,7 @@ function toggleArea(id) {
 
 
 function addInlineOutput(editor, line, text, extra_class, frameMarker) {
+        console.log("addInlineOutput", line, text)
         if (decorationsCollection == null) {
                 decorationsCollection = editor.createDecorationsCollection([])
                 decorationsCollection_contents = []

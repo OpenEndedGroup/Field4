@@ -5,6 +5,7 @@ package afield.four.buffers
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.modules.fromContext
+import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
 import afield.stdlib.i
 import org.lwjgl.system.MemoryStack
@@ -106,8 +107,11 @@ class VulkanBuffer(
     var zeroBeforeComputation = false
     var source: BufferParameters? = null
 
+    private val autoDisposeToken = AutoDisposer.register(this, "VulkanBuffer(size=$requestedSize)") { /* set after allocate */ }
+
     init {
         allocate()
+        autoDisposeToken.updateCleanup(snapshotCleanup())
     }
 
     /** Allocate buffer + suballocation via VMA; keep persistently mapped. */
@@ -190,6 +194,7 @@ class VulkanBuffer(
 
         requestedSize = bytes
         allocate()
+        autoDisposeToken.updateCleanup(snapshotCleanup())
 
         renderer.cleanup.add {
             if (oldHost != null) MemoryUtil.memFree(oldHost)
@@ -375,6 +380,7 @@ class VulkanBuffer(
     }
 
     fun cleanup() {
+        autoDisposeToken.disable()
         if (hostBuffer != null) MemoryUtil.memFree(hostBuffer)
         if (buffer != VK_NULL_HANDLE && allocation != 0L) {
             vmaDestroyBuffer(allocatorForRenderer(renderer), buffer, allocation)
@@ -397,6 +403,19 @@ class VulkanBuffer(
             if (chostBuffer != null) MemoryUtil.memFree(chostBuffer)
             if (cbuffer != VK_NULL_HANDLE && callocation != 0L) {
                 vmaDestroyBuffer(allocatorForRenderer(renderer), cbuffer, callocation)
+            }
+        }
+    }
+
+    private fun snapshotCleanup(): () -> Unit {
+        val renderer = renderer
+        val buf = buffer
+        val alloc = allocation
+        val host = hostBuffer
+        return {
+            if (host != null) MemoryUtil.memFree(host)
+            if (buf != VK_NULL_HANDLE && alloc != 0L) {
+                vmaDestroyBuffer(allocatorForRenderer(renderer), buf, alloc)
             }
         }
     }

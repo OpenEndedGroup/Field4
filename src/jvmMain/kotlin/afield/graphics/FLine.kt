@@ -3,7 +3,6 @@ package afield.graphics
 import afield.HasProperties
 import afield.Rect
 import afield.stdlib.*
-import earcut4j.Earcut
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.Cursor
 import org.joml.Vector3d
@@ -166,7 +165,6 @@ class FLine : HasProperties {
         )
         return nodes.last()
     }
-
 
 
     fun byThickening(_thickness: Float) = FLinesAndJavaShapes.javaShapeToFLine(
@@ -358,22 +356,29 @@ class FLine : HasProperties {
         // If you'd prefer to silently ignore leftovers, delete this check.
         if (exec.remainingPoints() != 0) {
             throw IllegalArgumentException(
-                "Unused parameters: ${exec.remainingPoints()} point(s) left after applying format '$format'. " +
-                        "Consider adding a trailing '+' group if you intend to consume everything."
+                "Unused parameters: ${exec.remainingPoints()} point(s) left after applying format '$format'. " + "Consider adding a trailing '+' group if you intend to consume everything."
             )
         }
         return this
     }
 
 
-    fun uniform_linearize(samplesPerCubic: Int = 100, a: (Boolean, Vec3) -> Unit) {
+    /**
+     * Walk the path into line segments. Callback receives:
+     *  - position: current point
+     *  - instr: drawing-instruction index for this point. A negative value indicates the start of a subpath
+     *           (equivalent to the old break flag); otherwise it's interpolated between nodes (e.g. along cubics).
+     */
+    fun uniform_linearize(samplesPerCubic: Int = 100, a: (Vec3, Float) -> Unit) {
         val storage = vec(0, 0, 0)
         val at = vec(0, 0, 0)
         var ok = false
         var breakNext = true;
         var lastOpen = vec(0, 0, 0)
         var lastOpenOk = false
+        var instrIdx = -1
         nodes.forEach {
+            instrIdx++
             when (it) {
                 is MoveTo -> {
                     storage.set(it.to)
@@ -392,10 +397,10 @@ class FLine : HasProperties {
                         lastOpenOk = true;
                     } else {
                         if (breakNext) {
-                            a(true, storage)
+                            a(storage, -(instrIdx - 1 + 1).toFloat()) // ensure strictly negative (no -0)
                         }
                         storage.set(it.to)
-                        a(false, storage)
+                        a(storage, instrIdx.toFloat())
                         ok = true
                         breakNext = false
                     }
@@ -410,17 +415,27 @@ class FLine : HasProperties {
                         lastOpenOk = true;
                     } else {
                         if (breakNext) {
-                            a(true, storage)
+                            a(storage, -(instrIdx + 1 - 1).toFloat()) // ensure strictly negative (no -0)
                             breakNext = false
                         }
                         at.set(storage)
-                        uniform_linearize_cubic(a, at, it.c1, it.c2, it.to, samplesPerCubic, storage)
+                        uniform_linearize_cubic(
+                            dest = a,
+                            a = at,
+                            c1 = it.c1,
+                            c2 = it.c2,
+                            b = it.to,
+                            samplesPerCubic = samplesPerCubic,
+                            storage = storage,
+                            fromInstr = (instrIdx - 1).d,
+                            toInstr = instrIdx.d
+                        )
                     }
                 }
 
                 is Close -> {
                     if (lastOpenOk && ok) {
-                        a(false, lastOpen)
+                        a(lastOpen, instrIdx.toFloat())
                         storage.set(lastOpen)
                     }
                 }
@@ -429,7 +444,15 @@ class FLine : HasProperties {
     }
 
     fun uniform_linearize_cubic(
-        dest: (Boolean, Vec3) -> Unit, a: Vec3, c1: Vec3, c2: Vec3, b: Vec3, samplesPerCubic: Int = 100, storage: Vec3
+        dest: (Vec3, Float) -> Unit,
+        a: Vec3,
+        c1: Vec3,
+        c2: Vec3,
+        b: Vec3,
+        samplesPerCubic: Int = 100,
+        storage: Vec3,
+        fromInstr: Double,
+        toInstr: Double
     ) {
         samplesPerCubic {
             val alpha = (it + 1) / samplesPerCubic.d
@@ -443,33 +466,65 @@ class FLine : HasProperties {
             storage.x = ((a.x * oma3) + (3 * c1.x * alpha * oma2) + (3 * c2.x * alpha2 * oma) + (b.x * alpha3)).f
             storage.y = ((a.y * oma3) + (3 * c1.y * alpha * oma2) + (3 * c2.y * alpha2 * oma) + (b.y * alpha3)).f
             storage.z = ((a.z * oma3) + (3 * c1.z * alpha * oma2) + (3 * c2.z * alpha2 * oma) + (b.z * alpha3)).f
-            dest(false, storage)
+            val instr = ((1 - alpha) * fromInstr) + (alpha * toInstr)
+            dest(storage, instr.f)
         }
     }
 
-    fun tessellate(samplesPerCubic: Int = 100, meshAcceptor : (DoubleArray, List<Int>) -> Unit) {
-        var d = ArrayList<Double>()
+    fun tessellate(samplesPerCubic: Int = 100, meshAcceptor: (FloatArray, List<Int>) -> Unit) {
+        var d = ArrayList<Float>()
 
         fun dispatch() {
-            val da = d.toDoubleArray()
-            val c = Earcut.earcut(da,  null, 3)
+            val da = d.toFloatArray()
+            val c = FloatEarcut.earcut(da, null, 3)
             meshAcceptor(da, c)
         }
 
-        uniform_linearize(samplesPerCubic) { breakBefore, at ->
-            if (breakBefore) {
+        uniform_linearize(samplesPerCubic) { at, instr ->
+            if (instr < 0) {
                 if (d.size >= 9) {
                     dispatch()
                 }
                 d.clear()
             }
-            d.add(at.x.d)
-            d.add(at.y.d)
-            d.add(at.z.d)
+            d.add(at.x)
+            d.add(at.y)
+            d.add(at.z)
         }
         if (d.size >= 9) {
             dispatch()
         }
+    }
+
+    /**
+     * One Vec4 color per drawing instruction. Resolution order:
+     *  node.properties["color"] if Vec4 → previous color → fline.properties["color"] if Vec4 → default vec4(0.8,0.8,0.8,0.5)
+     */
+    fun colorsPer(): FloatArray {
+        val result = FloatArray(nodes.size * 4)
+        var current = (properties["color"] as? Vec4) ?: vec(0.8, 0.8, 0.8, 0.5)
+        nodes.forEachIndexed { index, n ->
+            (n.properties["color"] as? Vec4)?.let { current = it }
+            result[index * 4 + 0] = current.x
+            result[index * 4 + 1] = current.y
+            result[index * 4 + 2] = current.z
+            result[index * 4 + 3] = current.w
+        }
+        return result
+    }
+
+    /**
+     * One point size (float) per drawing instruction. Resolution order:
+     *  node.properties["pointSize"] if Number → previous size → fline.properties["pointSize"] if Number → default 1.0f
+     */
+    fun pointSizePer(): FloatArray {
+        val result = FloatArray(nodes.size)
+        var current = (properties["pointSize"] as? Number)?.toFloat() ?: 1.0f
+        nodes.forEachIndexed { idx, n ->
+            (n.properties["pointSize"] as? Number)?.toFloat()?.let { current = it }
+            result[idx] = current
+        }
+        return result
     }
 
 }
@@ -480,8 +535,14 @@ private fun FLine.parametersToPoints(params: List<Any>): MutableList<Vec3> {
     var i = 0
     while (i < params.size) {
         when (val p = params[i]) {
-            is Vec3 -> { out += p; i++ }
-            is Vec2 -> { out += Vec3(p.x, p.y, 0f); i++ }
+            is Vec3 -> {
+                out += p; i++
+            }
+
+            is Vec2 -> {
+                out += Vec3(p.x, p.y, 0f); i++
+            }
+
             is Number -> {
                 // Collect a contiguous run of numbers and split into points.
                 val nums = mutableListOf<Float>()
@@ -498,23 +559,24 @@ private fun FLine.parametersToPoints(params: List<Any>): MutableList<Vec3> {
                         left >= 3 && left % 2 == 1 -> {
                             out += Vec3(nums[k], nums[k + 1], nums[k + 2]); k += 3
                         }
+
                         left >= 2 -> {
                             out += Vec3(nums[k], nums[k + 1], 0f); k += 2
                         }
+
                         else -> {
                             throw IllegalArgumentException(
-                                "Found a run of scalar numbers with a single leftover value (${nums[k]}). " +
-                                        "Wrap as Vec2/Vec3 or add a trailing 0 for z."
+                                "Found a run of scalar numbers with a single leftover value (${nums[k]}). " + "Wrap as Vec2/Vec3 or add a trailing 0 for z."
                             )
                         }
                     }
                 }
                 i = j
             }
+
             else -> {
                 throw IllegalArgumentException(
-                    "Unsupported parameter type at index $i: ${p::class.qualifiedName}. " +
-                            "Expected Number, Vec2, or Vec3."
+                    "Unsupported parameter type at index $i: ${p::class.qualifiedName}. " + "Expected Number, Vec2, or Vec3."
                 )
             }
         }
@@ -525,9 +587,9 @@ private fun FLine.parametersToPoints(params: List<Any>): MutableList<Vec3> {
 // --- tiny parser / AST -------------------------------------------------------
 
 private sealed interface Node
-private data class Cmd(val kind: Char): Node // 'm','l','c','z'
-private data class Seq(val items: List<Node>): Node
-private data class Rep(val body: Node): Node // postfix '+'
+private data class Cmd(val kind: Char) : Node // 'm','l','c','z'
+private data class Seq(val items: List<Node>) : Node
+private data class Rep(val body: Node) : Node // postfix '+'
 
 private class Parser(private val s: String) {
     private var i = 0
@@ -537,19 +599,30 @@ private class Parser(private val s: String) {
         if (i != s.length) error("Unexpected trailing input at ${here()}")
         return n
     }
+
     private fun parseSeq(stop: Char? = null): Node {
         val items = mutableListOf<Node>()
         while (true) {
             skip()
             if (i >= s.length) break
-            if (stop != null && s[i] == stop) { i++; break }
+            if (stop != null && s[i] == stop) {
+                i++; break
+            }
             val atom = when (s[i]) {
-                'm','l','c','z' -> { i++; Cmd(s[i - 1]) }
-                '(' -> { i++; parseSeq(')') }
+                'm', 'l', 'c', 'z' -> {
+                    i++; Cmd(s[i - 1])
+                }
+
+                '(' -> {
+                    i++; parseSeq(')')
+                }
+
                 else -> error("Unexpected '${s[i]}' at ${here()}; expected m,l,c,z or '('")
             }
             skip()
-            val node = if (i < s.length && s[i] == '+') { i++; Rep(atom) } else atom
+            val node = if (i < s.length && s[i] == '+') {
+                i++; Rep(atom)
+            } else atom
             items += node
         }
         return when (items.size) {
@@ -558,7 +631,11 @@ private class Parser(private val s: String) {
             else -> Seq(items)
         }
     }
-    private fun skip() { while (i < s.length && s[i].isWhitespace()) i++ }
+
+    private fun skip() {
+        while (i < s.length && s[i].isWhitespace()) i++
+    }
+
     private fun here(): String = "pos $i in \"$s\""
 }
 
@@ -610,23 +687,31 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
                 val a = take()
                 f.moveTo(a)          // uses your Vec3 overload
             }
+
             'l' -> {
                 ensure(1, "lineTo")
                 val a = take()
                 f.lineTo(a)          // uses your Vec3 overload
             }
+
             'c' -> {
                 ensure(3, "cubicTo")
-                val a = take(); val b = take(); val c = take()
+                val a = take();
+                val b = take();
+                val c = take()
                 f.cubicTo(a, b, c)   // uses your Vec3 overload
             }
+
             'z' -> f.close()
             else -> error("Unknown command: $k")
         }
     }
 
     private fun minPoints(n: Node): Int = when (n) {
-        is Cmd -> when (n.kind) { 'm' -> 1; 'l' -> 1; 'c' -> 3; 'z' -> 0; else -> 0 }
+        is Cmd -> when (n.kind) {
+            'm' -> 1; 'l' -> 1; 'c' -> 3; 'z' -> 0; else -> 0
+        }
+
         is Seq -> n.items.sumOf { minPoints(it) }
         is Rep -> 0 // zero-or-more
     }
@@ -635,6 +720,7 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
         if (pos >= pts.size) throw IllegalArgumentException("Not enough points for the requested command(s).")
         return pts[pos++]
     }
+
     private fun ensure(n: Int, what: String) {
         if (remainingPoints() < n) {
             throw IllegalArgumentException("Need $n point(s) for $what, but only ${remainingPoints()} left.")

@@ -5,6 +5,7 @@ import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkImageSubresourceRange
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 import afield.four.device.Device
+import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
 
 interface HasImageView {
@@ -15,10 +16,20 @@ interface HasImageViewArray {
     val imageViewArray: List<ImageView>
 }
 
-class ImageView(private val device: Device, val vkImage: Long, val imageViewData: ImageViewData) : HasImageView{
+class ImageView(private val device: Device, val image: Long, val imageViewData: ImageViewData) : HasImageView{
     val aspectMask: Int
     val mipLevels: Int
     var vkImageView: Long = 0
+
+    var underlyingImage : Image? = null
+    private val autoDisposeToken = AutoDisposer.register(
+        this,
+        "ImageView(fmt=${imageViewData.format}, layers=${imageViewData.layerCount}, mips=${imageViewData.mipLevels})"
+    ) { /* set after init */ }
+
+    constructor(device: Device, image: Image, imageViewData: ImageViewData) : this(device, image.vkImage, imageViewData) {
+        source(image)
+    }
 
     init {
         this.aspectMask = imageViewData.aspectMask
@@ -29,7 +40,7 @@ class ImageView(private val device: Device, val vkImage: Long, val imageViewData
                 .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
                 .pNext(0)
                 .flags(imageViewData.flags)
-                .image(vkImage)
+                .image(image)
                 .viewType(imageViewData.viewType)
                 .format(imageViewData.format)
                 .subresourceRange { it: VkImageSubresourceRange ->
@@ -47,10 +58,23 @@ class ImageView(private val device: Device, val vkImage: Long, val imageViewData
             )
             vkImageView = lp[0]
         }
+        autoDisposeToken.updateCleanup(snapshotCleanup())
     }
 
     fun cleanup() {
+        autoDisposeToken.disable()
         VK10.vkDestroyImageView(device.vkDevice, vkImageView, null)
+    }
+
+    fun source(i : Image) : ImageView {
+        underlyingImage = i
+        return this
+    }
+
+    private fun snapshotCleanup(): () -> Unit {
+        val dev = device.vkDevice
+        val view = vkImageView
+        return { VK10.vkDestroyImageView(dev, view, null) }
     }
 
     override val imageView: ImageView

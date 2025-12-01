@@ -8,6 +8,7 @@ import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.texture.image_layout_transition
 import afield.four.util.DownResult
 import afield.four.util.Options
 import afield.stdlib.vec
@@ -47,7 +48,7 @@ private class EyeImage(
         colorImage = Image(renderer.device, img)
 
         val viewInfo = ImageViewData().format(p.format).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(1)
-        colorView = ImageView(renderer.device, colorImage.vkImage, viewInfo)
+        colorView = ImageView(renderer.device, colorImage, viewInfo)
     }
 
     fun beginRendering(cmd: VkCommandBuffer) {
@@ -60,7 +61,7 @@ private class EyeImage(
             // UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL
             image_layout_transition(
                 cmd,
-                colorImage.vkImage,
+                colorImage,
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 0,
@@ -115,7 +116,7 @@ private class EyeImage(
             // dstStage/Access can be NONE since no in-cmdbuf consumer follows.
             image_layout_transition(
                 cmd,
-                colorImage.vkImage,
+                colorImage,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_2_NONE,
                 VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,

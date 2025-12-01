@@ -14,6 +14,7 @@ import afield.four.modules.Module.ImagePointer
 import afield.four.modules.Module.TextureArrayPointer
 import afield.four.modules.Module.TexturePointer
 import afield.four.modules.Module.Uniform
+import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
@@ -83,7 +84,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
     val ci = Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
 
-    val csm: Long = createShaderModule(ci.code.bytecode()!!).also {
+    var csm: Long = createShaderModule(ci.code.bytecode()!!).also {
         parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")
     }
 
@@ -94,6 +95,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
+    private val pipelineDisposeToken = AutoDisposer.register(this, "ComputePipeline(${parameters.name})") { }
 
     init {
         try {
@@ -290,6 +292,17 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     "Error creating compute pipeline"
                 )
                 this.pipeline = lp[0]
+                pipelineDisposeToken.updateCleanup {
+                    if (pipeline != 0L) {
+                        VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
+                    }
+                    if (pipelineLayout != 0L) {
+                        VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
+                    }
+                    if (csm != 0L) {
+                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, csm, null)
+                    }
+                }
                 parameters.renderer.device.nameObject(
                     pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
                 )
@@ -354,7 +367,19 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     }
 
     fun cleanup() {
-        // pipelines/shader modules are managed at renderer lifetime; no-op here
+        pipelineDisposeToken.disable()
+        if (pipeline != 0L) {
+            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
+            pipeline = 0L
+        }
+        if (pipelineLayout != 0L) {
+            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
+            pipelineLayout = 0L
+        }
+        if (csm != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, csm, null)
+            csm = 0L
+        }
     }
 
     private fun createShaderModule(code: ByteBuffer): Long {

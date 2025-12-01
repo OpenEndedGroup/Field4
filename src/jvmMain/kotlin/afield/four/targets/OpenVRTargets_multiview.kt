@@ -8,6 +8,7 @@ import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.texture.image_layout_transition
 import afield.four.util.Options
 import afield.stdlib.vec
 import org.joml.primitives.Rectanglef
@@ -86,7 +87,7 @@ class OpenVRRenderTargetMultiview(
         multiviewImage = Image(renderer.device, imgData)
         multiviewView = ImageView(
             renderer.device,
-            multiviewImage.vkImage,
+            multiviewImage,
             ImageViewData()
                 .format(eyeParams.format)
                 .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
@@ -107,7 +108,7 @@ class OpenVRRenderTargetMultiview(
         submitViews = submitImages.map {
             ImageView(
                 renderer.device,
-                it.vkImage,
+                it,
                 ImageViewData().format(eyeParams.format).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(1)
             )
         }.toTypedArray()
@@ -137,7 +138,7 @@ class OpenVRRenderTargetMultiview(
                 .baseArrayLayer(0).layerCount(2)
             image_layout_transition(
                 cmd,
-                multiviewImage.vkImage,
+                multiviewImage,
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 0,
@@ -195,7 +196,7 @@ class OpenVRRenderTargetMultiview(
             // Prepare src for transfer
             image_layout_transition(
                 cmd,
-                multiviewImage.vkImage,
+                multiviewImage,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
                 VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
@@ -214,7 +215,7 @@ class OpenVRRenderTargetMultiview(
 
                 image_layout_transition(
                     cmd,
-                    submitImages[layer].vkImage,
+                    submitImages[layer],
                     VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                     VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
                     0,
@@ -249,7 +250,7 @@ class OpenVRRenderTargetMultiview(
                 // Prepare submit image for compositor read
                 image_layout_transition(
                     cmd,
-                    submitImages[layer].vkImage,
+                    submitImages[layer],
                     VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
                     VK_PIPELINE_STAGE_2_NONE,
                     VK_ACCESS_2_TRANSFER_WRITE_BIT,

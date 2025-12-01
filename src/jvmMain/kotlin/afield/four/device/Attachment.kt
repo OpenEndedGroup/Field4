@@ -28,7 +28,7 @@ class Attachment(device: Device, width: Int, height: Int, format: Int, usage: In
         }
 
         val imageViewData = ImageViewData().format(image.format).aspectMask(aspectMask)
-        imageView = ImageView(device, image.vkImage, imageViewData)
+        imageView = ImageView(device, image.vkImage, imageViewData).source(image)
     }
 
     fun cleanup() {

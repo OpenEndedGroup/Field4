@@ -250,6 +250,7 @@ class Server {
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
 
                 if (set.property == "name") {
+                    println(" -- got set-string for name ${set.value}")
                     box(set.uid).name = set.value
                 } else
                     box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
@@ -376,11 +377,9 @@ class Server {
                                             val r = handle(message) { message2 ->
                                                 val message3 = message.replyTo?.let { message2.toName(it) } ?: message2
                                                 val m = Json.encodeToString(message3)
-//                                                GlobalScope.launch {
-                                                inMain {
-                                                    ts.send(m)
+                                                GlobalScope.launch {
+                                                    ts.send(m) // this enables, say, _print() to appear while this code is hogging the main execution thread
                                                 }
-//                                                }
                                             }
                                         } catch (t: Throwable) {
                                             t.printStackTrace()

@@ -109,7 +109,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             Triple({ to.getPropertyRaw(property) as MutableSet<Box> }, null, null)
         }
 
-        if (!accessor().contains(to)) {
+        if (accessor().contains(to)) {
             accessor() -= to
             counterAccessor?.let { it() -= this }
 
@@ -199,6 +199,16 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 }
                 notify("Connected ${a.name} -> ${names.trim(' ', ',')}")
             }
+
+            actionTable["-copy"] = { boxes ->
+                var names = ""
+                boxes.forEach {
+                    names += it.name + ", "
+                }
+                copyBoxes(boxes)
+                notify("Copied ${names.trim(' ', ',')}")
+            }
+
             actionTable["-disconnect"] = { boxes ->
                 val a = boxes[0]
                 var names = ""
@@ -344,7 +354,10 @@ fun doResync() {
                 message = when (value) {
                     null -> Message("set-null").payload(Set_null(box.id, name))
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
-                    is String -> Message("set-string").payload(Set_string(box.id, name, value))
+                    is String -> {
+                        println(" sending set-string for $name = $value")
+                        Message("set-string").payload(Set_string(box.id, name, value))
+                    }
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
                     is Boolean -> Message("set-boolean").payload(Set_boolean(box.id, name, value))
                     else -> {

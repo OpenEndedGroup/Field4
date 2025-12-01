@@ -17,6 +17,7 @@ import afield.four.modules.MeshModulePointer
 import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.pointer
+import afield.four.texture.image_layout_transition
 import org.lwjgl.system.MemoryStack
 
 class RenderTarget(val renderer: Renderer) : Target {
@@ -95,7 +96,7 @@ class RenderTarget(val renderer: Renderer) : Target {
 
                 image_layout_transition(
                     command.vkCommandBuffer,
-                    renderer.swapChain.imageViews[index].vkImage,
+                    renderer.swapChain.imageViews[index].image,
                     srcStage,
                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                     srcAccess,
@@ -109,7 +110,7 @@ class RenderTarget(val renderer: Renderer) : Target {
             // Depth initial transition (UNDEFINED -> DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             image_layout_transition(
                 command.vkCommandBuffer,
-                renderer.depthAttachments[index].image.vkImage,
+                renderer.depthAttachments[index].image,
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                 0,
@@ -188,7 +189,7 @@ class RenderTarget(val renderer: Renderer) : Target {
             // With sync2 you can use NONE for dst stage/access.
             image_layout_transition(
                 command.vkCommandBuffer,
-                renderer.swapChain.imageViews[index].vkImage,
+                renderer.swapChain.imageViews[index].image,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_2_NONE,
                 VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,

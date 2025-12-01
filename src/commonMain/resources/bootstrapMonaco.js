@@ -910,11 +910,11 @@ function monitorSelection() {
 }
 
 const setBoxRunning = (uid, isRunning, watermark, strand) => {
-        console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand)
+        // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand)
         let first = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
         let name = `${watermark}--${strand}`
         if (first) {
-                console.log(" is running ", first, first.runningList, watermark, isRunning)
+                // console.log(" is running ", first, first.runningList, watermark, isRunning)
                 if (isRunning) {
                         first.classList.add("running");
                         first.runningList = first.runningList ?? new Set()
@@ -937,7 +937,7 @@ const setBoxRunning = (uid, isRunning, watermark, strand) => {
                                 if (first.runningList.size === 0) first.classList.remove("running")
                         }, 100)
                 }
-                console.log(" outOfrunning ", first, first.runningList, watermark, isRunning)
+                // console.log(" outOfrunning ", first, first.runningList, watermark, isRunning)
         } else {
                 console.log("warning: tried to set running status on something that doesn't exist?", uid)
         }

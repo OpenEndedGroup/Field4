@@ -165,6 +165,7 @@ kotlin {
                 resources.srcDir("src/personal/resources")
             }
 
+
             dependencies {
 
                 val personalDeps = file("src/personal/dependencies.gradle.kts")

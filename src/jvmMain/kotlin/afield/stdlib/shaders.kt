@@ -1,19 +1,16 @@
 package afield.stdlib
 
 import afield.Box
-import afield.*
+import afield.Runloop
 import afield.findWithNameOrNull
 import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
-import afield.four.texture.HasImageView
-import afield.four.texture.HasImageViewArray
-import afield.four.texture.ImageView
-import afield.four.texture.LoadedTexture
-import afield.four.texture.TextureSampler
+import afield.four.texture.*
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
+import afield.preamble
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -136,7 +133,7 @@ fun reloadShader(box: Box) {
     }
 
     // keep consistent with the Module path: build Insert and apply to preamble
-    val insert = insertForShader(vi!!, fi!!, "_moduleHere",listOf("()"))
+    val insert = insertForShader(vi!!, fi!!, "_moduleHere", listOf("()"))
     applyInsertToPreamble(box, insert)
 
     box.error(null, "fragment", -1)
@@ -317,7 +314,12 @@ val defaultFragmentShader = """
     }
 """.trimIndent()
 
-fun Box.macro_moduleHereWithDefaultShaders(args: List<String>, vertex : String = defaultVertexShader, fragment : String = defaultFragmentShader, resolvesToCall : String = "_moduleHere"): Insert? {
+fun Box.macro_moduleHereWithDefaultShaders(
+    args: List<String>,
+    vertex: String = defaultVertexShader,
+    fragment: String = defaultFragmentShader,
+    resolvesToCall: String = "_moduleHere"
+): Insert? {
     this.actions += "moduleHere_reload" to Action("Reload Shader|alt r") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
@@ -363,7 +365,6 @@ fun Box.macro_moduleHereWithDefaultShaders(args: List<String>, vertex : String =
         return insertForShader(vi, fi, resolvesToCall, args)
     }
 }
-
 
 
 // ------------------------------
@@ -431,26 +432,45 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
 
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
-    // Texture resolver resolution chain
+    val previousResolver = p.textureResolver
     p.textureResolver = {
-        println(" searching for texture ${it.name}")
-        val name = it.name
-        val r =
-            findWithNameOrNull<ImageView>(this@_moduleHere, name)?.let {
-                arrayOf(it) to TextureSampler(renderer = fromContext(), 4, true)
-            } ?: findWithNameOrNull<Array<ImageView>>(this@_moduleHere, name)?.let {
-                it to TextureSampler(renderer = fromContext(), 4, true)
-            } ?: findWithNameOrNull<LoadedTexture>(this@_moduleHere, name)?.let {
-                arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 4, true)
-            } ?: findWithNameOrNull<RenderToTexture>(this@_moduleHere, name)?.let {
-                arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 4, true)
-            } ?: findWithNameOrNull<HasImageView>(this@_moduleHere, name)?.let {
-                arrayOf(it.imageView) to TextureSampler(renderer = fromContext(), 1, true)
-            } ?: findWithNameOrNull<HasImageViewArray>(this@_moduleHere, name)?.let {
-                it.imageViewArray.toTypedArray() to TextureSampler(renderer = fromContext(), 1, true)
-            } ?: throw Exception(" can't find anything to build a texture out of from this box to ${it.name}")
-        println(" found $r")
-        r
+        val r = previousResolver.invoke(it)
+        if (r != null) r else {
+            println(" searching for texture ${it.name}")
+            val name = it.name
+            val r =
+                findWithNameOrNull<ImageView>(this@_moduleHere, name)?.let {
+                    arrayOf(it) to TextureSampler(renderer = fromContext(), it.imageViewData.mipLevels, true)
+                } ?: findWithNameOrNull<Array<ImageView>>(this@_moduleHere, name)?.let {
+                    it to TextureSampler(renderer = fromContext(), it[0].imageViewData.mipLevels, true)
+                } ?: findWithNameOrNull<LoadedTexture>(this@_moduleHere, name)?.let {
+                    arrayOf(it.imageView) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageView.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<RenderToTexture>(this@_moduleHere, name)?.let {
+                    arrayOf(it.imageView) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageView.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<HasImageView>(this@_moduleHere, name)?.let {
+                    arrayOf(it.imageView) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageView.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<HasImageViewArray>(this@_moduleHere, name)?.let {
+                    it.imageViewArray.toTypedArray() to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageViewArray[0].imageViewData.mipLevels,
+                        true
+                    )
+                } ?: throw Exception(" can't find anything to build a texture out of from this box to ${it.name}")
+            println(" found $r")
+            r
+        }
     }
 
     globalAsyncDebugHandler = { message ->

@@ -123,6 +123,14 @@
             background: rgba(255, 255, 255, 0.084);
             backdrop-filter: blur(20px) brightness(0.5);
             z-index: 19;
+            filter: blur(0px);
+            transition: border 0.2s !important;
+        }
+
+        .monaco-editor-container:not(:focus-within) {
+            outline: none;
+            border: 5px solid transparent;
+            /*filter: blur(10px) !important;*/
         }
 
         .quick-input-list * {

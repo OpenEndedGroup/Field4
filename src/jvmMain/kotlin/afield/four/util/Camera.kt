@@ -3,6 +3,8 @@ package afield.four.util
 import afield.four.Renderer
 import afield.four.buffers.HasUniform
 import afield.four.modules.fromContext
+import afield.stdlib.d
+import afield.stdlib.f
 import afield.stdlib.set
 import afield.stdlib.vec
 import afield.stdlib.x
@@ -49,7 +51,7 @@ class Camera(renderer: Renderer = fromContext()) {
             return r.normalize()
         }
 
-    var p = SuperProjection(renderer = renderer)
+    var p = SuperProjection(renderer = renderer, autoMatchDistance = { distanceToTarget().d})
 
     /**
      * Model-view matrix uniform wrapper.

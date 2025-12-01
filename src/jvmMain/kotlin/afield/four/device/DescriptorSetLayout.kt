@@ -60,7 +60,7 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
 
         init {
             require(descriptorType.size == binding.size && descriptorCount.size == binding.size) {
-                "descriptorType, binding, descriptorCount must have same size"
+                "descriptorType, binding, descriptorCount must have same size. ${descriptorType.size} != ${binding.size} != ${descriptorCount.size}"
             }
             if (variableBindingIndex >= 0) {
                 require(variableBindingIndex in binding.indices) {

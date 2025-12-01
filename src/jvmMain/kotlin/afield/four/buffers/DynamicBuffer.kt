@@ -18,11 +18,24 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         val b = f.position()
         try {
             target.put(f)
-        } catch (_: BufferUnderflowException) {
+        } catch (_: BufferOverflowException) {
             target = onOverrun(target, f.capacity())
             target.position(a)
             f.position(b)
             put(f, false)
+        }
+        return this
+    }
+
+    fun put(f: FloatArray, padding: Boolean = true, offset : Int = 0): DynamicBuffer {
+        if (padding) pad4(0f)
+        val a = target.position()
+        try {
+            target.put(f, offset, f.size - offset)
+        } catch (_: BufferOverflowException) {
+            target = onOverrun(target, f.size)
+            target.position(a)
+            put(f, padding, offset)
         }
         return this
     }

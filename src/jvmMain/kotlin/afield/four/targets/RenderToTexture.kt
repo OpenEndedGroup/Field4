@@ -12,12 +12,14 @@ import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
+import afield.four.texture.image_layout_transition
 import afield.four.texture.ImageView.ImageViewData
 import afield.four.util.Options
 import afield.stdlib.Vec4
 import afield.stdlib.f
 import afield.stdlib.vec
 import afield.Rect
+import afield.four.modules.Parameters
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
@@ -34,8 +36,9 @@ data class RTTParameters(
     var format: Int = VK_FORMAT_B8G8R8A8_SRGB,
     var colorAttachments: Int = 1,
     var colorFormats: List<Int> = emptyList(),
-    var colorLayers: List<Int> = emptyList(),       // per-attachment layer count; 0/empty -> single layer
+    var colorLayerCount: Int = 1,                   // single layer count for all color attachments; 0 -> infer from external views
     var viewports: List<afield.Rect> = emptyList(), // optional viewport array override
+    var externalColorViews: Map<Int, ImageView> = emptyMap(), // optional externally-owned attachments by slot
     var clearColor: Vec4 = vec(0, 0, 0, 1),
 
     // --- Color QoL ---
@@ -69,11 +72,11 @@ class RenderToTexture(
     var parameters = RTTParameters().apply(parameters)
 
     override var imageView: ImageView
-    val colorImageData: List<ImageData>
-    val colorImages: List<Image>
+    val colorImageRefs: List<Image?>          // null when external view has no underlying Image
+    val colorImageHandles: List<Long>         // always the underlying VkImage handle
     override val imageViewArray: List<ImageView>
     val colorFormats: List<Int>
-    val colorLayers: List<Int>
+    val colorLayerCount: Int
 
     // depth (optional)
     var depthImageView: ImageView? = null
@@ -112,13 +115,18 @@ class RenderToTexture(
             "colorFormats size (${resolvedColorFormats.size}) must match colorAttachments (${this.parameters.colorAttachments})"
         }
         colorFormats = resolvedColorFormats
-        val resolvedLayers =
-            if (this.parameters.colorLayers.isNotEmpty()) this.parameters.colorLayers
-            else List(this.parameters.colorAttachments) { 1 }
-        require(resolvedLayers.size == this.parameters.colorAttachments) {
-            "colorLayers size (${resolvedLayers.size}) must match colorAttachments (${this.parameters.colorAttachments})"
-        }
-        colorLayers = resolvedLayers
+        val explicitLayerCount = this.parameters.colorLayerCount
+        val externalViews = this.parameters.externalColorViews
+        val inferredLayerCount =
+            if (explicitLayerCount > 0) explicitLayerCount
+            else if (externalViews.isNotEmpty()) {
+                val counts = externalViews.values.map { it.imageViewData.layerCount }
+                require(counts.distinct().size == 1) {
+                    "All external color attachments must share the same layerCount; got $counts"
+                }
+                counts.first()
+            } else 1
+        colorLayerCount = inferredLayerCount
 
         // --- Query blit/filter support for each color format and pick a safe filter ---
         MemoryStack.stackPush().use { stack ->
@@ -141,41 +149,59 @@ class RenderToTexture(
             }
         }
 
-        // COLOR (one image/view per attachment)
         val wantsMips = this.parameters.mipLevels > 1 && this.parameters.generateColorMipmaps
-        colorImageData = resolvedColorFormats.mapIndexed { idx, fmt ->
-            val needsTransfer = wantsMips && colorFormatCanBlit[idx]
-            ImageData()
-                .width(width)
-                .height(height)
-                .arrayLayers(colorLayers[idx].coerceAtLeast(1))
-                .usage(
-                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
-                            (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
-                            (if (needsTransfer) VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
-                )
-                .format(fmt)
-                .mipLevels(mipLevels)
+        require(externalViews.keys.all { it in colorFormats.indices }) {
+            "externalColorViews keys must be within [0, ${colorFormats.lastIndex}]"
         }
 
-        colorImages = colorImageData.map { Image(renderer.device, it) }
+        val tmpViews = MutableList<ImageView?>(colorFormats.size) { null }
+        val tmpImageRefs = MutableList<Image?>(colorFormats.size) { null }
+        val tmpImageHandles = MutableList<Long>(colorFormats.size) { 0L }
 
-        val imageViewData = colorImageData.map {
-            ImageViewData()
-                .format(it.format)
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .layerCount(it.arrayLayers)
-                .mipLevels(mipLevels)
+        colorFormats.forEachIndexed { idx, fmt ->
+            val external = externalViews[idx]
+            if (external != null) {
+                require(external.imageViewData.layerCount == colorLayerCount) {
+                    "External color attachment $idx has layerCount=${external.imageViewData.layerCount} but expected $colorLayerCount"
+                }
+                tmpViews[idx] = external
+                tmpImageRefs[idx] = external.underlyingImage
+                tmpImageHandles[idx] = external.image
+            } else {
+                val needsTransfer = wantsMips && colorFormatCanBlit[idx]
+                val data = ImageData()
+                    .width(width)
+                    .height(height)
+                    .arrayLayers(colorLayerCount.coerceAtLeast(1))
+                    .usage(
+                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
+                                (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
+                                (if (needsTransfer) VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
+                    )
+                    .format(fmt)
+                    .mipLevels(mipLevels)
+
+                val img = Image(renderer.device, data)
+                val ivd = ImageViewData()
+                    .format(data.format)
+                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .layerCount(data.arrayLayers)
+                    .mipLevels(mipLevels)
+                if (ivd.layerCount > 1) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+
+                val view = ImageView(renderer.device, img, ivd)
+                tmpViews[idx] = view
+                tmpImageRefs[idx] = img
+                tmpImageHandles[idx] = img.vkImage
+            }
         }
 
-        imageViewArray = colorImages.zip(imageViewData).map { (img, ivd) ->
-            // pick array view type if needed
-            if (ivd.layerCount > 1) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
-            ImageView(renderer.device, img.vkImage, ivd)
-        }
+        imageViewArray = tmpViews.map { requireNotNull(it) }
         imageView = imageViewArray.first()
-        colorLayout = IntArray(colorImages.size) { VK_IMAGE_LAYOUT_UNDEFINED }
-        colorMipsInitialized = BooleanArray(colorImages.size) { false }
+        colorImageRefs = tmpImageRefs
+        colorImageHandles = tmpImageHandles
+        colorLayout = IntArray(colorImageHandles.size) { VK_IMAGE_LAYOUT_UNDEFINED }
+        colorMipsInitialized = BooleanArray(colorImageHandles.size) { false }
 
         // DEPTH+STENCIL (optional)
         if (this.parameters.useDepth) {
@@ -199,7 +225,7 @@ class RenderToTexture(
                 .aspectMask(depthAspect)
                 .mipLevels(1)
 
-            depthImageView = ImageView(renderer.device, depthImage!!.vkImage, depthViewData)
+            depthImageView = ImageView(renderer.device, depthImage!!, depthViewData)
         }
 
         // per-swapchain command buffers & fences
@@ -215,28 +241,30 @@ class RenderToTexture(
     override fun render(command: CommandBuffer, index: Int) {
         MemoryStack.stackPush().use { stack ->
             // COLOR subresource range for mip 0 ONLY (we don't touch other mips during the attachment phase)
+        // Initial COLOR transition for mip 0 based on tracked layout + ops
+        colorImageHandles.forEachIndexed { idx, img ->
+            val imgRef = colorImageRefs.getOrNull(idx)
             val colorBaseRange = VkImageSubresourceRange.calloc(stack)
                 .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .baseMipLevel(0)
                 .levelCount(1)
                 .baseArrayLayer(0)
-                .layerCount(VK_REMAINING_ARRAY_LAYERS)
+                    .layerCount(colorLayerCount.coerceAtLeast(1))
 
-            // Initial COLOR transition for mip 0 based on tracked layout + ops
-            colorImages.forEachIndexed { idx, img ->
-                val layout = colorLayout[idx]
-                if (!parameters.clearFirst) {
-                    val (srcStage, srcAccess) = when (layout) {
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-                        else ->
-                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
-                    }
+            val layout = colorLayout[idx]
+            if (!parameters.clearFirst) {
+                val (srcStage, srcAccess) = when (layout) {
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                    else ->
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
+                }
+                if (imgRef != null) {
                     image_layout_transition(
                         command.vkCommandBuffer,
-                        img.vkImage,
+                        imgRef,
                         srcStage,
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                         srcAccess,
@@ -245,12 +273,26 @@ class RenderToTexture(
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         colorBaseRange
                     )
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                 } else {
-                    // CLEAR path
                     image_layout_transition(
                         command.vkCommandBuffer,
-                        img.vkImage,
+                        img,
+                        srcStage,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        srcAccess,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        layout,
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        colorBaseRange
+                    )
+                }
+                colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            } else {
+                // CLEAR path
+                if (imgRef != null) {
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        imgRef,
                         VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                         0L,
@@ -259,9 +301,22 @@ class RenderToTexture(
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         colorBaseRange
                     )
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                } else {
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        img,
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        0L,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        colorBaseRange
+                    )
                 }
+                colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
             }
+        }
 
             // DEPTH (optional) subresource range + transition
             var depthRange: VkImageSubresourceRange? = null
@@ -285,7 +340,7 @@ class RenderToTexture(
                     }
                     image_layout_transition(
                         command.vkCommandBuffer,
-                        depthImage!!.vkImage,
+                        depthImage!!,
                         srcStage,
                         VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                         srcAccess,
@@ -298,7 +353,7 @@ class RenderToTexture(
                 } else {
                     image_layout_transition(
                         command.vkCommandBuffer,
-                        depthImage!!.vkImage,
+                        depthImage!!,
                         VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                         VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                         0,
@@ -312,8 +367,8 @@ class RenderToTexture(
             }
 
             // COLOR attachment info (KHR)
-            val colorAttachmentInfo = VkRenderingAttachmentInfoKHR.calloc(colorImages.size, stack)
-            colorImages.indices.forEach { i ->
+            val colorAttachmentInfo = VkRenderingAttachmentInfoKHR.calloc(colorImageHandles.size, stack)
+            colorImageHandles.indices.forEach { i ->
                 colorAttachmentInfo[i]
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                     .imageView(imageViewArray[i].vkImageView)
@@ -356,8 +411,7 @@ class RenderToTexture(
             }
 
             // Rendering info (KHR)
-            val maxColorLayers = colorLayers.maxOrNull() ?: 1
-            val renderLayers = maxColorLayers
+            val renderLayers = colorLayerCount.coerceAtLeast(1)
 
             val renderInfo = VkRenderingInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_RENDERING_INFO_KHR)
@@ -403,7 +457,7 @@ class RenderToTexture(
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
 
             // --- Automatic color mipmap recompute (if requested & supported) ---
-            colorImages.forEachIndexed { idx, img ->
+            colorImageHandles.forEachIndexed { idx, img ->
                 val doMips = parameters.generateColorMipmaps &&
                         parameters.mipLevels > 1 &&
                         parameters.colorSampled &&
@@ -411,12 +465,14 @@ class RenderToTexture(
                 if (doMips) {
                     generateColorMipChain(
                         commandBuffer = command.vkCommandBuffer,
-                        image = img.vkImage,
+                        image = img,
+                        imageRef = colorImageRefs.getOrElse(idx) { null },
                         width = width,
                         height = height,
                         mipLevels = mipLevels,
-                        filter = chosenMipFilter.getOrElse(idx) { VK_FILTER_NEAREST },
-                        mipsWereInitialized = colorMipsInitialized.getOrElse(idx) { false }
+                        filter = chosenMipFilter.getOrElse(idx) { VK_FILTER_LINEAR },
+                        mipsWereInitialized = colorMipsInitialized.getOrElse(idx) { false },
+                        arrayLayers = colorLayerCount.coerceAtLeast(1)
                     )
                     colorMipsInitialized[idx] = true
                     colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
@@ -431,17 +487,32 @@ class RenderToTexture(
                             .layerCount(VK_REMAINING_ARRAY_LAYERS)
                     }
 
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        img.vkImage,
-                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        allLevelsRange
-                    )
+                    val imgRef = colorImageRefs.getOrElse(idx) { null }
+                    if (imgRef != null) {
+                        image_layout_transition(
+                            command.vkCommandBuffer,
+                            imgRef,
+                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            allLevelsRange
+                        )
+                    } else {
+                        image_layout_transition(
+                            command.vkCommandBuffer,
+                            img,
+                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            allLevelsRange
+                        )
+                    }
                     colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 } else {
                     // Not sampling: keep mip 0 as color attachment
@@ -453,7 +524,7 @@ class RenderToTexture(
             if (parameters.useDepth && parameters.depthSampled && depthImage != null && depthRange != null) {
                 image_layout_transition(
                     command.vkCommandBuffer,
-                    depthImage!!.vkImage,
+                    depthImage!!,
                     VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                     VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
@@ -484,15 +555,17 @@ class RenderToTexture(
     private fun validateModule(module: Module) {
         val moduleColorCount = if (module.parameters.colorFormats.isNotEmpty())
             module.parameters.colorFormats.size else module.parameters.color
-        require(moduleColorCount == colorImages.size) {
-            "RenderToTexture expects ${colorImages.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
+        require(moduleColorCount == colorImageHandles.size) {
+            "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
         }
     }
 
     override fun toString(): String {
         val ds = if (parameters.useDepth) " +Depth" + (if (hasStencil(parameters.depthFormat)) "+Stencil" else "") else ""
-        return "RenderToTexture[${width}x${height}, colors=${colorImages.size}$ds, mips=${mipLevels}]"
+        return "RenderToTexture[${width}x${height}, colors=${colorImageHandles.size}$ds, mips=${mipLevels}]"
     }
+
+
 
     // --- Mip generation (color) ---
 
@@ -505,139 +578,200 @@ class RenderToTexture(
     private fun generateColorMipChain(
         commandBuffer: VkCommandBuffer,
         image: Long,
+        imageRef: Image?,
         width: Int,
         height: Int,
         mipLevels: Int,
         filter: Int,
-        mipsWereInitialized: Boolean
+        mipsWereInitialized: Boolean,
+        arrayLayers: Int
     ) {
         MemoryStack.stackPush().use { stack ->
-            // 1) Transition mip 0: COLOR_ATTACHMENT_OPTIMAL -> TRANSFER_SRC_OPTIMAL
-            run {
-                val range = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0).levelCount(1)
-                    .baseArrayLayer(0).layerCount(VK_REMAINING_ARRAY_LAYERS)
+            val layerCount = arrayLayers.coerceAtLeast(1)
+            for (layer in 0 until layerCount) {
+                // 1) Transition mip 0: COLOR_ATTACHMENT_OPTIMAL -> TRANSFER_SRC_OPTIMAL (this layer only)
+                run {
+                    val range = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0).levelCount(1)
+                        .baseArrayLayer(layer).layerCount(1)
 
-                image_layout_transition(
-                    commandBuffer,
-                    image,
-                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_2_TRANSFER_READ_BIT,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    range
-                )
-            }
+                    if (imageRef != null) {
+                        image_layout_transition(
+                            commandBuffer,
+                            imageRef,
+                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                            VK_ACCESS_2_TRANSFER_READ_BIT,
+                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            range
+                        )
+                    } else {
+                        image_layout_transition(
+                            commandBuffer,
+                            image,
+                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                            VK_ACCESS_2_TRANSFER_READ_BIT,
+                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            range
+                        )
+                    }
+                }
 
-            // 2) Transition mip 1..N-1 to TRANSFER_DST_OPTIMAL
-            run {
-                val range = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(1).levelCount(mipLevels - 1)
-                    .baseArrayLayer(0).layerCount(VK_REMAINING_ARRAY_LAYERS)
+                // 2) Transition mip 1..N-1 to TRANSFER_DST_OPTIMAL for this layer
+                run {
+                    val range = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(1).levelCount(mipLevels - 1)
+                        .baseArrayLayer(layer).layerCount(1)
 
-                val (srcStage, srcAccess, oldLayout) =
-                    if (mipsWereInitialized)
-                        Triple(
+                    val (srcStage, srcAccess, oldLayout) =
+                        if (mipsWereInitialized)
+                            Triple(
+                                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                                VK_ACCESS_2_SHADER_READ_BIT,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                            )
+                        else
+                            Triple(
+                                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                                0L,
+                                VK_IMAGE_LAYOUT_UNDEFINED
+                            )
+
+                    if (imageRef != null) {
+                        image_layout_transition(
+                            commandBuffer,
+                            imageRef,
+                            srcStage,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            srcAccess,
+                            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                            oldLayout,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            range
+                        )
+                    } else {
+                        image_layout_transition(
+                            commandBuffer,
+                            image,
+                            srcStage,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            srcAccess,
+                            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                            oldLayout,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            range
+                        )
+                    }
+                }
+
+                // 3) Blit mip chain: level i-1 -> i (single layer)
+                var srcW = width
+                var srcH = height
+                for (i in 1 until mipLevels) {
+                    val dstW = if (srcW > 1) srcW / 2 else 1
+                    val dstH = if (srcH > 1) srcH / 2 else 1
+
+                    val blit = VkImageBlit.calloc(1, stack)
+                    blit.srcSubresource()
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mipLevel(i - 1)
+                        .baseArrayLayer(layer)
+                        .layerCount(1)
+                    blit.srcOffsets(0).set(0, 0, 0)
+                    blit.srcOffsets(1).set(srcW, srcH, 1)
+
+                    blit.dstSubresource()
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mipLevel(i)
+                        .baseArrayLayer(layer)
+                        .layerCount(1)
+                    blit.dstOffsets(0).set(0, 0, 0)
+                    blit.dstOffsets(1).set(dstW, dstH, 1)
+
+                    vkCmdBlitImage(
+                        commandBuffer,
+                        image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        blit,
+                        filter
+                    )
+
+                    // Make mip i a source for the next iteration: DST -> SRC
+                    val dstToSrc = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(i).levelCount(1)
+                        .baseArrayLayer(layer).layerCount(1)
+
+                    if (imageRef != null) {
+                        image_layout_transition(
+                            commandBuffer,
+                            imageRef,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                            VK_ACCESS_2_TRANSFER_READ_BIT,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            dstToSrc
+                        )
+                    } else {
+                        image_layout_transition(
+                            commandBuffer,
+                            image,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                            VK_ACCESS_2_TRANSFER_READ_BIT,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            dstToSrc
+                        )
+                    }
+
+                    srcW = dstW
+                    srcH = dstH
+                }
+
+                // 4) Transition ALL mips of this layer to SHADER_READ_ONLY_OPTIMAL
+                run {
+                    val allLevels = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0).levelCount(mipLevels)
+                        .baseArrayLayer(layer).layerCount(1)
+
+                    if (imageRef != null) {
+                        image_layout_transition(
+                            commandBuffer,
+                            imageRef,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
                             VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
                             VK_ACCESS_2_SHADER_READ_BIT,
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            allLevels
                         )
-                    else
-                        Triple(
-                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                            0L,
-                            VK_IMAGE_LAYOUT_UNDEFINED
+                    } else {
+                        image_layout_transition(
+                            commandBuffer,
+                            image,
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            allLevels
                         )
-
-                image_layout_transition(
-                    commandBuffer,
-                    image,
-                    srcStage,
-                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                    srcAccess,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    oldLayout,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    range
-                )
-            }
-
-            // 3) Blit mip chain: level i-1 -> i
-            var srcW = width
-            var srcH = height
-            for (i in 1 until mipLevels) {
-                val dstW = if (srcW > 1) srcW / 2 else 1
-                val dstH = if (srcH > 1) srcH / 2 else 1
-
-                val blit = VkImageBlit.calloc(1, stack)
-                blit.srcSubresource()
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mipLevel(i - 1)
-                    .baseArrayLayer(0)
-                    .layerCount(1)
-                blit.srcOffsets(0).set(0, 0, 0)
-                blit.srcOffsets(1).set(srcW, srcH, 1)
-
-                blit.dstSubresource()
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mipLevel(i)
-                    .baseArrayLayer(0)
-                    .layerCount(1)
-                blit.dstOffsets(0).set(0, 0, 0)
-                blit.dstOffsets(1).set(dstW, dstH, 1)
-
-                vkCmdBlitImage(
-                    commandBuffer,
-                    image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    blit,
-                    filter
-                )
-
-                // Make mip i a source for the next iteration: DST -> SRC
-                val dstToSrc = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(i).levelCount(1)
-                    .baseArrayLayer(0).layerCount(VK_REMAINING_ARRAY_LAYERS)
-
-                image_layout_transition(
-                    commandBuffer,
-                    image,
-                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_2_TRANSFER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    dstToSrc
-                )
-
-                srcW = dstW
-                srcH = dstH
-            }
-
-            // 4) Transition ALL mips to SHADER_READ_ONLY_OPTIMAL
-            run {
-                val allLevels = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0).levelCount(mipLevels)
-                    .baseArrayLayer(0).layerCount(VK_REMAINING_ARRAY_LAYERS)
-
-                image_layout_transition(
-                    commandBuffer,
-                    image,
-                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    allLevels
-                )
+                    }
+                }
             }
         }
     }
@@ -650,39 +784,3 @@ private fun hasStencil(format: Int): Boolean =
 
 private fun aspectMaskForDepth(format: Int): Int =
     VK_IMAGE_ASPECT_DEPTH_BIT or (if (hasStencil(format)) VK_IMAGE_ASPECT_STENCIL_BIT else 0)
-
-// --- barrier util (now sync2) ---
-
-fun image_layout_transition(
-    command_buffer: VkCommandBuffer,
-    image: Long,
-    src_stage_mask: Long,
-    dst_stage_mask: Long,
-    src_access_mask: Long,
-    dst_access_mask: Long,
-    old_layout: Int,
-    new_layout: Int,
-    sub_resource_range: VkImageSubresourceRange
-) {
-    MemoryStack.stackPush().use { stack ->
-        val barrier2 = VkImageMemoryBarrier2.calloc(1, stack)
-        barrier2[0]
-            .sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2)
-            .srcStageMask(src_stage_mask)
-            .srcAccessMask(src_access_mask)
-            .dstStageMask(dst_stage_mask)
-            .dstAccessMask(dst_access_mask)
-            .oldLayout(old_layout)
-            .newLayout(new_layout)
-            .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .image(image)
-            .subresourceRange(sub_resource_range)
-
-        val dep = VkDependencyInfo.calloc(stack)
-            .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
-            .pImageMemoryBarriers(barrier2)
-
-        vkCmdPipelineBarrier2(command_buffer, dep)
-    }
-}

@@ -16,6 +16,7 @@ import afield.four.device.beginLabel
 import afield.four.device.endLabel
 import afield.four.device.nameObject
 import afield.four.util.Options
+import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.d
@@ -99,6 +100,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
+    private val pipelineDisposeToken = AutoDisposer.register(this, "MeshPipeline(${parameters.name})") { }
 
     var tsm: Long = 0L
     var msm: Long = 0L
@@ -547,6 +549,23 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     "Error creating graphics pipeline"
                 )
                 this.pipeline = lp[0]
+                pipelineDisposeToken.updateCleanup {
+                    if (pipeline != 0L) {
+                        VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
+                    }
+                    if (pipelineLayout != 0L) {
+                        VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
+                    }
+                    if (msm != 0L) {
+                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, msm, null)
+                    }
+                    if (tsm != 0L) {
+                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, tsm, null)
+                    }
+                    if (fsm != 0L) {
+                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
+                    }
+                }
                 parameters.renderer.device.nameObject(
                     pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
                 )
@@ -622,7 +641,29 @@ class MeshModule(val parameters: Parameters) : Renderable {
         }
     }
 
-    fun cleanup() { /* lifetime handled by renderer; no-op */ }
+    fun cleanup() {
+        pipelineDisposeToken.disable()
+        if (pipeline != 0L) {
+            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
+            pipeline = 0L
+        }
+        if (pipelineLayout != 0L) {
+            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
+            pipelineLayout = 0L
+        }
+        if (msm != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, msm, null)
+            msm = 0L
+        }
+        if (tsm != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, tsm, null)
+            tsm = 0L
+        }
+        if (fsm != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
+            fsm = 0L
+        }
+    }
 
     private fun createShaderModule(code: ByteBuffer): Long {
         MemoryStack.stackPush().use { stack ->

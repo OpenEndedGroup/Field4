@@ -256,7 +256,7 @@ class SwapChain(
         }.toTypedArray()
 
         result.forEachIndexed { i, iv ->
-            device.nameObject(iv.vkImage, VK10.VK_OBJECT_TYPE_IMAGE, "SwapchainImage[$i]")
+            device.nameObject(iv.image, VK10.VK_OBJECT_TYPE_IMAGE, "SwapchainImage[$i]")
             device.nameObject(iv.vkImageView, VK10.VK_OBJECT_TYPE_IMAGE_VIEW, "SwapchainView[$i]")
         }
 

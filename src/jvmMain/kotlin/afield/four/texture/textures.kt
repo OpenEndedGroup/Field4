@@ -15,7 +15,12 @@ import afield.four.modules.fromContext
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import java.nio.ByteBuffer
 
-class LoadedTexture(fileName: String, val renderer: Renderer = fromContext(), imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB) : HasImageView {
+class LoadedTexture private constructor(
+    private val sourceName: String,
+    val renderer: Renderer = fromContext(),
+    imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB,
+    decoded: DecodedImage
+) : HasImageView {
     val fileName: String
     var height = 0
     lateinit var image: Image
@@ -27,37 +32,97 @@ class LoadedTexture(fileName: String, val renderer: Renderer = fromContext(), im
 
     init {
         recordedTransition = false
-        this.fileName = fileName
-        var buf: ByteBuffer? = null
-        try {
+        this.fileName = sourceName
+        this.width = decoded.width
+        this.height = decoded.height
+        this.mipLevels = 1
+
+        createStgBuffer(renderer.device, decoded.data)
+        val imageData: ImageData = ImageData().width(width).height(height)
+            .usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK10.VK_IMAGE_USAGE_SAMPLED_BIT).format(imageFormat)
+            .mipLevels(mipLevels)
+
+        image = Image(renderer.device, imageData)
+        val imageViewData: ImageViewData =
+            ImageViewData().format(image.format).aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(mipLevels)
+        imageView = ImageView(renderer.device, image, imageViewData)
+    }
+
+    companion object {
+        private data class DecodedImage(val data: ByteBuffer, val width: Int, val height: Int)
+
+        private fun decodeFile(path: String): DecodedImage {
             MemoryStack.stackPush().use { stack ->
                 val w = stack.mallocInt(1)
                 val h = stack.mallocInt(1)
                 val channels = stack.mallocInt(1)
-
-                buf = stbi_load(fileName, w, h, channels, 4)
-                if (buf == null) {
-                    throw RuntimeException("Image file [" + fileName + "] not loaded: " + stbi_failure_reason())
-                }
-
-                width = w.get()
-                height = h.get()
-                mipLevels = 1
-
-                createStgBuffer(renderer.device, buf!!)
-                val imageData: ImageData = ImageData().width(width).height(height)
-                    .usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK10.VK_IMAGE_USAGE_SAMPLED_BIT).format(imageFormat)
-                    .mipLevels(mipLevels)
-
-                image = Image(renderer.device, imageData)
-                val imageViewData: ImageViewData =
-                    ImageViewData().format(image.format).aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(mipLevels)
-                imageView = ImageView(renderer.device, image.vkImage, imageViewData)
+                val buf = stbi_load(path, w, h, channels, 4)
+                    ?: throw RuntimeException("Image file [$path] not loaded: ${stbi_failure_reason()}")
+                return DecodedImage(buf, w.get(), h.get())
             }
-        } finally {
-            buf?.let {
-                stbi_image_free(it)
+        }
+
+        private fun decodeMemory(data: ByteBuffer): DecodedImage {
+            MemoryStack.stackPush().use { stack ->
+                val w = stack.mallocInt(1)
+                val h = stack.mallocInt(1)
+                val channels = stack.mallocInt(1)
+                val buf = stbi_load_from_memory(data, w, h, channels, 4)
+                    ?: throw RuntimeException("Image buffer not loaded: ${stbi_failure_reason()}")
+                return DecodedImage(buf, w.get(), h.get())
             }
+        }
+
+        fun fromFile(
+            fileName: String,
+            renderer: Renderer = fromContext(),
+            imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
+        ): LoadedTexture {
+            val decoded = decodeFile(fileName)
+            try {
+                return LoadedTexture(fileName, renderer, imageFormat, decoded)
+            } finally {
+                stbi_image_free(decoded.data)
+            }
+        }
+
+        fun fromEncodedMemory(
+            name: String,
+            encoded: ByteBuffer,
+            renderer: Renderer = fromContext(),
+            imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
+        ): LoadedTexture {
+            val decoded = decodeMemory(encoded)
+            try {
+                return LoadedTexture(name, renderer, imageFormat, decoded)
+            } finally {
+                stbi_image_free(decoded.data)
+            }
+        }
+
+        operator fun invoke(
+            fileName: String,
+            renderer: Renderer = fromContext(),
+            imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
+        ): LoadedTexture = fromFile(fileName, renderer, imageFormat)
+
+        private val stubCache = java.util.WeakHashMap<Renderer, LoadedTexture>()
+        fun stubTexture(
+            renderer: Renderer = fromContext(),
+            rgba: FloatArray = floatArrayOf(1f, 0.5f, 0.3f, 1f),
+            imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
+        ): LoadedTexture {
+            stubCache[renderer]?.let { return it }
+            val data = MemoryUtil.memAlloc(4) // just leak it
+            data.put((rgba[0].coerceIn(0f,1f)*255f).toInt().toByte())
+            data.put((rgba[1].coerceIn(0f,1f)*255f).toInt().toByte())
+            data.put((rgba[2].coerceIn(0f,1f)*255f).toInt().toByte())
+            data.put((rgba[3].coerceIn(0f,1f)*255f).toInt().toByte())
+            data.flip()
+            val decoded = DecodedImage(data, 1, 1)
+            val tex = LoadedTexture("stub_1x1", renderer, imageFormat, decoded)
+            stubCache[renderer] = tex
+            return tex
         }
     }
 
@@ -189,7 +254,7 @@ class StorageImage(val renderer: Renderer, val width: Int, val height: Int, val 
                 image = Image(renderer.device, imageData)
 
                 val imageViewData: ImageViewData = ImageViewData().format(image.format).aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT)
-                imageView = ImageView(renderer.device, image.vkImage, imageViewData)
+                imageView = ImageView(renderer.device, image, imageViewData)
             }
         } finally {
             if (buf != null) {

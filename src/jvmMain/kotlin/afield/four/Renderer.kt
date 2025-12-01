@@ -12,6 +12,7 @@ import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
 import afield.four.texture.ImageView
 import afield.four.util.MapOfSequences
+import afield.four.util.AutoDisposer
 import afield.four.util.Options
 import afield.four.util.Window
 import afield.logTime
@@ -32,7 +33,7 @@ import org.lwjgl.vulkan.VkSubmitInfo2
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo
 import org.lwjgl.vulkan.VkCommandBufferSubmitInfo
 
-interface Target { fun render(command: CommandBuffer, index: Int) }
+fun interface Target { fun render(command: CommandBuffer, index: Int) }
 
 fun target(a: (CommandBuffer, Int) -> Unit) = object : Target {
     override fun render(command: CommandBuffer, index: Int) = a(command, index)
@@ -93,7 +94,7 @@ class Renderer(val window: Window) {
     var computeFences: Array<Fence>
 
     var cleanup = mutableListOf<Runnable>()
-    var cleanupStack = mutableListOf<MutableList<Runnable>>()
+    var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
 
     var referenceQueue: ReferenceQueue<VulkanBuffer> = ReferenceQueue()
 
@@ -382,16 +383,20 @@ class Renderer(val window: Window) {
             }
 
             // Deferred cleanup queue
-            cleanupStack.add(cleanup)
+            cleanupStack.add(frameCounter to cleanup)
             cleanup = mutableListOf()
-            if (cleanupStack.size >= numImages * 8) {
-                val toRun = cleanupStack.removeAt(0)
+            val thresholdFrame = frameCounter - numImages * 8
+            while (cleanupStack.isNotEmpty() && cleanupStack.first().first <= thresholdFrame) {
+                val (_, toRun) = cleanupStack.removeAt(0)
                 if (toRun.isNotEmpty()) {
                     val copy = ArrayList(toRun)
                     toRun.clear()
                     copy.forEach { it.run() }
                 }
             }
+
+            // Drain GC-driven disposals onto the render-thread cleanup queue
+            AutoDisposer.drain { cleanup.add(it) }
 
             renderEnd.update()
             CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = frameCounter)
