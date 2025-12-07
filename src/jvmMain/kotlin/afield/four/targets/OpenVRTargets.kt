@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.Generator
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
@@ -40,6 +41,7 @@ private class EyeImage(
     var height = height; private set
 
     private var colorLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
+
 
     init {
         val usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or VK_IMAGE_USAGE_SAMPLED_BIT or VK_IMAGE_USAGE_TRANSFER_SRC_BIT
@@ -534,6 +536,8 @@ class OpenVRRenderTarget(
 
     private fun vec3From(src: HmdVector3): Vector3f = Vector3f(src.v(0), src.v(1), src.v(2))
 
+        private val whileDownSeq = mutableMapOf<String, MutableList<Generator<Boolean, Boolean>>>()
+
     // --- Controller buttons (OpenVR) -> KeyEvents-style handling -----------------
     inner class ControllerButtonEvents(val name: String = "__controllerButtons__") {
         // Handlers (same shape as KeyEvents)
@@ -589,10 +593,19 @@ class OpenVRRenderTarget(
                                 when (val r = cb()) {
                                     DownResult.Keep -> toKeep += k to cb
                                     DownResult.Remove -> { /* drop */ }
-                                    is DownResult.UntilUp -> {
+                                    is DownResult.OnUp -> {
                                         pendingUp.getOrPut(n) { mutableListOf() }.add(r.onUp)
                                         toKeep += k to cb
                                     }
+                                    is DownResult.WhileDown -> {
+                                        val gen = r.generator
+                                        val first = gen.start()
+                                        if (!gen.isCompleted) {
+                                            whileDownSeq.getOrPut(n) { mutableListOf() }.add(gen)
+                                        }
+                                        toKeep += k to cb
+                                    }
+
                                 }
                             }
                             map.clear()
@@ -601,7 +614,24 @@ class OpenVRRenderTarget(
                     }
 
                     // Fire transient onUp from down-handlers first
-                    newUp.forEach { n -> pendingUp.remove(n)?.forEach { it.invoke() } }
+                    newUp.forEach { n ->
+                        pendingUp.remove(n)?.forEach { it.invoke() }
+                        // leave generators present; they'll be stepped once more with input=false below
+                    }
+
+                    // Run WhileDown generators
+                    whileDownSeq.entries.toList().forEach { (k, gens) ->
+                        val input = nowDown.contains(k)
+                        val toRemove = mutableListOf<Generator<Boolean, Boolean>>()
+                        gens.forEach { g ->
+                            if (!g.isCompleted) {
+                                g.next(input)
+                            }
+                            if (g.isCompleted) toRemove += g
+                        }
+                        gens.removeAll(toRemove)
+                        if (gens.isEmpty()) whileDownSeq.remove(k)
+                    }
 
                     // Then fire normal UP handlers; allow self-unregister via Boolean
                     newUp.forEach { n -> up[n]?.let { map -> map.values.retainAll { it.invoke() } } }
@@ -620,7 +650,7 @@ class OpenVRRenderTarget(
         }
 
         fun onDownUntilUp(key: String, name: String, onUp: () -> Unit) {
-            onDownAndUp(key, name) { DownResult.UntilUp(onUp) }
+            onDownAndUp(key, name) { DownResult.OnUp(onUp) }
         }
 
         fun onDown(key: String, name: String, callback: () -> Boolean) {

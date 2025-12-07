@@ -8,6 +8,7 @@ import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
+import kotlin.math.pow
 
 class KeyCamera(
     val renderer: Renderer = fromContext(),
@@ -27,6 +28,7 @@ class KeyCamera(
     private var lastRightShiftDownTimeMs: Long = 0L
     private var wasRightShiftDown: Boolean = false
     private var actionsFrozen: Boolean = false
+    private var lastTimeNs: Long = System.nanoTime()
 
     // snapshot for reset
     private val initialAt = Vector3f(camera.at)
@@ -40,16 +42,25 @@ class KeyCamera(
     init {
         renderer.window.onPoll[name] = sequence {
             while (true) {
+                val now = System.nanoTime()
+                var dt = (now - lastTimeNs) / 1_000_000_000.0
+                lastTimeNs = now
+                // clamp to avoid huge jumps
+                dt = dt.coerceIn(0.0, 0.5)
+                val frameFactor = (dt / (1.0 / 60.0))
+
                 checkKeys()
 
                 // decay & run actions
                 actions.entries.retainAll { entry ->
                     var (amount, action) = entry.value
                     val localDecay = perActionDecays.computeIfAbsent(entry.key) { decay }
-                    amount *= localDecay
+                    // decay factor scaled by dt so behavior is framerate-independent
+                    val decayFactor = localDecay.pow(frameFactor)
+                    amount *= decayFactor
                     entry.setValue(amount to action)
                     actions[entry.key] = amount to action
-                    action(amount)
+                    action(amount * frameFactor)
                     amount > 0.01
                 }
 

@@ -3,7 +3,8 @@ package afield.four.util
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import org.lwjgl.glfw.GLFW
-
+import afield.Generator
+import afield.GeneratorScope
 
 /** Result contract for "down" handlers. */
 sealed class DownResult {
@@ -17,9 +18,17 @@ sealed class DownResult {
      * Register a one-shot callback that will be invoked the next time the same key/button goes UP
      * (i.e., the matching release for this specific press). The handler itself remains registered.
      */
-    class UntilUp(val onUp: () -> Unit) : DownResult()
-}
+    data class OnUp(val onUp: () -> Unit) : DownResult()
 
+    /**
+     * Register a per-frame generator that will be stepped every poll.
+     * The Boolean input is `true` while the key is down, `false` after release.
+     * The generator is driven until completion.
+     */
+    data class WhileDown(val generator: Generator<Boolean, Boolean>) : DownResult() {
+        constructor(g : suspend GeneratorScope<Boolean, Boolean>.() -> Unit) : this(Generator(g))
+    }
+}
 
 class KeyEvents(val renderer: Renderer = fromContext(), val name: String = "__keyevents__") {
     companion object {
@@ -41,6 +50,8 @@ class KeyEvents(val renderer: Renderer = fromContext(), val name: String = "__ke
 
     // Per-press, transient onUp callbacks created by down-handlers
     private val pendingUp = mutableMapOf<String, MutableList<() -> Unit>>()
+    // Per-press, transient per-frame generators created by down-handlers
+    private val pendingGenerators = mutableMapOf<String, MutableList<Generator<Boolean, Boolean>>>()
 
 
     fun onDownAndUp(key: String, name: String, callback: () -> DownResult) {
@@ -49,7 +60,7 @@ class KeyEvents(val renderer: Renderer = fromContext(), val name: String = "__ke
 
     // === Registration (backwards compatible) ===
     fun onDownUntilUp(key: String, name: String, onUp: () -> Unit) {
-        onDownAndUp(key, name) { DownResult.UntilUp(onUp) }
+        onDownAndUp(key, name) { DownResult.OnUp(onUp) }
     }
 
     fun onDown(key: String, name: String, callback: () -> Boolean) {
@@ -86,8 +97,18 @@ class KeyEvents(val renderer: Renderer = fromContext(), val name: String = "__ke
                                 DownResult.Remove -> { /* drop */
                                 }
 
-                                is DownResult.UntilUp -> {
+                                is DownResult.OnUp -> {
                                     pendingUp.getOrPut(n) { mutableListOf() }.add(r.onUp)
+                                    toKeep += k to cb  // keep handler for future presses
+                                }
+
+                                is DownResult.WhileDown -> {
+                                    val gen = r.generator
+                                    val first = gen.start()
+                                    if (!gen.isCompleted) {
+                                        pendingGenerators.getOrPut(n) { mutableListOf() }.add(gen)
+                                    }
+                                    // ignore first output
                                     toKeep += k to cb  // keep handler for future presses
                                 }
                             }
@@ -98,8 +119,23 @@ class KeyEvents(val renderer: Renderer = fromContext(), val name: String = "__ke
                     }
                 }
 
+                // Step per-frame generators for keys that have generators (down or released)
+                pendingGenerators.entries.toList().forEach { (key, gens) ->
+                    val input = nowDown.contains(key)
+                    val toRemove = mutableListOf<Generator<Boolean, Boolean>>()
+                    gens.forEach { g ->
+                        if (!g.isCompleted) {
+                            g.next(input)
+                        }
+                        if (g.isCompleted) toRemove += g
+                    }
+                    gens.removeAll(toRemove)
+                    if (gens.isEmpty()) pendingGenerators.remove(key)
+                }
+
                 // Fire transient onUp from down-handlers first
                 newUp.forEach { n ->
+                    pendingGenerators.remove(n) // remaining gens will be driven above with input=false
                     pendingUp.remove(n)?.forEach { it.invoke() }
                 }
 

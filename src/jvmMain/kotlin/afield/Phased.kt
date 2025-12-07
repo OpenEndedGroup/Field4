@@ -1,9 +1,9 @@
 package afield
 
 import kotlinx.coroutines.*
+import org.joml.Vector3f
 import java.util.concurrent.LinkedTransferQueue
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.*
 
 class Frames {
     var job: Job? = null
@@ -83,8 +83,8 @@ fun forever(block: suspend Frames.() -> Boolean): Frames {
 
     v.body = suspend {
         var f = v.frameNumber
-        while(block(v)) {
-            if (v.frameNumber==f) {
+        while (block(v)) {
+            if (v.frameNumber == f) {
                 v.frame()
             }
             f = v.frameNumber
@@ -99,9 +99,9 @@ fun loop(block: suspend Frames.() -> Unit): Frames {
 
     v.body = suspend {
         var f = v.frameNumber
-        while(true) {
+        while (true) {
             block(v)
-            if (v.frameNumber==f) {
+            if (v.frameNumber == f) {
                 v.frame()
             }
             f = v.frameNumber
@@ -114,7 +114,7 @@ fun loop(block: suspend Frames.() -> Unit): Frames {
 
 fun eachFrame(block: suspend Frames.() -> Unit): Frames {
     return frames {
-        while(frame()) {
+        while (frame()) {
             this.block()
         }
     }
@@ -156,18 +156,189 @@ fun (suspend () -> Unit).then(next: suspend () -> Unit): (suspend () -> Unit) {
     }
 }
 
-//context(CoroutineScope)
-//fun (suspend () -> Unit).and(next: suspend () -> Unit): (suspend () -> Unit) {
-//    val first = this
-//    return suspend {
-//        var a = launch {
-//            first()
-//        }
-//        var b = launch {
-//            next()
-//        }
-//        a.join()
-//        b.join()
-//    }
-//}
 
+/**
+ * Scope available inside `generator { ... }`.
+ *
+ * - Call `yield(out)` to emit a value to the caller.
+ * - `yield(out)` SUSPENDS and RETURNS the next input value that is sent in
+ *   via `Generator.next(input)`.
+ */
+class GeneratorScope<In, Out>(
+    private val onYield: (Out, Continuation<In>) -> Unit
+) {
+    suspend fun yield(value: Out): In =
+        suspendCoroutine { cont: Continuation<In> ->
+            onYield(value, cont)
+        }
+}
+
+/**
+ * Python-style generator that supports `yield(out)` / `send(input)`-like behavior.
+ *
+ * Usage:
+ *   val gen = generator<Float, Boolean> { ... }
+ *   val firstOut = gen.start()
+ *   val nextOut  = gen.next(dt)
+ */
+class Generator<In, Out> internal constructor(
+    private val block: suspend GeneratorScope<In, Out>.() -> Unit
+) {
+    private val scope = GeneratorScope<In, Out> { value, cont ->
+        pendingOutput = value
+        waitingContinuation = cont
+    }
+
+    private var started = false
+    private var completed = false
+    private var failure: Throwable? = null
+
+    private var pendingOutput: Out? = null
+    private var waitingContinuation: Continuation<In>? = null
+
+    /**
+     * Starts the coroutine and runs until the first `yield`.
+     * Returns the first yielded value, or null if the generator completed
+     * without yielding anything.
+     */
+    fun start(): Out? {
+        check(!started) { "Generator already started" }
+        started = true
+
+        block.startCoroutine(scope, object : Continuation<Unit> {
+            override val context: CoroutineContext = EmptyCoroutineContext
+
+            override fun resumeWith(result: Result<Unit>) {
+                completed = true
+                failure = result.exceptionOrNull()
+            }
+        })
+
+        return pollOutput()
+    }
+
+    /**
+     * Resume after a `yield`, providing the next input.
+     * Returns the next yielded value, or null if the generator has completed.
+     */
+    fun next(input: In): Out? {
+        check(started) { "Call start() before next()" }
+        if (completed) return null
+
+        val cont = waitingContinuation
+            ?: error("Generator is not currently suspended at yield()")
+
+        waitingContinuation = null
+        cont.resume(input)
+
+        return pollOutput()
+    }
+
+    val isCompleted: Boolean
+        get() = completed && failure == null
+
+    private fun pollOutput(): Out? {
+        // Propagate any exception from inside the generator
+        failure?.let { throw it }
+
+        if (completed && pendingOutput == null) {
+            return null
+        }
+
+        val out = pendingOutput
+        pendingOutput = null
+        return out
+    }
+}
+
+/**
+ * `sequence { ... }`-style helper.
+ *
+ * Inside the block you can:
+ *   val input: In = yield(out)
+ */
+@JvmName("generator_2") fun <In, Out> generator(
+    block: suspend GeneratorScope<In, Out>.() -> Unit
+): Generator<In, Out> = Generator(block)
+
+/**
+ * Convenience overload when you don't need to send inputs.
+ * Input type is `Unit`, so `yield(out)` just returns `Unit`.
+ */
+@JvmName("generator_1") fun <Out> generator(
+    block: suspend GeneratorScope<Unit, Out>.() -> Unit
+): Generator<Unit, Out> = Generator(block)
+
+/* -------------------------------------------------------------------------- */
+/*                                COMBINATORS                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sequential composition: (this + other)
+ *
+ * Drives `this` to completion, then `other`, sharing the same input/output
+ * types.
+ *
+ * Both generators are assumed to be "fresh" (not yet started) when composed.
+ */
+operator fun <In, Out> Generator<In, Out>.plus(
+    other: Generator<In, Out>
+): Generator<In, Out> = generator<In, Out> {
+    // First, run the left generator
+    var out = this@plus.start()
+    while (out != null) {
+        val input: In = yield(out)
+        out = this@plus.next(input)
+    }
+
+    // Then, run the right generator
+    out = other.start()
+    while (out != null) {
+        val input: In = yield(out)
+        out = other.next(input)
+    }
+}
+
+/**
+ * Parallel / lockstep composition: (this % other)
+ *
+ * Both generators receive the same input `In` each step.
+ * On each step, yields a Pair of their outputs (OutA, OutB).
+ *
+ * The combined generator stops when EITHER underlying generator completes
+ * (zip-style semantics).
+ */
+operator fun <In, A, B> Generator<In, A>.rem(
+    other: Generator<In, B>
+): Generator<In, Pair<A, B>> = generator<In, Pair<A, B>> {
+    var outA = this@rem.start()
+    var outB = other.start()
+
+    // Zip-style: stop when either side finishes
+    while (outA != null && outB != null) {
+        val combined = outA to outB
+        val input: In = yield(combined)
+
+        outA = this@rem.next(input)
+        outB = other.next(input)
+    }
+}
+
+fun <In, Out, Out2> Generator<In, Out>.map(m: (Out) -> (Out2)) = generator<In, Out2> {
+    var a = this@map.start()
+    while (a != null) {
+        a = this@map.next(yield(m(a)))
+    }
+}
+
+infix fun <In, Out, Out2> Generator<In, Out>.pipe(g : Generator<Out, Out2>) = generator<In, Out2> {
+    var a: Out? = this@pipe.start() ?: return@generator
+    val b: Out2 = g.start() ?: return@generator
+
+    while (a != null) {
+        val o = g.next(a) ?: break
+
+        val i = yield(o)
+        a = this@pipe.next(i)
+    }
+}

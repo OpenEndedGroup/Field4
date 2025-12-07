@@ -1,5 +1,6 @@
 package afield.four.util
 
+import afield.Generator
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.stdlib.Vec2
@@ -58,6 +59,8 @@ class MouseEvents(
 
     // Transient per-press onUp callbacks created by down-handlers
     private val pendingUp = mutableMapOf<String, MutableList<(MouseEvent) -> Unit>>()
+    // Transient per-press per-frame generators created by down-handlers
+    private val pendingGenerators = mutableMapOf<String, MutableList<Generator<Boolean, Boolean>>>()
 
     // === Registration (backwards compatible) ===
     fun onDown(button: String, name: String, callback: () -> Boolean) =
@@ -69,7 +72,7 @@ class MouseEvents(
 
     /** Handy helper to attach a one-shot onUp for this button press. */
     fun onDownUntilUp(button: String, name: String, onUp: (MouseEvent) -> Unit) =
-        onDown(button, name) { ev -> DownResult.UntilUp { onUp(ev) } }
+        onDown(button, name) { ev -> DownResult.OnUp { onUp(ev) } }
 
     fun onUp(button: String, name: String, callback: () -> Boolean) =
         onUp(button, name) { _ -> callback() }
@@ -131,10 +134,19 @@ class MouseEvents(
                             when (val r = cb(ev)) {
                                 DownResult.Keep -> toKeep += k to cb
                                 DownResult.Remove -> { /* drop */ }
-                                is DownResult.UntilUp -> {
+                                is DownResult.OnUp -> {
                                     pendingUp.getOrPut(bName) { mutableListOf() }.add { upEv ->
                                         r.onUp.invoke()
                                     }
+                                    toKeep += k to cb
+                                }
+                                is DownResult.WhileDown -> {
+                                    val gen = r.generator
+                                    val first = gen.start()
+                                    if (!gen.isCompleted) {
+                                        pendingGenerators.getOrPut(bName) { mutableListOf() }.add(gen)
+                                    }
+                                    // ignore first output
                                     toKeep += k to cb
                                 }
                             }
@@ -144,10 +156,23 @@ class MouseEvents(
                     }
                 }
 
+                // Step per-frame generators for buttons that have generators (down or released)
+                pendingGenerators.entries.toList().forEach { (bName, gens) ->
+                    val input = nowDown.contains(bName)
+                    val toRemove = mutableListOf<Generator<Boolean, Boolean>>()
+                    gens.forEach { g ->
+                        if (!g.isCompleted) g.next(input)
+                        if (g.isCompleted) toRemove += g
+                    }
+                    gens.removeAll(toRemove)
+                    if (gens.isEmpty()) pendingGenerators.remove(bName)
+                }
+
                 // UP: first fire transient per-press callbacks, then regular UP handlers
                 if (newUp.isNotEmpty()) {
                     newUp.forEach { bName ->
                         val ev = MouseEvent(pos, Vec2(), Vec2(), buttonsDownSnapshot, bName, MouseEvent.Type.UP)
+                        pendingGenerators.remove(bName) // remaining gens driven above with input=false
                         pendingUp.remove(bName)?.forEach { it(ev) }
                         up[bName]?.let { map ->
                             map.values.retainAll { it(ev) }
