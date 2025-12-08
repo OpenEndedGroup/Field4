@@ -20,7 +20,13 @@ import afield.four.modules.pointer
 import afield.four.texture.image_layout_transition
 import org.lwjgl.system.MemoryStack
 
-class RenderTarget(val renderer: Renderer) : Target {
+class RenderTarget(
+    val renderer: Renderer,
+    private val contextProvider: () -> Renderer.WindowContext = { renderer.windowContext(0) },
+    val windowIndex: Int = 0
+) : Target {
+
+    private val ctx get() = contextProvider()
 
     var modules = mutableMapOf<String, ModulePointer>()
     var meshModules = mutableMapOf<String, MeshModulePointer>()
@@ -64,7 +70,7 @@ class RenderTarget(val renderer: Renderer) : Target {
     var seenBefore = mutableSetOf<Int>()
 
     override fun render(command: CommandBuffer, index: Int) {
-        val swapChainExtent = renderer.swapChain.swapChainExtent
+        val swapChainExtent = ctx.swapChain.swapChainExtent
         val width = swapChainExtent.width()
         val height = swapChainExtent.height()
 
@@ -96,7 +102,7 @@ class RenderTarget(val renderer: Renderer) : Target {
 
                 image_layout_transition(
                     command.vkCommandBuffer,
-                    renderer.swapChain.imageViews[index].image,
+                    ctx.swapChain.imageViews[index].image,
                     srcStage,
                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                     srcAccess,
@@ -110,7 +116,7 @@ class RenderTarget(val renderer: Renderer) : Target {
             // Depth initial transition (UNDEFINED -> DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             image_layout_transition(
                 command.vkCommandBuffer,
-                renderer.depthAttachments[index].image,
+                ctx.depthAttachments[index].image,
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                 0,
@@ -125,7 +131,7 @@ class RenderTarget(val renderer: Renderer) : Target {
             val colorAttachment =
                 VkRenderingAttachmentInfoKHR.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
-                    .imageView(renderer.swapChain.imageViews[index].vkImageView)
+                    .imageView(ctx.swapChain.imageViews[index].vkImageView)
                     .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
@@ -143,7 +149,7 @@ class RenderTarget(val renderer: Renderer) : Target {
             val depthAttachment =
                 VkRenderingAttachmentInfoKHR.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
-                    .imageView(renderer.depthAttachments[index].imageView.vkImageView)
+                    .imageView(ctx.depthAttachments[index].imageView.vkImageView)
                     .imageLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
@@ -189,7 +195,7 @@ class RenderTarget(val renderer: Renderer) : Target {
             // With sync2 you can use NONE for dst stage/access.
             image_layout_transition(
                 command.vkCommandBuffer,
-                renderer.swapChain.imageViews[index].image,
+                ctx.swapChain.imageViews[index].image,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_2_NONE,
                 VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,

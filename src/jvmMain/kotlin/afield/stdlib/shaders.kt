@@ -434,7 +434,7 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
 
     val previousResolver = p.textureResolver
     p.textureResolver = {
-        val r = previousResolver.invoke(it)
+        val r: Pair<Array<ImageView>, TextureSampler>? = previousResolver.invoke(it)
         if (r != null) r else {
             println(" searching for texture ${it.name}")
             val name = it.name

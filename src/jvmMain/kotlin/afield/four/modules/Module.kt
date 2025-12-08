@@ -44,7 +44,8 @@ data class Parameters(
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
-        throw Exception("Cannot resolve texture ${it.name}")
+        System.err.println("Cannot resolve texture ${it.name}")
+        null
     },
     var uboResolver: (BufferParameters) -> BufferParameters? = {
         val lb = linkBuffer(it.name, it)

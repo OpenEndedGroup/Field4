@@ -64,17 +64,21 @@ data class RTTParameters(
  * single-buffered offscreen target (with multi-buffered commandbuffers), supporting N color attachments.
  * Optional depth+stencil buffer for depth testing while rendering to texture.
  */
-class RenderToTexture(
+open class RenderToTexture(
     val renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
 ) : Target, HasImageView, HasImageViewArray {
 
     var parameters = RTTParameters().apply(parameters)
 
-    override var imageView: ImageView
-    val colorImageRefs: List<Image?>          // null when external view has no underlying Image
-    val colorImageHandles: List<Long>         // always the underlying VkImage handle
+    override val imageView: ImageView
+        get() = imageViewArray.first()
+
+    val colorImageRefs: MutableList<Image?>          // null when external view has no underlying Image
+    val colorImageHandles: MutableList<Long>         // always the underlying VkImage handle
+    protected val mutableImageViewArray: MutableList<ImageView>
     override val imageViewArray: List<ImageView>
+        get() = mutableImageViewArray
     val colorFormats: List<Int>
     val colorLayerCount: Int
 
@@ -83,16 +87,16 @@ class RenderToTexture(
     var depthImage: Image? = null
 
     // Track current layouts across frames (base color level and depth).
-    private var colorLayout: IntArray = intArrayOf()   // tracks mip level 0 per attachment
+    protected var colorLayout: IntArray = intArrayOf()   // tracks mip level 0 per attachment
     private var depthLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
 
     // Track whether mips (levels 1..N-1) have ever been initialized (affects oldLayout for barriers)
-    private var colorMipsInitialized: BooleanArray = booleanArrayOf()
+    protected var colorMipsInitialized: BooleanArray = booleanArrayOf()
 
     // Cached format capabilities & chosen filter
-    private var colorFormatCanBlit: BooleanArray = booleanArrayOf()
-    private var colorFormatLinearBlit: BooleanArray = booleanArrayOf()
-    private var chosenMipFilter: IntArray = intArrayOf()
+    protected var colorFormatCanBlit: BooleanArray = booleanArrayOf()
+    protected var colorFormatLinearBlit: BooleanArray = booleanArrayOf()
+    protected var chosenMipFilter: IntArray = intArrayOf()
 
     val width: Int get() = parameters.width
     val height: Int get() = parameters.height
@@ -196,8 +200,7 @@ class RenderToTexture(
             }
         }
 
-        imageViewArray = tmpViews.map { requireNotNull(it) }
-        imageView = imageViewArray.first()
+        mutableImageViewArray = tmpViews.map { requireNotNull(it) }.toMutableList()
         colorImageRefs = tmpImageRefs
         colorImageHandles = tmpImageHandles
         colorLayout = IntArray(colorImageHandles.size) { VK_IMAGE_LAYOUT_UNDEFINED }
@@ -238,7 +241,12 @@ class RenderToTexture(
         }.toTypedArray()
     }
 
+    protected open fun beforeRender(index: Int) {}
+
+    protected open fun afterRender(index: Int) {}
+
     override fun render(command: CommandBuffer, index: Int) {
+        beforeRender(index)
         MemoryStack.stackPush().use { stack ->
             // COLOR subresource range for mip 0 ONLY (we don't touch other mips during the attachment phase)
         // Initial COLOR transition for mip 0 based on tracked layout + ops
@@ -538,6 +546,7 @@ class RenderToTexture(
                 depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
             }
         } // MemoryStack.use
+        afterRender(index)
     }
 
     @JvmName("plusAssign")

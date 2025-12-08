@@ -65,7 +65,36 @@ object CPUSpan {
     }
 }
 
-class Renderer(val window: Window) {
+class Renderer(
+    private val mainWindow: Window,
+    additionalWindows: List<Window> = emptyList()
+) {
+
+    data class WindowContext(
+        val window: Window,
+        val surface: Surface,
+        var swapChain: SwapChain,
+        var depthAttachments: MutableList<Attachment>,
+        var commandBuffers: Array<CommandBuffer>,
+        var computeCommandBuffers: Array<CommandBuffer>,
+        var fences: Array<Fence>,
+        var computeFences: Array<Fence>,
+        var computeFinishedSemaphores: Array<Semaphore>,
+        var numImages: Int,
+        var currentImage: Int = 0,
+        var renderTarget: RenderTarget,
+        var profilerState: ProfilerState? = null
+    )
+
+    data class ProfilerState(
+        val profiler: GpuProfiler,
+        var markers: Array<FrameMarkers>,
+        var perImageModuleMarks: Array<MutableList<ModuleMarks>>,
+        val pending: ArrayDeque<Pending> = ArrayDeque()
+    )
+
+    val windows: List<Window> = listOf(mainWindow) + additionalWindows
+    val window: Window get() = windows.first()
 
     // --- Core Vulkan objects ---
     val commandPool: CommandPool
@@ -76,37 +105,37 @@ class Renderer(val window: Window) {
     val physicalDevice: PhysicalDevice
     val pipelineCache: PipelineCache
     val presentQueue: PresentQueue
-    val surface: Surface
-    var swapChain: SwapChain
+    val surface: Surface get() = defaultContext.surface
+    val swapChain: SwapChain get() = defaultContext.swapChain
 
-    var computeFinishedSemaphores: Array<Semaphore>
-    var depthAttachments = mutableListOf<Attachment>()
-
-    var renderList: RenderTarget = RenderTarget(this)
     var computeList: ComputeTarget = ComputeTarget(this)
 
-    var numImages = 0
-    var currentImage = 0
+    var currentImage: Int
+        get() = defaultContext.currentImage
+        private set(value) { defaultContext.currentImage = value }
 
-    var commandBuffers: Array<CommandBuffer>
-    var computeCommandBuffers: Array<CommandBuffer>
-    var fences: Array<Fence>
-    var computeFences: Array<Fence>
+    val numImages: Int
+        get() = defaultContext.numImages
+
+    val depthAttachments: MutableList<Attachment> get() = defaultContext.depthAttachments
+
+    var renderList: RenderTarget
+        get() = defaultContext.renderTarget
+        set(value) { defaultContext.renderTarget = value }
+
+    private val windowContexts = mutableListOf<WindowContext>()
+    private val defaultContext get() = windowContexts.first()
+    fun windowContext(index: Int = 0): WindowContext = windowContexts[index]
+    fun renderTargetFor(windowIndex: Int = 0): RenderTarget = windowContext(windowIndex).renderTarget
 
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
-
-    var referenceQueue: ReferenceQueue<VulkanBuffer> = ReferenceQueue()
 
     var renderStart = MapOfSequences<String>()
     var renderEnd = MapOfSequences<String>()
     var currentCommandBuffer: CommandBuffer? = null
 
-    // Profiling
-    private var profiler: GpuProfiler? = null
-    fun getProfiler(): GpuProfiler? = profiler
-
-    private data class FrameMarkers(
+    data class FrameMarkers(
         var tsFrameBegin: Int = -1,
         var tsAfterCompute: Int = -1,
         var tsAfterGraphics: Int = -1,
@@ -115,11 +144,7 @@ class Renderer(val window: Window) {
         var pipeStatsGraphics: Int = -1,
         var perfFrameIndex: Int = -1
     )
-    private lateinit var markers: Array<FrameMarkers>
-
-    // Deferred readback
-    private data class Pending(val imageIndex: Int)
-    private val pending = ArrayDeque<Pending>()
+    data class Pending(val imageIndex: Int)
     private companion object { const val READBACK_LAG = 3 }
 
     // Per-module instrumentation
@@ -130,99 +155,61 @@ class Renderer(val window: Window) {
         var pipeStatsIndex: Int = -1,
         var perfIndex: Int = -1
     )
-    private lateinit var perImageModuleMarks: Array<MutableList<ModuleMarks>>
-    fun registerModuleMarks(imageIndex: Int, marks: ModuleMarks) { perImageModuleMarks[imageIndex].add(marks) }
+    fun registerModuleMarks(imageIndex: Int, marks: ModuleMarks) {
+        registerModuleMarks(windowIndex = 0, imageIndex = imageIndex, marks = marks)
+    }
+
+    fun registerModuleMarks(windowIndex: Int, imageIndex: Int, marks: ModuleMarks) {
+        val ctx = windowContexts.getOrNull(windowIndex) ?: return
+        val ps = ctx.profilerState ?: return
+        ps.perImageModuleMarks.getOrNull(imageIndex)?.add(marks)
+    }
 
     init {
         instance = Instance(Options.validate)
         physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
         device = Device(physicalDevice)
         instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)
-        surface = Surface(physicalDevice, window.windowHandle)
         graphQueue = GraphicsQueue(device, 0)
-        presentQueue = PresentQueue(device, surface, 0)
-        swapChain = SwapChain(
-            device,
-            surface,
-            window,
-            Options.requestedImages,
-            Options.vsync,
-            presentQueue,
-            arrayOf(graphQueue)
-        )
+        val primarySurface = Surface(physicalDevice, window.windowHandle)
+        presentQueue = PresentQueue(device, primarySurface, 0)
         commandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         computeCommandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         pipelineCache = PipelineCache(device)
-
-        numImages = swapChain.imageViews.size
-        computeFinishedSemaphores = Array(numImages) { Semaphore(device) }
-
-        commandBuffers = Array(numImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = false) }
-        computeCommandBuffers = Array(numImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = false) }
-
-        fences = Array(numImages) { Fence(device, signaled = true) }
-        computeFences = Array(numImages) { Fence(device, signaled = true) }
-
-        createDepthImages()
+        windows.forEachIndexed { idx, w ->
+            val surfaceOverride = if (idx == 0) primarySurface else null
+            windowContexts += createWindowContext(w, idx, surfaceOverride)
+        }
 
         // ---- Name core objects for tooling ----
         device.nameObject(instance.vkInstance.address(), VK10.VK_OBJECT_TYPE_INSTANCE, "Instance")
         device.nameObject(physicalDevice.vkPhysicalDevice.address(), VK10.VK_OBJECT_TYPE_PHYSICAL_DEVICE, "PhysicalDevice")
         device.nameObject(device.vkDevice.address(), VK10.VK_OBJECT_TYPE_DEVICE, "Device")
-        device.nameObject(surface.vkSurface, KHRSurface.VK_OBJECT_TYPE_SURFACE_KHR, "Surface")
         device.nameObject(graphQueue.vkQueue.address(), VK10.VK_OBJECT_TYPE_QUEUE, "GraphicsQueue")
         device.nameObject(presentQueue.vkQueue.address(), VK10.VK_OBJECT_TYPE_QUEUE, "PresentQueue")
         device.nameObject(commandPool.vkCommandPool, VK10.VK_OBJECT_TYPE_COMMAND_POOL, "GraphicsCmdPool")
         device.nameObject(computeCommandPool.vkCommandPool, VK10.VK_OBJECT_TYPE_COMMAND_POOL, "ComputeCmdPool")
         device.nameObject(pipelineCache.vkPipelineCache, VK10.VK_OBJECT_TYPE_PIPELINE_CACHE, "PipelineCache")
-        commandBuffers.forEachIndexed { i, cb ->
-            device.nameObject(cb.vkCommandBuffer.address(), VK10.VK_OBJECT_TYPE_COMMAND_BUFFER, "GFX CB[$i]")
-        }
-        computeCommandBuffers.forEachIndexed { i, cb ->
-            device.nameObject(cb.vkCommandBuffer.address(), VK10.VK_OBJECT_TYPE_COMMAND_BUFFER, "COMPUTE CB[$i]")
-        }
-        fences.forEachIndexed { i, f ->
-            device.nameObject(f.vkFence, VK10.VK_OBJECT_TYPE_FENCE, "GFX Fence[$i]")
-        }
-        computeFences.forEachIndexed { i, f ->
-            device.nameObject(f.vkFence, VK10.VK_OBJECT_TYPE_FENCE, "Compute Fence[$i]")
-        }
-        computeFinishedSemaphores.forEachIndexed { i, s ->
-            device.nameObject(s.vkSemaphore, VK10.VK_OBJECT_TYPE_SEMAPHORE, "Compute->Graphics Semaphore[$i]")
-        }
-        depthAttachments.forEachIndexed { i, a ->
-            device.nameObject(a.image.vkImage, VK10.VK_OBJECT_TYPE_IMAGE, "DepthImage[$i]")
-            device.nameObject(a.imageView.vkImageView, VK10.VK_OBJECT_TYPE_IMAGE_VIEW, "DepthView[$i]")
-        }
-
-        if (Options.profiling) {
-            val opts = ProfilingOptions(
-                enabled = true,
-                timestamps = true,
-                pipelineStats = Options.isWindows,
-                perfCounters = Options.isWindows
-            )
-            profiler = GpuProfiler(
-                device = device.vkDevice,
-                physicalDevice = device.physicalDevice.vkPhysicalDevice,
-                queueFamilyIndex = graphQueue.queueFamilyIndex,
-                framesInFlight = numImages,
-                opts = opts
-            )
-            markers = Array(numImages) { FrameMarkers() }
-            perImageModuleMarks = Array(numImages) { mutableListOf() }
-        }
     }
 
     fun cleanup() {
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
-        profiler?.destroy()
+        windowContexts.forEach { ctx ->
+            ctx.profilerState?.profiler?.destroy()
+            ctx.commandBuffers.forEach { it.cleanup() }
+            ctx.computeCommandBuffers.forEach { it.cleanup() }
+            ctx.fences.forEach { it.cleanup() }
+            ctx.computeFences.forEach { it.cleanup() }
+            ctx.computeFinishedSemaphores.forEach { it.cleanup() }
+            ctx.depthAttachments.forEach { it.cleanup() }
+            ctx.swapChain.cleanup()
+            ctx.surface.cleanup()
+        }
         pipelineCache.cleanup()
         commandPool.cleanup()
-        swapChain.cleanup()
-        surface.cleanup()
+        computeCommandPool.cleanup()
         device.cleanup()
         physicalDevice.cleanup()
         instance.cleanup()
@@ -231,199 +218,211 @@ class Renderer(val window: Window) {
     var frameCounter = 0L
 
     fun render() {
-        if (window.width <= 0 && window.height <= 0) return
+        val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
 
-        // Drain ready frames (no stalls).
-        if (Options.profiling) {
-            while (pending.isNotEmpty()) {
-                val head = pending.first()
-                val enoughLag = pending.size > READBACK_LAG
-                val signaled = fences[head.imageIndex].isSignaled()
+        // Drain ready frames (no stalls) per window.
+        windowContexts.forEach { ctx ->
+            val ps = ctx.profilerState ?: return@forEach
+            while (ps.pending.isNotEmpty()) {
+                val head = ps.pending.first()
+                val enoughLag = ps.pending.size > READBACK_LAG
+                val signaled = ctx.fences[head.imageIndex].isSignaled()
                 if (!enoughLag && !signaled) break
                 if (signaled) {
-                    resolveProfilingForImage(head.imageIndex)
-                    pending.removeFirst()
+                    resolveProfilingForImage(ctx, head.imageIndex)
+                    ps.pending.removeFirst()
                 } else break
             }
         }
 
-        var imageIndex = 0
+        windowContexts.forEachIndexed { ctxIndex, ctx ->
+            val w = ctx.window
+            if (w.width <= 0 && w.height <= 0) return@forEachIndexed
 
-        // Keeps swapchain pipeline moving; left as-is from original code.
-        fences[numImages % fences.size].fenceWait()
+            var imageIndex = 0
 
-        try {
-            CPUSpan.time("acquire") {
-                if (window.isResized || (swapChain.acquireNextImage().also { imageIndex = it }) < 0) {
-                    window.resetResized()
-                    resize(window)
-                    imageIndex = swapChain.acquireNextImage()
-                }
-            }
+            // Keeps swapchain pipeline moving; left as-is from original code.
+            ctx.fences[ctx.swapChain.currentFrame].fenceWait()
 
-            currentImage = imageIndex
-            profiler?.let {
-                it.beginFrame(imageIndex)
-                if (::perImageModuleMarks.isInitialized) perImageModuleMarks[imageIndex].clear()
-            }
-
-            // Compute pass
-            var csScope: GpuProfiler.PipeStatScope? = null
-            var pcScope: GpuProfiler.PerfScope? = null
-            CPUSpan.time("record_cs") {
-                computeFences[imageIndex].fenceWait()
-                computeFences[imageIndex].reset()
-
-                val ccmd = computeCommandBuffers[imageIndex]
-                ccmd.reset(); ccmd.beginRecording()
-
-                // --- Label start (compute pass) ---
-                MemoryStack.stackPush().use { s ->
-                    val c = s.floats(0.25f, 0.65f, 0.85f, 1f) // cyan-ish
-                    ccmd.beginLabel("Compute Pass [frame $frameCounter]", c)
+            try {
+                CPUSpan.time("acquire[$ctxIndex]") {
+                    if (w.isResized || (ctx.swapChain.acquireNextImage().also { imageIndex = it }) < 0) {
+                        w.resetResized()
+                        resize(ctx)
+                        imageIndex = ctx.swapChain.acquireNextImage()
+                    }
                 }
 
-                profiler?.let { p ->
-                    markers[imageIndex].tsFrameBegin = p.writeTimestamp2(
-                        ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-                    )
-                    val cs = p.beginPipelineStats(ccmd.vkCommandBuffer, imageIndex)
-                    csScope = cs
-                    csScope?.let { markers[imageIndex].pipeStatsCompute = it.index }
-                    pcScope = p.beginPerfCounters(ccmd.vkCommandBuffer, imageIndex)
+                ctx.currentImage = imageIndex
+                if (ctxIndex == 0) currentImage = imageIndex
+                ctx.profilerState?.let {
+                    it.profiler.beginFrame(imageIndex)
+                    it.perImageModuleMarks.getOrNull(imageIndex)?.clear()
                 }
 
-                computeList.render(ccmd, imageIndex)
+                // Compute pass
+                var csScope: GpuProfiler.PipeStatScope? = null
+                var pcScope: GpuProfiler.PerfScope? = null
+                CPUSpan.time("record_cs[$ctxIndex]") {
+                    ctx.computeFences[imageIndex].fenceWait()
+                    ctx.computeFences[imageIndex].reset()
 
-                profiler?.let { p ->
-                    p.endPerfCounters(ccmd.vkCommandBuffer, imageIndex, pcScope)
-                    p.endPipelineStats(ccmd.vkCommandBuffer, csScope)
-                    markers[imageIndex].tsAfterCompute = p.writeTimestamp2(
-                        ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
-                    )
+                    val ccmd = ctx.computeCommandBuffers[imageIndex]
+                    ccmd.reset(); ccmd.beginRecording()
+
+                    // --- Label start (compute pass) ---
+                    MemoryStack.stackPush().use { s ->
+                        val c = s.floats(0.25f, 0.65f, 0.85f, 1f) // cyan-ish
+                        ccmd.beginLabel("Compute Pass [frame $frameCounter ctx=$ctxIndex]", c)
+                    }
+
+                    ctx.profilerState?.let { p ->
+                        p.markers[imageIndex].tsFrameBegin = p.profiler.writeTimestamp2(
+                            ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+                        )
+                        val cs = p.profiler.beginPipelineStats(ccmd.vkCommandBuffer, imageIndex)
+                        csScope = cs
+                        csScope?.let { p.markers[imageIndex].pipeStatsCompute = it.index }
+                        pcScope = p.profiler.beginPerfCounters(ccmd.vkCommandBuffer, imageIndex)
+                    }
+
+                    computeList.render(ccmd, imageIndex)
+
+                    ctx.profilerState?.let { p ->
+                        p.profiler.endPerfCounters(ccmd.vkCommandBuffer, imageIndex, pcScope)
+                        p.profiler.endPipelineStats(ccmd.vkCommandBuffer, csScope)
+                        p.markers[imageIndex].tsAfterCompute = p.profiler.writeTimestamp2(
+                            ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                        )
+                    }
+
+                    // --- Label end (compute pass) ---
+                    ccmd.endLabel()
+
+                    ccmd.endRecording()
                 }
 
-                // --- Label end (compute pass) ---
-                ccmd.endLabel()
-
-                ccmd.endRecording()
-            }
-
-            CPUSpan.time("submit_cs") {
-                submitCompute(
-                    computeCommandBuffers[imageIndex],
-                    computeFences[imageIndex],
-                    computeFinishedSemaphores[imageIndex],
-                    graphQueue
-                )
-            }
-
-            // Graphics pass
-            CPUSpan.time("record_gfx") {
-                val cmd = commandBuffers[imageIndex]
-                cmd.reset(); cmd.beginRecording()
-
-                // --- Label start (graphics frame) ---
-                MemoryStack.stackPush().use { s ->
-                    val c = s.floats(0.85f, 0.45f, 0.15f, 1f) // orange-ish
-                    cmd.beginLabel("Graphics Frame [frame $frameCounter]", c)
-                }
-
-                currentCommandBuffer = cmd
-                renderStart.update()
-
-                var gsScope: GpuProfiler.PipeStatScope? = null
-                var perfFrameScope: GpuProfiler.PerfScope? = null
-
-                profiler?.let { p ->
-                    gsScope = p.beginPipelineStats(cmd.vkCommandBuffer, imageIndex)
-                    gsScope?.let { markers[imageIndex].pipeStatsGraphics = it.index }
-                    perfFrameScope = p.beginPerfCounters(cmd.vkCommandBuffer, imageIndex)
-                }
-
-                // Bracket the scene render itself
-                MemoryStack.stackPush().use { s ->
-                    val c = s.floats(0.45f, 0.85f, 0.25f, 1f) // green-ish
-                    cmd.beginLabel("RenderTargets", c)
-                }
-
-                renderList.render(cmd, imageIndex)
-
-                cmd.endLabel() // end "RenderTargets"
-
-                profiler?.let { p ->
-                    p.endPerfCounters(cmd.vkCommandBuffer, imageIndex, perfFrameScope)
-                    perfFrameScope?.let { markers[imageIndex].perfFrameIndex = it.index }
-                    p.endPipelineStats(cmd.vkCommandBuffer, gsScope)
-                    markers[imageIndex].tsAfterGraphics = p.writeTimestamp2(
-                        cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-                    )
-                    markers[imageIndex].tsFrameEnd = p.writeTimestamp2(
-                        cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                CPUSpan.time("submit_cs[$ctxIndex]") {
+                    submitCompute(
+                        ctx,
+                        ctx.computeCommandBuffers[imageIndex],
+                        ctx.computeFences[imageIndex],
+                        ctx.computeFinishedSemaphores[imageIndex],
+                        graphQueue
                     )
                 }
 
-                // --- Label end (graphics frame) ---
-                cmd.endLabel()
+                // Graphics pass
+                CPUSpan.time("record_gfx[$ctxIndex]") {
+                    val cmd = ctx.commandBuffers[imageIndex]
+                    cmd.reset(); cmd.beginRecording()
 
-                cmd.endRecording()
-            }
+                    // --- Label start (graphics frame) ---
+                    MemoryStack.stackPush().use { s ->
+                        val c = s.floats(0.85f, 0.45f, 0.15f, 1f) // orange-ish
+                        cmd.beginLabel("Graphics Frame [frame $frameCounter ctx=$ctxIndex]", c)
+                    }
 
-            CPUSpan.time("submit_gfx") {
-                submit(
-                    commandBuffers[imageIndex],
-                    fences[imageIndex],
-                    graphQueue,
-                    computeFinishedSemaphores[imageIndex]
-                )
-            }
+                    currentCommandBuffer = cmd
+                    renderStart.update()
 
-            CPUSpan.time("present") {
-                if (swapChain.presentImage(presentQueue, imageIndex)) window.isResized = true
-            }
+                    var gsScope: GpuProfiler.PipeStatScope? = null
+                    var perfFrameScope: GpuProfiler.PerfScope? = null
 
-            // Deferred cleanup queue
-            cleanupStack.add(frameCounter to cleanup)
-            cleanup = mutableListOf()
-            val thresholdFrame = frameCounter - numImages * 8
-            while (cleanupStack.isNotEmpty() && cleanupStack.first().first <= thresholdFrame) {
-                val (_, toRun) = cleanupStack.removeAt(0)
-                if (toRun.isNotEmpty()) {
-                    val copy = ArrayList(toRun)
-                    toRun.clear()
-                    copy.forEach { it.run() }
+                    ctx.profilerState?.let { p ->
+                        gsScope = p.profiler.beginPipelineStats(cmd.vkCommandBuffer, imageIndex)
+                        gsScope?.let { p.markers[imageIndex].pipeStatsGraphics = it.index }
+                        perfFrameScope = p.profiler.beginPerfCounters(cmd.vkCommandBuffer, imageIndex)
+                    }
+
+                    // Bracket the scene render itself
+                    MemoryStack.stackPush().use { s ->
+                        val c = s.floats(0.45f, 0.85f, 0.25f, 1f) // green-ish
+                        cmd.beginLabel("RenderTargets", c)
+                    }
+
+                    ctx.renderTarget.render(cmd, imageIndex)
+
+                    cmd.endLabel() // end "RenderTargets"
+
+                    ctx.profilerState?.let { p ->
+                        p.profiler.endPerfCounters(cmd.vkCommandBuffer, imageIndex, perfFrameScope)
+                        perfFrameScope?.let { p.markers[imageIndex].perfFrameIndex = it.index }
+                        p.profiler.endPipelineStats(cmd.vkCommandBuffer, gsScope)
+                        p.markers[imageIndex].tsAfterGraphics = p.profiler.writeTimestamp2(
+                            cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+                        )
+                        p.markers[imageIndex].tsFrameEnd = p.profiler.writeTimestamp2(
+                            cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                        )
+                    }
+
+                    // --- Label end (graphics frame) ---
+                    cmd.endLabel()
+
+                    cmd.endRecording()
                 }
+
+                CPUSpan.time("submit_gfx[$ctxIndex]") {
+                    submit(
+                        ctx,
+                        ctx.commandBuffers[imageIndex],
+                        ctx.fences[imageIndex],
+                        graphQueue,
+                        ctx.computeFinishedSemaphores[imageIndex]
+                    )
+                }
+
+                CPUSpan.time("present[$ctxIndex]") {
+                    if (ctx.swapChain.presentImage(presentQueue, imageIndex)) w.isResized = true
+                }
+
+                ctx.profilerState?.pending?.addLast(Pending(imageIndex))
+            } catch (e: ImageNotAvailable) {
+                println(e.message)
             }
-
-            // Drain GC-driven disposals onto the render-thread cleanup queue
-            AutoDisposer.drain { cleanup.add(it) }
-
-            renderEnd.update()
-            CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = frameCounter)
-
-            if (Options.profiling) pending.addLast(Pending(imageIndex))
-
-            currentImage = (imageIndex + 1) % numImages
-            frameCounter++
-            currentCommandBuffer = null
-
-        } catch (e: ImageNotAvailable) {
-            println(e.message)
         }
+
+        // Deferred cleanup queue (use max frames-in-flight across all contexts)
+        cleanupStack.add(frameCounter to cleanup)
+        cleanup = mutableListOf()
+        val thresholdFrame = frameCounter - maxFramesInFlight * 8
+        while (cleanupStack.isNotEmpty() && cleanupStack.first().first <= thresholdFrame) {
+            val (_, toRun) = cleanupStack.removeAt(0)
+            if (toRun.isNotEmpty()) {
+                val copy = ArrayList(toRun)
+                toRun.clear()
+                copy.forEach { it.run() }
+            }
+        }
+
+        // Drain GC-driven disposals onto the render-thread cleanup queue
+        AutoDisposer.drain { cleanup.add(it) }
+
+        renderEnd.update()
+        CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = frameCounter)
+
+        if (windowContexts.isNotEmpty()) {
+            currentImage = (defaultContext.currentImage + 1) % defaultContext.numImages
+        }
+
+        frameCounter++
+        currentCommandBuffer = null
     }
 
     class ImageNotAvailable(s: String) : RuntimeException(s)
 
     fun submit(
+        context: WindowContext,
         commandBuffer: CommandBuffer,
         currentFence: Fence,
         queue: Queue,
         computeSemaphore: Semaphore
     ) {
         MemoryStack.stackPush().use { stack ->
-            val idx = swapChain.currentFrame
+            val idx = context.swapChain.currentFrame
             currentFence.reset()
-            val sync = swapChain.syncSemaphoresList[idx]
+            val sync = context.swapChain.syncSemaphoresList[idx]
 
             // Command buffer info
             val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
@@ -467,6 +466,7 @@ class Renderer(val window: Window) {
 
 
     fun submitCompute(
+        context: WindowContext,
         commandBuffer: CommandBuffer,
         currentComputeFence: Fence,
         signalSemaphore: Semaphore,
@@ -499,11 +499,10 @@ class Renderer(val window: Window) {
         }
     }
 
-
-    private fun createDepthImages() {
+    private fun createDepthImages(swapChain: SwapChain): MutableList<Attachment> {
         val count = swapChain.numImages
         val extent = swapChain.swapChainExtent
-        depthAttachments = MutableList(count) {
+        return MutableList(count) {
             Attachment(
                 device,
                 extent.width(),
@@ -514,38 +513,121 @@ class Renderer(val window: Window) {
         }
     }
 
-    private fun resize(window: Window) {
+    private fun createProfilerState(numImages: Int): ProfilerState {
+        val opts = ProfilingOptions(
+            enabled = true,
+            timestamps = true,
+            pipelineStats = Options.isWindows,
+            perfCounters = Options.isWindows
+        )
+        val profiler = GpuProfiler(
+            device = device.vkDevice,
+            physicalDevice = device.physicalDevice.vkPhysicalDevice,
+            queueFamilyIndex = graphQueue.queueFamilyIndex,
+            framesInFlight = numImages,
+            opts = opts
+        )
+        val markers = Array(numImages) { FrameMarkers() }
+        val perImageModuleMarks = Array(numImages) { mutableListOf<ModuleMarks>() }
+        return ProfilerState(profiler, markers, perImageModuleMarks)
+    }
+
+    private fun createWindowContext(window: Window, index: Int, surfaceOverride: Surface? = null): WindowContext {
+        lateinit var ctxRef: WindowContext
+        val ctxProvider = { ctxRef }
+        val surface = surfaceOverride ?: Surface(physicalDevice, window.windowHandle)
+        val swapChain = SwapChain(
+            device,
+            surface,
+            window,
+            Options.requestedImages,
+            Options.vsync,
+            presentQueue,
+            arrayOf(graphQueue)
+        )
+        val numImages = swapChain.imageViews.size
+        val commandBuffers = Array(numImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = false) }
+        val computeCommandBuffers = Array(numImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = false) }
+        val fences = Array(numImages) { Fence(device, signaled = true) }
+        val computeFences = Array(numImages) { Fence(device, signaled = true) }
+        val computeFinishedSemaphores = Array(numImages) { Semaphore(device) }
+        val depthAttachments = createDepthImages(swapChain)
+        val profilerState = if (Options.profiling) createProfilerState(numImages) else null
+        val renderTarget = RenderTarget(this, ctxProvider, index)
+
+        ctxRef = WindowContext(
+            window = window,
+            surface = surface,
+            swapChain = swapChain,
+            depthAttachments = depthAttachments,
+            commandBuffers = commandBuffers,
+            computeCommandBuffers = computeCommandBuffers,
+            fences = fences,
+            computeFences = computeFences,
+            computeFinishedSemaphores = computeFinishedSemaphores,
+            numImages = numImages,
+            currentImage = 0,
+            renderTarget = renderTarget,
+            profilerState = profilerState
+        )
+        nameContextObjects(ctxRef, index)
+        return ctxRef
+    }
+
+    private fun nameContextObjects(ctx: WindowContext, index: Int) {
+        device.nameObject(ctx.surface.vkSurface, KHRSurface.VK_OBJECT_TYPE_SURFACE_KHR, "Surface[$index]")
+        ctx.commandBuffers.forEachIndexed { i, cb ->
+            device.nameObject(cb.vkCommandBuffer.address(), VK10.VK_OBJECT_TYPE_COMMAND_BUFFER, "GFX CB[$index,$i]")
+        }
+        ctx.computeCommandBuffers.forEachIndexed { i, cb ->
+            device.nameObject(cb.vkCommandBuffer.address(), VK10.VK_OBJECT_TYPE_COMMAND_BUFFER, "COMPUTE CB[$index,$i]")
+        }
+        ctx.fences.forEachIndexed { i, f ->
+            device.nameObject(f.vkFence, VK10.VK_OBJECT_TYPE_FENCE, "GFX Fence[$index,$i]")
+        }
+        ctx.computeFences.forEachIndexed { i, f ->
+            device.nameObject(f.vkFence, VK10.VK_OBJECT_TYPE_FENCE, "Compute Fence[$index,$i]")
+        }
+        ctx.computeFinishedSemaphores.forEachIndexed { i, s ->
+            device.nameObject(s.vkSemaphore, VK10.VK_OBJECT_TYPE_SEMAPHORE, "Compute->Graphics Semaphore[$index,$i]")
+        }
+        ctx.depthAttachments.forEachIndexed { i, a ->
+            device.nameObject(a.image.vkImage, VK10.VK_OBJECT_TYPE_IMAGE, "DepthImage[$index,$i]")
+            device.nameObject(a.imageView.vkImageView, VK10.VK_OBJECT_TYPE_IMAGE_VIEW, "DepthView[$index,$i]")
+        }
+    }
+
+    private fun resize(context: WindowContext) {
         device.waitIdle()
         graphQueue.waitIdle()
 
-        swapChain.cleanup()
-        swapChain = SwapChain(
-            device, surface, window, Options.requestedImages, Options.vsync, presentQueue, arrayOf(graphQueue)
+        context.swapChain.cleanup()
+        context.swapChain = SwapChain(
+            device, context.surface, context.window, Options.requestedImages, Options.vsync, presentQueue, arrayOf(graphQueue)
         )
 
-        depthAttachments.forEach { it.cleanup() }
-        createDepthImages()
+        context.depthAttachments.forEach { it.cleanup() }
+        context.depthAttachments = createDepthImages(context.swapChain)
 
-        if (Options.profiling) {
-            profiler?.destroy()
-            val newImages = swapChain.imageViews.size
-            val opts = ProfilingOptions(
-                enabled = true,
-                timestamps = true,
-                pipelineStats = Options.isWindows,
-                perfCounters = Options.isWindows
-            )
-            profiler = GpuProfiler(
-                device = device.vkDevice,
-                physicalDevice = device.physicalDevice.vkPhysicalDevice,
-                queueFamilyIndex = graphQueue.queueFamilyIndex,
-                framesInFlight = newImages,
-                opts = opts
-            )
-            markers = Array(newImages) { FrameMarkers() }
-            perImageModuleMarks = Array(newImages) { mutableListOf() }
-            numImages = newImages
-        }
+        context.commandBuffers.forEach { it.cleanup() }
+        context.computeCommandBuffers.forEach { it.cleanup() }
+        context.fences.forEach { it.cleanup() }
+        context.computeFences.forEach { it.cleanup() }
+        context.computeFinishedSemaphores.forEach { it.cleanup() }
+
+        val newImages = context.swapChain.imageViews.size
+        context.commandBuffers = Array(newImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = false) }
+        context.computeCommandBuffers = Array(newImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = false) }
+        context.fences = Array(newImages) { Fence(device, signaled = true) }
+        context.computeFences = Array(newImages) { Fence(device, signaled = true) }
+        context.computeFinishedSemaphores = Array(newImages) { Semaphore(device) }
+        context.numImages = newImages
+        context.currentImage = 0
+
+        context.profilerState?.profiler?.destroy()
+        context.profilerState = if (Options.profiling) createProfilerState(newImages) else null
+
+        nameContextObjects(context, windowContexts.indexOf(context))
     }
 
     var running = false
@@ -554,9 +636,9 @@ class Renderer(val window: Window) {
         running = true
         var initialTime = System.currentTimeMillis()
         var frame = 0
-        while (running && !window.shouldClose()) {
+        while (running && windows.any { !it.shouldClose() }) {
             print(".")
-            window.pollEvents()
+            windows.forEach { it.pollEvents() }
             update()
             render()
             frame++
@@ -572,8 +654,8 @@ class Renderer(val window: Window) {
         running = true
         var initialTime = System.currentTimeMillis()
         var frame = 0
-        while (running && !window.shouldClose()) {
-            logTime("pollEvents") { window.pollEvents() }
+        while (running && windows.any { !it.shouldClose() }) {
+            logTime("pollEvents") { windows.forEach { it.pollEvents() } }
             logTime("render") { render() }
             frame++
             if (frame % 100 == 0) {
@@ -602,9 +684,12 @@ class Renderer(val window: Window) {
     @JvmName("plusAssign_computeModulePointer")
     operator fun plusAssign(a: Pair<String, ComputeModulePointer>) { computeList += a }
 
-    private fun resolveProfilingForImage(imageIndex: Int) {
-        val p = profiler ?: return
-        val m = markers.getOrNull(imageIndex) ?: return
+    fun getProfiler(): GpuProfiler? = defaultContext.profilerState?.profiler
+
+    private fun resolveProfilingForImage(context: WindowContext, imageIndex: Int) {
+        val ps = context.profilerState ?: return
+        val p = ps.profiler
+        val m = ps.markers.getOrNull(imageIndex) ?: return
 
         if (m.perfFrameIndex >= 0 && p.opts.perfCounters) {
             val meta = p.perfMeta
@@ -646,7 +731,7 @@ class Renderer(val window: Window) {
             println("GFX IA verts=$iaVerts, IA prims=$iaPrims, VS invoc=$vsInv, FS invoc=$fsInv")
         }
 
-        val pm = if (::perImageModuleMarks.isInitialized) perImageModuleMarks[imageIndex] else mutableListOf()
+        val pm = ps.perImageModuleMarks.getOrNull(imageIndex) ?: mutableListOf()
         if (pm.isNotEmpty()) {
             for (mm in pm) {
                 if (mm.tsBegin >= 0 && mm.tsEnd >= 0) {
