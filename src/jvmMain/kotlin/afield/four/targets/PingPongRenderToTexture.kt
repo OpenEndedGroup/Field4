@@ -2,6 +2,7 @@ package afield.four.targets
 
 import afield.four.Renderer
 import afield.four.modules.fromContext
+import afield.four.texture.HasImageView
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
@@ -25,17 +26,22 @@ class PingPongRenderToTexture(
 ) : RenderToTexture(renderer, parameters) {
 
     private val pingImages: List<Image>
-    private val pingImageViews: List<ImageView>
+    private val pingImageViews: List<HasImageView>
     private val pingImageHandles: List<Long>
     private val pingLayouts = intArrayOf(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED)
     private val pingMipsInitialized = booleanArrayOf(false, false)
     private var writeIndex = 0
 
-    val otherImageView: ImageView
-        get() = pingImageViews[otherIndex]
+    val otherImageView: HasImageView = object : HasImageView{
+        override val imageView: ImageView
+            get() = pingImageViews[otherIndex].imageView
+    }
 
-    val thisImageView: ImageView
-        get() = pingImageViews[writeIndex]
+    val thisImageView: HasImageView = object : HasImageView{
+        override val imageView: ImageView
+            get() = pingImageViews[writeIndex].imageView
+    }
+
 
     private val otherIndex: Int
         get() = 1 - writeIndex

@@ -354,6 +354,8 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 mesh.compute(this, command, pushConstantBuffer)
             }
 
+
+
             command.endLabel()
         }
     }

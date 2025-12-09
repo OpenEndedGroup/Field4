@@ -7,6 +7,7 @@ import afield.four.*
 import afield.four.modules.*
 import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
+import afield.four.texture.HasImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Projection
@@ -50,7 +51,7 @@ class NewMain6 {
                 fragment = File("resources/shaders/fwd_fragment.glsl").readText(),
                 depth = 0,
                 textureResolver = {
-                    arrayOf(texture.imageView) to TextureSampler(renderer, 4, true)
+                    arrayOf<HasImageView>(texture) to TextureSampler(renderer, 4, true)
                 },
                 name = "inner square shader"
             )
@@ -66,7 +67,7 @@ class NewMain6 {
                 fragment = File("resources/shaders/plain_fragment.glsl").readText(),
                 depth = 0,
                 textureResolver = {
-                    arrayOf(rt2.imageView) to TextureSampler(renderer, 4, true)
+                    arrayOf<HasImageView>(rt2) to TextureSampler(renderer, 4, true)
                 },
                 name = "onscreen shader"
             )
@@ -190,5 +191,4 @@ class NewMain6 {
         }
     }
 }
-
 

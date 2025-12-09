@@ -38,7 +38,7 @@ data class RTTParameters(
     var colorFormats: List<Int> = emptyList(),
     var colorLayerCount: Int = 1,                   // single layer count for all color attachments; 0 -> infer from external views
     var viewports: List<afield.Rect> = emptyList(), // optional viewport array override
-    var externalColorViews: Map<Int, ImageView> = emptyMap(), // optional externally-owned attachments by slot
+    var externalColorViews: Map<Int, HasImageView> = emptyMap(), // optional externally-owned attachments by slot
     var clearColor: Vec4 = vec(0, 0, 0, 1),
 
     // --- Color QoL ---
@@ -72,12 +72,12 @@ open class RenderToTexture(
     var parameters = RTTParameters().apply(parameters)
 
     override val imageView: ImageView
-        get() = imageViewArray.first()
+        get() = imageViewArray.first().imageView
 
     val colorImageRefs: MutableList<Image?>          // null when external view has no underlying Image
     val colorImageHandles: MutableList<Long>         // always the underlying VkImage handle
-    protected val mutableImageViewArray: MutableList<ImageView>
-    override val imageViewArray: List<ImageView>
+    protected val mutableImageViewArray: MutableList<HasImageView>
+    override val imageViewArray: List<HasImageView>
         get() = mutableImageViewArray
     val colorFormats: List<Int>
     val colorLayerCount: Int
@@ -124,7 +124,7 @@ open class RenderToTexture(
         val inferredLayerCount =
             if (explicitLayerCount > 0) explicitLayerCount
             else if (externalViews.isNotEmpty()) {
-                val counts = externalViews.values.map { it.imageViewData.layerCount }
+                val counts = externalViews.values.map { it.imageView.imageViewData.layerCount }
                 require(counts.distinct().size == 1) {
                     "All external color attachments must share the same layerCount; got $counts"
                 }
@@ -158,19 +158,19 @@ open class RenderToTexture(
             "externalColorViews keys must be within [0, ${colorFormats.lastIndex}]"
         }
 
-        val tmpViews = MutableList<ImageView?>(colorFormats.size) { null }
+        val tmpViews = MutableList<HasImageView?>(colorFormats.size) { null }
         val tmpImageRefs = MutableList<Image?>(colorFormats.size) { null }
         val tmpImageHandles = MutableList<Long>(colorFormats.size) { 0L }
 
         colorFormats.forEachIndexed { idx, fmt ->
             val external = externalViews[idx]
             if (external != null) {
-                require(external.imageViewData.layerCount == colorLayerCount) {
-                    "External color attachment $idx has layerCount=${external.imageViewData.layerCount} but expected $colorLayerCount"
+                require(external.imageView.imageViewData.layerCount == colorLayerCount) {
+                    "External color attachment $idx has layerCount=${external.imageView.imageViewData.layerCount} but expected $colorLayerCount"
                 }
                 tmpViews[idx] = external
-                tmpImageRefs[idx] = external.underlyingImage
-                tmpImageHandles[idx] = external.image
+                tmpImageRefs[idx] = external.imageView.underlyingImage
+                tmpImageHandles[idx] = external.imageView.image
             } else {
                 val needsTransfer = wantsMips && colorFormatCanBlit[idx]
                 val data = ImageData()
@@ -379,7 +379,7 @@ open class RenderToTexture(
             colorImageHandles.indices.forEach { i ->
                 colorAttachmentInfo[i]
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
-                    .imageView(imageViewArray[i].vkImageView)
+                    .imageView(imageViewArray[i].imageView.vkImageView)
                     .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(if (parameters.clearFirst) VK_ATTACHMENT_LOAD_OP_CLEAR else VK_ATTACHMENT_LOAD_OP_LOAD)

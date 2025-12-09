@@ -2,32 +2,25 @@ package afield.four.modules
 
 import afield.Named
 import afield.Rect
-import afield.four.buffers.BufferParameters
 import afield.four.Renderer
-import afield.four.buffers.buffer
-import afield.four.buffers.FrameBufferGroup
-import afield.four.buffers.MissingRefException
-import afield.four.buffers.Structure
+import afield.four.buffers.*
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
-import afield.four.buffers.linkBuffer
 import afield.four.modules.Introspected.Bindable
 import afield.four.targets.RenderToTexture
-import afield.four.texture.ImageView
+import afield.four.texture.HasImageView
 import afield.four.texture.TextureSampler
-import afield.four.util.Options
 import afield.four.util.AutoDisposer
+import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.Vec4
-import afield.stdlib.d
 import afield.stdlib.f
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.KHRPushDescriptor.vkCmdPushDescriptorSetKHR
-import org.lwjgl.vulkan.EXTExtendedDynamicState3
+import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 import kotlin.reflect.KProperty
 
@@ -43,7 +36,7 @@ data class Parameters(
     var depth: Int = 1,
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
+    var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
         System.err.println("Cannot resolve texture ${it.name}")
         null
     },
@@ -56,7 +49,7 @@ data class Parameters(
         lb.second
     },
     var ssboSizer: (Introspected.UBO) -> Int? = { 0 },
-    var imageResolver: (Introspected.Image) -> ImageView? = {
+    var imageResolver: (Introspected.Image) -> HasImageView? = {
         throw Exception("Cannot resolve image ${it.name}")
     },
     var name: String = "unnamed module",
@@ -88,12 +81,23 @@ data class Parameters(
     val wireframe = VK_POLYGON_MODE_LINE
 
 
-
     fun RenderToTexture.apply() {
         this@Parameters.color = colorFormats.size
         this@Parameters.colorFormats = colorFormats
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
         this@Parameters.depthFormat = parameters.depthFormat
+    }
+
+    fun textures(vararg t: Pair<String, HasImageView>) {
+        val m = t.associate { it }
+        this.textureResolver = {
+            val found = m[it.name]
+            if (found != null) {
+                arrayOf(found) to TextureSampler(
+                    renderer = fromContext(), found.imageView.imageViewData.mipLevels, true
+                )
+            } else null
+        }
     }
 }
 
@@ -109,10 +113,9 @@ interface Renderable {
 
 class FromUniform {
     operator fun getValue(inside: ModulePointer, property: KProperty<*>): Structure {
-        return inside.current.liveUniformStructures[property.name]
-            ?: throw IllegalArgumentException(
-                " can't find '${property.name}' in this module, options are ${inside.current.liveUniformStructures.keys}"
-            )
+        return inside.current.liveUniformStructures[property.name] ?: throw IllegalArgumentException(
+            " can't find '${property.name}' in this module, options are ${inside.current.liveUniformStructures.keys}"
+        )
     }
 }
 
@@ -123,9 +126,7 @@ class ModulePointer(var current: Module) : Renderable {
     }
 
     fun reload(
-        p: Parameters,
-        forceReresolve: Boolean = true,
-        onError: (String, Throwable?) -> Unit = p.errorHandler
+        p: Parameters, forceReresolve: Boolean = true, onError: (String, Throwable?) -> Unit = p.errorHandler
     ): Boolean {
         if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
@@ -141,8 +142,17 @@ class ModulePointer(var current: Module) : Renderable {
 
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
-            if (forceReresolve) oTextureResolver(it)
-            else try {
+            if (forceReresolve) {
+                val oo = oTextureResolver(it)
+                if (oo != null) oo
+                else try {
+                    val tp = current.uniforms[it.name] as Module.TexturePointer
+                    arrayOf(tp.texture) to tp.sampler
+                } catch (_: Exception) {
+                    lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                    oTextureResolver(it)
+                }
+            } else try {
                 val tp = current.uniforms[it.name] as Module.TexturePointer
                 arrayOf(tp.texture) to tp.sampler
             } catch (_: Exception) {
@@ -197,31 +207,19 @@ class Module(val parameters: Parameters) : Renderable {
         val kind: Int = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
     ) : UpdatesDescriptorSet {
         override fun pushDescriptorSet(
-            command: CommandBuffer,
-            pipelineLayout: Long,
-            bindPoint: Int
+            command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
                 val targetBuffer = buffer.get()
-                val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack)
-                    .buffer(targetBuffer.buffer)
-                    .offset(0)
+                val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack).buffer(targetBuffer.buffer).offset(0)
                     .range(targetBuffer.requestedSize)
 
-                val write = VkWriteDescriptorSet.calloc(1, stack)
-                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                    .dstBinding(binding.binding)
-                    .dstArrayElement(0)
-                    .descriptorType(kind)
-                    .descriptorCount(1)
+                val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding).dstArrayElement(0).descriptorType(kind).descriptorCount(1)
                     .pBufferInfo(bufferInfo)
 
                 vkCmdPushDescriptorSetKHR(
-                    command.vkCommandBuffer,
-                    bindPoint,
-                    pipelineLayout,
-                    binding.set,
-                    write
+                    command.vkCommandBuffer, bindPoint, pipelineLayout, binding.set, write
                 )
             }
         }
@@ -231,34 +229,23 @@ class Module(val parameters: Parameters) : Renderable {
         val name: String,
         override val binding: Bindable,
         override var source: BufferParameters? = null,
-        val texture: ImageView,
+        val texture: HasImageView,
         val sampler: TextureSampler,
     ) : UpdatesDescriptorSet {
         override fun pushDescriptorSet(
-            command: CommandBuffer,
-            pipelineLayout: Long,
-            bindPoint: Int
+            command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
-                val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
-                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .imageView(texture.vkImageView)
-                    .sampler(sampler.vkSampler)
+                val imageInfo =
+                    VkDescriptorImageInfo.calloc(1, stack).imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .imageView(texture.imageView.vkImageView).sampler(sampler.vkSampler)
 
-                val write = VkWriteDescriptorSet.calloc(1, stack)
-                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                    .dstBinding(binding.binding)
-                    .dstArrayElement(0)
-                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                    .descriptorCount(1)
-                    .pImageInfo(imageInfo)
+                val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding).dstArrayElement(0)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER).descriptorCount(1).pImageInfo(imageInfo)
 
                 vkCmdPushDescriptorSetKHR(
-                    command.vkCommandBuffer,
-                    bindPoint,
-                    pipelineLayout,
-                    binding.set,
-                    write
+                    command.vkCommandBuffer, bindPoint, pipelineLayout, binding.set, write
                 )
             }
         }
@@ -268,37 +255,26 @@ class Module(val parameters: Parameters) : Renderable {
         val name: String,
         override val binding: Bindable,
         override var source: BufferParameters? = null,
-        val texture: Array<ImageView>,
+        val texture: Array<HasImageView>,
         val sampler: TextureSampler,
     ) : UpdatesDescriptorSet {
         override fun pushDescriptorSet(
-            command: CommandBuffer,
-            pipelineLayout: Long,
-            bindPoint: Int
+            command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
                 val infos = VkDescriptorImageInfo.calloc(texture.size, stack)
                 for (i in texture.indices) {
-                    infos[i]
-                        .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .imageView(texture[i].vkImageView)
-                        .sampler(sampler.vkSampler)
+                    infos[i].imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        .imageView(texture[i].imageView.vkImageView).sampler(sampler.vkSampler)
                 }
 
-                val write = VkWriteDescriptorSet.calloc(1, stack)
-                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                    .dstBinding(binding.binding)
-                    .dstArrayElement(0)
-                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                    .descriptorCount(texture.size)
+                val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding).dstArrayElement(0)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER).descriptorCount(texture.size)
                     .pImageInfo(infos)
 
                 vkCmdPushDescriptorSetKHR(
-                    command.vkCommandBuffer,
-                    bindPoint,
-                    pipelineLayout,
-                    binding.set,
-                    write
+                    command.vkCommandBuffer, bindPoint, pipelineLayout, binding.set, write
                 )
             }
         }
@@ -308,32 +284,21 @@ class Module(val parameters: Parameters) : Renderable {
         val name: String,
         override val binding: Bindable,
         override var source: BufferParameters? = null,
-        val texture: ImageView,
+        val texture: HasImageView,
     ) : UpdatesDescriptorSet {
         override fun pushDescriptorSet(
-            command: CommandBuffer,
-            pipelineLayout: Long,
-            bindPoint: Int
+            command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
-                val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
-                    .imageLayout(VK_IMAGE_LAYOUT_GENERAL)
-                    .imageView(texture.vkImageView)
+                val imageInfo = VkDescriptorImageInfo.calloc(1, stack).imageLayout(VK_IMAGE_LAYOUT_GENERAL)
+                    .imageView(texture.imageView.vkImageView)
 
-                val write = VkWriteDescriptorSet.calloc(1, stack)
-                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                    .dstBinding(binding.binding)
-                    .dstArrayElement(0)
-                    .descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    .descriptorCount(1)
-                    .pImageInfo(imageInfo)
+                val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstBinding(binding.binding).dstArrayElement(0).descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .descriptorCount(1).pImageInfo(imageInfo)
 
                 vkCmdPushDescriptorSetKHR(
-                    command.vkCommandBuffer,
-                    bindPoint,
-                    pipelineLayout,
-                    binding.set,
-                    write
+                    command.vkCommandBuffer, bindPoint, pipelineLayout, binding.set, write
                 )
             }
         }
@@ -492,8 +457,7 @@ class Module(val parameters: Parameters) : Renderable {
                     val bp = buffer(it, it.name) {
                         size = sz; source = it; uniform(); hosted()
                     }
-                    val buf = parameters.uboResolver(bp)
-                        ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     try {
                         uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(), kind)
                     } catch (_: NullPointerException) {
@@ -553,14 +517,12 @@ class Module(val parameters: Parameters) : Renderable {
                 tag.forEach {
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] =
-                            TexturePointer(it.name, it, source = null, texture[0], sampler)
+                        uniforms[it.name] = TexturePointer(it.name, it, source = null, texture[0], sampler)
                     } else {
                         require(texture.size == it.arrayCount) {
                             "can't link texture resource ${it.name} of length ${texture.size} but the shader expects ${it.arrayCount}"
                         }
-                        uniforms[it.name] =
-                            TextureArrayPointer(it.name, it, source = null, texture, sampler)
+                        uniforms[it.name] = TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
                 }
             }
@@ -592,21 +554,15 @@ class Module(val parameters: Parameters) : Renderable {
             vertexInputBindings = VkVertexInputBindingDescription.calloc(vi.inputs.size)
 
             vi.inputs.forEachIndexed { index, input ->
-                vertexInputAttributes[index]
-                    .binding(index)
-                    .location(input.location)
-                    .format(vi.inputs[index].type.leftOrNull()!!.bufferFormat)
-                    .offset(0)
-                vertexInputBindings[index]
-                    .binding(index)
-                    .stride(vi.inputs[index].sizeInBytes.toInt())
+                vertexInputAttributes[index].binding(index).location(input.location)
+                    .format(vi.inputs[index].type.leftOrNull()!!.bufferFormat).offset(0)
+                vertexInputBindings[index].binding(index).stride(vi.inputs[index].sizeInBytes.toInt())
                     .inputRate(VK_VERTEX_INPUT_RATE_VERTEX)
             }
 
             vertexInputState = VkPipelineVertexInputStateCreateInfo.calloc()
                 .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
-                .pVertexBindingDescriptions(vertexInputBindings)
-                .pVertexAttributeDescriptions(vertexInputAttributes)
+                .pVertexBindingDescriptions(vertexInputBindings).pVertexAttributeDescriptions(vertexInputAttributes)
 
             MemoryStack.stackPush().use { stack ->
                 val shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack)
@@ -619,23 +575,17 @@ class Module(val parameters: Parameters) : Renderable {
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
                     .topology(parameters.primitiveType)
                 when (parameters.primitiveType) {
-                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
-                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
-                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
-                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> ia.primitiveRestartEnable(true)
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> ia.primitiveRestartEnable(
+                        true
+                    )
                 }
 
                 val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
-                    .viewportCount(1).scissorCount(1)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO).viewportCount(1).scissorCount(1)
 
                 val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
-                    .polygonMode(parameters.fillMode)
-                    .cullMode(VK_CULL_MODE_NONE)
-                    .frontFace(VK_FRONT_FACE_CLOCKWISE)
-                    .lineWidth(1.0f)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO).polygonMode(parameters.fillMode)
+                    .cullMode(VK_CULL_MODE_NONE).frontFace(VK_FRONT_FACE_CLOCKWISE).lineWidth(1.0f)
 
                 val ms = VkPipelineMultisampleStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
@@ -644,10 +594,9 @@ class Module(val parameters: Parameters) : Renderable {
                 var ds: VkPipelineDepthStencilStateCreateInfo? = null
                 if (parameters.depth > 0) {
                     ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
-                        .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
-                        .depthTestEnable(true).depthWriteEnable(true)
-                        .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
-                        .depthBoundsTestEnable(false).stencilTestEnable(false)
+                        .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO).depthTestEnable(true)
+                        .depthWriteEnable(true).depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL).depthBoundsTestEnable(false)
+                        .stencilTestEnable(false)
                 }
 
                 val colorFormats = if (parameters.colorFormats.isNotEmpty()) parameters.colorFormats
@@ -657,35 +606,22 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
                 for (i in 0 until colorCount) {
-                    blendAtt[i]
-                        .colorWriteMask(
-                            (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or
-                                    (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or
-                                    (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or
-                                    (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
-                        )
-                        .blendEnable(parameters.blend)
-                        .srcColorBlendFactor(parameters.srcColor)
-                        .dstColorBlendFactor(parameters.dstColor)
-                        .colorBlendOp(parameters.colorBlendOp)
-                        .srcAlphaBlendFactor(parameters.srcAlpha)
-                        .dstAlphaBlendFactor(parameters.dstAlpha)   // fix #3
+                    blendAtt[i].colorWriteMask(
+                            (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
+                        ).blendEnable(parameters.blend).srcColorBlendFactor(parameters.srcColor)
+                        .dstColorBlendFactor(parameters.dstColor).colorBlendOp(parameters.colorBlendOp)
+                        .srcAlphaBlendFactor(parameters.srcAlpha).dstAlphaBlendFactor(parameters.dstAlpha)   // fix #3
                         .alphaBlendOp(parameters.alphaBlendOp)
                 }
                 val cb = VkPipelineColorBlendStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
-                    .pAttachments(blendAtt)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO).pAttachments(blendAtt)
 
                 val dynList = mutableListOf(
-                    VK_DYNAMIC_STATE_VIEWPORT,
-                    VK_DYNAMIC_STATE_SCISSOR,
-                    VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+                    VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
                 )
                 if (parameters.renderer.device.supportsExtendedDynamicState) {
                     dynList += listOf(
-                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
-                        VK_DYNAMIC_STATE_CULL_MODE,
-                        VK_DYNAMIC_STATE_FRONT_FACE
+                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY, VK_DYNAMIC_STATE_CULL_MODE, VK_DYNAMIC_STATE_FRONT_FACE
                     )
                 }
                 if (parameters.renderer.device.supportsExtendedDynamicState3) {
@@ -694,14 +630,13 @@ class Module(val parameters: Parameters) : Renderable {
                 val dynStates = stack.ints(*dynList.toIntArray())
 
                 val dyn = VkPipelineDynamicStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
-                    .pDynamicStates(dynStates)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO).pDynamicStates(dynStates)
 
                 var vpcr: VkPushConstantRange.Buffer? = null
                 if (pushConstantSize > 0) {
                     vpcr = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(VK_SHADER_STAGE_VERTEX_BIT or VK_SHADER_STAGE_FRAGMENT_BIT)
-                        .offset(0).size(pushConstantSize)
+                        .stageFlags(VK_SHADER_STAGE_VERTEX_BIT or VK_SHADER_STAGE_FRAGMENT_BIT).offset(0)
+                        .size(pushConstantSize)
                 }
 
                 // ---- Build pipeline layout for module-owned sets (starting at 0)
@@ -718,8 +653,7 @@ class Module(val parameters: Parameters) : Renderable {
                     }
                 }
 
-                val pli = VkPipelineLayoutCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                val pli = VkPipelineLayoutCreateInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
                 ppLayout?.let { pli.pSetLayouts(it) }
                 vpcr?.let { pli.pPushConstantRanges(it) }
 
@@ -730,9 +664,7 @@ class Module(val parameters: Parameters) : Renderable {
                 )
                 pipelineLayout = lp[0]
                 parameters.renderer.device.nameObject(
-                    pipelineLayout,
-                    VK10.VK_OBJECT_TYPE_PIPELINE_LAYOUT,
-                    "${parameters.name} PipelineLayout"
+                    pipelineLayout, VK10.VK_OBJECT_TYPE_PIPELINE_LAYOUT, "${parameters.name} PipelineLayout"
                 )
 
                 val renderInfo = VkPipelineRenderingCreateInfoKHR.calloc(1, stack)
@@ -742,25 +674,15 @@ class Module(val parameters: Parameters) : Renderable {
                 colorFormats.forEach { colorAttachmentFormats.put(it) }
                 colorAttachmentFormats.flip()
 
-                renderInfo
-                    .colorAttachmentCount(colorCount)
-                    .pColorAttachmentFormats(colorAttachmentFormats)
+                renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
                     .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
 
-                val gp = VkGraphicsPipelineCreateInfo.calloc(1, stack)
-                    .sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
-                    .pStages(shaderStages)
-                    .pVertexInputState(vertexInputState)
-                    .pInputAssemblyState(ia)
-                    .pViewportState(vp)
-                    .pRasterizationState(rs)
-                    .pMultisampleState(ms)
-                    .pColorBlendState(cb)
-                    .pDynamicState(dyn)
-                    .layout(pipelineLayout)
-                    .renderPass(0)
-                    .pNext(renderInfo.address())
+                val gp =
+                    VkGraphicsPipelineCreateInfo.calloc(1, stack).sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+                        .pStages(shaderStages).pVertexInputState(vertexInputState).pInputAssemblyState(ia)
+                        .pViewportState(vp).pRasterizationState(rs).pMultisampleState(ms).pColorBlendState(cb)
+                        .pDynamicState(dyn).layout(pipelineLayout).renderPass(0).pNext(renderInfo.address())
 
                 ds?.let { gp.pDepthStencilState(it) }
 
@@ -768,9 +690,10 @@ class Module(val parameters: Parameters) : Renderable {
                     vkCreateGraphicsPipelines(
                         parameters.renderer.device.vkDevice,
                         parameters.renderer.pipelineCache.vkPipelineCache,
-                        gp, null, lp
-                    ),
-                    "Error creating graphics pipeline"
+                        gp,
+                        null,
+                        lp
+                    ), "Error creating graphics pipeline"
                 )
                 this.pipeline = lp[0]
                 pipelineDisposeToken.updateCleanup {
@@ -789,9 +712,7 @@ class Module(val parameters: Parameters) : Renderable {
                 }
 
                 parameters.renderer.device.nameObject(
-                    pipeline,
-                    VK10.VK_OBJECT_TYPE_PIPELINE,
-                    "${parameters.name} Pipeline"
+                    pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
                 )
 
                 liveUniformStructures.forEach { (name, structure) ->
@@ -913,9 +834,8 @@ class Module(val parameters: Parameters) : Renderable {
     private fun createShaderModule(code: ByteBuffer): Long {
         MemoryStack.stackPush().use { stack ->
             val pCode = stack.malloc(code.limit()).put(code).flip()
-            val ci = VkShaderModuleCreateInfo.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
-                .pCode(pCode)
+            val ci =
+                VkShaderModuleCreateInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO).pCode(pCode)
             val lp = stack.mallocLong(1)
             vkCheck(
                 vkCreateShaderModule(parameters.renderer.device.vkDevice, ci, null, lp),

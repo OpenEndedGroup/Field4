@@ -13,10 +13,10 @@ interface HasImageView {
 }
 
 interface HasImageViewArray {
-    val imageViewArray: List<ImageView>
+    val imageViewArray: List<HasImageView>
 }
 
-class ImageView(private val device: Device, val image: Long, val imageViewData: ImageViewData) : HasImageView{
+class ImageView(private val device: Device, val image: Long, val imageViewData: ImageViewData) : HasImageView {
     val aspectMask: Int
     val mipLevels: Int
     var vkImageView: Long = 0

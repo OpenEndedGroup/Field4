@@ -11,6 +11,7 @@ import afield.four.modules.GltfSupport.TRSSample
 import afield.four.modules.GltfSupport.gltVertexShader
 import afield.four.modules.GltfSupport.gltfFragmentShader
 import afield.four.modules.GltfSupport.gltfFragmentShaderTextured
+import afield.four.texture.HasImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Camera
@@ -68,20 +69,20 @@ fun Box._gltfModelHereWithTexture(
     filename: String, p: Parameters.() -> Unit = {}
 ): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
     val renderer: Renderer = fromContext()
-    val loader = GltfSupport.loadGltfBasic(filename, GltfSupport.GltfLoadConfig(loadTextures = true))
-    val module = _moduleHere(parameters(renderer = renderer) {
-        p()
-        val was = textureResolver
-        textureResolver = { tex ->
-            if (tex.name == "uTextures") {
-                val iv = loader.meshes[2].material.textures.map { slot -> slot.texture.imageView }.toTypedArray()
-                val maxMip = iv.maxOf { imageView -> imageView.mipLevels }
-                iv to TextureSampler(renderer = fromContext(), maxMip, true)
-            } else was(tex)
-        }
-    })
-    return module to listOf(loader)
-}
+        val loader = GltfSupport.loadGltfBasic(filename, GltfSupport.GltfLoadConfig(loadTextures = true))
+        val module = _moduleHere(parameters(renderer = renderer) {
+            p()
+            val was = textureResolver
+            textureResolver = { tex ->
+                if (tex.name == "uTextures") {
+                    val textures = loader.meshes[2].material.textures.map { slot -> slot.texture as HasImageView }
+                    val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
+                    textures.toTypedArray() to TextureSampler(renderer = fromContext(), maxMip, true)
+                } else was(tex)
+            }
+        })
+        return module to listOf(loader)
+    }
 
 @RunsAt(macroRegistration)
 fun registerGLTFLoader() {
@@ -806,4 +807,3 @@ fun List<TRSSample>.sample(time: Float): TRS? {
         Vector3f(a.trs.s).lerp(b.trs.s, t)
     )
 }
-

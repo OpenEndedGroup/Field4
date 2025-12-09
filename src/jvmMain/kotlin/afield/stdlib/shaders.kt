@@ -7,6 +7,8 @@ import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
 import afield.four.texture.*
+import afield.four.util.getShaderTemplateResolverForBox
+import afield.four.util.runTemplate
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
@@ -36,6 +38,9 @@ var Box._computeShader by Delegation<ComputeModulePointer?>()
 
 var Box.meshShader by Inheritance<MeshModulePointer?>()
 var Box._meshShader by Delegation<MeshModulePointer?>()
+
+val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
+    defaultValue = {HashMap<String, Any>()})
 
 // ------------------------------
 // Public macro placeholders (expanded by MacroRegistry)
@@ -70,11 +75,8 @@ fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
 // ------------------------------
 fun numberFromErrorMessage(m: String) = Regex(":(\\d+):").find(m)?.groupValues?.get(1)?.toIntOrNull()
 
-/**
- * Slot your real preprocessor here later; call sites are unified now.
- */
 fun preprocess(inside: Box, code: String, kind: ShaderKind): String {
-    return code
+    return runTemplate(code, getShaderTemplateResolverForBox(inside))
 }
 
 /**
@@ -115,6 +117,12 @@ fun applyInsertToPreamble(box: Box, e: Insert) {
     if (e.preambleAfterImports.isNotEmpty()) {
         b.preamble = b.preamble + "\n" + e.preambleAfterImports.trim() + "\n"
     }
+    val pieces = b.preamble.split("\n")
+    val part1 = pieces.filter { it.startsWith("import ") }
+    val part2 = pieces.filter { !it.startsWith("import ") }
+
+    b.preamble = (part1 + part2).joinToString(separator = "\n") { it }
+
 }
 
 // ------------------------------
@@ -433,30 +441,40 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
     val previousResolver = p.textureResolver
-    p.textureResolver = {
-        val r: Pair<Array<ImageView>, TextureSampler>? = previousResolver.invoke(it)
+    p.textureResolver = { textureSpec ->
+        val r: Pair<Array<HasImageView>, TextureSampler>? = previousResolver.invoke(textureSpec)
         if (r != null) r else {
-            println(" searching for texture ${it.name}")
-            val name = it.name
+            println(" searching for texture ${textureSpec.name}")
+            val name = textureSpec.name
             val r =
                 findWithNameOrNull<ImageView>(this@_moduleHere, name)?.let {
-                    arrayOf(it) to TextureSampler(renderer = fromContext(), it.imageViewData.mipLevels, true)
+                    arrayOf<HasImageView>(it) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<Array<HasImageView>>(this@_moduleHere, name)?.let {
+                    it to TextureSampler(renderer = fromContext(), it[0].imageView.imageViewData.mipLevels, true)
                 } ?: findWithNameOrNull<Array<ImageView>>(this@_moduleHere, name)?.let {
-                    it to TextureSampler(renderer = fromContext(), it[0].imageViewData.mipLevels, true)
+                    it.map { view -> view as HasImageView }.toTypedArray() to TextureSampler(
+                        renderer = fromContext(),
+                        it[0].imageViewData.mipLevels,
+                        true
+                    )
                 } ?: findWithNameOrNull<LoadedTexture>(this@_moduleHere, name)?.let {
-                    arrayOf(it.imageView) to TextureSampler(
+                    arrayOf<HasImageView>(it) to TextureSampler(
                         renderer = fromContext(),
                         it.imageView.imageViewData.mipLevels,
                         true
                     )
                 } ?: findWithNameOrNull<RenderToTexture>(this@_moduleHere, name)?.let {
-                    arrayOf(it.imageView) to TextureSampler(
+                    arrayOf<HasImageView>(it) to TextureSampler(
                         renderer = fromContext(),
                         it.imageView.imageViewData.mipLevels,
                         true
                     )
                 } ?: findWithNameOrNull<HasImageView>(this@_moduleHere, name)?.let {
-                    arrayOf(it.imageView) to TextureSampler(
+                    arrayOf(it) to TextureSampler(
                         renderer = fromContext(),
                         it.imageView.imageViewData.mipLevels,
                         true
@@ -464,10 +482,11 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
                 } ?: findWithNameOrNull<HasImageViewArray>(this@_moduleHere, name)?.let {
                     it.imageViewArray.toTypedArray() to TextureSampler(
                         renderer = fromContext(),
-                        it.imageViewArray[0].imageViewData.mipLevels,
+                        it.imageViewArray[0].imageView.imageViewData.mipLevels,
                         true
                     )
-                } ?: throw Exception(" can't find anything to build a texture out of from this box to ${it.name}")
+                }
+                ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
             println(" found $r")
             r
         }

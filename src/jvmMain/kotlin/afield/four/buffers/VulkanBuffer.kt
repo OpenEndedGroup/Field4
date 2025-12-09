@@ -4,6 +4,7 @@ package afield.four.buffers
 
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
+import afield.four.modules.computeMemoryBarrier
 import afield.four.modules.fromContext
 import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
@@ -28,7 +29,6 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.math.max
 
-/** Small interfaces you already had */
 interface HasBuffer {
     fun getBuffer(): Long
     fun getGPUAddress(cmd: CommandBuffer): Long
@@ -49,6 +49,18 @@ val VulkanBuffer.zeroBefore: HasBuffer
             override fun getBuffer(): Long = inside.getBuffer()
             override fun getGPUAddress(cmd: CommandBuffer): Long {
                 inside.zero(cmd)
+                return inside.getGPUAddress(cmd)
+            }
+        }
+    }
+
+val HasBuffer.barrier: HasBuffer
+    get() {
+        val inside = this
+        return object : HasBuffer {
+            override fun getBuffer(): Long = inside.getBuffer()
+            override fun getGPUAddress(cmd: CommandBuffer): Long {
+                computeMemoryBarrier(cmd, inside.getBuffer())
                 return inside.getGPUAddress(cmd)
             }
         }

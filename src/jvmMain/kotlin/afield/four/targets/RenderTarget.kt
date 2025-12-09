@@ -34,6 +34,7 @@ class RenderTarget(
 
     @JvmName("plusAssign")
     operator fun plusAssign(m : Pair<String, ModulePointer>) {
+        if (m.first in modules) modules.remove(m.first) // allow reordering
         modules[m.first] = m.second
     }
 
@@ -139,9 +140,9 @@ class RenderTarget(
                     .clearValue(
                         VkClearValue.calloc(stack).color(
                             VkClearColorValue.calloc(stack)
-                                .float32(0, 0.01f)
-                                .float32(1, 0.01f)
-                                .float32(2, 0.01f)
+                                .float32(0, 0.0f)
+                                .float32(1, 0.0f)
+                                .float32(2, 0.0f)
                                 .float32(3, 1f)
                         )
                     )

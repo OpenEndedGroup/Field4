@@ -238,9 +238,9 @@ class LoadedTexture private constructor(
     }
 }
 
-class StorageImage(val renderer: Renderer, val width: Int, val height: Int, val imageFormat: Int) {
+class StorageImage(val renderer: Renderer, val width: Int, val height: Int, val imageFormat: Int) : HasImageView {
     lateinit var image: Image
-    lateinit var imageView: ImageView
+    lateinit override var imageView: ImageView
 
     var recordedTransition = false
     init {

@@ -14,6 +14,7 @@ interface HasUniform<T> : () -> T {
     override fun invoke() = evaluateUniform()
 }
 
+
 class MissingRefException(override val message: String) : Exception(message)
 
 @Suppress("UNCHECKED_CAST")
