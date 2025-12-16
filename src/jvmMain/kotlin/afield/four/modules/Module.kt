@@ -121,7 +121,7 @@ class FromUniform {
 
 class ModulePointer(var current: Module) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (current.valid) current.render(command, bounds)
+        if (current.valid && current.enabled) current.render(command, bounds)
         else println("module '${current.parameters.name}' not valid / not rendering")
     }
 
@@ -164,6 +164,7 @@ class ModulePointer(var current: Module) : Renderable {
         val m = Module(p)
         if (m.valid) {
             m.copyMeshesFrom(current)
+            m.enabled = current.enabled
             current = m
             return true
         }
@@ -180,6 +181,14 @@ class ModulePointer(var current: Module) : Renderable {
         m.value.inside = this
     }
 
+    fun enable() {
+        current.enable()
+    }
+
+    fun disable() {
+        current.disable()
+    }
+
     override fun toString(): String = if (!current.valid) "Invalid Module" else "Module"
 }
 
@@ -187,6 +196,7 @@ fun Module.pointer() = ModulePointer(this)
 
 class Module(val parameters: Parameters) : Renderable {
     var valid = false
+    var enabled = true
     var meshes = mutableMapOf<String, Mesh>()
 
     val vi = Introspection(parameters.vertex, ShaderKind.VERTEX_SHADER, errorHandler = parameters.errorHandler)
@@ -728,7 +738,7 @@ class Module(val parameters: Parameters) : Renderable {
     }
 
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (!valid) return
+        if (!valid || !enabled) return
         MemoryStack.stackPush().use { stack ->
             val cmd = command.vkCommandBuffer
             val renderer = parameters.renderer
@@ -801,6 +811,14 @@ class Module(val parameters: Parameters) : Renderable {
                 command.endLabel() // close the module render region
             }
         }
+    }
+
+    fun enable() {
+        enabled = true
+    }
+
+    fun disable() {
+        enabled = false
     }
 
     fun copyMeshesFrom(old: Module) {

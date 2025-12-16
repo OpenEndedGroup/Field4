@@ -7,10 +7,12 @@ import afield.four.util.vkCheck
 
 class CommandPool(device: Device, queueFamilyIndex: Int) {
     val device: Device
+    val queueFamilyIndex: Int
     var vkCommandPool: Long = 0
 
     init {
         this.device = device
+        this.queueFamilyIndex = queueFamilyIndex
         MemoryStack.stackPush().use { stack ->
             val cmdPoolInfo = VkCommandPoolCreateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO)

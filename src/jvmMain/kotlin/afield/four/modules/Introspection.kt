@@ -88,7 +88,29 @@ enum class PrimitiveType(
     mat3(
         9, 4, -1, "org.joml.Matrix3f", "mat(0,0,0,0,0,0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+9*4)"
     ),
-    mat2(4, 4, -1, "org.joml.Matrix2f", "mat(0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+2*4)"), ;
+    mat2(4, 4, -1, "org.joml.Matrix2f", "mat(0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+2*4)"),
+
+    float16_t(
+        1, 2, VK10.VK_FORMAT_R16_SFLOAT,
+        "Float", "0f",
+        "buffer.putf16(x)"
+    ),
+    f16vec2(
+        2, 2, VK10.VK_FORMAT_R16G16_SFLOAT,
+        "org.joml.Vector2f", "vec(0,0)",
+        "buffer.putf16(x.x); buffer.putf16(x.y)"
+    ),
+    f16vec3(
+        3, 2, VK10.VK_FORMAT_R16G16B16_SFLOAT,
+        "org.joml.Vector3f", "vec(0,0,0)",
+        "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z)"
+    ),
+    f16vec4(
+        4, 2, VK10.VK_FORMAT_R16G16B16A16_SFLOAT,
+        "org.joml.Vector4f", "vec(0,0,0,1)",
+        "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z); buffer.putf16(x.w)"
+    );
+
 
     val sizeInBytes: Long
         get() = (componentsSizeInBytes * components).toLong()
@@ -280,9 +302,14 @@ class Introspection(
                     val name = uo.getString("name")
                     val ty = types[uo.getString("type")]!!
 
-                    val size = if (ty.size == 0) 0 else ty.last().offset + ty.last().type.fold(
-                        { it.sizeInBytes },
-                        { it.sumOf { it.memberSize() } })
+                    val size = if (ty.isEmpty()) 0 else {
+                        ty.maxOf { m ->
+                            m.offset + m.type.fold(
+                                { it.sizeInBytes.toInt() },
+                                { it.sumOf { sub -> sub.memberSize() }.toInt() }
+                            )
+                        }
+                    }
 
                     fun Int.nearest16() = (this + 15) and -16
 

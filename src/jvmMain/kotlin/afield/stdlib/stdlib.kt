@@ -2,9 +2,11 @@ package afield.stdlib
 
 import afield.*
 import afield.Server.Companion.stop
+import afield.four.util.floatToHalfBits
 import kotlinx.coroutines.DelicateCoroutinesApi
 import org.joml.*
 import java.nio.BufferOverflowException
+import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.reflect.KProperty
@@ -343,3 +345,16 @@ fun Vector4f.noise(d: Number) : Vector4f {
 }
 
 operator fun <T> List<T>.get(range: IntRange) = this.slice(range)
+
+
+fun ByteBuffer.putf16(value: Float): ByteBuffer {
+    val h = floatToHalfBits(value).toInt() and 0xFFFF
+    put((h and 0xFF).toByte())
+    put(((h ushr 8) and 0xFF).toByte())
+    return this
+}
+
+
+data class Vec2h(val v: Vector2f)
+data class Vec3h(val v: Vector3f)
+data class Vec4h(val v: Vector4f)

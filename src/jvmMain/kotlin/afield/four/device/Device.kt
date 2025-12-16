@@ -66,6 +66,8 @@ class Device(val physicalDevice: PhysicalDevice) {
                 addIfSupported(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)
                 addIfSupported(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
 
+                addIfSupported(KHR16bitStorage.VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
+
                 if (enableMeshShading) {
                     add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
                 }
@@ -119,7 +121,8 @@ class Device(val physicalDevice: PhysicalDevice) {
                 shaderOutputLayer(true)
                 shaderOutputViewportIndex(true)
 
-                // What you already had
+                shaderFloat16(true)
+
                 bufferDeviceAddress(true)
                 timelineSemaphore(true)
 
@@ -175,6 +178,14 @@ class Device(val physicalDevice: PhysicalDevice) {
             if (supportsExtendedDynamicState3) {
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, eds3.address()); tail = eds3.address()
             }
+
+            val storage16 = VkPhysicalDevice16BitStorageFeatures.calloc(stack).apply {
+                sType(VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES)
+                storagePushConstant16(true)
+            }
+
+            memPutAddress(tail + VkBaseOutStructure.PNEXT, storage16.address()); tail = storage16.address()
+
 
             // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading && usePresentIndexing) {

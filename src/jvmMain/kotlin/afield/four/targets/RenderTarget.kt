@@ -31,6 +31,7 @@ class RenderTarget(
     var modules = mutableMapOf<String, ModulePointer>()
     var meshModules = mutableMapOf<String, MeshModulePointer>()
     var others = mutableMapOf<String, Target>()
+    var preRecordedInsideRendering: List<CommandBuffer>? = null
 
     @JvmName("plusAssign")
     operator fun plusAssign(m : Pair<String, ModulePointer>) {
@@ -180,15 +181,27 @@ class RenderTarget(
 
             val fullRect = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
 
-            modules.forEach { (_, mp) ->
-                setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)
-                mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
-            }
+            val recorded = preRecordedInsideRendering
+            if (recorded.isNullOrEmpty()) {
+                modules.forEach { (_, mp) ->
+                    setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)
+                    mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                }
 
-            meshModules.forEach { (_, mp) ->
-                setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)
-                mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                meshModules.forEach { (_, mp) ->
+                    setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)
+                    mp.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                }
+            } else {
+                // Execute pre-recorded modules/mesh modules in order
+                val pb = stack.mallocPointer(recorded.size)
+                recorded.forEach { cb ->
+                    pb.put(cb.vkCommandBuffer.address())
+                }
+                pb.flip()
+                VK10.vkCmdExecuteCommands(command.vkCommandBuffer, pb)
             }
+            preRecordedInsideRendering = null
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
 

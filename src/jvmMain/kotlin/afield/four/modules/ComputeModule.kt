@@ -26,7 +26,7 @@ import java.nio.ByteBuffer
 
 class ComputeModulePointer(var current: ComputeModule) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (current.valid) current.render(command, bounds)
+        if (current.valid && current.enabled) current.render(command, bounds)
         else println("module '${current.parameters.name}' not valid / not rendering")
     }
 
@@ -63,6 +63,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         val m = ComputeModule(p)
         if (m.valid) {
             m.copyMeshesFrom(current)
+            m.enabled = current.enabled
             current = m
             return true
         }
@@ -73,12 +74,21 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         current.meshes[m.first] = m.second
         (m.second as? ComputeMesh)?.let { it.inside = this }
     }
+
+    fun enable() {
+        current.enable()
+    }
+
+    fun disable() {
+        current.disable()
+    }
 }
 
 fun ComputeModule.pointer() = ComputeModulePointer(this)
 
 class ComputeModule(val parameters: Parameters) : Renderable {
     var valid = false
+    var enabled = true
 
     val meshes = mutableMapOf<String, ComputeTask>()
 
@@ -320,7 +330,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     }
 
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (!valid) return
+        if (!valid || !enabled) return
         MemoryStack.stackPush().use { stack ->
             val labelColor = stack.floats(
                 parameters.labelColor.x.f, parameters.labelColor.y.f,
@@ -358,6 +368,14 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
             command.endLabel()
         }
+    }
+
+    fun enable() {
+        enabled = true
+    }
+
+    fun disable() {
+        enabled = false
     }
 
     fun copyMeshesFrom(old: ComputeModule) {

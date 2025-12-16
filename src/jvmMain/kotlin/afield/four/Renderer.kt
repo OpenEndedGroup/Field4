@@ -11,13 +11,19 @@ import afield.four.modules.ModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
 import afield.four.texture.ImageView
+import afield.Rect
 import afield.four.util.MapOfSequences
 import afield.four.util.AutoDisposer
 import afield.four.util.Options
 import afield.four.util.Window
 import afield.logTime
 import afield.logTime_
+import org.joml.primitives.Rectanglef
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface
@@ -26,12 +32,16 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
 import org.lwjgl.vulkan.VK13.*
-import java.lang.ref.ReferenceQueue
 import kotlin.coroutines.coroutineContext
 import org.lwjgl.vulkan.VK13.vkQueueSubmit2
+import org.lwjgl.vulkan.VkCommandBuffer
 import org.lwjgl.vulkan.VkSubmitInfo2
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo
 import org.lwjgl.vulkan.VkCommandBufferSubmitInfo
+import org.lwjgl.vulkan.VkViewport
+import org.lwjgl.vulkan.VkRect2D
+import org.lwjgl.vulkan.VkExtent2D
+import org.lwjgl.vulkan.VkOffset2D
 
 fun interface Target { fun render(command: CommandBuffer, index: Int) }
 
@@ -48,18 +58,24 @@ object CPUSpan {
         fun maxMs() = if (n > 0) maxNs / 1e6 else 0.0
     }
     private val stats = linkedMapOf<String, Stat>()
+    private val lock = Any()
     fun time(label: String, block: () -> Unit) {
         val t0 = System.nanoTime()
         block()
-        stats.getOrPut(label) { Stat() }.add(System.nanoTime() - t0)
+        val dt = System.nanoTime() - t0
+        synchronized(lock) {
+            stats.getOrPut(label) { Stat() }.add(dt)
+        }
     }
     fun snapshotAndMaybePrint(everyNFrames: Int, frame: Long, header: String = "CPU") {
         if (frame % everyNFrames != 0L) return
-        val line = buildString {
-            append("$header: ")
-            append(stats.entries.joinToString("  ") { (k, s) ->
-                "$k=${"%.3f".format(s.avgMs())}ms(avg) [${"%.3f".format(s.minMs())},${"%.3f".format(s.maxMs())}]"
-            })
+        val line = synchronized(lock) {
+            buildString {
+                append("$header: ")
+                append(stats.entries.joinToString("  ") { (k, s) ->
+                    "$k=${"%.3f".format(s.avgMs())}ms(avg) [${"%.3f".format(s.minMs())},${"%.3f".format(s.maxMs())}]"
+                })
+            }
         }
         println(line)
     }
@@ -83,14 +99,19 @@ class Renderer(
         var numImages: Int,
         var currentImage: Int = 0,
         var renderTarget: RenderTarget,
-        var profilerState: ProfilerState? = null
+        var profilerState: ProfilerState? = null,
+        var computeSecondary: MutableMap<String, Array<CommandBuffer>> = mutableMapOf(),
+        var graphicsSecondary: MutableMap<String, Array<CommandBuffer>> = mutableMapOf(),
+        var computePoolsPerThread: MutableMap<Long, CommandPool> = mutableMapOf(),
+        var graphicsPoolsPerThread: MutableMap<Long, CommandPool> = mutableMapOf()
     )
 
     data class ProfilerState(
         val profiler: GpuProfiler,
         var markers: Array<FrameMarkers>,
         var perImageModuleMarks: Array<MutableList<ModuleMarks>>,
-        val pending: ArrayDeque<Pending> = ArrayDeque()
+        val pending: ArrayDeque<Pending> = ArrayDeque(),
+        val lock: Any = Any()
     )
 
     val windows: List<Window> = listOf(mainWindow) + additionalWindows
@@ -162,7 +183,9 @@ class Renderer(
     fun registerModuleMarks(windowIndex: Int, imageIndex: Int, marks: ModuleMarks) {
         val ctx = windowContexts.getOrNull(windowIndex) ?: return
         val ps = ctx.profilerState ?: return
-        ps.perImageModuleMarks.getOrNull(imageIndex)?.add(marks)
+        synchronized(ps.lock) {
+            ps.perImageModuleMarks.getOrNull(imageIndex)?.add(marks)
+        }
     }
 
     init {
@@ -203,6 +226,10 @@ class Renderer(
             ctx.fences.forEach { it.cleanup() }
             ctx.computeFences.forEach { it.cleanup() }
             ctx.computeFinishedSemaphores.forEach { it.cleanup() }
+            cleanupSecondaryMap(ctx.computeSecondary)
+            cleanupSecondaryMap(ctx.graphicsSecondary)
+            cleanupPoolMap(ctx.computePoolsPerThread)
+            cleanupPoolMap(ctx.graphicsPoolsPerThread)
             ctx.depthAttachments.forEach { it.cleanup() }
             ctx.swapChain.cleanup()
             ctx.surface.cleanup()
@@ -219,6 +246,7 @@ class Renderer(
 
     fun render() {
         val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
+        val frameId = frameCounter
 
         // Drain ready frames (no stalls) per window.
         windowContexts.forEach { ctx ->
@@ -255,122 +283,42 @@ class Renderer(
 
                 ctx.currentImage = imageIndex
                 if (ctxIndex == 0) currentImage = imageIndex
-                ctx.profilerState?.let {
-                    it.profiler.beginFrame(imageIndex)
-                    it.perImageModuleMarks.getOrNull(imageIndex)?.clear()
+                ctx.profilerState?.let { ps ->
+                    synchronized(ps.lock) {
+                        ps.profiler.beginFrame(imageIndex)
+                        ps.perImageModuleMarks.getOrNull(imageIndex)?.clear()
+                    }
                 }
 
-                // Compute pass
-                var csScope: GpuProfiler.PipeStatScope? = null
-                var pcScope: GpuProfiler.PerfScope? = null
-                CPUSpan.time("record_cs[$ctxIndex]") {
-                    ctx.computeFences[imageIndex].fenceWait()
-                    ctx.computeFences[imageIndex].reset()
-
-                    val ccmd = ctx.computeCommandBuffers[imageIndex]
-                    ccmd.reset(); ccmd.beginRecording()
-
-                    // --- Label start (compute pass) ---
-                    MemoryStack.stackPush().use { s ->
-                        val c = s.floats(0.25f, 0.65f, 0.85f, 1f) // cyan-ish
-                        ccmd.beginLabel("Compute Pass [frame $frameCounter ctx=$ctxIndex]", c)
+                runBlocking {
+                    val computeRecording = async(Dispatchers.Default) {
+                        recordComputePass(ctx, ctxIndex, imageIndex, frameId)
+                    }
+                    val graphicsRecording = async(Dispatchers.Default) {
+                        recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
                     }
 
-                    ctx.profilerState?.let { p ->
-                        p.markers[imageIndex].tsFrameBegin = p.profiler.writeTimestamp2(
-                            ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-                        )
-                        val cs = p.profiler.beginPipelineStats(ccmd.vkCommandBuffer, imageIndex)
-                        csScope = cs
-                        csScope?.let { p.markers[imageIndex].pipeStatsCompute = it.index }
-                        pcScope = p.profiler.beginPerfCounters(ccmd.vkCommandBuffer, imageIndex)
-                    }
-
-                    computeList.render(ccmd, imageIndex)
-
-                    ctx.profilerState?.let { p ->
-                        p.profiler.endPerfCounters(ccmd.vkCommandBuffer, imageIndex, pcScope)
-                        p.profiler.endPipelineStats(ccmd.vkCommandBuffer, csScope)
-                        p.markers[imageIndex].tsAfterCompute = p.profiler.writeTimestamp2(
-                            ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                    computeRecording.await()
+                    CPUSpan.time("submit_cs[$ctxIndex]") {
+                        submitCompute(
+                            ctx,
+                            ctx.computeCommandBuffers[imageIndex],
+                            ctx.computeFences[imageIndex],
+                            ctx.computeFinishedSemaphores[imageIndex],
+                            graphQueue
                         )
                     }
 
-                    // --- Label end (compute pass) ---
-                    ccmd.endLabel()
-
-                    ccmd.endRecording()
-                }
-
-                CPUSpan.time("submit_cs[$ctxIndex]") {
-                    submitCompute(
-                        ctx,
-                        ctx.computeCommandBuffers[imageIndex],
-                        ctx.computeFences[imageIndex],
-                        ctx.computeFinishedSemaphores[imageIndex],
-                        graphQueue
-                    )
-                }
-
-                // Graphics pass
-                CPUSpan.time("record_gfx[$ctxIndex]") {
-                    val cmd = ctx.commandBuffers[imageIndex]
-                    cmd.reset(); cmd.beginRecording()
-
-                    // --- Label start (graphics frame) ---
-                    MemoryStack.stackPush().use { s ->
-                        val c = s.floats(0.85f, 0.45f, 0.15f, 1f) // orange-ish
-                        cmd.beginLabel("Graphics Frame [frame $frameCounter ctx=$ctxIndex]", c)
-                    }
-
-                    currentCommandBuffer = cmd
-                    renderStart.update()
-
-                    var gsScope: GpuProfiler.PipeStatScope? = null
-                    var perfFrameScope: GpuProfiler.PerfScope? = null
-
-                    ctx.profilerState?.let { p ->
-                        gsScope = p.profiler.beginPipelineStats(cmd.vkCommandBuffer, imageIndex)
-                        gsScope?.let { p.markers[imageIndex].pipeStatsGraphics = it.index }
-                        perfFrameScope = p.profiler.beginPerfCounters(cmd.vkCommandBuffer, imageIndex)
-                    }
-
-                    // Bracket the scene render itself
-                    MemoryStack.stackPush().use { s ->
-                        val c = s.floats(0.45f, 0.85f, 0.25f, 1f) // green-ish
-                        cmd.beginLabel("RenderTargets", c)
-                    }
-
-                    ctx.renderTarget.render(cmd, imageIndex)
-
-                    cmd.endLabel() // end "RenderTargets"
-
-                    ctx.profilerState?.let { p ->
-                        p.profiler.endPerfCounters(cmd.vkCommandBuffer, imageIndex, perfFrameScope)
-                        perfFrameScope?.let { p.markers[imageIndex].perfFrameIndex = it.index }
-                        p.profiler.endPipelineStats(cmd.vkCommandBuffer, gsScope)
-                        p.markers[imageIndex].tsAfterGraphics = p.profiler.writeTimestamp2(
-                            cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-                        )
-                        p.markers[imageIndex].tsFrameEnd = p.profiler.writeTimestamp2(
-                            cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                    graphicsRecording.await()
+                    CPUSpan.time("submit_gfx[$ctxIndex]") {
+                        submit(
+                            ctx,
+                            ctx.commandBuffers[imageIndex],
+                            ctx.fences[imageIndex],
+                            graphQueue,
+                            ctx.computeFinishedSemaphores[imageIndex]
                         )
                     }
-
-                    // --- Label end (graphics frame) ---
-                    cmd.endLabel()
-
-                    cmd.endRecording()
-                }
-
-                CPUSpan.time("submit_gfx[$ctxIndex]") {
-                    submit(
-                        ctx,
-                        ctx.commandBuffers[imageIndex],
-                        ctx.fences[imageIndex],
-                        graphQueue,
-                        ctx.computeFinishedSemaphores[imageIndex]
-                    )
                 }
 
                 CPUSpan.time("present[$ctxIndex]") {
@@ -408,6 +356,234 @@ class Renderer(
 
         frameCounter++
         currentCommandBuffer = null
+    }
+
+    private fun recordComputePass(
+        ctx: WindowContext,
+        ctxIndex: Int,
+        imageIndex: Int,
+        frameId: Long
+    ) {
+        CPUSpan.time("record_cs[$ctxIndex]") {
+            ctx.computeFences[imageIndex].fenceWait()
+            ctx.computeFences[imageIndex].reset()
+
+            val computeElements = mutableListOf<Pair<String, (CommandBuffer) -> Unit>>()
+            computeList.modules.forEach { (name, ptr) ->
+                computeElements += name to { cb -> ptr.render(cb, Rectanglef()) }
+            }
+            computeList.others.forEach { (name, target) ->
+                computeElements += name to { cb -> target.render(cb, imageIndex) }
+            }
+
+            val secondaryBuffers = arrayOfNulls<CommandBuffer>(computeElements.size)
+            runBlocking {
+                val jobs = computeElements.mapIndexed { idx, (name, action) ->
+                    async(Dispatchers.Default) {
+                        val cb = getSecondaryCommandBuffer(
+                            ctx.computeSecondary,
+                            "compute:$name",
+                            computeCommandPool,
+                            ctx.computePoolsPerThread,
+                            ctx.numImages,
+                            imageIndex
+                        )
+                        cb.reset()
+                        cb.beginRecording(CommandBuffer.SecondaryInheritance())
+                        action(cb)
+                        cb.endRecording()
+                        secondaryBuffers[idx] = cb
+                    }
+                }
+                jobs.awaitAll()
+            }
+
+            val ccmd = ctx.computeCommandBuffers[imageIndex]
+            ccmd.reset(); ccmd.beginRecording()
+
+            // --- Label start (compute pass) ---
+            MemoryStack.stackPush().use { s ->
+                val c = s.floats(0.25f, 0.65f, 0.85f, 1f) // cyan-ish
+                ccmd.beginLabel("Compute Pass [frame $frameId ctx=$ctxIndex]", c)
+            }
+
+            val profilerState = ctx.profilerState
+            var csScope: GpuProfiler.PipeStatScope? = null
+            var pcScope: GpuProfiler.PerfScope? = null
+            profilerState?.let { p ->
+                synchronized(p.lock) {
+                    p.markers[imageIndex].tsFrameBegin = p.profiler.writeTimestamp2(
+                        ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+                    )
+                    val cs = p.profiler.beginPipelineStats(ccmd.vkCommandBuffer, imageIndex)
+                    csScope = cs
+                    csScope?.let { p.markers[imageIndex].pipeStatsCompute = it.index }
+                    pcScope = p.profiler.beginPerfCounters(ccmd.vkCommandBuffer, imageIndex)
+                }
+            }
+
+            if (secondaryBuffers.isNotEmpty()) {
+                MemoryStack.stackPush().use { stack ->
+                    val pb = stack.mallocPointer(secondaryBuffers.size)
+                    secondaryBuffers.forEach { cb ->
+                        pb.put(cb!!.vkCommandBuffer.address())
+                    }
+                    pb.flip()
+                    VK10.vkCmdExecuteCommands(ccmd.vkCommandBuffer, pb)
+                }
+            } else {
+                computeList.render(ccmd, imageIndex)
+            }
+
+            profilerState?.let { p ->
+                synchronized(p.lock) {
+                    p.profiler.endPerfCounters(ccmd.vkCommandBuffer, imageIndex, pcScope)
+                    p.profiler.endPipelineStats(ccmd.vkCommandBuffer, csScope)
+                    p.markers[imageIndex].tsAfterCompute = p.profiler.writeTimestamp2(
+                        ccmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                    )
+                }
+            }
+
+            // --- Label end (compute pass) ---
+            ccmd.endLabel()
+
+            ccmd.endRecording()
+        }
+    }
+
+    private fun recordGraphicsPass(
+        ctx: WindowContext,
+        ctxIndex: Int,
+        imageIndex: Int,
+        frameId: Long
+    ) {
+        CPUSpan.time("record_gfx[$ctxIndex]") {
+            val swapChainExtent = ctx.swapChain.swapChainExtent
+            val width = swapChainExtent.width()
+            val height = swapChainExtent.height()
+
+            val dynRendering = CommandBuffer.DynamicRenderingInheritance(
+                colorFormats = intArrayOf(ctx.swapChain.surfaceFormat.imageFormat),
+                depthFormat = ctx.depthAttachments.getOrNull(imageIndex)?.image?.format ?: Options.defaultDepthFormat
+            )
+
+            val moduleElements = mutableListOf<Pair<String, (CommandBuffer) -> Unit>>()
+            ctx.renderTarget.modules.forEach { (name, mp) ->
+                moduleElements += "mod:$name" to { cb ->
+                    MemoryStack.stackPush().use { stack ->
+                        val viewport = mp.current.parameters.viewport ?: Rect(
+                            0.0, 0.0, width.toDouble(), height.toDouble()
+                        )
+                        setViewportAndScissor(cb.vkCommandBuffer, viewport, stack)
+                    }
+                    mp.render(cb, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                }
+            }
+            ctx.renderTarget.meshModules.forEach { (name, mp) ->
+                moduleElements += "mesh:$name" to { cb ->
+                    MemoryStack.stackPush().use { stack ->
+                        val viewport = mp.current.parameters.viewport ?: Rect(
+                            0.0, 0.0, width.toDouble(), height.toDouble()
+                        )
+                        setViewportAndScissor(cb.vkCommandBuffer, viewport, stack)
+                    }
+                    mp.render(cb, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                }
+            }
+
+            val enableSecondaryModules = true;//!Options.isMac
+            val moduleBuffers: List<CommandBuffer> =
+                if (enableSecondaryModules && moduleElements.isNotEmpty()) {
+                    val collected = arrayOfNulls<CommandBuffer>(moduleElements.size)
+                    runBlocking {
+                        val jobs = moduleElements.mapIndexed { idx, (name, action) ->
+                            async(Dispatchers.Default) {
+                        val cb = getSecondaryCommandBuffer(
+                            ctx.graphicsSecondary,
+                            "gfx:$name",
+                            commandPool,
+                            ctx.graphicsPoolsPerThread,
+                            ctx.numImages,
+                            imageIndex
+                        )
+                                cb.reset()
+                                cb.beginRecording(
+                                    CommandBuffer.SecondaryInheritance(
+                                        dynamicRendering = dynRendering
+                                    )
+                                )
+                                action(cb)
+                                cb.endRecording()
+                                collected[idx] = cb
+                            }
+                        }
+                        jobs.awaitAll()
+                    }
+                    collected.filterNotNull()
+                } else emptyList()
+
+            val cmd = ctx.commandBuffers[imageIndex]
+            cmd.reset(); cmd.beginRecording()
+
+            // --- Label start (graphics frame) ---
+            MemoryStack.stackPush().use { s ->
+                val c = s.floats(0.85f, 0.45f, 0.15f, 1f) // orange-ish
+                cmd.beginLabel("Graphics Frame [frame $frameId ctx=$ctxIndex]", c)
+            }
+
+            currentCommandBuffer = cmd
+            try {
+                renderStart.update()
+
+                val profilerState = ctx.profilerState
+                var gsScope: GpuProfiler.PipeStatScope? = null
+                var perfFrameScope: GpuProfiler.PerfScope? = null
+
+                profilerState?.let { p ->
+                    synchronized(p.lock) {
+                        gsScope = p.profiler.beginPipelineStats(cmd.vkCommandBuffer, imageIndex)
+                        gsScope?.let { p.markers[imageIndex].pipeStatsGraphics = it.index }
+                        perfFrameScope = p.profiler.beginPerfCounters(cmd.vkCommandBuffer, imageIndex)
+                    }
+                }
+
+                // Bracket the scene render itself
+                MemoryStack.stackPush().use { s ->
+                    val c = s.floats(0.45f, 0.85f, 0.25f, 1f) // green-ish
+                    cmd.beginLabel("RenderTargets", c)
+                }
+
+                if (moduleBuffers.isNotEmpty()) {
+                    ctx.renderTarget.preRecordedInsideRendering = moduleBuffers
+                }
+
+                ctx.renderTarget.render(cmd, imageIndex)
+
+                cmd.endLabel() // end "RenderTargets"
+
+                profilerState?.let { p ->
+                    synchronized(p.lock) {
+                        p.profiler.endPerfCounters(cmd.vkCommandBuffer, imageIndex, perfFrameScope)
+                        perfFrameScope?.let { p.markers[imageIndex].perfFrameIndex = it.index }
+                        p.profiler.endPipelineStats(cmd.vkCommandBuffer, gsScope)
+                        p.markers[imageIndex].tsAfterGraphics = p.profiler.writeTimestamp2(
+                            cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+                        )
+                        p.markers[imageIndex].tsFrameEnd = p.profiler.writeTimestamp2(
+                            cmd.vkCommandBuffer, imageIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                        )
+                    }
+                }
+
+                // --- Label end (graphics frame) ---
+                cmd.endLabel()
+
+                cmd.endRecording()
+            } finally {
+                currentCommandBuffer = null
+            }
+        }
     }
 
     class ImageNotAvailable(s: String) : RuntimeException(s)
@@ -568,7 +744,11 @@ class Renderer(
             numImages = numImages,
             currentImage = 0,
             renderTarget = renderTarget,
-            profilerState = profilerState
+            profilerState = profilerState,
+            computeSecondary = mutableMapOf(),
+            graphicsSecondary = mutableMapOf(),
+            computePoolsPerThread = mutableMapOf(),
+            graphicsPoolsPerThread = mutableMapOf()
         )
         nameContextObjects(ctxRef, index)
         return ctxRef
@@ -614,6 +794,8 @@ class Renderer(
         context.fences.forEach { it.cleanup() }
         context.computeFences.forEach { it.cleanup() }
         context.computeFinishedSemaphores.forEach { it.cleanup() }
+        cleanupSecondaryMap(context.computeSecondary)
+        cleanupSecondaryMap(context.graphicsSecondary)
 
         val newImages = context.swapChain.imageViews.size
         context.commandBuffers = Array(newImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = false) }
@@ -621,6 +803,12 @@ class Renderer(
         context.fences = Array(newImages) { Fence(device, signaled = true) }
         context.computeFences = Array(newImages) { Fence(device, signaled = true) }
         context.computeFinishedSemaphores = Array(newImages) { Semaphore(device) }
+        context.computeSecondary = mutableMapOf()
+        context.graphicsSecondary = mutableMapOf()
+        cleanupPoolMap(context.computePoolsPerThread)
+        cleanupPoolMap(context.graphicsPoolsPerThread)
+        context.computePoolsPerThread = mutableMapOf()
+        context.graphicsPoolsPerThread = mutableMapOf()
         context.numImages = newImages
         context.currentImage = 0
 
@@ -631,6 +819,57 @@ class Renderer(
     }
 
     var running = false
+
+    private fun cleanupSecondaryMap(map: MutableMap<String, Array<CommandBuffer>>) {
+        map.values.forEach { arr -> arr.forEach { it.cleanup() } }
+        map.clear()
+    }
+
+    private fun cleanupPoolMap(map: MutableMap<Long, CommandPool>) {
+        map.values.forEach { it.cleanup() }
+        map.clear()
+    }
+
+    private fun getSecondaryCommandBuffer(
+        store: MutableMap<String, Array<CommandBuffer>>,
+        key: String,
+        basePool: CommandPool,
+        poolMap: MutableMap<Long, CommandPool>,
+        numImages: Int,
+        imageIndex: Int
+    ): CommandBuffer {
+        val threadId = Thread.currentThread().id
+        val threadKey = "$key@$threadId"
+        val pool = synchronized(poolMap) {
+            poolMap.getOrPut(threadId) { CommandPool(basePool.device, basePool.queueFamilyIndex) }
+        }
+        val existing = store[threadKey]
+        val buffers = if (existing == null || existing.size != numImages) {
+            existing?.forEach { it.cleanup() }
+            Array(numImages) { CommandBuffer(pool, primary = false, oneTimeSubmit = true) }
+        } else existing
+        store[threadKey] = buffers
+        return buffers[imageIndex]
+    }
+
+    private fun setViewportAndScissor(cmd: VkCommandBuffer, rect: Rect, stack: MemoryStack) {
+        val viewport = VkViewport.calloc(1, stack)
+            .x(rect.x.toFloat())
+            .y((rect.y + rect.h).toFloat()) // flip Y
+            .height((-rect.h).toFloat())
+            .width(rect.w.toFloat())
+            .minDepth(0f).maxDepth(1f)
+        VK10.vkCmdSetViewport(cmd, 0, viewport)
+
+        val scissor = VkRect2D.calloc(1, stack)
+            .extent(
+                VkExtent2D.calloc(stack)
+                    .width(rect.w.toInt())
+                    .height(rect.h.toInt())
+            )
+            .offset(VkOffset2D.calloc(stack).x(rect.x.toInt()).y(rect.y.toInt()))
+        VK10.vkCmdSetScissor(cmd, 0, scissor)
+    }
 
     fun runForever(update: () -> Unit) {
         running = true
@@ -688,73 +927,75 @@ class Renderer(
 
     private fun resolveProfilingForImage(context: WindowContext, imageIndex: Int) {
         val ps = context.profilerState ?: return
-        val p = ps.profiler
-        val m = ps.markers.getOrNull(imageIndex) ?: return
+        synchronized(ps.lock) {
+            val p = ps.profiler
+            val m = ps.markers.getOrNull(imageIndex) ?: return
 
-        if (m.perfFrameIndex >= 0 && p.opts.perfCounters) {
-            val meta = p.perfMeta
-            val vals = p.fetchPerfCounters(imageIndex, m.perfFrameIndex, meta.size)
-            val n = kotlin.math.min(vals.size, meta.size)
-            if (n > 0) {
-                val byScope = meta.withIndex().groupBy { it.value.scope }
-                for ((scope, items) in byScope) {
-                    println("PERF scope=$scope")
-                    for (e in items) {
-                        val i = e.index
-                        println("  ${e.value.name}: ${p.formatPerfValue(vals[i], e.value.unit)}")
+            if (m.perfFrameIndex >= 0 && p.opts.perfCounters) {
+                val meta = p.perfMeta
+                val vals = p.fetchPerfCounters(imageIndex, m.perfFrameIndex, meta.size)
+                val n = kotlin.math.min(vals.size, meta.size)
+                if (n > 0) {
+                    val byScope = meta.withIndex().groupBy { it.value.scope }
+                    for ((scope, items) in byScope) {
+                        println("PERF scope=$scope")
+                        for (e in items) {
+                            val i = e.index
+                            println("  ${e.value.name}: ${p.formatPerfValue(vals[i], e.value.unit)}")
+                        }
                     }
                 }
             }
-        }
 
-        if (m.tsFrameBegin >= 0 && m.tsFrameEnd >= 0) {
-            val ts = p.fetchTimestampNsRange(imageIndex, m.tsFrameBegin, m.tsFrameEnd)
-            if (ts.size >= 4) {
-                val frameNs = ts[3] - ts[0]
-                val computeNs = ts[1] - ts[0]
-                val graphicsNs = ts[2] - ts[1]
-                val postNs = ts[3] - ts[2]
-                println("GPU frame=${frameNs/1e6} ms (compute=${computeNs/1e6} ms, graphics=${graphicsNs/1e6} ms, post=${postNs/1e6} ms)")
+            if (m.tsFrameBegin >= 0 && m.tsFrameEnd >= 0) {
+                val ts = p.fetchTimestampNsRange(imageIndex, m.tsFrameBegin, m.tsFrameEnd)
+                if (ts.size >= 4) {
+                    val frameNs = ts[3] - ts[0]
+                    val computeNs = ts[1] - ts[0]
+                    val graphicsNs = ts[2] - ts[1]
+                    val postNs = ts[3] - ts[2]
+                    println("GPU frame=${frameNs/1e6} ms (compute=${computeNs/1e6} ms, graphics=${graphicsNs/1e6} ms, post=${postNs/1e6} ms)")
+                }
             }
-        }
 
-        if (m.pipeStatsCompute >= 0 && p.opts.pipelineStats) {
-            val ps = p.fetchPipelineStats(imageIndex, m.pipeStatsCompute)
-            println("CS invocations: ${ps.getOrNull(10) ?: -1}")
-        }
-        if (m.pipeStatsGraphics >= 0 && p.opts.pipelineStats) {
-            val ps = p.fetchPipelineStats(imageIndex, m.pipeStatsGraphics)
-            val iaVerts = ps.getOrNull(0) ?: -1
-            val iaPrims = ps.getOrNull(1) ?: -1
-            val vsInv   = ps.getOrNull(2) ?: -1
-            val fsInv   = ps.getOrNull(7) ?: -1
-            println("GFX IA verts=$iaVerts, IA prims=$iaPrims, VS invoc=$vsInv, FS invoc=$fsInv")
-        }
+            if (m.pipeStatsCompute >= 0 && p.opts.pipelineStats) {
+                val ps = p.fetchPipelineStats(imageIndex, m.pipeStatsCompute)
+                println("CS invocations: ${ps.getOrNull(10) ?: -1}")
+            }
+            if (m.pipeStatsGraphics >= 0 && p.opts.pipelineStats) {
+                val ps = p.fetchPipelineStats(imageIndex, m.pipeStatsGraphics)
+                val iaVerts = ps.getOrNull(0) ?: -1
+                val iaPrims = ps.getOrNull(1) ?: -1
+                val vsInv   = ps.getOrNull(2) ?: -1
+                val fsInv   = ps.getOrNull(7) ?: -1
+                println("GFX IA verts=$iaVerts, IA prims=$iaPrims, VS invoc=$vsInv, FS invoc=$fsInv")
+            }
 
-        val pm = ps.perImageModuleMarks.getOrNull(imageIndex) ?: mutableListOf()
-        if (pm.isNotEmpty()) {
-            for (mm in pm) {
-                if (mm.tsBegin >= 0 && mm.tsEnd >= 0) {
-                    val ts = p.fetchTimestampNsRange(imageIndex, mm.tsBegin, mm.tsEnd)
-                    if (ts.size >= 2) {
-                        val dtMs = (ts.last() - ts.first()) / 1e6
-                        println("MOD '${mm.name}': ${"%.3f".format(dtMs)} ms")
+            val pm = ps.perImageModuleMarks.getOrNull(imageIndex) ?: mutableListOf()
+            if (pm.isNotEmpty()) {
+                for (mm in pm) {
+                    if (mm.tsBegin >= 0 && mm.tsEnd >= 0) {
+                        val ts = p.fetchTimestampNsRange(imageIndex, mm.tsBegin, mm.tsEnd)
+                        if (ts.size >= 2) {
+                            val dtMs = (ts.last() - ts.first()) / 1e6
+                            println("MOD '${mm.name}': ${"%.3f".format(dtMs)} ms")
+                        }
                     }
-                }
-                if (mm.pipeStatsIndex >= 0 && p.opts.pipelineStats) {
-                    val ps = p.fetchPipelineStats(imageIndex, mm.pipeStatsIndex)
-                    val fsInv = ps.getOrNull(7) ?: -1
-                    println("MOD '${mm.name}': FS invocations=$fsInv")
-                }
-                if (mm.perfIndex >= 0 && p.opts.perfCounters) {
-                    val meta = p.perfMeta
-                    val vals = p.fetchPerfCounters(imageIndex, mm.perfIndex, meta.size)
-                    val n = kotlin.math.min(vals.size, meta.size)
-                    if (n > 0) {
-                        println("MOD '${mm.name}' PERF:")
-                        for (i in 0 until n) {
-                            val mi = meta[i]
-                            println("  ${mi.name}: ${p.formatPerfValue(vals[i], mi.unit)}")
+                    if (mm.pipeStatsIndex >= 0 && p.opts.pipelineStats) {
+                        val ps = p.fetchPipelineStats(imageIndex, mm.pipeStatsIndex)
+                        val fsInv = ps.getOrNull(7) ?: -1
+                        println("MOD '${mm.name}': FS invocations=$fsInv")
+                    }
+                    if (mm.perfIndex >= 0 && p.opts.perfCounters) {
+                        val meta = p.perfMeta
+                        val vals = p.fetchPerfCounters(imageIndex, mm.perfIndex, meta.size)
+                        val n = kotlin.math.min(vals.size, meta.size)
+                        if (n > 0) {
+                            println("MOD '${mm.name}' PERF:")
+                            for (i in 0 until n) {
+                                val mi = meta[i]
+                                println("  ${mi.name}: ${p.formatPerfValue(vals[i], mi.unit)}")
+                            }
                         }
                     }
                 }

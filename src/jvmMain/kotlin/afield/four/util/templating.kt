@@ -38,7 +38,7 @@ fun interface Resolver {
 typealias ResolverFn = (String) -> Any?
 
 
-fun getShaderTemplateResolverForBox(b : Box) = b.gather<MutableMap<String, Action>>("shaderTemplate")
+fun getShaderTemplateResolverForBox(b : Box) = b.gather<MutableMap<String, Any>>("shaderTemplate")
 
 fun runTemplate(template: String, resolver: Resolver): String =
     TemplateEngine().run(template, listOf(resolver))
@@ -270,11 +270,15 @@ private class Evaluator(
         if (value == null) {
             throw resolutionError(expr, loc, trace)
         }
-        return when (value) {
+
+        val raw = when (value) {
             is String -> value
             else -> value.toString()
         }
+
+        return applyLineMagic(raw, loc.line)
     }
+
 
     private fun evalCondition(expr: String, loc: Location, resolvers: List<Resolver>): Boolean {
         val trimmed = expr.trim()
@@ -300,6 +304,14 @@ private class Evaluator(
         }
 
         return if (negated) !truth else truth
+    }
+
+    private fun applyLineMagic(s: String, line: Int): String {
+        val rep = "#line $line"
+        // handle both LF and CRLF just in case
+        return s
+            .replace("//#<line>\r\n", "$rep\r\n")
+            .replace("//#<line>\n", "$rep\n")
     }
 
     private fun resolveExpression(

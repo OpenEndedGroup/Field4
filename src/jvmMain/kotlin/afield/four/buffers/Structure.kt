@@ -14,6 +14,9 @@ interface HasUniform<T> : () -> T {
     override fun invoke() = evaluateUniform()
 }
 
+interface WritesToBuffer {
+    fun writeTo(b : ByteBuffer, baseOffset : Int)
+}
 
 class MissingRefException(override val message: String) : Exception(message)
 
@@ -39,6 +42,7 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
     // structures elements either have live bindings (evaluated on demand) or values
     val bindings = mutableMapOf<String, Function0<*>>()
     val values = mutableMapOf<String, Any>()
+    var allBinding : (() -> WritesToBuffer)? = null
 
     var dirty = false
 
@@ -65,6 +69,10 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
 
     fun bind(property: String, value: Function0<*>) {
         bindings[property] = value
+    }
+
+    fun bindAll(value : () -> WritesToBuffer){
+        allBinding = value
     }
 
     operator fun <T> get(property: String) = (bindings[property]?.invoke() ?: values[property]) as T
@@ -114,6 +122,9 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
 
     fun writeToBuffer(f: ByteBuffer, cmd : CommandBuffer, autowireReferences: (String) -> () -> HasBuffer) {
         nullPointerChecks = pointers.filter { it.value }.toMutableMap()
+        allBinding?.let {
+            it().writeTo(f, 0)
+        }
         offsets.forEach { (name, offset) ->
             val live = bindings[name]
             if (live != null) {

@@ -441,56 +441,7 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
     val previousResolver = p.textureResolver
-    p.textureResolver = { textureSpec ->
-        val r: Pair<Array<HasImageView>, TextureSampler>? = previousResolver.invoke(textureSpec)
-        if (r != null) r else {
-            println(" searching for texture ${textureSpec.name}")
-            val name = textureSpec.name
-            val r =
-                findWithNameOrNull<ImageView>(this@_moduleHere, name)?.let {
-                    arrayOf<HasImageView>(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<Array<HasImageView>>(this@_moduleHere, name)?.let {
-                    it to TextureSampler(renderer = fromContext(), it[0].imageView.imageViewData.mipLevels, true)
-                } ?: findWithNameOrNull<Array<ImageView>>(this@_moduleHere, name)?.let {
-                    it.map { view -> view as HasImageView }.toTypedArray() to TextureSampler(
-                        renderer = fromContext(),
-                        it[0].imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<LoadedTexture>(this@_moduleHere, name)?.let {
-                    arrayOf<HasImageView>(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageView.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<RenderToTexture>(this@_moduleHere, name)?.let {
-                    arrayOf<HasImageView>(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageView.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<HasImageView>(this@_moduleHere, name)?.let {
-                    arrayOf(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageView.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<HasImageViewArray>(this@_moduleHere, name)?.let {
-                    it.imageViewArray.toTypedArray() to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageViewArray[0].imageView.imageViewData.mipLevels,
-                        true
-                    )
-                }
-                ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
-            println(" found $r")
-            r
-        }
-    }
+    p.textureResolver = textureResolverFor(previousResolver)
 
     globalAsyncDebugHandler = { message ->
         this.error(message, "code", numberFromErrorMessage(message) ?: 0)
@@ -504,6 +455,58 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     this._shader = Module(p).pointer()
     return this._shader!!
 }
+
+private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>?): (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler> =
+    { textureSpec ->
+        val r: Pair<Array<HasImageView>, TextureSampler>? = previousResolver.invoke(textureSpec)
+        if (r != null) r else {
+            println(" searching for texture ${textureSpec.name}")
+            val name = textureSpec.name
+            val r =
+                findWithNameOrNull<ImageView>(this, name)?.let {
+                    arrayOf<HasImageView>(it) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let {
+                    it to TextureSampler(renderer = fromContext(), it[0].imageView.imageViewData.mipLevels, true)
+                } ?: findWithNameOrNull<Array<ImageView>>(this, name)?.let {
+                    it.map { view -> view as HasImageView }.toTypedArray() to TextureSampler(
+                        renderer = fromContext(),
+                        it[0].imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<LoadedTexture>(this, name)?.let {
+                    arrayOf<HasImageView>(it) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageView.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<RenderToTexture>(this, name)?.let {
+                    arrayOf<HasImageView>(it) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageView.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<HasImageView>(this, name)?.let {
+                    arrayOf(it) to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageView.imageViewData.mipLevels,
+                        true
+                    )
+                } ?: findWithNameOrNull<HasImageViewArray>(this, name)?.let {
+                    it.imageViewArray.toTypedArray() to TextureSampler(
+                        renderer = fromContext(),
+                        it.imageViewArray[0].imageView.imageViewData.mipLevels,
+                        true
+                    )
+                }
+                ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
+            println(" found $r")
+            r
+        }
+    }
 
 // ------------------------------
 // Compute macro + module creation
@@ -571,6 +574,8 @@ fun Box._computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer {
 
 fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
     p.compute = this._compute!!
+
+    p.textureResolver = textureResolverFor(p.textureResolver)
 
     p.errorHandler = { message, throwable ->
         this.error(message, "code", numberFromErrorMessage(message) ?: 0)

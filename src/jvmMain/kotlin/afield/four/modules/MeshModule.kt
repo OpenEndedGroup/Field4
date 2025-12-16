@@ -30,7 +30,7 @@ import java.nio.ByteBuffer
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (current.valid) current.render(command, bounds)
+        if (current.valid && current.enabled) current.render(command, bounds)
         else println("module '${current.parameters.name}' not valid / not rendering")
     }
 
@@ -62,6 +62,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         val m = MeshModule(p)
         if (m.valid) {
             m.copyMeshesFrom(current)
+            m.enabled = current.enabled
             current = m
             return true
         }
@@ -78,6 +79,14 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         m.value.inside = this
     }
 
+    fun enable() {
+        current.enable()
+    }
+
+    fun disable() {
+        current.disable()
+    }
+
     override fun toString(): String = if (!current.valid) "Invalid Module" else "Module"
 }
 
@@ -85,6 +94,7 @@ fun MeshModule.pointer() = MeshModulePointer(this)
 
 class MeshModule(val parameters: Parameters) : Renderable {
     var valid = false
+    var enabled = true
 
     var meshes = mutableMapOf<String, MeshMesh>()
 
@@ -584,7 +594,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
     }
 
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (!valid) return
+        if (!valid || !enabled) return
         MemoryStack.stackPush().use { stack ->
             val labelColor = stack.floats(
                 parameters.labelColor.x.f, parameters.labelColor.y.f, parameters.labelColor.z.f, parameters.labelColor.w.f
@@ -631,6 +641,14 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             command.endLabel()
         }
+    }
+
+    fun enable() {
+        enabled = true
+    }
+
+    fun disable() {
+        enabled = false
     }
 
     fun copyMeshesFrom(old: MeshModule) {
