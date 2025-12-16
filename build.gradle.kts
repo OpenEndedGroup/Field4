@@ -85,11 +85,13 @@ kotlin {
                 var args = if (System.getProperty("os.name").lowercase()
                         .contains("windows") || System.getProperty("os.name").lowercase()
                         .contains("linux")
-                ) listOf("--add-opens=java.base/java.net=ALL-UNNAMED") else listOf(
+                ) mutableListOf("--add-opens=java.base/java.net=ALL-UNNAMED") else mutableListOf(
                     "-XstartOnFirstThread",
                     "--add-opens=java.base/java.net=ALL-UNNAMED",
                     "-Djoml.format=false","-Dorg.lwjgl.util.Debug=true","-Dorg.lwjgl.util.DebugLoader=true"
                 )
+
+                args += "-Dorg.lwjgl.system.stackSize=256"
 
                 applicationDefaultJvmArgs.set(args)
             }

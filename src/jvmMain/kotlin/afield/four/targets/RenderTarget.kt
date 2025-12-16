@@ -32,6 +32,7 @@ class RenderTarget(
     var meshModules = mutableMapOf<String, MeshModulePointer>()
     var others = mutableMapOf<String, Target>()
     var preRecordedInsideRendering: List<CommandBuffer>? = null
+    var preTargets = mutableMapOf<String, Target>()
 
     @JvmName("plusAssign")
     operator fun plusAssign(m : Pair<String, ModulePointer>) {
@@ -77,6 +78,9 @@ class RenderTarget(
         val height = swapChainExtent.height()
 
         MemoryStack.stackPush().use { stack ->
+
+            // Run pre-render targets (e.g., streaming uploads) before any render pass work.
+            preTargets.forEach { (_, tgt) -> tgt.render(command, index) }
 
             // Subresource ranges (stack-allocated, freed at end of scope)
             val colorRange = VkImageSubresourceRange.calloc(stack)

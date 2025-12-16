@@ -3,6 +3,7 @@ package afield.four.util
 import afield.Rect
 import afield.stdlib.Vec2
 import afield.stdlib.d
+import afield.stdlib.i
 import afield.stdlib.invoke
 import afield.stdlib.vec
 import kotlinx.coroutines.*
@@ -20,7 +21,7 @@ import kotlin.math.roundToInt
 
 var lastWindowToOpen: Window? = null
 
-class Window(val title : String, val fullscreen : Boolean = false) {
+class Window(val title : String, val fullscreen : Boolean = false, initialDimensions : Rect? = null) {
     @JvmField
     val windowHandle: Long
     var height: Int
@@ -53,6 +54,11 @@ class Window(val title : String, val fullscreen : Boolean = false) {
         width = vidMode!!.width()
         height = vidMode.height()
 
+        initialDimensions?.let {
+            width = it.w.i
+            height = it.h.i
+        }
+
         GLFW.glfwDefaultWindowHints()
         GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API)
         GLFW.glfwWindowHint(GLFW.GLFW_MAXIMIZED, if (fullscreen) GLFW.GLFW_TRUE else GLFW.GLFW_FALSE)
@@ -60,6 +66,10 @@ class Window(val title : String, val fullscreen : Boolean = false) {
         GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, if (!fullscreen) GLFW.GLFW_TRUE else GLFW.GLFW_FALSE)
 
         windowHandle = GLFW.glfwCreateWindow(width, height, title, MemoryUtil.NULL, MemoryUtil.NULL)
+        initialDimensions?.let {
+            GLFW.glfwSetWindowPos(windowHandle, it.x.i, it.y.i)
+            GLFW.glfwSetWindowSize(windowHandle, it.w.i, it.h.i)
+        }
         if (windowHandle == MemoryUtil.NULL) {
             throw RuntimeException("Failed to create the GLFW window")
         }
@@ -107,6 +117,15 @@ class Window(val title : String, val fullscreen : Boolean = false) {
     // --- MOUSE: pressed state (used by MouseEvents)
     fun isMouseButtonPressed(buttonCode: Int): Boolean {
         return GLFW.glfwGetMouseButton(windowHandle, buttonCode) == GLFW.GLFW_PRESS
+    }
+
+    fun setDimensions(rect : Rect) {
+        rect.let {
+            GLFW.glfwSetWindowPos(windowHandle, it.x.i, it.y.i)
+            GLFW.glfwSetWindowSize(windowHandle, it.w.i, it.h.i)
+            GLFW.glfwSetWindowPos(windowHandle, it.x.i, it.y.i)
+            GLFW.glfwSetWindowSize(windowHandle, it.w.i, it.h.i)
+        }
     }
 
     // --- MOUSE: scroll delta since last poll (used by MouseEvents)

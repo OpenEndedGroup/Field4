@@ -26,8 +26,10 @@ import java.nio.ByteBuffer
 
 class ComputeModulePointer(var current: ComputeModule) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
-        if (current.valid && current.enabled) current.render(command, bounds)
-        else println("module '${current.parameters.name}' not valid / not rendering")
+        if (current.valid) current.render(command, bounds)
+        else {
+//            println("module '${current.parameters.name}' not valid / not rendering")
+        }
     }
 
     fun reload(p: Parameters, onError: (String, Throwable?) -> Unit = p.errorHandler): Boolean {

@@ -9,6 +9,7 @@ import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Introspected.Bindable
 import afield.four.targets.RenderToTexture
 import afield.four.texture.HasImageView
+import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
 import afield.four.util.AutoDisposer
 import afield.four.util.Options
@@ -36,7 +37,7 @@ data class Parameters(
     var depth: Int = 1,
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
+    var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
         println("WARNING: Cannot resolve texture ${it.name}")
         null
     },
