@@ -36,8 +36,8 @@ data class Parameters(
     var depth: Int = 1,
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
-        System.err.println("Cannot resolve texture ${it.name}")
+    var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
+        println("WARNING: Cannot resolve texture ${it.name}")
         null
     },
     var uboResolver: (BufferParameters) -> BufferParameters? = {
@@ -49,8 +49,10 @@ data class Parameters(
         lb.second
     },
     var ssboSizer: (Introspected.UBO) -> Int? = { 0 },
-    var imageResolver: (Introspected.Image) -> HasImageView? = {
-        throw Exception("Cannot resolve image ${it.name}")
+    var imageResolver: (Introspected.Image) -> ImageView? = {
+        println("WARNING: Cannot resolve image ${it.name}")
+//        throw Exception("Cannot resolve image ${it.name}")
+        null
     },
     var name: String = "unnamed module",
     var errorHandler: (String, Throwable?) -> Unit = { desc, it ->
@@ -122,7 +124,9 @@ class FromUniform {
 class ModulePointer(var current: Module) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid && current.enabled) current.render(command, bounds)
-        else println("module '${current.parameters.name}' not valid / not rendering")
+        else {
+         //   println("module '${current.parameters.name}' not valid / not rendering")
+        }
     }
 
     fun reload(

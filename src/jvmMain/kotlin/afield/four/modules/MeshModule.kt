@@ -470,7 +470,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 )
                 if (parameters.renderer.device.supportsExtendedDynamicState) {
                     dynList += listOf(
-                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+//                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY, // not allowed for meshShaders
                         VK_DYNAMIC_STATE_CULL_MODE,
                         VK_DYNAMIC_STATE_FRONT_FACE
                     )
