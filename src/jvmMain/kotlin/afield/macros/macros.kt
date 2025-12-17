@@ -90,6 +90,9 @@ fun gatherPreambleUpwards(startingAt: Box): String {
         }
     }
 
+
+    total = total.replace("var Mesh.dim by Mesh.BoundFromStructure<org.joml.Vector2f>()", "\n")
+
     return total
 }
 
@@ -105,6 +108,7 @@ fun checkPreambleAndExecute(
             .prefixAwareMap()
 
     var now = gatherPreambleUpwards(inside)
+
 
     inside.setPropertyRaw("_preamble", now)
 

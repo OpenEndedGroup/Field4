@@ -252,7 +252,7 @@ class StreamingTexture(
     width: Int,
     height: Int,
     renderer: Renderer = fromContext(),
-    imageFormat: Int = VK_FORMAT_R8_UNORM,
+    imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB,
     name: String = "stream_${width}x${height}"
 ) : LoadedTexture(
     name,
