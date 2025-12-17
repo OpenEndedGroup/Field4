@@ -171,6 +171,11 @@ class GeneratorScope<In, Out>(
         suspendCoroutine { cont: Continuation<In> ->
             onYield(value, cont)
         }
+
+    suspend fun yield(): In =
+        suspendCoroutine { cont: Continuation<In> ->
+            onYield(true as Out, cont) // dies if we aren't Generator<In, Boolean>
+        }
 }
 
 /**
@@ -202,7 +207,7 @@ class Generator<In, Out> internal constructor(
      * without yielding anything.
      */
     fun start(): Out? {
-        check(!started) { "Generator already started" }
+//        check(!started) { "Generator already started" }
         started = true
 
         block.startCoroutine(scope, object : Continuation<Unit> {
@@ -268,6 +273,14 @@ class Generator<In, Out> internal constructor(
 @JvmName("generator_1") fun <Out> generator(
     block: suspend GeneratorScope<Unit, Out>.() -> Unit
 ): Generator<Unit, Out> = Generator(block)
+
+/**
+ * Convenience overload when you don't need to send outputs.
+ * Input type is `Unit`, so `yield(out)` just returns `Unit`.
+ */
+fun <In> gather(
+    block: suspend GeneratorScope<In, Boolean>.() -> Unit
+): Generator<In, Boolean> = Generator(block)
 
 /* -------------------------------------------------------------------------- */
 /*                                COMBINATORS                                 */
