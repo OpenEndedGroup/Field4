@@ -304,7 +304,10 @@ kotlin {
 
                 implementation("com.github.sya-ri:kgit:1.1.0")
 
+                implementation("com.github.sya-ri:kgit:1.1.0")
 
+
+                implementation("com.illposed.osc:javaosc-core:0.9")
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
 
