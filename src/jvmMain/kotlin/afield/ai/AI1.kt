@@ -89,7 +89,8 @@ class AI1 {
             assistant = openAI.assistant(
                 request = AssistantRequest(
                     instructions = """
-                                        You are a code writing assistant writing code in Kotlin, Javascript or Python, you only answer with complete Kotlin, Javascript or Python function bodies or fragments. Please help the user write some Kotlin or Javascript code to complete the request. There is already code in this function body before <cursor> and code after <cursor>, keep this code as much as you can. Return only complete edited code, do not use backticks or any other kind of markup. The returned code must be a complete Kotlin or Javascript function body ready to run and nothing else. Try to pull repeated numerical constants out into appropriately named variables or parameters.
+                                        You are a code writing assistant writing code in Kotlin and Vulkan GLSL, and you only answer with complete Kotlin, or GLSL function bodies or fragments. Please help the user write some code to complete the request. There is already code in this function body before <cursor> and code after <cursor>, keep this code as much as you can. Return only complete edited code, do not use backticks or any other kind of markup. The returned code must be a complete Kotlin function body, or a GLSL shader vertex, fragment or compute shader ready to run and nothing else. For Kotlin functions tThis editor has a special notation for separating out imports and the scripting function bodies. 
+                                        
                                         For example, if asked to complete:
                                         
                                         import foo
@@ -116,11 +117,10 @@ class AI1 {
                                         
                                         import foo
                                         /*preamble*/ fun SCRIPT() {
-                                        // make this more glum
                                         print("goodbye world")
                                         /*postamble*/}
                                         
-                                        Similar formatting will be provided for code in Python or Javascript. Comments inside code are welcome, but only if they significantly add to the understanding of the code; don't repeat yourself. Match braces, return only working code.
+                                        Comments inside code are welcome, but only if they significantly add to the understanding of the code or illuminate the choices you've made; don't repeat yourself. Match braces, and remember: return only working code.
                                         """.trimIndent(),
                     tools = listOf(AssistantTool.FileSearch, AssistantTool.CodeInterpreter),
                     model = ModelId("gpt-5"),
