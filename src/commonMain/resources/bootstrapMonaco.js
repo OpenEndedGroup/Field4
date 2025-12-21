@@ -311,10 +311,22 @@ const initMonaco = () => {
 
                         const uid = currentSelectedCode[0].uid
 
+                        let tagIndex = allText.indexOf("<cursor>")
+                        if (tagIndex === -1) {
+                                tagIndex = allText.indexOf("<rewrite>")
+                        }
+                        let startLine = 0
+                        if (tagIndex > 0) {
+                                for (let i = 0; i < tagIndex; i++) {
+                                        if (allText.charCodeAt(i) === 10) {
+                                                startLine++
+                                        }
+                                }
+                        }
                         sendWithReply("ai-assist", {
                                 uid: uid,
                                 prompt: allText,
-                                startLine: start,
+                                startLine: startLine,
                                 extraPrompt: "",
                                 property: currentSelectedProperty,
                                 kind: allText.indexOf("<cursor>") !== -1 ? "cursor" : "rewrite"
@@ -1175,5 +1187,4 @@ window.notifyPotentialEditedPropertyHasEditorStateRemoteUpdated = notifyPotentia
 window.notifyPotentialEditedPropertyHasHadLanguageChanged = notifyPotentialEditedPropertyHasHadLanguageChanged
 window.hideMonaco = hideMonaco
 window.launchAll = launchAll
-
 

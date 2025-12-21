@@ -52,8 +52,8 @@ private fun normalizeToolName(n: String) = n.trim().lowercase().replace(' ', '_'
 /* ---------------------------------- AI2 ----------------------------------- */
 
 class AI2(
-    apiKey: String = System.getenv("OPENAI_API_KEY") ?: error("OPENAI_API_KEY not set"),
-    private val model: ChatModel = ChatModel.GPT_4O
+    apiKey: String = System.getenv("OPENAI_API_KEY") ?: "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",
+    private val model: ChatModel = ChatModel.GPT_5_1_CODEX
 ) {
     private val client: OpenAIClientAsync = OpenAIOkHttpClientAsync.builder()
         .apiKey(apiKey)

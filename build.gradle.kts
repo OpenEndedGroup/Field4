@@ -252,7 +252,9 @@ kotlin {
                 implementation("org.ow2.asm:asm-util:7.3.1")
 
                 implementation("com.aallam.openai:openai-client:4.0.1")
-                implementation("com.openai:openai-java:3.4.1")
+                implementation("com.openai:openai-java:4.13.0")
+                implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
+
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 

@@ -545,14 +545,14 @@ class AI3 {
     }
 
     fun uncursorify(contents: String): String {
-        if (contents.indexOf(cursor) != -1) throw MalformedAI("output shouldn't still have a <cursor> tag in it")
+        if (contents.indexOf(cursor) != -1) throw MalformedAIError("output shouldn't still have a <cursor> tag in it")
         // assumption -- this doesn't have <cursor> in it
 
         val a = contents.indexOf(shortMarkerStart)
         val b = contents.lastIndexOf(shortMarkerEnd)
 
-        if (a == -1) throw MalformedAI(" couldn't find marker for $shortMarkerStart in $contents")
-        if (b == -1) throw MalformedAI(" couldn't find marker for $shortMarkerEnd and $contents")
+        if (a == -1) throw MalformedAIError(" couldn't find marker for $shortMarkerStart in $contents")
+        if (b == -1) throw MalformedAIError(" couldn't find marker for $shortMarkerEnd and $contents")
 
         val preamble = contents.substring(0, a).replace("/*preamble*/", "")
         val meat = contents.substring(a + shortMarkerStart.length, b).replace("/*postamble*/", "")

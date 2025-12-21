@@ -329,7 +329,7 @@ class Server {
 
                 install(WebSockets) {
                     pingPeriod = 10.seconds
-                    timeout = 15.seconds
+                    timeout = 180.seconds
                     maxFrameSize = Long.MAX_VALUE
                     masking = false
                 }
@@ -558,13 +558,14 @@ class Server {
     }
 }
 
-// TODO — there's definitely a better way that this
 fun languageNameForProperty(box: Box, property: String): String {
     if (property == "code") return box.ke.languageName
     else return when (property) {
-        "vertex" -> "Vulkan GLSL Vertex Shader"
-        "fragment" -> "Vulkan GLSL Fragment Shader"
-        "compute" -> "Vulkan GLSL Compute Shader"
+        "vertex" -> "GLSL (vertex)"
+        "fragment" -> "GLSL (fragment)"
+        "compute" -> "GLSL (compute)"
+        "mesh" -> "GLSL (mesh)"
+        "task" -> "GLSL (task)"
         else -> "Kotlin"
     }
 }

@@ -299,8 +299,9 @@ function addPromptBox(editor, belowLine, acceptCallback) {
                     box-sizing: border-box;
                     height: 22px;
                     padding: 3px;
+                    margin: 3px;
                     border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 0px;
+                    border-radius: 5px;
                     resize: vertical;
                     overflow: hidden;
                     font-style: inherit;
@@ -315,7 +316,7 @@ function addPromptBox(editor, belowLine, acceptCallback) {
                     font-feature-settings: inherit;
                     font-variation-settings: inherit;
                     font-size: 80%;
-                    width: calc(100% - 10px);
+                    width: calc(100% - 20px);
                     outline: none;
                     color: white;
                     background: rgba(0,0,0,0.7);
