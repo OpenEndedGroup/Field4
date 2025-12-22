@@ -53,6 +53,11 @@ external fun setActions(actions: dynamic): dynamic
 external fun goMarkingMenu(x: Double, y: Double, menus: dynamic, event: dynamic, cancelCallback: dynamic): dynamic
 external fun provideMissingMouseup(event: dynamic): dynamic
 
+external object Provisional {
+    fun clear()
+    fun set(uid: String, property: String, contents: String)
+}
+
 lateinit var mainCanvas: HTMLElement
 lateinit var overlaySVGLayer: SVGSVGElement
 external val monaco: dynamic
@@ -249,8 +254,6 @@ suspend fun main() {
                 createBox("", frame = set.value, uid = u, sendInitialSync = false)
             }
         } else {
-
-            console.log(" set initial position ")
             (found as HTMLElement).style.transform = "translate(${set.value.x}px, ${set.value.y}px)"
 
             found.style.width = "${set.value.w}px"
@@ -264,7 +267,6 @@ suspend fun main() {
         }
         canvasGestures.rebuildConnectionGroup()
 
-        console.log("made it out of set rect", set, set.value)
         Handled.yes
     }
     handlers.put("set-boolean") { message, _ ->
@@ -296,12 +298,16 @@ suspend fun main() {
                 console.log(" got offline message ", set)
                 if (found !=null) {
                     if (set.number) {
+                        console.log(" bringing ", found, " offline ")
                         found.unsafeCast<HTMLElement>().classList.add("offline")
                         found.asDynamic().offline = true
+                        canvasGestures.rebuildConnectionGroup()
                     }
                     else {
+                        console.log(" bringing ", found, " online ")
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
+                        canvasGestures.rebuildConnectionGroup()
                     }
                 }
             }
@@ -374,6 +380,15 @@ suspend fun main() {
             "outputarea" -> {
                 handleOutputAreaRequest(found as HTMLElement, set)
             }
+        }
+        Handled.yes
+    }
+
+    handlers.put("set-provisional") { message, _ ->
+        val set = Json.decodeFromJsonElement<ProvisionalSet>(message.payload!!)
+        Provisional.clear()
+        set.entries.forEach { entry ->
+            Provisional.set(entry.uid, entry.property, entry.contents)
         }
         Handled.yes
     }
@@ -559,9 +574,14 @@ suspend fun main() {
 
 
     console.log(" well, this is fun 4")
-    mainViewport.onwheel = { event ->
+    mainViewport.onwheel = onwheel@{ event ->
 
         // todo, should read "has outputArea_content as parent"
+        val target = event.target as? HTMLElement
+        if (target != null && target.asDynamic().closest(".outputArea") != null) {
+            return@onwheel null
+        }
+
         if (event.target is SVGElement) {
         } else {
 
@@ -646,11 +666,10 @@ suspend fun main() {
         val y: Number = (target.data_y ?: 0.0) + event.dy
 
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round trip to server
-        target.data_x = x
-        target.data_y = y
+//        target.data_x = x
+//        target.data_y = y
 
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
-//        console.log(event.rect, event.target.getClientRects(), t)
 
         val uid = target.uid
         send(
@@ -961,52 +980,10 @@ fun TagConsumer<HTMLElement>.createBox(
             }.toString()
             div(classes = "disclosure-group") {
             }
-
-//            div(classes = "outputArea_controls") {
-//                style = CssBuilder().apply {
-//                    position = Position.absolute
-//                    left = -30.px
-//                    top = -0.px
-//                    width = 35.px
-//                }.toString()
-//                div(classes = "closebox hoverable") {
-//                    style = CssBuilder().apply {
-//                        textAlign = TextAlign.center
-//                    }.toString()
-//                    unsafe { +"&#215;" }
-//                    onMouseDownFunction = { event ->
-//                        console.log("clicked ${event.target}")
-//                        oa.style.visibility = "hidden"
-//                    }
-//                }
-//                div(classes = "togglebox hoverable") {
-//                    style = CssBuilder().apply {
-//                        textAlign = TextAlign.center
-//                    }.toString()
-//                    unsafe { +"&varr;" }
-//                    onMouseDownFunction = { event ->
-//                        console.log("clicked ${event.target}")
-//                        val content = oa.getElementsByClassName("outputArea_content").asList()[0] as HTMLElement
-//                        val h = (content.children[0]!!.getClientRects()[0].height + 20).px.toString()
-//                        if (content.style.height != "30px") {
-//                            content.style.height = 30.px.toString()
-//                            oa.style.height = 30.px.toString()
-//                        } else {
-//                            content.style.height = h
-//                            oa.style.height = h
-//                        }
-//
-//                    }
-//                }
-//            }
-//            div(classes = "outputArea_content") {
-//                style = CssBuilder().apply {
-////                    overflow = Overflow.scroll
-//                }.toString()
-//            }
         }
     }
     d1.style.transform = "translate(${frame.x}px, ${frame.y}px)"
+    d1.asDynamic().offline = true
 
     val d1d = d1.unsafeCast<dynamic>()
     d1d.data_x = frame.x
@@ -1062,4 +1039,3 @@ fun reorient(it: dynamic): dynamic {
 
 
 fun <E> MutableSet<E>.copy() = HashSet<E>(this)
-

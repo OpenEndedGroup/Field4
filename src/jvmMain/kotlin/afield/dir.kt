@@ -39,18 +39,48 @@ fun simpleDir(base: String): List<Entry> {
 
     val entries = mutableListOf<Entry>()
 
-    var s = SavingContext()
+    val s = SavingContext()
 
     baseDir.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
-        val metadataFile = File(dir, "metadata.json")
-        if (metadataFile.exists()) {
-            try {
-                val entry = Entry()
-                entry.filename = dir.name
+        val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
+        val metadataJsonFile = File(dir, SavingContext.METADATA_JSON)
+        val hasEdn = metadataEdnFile.exists()
+        val hasJson = metadataJsonFile.exists()
+        if (!hasEdn && !hasJson) return@forEach
 
-                // Read metadata.json to count boxes
-                val metadataContent = metadataFile.readText()
-                val transfers = SavingContext.Companion.format.decodeFromString<Set<Box_transfer>>(metadataContent).filter { !it.properties.contains("_tombstone") }
+        try {
+            val entry = Entry()
+            entry.filename = dir.name
+
+            if (hasEdn) {
+                val transfers = s.readEdnTransfers(dir.absolutePath)
+                    .filter { !it.properties.containsKey("_tombstone") }
+                entry.numBoxes = transfers.size
+
+                transfers.forEach { transfer ->
+                    var contents = ""
+                    var metadata = ""
+                    val name =
+                        s.resolveStoredValue(transfer.properties["name"], dir.absolutePath)?.toString() ?: ""
+                    transfer.properties["code"]?.let {
+                        contents = s.resolveStoredValue(it, dir.absolutePath)?.toString() ?: ""
+                    }
+                    transfer.properties["metadata"]?.let {
+                        metadata = s.resolveStoredValue(it, dir.absolutePath)?.toString() ?: ""
+                    }
+
+                    if (contents.isNotBlank()) {
+                        val c = (tagsForString(metadata, "tags") ?: emptyList())
+                        entry.boxes.add(name to contents)
+                        entry.metadata.add(name to c)
+                    }
+                }
+
+                entry.lastModified = System.currentTimeMillis() - metadataEdnFile.lastModified()
+            } else {
+                val metadataContent = metadataJsonFile.readText()
+                val transfers = SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
+                    .filter { !it.properties.contains("_tombstone") }
                 entry.numBoxes = transfers.size
 
                 transfers.forEach { transfer ->
@@ -58,12 +88,13 @@ fun simpleDir(base: String): List<Entry> {
                     var metadata = ""
 
                     try {
-                        var name = s.fromTypedPair(transfer.properties.get("name")!!, dir.absolutePath).toString()
+                        val name =
+                            s.fromTypedPair(transfer.properties.get("name")!!, dir.absolutePath).toString()
                         transfer.properties.get("code")?.let {
-                            contents = s.fromTypedPair(it, dir.absolutePath)?.toString() ?: ""
+                            contents = s.fromTypedPair(it, dir.absolutePath, createBoxes = false)?.toString() ?: ""
                         }
                         transfer.properties.get("metadata")?.let {
-                            metadata = s.fromTypedPair(it, dir.absolutePath)?.toString() ?: ""
+                            metadata = s.fromTypedPair(it, dir.absolutePath, createBoxes = false)?.toString() ?: ""
                         }
 
                         if (contents.isNotBlank()) {
@@ -77,14 +108,13 @@ fun simpleDir(base: String): List<Entry> {
                     }
                 }
 
-                // Get last modified time
-                entry.lastModified = System.currentTimeMillis() - metadataFile.lastModified()
-
-                entries.add(entry)
-            } catch (e: Exception) {
-                // Skip directories with invalid metadata
-                lprintln("Error processing directory ${dir.name}: ${e.message}")
+                entry.lastModified = System.currentTimeMillis() - metadataJsonFile.lastModified()
             }
+
+            entries.add(entry)
+        } catch (e: Exception) {
+            // Skip directories with invalid metadata
+            lprintln("Error processing directory ${dir.name}: ${e.message}")
         }
     }
 

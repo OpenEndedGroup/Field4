@@ -15,6 +15,7 @@ import org.w3c.files.Blob
 import web.workers.WorkerType.Companion.module
 
 external fun disclosureInterface(container: Element): dynamic
+external fun aiChatUpdate(container: Element, uid: String, markdown: String)
 
 fun insertHTMLWithScripts(container: Element, htmlString: String, isModule : Boolean = false) {
     // Create a document fragment from the HTML string
@@ -58,13 +59,20 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
     val contain = outputArea.querySelector(".disclosure-group")
     val inter = disclosureInterface(contain!!)
 
-    insertHTMLWithScripts(
-        (inter.upsertDisclosure as (String, String, String) -> Element).invoke(
-            set.channel,
-            set.channel,
-            ""
-        ), set.value
+    val channelId = set.channel
+    val title = if (set.channel == "ai-chat") "AI Chat" else set.channel
+    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(
+        channelId,
+        title,
+        ""
     )
+    if (set.channel == "ai-chat") {
+        contentRoot.classList.add("ai-chat-content")
+        aiChatUpdate(contentRoot, set.uid, set.value)
+        (inter.open as (String) -> Unit).invoke(channelId)
+    } else {
+        insertHTMLWithScripts(contentRoot, set.value)
+    }
 
 
 }

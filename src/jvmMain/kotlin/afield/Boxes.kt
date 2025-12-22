@@ -308,7 +308,6 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 var actionTable = mutableMapOf<String, (List<Box>) -> Unit>()
 
 fun doResync() {
-    if (needsResync.size > 0) println("need resync? ${needsResync.size}")
     needsResync.removeAll { (box, name) ->
         try {
             if (box.root == null) return@removeAll true
@@ -371,7 +370,6 @@ fun doResync() {
         println("resync $name -> $message (x${sessions.size} sessions)")
         message?.let { message ->
             if (box.isInsideInitialized()) {
-                println(" box is inside ${box.inside.sessions.size} sessions")
                 box.inside.sessions.forEach { _send(it, message) }
             }
         }

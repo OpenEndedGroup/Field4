@@ -147,7 +147,7 @@ const initMonaco = () => {
                 theme: 'dark',
                 automaticLayout: true,
                 scrollBeyondLastLine: false,
-                lineNumbersMinChars: 3,
+                lineNumbersMinChars: 2,
                 cursorStyle: "line",
                 cursorBlinking: "smooth",
                 matchBrackets: "never", // interferes with print decorations
@@ -243,37 +243,29 @@ const initMonaco = () => {
 
                         addPromptBox(ed, start, (v) => {
                                 console.log(" ai chatbot ", v)
-                                sendWithReply("ai-assist", {
+                                send("ai-assist", {
                                         uid: uid,
                                         prompt: fullText,
                                         startLine: start,
                                         extraPrompt: v,
                                         property: currentSelectedProperty,
                                         kind: "chat"
-                                }, "exec_" + uid, (message, payload) => {
-                                        const original = message.originalName
-                                        console.log(" ai assist returned text ", original, payload)
-
-                                        let sel = globalEditor.getSelection()
-                                        // hack to maintain undo
-                                        globalEditor.executeEdits('ai_assist', [{
-                                                identifier: 'delete',
-                                                range: new monaco.Range(1, 1, 10000, 1),
-                                                text: '',
-                                                forceMoveMarkers: true
-                                        }]);
-                                        globalEditor.executeEdits('ai_assist', [{
-                                                identifier: 'insert',
-                                                range: new monaco.Range(1, 1, 1, 1),
-                                                text: payload.value,
-                                                forceMoveMarkers: true
-                                        }]);
-                                        globalEditor.setSelection(sel);
-
-                                        // globalEditor.setValue(payload.value)
-
                                 })
                         })
+                }
+        })
+
+        ed.addAction({
+                id: 'ai-chat-panel',
+                label: 'AI Chat (panel)',
+                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Digit4],
+                run: () => {
+                        if (!currentSelectedCode || currentSelectedCode.length !== 1) return;
+                        const uid = currentSelectedCode[0].uid;
+                        if (!uid) return;
+                        if (window.openAiChatForBox) {
+                                window.openAiChatForBox(uid, currentSelectedProperty);
+                        }
                 }
         })
 
@@ -311,10 +303,9 @@ const initMonaco = () => {
 
                         const uid = currentSelectedCode[0].uid
 
-                        let tagIndex = allText.indexOf("<cursor>")
-                        if (tagIndex === -1) {
-                                tagIndex = allText.indexOf("<rewrite>")
-                        }
+                        const cursorIndex = allText.indexOf("<cursor>")
+                        const tagIndex = cursorIndex !== -1 ? cursorIndex : allText.indexOf("<rewrite>")
+                        const kind = cursorIndex !== -1 ? "cursor" : "rewrite"
                         let startLine = 0
                         if (tagIndex > 0) {
                                 for (let i = 0; i < tagIndex; i++) {
@@ -323,35 +314,13 @@ const initMonaco = () => {
                                         }
                                 }
                         }
-                        sendWithReply("ai-assist", {
+                        send("ai-assist", {
                                 uid: uid,
                                 prompt: allText,
                                 startLine: startLine,
                                 extraPrompt: "",
                                 property: currentSelectedProperty,
-                                kind: allText.indexOf("<cursor>") !== -1 ? "cursor" : "rewrite"
-                        }, "exec_" + uid, (message, payload) => {
-                                const original = message.originalName
-                                console.log(" ai assist returned text ", original, payload)
-
-                                let sel = globalEditor.getSelection()
-                                // hack to maintain undo
-                                globalEditor.executeEdits('ai_assist', [{
-                                        identifier: 'delete',
-                                        range: new monaco.Range(1, 1, 10000, 1),
-                                        text: '',
-                                        forceMoveMarkers: true
-                                }]);
-                                globalEditor.executeEdits('ai_assist', [{
-                                        identifier: 'insert',
-                                        range: new monaco.Range(1, 1, 1, 1),
-                                        text: payload.value,
-                                        forceMoveMarkers: true
-                                }]);
-                                globalEditor.setSelection(sel);
-
-                                // globalEditor.setValue(payload.value)
-
+                                kind: kind
                         })
                 }
 
@@ -394,33 +363,63 @@ const initMonaco = () => {
 
                         const uid = currentSelectedCode[0].uid
 
-                        sendWithReply("ai-assist", {
+                        send("ai-assist", {
                                 uid: uid, prompt: allText, kind: "error",
-                        }, "exec_" + uid, (message, payload) => {
-                                const original = message.originalName
-                                console.log(" ai assist returned text ", original, payload)
-
-                                let sel = globalEditor.getSelection()
-                                // hack to maintain undo
-                                globalEditor.executeEdits('ai_assist', [{
-                                        identifier: 'delete',
-                                        range: new monaco.Range(1, 1, 10000, 1),
-                                        text: '',
-                                        forceMoveMarkers: true
-                                }]);
-                                globalEditor.executeEdits('ai_assist', [{
-                                        identifier: 'insert',
-                                        range: new monaco.Range(1, 1, 1, 1),
-                                        text: payload.value,
-                                        forceMoveMarkers: true
-                                }]);
-                                globalEditor.setSelection(sel);
-
-                                // globalEditor.setValue(payload.value)
-
                         })
                 }
 
+        })
+
+        ed.addAction({
+                id: "provisional-accept-current",
+                label: "Accept All Provisional (This Editor)",
+                keybindings: [],
+                precondition: undefined,
+                keybindingContext: undefined,
+                contextMenuGroupId: "execution",
+                contextMenuOrder: 1.6,
+                run: function (e) {
+                        resolveCurrentProvisional(true)
+                }
+        })
+
+        ed.addAction({
+                id: "provisional-reject-current",
+                label: "Reject All Provisional (This Editor)",
+                keybindings: [],
+                precondition: undefined,
+                keybindingContext: undefined,
+                contextMenuGroupId: "execution",
+                contextMenuOrder: 1.61,
+                run: function (e) {
+                        resolveCurrentProvisional(false)
+                }
+        })
+
+        ed.addAction({
+                id: "provisional-accept-all",
+                label: "Accept All Provisional (Everywhere)",
+                keybindings: [],
+                precondition: undefined,
+                keybindingContext: undefined,
+                contextMenuGroupId: "execution",
+                contextMenuOrder: 1.62,
+                run: function (e) {
+                        resolveAllProvisional(true)
+                }
+        })
+
+        ed.addAction({
+                id: "provisional-reject-all",
+                label: "Reject All Provisional (Everywhere)",
+                keybindings: [],
+                precondition: undefined,
+                keybindingContext: undefined,
+                contextMenuGroupId: "execution",
+                contextMenuOrder: 1.63,
+                run: function (e) {
+                        resolveAllProvisional(false)
+                }
         })
 
         ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_P, () => ed.trigger('', 'editor.action.quickCommand', null));
@@ -772,6 +771,76 @@ window.currentSelectedCode = currentSelectedCode
 window.currentSelectedProperty = currentSelectedProperty
 
 let recentChangeCache = []
+let provisionalDiffKey = null
+let provisionalDiffText = null
+let provisionalDiffRetry = null
+
+function currentProvisionalEntry() {
+        if (!window.Provisional) return null
+        if (!currentSelectedCode || currentSelectedCode.length !== 1) return null
+        const uid = currentSelectedCode[0].uid
+        const property = currentSelectedProperty
+        if (!uid || !property) return null
+        if (!window.Provisional.has(uid, property)) return null
+        const contents = window.Provisional.get(uid, property)
+        if (contents === undefined || contents === null) return null
+        return {uid, property, contents}
+}
+
+function updateProvisionalDiff() {
+        const editor = window.globalEditor
+        if (!editor || !editor.getModel) return
+        const entry = currentProvisionalEntry()
+        if (!entry) {
+                if (provisionalDiffKey !== null && window.AIDiff) {
+                        window.AIDiff.clear(editor)
+                }
+                provisionalDiffKey = null
+                provisionalDiffText = null
+                return
+        }
+        const aidiff = window.AIDiff
+        if (!aidiff) {
+                if (provisionalDiffRetry === null) {
+                        provisionalDiffRetry = setTimeout(() => {
+                                provisionalDiffRetry = null
+                                updateProvisionalDiff()
+                        }, 50)
+                }
+                return
+        }
+        const key = entry.uid + "::" + entry.property
+        if (provisionalDiffKey === key && provisionalDiffText === entry.contents) return
+        provisionalDiffKey = key
+        provisionalDiffText = entry.contents
+        aidiff.apply(editor, entry.contents, {monaco})
+}
+
+window.addEventListener("provisional-change", () => {
+        updateProvisionalDiff()
+})
+
+function resolveCurrentProvisional(accept) {
+        const entry = currentProvisionalEntry()
+        if (!entry) return
+        if (window.AIDiff && window.globalEditor) {
+                if (accept) window.AIDiff.acceptAllRemaining(window.globalEditor, {monaco})
+                else window.AIDiff.rejectAllRemaining(window.globalEditor, {monaco})
+        }
+        send(accept ? "provisional-accept" : "provisional-reject", {
+                uid: entry.uid,
+                property: entry.property
+        })
+}
+
+function resolveAllProvisional(accept) {
+        const entry = currentProvisionalEntry()
+        if (entry && window.AIDiff && window.globalEditor) {
+                if (accept) window.AIDiff.acceptAllRemaining(window.globalEditor, {monaco})
+                else window.AIDiff.rejectAllRemaining(window.globalEditor, {monaco})
+        }
+        send(accept ? "provisional-accept-all" : "provisional-reject-all", {})
+}
 
 function notifyPotentialEditedPropertyHasHadLanguageChanged(uid, property, value) {
         if (currentSelectedCode && currentSelectedCode[0] && currentSelectedCode[0].uid === uid) {
@@ -916,6 +985,7 @@ function monitorSelection() {
                         globalEditor._domElement.querySelectorAll(".hoverlay")[0].innerHTML = currentSelectedProperty + " <i>(" + lang + ")</i>"
                 } else globalEditor._domElement.querySelectorAll(".hoverlay")[0].innerHTML = ""
 
+                updateProvisionalDiff()
         }
 
         setTimeout(monitorSelection, 100)
@@ -1187,4 +1257,3 @@ window.notifyPotentialEditedPropertyHasEditorStateRemoteUpdated = notifyPotentia
 window.notifyPotentialEditedPropertyHasHadLanguageChanged = notifyPotentialEditedPropertyHasHadLanguageChanged
 window.hideMonaco = hideMonaco
 window.launchAll = launchAll
-

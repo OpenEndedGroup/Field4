@@ -9,16 +9,17 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
+import web.animations.requestAnimationFrame
 import kotlin.math.*
 
 
-fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_rect: DOMRect, svg: SVGElement) {
+fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_rect: DOMRect, svg: SVGElement, opacity: Double = 1.0) {
     val (a, b) = connectCenters(a_rect, b_rect)
     val sc = min(50.0, a.point.distance(b.point) / 3);
     path {
         d =
             "M${a.point.x} ${a.point.y} C${a.point.x + a.normal.x * sc} ${a.point.y + a.normal.y * sc} ${b.point.x + b.normal.x * sc} ${b.point.y + b.normal.y * sc} ${b.point.x} ${b.point.y}"
-        stroke = "rgba(128,128,128,1)"
+        stroke = "rgba(128,128,128,${opacity})"
         strokeWidth = 1
         fill = "none"
         appendTo(svg)
@@ -33,7 +34,7 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
         b.point.x + b.normal.x * sc,
         b.point.y + b.normal.y * sc,
         b.point.x,
-        b.point.y
+        b.point.y, opacity
     )
 }
 
@@ -115,7 +116,9 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
                 val r1 = from.getBoundingClientRect()
 
                 if (from.style.visibility === "hidden") return@forEach
-                if (from.asDynamic().offline ) return@forEach
+
+                var o0 = 1.0
+                if (from.asDynamic().offline ) o0 = 0.25
 
                 r1.x -= ox
                 r1.y -= oy
@@ -126,10 +129,12 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
                         find(id)?.let { to ->
                             val r2 = to.getBoundingClientRect()
                             if (to.style.visibility === "hidden") return@forEach
-                            if (to.asDynamic().offline ) return@forEach
+                            var o1 = 1.0
+                            if (to.asDynamic().offline ) o1 = 0.25
+
                             r2.x -= ox
                             r2.y -= oy
-                            knownConnections[connectionName]?.invoke(from, r1, to, r2, svg)
+                            knownConnections[connectionName]?.invoke(from, r1, to, r2, svg, o0*o1)
                         }
                     }
                 }
@@ -451,7 +456,7 @@ fun connectCenters(rect1: DOMRect, rect2: DOMRect): Pair<ClippedResult, ClippedR
 
 
 fun addArrowHeadToCubicSpline(
-    svg: SVGElement, x0: Double, y0: Double, cx0: Double, cy0: Double, cx1: Double, cy1: Double, x1: Double, y1: Double
+    svg: SVGElement, x0: Double, y0: Double, cx0: Double, cy0: Double, cx1: Double, cy1: Double, x1: Double, y1: Double, opacity: Double = 1.0
 ) {
     // Parameter at which to place the arrow head.
 //    val t = 40/(sqrt((x0-x1)*(x0-x1)+(y0-y1)*(y0-y1)) + sqrt((cx0-cx1)*(cx0-cx1)+(cy0-cy1)*(cy0-cy1)))
@@ -489,8 +494,8 @@ fun addArrowHeadToCubicSpline(
         lineTo(ax2, ay2)
         close()
         stroke = "black"
-        strokeWidth = 2.0
-        fill = "white"
+        strokeWidth = 2.0+(1-opacity)*2.0
+        fill = "rgba(255,255,255,$opacity)"
         appendTo(svg)
     }
 }

@@ -327,6 +327,20 @@ fun registerBuiltinCommands() {
             run: () => {
                 editHashtag()
             }
+        },{
+            id:'provisional-accept-all',
+            label:"Accept All Provisional (Everywhere)",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                import("./afield.mjs").then( (afield) => {afield.send("provisional-accept-all", {})})
+            }
+        },{
+            id:'provisional-reject-all',
+            label:"Reject All Provisional (Everywhere)",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                import("./afield.mjs").then( (afield) => {afield.send("provisional-reject-all", {})})
+            }
         }]
     """.trimIndent()
     )

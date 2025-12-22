@@ -51,6 +51,7 @@ class SessionInformation(
 )
 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
+var documents = ConcurrentHashMap<String, SessionInformation>()
 
 var min_frame_delay = 1L
 
@@ -131,7 +132,7 @@ class Server {
                             doResync()
                         }
 
-                        sessions.forEach { session, info ->
+                        documents.forEach { _, info ->
 //                            lblock(" saving to ${info.filename}")
                             run {
                                 try {
@@ -162,6 +163,8 @@ class Server {
             }
 
             handlers["initialize"] = mutableSetOf({ message, reply ->
+                sendProvisionalSet(thisSessionInfo.get().filename)
+
                 Handled.yes
             })
 
@@ -188,9 +191,7 @@ class Server {
 
                 lastFn = hello.filename
 
-                val found = sessions.entries.firstOrNull {
-                    it.value.filename == fn
-                }
+                val found = documents[fn]
 
                 if (found == null) {
                     val root = Box("root")
@@ -201,6 +202,7 @@ class Server {
 
                     val si = SessionInformation(filename = fn, root = root)
                     root.inside = si
+                    documents[fn] = si
                     sessions.put(thisSession.get(), si)
                     thisSessionInfo.set(si)
                     si.sessions.add(thisSession.get())
@@ -229,15 +231,15 @@ class Server {
                     }
 
                 } else {
-                    sessions.put(thisSession.get(), found.value)
-                    thisSessionInfo.set(found.value)
-                    found.value.sessions.add(thisSession.get())
+                    sessions.put(thisSession.get(), found)
+                    thisSessionInfo.set(found)
+                    found.sessions.add(thisSession.get())
 
-                    found.value.boxes.values.forEach {
+                    found.boxes.values.forEach {
                         println(" -- resync all -- ")
                         it.resyncAll()
                     }
-                    found.value.topologyGeneration++
+                    found.topologyGeneration++
                 }
 
 
@@ -257,26 +259,54 @@ class Server {
 
                 Handled.yes
             })
+            handlers["provisional-accept"] = mutableSetOf({ message, reply ->
+                val target = Json.decodeFromJsonElement<ProvisionalTarget>(message.payload!!)
+                acceptProvisional(thisSessionInfo.get().filename, target.uid, target.property)
+                Handled.yes
+            })
+            handlers["provisional-reject"] = mutableSetOf({ message, reply ->
+                val target = Json.decodeFromJsonElement<ProvisionalTarget>(message.payload!!)
+                rejectProvisional(thisSessionInfo.get().filename, target.uid, target.property)
+                Handled.yes
+            })
+            handlers["provisional-accept-all"] = mutableSetOf({ message, reply ->
+                acceptAllProvisional(thisSessionInfo.get().filename)
+                Handled.yes
+            })
+            handlers["provisional-reject-all"] = mutableSetOf({ message, reply ->
+                rejectAllProvisional(thisSessionInfo.get().filename)
+                Handled.yes
+            })
             handlers["set-viewport"] = mutableSetOf({ message, reply ->
                 val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
-                thisSessionInfo.get().boxes.forEach {
-                    it.value.viewport = set.value
+                try {
+                    thisSessionInfo.get().boxes.forEach {
+                        it.value.viewport = set.value
+                    }
+                    doResync()
+                    Handled.yes
+                } catch (n: NullPointerException) {
+                    // this is fine, we're just early on the set-viewport
+                    Handled.yes
                 }
-                doResync()
-                Handled.yes
             })
 
             handlers["set-rect"] = mutableSetOf({ message, reply ->
 
                 val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
 
+                // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
                     val b = box(set.uid)
                     b.frame = set.value
-                    doResync()
+                    inMain {
+                        doResync() // subsequent calls do nothing, so this effectively combines multiple moves to the same update
+                    }
                 } else {
                     box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
-                    doResync()
+                    inMain {
+                        doResync()
+                    }
                 }
 
                 Handled.yes
@@ -341,51 +371,61 @@ class Server {
                     webSocket("/ws") {
                         val ts = this
                         thisSession.set(ts)
-                        for (frame in incoming) {
-                            if (frame is Frame.Text) {
-                                val text = frame.readText()
-                                sessions.keys.removeIf {
-                                    it.outgoing.isClosedForSend
-                                }
+                        try {
+                            for (frame in incoming) {
+                                if (frame is Frame.Text) {
+                                    val text = frame.readText()
+                                    sessions.entries.removeIf { (session, info) ->
+                                        if (session.outgoing.isClosedForSend) {
+                                            info.sessions.remove(session)
+                                            true
+                                        } else false
+                                    }
 
-                                var message: Message? = null
-                                try {
-                                    message = Json.decodeFromString<Message>(text)
-                                } catch (t: SerializationException) {
-                                }
+                                    var message: Message? = null
+                                    try {
+                                        message = Json.decodeFromString<Message>(text)
+                                    } catch (t: SerializationException) {
+                                    }
 
-                                if (message == null) {
-                                    launch {
-                                        thisSession.set(ts)
-                                        thisSessionInfo.set(sessions.get(ts))
-                                        try {
-                                            rawHandlers.values.forEach {
-                                                it.forEach {
-                                                    it(text)
+                                    if (message == null) {
+                                        launch {
+                                            thisSession.set(ts)
+                                            thisSessionInfo.set(sessions.get(ts))
+                                            try {
+                                                rawHandlers.values.forEach {
+                                                    it.forEach {
+                                                        it(text)
+                                                    }
                                                 }
+                                            } catch (t: Throwable) {
+                                                t.printStackTrace()
                                             }
-                                        } catch (t: Throwable) {
-                                            t.printStackTrace()
+                                        }
+                                    } else {
+                                        launch { // should this block or not?...
+                                            thisSession.set(ts)
+                                            thisSessionInfo.set(sessions.get(ts))
+                                            val savedScope = this.coroutineContext
+                                            try {
+                                                val r = handle(message) { message2 ->
+                                                    val message3 = message.replyTo?.let { message2.toName(it) } ?: message2
+                                                    val m = Json.encodeToString(message3)
+                                                    GlobalScope.launch {
+                                                        ts.send(m) // this enables, say, _print() to appear while this code is hogging the main execution thread
+                                                    }
+                                                }
+                                            } catch (t: Throwable) {
+                                                t.printStackTrace()
+                                            }
                                         }
                                     }
-                                } else {
-                                    launch { // should this block or not?...
-                                        thisSession.set(ts)
-                                        thisSessionInfo.set(sessions.get(ts))
-                                        val savedScope = this.coroutineContext
-                                        try {
-                                            val r = handle(message) { message2 ->
-                                                val message3 = message.replyTo?.let { message2.toName(it) } ?: message2
-                                                val m = Json.encodeToString(message3)
-                                                GlobalScope.launch {
-                                                    ts.send(m) // this enables, say, _print() to appear while this code is hogging the main execution thread
-                                                }
-                                            }
-                                        } catch (t: Throwable) {
-                                            t.printStackTrace()
-                                        }
-                                    }
                                 }
+                            }
+                        } finally {
+                            val info = sessions.remove(ts)
+                            if (info != null) {
+                                info.sessions.remove(ts)
                             }
                         }
                     }
@@ -398,7 +438,8 @@ class Server {
                     }
                     route("/browse") {
                         handle {
-                            val originalContent = File("./src/commonMain/resources/browser.html").readText(Charsets.UTF_8)
+                            val originalContent =
+                                File("./src/commonMain/resources/browser.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
@@ -412,14 +453,16 @@ class Server {
                     }
                     route("/inspect") {
                         handle {
-                            val originalContent = File("./src/commonMain/resources/inspector.html").readText(Charsets.UTF_8)
+                            val originalContent =
+                                File("./src/commonMain/resources/inspector.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
                     }
                     route("/keyframe") {
                         handle {
-                            val originalContent = File("./src/commonMain/resources/keyframe_editor.html").readText(Charsets.UTF_8)
+                            val originalContent =
+                                File("./src/commonMain/resources/keyframe_editor.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }

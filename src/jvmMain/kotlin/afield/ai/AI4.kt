@@ -4,17 +4,22 @@ package afield.ai
 
 import afield.AiAssist
 import afield.Box
+import afield.clearProvisional
 import afield.Handled
+import afield.Message
 import afield.RunsAt
-import afield.Set_string
+import afield.Set_output
 import afield.box
 import afield.handlers
 import afield.installHandlers
+import afield.inMain
 import afield.languageNameForProperty
-import afield.needsResync
+import afield.markProvisional
+import afield.setProvisional
 import afield.notify
-import afield.payload
 import afield.thisSessionInfo
+import afield._send
+import afield.payload
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
@@ -30,9 +35,15 @@ import com.openai.models.ResponseFormatText
 import com.openai.models.conversations.ConversationCreateParams
 import com.openai.models.conversations.items.ItemCreateParams
 import com.openai.models.responses.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.*
@@ -125,6 +136,17 @@ data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25)
 
 data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
 data class WorkspaceSymbolMatch(val symbol: String, val kind: String, val locationHint: String)
+
+/** CLI example tools -------------------------------------------------------- */
+
+@JsonClassDescription("Return the current UTC time in the requested format.")
+data class GetUtcTime(val format: String = "yyyy-MM-dd HH:mm:ss")
+
+@JsonClassDescription("Store a short note under a key.")
+data class Remember(val key: String, val value: String)
+
+@JsonClassDescription("Recall a stored note by key.")
+data class Recall(val key: String)
 
 /* =============================================================================
    Language handling
@@ -313,6 +335,18 @@ Tools:
 fun generalInstructions(lang: LanguageSpec): String =
     baseAssistantContract(lang.name)
 
+fun generalChatInstructions(lang: LanguageSpec, prompt: String): String = """
+You are an IDE-embedded assistant working with $lang.
+
+Guidelines:
+- Respond in markdown (prose is OK).
+- Use tools (EditFile, ListContents, ListDefinitions, etc.) to inspect or change code.
+- Do not paste full files unless explicitly asked.
+- The current box/file content is provided in the conversation for context.
+
+User request: $prompt
+""".trimIndent()
+
 fun inlineInstructions(lang: LanguageSpec, prompt: String, line: Int): String = """
 ${baseAssistantContract(lang.name)}
 
@@ -367,6 +401,10 @@ class OpenAiIdeCodexBridge(
     init {
         registerBuiltIns()
         log.log("Initialized OpenAiIdeCodexBridge(model=$chatModel)")
+    }
+
+    fun <T : Any> registerTool(toolClass: Class<T>, handler: (ToolExecutionContext, T) -> Any) {
+        tools.register(toolClass, handler)
     }
 
     fun startThread(
@@ -452,10 +490,10 @@ class OpenAiIdeCodexBridge(
         paramsBuilder.reasoning(reasoningConfig)
         tools.addAllTo(paramsBuilder)
 
-        log.log("send(): creating response (initial)")
+        log.log("running prompt <<spinner>>")
         var response: Response = createResponse(paramsBuilder.build(), onTextDelta)
         state.previousResponseId = response.id()
-        log.log("send(): initial response id=${response.id()} outputItems=${response.output().size}")
+        log.log("send(): initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
 
         val commentaryMessages = mutableListOf<String>()
 
@@ -528,7 +566,7 @@ class OpenAiIdeCodexBridge(
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
             }
 
-            log.log("send(): creating response (follow-up)")
+            log.log("send(): creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
                 .model(chatModel)
                 .previousResponseId(response.id())
@@ -791,9 +829,15 @@ class OpenAiIdeCodexBridge(
 
     companion object {
         val defaultThreadInstructions: String = """
-You are an IDE-embedded code assistant.
+You are an IDE-embedded code assistant working in a novel live-coding environment.
 Return only code for the current file in responses (no markdown fences, no diffs, no prose).
-If you have non-code thoughts, call the Commentary tool.
+If you have non-code thoughts, call the Commentary tool. Commentary, reasoning and questions there are welcome if you use the tool.
+        """.trimIndent()
+
+        val defaultChatThreadInstructions: String = """
+You are an IDE-embedded assistant working in a novel live-coding environment.
+Respond in markdown. You may discuss, explain, and propose options.
+If you need to change code, use the available tools rather than dumping entire files.
         """.trimIndent()
     }
 }
@@ -862,6 +906,46 @@ class IdeChatHelpers(
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
             threadState = result.threadState
+        )
+    }
+
+    fun chatGeneral(
+        state: OpenAiIdeCodexBridge.ThreadState,
+        code: String,
+        lang: LanguageSpec,
+        userPrompt: String,
+        attachments: List<ContextAttachment> = emptyList(),
+        listDefinitions: (() -> ListDefinitionsResult)? = null,
+        listFileContents: (() -> ListContentsResult)? = null,
+        editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        onTextDelta: ((String) -> Unit)? = null
+    ): OpenAiIdeCodexBridge.SendResult {
+        log.log("chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
+
+        val ctx = ToolExecutionContext(
+            attachments = attachments,
+            listDefinitions = listDefinitions,
+            listFileContents = listFileContents,
+            editOtherFile = editOtherFile,
+            workspaceSymbolSearch = workspaceSymbolSearch
+        )
+
+        val instructions = buildDynamicInstructions(
+            mode = Mode.Chat,
+            lang = lang,
+            userPrompt = userPrompt,
+            errorMessage = null,
+            lineNumber = null,
+            ctx = ctx
+        )
+
+        return bridge.send(
+            state,
+            "$instructions\n\n$userPrompt",
+            fileText = code,
+            ctx = ctx,
+            onTextDelta = onTextDelta
         )
     }
 
@@ -972,7 +1056,7 @@ class IdeChatHelpers(
         )
     }
 
-    private enum class Mode { General, Inline, Error }
+    private enum class Mode { General, Inline, Error, Chat }
 
     private fun buildDynamicInstructions(
         mode: Mode,
@@ -986,6 +1070,7 @@ class IdeChatHelpers(
             Mode.General -> generalInstructions(lang)
             Mode.Inline -> inlineInstructions(lang, userPrompt ?: "", lineNumber ?: 0)
             Mode.Error -> errorInstructions(lang, errorMessage ?: "")
+            Mode.Chat -> generalChatInstructions(lang, userPrompt ?: "")
         }
 
         val toolAds = mutableListOf<String>()
@@ -1003,15 +1088,26 @@ class IdeChatHelpers(
         if (ctx.editOtherFile != null) toolAds += "- EditFile: update another file by name (e.g., paired shaders)."
         if (ctx.workspaceSymbolSearch != null) toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."
 
+        val guidance = if (mode == Mode.Chat) {
+            """
+- Prefer calling tools over guessing (definitions, other file contents, attachments).
+- If you call a tool, wait for its output before continuing.
+            """.trimIndent()
+        } else {
+            """
+- Prefer calling tools over guessing (definitions, other file contents, attachments).
+- Keep code output clean; put explanations in Commentary tool calls.
+- If you call a tool, wait for its output before continuing.
+            """.trimIndent()
+        }
+
         val toolsSection = """
 
 Tools available:
 ${toolAds.joinToString("\n")}
 
 Guidance:
-- Prefer calling tools over guessing (definitions, other file contents, attachments).
-- Keep code output clean; put explanations in Commentary tool calls.
-- If you call a tool, wait for its output before continuing.
+$guidance
         """.trimIndent()
 
         return "$core\n$toolsSection"
@@ -1025,194 +1121,91 @@ Guidance:
 }
 
 /* =============================================================================
-   Expanded main() with real example: Vector3f + fbm noise generator
+   CLI chat example with custom tools
    ============================================================================= */
 
 fun main() {
-    val bridge = OpenAiIdeCodexBridge(log = StdoutLog)
-    val helpers = IdeChatHelpers(bridge, log = StdoutLog)
+    val bridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = StdoutLog)
 
-    println("Starting test run...")
-
-    data class StreamHook(
-        val onDelta: (String) -> Unit,
-        val finish: () -> Unit
-    )
-
-    fun streamHook(label: String): StreamHook {
-        var saw = false
-        val onDelta: (String) -> Unit = { chunk ->
-            if (!saw) {
-                println("\n---- $label stream ----")
-                saw = true
-            }
-            print(chunk)
-        }
-        val finish = {
-            if (saw) println("\n---- end $label stream ----")
-        }
-        return StreamHook(onDelta, finish)
+    val memory = ConcurrentHashMap<String, String>()
+    bridge.registerTool(GetUtcTime::class.java) { _, req ->
+        val format = req.format.ifBlank { "yyyy-MM-dd HH:mm:ss" }
+        val formatter = DateTimeFormatter.ofPattern(format).withZone(ZoneOffset.UTC)
+        mapOf("utc" to formatter.format(Instant.now()))
+    }
+    bridge.registerTool(Remember::class.java) { _, req ->
+        memory[req.key] = req.value
+        mapOf("ok" to true, "key" to req.key)
+    }
+    bridge.registerTool(Recall::class.java) { _, req ->
+        mapOf("value" to (memory[req.key] ?: ""))
     }
 
-    val initialKotlinScript = """
-import org.joml.Vector3f
-import kotlin.math.*
-
-/*
-Goal: procedural fbm noise generator.
-We want:
-- noise3(p: Vector3f): Float  (roughly [-1,1])
-- fbm(p: Vector3f, octaves: Int, lacunarity: Float, gain: Float): Float
-*/
-
-fun clamp01(x: Float): Float = x.coerceIn(0f, 1f)
-
-// TODO: implement a 3D noise function returning roughly [-1,1]
-fun noise3(p: Vector3f): Float {
-    // placeholder: clearly wrong
-    return sin(p.x * 12.9898f + p.y * 78.233f + p.z * 37.719f)
-}
-
-// TODO: implement fbm using noise3
-fun fbm(p: Vector3f, octaves: Int = 5, lacunarity: Float = 2.0f, gain: Float = 0.5f): Float {
-    var sum = 0f
-    var amp = 0.5f
-    var freq = 1.0f
-    // TODO: loop octaves, accumulate noise3(p*freq)*amp
-    return sum
-}
-
-// Quick test sample
-val p = Vector3f(1.23f, 4.56f, 7.89f)
-val n = fbm(p)
-println("fbm=${'$'}n")
+    val instructions = """
+You are a CLI chat assistant.
+You can call tools to get the current UTC time or to store/recall short notes.
+Keep responses concise and ask clarifying questions when needed.
     """.trimIndent()
 
-    println("Creating thread...")
-    var thread = bridge.startThread(
-        fileKey = "myDocument://script/fbmNoise",
-        fileText = initialKotlinScript
+    var state = bridge.startThread(
+        fileKey = "cli://chat",
+        fileText = "",
+        instructions = instructions
     )
 
-    val attachments = listOf(
-        ContextAttachment(
-            fileName = "fragment.glsl",
-            language = "GLSL (fragment)",
-            code = """
-// Example: using fbm-derived value to color fragment (pseudo)
-void main() {
-    // float v = fbm(...);
-    // gl_FragColor = vec4(vec3(v), 1.0);
-}
-            """.trimIndent()
+    val ctx = ToolExecutionContext()
+
+    println("CLI chat ready. Type /help for commands, /exit to quit.")
+    while (true) {
+        print("you> ")
+        val line = readLine() ?: break
+        val input = line.trim()
+        if (input.isEmpty()) continue
+
+        when (input) {
+            "/exit" -> break
+            "/help" -> {
+                println(
+                    """
+Commands:
+  /help  Show this help
+  /exit  Quit
+
+Try asking for the current time, or ask it to remember/recall a note.
+                    """.trimIndent()
+                )
+                continue
+            }
+        }
+
+        val result = bridge.send(
+            state = state,
+            userPrompt = input,
+            ctx = ctx,
+            onTextDelta = { chunk ->
+                print(chunk)
+                System.out.flush()
+            }
         )
-    )
-
-    val listDefs = {
-        ListDefinitionsResult(
-            definitions = listOf(
-                DefinitionInfo("Vector3f", "class", "org.joml.Vector3f", "Kotlin"),
-                DefinitionInfo("noise3", "function", "myDocument://script/fbmNoise", "Kotlin"),
-                DefinitionInfo("fbm", "function", "myDocument://script/fbmNoise", "Kotlin"),
-                DefinitionInfo("fragment.glsl", "shader", "fragment.glsl", "GLSL (fragment)")
-            )
-        )
-    }
-    val editFile: (EditFileRequest) -> EditFileResponse = { req ->
-        EditFileResponse(success = true, message = "Stub: would update ${req.file} (${req.newContent.length} chars)")
+        println()
+        if (result.commentary.isNotEmpty()) {
+            println("\n[commentary]\n" + result.commentary.joinToString("\n"))
+        }
+        state = result.threadState
     }
 
-    println("PASS 1: general chat (implement noise3 + fbm)...")
-    val pass1Stream = streamHook("PASS 1")
-    val pass1 = helpers.chatFile(
-        state = thread,
-        code = initialKotlinScript,
-        lang = KOTLIN_SCRIPT,
-        userPrompt = """
-Implement a decent 3D value noise (or gradient noise) for noise3(p: Vector3f): Float,
-and implement fbm(...) properly. Keep it self-contained, deterministic (no RNG), reasonably fast.
-Return only code (no prose). Put any design notes in Commentary tool calls.
-        """.trimIndent(),
-        attachments = attachments,
-        listDefinitions = listDefs,
-        listFileContents = { ListContentsResult("myDocument://script/fbmNoise", initialKotlinScript) },
-        editOtherFile = editFile,
-        onTextDelta = pass1Stream.onDelta
-    )
-    pass1Stream.finish()
-
-    println("\n==== PASS 1 edited code ====")
-    println(pass1.editedCode)
-    if (pass1.commentary.isNotEmpty()) {
-        println("\n==== PASS 1 commentary ====")
-        println(pass1.commentary.joinToString("\n"))
-    }
-    thread = pass1.threadState
-
-    val inlineLine = 25
-    println("\nPASS 2: inline chat at line $inlineLine (optimize)...")
-    val pass2Stream = streamHook("PASS 2")
-    val pass2 = helpers.chatInline(
-        state = thread,
-        code = pass1.editedCode,
-        lang = KOTLIN_SCRIPT,
-        lineNumber = inlineLine,
-        userPrompt = """
-Optimize noise3/fbm for fewer allocations and fewer trig calls,
-but keep output quality similar. Prefer integer hash + lerp.
-Put explanations in Commentary tool calls.
-        """.trimIndent(),
-        attachments = attachments,
-        listDefinitions = listDefs,
-        listFileContents = { ListContentsResult("myDocument://script/fbmNoise", pass1.editedCode) },
-        editOtherFile = editFile,
-        onTextDelta = pass2Stream.onDelta
-    )
-    pass2Stream.finish()
-
-    println("\n==== PASS 2 edited code ====")
-    println(pass2.editedCode)
-    if (pass2.commentary.isNotEmpty()) {
-        println("\n==== PASS 2 commentary ====")
-        println(pass2.commentary.joinToString("\n"))
-    }
-    thread = pass2.threadState
-
-    println("\nPASS 3: error chat (fix intentional type error)...")
-    val broken = pass2.editedCode.replace(
-        "fun fbm(p: Vector3f",
-        "<error>fun fbm(p: Vector3</error>"
-    )
-
-    val pass3Stream = streamHook("PASS 3")
-    val pass3 = helpers.chatError(
-        state = thread,
-        code = broken,
-        lang = KOTLIN_SCRIPT,
-        errorMessage = "Unresolved reference: Vector3 (should be org.joml.Vector3f)",
-        attachments = attachments,
-        listDefinitions = listDefs,
-        listFileContents = { ListContentsResult("myDocument://script/fbmNoise", broken) },
-        editOtherFile = editFile,
-        onTextDelta = pass3Stream.onDelta
-    )
-    pass3Stream.finish()
-
-    println("\n==== PASS 3 edited code ====")
-    println(pass3.editedCode)
-    if (pass3.commentary.isNotEmpty()) {
-        println("\n==== PASS 3 commentary ====")
-        println(pass3.commentary.joinToString("\n"))
-    }
-
-    println("\nDone.")
+    println("bye.")
 }
 
 @RunsAt(installHandlers)
 fun ai4_install() {
     var bridge: OpenAiIdeCodexBridge? = null
     var helpers: IdeChatHelpers? = null
+    var chatBridge: OpenAiIdeCodexBridge? = null
+    var chatHelpers: IdeChatHelpers? = null
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
+    val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
+    val chatHistoryByKey = ConcurrentHashMap<String, String>()
 
     fun langSpecForName(name: String): LanguageSpec = when {
         name.equals("Kotlin", ignoreCase = true) -> KOTLIN_SCRIPT
@@ -1231,6 +1224,15 @@ fun ai4_install() {
     fun threadFor(fileKey: String, fileText: String): OpenAiIdeCodexBridge.ThreadState =
         threadByKey[fileKey] ?: bridge!!.startThread(fileKey, fileText).also {
             threadByKey[fileKey] = it
+        }
+
+    fun chatThreadFor(fileKey: String, fileText: String): OpenAiIdeCodexBridge.ThreadState =
+        chatThreadByKey[fileKey] ?: chatBridge!!.startThread(
+            fileKey,
+            fileText,
+            instructions = OpenAiIdeCodexBridge.defaultChatThreadInstructions
+        ).also {
+            chatThreadByKey[fileKey] = it
         }
 
     data class FileRef(val document: String, val uid: String, val property: String)
@@ -1258,9 +1260,16 @@ fun ai4_install() {
             notify("Initializing AI4", "AI")
         }
 
+        if (chatBridge == null) {
+            val uiLog = NotifyLog(label = "AI")
+            chatBridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = uiLog)
+            chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
+        }
+
         val langName = languageNameForProperty(box, exec.property)
         val lang = langSpecForName(langName)
         val docName = documentName()
+        val docPath = thisSessionInfo.get().filename
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
 
         val listDefinitions = {
@@ -1314,8 +1323,7 @@ fun ai4_install() {
             }
             val target = thisSessionInfo.get().boxes[ref.uid]
                 ?: return@editOtherFile EditFileResponse(false, "Unknown box '${ref.uid}'")
-            target.setPropertyRaw(ref.property, req.newContent, doResync = false)
-            needsResync.add(target to ref.property)
+            setProvisional(docPath, target.id, ref.property, req.newContent)
             EditFileResponse(true, "Updated ${req.file}")
         }
 
@@ -1345,84 +1353,146 @@ fun ai4_install() {
             WorkspaceSymbolSearchResult(matches)
         }
 
-        val state = threadFor(fileKey, exec.prompt)
+        if (exec.kind == "chat" || exec.kind == "cursor" || exec.kind == "rewrite" || exec.kind == "error") {
+            clearProvisional(docPath)
+        }
 
-        val result = when (exec.kind) {
-            "chat" -> {
-                notify("Initiating AI Chat", "AI")
-                helpers!!.chatInline(
-                    state = state,
-                    code = exec.prompt,
-                    lang = lang,
-                    lineNumber = exec.startLine,
-                    userPrompt = exec.extraPrompt,
-                    listDefinitions = listDefinitions,
-                    listFileContents = listFileContents,
-                    editOtherFile = editOtherFile,
-                    workspaceSymbolSearch = workspaceSymbolSearch
-                )
-            }
+        val state = if (exec.kind == "general") {
+            chatThreadFor(fileKey, exec.prompt)
+        } else {
+            threadFor(fileKey, exec.prompt)
+        }
 
-            "cursor" -> {
-                notify("Initiating Completion", "AI")
-                helpers!!.chatFile(
-                    state = state,
-                    code = exec.prompt,
-                    lang = lang,
-                    userPrompt = "Complete the code at <cursor>.",
-                    listDefinitions = listDefinitions,
-                    listFileContents = listFileContents,
-                    editOtherFile = editOtherFile,
-                    workspaceSymbolSearch = workspaceSymbolSearch
-                )
-            }
-
-            "rewrite" -> {
-                notify("Initiating AI Rewrite", "AI")
-                helpers!!.chatFile(
-                    state = state,
-                    code = exec.prompt,
-                    lang = lang,
-                    userPrompt = "Rewrite only the code between <rewrite> and </rewrite>.",
-                    listDefinitions = listDefinitions,
-                    listFileContents = listFileContents,
-                    editOtherFile = editOtherFile,
-                    workspaceSymbolSearch = workspaceSymbolSearch
-                )
-            }
-
-            "error" -> {
-                notify("Initiating AI Error Fix", "AI")
-                helpers!!.chatFile(
-                    state = state,
-                    code = exec.prompt,
-                    lang = lang,
-                    userPrompt = "Fix the error described between <error> and </error>.",
-                    listDefinitions = listDefinitions,
-                    listFileContents = listFileContents,
-                    editOtherFile = editOtherFile,
-                    workspaceSymbolSearch = workspaceSymbolSearch
-                )
-            }
-
+        when (exec.kind) {
+            "chat" -> notify("Initiating AI Chat", "AI")
+            "general" -> notify("Initiating AI Conversation", "AI")
+            "cursor" -> notify("Initiating Completion", "AI")
+            "rewrite" -> notify("Initiating AI Rewrite", "AI")
+            "error" -> notify("Initiating AI Error Fix", "AI")
             else -> {
                 notify("Unknown AI request kind '${exec.kind}'", "AI")
                 return@mutableSetOf Handled.yes
             }
         }
 
-        threadByKey[fileKey] = result.threadState
+        GlobalScope.launch(Dispatchers.IO) {
+            val chatResult: OpenAiIdeCodexBridge.SendResult?
+            val editResult: IdeChatHelpers.HighLevelResult?
+            try {
+                when (exec.kind) {
+                    "chat" -> {
+                        chatResult = null
+                        editResult = helpers!!.chatInline(
+                            state = state,
+                            code = exec.prompt,
+                            lang = lang,
+                            lineNumber = exec.startLine,
+                            userPrompt = exec.extraPrompt,
+                            listDefinitions = listDefinitions,
+                            listFileContents = listFileContents,
+                            editOtherFile = editOtherFile,
+                            workspaceSymbolSearch = workspaceSymbolSearch
+                        )
+                    }
 
-        notify("Finished AI ${exec.kind}", "AI")
-        reply(
-            afield.Message("ai_replace").payload(
-                Set_string(
-                    uid = exec.uid,
-                    property = exec.property,
-                    value = result.editedCode
-                )
-            )
-        )
+                    "general" -> {
+                        chatResult = chatHelpers!!.chatGeneral(
+                            state = state,
+                            code = exec.prompt,
+                            lang = lang,
+                            userPrompt = exec.extraPrompt,
+                            listDefinitions = listDefinitions,
+                            listFileContents = listFileContents,
+                            editOtherFile = editOtherFile,
+                            workspaceSymbolSearch = workspaceSymbolSearch
+                        )
+                        editResult = null
+                    }
+
+                    "cursor" -> {
+                        chatResult = null
+                        editResult = helpers!!.chatFile(
+                            state = state,
+                            code = exec.prompt,
+                            lang = lang,
+                            userPrompt = "Complete the code at <cursor>.",
+                            listDefinitions = listDefinitions,
+                            listFileContents = listFileContents,
+                            editOtherFile = editOtherFile,
+                            workspaceSymbolSearch = workspaceSymbolSearch
+                        )
+                    }
+
+                    "rewrite" -> {
+                        chatResult = null
+                        editResult = helpers!!.chatFile(
+                            state = state,
+                            code = exec.prompt,
+                            lang = lang,
+                            userPrompt = "Rewrite only the code between <rewrite> and </rewrite>.",
+                            listDefinitions = listDefinitions,
+                            listFileContents = listFileContents,
+                            editOtherFile = editOtherFile,
+                            workspaceSymbolSearch = workspaceSymbolSearch
+                        )
+                    }
+
+                    "error" -> {
+                        chatResult = null
+                        editResult = helpers!!.chatFile(
+                            state = state,
+                            code = exec.prompt,
+                            lang = lang,
+                            userPrompt = "Fix the error described between <error> and </error>.",
+                            listDefinitions = listDefinitions,
+                            listFileContents = listFileContents,
+                            editOtherFile = editOtherFile,
+                            workspaceSymbolSearch = workspaceSymbolSearch
+                        )
+                    }
+
+                    else -> {
+                        chatResult = null
+                        editResult = null
+                    }
+                }
+            } catch (e: Exception) {
+                inMain {
+                    notify("AI ${exec.kind} failed: ${e.message ?: e::class.java.simpleName}", "AI")
+                }
+                return@launch
+            }
+
+            inMain {
+                if (chatResult != null) {
+                    chatThreadByKey[fileKey] = chatResult.threadState
+                    val trimmedPrompt = exec.extraPrompt.trim()
+                    val trimmedResponse = chatResult.text.trim()
+                    val previous = chatHistoryByKey[fileKey].orEmpty()
+                    val next = buildString {
+                        if (previous.isNotBlank()) {
+                            append(previous)
+                            append("\n")
+                        }
+                        if (trimmedPrompt.isNotEmpty()) {
+                            append("<<you>>\n")
+                            append(trimmedPrompt)
+                            append("\n")
+                        }
+                        append("<<ai>>\n")
+                        append(trimmedResponse.ifEmpty { "_(no response)_"} )
+                    }
+                    chatHistoryByKey[fileKey] = next
+                    val payload = Set_output(box.id, "outputarea", "ai-chat", next)
+                    _send(Message("set-output").payload(payload), document = Regex.escape(docPath))
+                    notify("Finished AI conversation", "AI")
+                } else if (editResult != null) {
+                    threadByKey[fileKey] = editResult.threadState
+                    markProvisional(box, exec.property, editResult.editedCode)
+                    notify("Finished AI ${exec.kind}", "AI")
+                }
+            }
+        }
         Handled.yes
     })
 }

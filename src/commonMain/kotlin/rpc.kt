@@ -146,6 +146,15 @@ data class Set_string(val uid: String, val property: String, val value: String)
 data class Set_output(val uid: String, val property: String, val channel: String, val value: String)
 
 @Serializable
+data class ProvisionalEntry(val uid: String, val property: String, val contents: String)
+
+@Serializable
+data class ProvisionalSet(val entries: List<ProvisionalEntry>)
+
+@Serializable
+data class ProvisionalTarget(val uid: String, val property: String)
+
+@Serializable
 data class Notify(val text: String, val category: String)
 
 @Serializable

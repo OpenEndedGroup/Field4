@@ -175,7 +175,7 @@ function addExecutionMarker(editor, start_line, end_line) {
         let className = `execution-marker-${n}`
 
         const sheet = document.styleSheets[0];
-        const rule = `.${className} { background: black; width: 5px !important; margin-left:-20px;}`
+        const rule = `.${className} { background: black; width: 5px !important; margin-left:-15px;}`
         sheet.insertRule(rule, sheet.cssRules.length);
 
         let range = new monaco.Range(start_line, 1, end_line, 1)
@@ -297,8 +297,8 @@ function addPromptBox(editor, belowLine, acceptCallback) {
                   id="promptBox_${addPromptBox_uid}"
                   style="
                     box-sizing: border-box;
-                    height: 22px;
-                    padding: 3px;
+                    height: 30px;
+                    padding: 8px;
                     margin: 3px;
                     border: 1px solid rgba(255, 255, 255, 0.1);
                     border-radius: 5px;
@@ -315,7 +315,8 @@ function addPromptBox(editor, belowLine, acceptCallback) {
                     font-kerning: inherit;
                     font-feature-settings: inherit;
                     font-variation-settings: inherit;
-                    font-size: 80%;
+                    font-size: 70%;
+                    font-style: italic;
                     width: calc(100% - 20px);
                     outline: none;
                     color: white;

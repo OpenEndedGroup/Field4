@@ -166,11 +166,13 @@ function ensureStyles() {
     const style = document.createElement("style");
     style.id = "monaco-ai-diff-styles";
     style.textContent = `
-.monaco-ai-diff-delete-line { background: rgba(255,0,0,0.16); cursor: pointer; }
+.monaco-ai-diff-delete-line { background: rgba(255,0,0,0.16); cursor: pointer;   border-right: 8px solid rgba(255,0,0,1);
+}
 .monaco-ai-diff-zone {
   box-sizing: border-box;
   width: 100%;
   background: rgba(0,200,0,0.12);
+  border-right: 8px solid rgba(0,200,0,1);
   overflow: hidden;
   user-select: text;
   cursor: pointer;

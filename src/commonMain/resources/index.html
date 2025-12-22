@@ -112,16 +112,15 @@
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
         .monaco-editor-container {
-            top: 20px;
-            right: 20px;
-            height: calc(100vh - 45px);
+            top: 10px;
+            right: 10px;
+            height: calc(100vh - 20px);
             width: calc(40vw - 60px);
             position: absolute;
             border: 5px solid black;
             border-radius: 5px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.084);
-            backdrop-filter: blur(20px) brightness(0.5);
+            padding: 5px;
+            background: #1e1e1e;
             z-index: 19;
             filter: blur(0px);
             transition: border 0.2s !important;
@@ -206,6 +205,38 @@
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
+        }
+
+        .box.provisional {
+            position: relative;
+        }
+
+        .box.provisional::after {
+            content: "";
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            bottom: -10px;
+            left: -10px;
+            border: 3px dashed rgba(235, 150, 70, 0.95);
+            pointer-events: none;
+            border-radius: 6px;
+        }
+
+        .box .provisional-badge {
+            position: absolute !important;
+            top: -10px;
+            right: -10px;
+            z-index: 2;
+            background: rgba(255, 170, 80, 0.95);
+            color: #111;
+            font-size: 10px;
+            line-height: 1.1;
+            padding: 2px 6px;
+            border-radius: 6px;
+            pointer-events: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+            white-space: nowrap;
         }
 
         .running {
@@ -369,10 +400,10 @@
 
         .bubble {
             background: rgba(0, 0, 0, 0.5);
-            padding: 7px;
+            padding: 4px;
             border-radius: 5px;
             color: rgba(255, 255, 255, 1);
-            font-size: 80%;
+            font-size: 70%;
             -webkit-user-select: none; /* Safari */
             -moz-user-select: none;    /* Firefox */
             -ms-user-select: none;     /* Internet Explorer/Edge */
@@ -423,7 +454,7 @@
 
         .hoverlay {
             position: absolute;
-            bottom: 10px;
+            bottom: 5px;
             right: 20px;
             color: white;
             /* border: 1px solid white; */
@@ -604,6 +635,7 @@
 <div class="monaco-editor-container"></div>
 
 
+<script src="provisional.js" type="module"></script>
 <script src="afield.mjs" type="module"></script>
 
 <script type="text/javascript" src="./min/vs/loader.js"></script>
@@ -616,6 +648,8 @@
 <script src="bootstrapMonaco.js" type="module"></script>
 <script src="notify.js"></script>
 <script src="diff3.js"></script>
+<link rel="stylesheet" href="/github-dark.min.css">
+<script src="/highlight.min.js"></script>
 <script src="outputareas2.js"></script>
 <script src="decorations.js"></script>
 <script src="trays.js"></script>

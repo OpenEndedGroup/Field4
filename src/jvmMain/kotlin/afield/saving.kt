@@ -5,65 +5,65 @@ package afield
 import afield.logger.lprintln
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
+import java.io.FileNotFoundException
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @Serializable
 data class Box_transfer(val id: String, val properties: Map<String, Pair<String, JsonElement>>)
 
+data class BoxTransferEdn(val id: String, val properties: Map<String, Any?>)
+
+private data class BoxRef(val id: String)
+private data class FileRef(val path: String)
+private data class FileInline(val path: String, val inline: String)
+
 class SavingContext {
 
     fun listTemplates(dir: String): List<String> {
         val d = File(dir).listFiles { file ->
-            file.isDirectory && File(file, "/metadata.json").exists()
+            file.isDirectory && (File(file, METADATA_EDN).exists() || File(file, METADATA_JSON).exists())
         }
-        if (d == null) return emptyList<String>()
+        if (d == null) return emptyList()
         return d.map { it.name }
     }
 
     @OptIn(ExperimentalUuidApi::class)
     fun cloneInto(dir: String): Set<Box> {
         val seen = mutableMapOf<String, String>("root" to "root")
-        return load(dir) { id ->
+        return load(dir, { id ->
             val next = seen.computeIfAbsent(id) { Uuid.random().toString() }
             next
-        }
+        }, upgradeOnLoad = false)
     }
 
     var altered = false
-    fun toTransfer(boxes: Set<Box>, directory: String): Set<Box_transfer> {
 
+    fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn> {
+        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
         return boxes.map { box ->
+            val properties = LinkedHashMap<String, Any?>()
+            box.properties.forEach { (name, value) ->
+                if (!patterns.any { name.matches(it) }) return@forEach
+                if (value == null) return@forEach
 
-            val r = Box.ioPersistentProperties.map { it.toRegex() }
-
-            val properties = box.properties.filter { (name, _) ->
-                r.any { name.matches(it) }
+                if (Box.ioSeparateProperties.containsKey(name)) {
+                    val extension = Box.ioSeparateProperties[name]!!
+                    val contents = value as? String ?: value.toString()
+                    properties[name] = toFile(box.id, name, extension, directory, contents)
+                } else {
+                    val normalized = normalizeValue(value)
+                    if (normalized != null) {
+                        properties[name] = normalized
+                    }
+                }
             }
-
-            val p = properties.mapNotNull { (it, v) ->
-
-                if (Box.ioSeparateProperties.containsKey(it)) {
-                    if (v == null) null
-                    else it to ("__file__" to toFile(
-                        box.id,
-                        it,
-                        Box.ioSeparateProperties[it]!!,
-                        directory,
-                        v as String
-                    ))
-                } else if (v == null) null
-                else toTypedPair(v, it)
-            }.toMap()
-
-            Box_transfer(box.id, p)
-        }.toSet()
+            BoxTransferEdn(box.id, properties)
+        }
     }
 
     fun checkDifference(p: String, contents: String): Boolean {
@@ -80,80 +80,196 @@ class SavingContext {
         }
     }
 
-    fun toFile(id: String, name: String, extension: String, directory: String, contents: String): JsonElement {
+    private fun toFile(
+        id: String,
+        name: String,
+        extension: String,
+        directory: String,
+        contents: String
+    ): FileInline {
         val path = filenameFor(id, name, extension)
-        val fn = format.encodeToJsonElement(path)
-
-        val cd = checkDifference(directory + "/" + path, contents)
+        val cd = checkDifference(File(directory, path).path, contents)
         altered = altered || cd
-
-        return fn
+        return FileInline(path, contents)
     }
 
-
-    private fun toTypedPair(
-        v: Any, name: String = ""
-    ): Pair<String, Pair<String, JsonElement>>? = when (v) {
-        is Rect -> name to ("Rect" to format.encodeToJsonElement(v))
-        is String -> name to ("String" to format.encodeToJsonElement(v))
-        is Number -> name to ("Number" to format.encodeToJsonElement(v))
-        is Box -> name to ("Box" to format.encodeToJsonElement(v.id))
-        is Boolean -> name to ("Boolean" to format.encodeToJsonElement(v))
-        is List<*> -> name to ("List" to format.encodeToJsonElement(v.map { vs ->
-            if (vs != null) {
-                toTypedPair(vs)?.second
-            } else null
-        }))
-
-        is Set<*> -> name to ("Set" to format.encodeToJsonElement(v.map { vs ->
-            if (vs != null) {
-                toTypedPair(vs)?.second
-            } else null
-        }))
-
+    private fun normalizeValue(value: Any?): Any? = when (value) {
+        null -> null
+        is Rect -> value
+        is String -> value
+        is Number -> value
+        is Boolean -> value
+        is Box -> BoxRef(value.id)
+        is BoxRef -> value
+        is FileRef -> value
+        is FileInline -> value
+        is List<*> -> value.map { normalizeValue(it) }
+        is Set<*> -> value.mapTo(LinkedHashSet()) { normalizeValue(it) }
+        is Map<*, *> -> {
+            val mapped = LinkedHashMap<Any?, Any?>()
+            for ((k, v) in value) {
+                mapped[normalizeValue(k)] = normalizeValue(v)
+            }
+            mapped
+        }
         else -> {
-            lprintln(" unhandled class $v ${v.javaClass}")
+            lprintln(" unhandled class $value ${value.javaClass}")
             null
         }
     }
 
-
-    companion object {
-        val format = Json {
-            prettyPrint = true
-        }
-
-        fun filenameFor(id: String, name: String, extension: String): String {
-            return id + "_" + name + "_." + extension
-        }
-
-    }
-
-    fun ensureDirectory(fn: String): String {
-        File(fn).mkdirs()
-        return fn
-    }
-
     fun save(fn: String, boxes: Set<Box>, message: String? = null) {
+        altered = false
         val root = ensureDirectory(fn)
-        val git = ensureRepository(fn)
-        val cd = checkDifference(root + "/metadata.json", format.encodeToString(toTransfer(boxes, root)))
+        ensureRepository(fn)
+
+        val transfers = toTransfer(boxes, root)
+        val payloadBoxes = transfers.map { transfer ->
+            linkedMapOf<String, Any?>(
+                "id" to transfer.id,
+                "properties" to transfer.properties
+            )
+        }
+        val payload = linkedMapOf<String, Any?>(
+            "version" to 2,
+            "boxes" to payloadBoxes
+        )
+        val ednText = Edn.write(payload, ednCustom)
+        val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
         altered = altered || cd
+
         if (altered) {
             commit(fn, message)
+            notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "saved")
         }
     }
 
-    fun load(fn: String, filterId: (String) -> String = { it }): Set<Box> {
+    fun load(
+        fn: String,
+        filterId: (String) -> String = { it },
+        upgradeOnLoad: Boolean = true
+    ): Set<Box> {
         val root = ensureDirectory(fn)
-        val transfers = format.decodeFromString<Set<Box_transfer>>(File(root, "metadata.json").readText())
+        val ednFile = File(root, METADATA_EDN)
+        if (ednFile.exists()) {
+            return loadEdn(root, filterId)
+        }
+
+        val jsonFile = File(root, METADATA_JSON)
+        if (!jsonFile.exists()) {
+            throw FileNotFoundException("missing $METADATA_EDN or $METADATA_JSON in $root")
+        }
+
+        val boxes = loadJson(root, filterId)
+        if (upgradeOnLoad) {
+            try {
+                save(root, boxes, "upgrade to edn")
+            } catch (ex: Exception) {
+                lprintln(" error upgrading $root to EDN: ${ex.message}")
+            }
+        }
+        return boxes
+    }
+
+    fun resolveStoredValue(value: Any?, directory: String): Any? {
+        return resolveValue(value, directory, { it }, createBoxes = false)
+    }
+
+    fun readEdnTransfers(directory: String): List<BoxTransferEdn> {
+        val rootValue = Edn.read(File(directory, METADATA_EDN).readText(), ednCustom)
+        val boxesValue = when (rootValue) {
+            is Map<*, *> -> rootValue["boxes"]
+            is List<*> -> rootValue
+            is Set<*> -> rootValue.toList()
+            else -> throw IllegalArgumentException("expected EDN map or list in ${File(directory, METADATA_EDN).path}")
+        }
+        val boxList = when (boxesValue) {
+            null -> emptyList()
+            is List<*> -> boxesValue
+            is Set<*> -> boxesValue.toList()
+            else -> throw IllegalArgumentException("expected boxes list in ${File(directory, METADATA_EDN).path}")
+        }
+
+        return boxList.mapNotNull { entry ->
+            val map = entry as? Map<*, *> ?: return@mapNotNull null
+            val id = map["id"]?.toString() ?: return@mapNotNull null
+            val propsRaw = map["properties"] as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val props = LinkedHashMap<String, Any?>()
+            for ((k, v) in propsRaw) {
+                val key = k?.toString() ?: continue
+                props[key] = v
+            }
+            BoxTransferEdn(id, props)
+        }
+    }
+
+    private fun resolveValue(
+        value: Any?,
+        directory: String,
+        filterId: (String) -> String,
+        createBoxes: Boolean
+    ): Any? = when (value) {
+        null -> null
+        is FileRef -> File(directory, value.path).readText()
+        is FileInline -> {
+            val file = File(directory, value.path)
+            if (file.exists()) file.readText() else value.inline
+        }
+        is BoxRef -> {
+            if (!createBoxes) {
+                value
+            } else {
+                val sourceId = value.id
+                val id = filterId(sourceId)
+                val v = box(id, createIfMissing = true)
+                if (id != sourceId) {
+                    v.setPropertyRaw("source_id", sourceId)
+                }
+                v
+            }
+        }
+        is List<*> -> value.map { resolveValue(it, directory, filterId, createBoxes) }.toMutableList()
+        is Set<*> -> value.mapTo(LinkedHashSet()) { resolveValue(it, directory, filterId, createBoxes) }
+        is Map<*, *> -> {
+            val mapped = LinkedHashMap<Any?, Any?>()
+            for ((k, v) in value) {
+                mapped[resolveValue(k, directory, filterId, createBoxes)] =
+                    resolveValue(v, directory, filterId, createBoxes)
+            }
+            mapped
+        }
+        is EdnValue -> {
+            lprintln(" can't decode $value")
+            null
+        }
+        else -> value
+    }
+
+    private fun loadEdn(root: String, filterId: (String) -> String): Set<Box> {
+        val transfers = readEdnTransfers(root)
+        return transfers.map { transfer ->
+            val id = filterId(transfer.id)
+            val b = box(id, createIfMissing = true)
+            transfer.properties.forEach { (name, value) ->
+                val v = resolveValue(value, root, filterId, createBoxes = true)
+                if (v != null) {
+                    b.setPropertyRaw(name, v)
+                }
+            }
+            if (id != transfer.id) {
+                b.setPropertyRaw("source_id", transfer.id)
+            }
+            b
+        }.toSet()
+    }
+
+    private fun loadJson(root: String, filterId: (String) -> String): Set<Box> {
+        val transfers = format.decodeFromString<Set<Box_transfer>>(File(root, METADATA_JSON).readText())
         return transfers.map {
             val id = filterId(it.id)
             val b = box(id, createIfMissing = true)
             it.properties.forEach { (name, element) ->
-
                 val v = fromTypedPair(element, root, filterId)
-
                 if (v != null) {
                     b.setPropertyRaw(name, v)
                 }
@@ -162,7 +278,6 @@ class SavingContext {
             if (id != it.id) {
                 b.setPropertyRaw("source_id", it.id)
             }
-
             b
         }.toSet()
     }
@@ -170,36 +285,108 @@ class SavingContext {
     fun fromTypedPair(
         element: Pair<String, JsonElement>,
         directory: String,
-        filterId: (String) -> String = { it }
+        filterId: (String) -> String = { it },
+        createBoxes: Boolean = true
     ): Any? = when (element.first) {
-        "__file__" -> File(directory + "/" + format.decodeFromJsonElement<String>(element.second)).readText()
+        "__file__" -> File(directory, format.decodeFromJsonElement<String>(element.second)).readText()
         "Rect" -> format.decodeFromJsonElement<Rect>(element.second) as Any
         "String" -> format.decodeFromJsonElement<String>(element.second) as Any
         "Int" -> format.decodeFromJsonElement<Int>(element.second) as Any
         "Number" -> format.decodeFromJsonElement<Number>(element.second) as Any
         "Boolean" -> format.decodeFromJsonElement<Boolean>(element.second) as Any
         "Box" -> {
-            val source_id = format.decodeFromJsonElement<String>(element.second)
-            val id = filterId(source_id)
-            var v = box(id, createIfMissing = true)
-            if (id != source_id) {
-                v.setPropertyRaw("source_id", source_id)
+            val sourceId = format.decodeFromJsonElement<String>(element.second)
+            if (!createBoxes) {
+                BoxRef(sourceId)
+            } else {
+                val id = filterId(sourceId)
+                val v = box(id, createIfMissing = true)
+                if (id != sourceId) {
+                    v.setPropertyRaw("source_id", sourceId)
+                }
+                v
             }
-            v
         }
-
         "List" -> format.decodeFromJsonElement<List<Pair<String, JsonElement>>>(element.second).map {
-            fromTypedPair(it, directory, filterId)
+            fromTypedPair(it, directory, filterId, createBoxes)
         }.toMutableList() as Any
-
         "Set" -> format.decodeFromJsonElement<List<Pair<String, JsonElement>>>(element.second).map {
-            fromTypedPair(it, directory, filterId)
+            fromTypedPair(it, directory, filterId, createBoxes)
         }.toMutableSet() as Any
-
         else -> {
             lprintln(" can't decode $element")
             null
         }
+    }
+
+    companion object {
+        val format = Json {
+            prettyPrint = true
+        }
+
+        const val METADATA_EDN = "metadata.edn"
+        const val METADATA_JSON = "metadata.json"
+
+        private val ednCustom = Edn.CustomTypes().apply {
+            registerEdn(Rect::class, "afield/rect", { rect ->
+                EdnValue.VectorVal(
+                    listOf(
+                        EdnValue.Number(rect.x.toString()),
+                        EdnValue.Number(rect.y.toString()),
+                        EdnValue.Number(rect.w.toString()),
+                        EdnValue.Number(rect.h.toString())
+                    )
+                )
+            }, { value ->
+                val vec = value as? EdnValue.VectorVal
+                    ?: throw IllegalArgumentException("expected vector for Rect, got $value")
+                val items = vec.values
+                if (items.size != 4) {
+                    throw IllegalArgumentException("expected 4 values for Rect, got ${items.size}")
+                }
+                Rect(
+                    ednValueToDouble(items[0]),
+                    ednValueToDouble(items[1]),
+                    ednValueToDouble(items[2]),
+                    ednValueToDouble(items[3])
+                )
+            })
+
+            registerStringPayload(BoxRef::class, "afield/box", { it.id }, { BoxRef(it) })
+            registerEdn(FileInline::class, "afield/file-inline", { file ->
+                EdnValue.MapVal(
+                    linkedMapOf(
+                        EdnValue.Str("path") to EdnValue.Str(file.path),
+                        EdnValue.Str("inline") to EdnValue.Str(file.inline)
+                    )
+                )
+            }, { value ->
+                val map = value as? EdnValue.MapVal
+                    ?: throw IllegalArgumentException("expected map for FileInline, got $value")
+                val pathValue = map.values[EdnValue.Str("path")] as? EdnValue.Str
+                val inlineValue = map.values[EdnValue.Str("inline")] as? EdnValue.Str
+                if (pathValue == null || inlineValue == null) {
+                    throw IllegalArgumentException("missing path/inline for FileInline: $value")
+                }
+                FileInline(pathValue.value, inlineValue.value)
+            })
+            registerStringPayload(FileRef::class, "afield/file", { it.path }, { FileRef(it) })
+        }
+
+        fun filenameFor(id: String, name: String, extension: String): String {
+            return id + "_" + name + "_." + extension
+        }
+
+        private fun ednValueToDouble(value: EdnValue): Double = when (value) {
+            is EdnValue.Number -> value.token.toDouble()
+            is EdnValue.Str -> value.value.toDouble()
+            else -> throw IllegalArgumentException("expected number, got $value")
+        }
+    }
+
+    fun ensureDirectory(fn: String): String {
+        File(fn).mkdirs()
+        return fn
     }
 }
 
