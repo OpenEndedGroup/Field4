@@ -46,6 +46,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.*
 
 /* =============================================================================
@@ -58,7 +59,13 @@ fun interface LogSink {
 
 object StdoutLog : LogSink {
     override fun log(msg: String) {
-        println("[OpenAiIde] $msg")
+        val prefix = "[OpenAiIde] "
+        val full = prefix + msg
+        val width = System.getenv("COLUMNS")?.toIntOrNull()?.coerceAtLeast(20) ?: 100
+        val padded = if (full.length < width) " ".repeat(width - full.length) + full else full
+        val ansiDarkGray = "\u001b[90m"
+        val ansiReset = "\u001b[0m"
+        println(ansiDarkGray + padded + ansiReset)
     }
 }
 
@@ -395,7 +402,7 @@ class OpenAiIdeCodexBridge(
     private val reasoningConfig: Reasoning =
         Reasoning.builder()
             .effort(ReasoningEffort.MEDIUM)
-//            .summary(Reasoning.Summary.CONCISE)
+            .summary(Reasoning.Summary.DETAILED)
             .build()
 
     init {
@@ -455,6 +462,7 @@ class OpenAiIdeCodexBridge(
         userPrompt: String,
         fileText: String? = null,
         ctx: ToolExecutionContext = ToolExecutionContext(),
+        vectorStoreIds: List<String> = emptyList(),
         maxOutputTokens: Long = 20480,
         maxToolRounds: Int = 8,
         onTextDelta: ((String) -> Unit)? = null
@@ -489,9 +497,15 @@ class OpenAiIdeCodexBridge(
         paramsBuilder.text(textConfig)
         paramsBuilder.reasoning(reasoningConfig)
         tools.addAllTo(paramsBuilder)
+        if (vectorStoreIds.isNotEmpty()) {
+            paramsBuilder.addFileSearchTool(vectorStoreIds)
+        }
 
         log.log("running prompt <<spinner>>")
         var response: Response = createResponse(paramsBuilder.build(), onTextDelta)
+        if (onTextDelta != null) {
+            println()
+        }
         state.previousResponseId = response.id()
         log.log("send(): initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
 
@@ -575,8 +589,14 @@ class OpenAiIdeCodexBridge(
             followupBuilder.text(textConfig)
             followupBuilder.reasoning(reasoningConfig)
             tools.addAllTo(followupBuilder)
+            if (vectorStoreIds.isNotEmpty()) {
+                followupBuilder.addFileSearchTool(vectorStoreIds)
+            }
 
             response = createResponse(followupBuilder.build(), onTextDelta)
+            if (onTextDelta != null) {
+                println()
+            }
             state.previousResponseId = response.id()
             log.log("send(): follow-up response id=${response.id()} outputItems=${response.output().size}")
             logOutputShape(response)
@@ -1120,83 +1140,6 @@ $guidance
     }
 }
 
-/* =============================================================================
-   CLI chat example with custom tools
-   ============================================================================= */
-
-fun main() {
-    val bridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = StdoutLog)
-
-    val memory = ConcurrentHashMap<String, String>()
-    bridge.registerTool(GetUtcTime::class.java) { _, req ->
-        val format = req.format.ifBlank { "yyyy-MM-dd HH:mm:ss" }
-        val formatter = DateTimeFormatter.ofPattern(format).withZone(ZoneOffset.UTC)
-        mapOf("utc" to formatter.format(Instant.now()))
-    }
-    bridge.registerTool(Remember::class.java) { _, req ->
-        memory[req.key] = req.value
-        mapOf("ok" to true, "key" to req.key)
-    }
-    bridge.registerTool(Recall::class.java) { _, req ->
-        mapOf("value" to (memory[req.key] ?: ""))
-    }
-
-    val instructions = """
-You are a CLI chat assistant.
-You can call tools to get the current UTC time or to store/recall short notes.
-Keep responses concise and ask clarifying questions when needed.
-    """.trimIndent()
-
-    var state = bridge.startThread(
-        fileKey = "cli://chat",
-        fileText = "",
-        instructions = instructions
-    )
-
-    val ctx = ToolExecutionContext()
-
-    println("CLI chat ready. Type /help for commands, /exit to quit.")
-    while (true) {
-        print("you> ")
-        val line = readLine() ?: break
-        val input = line.trim()
-        if (input.isEmpty()) continue
-
-        when (input) {
-            "/exit" -> break
-            "/help" -> {
-                println(
-                    """
-Commands:
-  /help  Show this help
-  /exit  Quit
-
-Try asking for the current time, or ask it to remember/recall a note.
-                    """.trimIndent()
-                )
-                continue
-            }
-        }
-
-        val result = bridge.send(
-            state = state,
-            userPrompt = input,
-            ctx = ctx,
-            onTextDelta = { chunk ->
-                print(chunk)
-                System.out.flush()
-            }
-        )
-        println()
-        if (result.commentary.isNotEmpty()) {
-            println("\n[commentary]\n" + result.commentary.joinToString("\n"))
-        }
-        state = result.threadState
-    }
-
-    println("bye.")
-}
-
 @RunsAt(installHandlers)
 fun ai4_install() {
     var bridge: OpenAiIdeCodexBridge? = null
@@ -1270,6 +1213,7 @@ fun ai4_install() {
         val lang = langSpecForName(langName)
         val docName = documentName()
         val docPath = thisSessionInfo.get().filename
+        val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
 
         val listDefinitions = {
@@ -1378,6 +1322,8 @@ fun ai4_install() {
         GlobalScope.launch(Dispatchers.IO) {
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
+            val streamActive = AtomicBoolean(false)
+            var streamPrefix: String? = null
             try {
                 when (exec.kind) {
                     "chat" -> {
@@ -1396,6 +1342,25 @@ fun ai4_install() {
                     }
 
                     "general" -> {
+                        val trimmedPrompt = exec.extraPrompt.trim()
+                        val previous = chatHistoryByKey[fileKey].orEmpty()
+                        val prefix = buildString {
+                            if (previous.isNotBlank()) {
+                                append(previous)
+                                append("\n")
+                            }
+                            if (trimmedPrompt.isNotEmpty()) {
+                                append("<<you>>\n")
+                                append(trimmedPrompt)
+                                append("\n")
+                            }
+                            append("<<ai>>\n")
+                        }
+                        val streamLock = Any()
+                        val streamBuffer = StringBuilder()
+                        var lastPush = 0L
+                        streamPrefix = prefix
+                        streamActive.set(true)
                         chatResult = chatHelpers!!.chatGeneral(
                             state = state,
                             code = exec.prompt,
@@ -1404,8 +1369,23 @@ fun ai4_install() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            onTextDelta = { chunk ->
+                                if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
+                                synchronized(streamLock) {
+                                    streamBuffer.append(chunk)
+                                }
+                                val now = System.currentTimeMillis()
+                                if (now - lastPush >= 80L) {
+                                    lastPush = now
+                                    if (!streamActive.get()) return@chatGeneral
+                                    val next = prefix + synchronized(streamLock) { streamBuffer.toString() }
+                                    val payload = Set_output(box.id, "outputarea", "ai-chat", next)
+                                    _send(Message("set-output").payload(payload), document = escapedDocPath)
+                                }
+                            }
                         )
+                        streamActive.set(false)
                         editResult = null
                     }
 
@@ -1457,6 +1437,7 @@ fun ai4_install() {
                     }
                 }
             } catch (e: Exception) {
+                streamActive.set(false)
                 inMain {
                     notify("AI ${exec.kind} failed: ${e.message ?: e::class.java.simpleName}", "AI")
                 }
@@ -1468,8 +1449,8 @@ fun ai4_install() {
                     chatThreadByKey[fileKey] = chatResult.threadState
                     val trimmedPrompt = exec.extraPrompt.trim()
                     val trimmedResponse = chatResult.text.trim()
-                    val previous = chatHistoryByKey[fileKey].orEmpty()
-                    val next = buildString {
+                    val prefix = streamPrefix ?: buildString {
+                        val previous = chatHistoryByKey[fileKey].orEmpty()
                         if (previous.isNotBlank()) {
                             append(previous)
                             append("\n")
@@ -1480,11 +1461,11 @@ fun ai4_install() {
                             append("\n")
                         }
                         append("<<ai>>\n")
-                        append(trimmedResponse.ifEmpty { "_(no response)_"} )
                     }
+                    val next = prefix + trimmedResponse.ifEmpty { "_(no response)_"}
                     chatHistoryByKey[fileKey] = next
                     val payload = Set_output(box.id, "outputarea", "ai-chat", next)
-                    _send(Message("set-output").payload(payload), document = Regex.escape(docPath))
+                    _send(Message("set-output").payload(payload), document = escapedDocPath)
                     notify("Finished AI conversation", "AI")
                 } else if (editResult != null) {
                     threadByKey[fileKey] = editResult.threadState

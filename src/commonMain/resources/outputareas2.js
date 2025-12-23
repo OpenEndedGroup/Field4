@@ -191,6 +191,11 @@ function disclosureInterface(container) {
         function open(id) {
                 const d = disclosures[id];
                 if (d.hdr.classList.contains('no-hover')) return;
+                if (d.wrap.classList.contains('open')) {
+                        const width = d.cw.scrollWidth + 2;
+                        d.wrap.style.width = width + 'px';
+                        return;
+                }
                 d.wrap.classList.add('open');
                 animateOpen(d);
         }
