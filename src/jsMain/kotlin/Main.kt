@@ -39,12 +39,8 @@ external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand
 
 external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
-external fun removeNewestOutput(): dynamic
 external fun initMenuSupport(): dynamic
 
-external fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: String, value: String)
-external fun notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(uid: String, property: String, value: String)
-external fun notifyPotentialEditedPropertyHasHadLanguageChanged(uid: String, property: String, language: String)
 
 external fun setDecorationsForEditor(uid: String, property: String, box: HTMLElement, decorSpec : dynamic)
 

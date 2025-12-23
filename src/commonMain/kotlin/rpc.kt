@@ -177,6 +177,18 @@ class RequestHashtags(val boxes: List<String>, val getOrSet: Boolean, val value:
 data class Perform_action(val uid_currentSelection: List<String>, val uid_action: String)
 
 @Serializable
+data class CopyBoxes(val uids: List<String>)
+
+@Serializable
+data class CopyBoxesResult(val edn: String)
+
+@Serializable
+data class PasteBoxes(val edn: String)
+
+@Serializable
+data class PasteBoxesResult(val newUids: List<String>)
+
+@Serializable
 data class Set_rect(val uid: String, val property: String, val value: Rect)
 
 @Serializable

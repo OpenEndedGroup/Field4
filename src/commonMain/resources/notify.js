@@ -67,6 +67,21 @@ var notify = (text, cat = "") => {
                 .replace(/<<spinner>>/g, '<span class="notify-spinner"></span>')
                 .replace(/<<timeago:(\d+)>>/g, '<span class="notify-timeago" data-time="$1"></span>');
 
+        const purgeCategory = cat && cat.startsWith("*");
+        if (purgeCategory) {
+                const bubbles = Array.from(document.getElementsByClassName("bubble"));
+                for (let bubble of bubbles) {
+                        if (bubble.cat === cat && bubble !== lastDiv) {
+                                if (bubble.parentNode) {
+                                        bubble.parentNode.removeChild(bubble);
+                                }
+                        }
+                }
+        }
+        if (lastDiv && lastDiv.cat === cat && !document.body.contains(lastDiv)) {
+                lastDiv = null;
+        }
+
         let newDiv;
         let noScroll = false;
         if (lastDiv && lastDiv.cat && lastDiv.cat.length > 0 && lastDiv.cat === cat) {

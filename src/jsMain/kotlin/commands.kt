@@ -1,10 +1,12 @@
 package afield
 
 import kotlinx.browser.document
+import kotlinx.browser.window
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
 
 var lastMouse = 0.0 to 0.0
@@ -46,6 +48,57 @@ fun deleteSelectedBoxes() {
         it.parentElement?.removeChild(it)
     }
     canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun copySelectedBoxesToClipboard() {
+    val ids = getSelectedIds()
+    if (ids.isEmpty()) return
+
+    val clipboard = window.navigator.asDynamic().clipboard
+    if (clipboard == undefined) {
+        notify("Clipboard not available", "error")
+        return
+    }
+
+    sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
+        val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
+        clipboard.writeText(result.edn)
+        Handled.yes_remove
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun pasteBoxesFromClipboard() {
+    val clipboard = window.navigator.asDynamic().clipboard
+    if (clipboard == undefined) {
+        notify("Clipboard not available", "error")
+        return
+    }
+
+    clipboard.readText().then({ text: String ->
+        if (text.isBlank()) return@then
+
+        sendWithReply(Message("paste-boxes").payload(PasteBoxes(text)), "paste-boxes") { message, _ ->
+            val result = Json.decodeFromJsonElement<PasteBoxesResult>(message.payload!!)
+            later({
+                val boxes = result.newUids.mapNotNull { uid ->
+                    document.body!!.getElementsByClassName("box").asList()
+                        .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
+                }
+                if (boxes.isNotEmpty()) {
+                    selected.copy().forEach { deselectBox(it) }
+                    boxes.forEach { selectBox(it) }
+                    canvasGestures.rebuildConnectionGroup()
+                }
+            }, 50)
+            Handled.yes_remove
+        }
+    }, { err ->
+        console.log("clipboard read failed", err)
+    })
 }
 
 
@@ -306,6 +359,22 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.keyCode==8 || event.keyCode==46) && (event.ctrlKey || event.metaKey),
             run: () => {
                 deleteSelectedBoxes()
+            }
+        },{
+            id:'copy-selection',
+            label:"Copy Selection",
+            canvasKeybinding: (event) => (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
+            run: () => {
+                if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                copySelectedBoxesToClipboard()
+            }
+        },{
+            id:'paste-selection',
+            label:"Paste Selection",
+            canvasKeybinding: (event) => (event.key=='v') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
+            run: () => {
+                if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                pasteBoxesFromClipboard()
             }
         },{
             id:'move-forward',

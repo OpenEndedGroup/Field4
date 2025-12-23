@@ -1,0 +1,182 @@
+package afield
+
+import kotlinx.browser.document
+
+internal val monacoPropertyNames = arrayOf(
+    "code",
+    "vertex",
+    "fragment",
+    "compute",
+    "task",
+    "mesh",
+    "preamble",
+    "metadata"
+)
+internal val monacoPropertyDescriptions = arrayOf(
+    "Kotlin (main)",
+    "Vertex Shader",
+    "Fragment Shader",
+    "Compute Shader",
+    "Task Shader",
+    "Mesh Shader",
+    "Kotlin (preamble)",
+    "Metadata about this box"
+)
+internal val monacoPropertyLanguages = arrayOf(
+    "kotlin",
+    "glsl",
+    "glsl",
+    "glsl",
+    "glsl",
+    "glsl",
+    "kotlin",
+    "yaml"
+)
+
+private fun propertyIndexOf(name: String?): Int {
+    if (name == null) return -1
+    for (i in monacoPropertyNames.indices) {
+        if (monacoPropertyNames[i] == name) return i
+    }
+    return -1
+}
+
+private fun isTruthy(value: dynamic): Boolean = js("Boolean(value)") as Boolean
+
+internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, index: Int) {
+    if (index !in monacoPropertyNames.indices) return
+    val w = js("window")
+    val property = monacoPropertyNames[index]
+    w.selectedProperty = property
+
+    var lang = monacoPropertyLanguages[index]
+    val currentSelectedCode = w.currentSelectedCode
+    if (property == "code" &&
+        currentSelectedCode != null &&
+        (currentSelectedCode.length as? Number)?.toInt() ?: 0 > 0 &&
+        currentSelectedCode[0].code_language != null
+    ) {
+        lang = currentSelectedCode[0].code_language as String
+    }
+
+    val globalEditor = w.globalEditor ?: editor
+    if (globalEditor != null) {
+        monaco.editor.setModelLanguage(globalEditor.getModel(), lang)
+        globalEditor._domElement
+            .querySelectorAll(".hoverlay")[0]
+            .innerHTML = "$property <i>($lang)</i>"
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoInit(monaco: dynamic): dynamic {
+    val themeColors = js("{}")
+    themeColors["editor.background"] = "#1e1e1e"
+    themeColors["editor.lineHighlightBackground"] = "#1e1e1e"
+    val theme = js("{}")
+    theme.base = "vs-dark"
+    theme.inherit = true
+    theme.rules = arrayOf<dynamic>()
+    theme.colors = themeColors
+    monaco.editor.defineTheme("dark", theme)
+
+    val container = document.querySelector(".monaco-editor-container") ?: return null
+    val options = js("{}")
+    options.value = ""
+    options.language = "kotlin"
+    options.theme = "dark"
+    options.automaticLayout = true
+    options.scrollBeyondLastLine = false
+    options.lineNumbersMinChars = 2
+    options.cursorStyle = "line"
+    options.cursorBlinking = "smooth"
+    options.matchBrackets = "never"
+    options["bracketPairColorization.enabled"] = true
+    val scrollbar = js("{}")
+    scrollbar.verticalScrollbarSize = 5
+    options.scrollbar = scrollbar
+
+    monaco.editor.create(container, options)
+    val ed = monaco.editor.getEditors()[0]
+
+    val fontOptions = js("{}")
+    fontOptions.fontFamily = "Iosevka Web"
+    fontOptions.fontSize = 15
+    fontOptions.fontLigatures = true
+    fontOptions.margin = "5px"
+    ed.updateOptions(fontOptions)
+    monaco.editor.setModelLanguage(ed.getModel(), "kotlin")
+
+    val editorOptions = js("{}")
+    editorOptions.quickSuggestions = false
+    editorOptions.wordWrap = "on"
+    editorOptions.minimap = js("{ enabled: false }")
+    editorOptions.suggest = js("{ showWords: false }")
+    ed.updateOptions(editorOptions)
+
+    val w = js("window")
+    w.globalEditor = ed
+    w.globalMonacoEditor = ed
+    w.globalMonaco = monaco
+    w.globalMonacoEditor._domElement.parentElement.parentElement.style.borderRadius = "5px"
+    ed.getModel().setEOL(0)
+
+    w.addOutput = w.addOutput
+    w.clear = w.clear
+
+    val keyCodes = arrayOf(
+        monaco.KeyCode.KeyM,
+        monaco.KeyCode.KeyV,
+        monaco.KeyCode.KeyF,
+        monaco.KeyCode.KeyM,
+        monaco.KeyCode.KeyP,
+        monaco.KeyCode.KeyD
+    )
+
+    for (i in monacoPropertyNames.indices) {
+        val action = js("{}")
+        action.id = "switch-property-" + monacoPropertyNames[i]
+        action.label = "Edit: " + monacoPropertyDescriptions[i]
+        if (i < keyCodes.size) {
+            val binding = (monaco.KeyMod.Alt as Int) or (keyCodes[i] as Int)
+            action.keybindings = arrayOf(binding)
+        } else {
+            action.keybindings = emptyArray<Int>()
+        }
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 2.0
+        action.run = { editorNow: dynamic ->
+            monacoApplyPropertySelection(monaco, editorNow, i)
+        }
+        ed.addAction(action)
+    }
+
+    return ed
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoNextProperty(editor: dynamic, inc: Int) {
+    val w = js("window")
+    val monaco = w.globalMonaco ?: return
+    val current = w.selectedProperty as? String
+    var currentIndex = propertyIndexOf(current)
+    if (monacoPropertyNames.isEmpty()) return
+    val count = monacoPropertyNames.size
+    for (n in 0..count) {
+        val nextIndex = ((currentIndex + inc + count) % count + count) % count
+        w.selectedProperty = monacoPropertyNames[nextIndex]
+        val currentSelectedCode = w.currentSelectedCode
+        if (currentSelectedCode != null &&
+            (currentSelectedCode.length as? Number)?.toInt() ?: 0 > 0
+        ) {
+            val candidate = currentSelectedCode[0][monacoPropertyNames[nextIndex]]
+            if (isTruthy(candidate)) {
+                monacoApplyPropertySelection(monaco, editor, nextIndex)
+                return
+            }
+        }
+        currentIndex = nextIndex
+    }
+}

@@ -38,7 +38,7 @@ function setDecorationsForEditor(uid, property, box, decorSpec) {
                         let d = decorSpec.inline.map((e) => {
                                 return {
                                         "range": new monaco.Range(e[0], e[1], e[2], e[3]),
-                                        "options": {"inlineClassName": e[4]},
+                                        "options": {"inlineClassName": e[4], "stickiness" : 1}, // don't grow
                                 }
                         })
 

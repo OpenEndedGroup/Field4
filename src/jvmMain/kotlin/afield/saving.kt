@@ -24,6 +24,21 @@ private data class FileInline(val path: String, val inline: String)
 
 class SavingContext {
 
+    fun exportEdnPackage(boxes: Set<Box>, directory: String): String {
+        val transfers = toTransferInline(boxes, directory)
+        val payloadBoxes = transfers.map { transfer ->
+            linkedMapOf<String, Any?>(
+                "id" to transfer.id,
+                "properties" to transfer.properties
+            )
+        }
+        val payload = linkedMapOf<String, Any?>(
+            "version" to 2,
+            "boxes" to payloadBoxes
+        )
+        return Edn.write(payload, ednCustom)
+    }
+
     fun listTemplates(dir: String): List<String> {
         val d = File(dir).listFiles { file ->
             file.isDirectory && (File(file, METADATA_EDN).exists() || File(file, METADATA_JSON).exists())
@@ -57,6 +72,29 @@ class SavingContext {
                     properties[name] = toFile(box.id, name, extension, directory, contents)
                 } else {
                     val normalized = normalizeValue(value)
+                    if (normalized != null) {
+                        properties[name] = normalized
+                    }
+                }
+            }
+            BoxTransferEdn(box.id, properties)
+        }
+    }
+
+    private fun toTransferInline(boxes: Set<Box>, directory: String): List<BoxTransferEdn> {
+        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        return boxes.map { box ->
+            val properties = LinkedHashMap<String, Any?>()
+            box.properties.forEach { (name, value) ->
+                if (!patterns.any { name.matches(it) }) return@forEach
+                if (value == null) return@forEach
+
+                if (Box.ioSeparateProperties.containsKey(name)) {
+                    val extension = Box.ioSeparateProperties[name]!!
+                    val contents = value as? String ?: value.toString()
+                    properties[name] = FileInline(filenameFor(box.id, name, extension), contents)
+                } else {
+                    val normalized = normalizeInlineValue(value, directory)
                     if (normalized != null) {
                         properties[name] = normalized
                     }
@@ -118,6 +156,35 @@ class SavingContext {
         }
     }
 
+    private fun normalizeInlineValue(value: Any?, directory: String): Any? = when (value) {
+        null -> null
+        is Rect -> value
+        is String -> value
+        is Number -> value
+        is Boolean -> value
+        is Box -> BoxRef(value.id)
+        is BoxRef -> value
+        is FileRef -> {
+            val file = File(directory, value.path)
+            val inline = if (file.exists()) file.readText() else ""
+            FileInline(value.path, inline)
+        }
+        is FileInline -> value
+        is List<*> -> value.map { normalizeInlineValue(it, directory) }
+        is Set<*> -> value.mapTo(LinkedHashSet()) { normalizeInlineValue(it, directory) }
+        is Map<*, *> -> {
+            val mapped = LinkedHashMap<Any?, Any?>()
+            for ((k, v) in value) {
+                mapped[normalizeInlineValue(k, directory)] = normalizeInlineValue(v, directory)
+            }
+            mapped
+        }
+        else -> {
+            lprintln(" unhandled class $value ${value.javaClass}")
+            null
+        }
+    }
+
     fun save(fn: String, boxes: Set<Box>, message: String? = null) {
         altered = false
         val root = ensureDirectory(fn)
@@ -140,7 +207,7 @@ class SavingContext {
 
         if (altered) {
             commit(fn, message)
-            notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "saved")
+            notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
         }
     }
 
@@ -203,6 +270,34 @@ class SavingContext {
         }
     }
 
+    fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
+        val rootValue = Edn.read(ednText, ednCustom)
+        val boxesValue = when (rootValue) {
+            is Map<*, *> -> rootValue["boxes"]
+            is List<*> -> rootValue
+            is Set<*> -> rootValue.toList()
+            else -> throw IllegalArgumentException("expected EDN map or list in provided text")
+        }
+        val boxList = when (boxesValue) {
+            null -> emptyList()
+            is List<*> -> boxesValue
+            is Set<*> -> boxesValue.toList()
+            else -> throw IllegalArgumentException("expected boxes list in provided text")
+        }
+
+        return boxList.mapNotNull { entry ->
+            val map = entry as? Map<*, *> ?: return@mapNotNull null
+            val id = map["id"]?.toString() ?: return@mapNotNull null
+            val propsRaw = map["properties"] as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val props = LinkedHashMap<String, Any?>()
+            for ((k, v) in propsRaw) {
+                val key = k?.toString() ?: continue
+                props[key] = v
+            }
+            BoxTransferEdn(id, props)
+        }
+    }
+
     private fun resolveValue(
         value: Any?,
         directory: String,
@@ -247,11 +342,20 @@ class SavingContext {
 
     private fun loadEdn(root: String, filterId: (String) -> String): Set<Box> {
         val transfers = readEdnTransfers(root)
+        return instantiateTransfers(transfers, root, filterId, createBoxes = true)
+    }
+
+    private fun instantiateTransfers(
+        transfers: List<BoxTransferEdn>,
+        root: String,
+        filterId: (String) -> String,
+        createBoxes: Boolean
+    ): Set<Box> {
         return transfers.map { transfer ->
             val id = filterId(transfer.id)
-            val b = box(id, createIfMissing = true)
+            val b = box(id, createIfMissing = createBoxes)
             transfer.properties.forEach { (name, value) ->
-                val v = resolveValue(value, root, filterId, createBoxes = true)
+                val v = resolveValue(value, root, filterId, createBoxes = createBoxes)
                 if (v != null) {
                     b.setPropertyRaw(name, v)
                 }
@@ -261,6 +365,15 @@ class SavingContext {
             }
             b
         }.toSet()
+    }
+
+    fun loadFromEdnText(
+        ednText: String,
+        directory: String,
+        filterId: (String) -> String = { it }
+    ): Set<Box> {
+        val transfers = readEdnTransfersFromString(ednText)
+        return instantiateTransfers(transfers, directory, filterId, createBoxes = true)
     }
 
     private fun loadJson(root: String, filterId: (String) -> String): Set<Box> {

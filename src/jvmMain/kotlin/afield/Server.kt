@@ -33,6 +33,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URI
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlin.io.path.Path
@@ -335,6 +336,42 @@ class Server {
                     }
                     Handled.yes
                 })
+
+            handlers["copy-boxes"] = mutableSetOf({ message, reply ->
+                val req = Json.decodeFromJsonElement<CopyBoxes>(message.payload!!)
+                val info = thisSessionInfo.get()
+                val boxes = req.uids.mapNotNull { info.boxes[it] }.toSet()
+                val edn = SavingContext().exportEdnPackage(boxes, info.filename)
+                notify("Copied ${boxes.size} box${if (boxes.size == 1) "" else "es"} to clipboard", "copy")
+                reply(Message("copy-boxes").payload(CopyBoxesResult(edn)))
+                Handled.yes
+            })
+
+            handlers["paste-boxes"] = mutableSetOf({ message, reply ->
+                val req = Json.decodeFromJsonElement<PasteBoxes>(message.payload!!)
+                val info = thisSessionInfo.get()
+                val usedIds = info.boxes.keys
+                val idMap = mutableMapOf<String, String>()
+                val filter: (String) -> String = { source ->
+                    idMap.getOrPut(source) {
+                        if (source == "root") return@getOrPut "root"
+                        if (usedIds.contains(source)) UUID.randomUUID().toString() else source
+                    }
+                }
+
+                val newBoxes = SavingContext().loadFromEdnText(req.edn, info.filename, filter)
+                newBoxes.forEach { b ->
+                    if (b.id != "root") {
+                        b.frame = b.frame.copy(x = b.frame.x + 10.0, y = b.frame.y + 10.0)
+                    }
+                    b.resyncAll()
+                }
+                info.topologyGeneration++
+                doResync()
+                notify("Pasted ${newBoxes.size} box${if (newBoxes.size == 1) "" else "es"} (+10,+10)", "paste")
+                reply(Message("paste-boxes").payload(PasteBoxesResult(newBoxes.map { it.id })))
+                Handled.yes
+            })
 
 
             registerTemplate(home)

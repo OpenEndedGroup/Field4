@@ -1,4 +1,6 @@
 
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send } from "./afield.mjs";
+
 // helper: try to resize iframe to its content, call cb({ width, height }) if it works
 function sizeIframeToContent(iframe, cb) {
         function measure() {
@@ -211,161 +213,6 @@ function disclosureInterface(container) {
         return api;
 }
 
-function escapeHtml(text) {
-        return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-}
-
-function inlineFormat(text) {
-        return text
-                .replace(/`([^`]+)`/g, "<code>$1</code>")
-                .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-                .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-}
-
-function renderTextBlock(text) {
-        const lines = text.split("\n");
-        let html = "";
-        let inList = false;
-        let paragraph = [];
-
-        function flushParagraph() {
-                if (paragraph.length === 0) return;
-                html += `<p>${inlineFormat(paragraph.join(" "))}</p>`;
-                paragraph = [];
-        }
-
-        lines.forEach((raw) => {
-                const line = raw.trim();
-                if (!line) {
-                        flushParagraph();
-                        if (inList) {
-                                html += "</ul>";
-                                inList = false;
-                        }
-                        return;
-                }
-
-                const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
-                if (headingMatch) {
-                        flushParagraph();
-                        if (inList) {
-                                html += "</ul>";
-                                inList = false;
-                        }
-                        const level = headingMatch[1].length;
-                        html += `<h${level}>${inlineFormat(headingMatch[2])}</h${level}>`;
-                        return;
-                }
-
-                if (/^[-*]\s+/.test(line)) {
-                        flushParagraph();
-                        if (!inList) {
-                                html += "<ul>";
-                                inList = true;
-                        }
-                        html += `<li>${inlineFormat(line.replace(/^[-*]\s+/, ""))}</li>`;
-                        return;
-                }
-
-                paragraph.push(line);
-        });
-
-        flushParagraph();
-        if (inList) html += "</ul>";
-        return html;
-}
-
-function renderMarkdown(markdown) {
-        if (markdown == null) return "";
-        const normalized = String(markdown).replace(/\r\n/g, "\n");
-        const blocks = normalized.split("```");
-        let html = "";
-        blocks.forEach((block, index) => {
-                if (index % 2 === 1) {
-                        const trimmed = block.replace(/^\n/, "");
-                        const firstNewline = trimmed.indexOf("\n");
-                        let language = "";
-                        let code = trimmed;
-                        if (firstNewline !== -1) {
-                                const possibleLang = trimmed.substring(0, firstNewline).trim();
-                                const rest = trimmed.substring(firstNewline + 1);
-                                if (possibleLang && !possibleLang.includes(" ") && rest.length) {
-                                        language = possibleLang;
-                                        code = rest;
-                                }
-                        }
-                        const safeLang = escapeHtml(language);
-                        const codeText = escapeHtml(code.replace(/\n$/, ""));
-                        const langClass = safeLang ? ` class="language-${safeLang}"` : "";
-                        const langAttr = safeLang ? ` data-lang="${safeLang}"` : "";
-                        html += `<div class="ai-chat-code-block"${langAttr}>` +
-                                `<div class="ai-chat-copy-wrap"><button class="ai-chat-copy" type="button" aria-label="Copy" title="Copy"></button></div>` +
-                                `<pre><code${langClass}>${codeText}</code></pre>` +
-                                `</div>`;
-                } else {
-                        const escaped = escapeHtml(block);
-                        html += renderTextBlock(escaped);
-                }
-        });
-        return html;
-}
-
-function aiChatMarkdownToHtml(markdown) {
-        return `<div class="ai-chat-markdown">${renderMarkdown(markdown)}</div>`;
-}
-
-function parseChatHistory(history) {
-        const text = (history || "").replace(/\r\n/g, "\n");
-        const tokens = text.split(/(<<you>>|<<ai>>)/);
-        const turns = [];
-        let currentRole = null;
-        let buffer = [];
-
-        function flush() {
-                if (!currentRole) return;
-                const content = buffer.join("").trim();
-                if (content.length) {
-                        turns.push({role: currentRole, content});
-                }
-                buffer = [];
-        }
-
-        tokens.forEach((token) => {
-                if (token === "<<you>>") {
-                        flush();
-                        currentRole = "you";
-                        return;
-                }
-                if (token === "<<ai>>") {
-                        flush();
-                        currentRole = "ai";
-                        return;
-                }
-                buffer.push(token);
-        });
-
-        flush();
-        if (!turns.length && text.trim().length) {
-                turns.push({role: "ai", content: text.trim()});
-        }
-        return turns;
-}
-
-function aiChatHistoryToHtml(history) {
-        const turns = parseChatHistory(history);
-        if (!turns.length) return "";
-        const html = turns.map((turn) => {
-                return `<div class="ai-chat-turn ${turn.role}">${aiChatMarkdownToHtml(turn.content)}</div>`;
-        }).join("");
-        return `<div class="ai-chat-thread">${html}</div>`;
-}
-
 window.aiChatMarkdownToHtml = aiChatMarkdownToHtml;
 window.aiChatHistoryToHtml = aiChatHistoryToHtml;
 
@@ -465,21 +312,8 @@ function ensureAiChat(container, uid, property) {
         sendButton.textContent = "Send";
         sendButton.style.display = "none";
 
-        let sendModulePromise = null;
-
         function sendAiChat(payload) {
-                if (typeof window.send === "function") {
-                        window.send("ai-assist", payload);
-                        return;
-                }
-                if (!sendModulePromise) {
-                        sendModulePromise = import("./afield.mjs");
-                }
-                sendModulePromise.then((mod) => {
-                        if (mod && typeof mod.send === "function") {
-                                mod.send("ai-assist", payload);
-                        }
-                });
+                send("ai-assist", payload);
         }
 
         function submitPrompt() {
@@ -547,5 +381,6 @@ function openAiChatForBox(uid, property) {
         }, 0);
 }
 
+window.disclosureInterface = disclosureInterface;
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;
