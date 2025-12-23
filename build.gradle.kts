@@ -451,6 +451,19 @@ tasks.register<JavaExec>("runmcp") {
     standardInput = System.`in`
 }
 
+tasks.register<JavaExec>("runfilestore") {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(24))
+    })
+    group = "application"
+    description = "Runs AI4 filestore CLI"
+
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+
+    mainClass.set("afield.ai.AI4FilestoreCliKt")
+    standardInput = System.`in`
+}
+
 
 tasks.named("jvmDistTar") {
     enabled = false
@@ -459,6 +472,5 @@ tasks.named("jvmDistTar") {
 tasks.named("jvmDistZip") {
     enabled = false
 }
-
 
 
