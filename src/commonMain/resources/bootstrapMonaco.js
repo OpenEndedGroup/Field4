@@ -308,10 +308,8 @@ const initMonaco = () => {
                         const kind = cursorIndex !== -1 ? "cursor" : "rewrite"
                         let startLine = 0
                         if (tagIndex > 0) {
-                                for (let i = 0; i < tagIndex; i++) {
-                                        if (allText.charCodeAt(i) === 10) {
-                                                startLine++
-                                        }
+                                for (let i = allText.indexOf("\n"); i !== -1 && i < tagIndex; i = allText.indexOf("\n", i + 1)) {
+                                        startLine++
                                 }
                         }
                         send("ai-assist", {
