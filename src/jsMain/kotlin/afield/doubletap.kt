@@ -1,4 +1,3 @@
-import js.core.JsLong
 import js.date.Date
 import kotlinx.browser.document
 import org.w3c.dom.events.KeyboardEvent

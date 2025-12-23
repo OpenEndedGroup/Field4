@@ -2,24 +2,7 @@
 
 package afield.ai
 
-import afield.AiAssist
-import afield.Box
-import afield.clearProvisional
-import afield.Handled
-import afield.Message
-import afield.RunsAt
-import afield.Set_output
-import afield.box
-import afield.handlers
-import afield.installHandlers
-import afield.inMain
-import afield.languageNameForProperty
-import afield.markProvisional
-import afield.setProvisional
-import afield.notify
-import afield.thisSessionInfo
-import afield._send
-import afield.payload
+import afield.*
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
@@ -41,13 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
-import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.*
 
 /* =============================================================================
    Logging
@@ -481,7 +460,7 @@ class OpenAiIdeCodexBridge(
         }
 
         log.log(
-            "send(): convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} " +
+            "convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} " +
                     "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size}"
         )
 
@@ -507,7 +486,7 @@ class OpenAiIdeCodexBridge(
             println()
         }
         state.previousResponseId = response.id()
-        log.log("send(): initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
+        log.log("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
 
         val commentaryMessages = mutableListOf<String>()
 
@@ -516,17 +495,17 @@ class OpenAiIdeCodexBridge(
             val msgCount = out.count { it.isMessage() }
             val fnCount = out.count { it.isFunctionCall() }
             val otherCount = out.size - msgCount - fnCount
-            log.log("send(): output shape: messages=$msgCount functionCalls=$fnCount other=$otherCount")
+            log.log("output shape: messages=$msgCount functionCalls=$fnCount other=$otherCount")
             if (resp.error().isPresent) {
                 val e = resp.error().get()
-                log.log("send(): response.error code=${e.code()} message=${e.message()}")
+                log.log("response.error code=${e.code()} message=${e.message()}")
             }
             val msgStatuses = out.mapNotNull { it.message().orElse(null)?.status() }
             if (msgStatuses.isNotEmpty()) {
                 val labels = msgStatuses.joinToString(",") { it.value().toString().lowercase() }
-                log.log("send(): message status(es)=$labels")
+                log.log("message status(es)=$labels")
                 if (msgStatuses.any { it.value() == ResponseOutputMessage.Status.Value.INCOMPLETE }) {
-                    log.log("send(): WARNING: message status incomplete; output may be truncated.")
+                    log.log("WARNING: message status incomplete; output may be truncated.")
                 }
             }
             if (msgCount == 0) logOutputDetails(resp)
@@ -541,11 +520,11 @@ class OpenAiIdeCodexBridge(
                 .mapNotNull { it.functionCall().orElse(null) }
 
             if (calls.isEmpty()) {
-                log.log("send(): no tool calls; finishing")
+                log.log("no tool calls; finishing")
                 break
             }
 
-            log.log("send(): toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
+            log.log("toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
             val toolOutputs = mutableListOf<ResponseInputItem>()
             for (call in calls) {
                 log.log("tool: name=${call.name()} callId=${call.callId()} ${call.arguments()}")
@@ -580,7 +559,7 @@ class OpenAiIdeCodexBridge(
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
             }
 
-            log.log("send(): creating response (follow-up) <<spinner>>")
+            log.log("creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
                 .model(chatModel)
                 .previousResponseId(response.id())
@@ -598,7 +577,7 @@ class OpenAiIdeCodexBridge(
                 println()
             }
             state.previousResponseId = response.id()
-            log.log("send(): follow-up response id=${response.id()} outputItems=${response.output().size}")
+            log.log("follow-up response id=${response.id()} outputItems=${response.output().size}")
             logOutputShape(response)
 
             rounds++
@@ -609,19 +588,19 @@ class OpenAiIdeCodexBridge(
         if (text.isBlank() && reasoningSummaries.isNotEmpty()) {
             commentaryMessages += reasoningSummaries
             val combined = reasoningSummaries.joinToString(" ").trim()
-            log.log("send(): reasoning summary (no output_text): ${truncate(combined, 400)}")
+            log.log("reasoning summary (no output_text): ${truncate(combined, 400)}")
         }
 
         if (text.isBlank()) {
             // This is a very common integration gotcha; log a big hint.
-            log.log("send(): WARNING: model returned no output_text. " +
+            log.log("WARNING: model returned no output_text. " +
                     "If output shape shows messages=0, your model may be returning non-text items. " +
                     "Try increasing maxOutputTokens or simplifying prompt.")
         }
 
         val ms = (System.nanoTime() - t0) / 1_000_000
         log.log(
-            "send(): done responseId=${response.id()} textChars=${text.length} " +
+            "done responseId=${response.id()} textChars=${text.length} " +
                     "commentaryCount=${commentaryMessages.size} (${ms}ms)"
         )
 
@@ -757,10 +736,10 @@ class OpenAiIdeCodexBridge(
                 item.isCustomToolCall() -> "custom_tool_call"
                 else -> "unknown"
             }
-            log.log("send(): output[$idx] $desc")
+            log.log("output[$idx] $desc")
             if (desc == "unknown") {
                 val raw = item._json().orElse(null)?.toString()
-                if (raw != null) log.log("send(): output[$idx] raw=${truncate(raw, 400)}")
+                if (raw != null) log.log("output[$idx] raw=${truncate(raw, 400)}")
             }
         }
     }
@@ -1200,11 +1179,11 @@ fun ai4_install() {
             val uiLog = NotifyLog()
             bridge = OpenAiIdeCodexBridge(log = uiLog)
             helpers = IdeChatHelpers(bridge!!, log = uiLog)
-            notify("Initializing AI4", "AI")
+            notify("Initializing AI support v4", "AI4")
         }
 
         if (chatBridge == null) {
-            val uiLog = NotifyLog(label = "AI")
+            val uiLog = NotifyLog(label = "")
             chatBridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = uiLog)
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
@@ -1250,7 +1229,7 @@ fun ai4_install() {
 
         val listFileContents = {
             val fileRef = fileRefFor(docName, exec.uid, exec.property)
-            notify("Listing contents for $fileRef", "AI")
+            notify("Listing contents for $fileRef", "AI4")
             val contents = box.getPropertyRaw(exec.property)
             if (contents !is String) {
                 throw IllegalStateException("No text content for $fileRef")
@@ -1259,7 +1238,7 @@ fun ai4_install() {
         }
 
         val editOtherFile: (EditFileRequest) -> EditFileResponse = editOtherFile@{ req ->
-            notify("Editing ${req.file}", "AI")
+            notify("Editing ${req.file}", "AI4")
             val ref = parseFileRef(req.file)
                 ?: return@editOtherFile EditFileResponse(false, "Unsupported file ref '${req.file}'")
             if (ref.document != docName) {
@@ -1308,13 +1287,13 @@ fun ai4_install() {
         }
 
         when (exec.kind) {
-            "chat" -> notify("Initiating AI Chat", "AI")
-            "general" -> notify("Initiating AI Conversation", "AI")
-            "cursor" -> notify("Initiating Completion", "AI")
-            "rewrite" -> notify("Initiating AI Rewrite", "AI")
-            "error" -> notify("Initiating AI Error Fix", "AI")
+            "chat" -> notify("Initiating AI Chat", "AI4")
+            "general" -> notify("Initiating AI Conversation", "AI4")
+            "cursor" -> notify("Initiating Completion", "AI4")
+            "rewrite" -> notify("Initiating AI Rewrite", "AI4")
+            "error" -> notify("Initiating AI Error Fix", "AI4")
             else -> {
-                notify("Unknown AI request kind '${exec.kind}'", "AI")
+                notify("Unknown AI request kind '${exec.kind}'", "AI4")
                 return@mutableSetOf Handled.yes
             }
         }
@@ -1439,7 +1418,7 @@ fun ai4_install() {
             } catch (e: Exception) {
                 streamActive.set(false)
                 inMain {
-                    notify("AI ${exec.kind} failed: ${e.message ?: e::class.java.simpleName}", "AI")
+                    notify("AI ${exec.kind} failed: ${e.message ?: e::class.java.simpleName}", "AI4")
                 }
                 return@launch
             }
@@ -1466,11 +1445,11 @@ fun ai4_install() {
                     chatHistoryByKey[fileKey] = next
                     val payload = Set_output(box.id, "outputarea", "ai-chat", next)
                     _send(Message("set-output").payload(payload), document = escapedDocPath)
-                    notify("Finished AI conversation", "AI")
+                    notify("Finished AI conversation", "AI4")
                 } else if (editResult != null) {
                     threadByKey[fileKey] = editResult.threadState
                     markProvisional(box, exec.property, editResult.editedCode)
-                    notify("Finished AI ${exec.kind}", "AI")
+                    notify("Finished AI ${exec.kind}", "AI4")
                 }
             }
         }

@@ -1,9 +1,7 @@
 package afield
 
-import afield.Message
 import kotlinx.browser.document
 import kotlinx.browser.window
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.WebSocket

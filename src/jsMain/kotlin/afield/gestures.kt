@@ -9,7 +9,6 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
-import web.animations.requestAnimationFrame
 import kotlin.math.*
 
 

@@ -67,6 +67,25 @@ var notify = (text, cat = "") => {
                 .replace(/<<spinner>>/g, '<span class="notify-spinner"></span>')
                 .replace(/<<timeago:(\d+)>>/g, '<span class="notify-timeago" data-time="$1"></span>');
 
+        function restackBubbles() {
+                const bubbles = Array.from(document.getElementsByClassName("bubble"));
+                if (bubbles.length === 0) return;
+                const items = bubbles.map(node => {
+                        const style = window.getComputedStyle(node);
+                        const raw = node.style.bottom || style.bottom || "0px";
+                        const bottom = parseFloat(raw) || 0;
+                        return {node, bottom};
+                });
+                items.sort((a, b) => a.bottom - b.bottom);
+                let base = 5;
+                for (let item of items) {
+                        const rect = item.node.getBoundingClientRect();
+                        item.node.style.left = "5px";
+                        item.node.style.bottom = `${base}px`;
+                        base += rect.height + 1;
+                }
+        }
+
         const purgeCategory = cat && cat.startsWith("*");
         if (purgeCategory) {
                 const bubbles = Array.from(document.getElementsByClassName("bubble"));
@@ -77,6 +96,7 @@ var notify = (text, cat = "") => {
                                 }
                         }
                 }
+                restackBubbles();
         }
         if (lastDiv && lastDiv.cat === cat && !document.body.contains(lastDiv)) {
                 lastDiv = null;
@@ -103,6 +123,7 @@ var notify = (text, cat = "") => {
                 updateNotifyTimeAgo(newDiv);
                 ensureNotifyTimeAgoTimer();
                 newDiv.style.opacity = 1;
+                restackBubbles();
                 return;
         }
 
@@ -142,6 +163,7 @@ var notify = (text, cat = "") => {
         }
 
         newDiv.style.visibility = "visible";
+        restackBubbles();
         setTimeout(function () {
                 newDiv.style.opacity = "1";
         }, 20);

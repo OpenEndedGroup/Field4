@@ -1,18 +1,11 @@
 import afield.Set_output
 import afield.Set_string
-import js.import.import
-import js.import.importAsync
 import kotlinx.browser.document
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.NodeList
 import org.w3c.dom.asList
-import org.w3c.dom.url.URL
-import org.w3c.files.Blob
-import web.workers.WorkerType.Companion.module
 
 external fun disclosureInterface(container: Element): dynamic
 external fun aiChatUpdate(container: Element, uid: String, markdown: String)

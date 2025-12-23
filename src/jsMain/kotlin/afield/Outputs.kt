@@ -3,8 +3,6 @@ package afield
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.w3c.dom.HTMLElement
-import org.w3c.dom.css.CSSRuleList
-import org.w3c.dom.css.get
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -267,7 +265,10 @@ fun chatKeyboardCallback(event: dynamic, id: Int, input: dynamic): Boolean {
         for (output in knownOutputs) {
             if ((output.addPromptBox_uid as? Number)?.toInt() == id) {
                 removeArea(output.id.toString())
-                output.acceptCallback?.invoke(input.value as String)
+                val callback = output.acceptCallback
+                if (callback != null) {
+                    callback(input.value as String)
+                }
             }
         }
         return false

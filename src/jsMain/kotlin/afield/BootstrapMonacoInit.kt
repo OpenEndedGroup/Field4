@@ -74,6 +74,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     val themeColors = js("{}")
     themeColors["editor.background"] = "#1e1e1e"
     themeColors["editor.lineHighlightBackground"] = "#1e1e1e"
+    themeColors["editorCursor.foreground"] = "#ff3b30"
+    themeColors["editorCursor.background"] = "#ff3b30"
     val theme = js("{}")
     theme.base = "vs-dark"
     theme.inherit = true
@@ -89,8 +91,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.automaticLayout = true
     options.scrollBeyondLastLine = false
     options.lineNumbersMinChars = 2
-    options.cursorStyle = "line"
-    options.cursorBlinking = "smooth"
+    options.cursorStyle = "block"
+    options.cursorBlinking = "blink"
     options.matchBrackets = "never"
     options["bracketPairColorization.enabled"] = true
     val scrollbar = js("{}")
