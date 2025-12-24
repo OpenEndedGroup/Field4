@@ -38,10 +38,14 @@ data class Parameters(
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 <<<<<<< HEAD
+<<<<<<< HEAD
     var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
 =======
     var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
 >>>>>>> dc56064 (fixed merge)
+=======
+    var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
+>>>>>>> 7a044cf (tweaks as afield.four goes into some kind of production for the particle system demo)
         println("WARNING: Cannot resolve texture ${it.name}")
         null
     },

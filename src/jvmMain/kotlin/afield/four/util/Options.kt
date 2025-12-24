@@ -27,6 +27,9 @@ object Options {
 
     fun doVulkanSDK() {
         if (useVulkanSDK && isMac) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
+
+        if (isWindows) // too many vulkan extensions on latest nvidia!!
+            Configuration.STACK_SIZE.set(512)
     }
 
     var defaultDepthFormat: Int = if (isWindows || isLinux) VK_FORMAT_D24_UNORM_S8_UINT else VK_FORMAT_D32_SFLOAT_S8_UINT
