@@ -37,7 +37,11 @@ data class Parameters(
     var depth: Int = 1,
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+<<<<<<< HEAD
     var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
+=======
+    var textureResolver: (Introspected.Texture) -> Pair<Array<ImageView>, TextureSampler>? = {
+>>>>>>> dc56064 (fixed merge)
         println("WARNING: Cannot resolve texture ${it.name}")
         null
     },
