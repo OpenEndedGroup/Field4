@@ -20,13 +20,11 @@ import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.min
 import kotlin.text.RegexOption.IGNORE_CASE
 
 /* ------------------------------- JSON-RPC types ------------------------------- */

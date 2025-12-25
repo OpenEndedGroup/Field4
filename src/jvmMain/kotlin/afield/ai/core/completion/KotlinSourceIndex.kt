@@ -3,8 +3,6 @@ package afield.ai
 import afield.RunsAt
 import afield.early
 import afield.logger.lprintln
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.annotation.JsonProperty
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest

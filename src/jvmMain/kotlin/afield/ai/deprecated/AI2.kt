@@ -8,7 +8,6 @@ import com.openai.models.ChatModel
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
 import com.openai.models.responses.ResponseInputItem
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 

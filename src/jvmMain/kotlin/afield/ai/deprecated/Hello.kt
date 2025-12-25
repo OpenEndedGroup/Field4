@@ -1,12 +1,23 @@
-package afield.ai
+package afield.ai.deprecated
 
-import com.aallam.openai.api.chat.*
+import com.aallam.openai.api.chat.ChatCompletionRequest
+import com.aallam.openai.api.chat.ChatMessage
+import com.aallam.openai.api.chat.ChatRole
+import com.aallam.openai.api.chat.ToolCall
+import com.aallam.openai.api.chat.ToolChoice
+import com.aallam.openai.api.chat.chatCompletionRequest
+import com.aallam.openai.api.chat.chatMessage
 import com.aallam.openai.api.http.Timeout
 import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.aallam.openai.client.OpenAIConfig
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import kotlin.time.Duration.Companion.seconds
 
 class Hello {
@@ -53,7 +64,7 @@ class Hello {
                     }
                 }
             }
-            toolChoice = ToolChoice.Auto // or ToolChoice.function("currentWeather")
+            toolChoice = ToolChoice.Companion.Auto // or ToolChoice.function("currentWeather")
         }
 
         val response = openAI.chatCompletion(request)

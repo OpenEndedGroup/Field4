@@ -1,0 +1,236 @@
+package afield.ai.core.chat
+
+import afield.ai.core.bridge.OpenAiIdeCodexBridge
+import afield.ai.core.instructions.InstructionMode
+import afield.ai.core.instructions.buildDynamicInstructions
+import afield.ai.core.lang.LanguageSpec
+import afield.ai.core.lang.MalformedAI
+import afield.ai.core.tools.EditFileRequest
+import afield.ai.core.tools.EditFileResponse
+import afield.ai.core.tools.ListContentsResult
+import afield.ai.core.tools.ListDefinitionsResult
+import afield.ai.core.tools.ToolExecutionContext
+import afield.ai.core.tools.WorkspaceSymbolSearch
+import afield.ai.core.tools.WorkspaceSymbolSearchResult
+import afield.ai.core.tools.validateNoMarkers
+import afield.ai.core.logging.LogSink
+import afield.ai.core.logging.StdoutLog
+
+class IdeChatHelpers(
+    private val bridge: OpenAiIdeCodexBridge,
+    private val log: LogSink = StdoutLog
+) {
+
+    data class HighLevelResult(
+        val editedCode: String,
+        val commentary: List<String>,
+        val rawResponseId: String,
+        val threadState: OpenAiIdeCodexBridge.ThreadState
+    )
+
+    fun chatFile(
+        state: OpenAiIdeCodexBridge.ThreadState,
+        code: String,
+        lang: LanguageSpec,
+        userPrompt: String,
+        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        listDefinitions: (() -> ListDefinitionsResult)? = null,
+        listFileContents: (() -> ListContentsResult)? = null,
+        editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
+        onTextDelta: ((String) -> Unit)? = null
+    ): HighLevelResult {
+        log.log("chatFile(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
+
+        val ctx = ToolExecutionContext(
+            attachments = attachments,
+            listDefinitions = listDefinitions,
+            listFileContents = listFileContents,
+            editOtherFile = editOtherFile,
+            workspaceSymbolSearch = workspaceSymbolSearch
+        )
+
+        val instructions = buildDynamicInstructions(
+            mode = InstructionMode.General,
+            lang = lang,
+            userPrompt = userPrompt,
+            errorMessage = null,
+            lineNumber = null,
+            ctx = ctx
+        )
+
+        val wrapped = lang.wrap(code)
+        val result = bridge.send(
+            state,
+            "$instructions\n\n$userPrompt\n\n$wrapped",
+            ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
+            onTextDelta = onTextDelta
+        )
+        val unwrapped = lang.unwrap(result.text)
+
+        validateNoMarkers(unwrapped)
+
+        log.log("chatFile(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
+        return HighLevelResult(
+            editedCode = unwrapped,
+            commentary = result.commentary,
+            rawResponseId = result.rawResponseId,
+            threadState = result.threadState
+        )
+    }
+
+    fun chatGeneral(
+        state: OpenAiIdeCodexBridge.ThreadState,
+        code: String,
+        lang: LanguageSpec,
+        userPrompt: String,
+        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        listDefinitions: (() -> ListDefinitionsResult)? = null,
+        listFileContents: (() -> ListContentsResult)? = null,
+        editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
+        onTextDelta: ((String) -> Unit)? = null
+    ): OpenAiIdeCodexBridge.SendResult {
+        log.log("chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
+
+        val ctx = ToolExecutionContext(
+            attachments = attachments,
+            listDefinitions = listDefinitions,
+            listFileContents = listFileContents,
+            editOtherFile = editOtherFile,
+            workspaceSymbolSearch = workspaceSymbolSearch
+        )
+
+        val instructions = buildDynamicInstructions(
+            mode = InstructionMode.Chat,
+            lang = lang,
+            userPrompt = userPrompt,
+            errorMessage = null,
+            lineNumber = null,
+            ctx = ctx
+        )
+
+        return bridge.send(
+            state,
+            "$instructions\n\n$userPrompt",
+            fileText = code,
+            ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
+            onTextDelta = onTextDelta
+        )
+    }
+
+    fun chatInline(
+        state: OpenAiIdeCodexBridge.ThreadState,
+        code: String,
+        lang: LanguageSpec,
+        lineNumber: Int,
+        userPrompt: String,
+        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        listDefinitions: (() -> ListDefinitionsResult)? = null,
+        listFileContents: (() -> ListContentsResult)? = null,
+        editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
+        onTextDelta: ((String) -> Unit)? = null
+    ): HighLevelResult {
+        log.log("chatInline(): lang=${lang.name} line=$lineNumber codeChars=${code.length} attachments=${attachments.size}")
+
+        val ctx = ToolExecutionContext(
+            attachments = attachments,
+            listDefinitions = listDefinitions,
+            listFileContents = listFileContents,
+            editOtherFile = editOtherFile,
+            workspaceSymbolSearch = workspaceSymbolSearch
+        )
+
+        val instructions = buildDynamicInstructions(
+            mode = InstructionMode.Inline,
+            lang = lang,
+            userPrompt = userPrompt,
+            errorMessage = null,
+            lineNumber = lineNumber,
+            ctx = ctx
+        )
+
+        val wrappedLines = lang.wrap(code).split("\n").toMutableList()
+        val insertAt = (lineNumber + 1).coerceIn(0, wrappedLines.size)
+        wrappedLines.add(insertAt, "<help>")
+        val withHelp = wrappedLines.joinToString("\n")
+
+        val result = bridge.send(
+            state,
+            "$instructions\n\n$withHelp",
+            ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
+            onTextDelta = onTextDelta
+        )
+        val unwrapped = lang.unwrap(result.text)
+
+        validateNoMarkers(unwrapped)
+
+        log.log("chatInline(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
+        return HighLevelResult(
+            editedCode = unwrapped,
+            commentary = result.commentary,
+            rawResponseId = result.rawResponseId,
+            threadState = result.threadState
+        )
+    }
+
+    fun chatError(
+        state: OpenAiIdeCodexBridge.ThreadState,
+        code: String,
+        lang: LanguageSpec,
+        errorMessage: String,
+        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        listDefinitions: (() -> ListDefinitionsResult)? = null,
+        listFileContents: (() -> ListContentsResult)? = null,
+        editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
+        onTextDelta: ((String) -> Unit)? = null
+    ): HighLevelResult {
+        log.log("chatError(): lang=${lang.name} error='${errorMessage.take(120)}' codeChars=${code.length}")
+
+        val ctx = ToolExecutionContext(
+            attachments = attachments,
+            listDefinitions = listDefinitions,
+            listFileContents = listFileContents,
+            editOtherFile = editOtherFile,
+            workspaceSymbolSearch = workspaceSymbolSearch
+        )
+
+        val instructions = buildDynamicInstructions(
+            mode = InstructionMode.Error,
+            lang = lang,
+            userPrompt = null,
+            errorMessage = errorMessage,
+            lineNumber = null,
+            ctx = ctx
+        )
+
+        val wrapped = lang.wrap(code)
+        val result = bridge.send(
+            state,
+            "$instructions\n\n$wrapped",
+            ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
+            onTextDelta = onTextDelta
+        )
+        val unwrapped = lang.unwrap(result.text)
+
+        validateNoMarkers(unwrapped)
+
+        log.log("chatError(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
+        return HighLevelResult(
+            editedCode = unwrapped,
+            commentary = result.commentary,
+            rawResponseId = result.rawResponseId,
+            threadState = result.threadState
+        )
+    }
+}
