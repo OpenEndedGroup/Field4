@@ -1,11 +1,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalDistributionDsl::class)
 
-import org.gradle.kotlin.dsl.getting
-import org.gradle.kotlin.dsl.kotlin
-import org.gradle.kotlin.dsl.provideDelegate
-import org.gradle.kotlin.dsl.sourceSets
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JsModuleKind
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
@@ -240,7 +235,7 @@ kotlin {
                 implementation("org.apache.commons:commons-math4-legacy:4.0-beta1")
                 implementation("ai.koog:koog-agents:0.5.0")
 
-                implementation("com.microsoft.playwright:playwright:1.48.0") // version as of Aug 2025
+                implementation("com.microsoft.playwright:playwright:1.57.0")
 
 
                 // for parse tree rewriting — still useful for remote js

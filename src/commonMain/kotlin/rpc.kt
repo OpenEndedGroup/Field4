@@ -134,7 +134,26 @@ data class CompletionRequest(
     val allCode: String,
     val column: Int,
     val position: Int,
+    val property: String = "code",
 )
+
+@Serializable
+data class CompletionResolveRequest(
+    val uid: String,
+    val property: String,
+    val label: String,
+    val insertText: String,
+    val detail: String,
+    val displayText: String,
+    val existingDocumentation: String = "",
+    val allCode: String,
+    val line: Int,
+    val column: Int,
+    val position: Int
+)
+
+@Serializable
+data class CompletionResolveResult(val documentation: String)
 
 @Serializable
 data class Hello(val filename: String, val username: String)

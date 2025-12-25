@@ -208,7 +208,8 @@ private fun monitorSelection() {
         }
 
         if (nextLen > 0) {
-            var lang = currentSelectedCode[0].code_language as? String
+            val useCodeLanguage = currentSelectedProperty == "code"
+            var lang = if (useCodeLanguage) currentSelectedCode[0].code_language as? String else null
             if (lang == null) {
                 lang = monacoFindLanguageForPropertyName(currentSelectedProperty)
             }

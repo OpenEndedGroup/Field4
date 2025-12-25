@@ -24,6 +24,12 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -48,16 +54,94 @@ object StdoutLog : LogSink {
     }
 }
 
+private class TraceLogger private constructor(
+    private val path: Path,
+    private val maxChars: Int
+) {
+    private val lock = Any()
+
+    fun log(section: String, payload: String) {
+        val clipped = if (payload.length > maxChars) {
+            payload.take(maxChars) + "\n... [truncated ${payload.length - maxChars} chars]"
+        } else {
+            payload
+        }
+        val entry = buildString {
+            append("---- ")
+            append(section)
+            append(" ")
+            append(Instant.now().toString())
+            append("\n")
+            append(clipped)
+            append("\n\n")
+        }
+        synchronized(lock) {
+            Files.createDirectories(path.parent)
+            Files.newBufferedWriter(
+                path,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND
+            ).use { it.write(entry) }
+        }
+    }
+
+    companion object {
+        fun fromEnv(): TraceLogger? {
+            val raw = System.getenv("AFIELD_AI4_TRACE")
+                ?: System.getenv("AFIELD_AI4_TRACE_PATH")
+                ?: return null
+            val normalized = raw.trim()
+            if (normalized.isEmpty()) return null
+            if (normalized.equals("0", ignoreCase = true) ||
+                normalized.equals("false", ignoreCase = true) ||
+                normalized.equals("off", ignoreCase = true)
+            ) {
+                return null
+            }
+            val defaultPath = Paths.get(System.getProperty("user.home"), ".afield", "logs", "ai4_trace.log")
+            val path = if (
+                normalized.equals("1", ignoreCase = true) ||
+                normalized.equals("true", ignoreCase = true) ||
+                normalized.equals("yes", ignoreCase = true) ||
+                normalized.equals("on", ignoreCase = true)
+            ) {
+                defaultPath
+            } else {
+                val p = Paths.get(normalized)
+                if (p.isAbsolute) p else Paths.get(System.getProperty("user.dir")).resolve(p)
+            }
+            val max = System.getenv("AFIELD_AI4_TRACE_MAX")?.toIntOrNull()?.coerceAtLeast(1000) ?: 20000
+            return TraceLogger(path, max)
+        }
+    }
+}
+
 class NotifyLog(
     private val label: String = "AI",
     private val prefix: String = "AI4",
-    private val maxLen: Int = 200
+    private val maxLen: Int = 200,
+    private val dedupeWindowMs: Long = 1000
 ) : LogSink {
     override fun log(msg: String) {
         StdoutLog.log(msg)
         val cleaned = msg.replace(Regex("\\s+"), " ").trim()
         val clipped = if (cleaned.length <= maxLen) cleaned else cleaned.substring(0, maxLen) + "..."
+        val key = "$label|$prefix|$clipped"
+        val now = System.currentTimeMillis()
+        val prev = lastNotification.put(key, now)
+        if (prev != null && now - prev < dedupeWindowMs) return
         notify("$prefix: $clipped", label)
+    }
+
+    companion object {
+        private val lastNotification = ConcurrentHashMap<String, Long>()
+    }
+}
+
+object SilentLog : LogSink {
+    override fun log(msg: String) {
+        // intentionally quiet
     }
 }
 
@@ -121,7 +205,16 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25)
 
 data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
-data class WorkspaceSymbolMatch(val symbol: String, val kind: String, val locationHint: String)
+data class WorkspaceSymbolMatch(
+    val symbol: String,
+    val kind: String,
+    val locationHint: String,
+    val filePath: String? = null,
+    val fileId: String? = null,
+    val line: Int? = null,
+    val definitionLine: String? = null,
+    val definitionBody: String? = null
+)
 
 /** CLI example tools -------------------------------------------------------- */
 
@@ -322,11 +415,12 @@ fun generalInstructions(lang: LanguageSpec): String =
     baseAssistantContract(lang.name)
 
 fun generalChatInstructions(lang: LanguageSpec, prompt: String): String = """
-You are an IDE-embedded assistant working with $lang.
+You are an IDE-embedded assistant inside Field, a live-coding environment, working with $lang.
 
 Guidelines:
 - Respond in markdown (prose is OK).
-- Use tools (EditFile, ListContents, ListDefinitions, etc.) to inspect or change code.
+- Prefer grounding answers in the project's actual code: look up symbols/definitions and use their source.
+- Use tools (WorkspaceSymbolSearch, ListDefinitions, ListContents, EditFile, etc.) when identifiers or behaviors matter.
 - Do not paste full files unless explicitly asked.
 - The current box/file content is provided in the conversation for context.
 
@@ -364,6 +458,9 @@ data class ToolExecutionContext(
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null
 )
 
+fun virtualFilesToAttachments(files: List<VirtualTextFile>): List<ContextAttachment> =
+    files.map { ContextAttachment(it.ref.fileName, it.ref.language, it.content) }
+
 /* =============================================================================
    Bridge
    ============================================================================= */
@@ -371,16 +468,18 @@ data class ToolExecutionContext(
 class OpenAiIdeCodexBridge(
     private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
     model: String = ChatModel.GPT_5_1_CODEX.toString(),
-    private val log: LogSink = StdoutLog
+    private val log: LogSink = StdoutLog,
+    private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
     private val chatModel: ChatModel = ChatModel.of(model)
     private val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
     private val tools = ToolRegistry()
+    private val trace: TraceLogger? = TraceLogger.fromEnv()
     private val textConfig: ResponseTextConfig =
         ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build()
     private val reasoningConfig: Reasoning =
         Reasoning.builder()
-            .effort(ReasoningEffort.MEDIUM)
+            .effort(reasoningEffort)
             .summary(Reasoning.Summary.DETAILED)
             .build()
 
@@ -459,6 +558,21 @@ class OpenAiIdeCodexBridge(
             appendLine(userPrompt)
         }
 
+        trace?.log(
+            "PROMPT",
+            buildString {
+                appendLine("conversationId=${state.conversationId}")
+                appendLine("previousResponseId=${state.previousResponseId ?: "<none>"}")
+                appendLine("fileKey=${state.fileKey}")
+                appendLine("inputChars=${inputText.length}")
+                if (vectorStoreIds.isNotEmpty()) {
+                    appendLine("vectorStoreIds=${vectorStoreIds.joinToString(",")}")
+                }
+                appendLine()
+                append(inputText)
+            }
+        )
+
         log.log(
             "convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} " +
                     "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size}"
@@ -528,6 +642,10 @@ class OpenAiIdeCodexBridge(
             val toolOutputs = mutableListOf<ResponseInputItem>()
             for (call in calls) {
                 log.log("tool: name=${call.name()} callId=${call.callId()} ${call.arguments()}")
+                trace?.log(
+                    "TOOL_CALL",
+                    "name=${call.name()} callId=${call.callId()}\nargs=${call.arguments()}"
+                )
 
                 val toolResult: Any = try {
                     tools.execute(ctx, call)
@@ -539,6 +657,16 @@ class OpenAiIdeCodexBridge(
                         "message" to (e.message ?: e::class.java.name)
                     )
                 }
+
+                trace?.log(
+                    "TOOL_OUTPUT",
+                    buildString {
+                        appendLine("name=${call.name()} callId=${call.callId()}")
+                        val json = runCatching { mapper.writeValueAsString(toolResult) }
+                            .getOrElse { toolResult.toString() }
+                        append(json)
+                    }
+                )
 
                 if (call.name() == Commentary::class.java.simpleName) {
                     // Extract commentary regardless of handler output
@@ -585,6 +713,16 @@ class OpenAiIdeCodexBridge(
 
         val text = extractOutputTextWithNewlines(response)
         val reasoningSummaries = extractReasoningSummaries(response)
+        trace?.log(
+            "RESPONSE",
+            buildString {
+                appendLine("responseId=${response.id()}")
+                appendLine("textChars=${text.length}")
+                appendLine("commentaryCount=${commentaryMessages.size}")
+                appendLine()
+                append(text)
+            }
+        )
         if (text.isBlank() && reasoningSummaries.isNotEmpty()) {
             commentaryMessages += reasoningSummaries
             val combined = reasoningSummaries.joinToString(" ").trim()
@@ -867,6 +1005,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
         log.log("chatFile(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
@@ -893,6 +1032,7 @@ class IdeChatHelpers(
             state,
             "$instructions\n\n$userPrompt\n\n$wrapped",
             ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta
         )
         val unwrapped = lang.unwrap(result.text)
@@ -918,6 +1058,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): OpenAiIdeCodexBridge.SendResult {
         log.log("chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
@@ -944,6 +1085,7 @@ class IdeChatHelpers(
             "$instructions\n\n$userPrompt",
             fileText = code,
             ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta
         )
     }
@@ -959,6 +1101,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
         log.log("chatInline(): lang=${lang.name} line=$lineNumber codeChars=${code.length} attachments=${attachments.size}")
@@ -989,6 +1132,7 @@ class IdeChatHelpers(
             state,
             "$instructions\n\n$withHelp",
             ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta
         )
         val unwrapped = lang.unwrap(result.text)
@@ -1014,6 +1158,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
         log.log("chatError(): lang=${lang.name} error='${errorMessage.take(120)}' codeChars=${code.length}")
@@ -1040,6 +1185,7 @@ class IdeChatHelpers(
             state,
             "$instructions\n\n$wrapped",
             ctx = ctx,
+            vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta
         )
         val unwrapped = lang.unwrap(result.text)
@@ -1085,11 +1231,16 @@ class IdeChatHelpers(
         if (isKotlin && ctx.listDefinitions != null) toolAds += "- ListDefinitions: list visible definitions (including shaders associated with Kotlin)."
         if (isKotlin && ctx.listFileContents != null) toolAds += "- ListContents: get full contents of the current Kotlin file."
         if (ctx.editOtherFile != null) toolAds += "- EditFile: update another file by name (e.g., paired shaders)."
-        if (ctx.workspaceSymbolSearch != null) toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."
+        if (ctx.workspaceSymbolSearch != null) {
+            toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."
+            toolAds += "  Results include filePath, fileId, line, definitionLine, and definitionBody (for fun) when available."
+        }
 
         val guidance = if (mode == Mode.Chat) {
             """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
+- If a symbol or behavior is mentioned, use WorkspaceSymbolSearch to locate definitions and ground the answer.
+- If an exact match fails, try softer queries (short name, receiver+name, suffix, drop generics).
 - If you call a tool, wait for its output before continuing.
             """.trimIndent()
         } else {
@@ -1116,6 +1267,414 @@ $guidance
         val bad = listOf("<help>", "<error>", "</error>", "<cursor>", "<rewrite>", "</rewrite>")
         val hit = bad.firstOrNull { code.contains(it) }
         if (hit != null) throw MalformedAI("Model output still contained marker '$hit'. Refusing to apply.")
+    }
+}
+
+/* =============================================================================
+   GLSL autocomplete
+   ============================================================================= */
+
+private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
+    "vertex" to GLSL_VERTEX,
+    "fragment" to GLSL_FRAGMENT,
+    "mesh" to GLSL_MESH,
+    "task" to GLSL_TASK,
+    "compute" to GLSL_COMPUTE
+)
+
+fun glslSpecForProperty(property: String): LanguageSpec? =
+    GLSL_PROPERTY_SPECS[property.lowercase()]
+
+private fun glslCompletionThreadInstructions(langName: String): String = """
+You are an IDE autocomplete engine for $langName.
+
+Rules:
+- Output 3 candidate completions separated by a line containing only: ---
+- Each candidate is ONLY the text to insert at <cursor>.
+- After the candidates, output a notes block starting with the line: <<<notes>>>
+- In the notes block, provide brief notes for candidates 1, 2, and 3 (one line each).
+- Do not include markdown or backticks.
+- Do not repeat existing code around the cursor.
+- Keep each candidate short (a few lines max).
+- Be willing to speculate; prefer a plausible completion to an empty output.
+- Do not call tools; output plain text only.
+""".trimIndent()
+
+private fun glslCompletionPrompt(
+    lang: LanguageSpec,
+    stage: String,
+    line: Int,
+    column: Int,
+    codeWithCursor: String,
+    contextBlock: String
+): String = """
+Return 3 completion candidates separated by a line containing only: ---
+Then include a notes block that starts with: <<<notes>>>
+Format the notes as:
+1) ...
+2) ...
+3) ...
+Stage: $stage
+Cursor: line $line, column $column
+
+Code:
+$codeWithCursor
+
+${contextBlock.trim()}
+""".trimIndent()
+
+private fun glslContextBlock(context: Map<String, String>): String {
+    if (context.isEmpty()) return ""
+    val entries = context.filterValues { it.isNotBlank() }
+    if (entries.isEmpty()) return ""
+    return buildString {
+        appendLine("Related context:")
+        entries.forEach { (name, value) ->
+            appendLine("<<<$name>>>")
+            appendLine(value.trimEnd())
+            appendLine("<<<END $name>>>")
+            appendLine()
+        }
+    }.trimEnd()
+}
+
+private fun cleanCompletionText(raw: String): String {
+    var text = raw.trim()
+    if (text.startsWith("```")) {
+        val lines = text.lines()
+        val fenceEnd = lines.indexOfLast { it.trim().startsWith("```") }
+        if (fenceEnd > 0) {
+            text = lines.subList(1, fenceEnd).joinToString("\n").trim()
+        }
+    }
+    text = text.replace("<cursor>", "")
+        .replace("<rewrite>", "")
+        .replace("</rewrite>", "")
+        .replace("<help>", "")
+        .replace("<error>", "")
+        .replace("</error>", "")
+    return text.trimEnd()
+}
+
+private fun splitCompletionCandidates(text: String): List<String> {
+    val results = mutableListOf<String>()
+    val current = StringBuilder()
+    val lines = text.split("\n")
+    for (line in lines) {
+        if (line.trim() == "---") {
+            val candidate = current.toString().trim()
+            if (candidate.isNotEmpty()) results += candidate
+            current.clear()
+            continue
+        }
+        if (current.isNotEmpty()) current.append("\n")
+        current.append(line)
+    }
+    val candidate = current.toString().trim()
+    if (candidate.isNotEmpty()) results += candidate
+    return results
+}
+
+private fun splitNotesBlock(text: String): Pair<String, String> {
+    val marker = Regex("(?i)<<<notes>>>")
+    val match = marker.find(text) ?: return text.trimEnd() to ""
+    val candidatesText = text.substring(0, match.range.first).trimEnd()
+    val notesText = text.substring(match.range.last + 1).trim()
+    return candidatesText to notesText
+}
+
+data class CompletionCandidate(
+    val text: String,
+    val documentation: String
+)
+
+private fun parseCandidateDocs(commentary: String, count: Int): List<String> {
+    if (count <= 0) return emptyList()
+    val docs = MutableList(count) { "" }
+    if (commentary.isBlank()) return docs
+    val regex = Regex("^\\s*(\\d+)[).:-]?\\s*(.*)$")
+    var current = -1
+    commentary.lines().forEach { line ->
+        val match = regex.matchEntire(line)
+        if (match != null) {
+            val idx = match.groupValues[1].toIntOrNull()?.minus(1) ?: -1
+            if (idx in 0 until count) {
+                current = idx
+                docs[idx] = match.groupValues[2].trim()
+                return@forEach
+            }
+        }
+        if (current >= 0) {
+            val existing = docs[current]
+            docs[current] = if (existing.isBlank()) line.trim() else (existing + "\n" + line.trim()).trim()
+        }
+    }
+    if (docs.any { it.isNotBlank() }) return docs
+    val fallback = commentary.trim()
+    return List(count) { fallback }
+}
+
+object Ai4GlslAutocomplete {
+    private val bridge: OpenAiIdeCodexBridge by lazy {
+        val fastModel = System.getenv("AFIELD_GLSL_AUTOCOMPLETE_MODEL")
+            ?: "gpt-5.2"
+        OpenAiIdeCodexBridge(
+            model = fastModel,
+            log = SilentLog,
+            reasoningEffort = ReasoningEffort.LOW
+        )
+    }
+    private val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
+
+    fun complete(
+        fileKey: String,
+        property: String,
+        code: String,
+        context: Map<String, String>,
+        line: Int,
+        column: Int,
+        position: Int,
+        maxOutputTokens: Long = 400
+    ): List<CompletionCandidate> {
+        val lang = glslSpecForProperty(property) ?: return emptyList()
+        val stage = property.lowercase()
+        val safePos = position.coerceIn(0, code.length)
+        val codeWithCursor = code.substring(0, safePos) + "<cursor>" + code.substring(safePos)
+        val wrapped = lang.wrap(codeWithCursor)
+        val contextBlock = glslContextBlock(context)
+
+        val state = threadByKey[fileKey] ?: bridge.startThread(
+            fileKey,
+            lang.wrap(code),
+            instructions = glslCompletionThreadInstructions(lang.name)
+        ).also { threadByKey[fileKey] = it }
+
+        val prompt = glslCompletionPrompt(lang, stage, line, column, wrapped, contextBlock)
+        val result = bridge.send(state, prompt, maxOutputTokens = maxOutputTokens)
+        val cleaned = cleanCompletionText(result.text)
+        val (candidatesText, notesText) = splitNotesBlock(cleaned)
+        val candidates = splitCompletionCandidates(candidatesText)
+        val fallbackNotes = result.commentary.joinToString("\n").trim()
+        val docs = parseCandidateDocs(if (notesText.isNotBlank()) notesText else fallbackNotes, candidates.size)
+        return candidates.mapIndexed { idx, text ->
+            CompletionCandidate(text, docs.getOrElse(idx) { "" })
+        }
+    }
+}
+
+object Ai4CompletionDoc {
+    private val bridge: OpenAiIdeCodexBridge by lazy {
+        val model = System.getenv("AFIELD_COMPLETION_DOC_MODEL") ?: "gpt-5.2"
+        OpenAiIdeCodexBridge(
+            model = model,
+            log = SilentLog,
+            reasoningEffort = ReasoningEffort.LOW
+        )
+    }
+    private val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
+
+    fun resolveDoc(
+        fileKey: String,
+        label: String,
+        displayText: String,
+        insertText: String,
+        detail: String,
+        existingDoc: String,
+        allCode: String,
+        line: Int,
+        column: Int
+    ): String {
+        val symbol = extractSymbolName(displayText, insertText, label)
+        val definition = findDefinition(symbol)
+        val definitionSnippet = definition?.let { loadDefinitionSnippet(it) }
+        val cursorContext = snippetAroundCursor(allCode, line, column)
+
+        val instructions = """
+You write concise usage notes for code completion candidates.
+Respond in markdown only. Keep it short and directly useful.
+If you include code, keep it minimal and relevant.
+        """.trimIndent()
+
+        val state = threadByKey[fileKey] ?: bridge.startThread(
+            fileKey = fileKey,
+            fileText = "",
+            instructions = instructions
+        ).also { threadByKey[fileKey] = it }
+
+        val prompt = buildString {
+            appendLine("Completion candidate:")
+            appendLine("- symbol: ${symbol.ifBlank { label }}")
+            appendLine("- label: $label")
+            if (displayText.isNotBlank()) appendLine("- display: $displayText")
+            if (detail.isNotBlank()) appendLine("- detail: $detail")
+            if (insertText.isNotBlank()) {
+                appendLine()
+                appendLine("Insert text:")
+                appendLine("```kotlin")
+                appendLine(insertText.trimEnd())
+                appendLine("```")
+            }
+            if (cursorContext.isNotBlank()) {
+                appendLine()
+                appendLine("Current context:")
+                appendLine("```kotlin")
+                appendLine(cursorContext.trimEnd())
+                appendLine("```")
+            }
+            if (definitionSnippet != null) {
+                appendLine()
+                appendLine("Definition source (${definitionSnippet.path}:${definitionSnippet.line}):")
+                if (!definitionSnippet.fileId.isNullOrBlank()) {
+                    appendLine("fileId: ${definitionSnippet.fileId}")
+                }
+                appendLine("```kotlin")
+                appendLine(definitionSnippet.snippet.trimEnd())
+                appendLine("```")
+            }
+            if (existingDoc.isNotBlank()) {
+                appendLine()
+                appendLine("Existing documentation (if any):")
+                appendLine(existingDoc.trimEnd())
+            }
+            appendLine()
+            appendLine("Write a short usage note with a one-line summary and 2-4 bullets.")
+        }
+
+        val result = bridge.send(
+            state = state,
+            userPrompt = prompt,
+            maxOutputTokens = 400
+        )
+        return result.text.trimEnd()
+    }
+
+    private data class DefinitionSnippet(
+        val path: String,
+        val line: Int,
+        val fileId: String?,
+        val snippet: String
+    )
+
+    private fun extractSymbolName(displayText: String, insertText: String, label: String): String {
+        val candidates = listOf(displayText, insertText, label)
+        for (raw in candidates) {
+            val text = raw.trim()
+            if (text.isEmpty()) continue
+            parseSymbolFromDeclaration(text)?.let { return it }
+            parseQualifiedName(text)?.let { return it }
+        }
+        return label.trim()
+    }
+
+    private fun unwrapIdentifier(raw: String): String =
+        if (raw.startsWith("`") && raw.endsWith("`") && raw.length > 1) {
+            raw.removePrefix("`").removeSuffix("`")
+        } else {
+            raw
+        }
+
+    private fun parseSymbolFromDeclaration(text: String): String? {
+        val match = Regex("^(fun|class|interface|object|val|var|typealias)\\s+(.+)$")
+            .find(text)
+            ?: return null
+        val kind = match.groupValues[1]
+        val remainder = match.groupValues[2].trimStart()
+        return when (kind) {
+            "fun" -> {
+                val head = remainder.substringBefore("(").trim()
+                parseQualifiedName(head)
+            }
+            "val", "var" -> {
+                val head = remainder.substringBefore(":").substringBefore("=").trim()
+                parseQualifiedName(head)
+            }
+            "class", "interface", "object", "typealias" -> {
+                Regex("^(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)")
+                    .find(remainder)?.groupValues?.get(1)?.let { unwrapIdentifier(it) }
+            }
+            else -> null
+        }
+    }
+
+    private fun parseQualifiedName(raw: String): String? {
+        if (raw.isBlank()) return null
+        val noGenerics = stripGenericArgs(raw)
+        val compact = removeWhitespaceOutsideBackticks(noGenerics).replace("?", "")
+        if (compact.isBlank()) return null
+        val regex = Regex("^(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)(\\.`[^`]+`|\\.[A-Za-z_][A-Za-z0-9_]*)*$")
+        val match = regex.find(compact) ?: return null
+        return match.value.split(".").joinToString(".") { unwrapIdentifier(it) }
+    }
+
+    private fun stripGenericArgs(raw: String): String {
+        val sb = StringBuilder(raw.length)
+        var depth = 0
+        for (ch in raw) {
+            when (ch) {
+                '<' -> depth++
+                '>' -> if (depth > 0) depth--
+                else -> if (depth == 0) sb.append(ch)
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun removeWhitespaceOutsideBackticks(raw: String): String {
+        val sb = StringBuilder(raw.length)
+        var inBackticks = false
+        for (ch in raw) {
+            if (ch == '`') {
+                inBackticks = !inBackticks
+                sb.append(ch)
+                continue
+            }
+            if (!inBackticks && ch.isWhitespace()) continue
+            sb.append(ch)
+        }
+        return sb.toString()
+    }
+
+    private fun findDefinition(symbol: String): KotlinDefinitionRecord? {
+        if (symbol.isBlank()) return null
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
+        val definitions = index?.definitions.orEmpty()
+        definitions.firstOrNull { it.name == symbol }?.let { return it }
+        definitions.firstOrNull { it.name.equals(symbol, ignoreCase = true) }?.let { return it }
+        val dotIdx = symbol.lastIndexOf('.')
+        if (dotIdx > 0 && dotIdx < symbol.length - 1) {
+            val short = symbol.substring(dotIdx + 1)
+            definitions.firstOrNull { it.name == short }?.let { return it }
+            return definitions.firstOrNull { it.name.equals(short, ignoreCase = true) }
+        }
+        return null
+    }
+
+    private fun loadDefinitionSnippet(def: KotlinDefinitionRecord): DefinitionSnippet? {
+        val path = Paths.get(def.filePath)
+        if (!Files.exists(path)) return null
+        val text = runCatching { Files.readString(path, StandardCharsets.UTF_8) }.getOrNull() ?: return null
+        val lines = text.split("\n")
+        val center = (def.line - 1).coerceIn(0, lines.lastIndex)
+        val start = (center - 20).coerceAtLeast(0)
+        val end = (center + 20).coerceAtMost(lines.lastIndex)
+        val snippet = lines.subList(start, end + 1).joinToString("\n")
+        return DefinitionSnippet(def.filePath, def.line, def.fileId, snippet)
+    }
+
+    private fun snippetAroundCursor(text: String, line: Int, column: Int): String {
+        if (text.isBlank()) return ""
+        val lines = text.split("\n")
+        val center = (line - 1).coerceIn(0, lines.lastIndex)
+        val start = (center - 12).coerceAtLeast(0)
+        val end = (center + 12).coerceAtMost(lines.lastIndex)
+        val snippet = lines.subList(start, end + 1).toMutableList()
+        val lineIdx = center - start
+        if (lineIdx in snippet.indices) {
+            val raw = snippet[lineIdx]
+            val col = (column - 1).coerceIn(0, raw.length)
+            snippet[lineIdx] = raw.substring(0, col) + "<cursor>" + raw.substring(col)
+        }
+        return snippet.joinToString("\n")
     }
 }
 
@@ -1250,31 +1809,124 @@ fun ai4_install() {
             EditFileResponse(true, "Updated ${req.file}")
         }
 
-        val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = { req ->
-            fun matchesForBox(target: Box): List<WorkspaceSymbolMatch> {
-                val fileRef = fileRefFor(docName, target.id, "code")
-                val vars = target.ki.context.vars.values.map { v ->
-                    WorkspaceSymbolMatch(symbol = v.name, kind = "variable", locationHint = fileRef)
-                }
-                val funcs = target.ki.context.functions.values.map { f ->
-                    WorkspaceSymbolMatch(symbol = f.name, kind = "function", locationHint = fileRef)
-                }
-                return vars + funcs
+        val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
+            val query = req.query.trim()
+            if (query.isEmpty()) return@workspaceSymbolSearch WorkspaceSymbolSearchResult(emptyList())
+
+            val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
+            val definitions = index?.definitions.orEmpty()
+            val limit = req.limit.coerceAtLeast(1)
+            val exact = ArrayList<WorkspaceSymbolMatch>()
+            val prefix = ArrayList<WorkspaceSymbolMatch>()
+            val contains = ArrayList<WorkspaceSymbolMatch>()
+
+            val fileCache = HashMap<String, List<String>>()
+            fun fileLines(path: String): List<String>? {
+                return fileCache.getOrPut(path) {
+                    val direct = Paths.get(path)
+                    val resolved = if (Files.exists(direct)) direct else Paths.get(System.getProperty("user.dir")).resolve(path)
+                    if (!Files.exists(resolved)) return@getOrPut emptyList()
+                    runCatching { Files.readAllLines(resolved, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
+                }.takeIf { it.isNotEmpty() }
             }
 
-            val current = matchesForBox(box)
-            val others = thisSessionInfo.get().boxes.values
-                .filter { it.id != box.id }
-                .sortedBy { it.name.ifBlank { it.id } }
-                .flatMap { matchesForBox(it) }
+            fun definitionLineText(def: KotlinDefinitionRecord): String? {
+                val lines = fileLines(def.filePath) ?: return null
+                val idx = def.line - 1
+                return lines.getOrNull(idx)?.trimEnd()
+            }
 
-            val needle = req.query.lowercase()
-            val matches = (current + others).asSequence()
-                .filter { it.symbol.lowercase().contains(needle) }
-                .take(req.limit.coerceAtLeast(1))
-                .toList()
+            fun functionBody(def: KotlinDefinitionRecord, maxChars: Int = 6000): String? {
+                if (def.kind != "fun") return null
+                val lines = fileLines(def.filePath) ?: return null
+                val startIdx = (def.line - 1).coerceIn(0, lines.lastIndex)
+                var depth = 0
+                var found = false
+                val sb = StringBuilder()
+                var chars = 0
+                for (i in startIdx..lines.lastIndex) {
+                    val line = lines[i]
+                    var j = 0
+                    while (j < line.length) {
+                        val ch = line[j]
+                        if (!found) {
+                            if (ch == '{') {
+                                found = true
+                                depth = 1
+                                sb.append(ch)
+                            }
+                        } else {
+                            sb.append(ch)
+                            if (ch == '{') depth++
+                            if (ch == '}') {
+                                depth--
+                                if (depth == 0) return sb.toString().trimEnd()
+                            }
+                        }
+                        if (found) {
+                            chars++
+                            if (chars >= maxChars) return sb.toString().trimEnd()
+                        }
+                        j++
+                    }
+                    if (found) {
+                        sb.append('\n')
+                        chars++
+                        if (chars >= maxChars) return sb.toString().trimEnd()
+                    }
+                }
+                return if (found) sb.toString().trimEnd() else null
+            }
+
+            fun toMatch(def: KotlinDefinitionRecord): WorkspaceSymbolMatch {
+                val location = if (!def.fileId.isNullOrBlank()) {
+                    "${def.filePath}:${def.line} (fileId=${def.fileId})"
+                } else {
+                    "${def.filePath}:${def.line}"
+                }
+                val lineText = definitionLineText(def)
+                val body = functionBody(def)
+                return WorkspaceSymbolMatch(
+                    symbol = def.name,
+                    kind = def.kind,
+                    locationHint = location,
+                    filePath = def.filePath,
+                    fileId = def.fileId,
+                    line = def.line,
+                    definitionLine = lineText,
+                    definitionBody = body
+                )
+            }
+
+            for (def in definitions) {
+                val name = def.name
+                if (name.equals(query, ignoreCase = true)) {
+                    exact.add(toMatch(def))
+                    if (exact.size >= limit) break
+                    continue
+                }
+                if (name.startsWith(query, ignoreCase = true)) {
+                    prefix.add(toMatch(def))
+                    continue
+                }
+                if (name.contains(query, ignoreCase = true)) {
+                    contains.add(toMatch(def))
+                }
+            }
+
+            val matches = ArrayList<WorkspaceSymbolMatch>(limit)
+            for (bucket in listOf(exact, prefix, contains)) {
+                for (item in bucket) {
+                    matches.add(item)
+                    if (matches.size >= limit) break
+                }
+                if (matches.size >= limit) break
+            }
+
             WorkspaceSymbolSearchResult(matches)
         }
+
+        val vectorStoreIds = KotlinSourceIndex.currentVectorStoreId()?.let { listOf(it) } ?: emptyList()
 
         if (exec.kind == "chat" || exec.kind == "cursor" || exec.kind == "rewrite" || exec.kind == "error") {
             clearProvisional(docPath)
@@ -1316,7 +1968,8 @@ fun ai4_install() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds
                         )
                     }
 
@@ -1349,6 +2002,7 @@ fun ai4_install() {
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
                                 synchronized(streamLock) {
@@ -1406,7 +2060,8 @@ fun ai4_install() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds
                         )
                     }
 

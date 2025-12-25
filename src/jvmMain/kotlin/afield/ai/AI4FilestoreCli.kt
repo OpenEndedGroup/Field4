@@ -9,6 +9,7 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -22,26 +23,28 @@ private data class FilestoreCliConfig(
     val purpose: String,
     val files: List<Path>,
     val dirs: List<Path>,
+    val virtualRoots: List<URI>,
+    val virtualUris: List<URI>,
     val recursive: Boolean,
     val includeHidden: Boolean,
     val showHelp: Boolean
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class VectorStoreCreateResponse(val id: String)
+data class VectorStoreCreateResponse(val id: String)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class VectorStoreFileBatchCreateResponse(val id: String)
+data class VectorStoreFileBatchCreateResponse(val id: String)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class VectorStoreFileBatchGetResponse(
+data class VectorStoreFileBatchGetResponse(
     val id: String,
     val status: String? = null,
     @JsonProperty("last_error") val lastError: LastError? = null
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class LastError(val message: String? = null)
+data class LastError(val message: String? = null)
 
 private data class CreatedVectorStore(val vectorStoreId: String)
 private data class CreatedBatch(val batchId: String)
@@ -135,6 +138,8 @@ Usage:
   --purpose <purpose>  OpenAI file purpose (default: assistants)
   --file <path>        Add a file (repeatable)
   --dir <path>         Add a directory (repeatable)
+  --vfs-root <uri>     Add a virtual FS root (repeatable)
+  --vfs-file <uri>     Add a virtual file URI (repeatable)
   --no-recursive       Do not scan directories recursively
   --include-hidden     Include hidden files (dotfiles)
   --help               Show this help
@@ -178,12 +183,132 @@ private fun resolveTerminalWidth(): Int {
     return width.coerceAtLeast(20)
 }
 
+private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult {
+    return { req ->
+        val query = req.query.trim()
+        if (query.isEmpty()) WorkspaceSymbolSearchResult(emptyList()) else {
+            val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
+            val definitions = index?.definitions.orEmpty()
+            val limit = req.limit.coerceAtLeast(1)
+            val exact = ArrayList<WorkspaceSymbolMatch>()
+            val prefix = ArrayList<WorkspaceSymbolMatch>()
+            val contains = ArrayList<WorkspaceSymbolMatch>()
+
+            val fileCache = HashMap<String, List<String>>()
+            fun fileLines(path: String): List<String>? {
+                return fileCache.getOrPut(path) {
+                    val direct = Paths.get(path)
+                    val resolved = if (Files.exists(direct)) direct else Paths.get(System.getProperty("user.dir")).resolve(path)
+                    if (!Files.exists(resolved)) return@getOrPut emptyList()
+                    runCatching { Files.readAllLines(resolved, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
+                }.takeIf { it.isNotEmpty() }
+            }
+
+            fun definitionLineText(def: KotlinDefinitionRecord): String? {
+                val lines = fileLines(def.filePath) ?: return null
+                val idx = def.line - 1
+                return lines.getOrNull(idx)?.trimEnd()
+            }
+
+            fun functionBody(def: KotlinDefinitionRecord, maxChars: Int = 6000): String? {
+                if (def.kind != "fun") return null
+                val lines = fileLines(def.filePath) ?: return null
+                val startIdx = (def.line - 1).coerceIn(0, lines.lastIndex)
+                var depth = 0
+                var found = false
+                val sb = StringBuilder()
+                var chars = 0
+                for (i in startIdx..lines.lastIndex) {
+                    val line = lines[i]
+                    var j = 0
+                    while (j < line.length) {
+                        val ch = line[j]
+                        if (!found) {
+                            if (ch == '{') {
+                                found = true
+                                depth = 1
+                                sb.append(ch)
+                            }
+                        } else {
+                            sb.append(ch)
+                            if (ch == '{') depth++
+                            if (ch == '}') {
+                                depth--
+                                if (depth == 0) return sb.toString().trimEnd()
+                            }
+                        }
+                        if (found) {
+                            chars++
+                            if (chars >= maxChars) return sb.toString().trimEnd()
+                        }
+                        j++
+                    }
+                    if (found) {
+                        sb.append('\n')
+                        chars++
+                        if (chars >= maxChars) return sb.toString().trimEnd()
+                    }
+                }
+                return if (found) sb.toString().trimEnd() else null
+            }
+
+            fun toMatch(def: KotlinDefinitionRecord): WorkspaceSymbolMatch {
+                val location = if (!def.fileId.isNullOrBlank()) {
+                    "${def.filePath}:${def.line} (fileId=${def.fileId})"
+                } else {
+                    "${def.filePath}:${def.line}"
+                }
+                val lineText = definitionLineText(def)
+                val body = functionBody(def)
+                return WorkspaceSymbolMatch(
+                    symbol = def.name,
+                    kind = def.kind,
+                    locationHint = location,
+                    filePath = def.filePath,
+                    fileId = def.fileId,
+                    line = def.line,
+                    definitionLine = lineText,
+                    definitionBody = body
+                )
+            }
+
+            for (def in definitions) {
+                val name = def.name
+                if (name.equals(query, ignoreCase = true)) {
+                    exact.add(toMatch(def))
+                    if (exact.size >= limit) break
+                    continue
+                }
+                if (name.startsWith(query, ignoreCase = true)) {
+                    prefix.add(toMatch(def))
+                    continue
+                }
+                if (name.contains(query, ignoreCase = true)) {
+                    contains.add(toMatch(def))
+                }
+            }
+
+            val matches = ArrayList<WorkspaceSymbolMatch>(limit)
+            for (bucket in listOf(exact, prefix, contains)) {
+                for (item in bucket) {
+                    matches.add(item)
+                    if (matches.size >= limit) break
+                }
+                if (matches.size >= limit) break
+            }
+            WorkspaceSymbolSearchResult(matches)
+        }
+    }
+}
+
 private fun parseArgs(args: Array<String>): FilestoreCliConfig {
     var cacheDir = Paths.get(System.getProperty("user.home"), ".afield", "filestore")
     var apiKey: String? = null
     var purpose = "assistants"
     var files = mutableListOf<Path>()
     var dirs = mutableListOf<Path>()
+    var virtualRoots = mutableListOf<URI>()
+    var virtualUris = mutableListOf<URI>()
     var recursive = true
     var includeHidden = false
     var showHelp = false
@@ -217,6 +342,20 @@ private fun parseArgs(args: Array<String>): FilestoreCliConfig {
                 recursive = false
                 i += 1
             }
+            "--vfs-root" -> {
+                val raw = args.getOrNull(i + 1)
+                if (raw != null) {
+                    parseVirtualRoot(raw)?.let { virtualRoots += it }
+                }
+                i += 2
+            }
+            "--vfs-file" -> {
+                val raw = args.getOrNull(i + 1)
+                if (raw != null) {
+                    parseVirtualUri(raw)?.let { virtualUris += it }
+                }
+                i += 2
+            }
             "--include-hidden" -> {
                 includeHidden = true
                 i += 1
@@ -239,10 +378,47 @@ private fun parseArgs(args: Array<String>): FilestoreCliConfig {
         purpose = purpose,
         files = files,
         dirs = dirs,
+        virtualRoots = virtualRoots,
+        virtualUris = virtualUris,
         recursive = recursive,
         includeHidden = includeHidden,
         showHelp = showHelp
     )
+}
+
+private fun parseVirtualRoot(raw: String): URI? {
+    return try {
+        val uri = URI(raw)
+        if (uri.scheme == null) {
+            URI.create("afield:///" + raw.trimStart('/'))
+        } else {
+            uri
+        }
+    } catch (_: Exception) {
+        println("Invalid --vfs-root URI: $raw")
+        null
+    }
+}
+
+private fun parseVirtualUri(raw: String): URI? {
+    return try {
+        URI(raw)
+    } catch (_: Exception) {
+        println("Invalid --vfs-file URI: $raw")
+        null
+    }
+}
+
+private fun buildVirtualFileSystems(roots: List<URI>): List<VirtualFileSystem> {
+    val byScheme = roots.groupBy { it.scheme?.lowercase() }
+    val systems = mutableListOf<VirtualFileSystem>()
+    val afieldRoots = byScheme["afield"].orEmpty().mapNotNull { root ->
+        root.path?.takeIf { it.isNotBlank() }?.let { Paths.get(it) }
+    }
+    if (afieldRoots.isNotEmpty()) {
+        systems += AfieldVirtualFileSystem(afieldRoots)
+    }
+    return systems
 }
 
 private fun collectFiles(config: FilestoreCliConfig): List<Path> {
@@ -281,7 +457,10 @@ fun main(args: Array<String>) {
     }
 
     val targets = collectFiles(config)
-    if (targets.isEmpty()) {
+    val virtualFileSystems = buildVirtualFileSystems(config.virtualRoots)
+    val virtualFiles = collectVirtualFiles(config.virtualRoots, config.virtualUris, virtualFileSystems)
+
+    if (targets.isEmpty() && virtualFiles.isEmpty()) {
         println("No files found. Continuing without uploads.")
     }
 
@@ -296,6 +475,9 @@ fun main(args: Array<String>) {
     println("Purpose: ${config.purpose}")
     if (targets.isNotEmpty()) {
         println("Uploading ${targets.size} file(s)...")
+    }
+    if (virtualFiles.isNotEmpty()) {
+        println("Uploading ${virtualFiles.size} virtual file(s)...")
     }
 
     val fileIds = mutableListOf<String>()
@@ -312,6 +494,19 @@ fun main(args: Array<String>) {
         val id = result.record.fileId
         fileIds += id
         println("${result.action.padEnd(10)} $fileName -> $id (${bytes.size} bytes)")
+    }
+    val virtualUploads = uploadVirtualFiles(
+        cache = cache,
+        uploader = uploader,
+        openAiApiKey = apiKey,
+        purpose = config.purpose,
+        files = virtualFiles
+    )
+    virtualUploads.forEach { upload ->
+        val id = upload.result.record.fileId
+        fileIds += id
+        val bytes = upload.result.record.byteCount
+        println("${upload.result.action.padEnd(10)} ${upload.file.ref.uri} -> $id ($bytes bytes)")
     }
 
     val uniqueIds = fileIds.distinct()
@@ -357,11 +552,21 @@ fun main(args: Array<String>) {
     } else null
 
     val bridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = TputLog())
+    val indexForTools = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
     val instructions = buildString {
         appendLine(OpenAiIdeCodexBridge.defaultChatThreadInstructions.trim())
         if (vectorStoreId != null) {
             appendLine()
             appendLine("File search is available. Use it when relevant.")
+        }
+        if (!indexForTools?.definitions.isNullOrEmpty()) {
+            appendLine()
+            appendLine("WorkspaceSymbolSearch is available for Kotlin source definitions (includes filePath, fileId, line, definitionLine, and definitionBody for fun).")
+        }
+        if (uniqueIds.isNotEmpty()) {
+            val preview = uniqueIds.take(12)
+            appendLine()
+            appendLine("file_ids: ${preview.joinToString(", ")}${if (uniqueIds.size > preview.size) " ..." else ""}")
         }
     }.trim()
 
@@ -371,7 +576,10 @@ fun main(args: Array<String>) {
         instructions = instructions
     )
 
-    val ctx = ToolExecutionContext()
+    val ctx = ToolExecutionContext(
+        attachments = virtualFilesToAttachments(virtualFiles),
+        workspaceSymbolSearch = if (!indexForTools?.definitions.isNullOrEmpty()) workspaceSymbolSearchFromIndex() else null
+    )
     val vectorStores = vectorStoreId?.let { listOf(it) } ?: emptyList()
 
     println("\nCLI chat ready. Type /help for commands, /exit to quit.")

@@ -1,16 +1,24 @@
 package afield
 
+import afield.ai.Ai4GlslAutocomplete
+import afield.ai.glslSpecForProperty
 import afield.logger.lprintln
 import afield.macros.standardExecutionPractice
 import afield.stdlib.Action
 import afield.stdlib._currentlyExecutingFragment
 import afield.stdlib.actions
+import afield.stdlib.compute
+import afield.stdlib.fragment
 import afield.stdlib.i
+import afield.stdlib.mesh
+import afield.stdlib.task
 import afield.stdlib.times
+import afield.stdlib.vertex
 import kotlinx.coroutines.*
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
+import java.io.File
 import kotlin.collections.forEach
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
@@ -458,6 +466,88 @@ class KotlinExecution : BoxExecution {
 
         val position = exec.position
         val allCode = exec.allCode
+        val property = exec.property
+
+        if (glslSpecForProperty(property) != null) {
+            val docName = File(thisSessionInfo.get().filename).name
+            val fileKey = "afield://$docName/${box.id}/$property"
+            GlobalScope.launch(Dispatchers.IO) {
+                fun trimContext(value: String, maxChars: Int = 4000, maxLines: Int = 200): String {
+                    if (value.isBlank()) return ""
+                    val lines = value.split("\n")
+                    val limitedLines = if (lines.size > maxLines) lines.take(maxLines) else lines
+                    val joined = limitedLines.joinToString("\n").trimEnd()
+                    return if (joined.length > maxChars) joined.take(maxChars).trimEnd() else joined
+                }
+
+                val context = linkedMapOf<String, String>()
+                val codeContext = trimContext(box.getPropertyRaw("code") as? String ?: "")
+                if (codeContext.isNotBlank()) {
+                    context["code"] = codeContext
+                }
+                val shaderProps = listOf(
+                    "vertex" to box.vertex,
+                    "fragment" to box.fragment,
+                    "mesh" to box.mesh,
+                    "task" to box.task,
+                    "compute" to box.compute
+                )
+                shaderProps.forEach { (name, value) ->
+                    if (name != property && !value.isNullOrBlank()) {
+                        context[name] = trimContext(value)
+                    }
+                }
+                val candidates = try {
+                    Ai4GlslAutocomplete.complete(
+                        fileKey = fileKey,
+                        property = property,
+                        code = allCode,
+                        context = context,
+                        line = exec.line,
+                        column = exec.column,
+                        position = position
+                    )
+                } catch (_: Exception) {
+                    emptyList()
+                }
+
+                val metadata = candidates.take(3).mapIndexed { idx, candidate ->
+                    val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
+                    val doc = buildString {
+                        val notes = candidate.documentation.ifBlank { "AI4 GLSL completion" }
+                        append("**Notes**\n")
+                        notes.lineSequence().forEach { line ->
+                            val trimmed = line.trim()
+                            if (trimmed.isNotEmpty()) append("- ").append(trimmed).append("\n")
+                        }
+                        if (candidate.text.isNotBlank()) {
+                            append("\n**Insertion**\n")
+                            append("```glsl\n")
+                            append(candidate.text.trimEnd())
+                            append("\n```\n")
+                        }
+                    }.trimEnd() + "\n"
+                    Metadata(
+                        icon = "keyword",
+                        tail = "AI4 ${idx + 1}",
+                        text = candidate.text,
+                        displayText = if (display.isNotEmpty()) display else "AI4 completion ${idx + 1}",
+                        documentation = doc
+                    )
+                }
+
+                reply(
+                    Message("complete").payload(
+                        Completion(
+                            boundsStart = position,
+                            boundsEnd = position,
+                            metadata = metadata
+                        )
+                    )
+                )
+            }
+            return
+        }
 
         fun completionFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
             return c.metadata.map {
@@ -537,4 +627,3 @@ private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
     this[name] = computeIfAbsent(name) { 0 } + 1
     return this[name]!!
 }
-

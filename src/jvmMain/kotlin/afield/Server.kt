@@ -3,6 +3,7 @@
 package afield
 
 import afield.four.util.Options
+import afield.ai.Ai4CompletionDoc
 import afield.logger.lprintln
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.Browser
@@ -30,13 +31,13 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import java.awt.Desktop
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URI
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
-import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -58,6 +59,9 @@ var min_frame_delay = 1L
 
 val home = option("workspace") { System.getProperty("user.home") + "/Documents/AFieldWorkspace" }
 val app = option("app") { File(".").absolutePath }
+
+val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
+    ?: System.getProperty("afield.systemBrowser") ?: "true").lowercase() != "false"
 
 @OptIn(DelicateCoroutinesApi::class)
 actual fun _send(message: Message) {
@@ -111,6 +115,32 @@ class Server {
         var ai_thread: String? by PersistentString()
 
         var args: Array<String> = emptyArray()
+
+        private fun openSystemBrowser(url: String) {
+            try {
+                if (Desktop.isDesktopSupported()) {
+                    val d = Desktop.getDesktop()
+                    if (d.isSupported(Desktop.Action.BROWSE)) {
+                        d.browse(URI(url))
+                        return
+                    }
+                }
+            } catch (t: Throwable) {
+                lprintln("WARN: Failed Desktop browse: ${t.message}")
+            }
+
+            val command = when {
+                Options.isMac -> listOf("open", url)
+                Options.isWindows -> listOf("rundll32", "url.dll,FileProtocolHandler", url)
+                else -> listOf("xdg-open", url)
+            }
+
+            try {
+                ProcessBuilder(command).start()
+            } catch (t: Throwable) {
+                lprintln("WARN: Failed to launch system browser via ${command}: ${t.message}")
+            }
+        }
 
         @OptIn(DelicateCoroutinesApi::class, BetaOpenAI::class)
         fun server() {
@@ -320,6 +350,31 @@ class Server {
                 val box = box(exec.uid)
 
                 box.ke.complete(box, exec, reply)
+
+                Handled.yes
+            })
+
+            handlers["resolve-completion"] = mutableSetOf({ message, reply ->
+                val exec = Json.decodeFromJsonElement<CompletionResolveRequest>(message.payload!!)
+                val docName = File(thisSessionInfo.get().filename).name
+                val fileKey = "afield://$docName/${exec.uid}/${exec.property}"
+
+                GlobalScope.launch(Dispatchers.IO) {
+                    val doc = runCatching {
+                        Ai4CompletionDoc.resolveDoc(
+                            fileKey = fileKey,
+                            label = exec.label,
+                            displayText = exec.displayText,
+                            insertText = exec.insertText,
+                            detail = exec.detail,
+                            existingDoc = exec.existingDocumentation,
+                            allCode = exec.allCode,
+                            line = exec.line,
+                            column = exec.column
+                        )
+                    }.getOrElse { "" }
+                    reply(Message("resolve-completion").payload(CompletionResolveResult(doc)))
+                }
 
                 Handled.yes
             })
@@ -587,30 +642,31 @@ class Server {
                 println("\n\n\n         welcome to Field, alpha021\n         ${initialURL}")
                 println("\n\n\n                               ---")
 
-
-                thread {
-                    Playwright.create().let { pw ->
-                        var browser = pw.chromium().launch(
-                            BrowserType.LaunchOptions()
-                                .setHeadless(false)
-                                .setArgs(
-                                    listOf(
-                                        "--app=${initialURL}",
-                                    )
-                                )
-                        )
-                        val ctx = browser.newContext(Browser.NewContextOptions().setViewportSize(null))
-                        val page = ctx.newPage()
-                        page.navigate("${initialURL}")
-                        page.waitForLoadState(LoadState.NETWORKIDLE)
-                        println(" -- network idle -- ")
-                        page.screenshot(Page.ScreenshotOptions().setPath(Path("ide.png")))
-
-                        globalPlaywriteContext = page
-                    }
-
+                if (preferSystemBrowser) {
+                    thread { openSystemBrowser(initialURL) }
                 }
+                else {
+                    thread {
+                        Playwright.create().let { pw ->
+                            val browser = pw.chromium().launch(
+                                BrowserType.LaunchOptions()
+//                                    .setHeadless(!showPlaywrightWindow)
+                                    .setArgs(
+                                        listOf(
+                                            "--app=${initialURL}",
+                                        )
+                                    )
+                            )
+                            val ctx = browser.newContext(Browser.NewContextOptions().setViewportSize(null))
+                            val page = ctx.newPage()
+                            page.navigate(initialURL)
+                            page.waitForLoadState(LoadState.NETWORKIDLE)
+                            println(" -- network idle -- ")
 
+                            globalPlaywriteContext = page
+                        }
+                    }
+                }
             }.start(wait = true)
         }
 

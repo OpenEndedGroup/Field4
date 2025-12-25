@@ -66,6 +66,7 @@ const initMonaco = () => {
         var completionProvider = {
                 provideCompletionItems: (model, position, context, cancellationToken) => {
                         var word = model.getWordUntilPosition(position);
+                        var languageId = model.getLanguageId()
                         var range = {
                                 startLineNumber: position.lineNumber,
                                 endLineNumber: position.lineNumber,
@@ -90,7 +91,8 @@ const initMonaco = () => {
                                         column: completionInfo.at[1],
                                         position: ed.getModel().getOffsetAt({
                                                 column: completionInfo.at[1], lineNumber: completionInfo.at[0]
-                                        })
+                                        }),
+                                        property: window.currentSelectedProperty
                                 }, "complete-me", (message, payload) => {
 
                                         if (window.currentEditorGeneration !== currentGen) return true
@@ -142,6 +144,14 @@ const initMonaco = () => {
                                                                         supportThemeIcons: true,
                                                                         supportHtml: true,
                                                                 },
+                                                                data: {
+                                                                        source: languageId,
+                                                                        displayText: m.displayText,
+                                                                        insertText: m.text,
+                                                                        detail: m.tail,
+                                                                        aiDocPending: false,
+                                                                        aiDocResolved: false
+                                                                },
                                                                 command: command
                                                         }
                                                 })
@@ -154,11 +164,66 @@ const initMonaco = () => {
                                 })
                         })
                         return ret
+                },
+                resolveCompletionItem: (item, cancellationToken) => {
+                        try {
+                                if (!item || !item.data) return item
+                                if (item.data.aiDocResolved || item.data.aiDocPending) return item
+                                if (item.data.source !== "kotlin") return item
+                                if (!globalEditor || !globalEditor.getModel) return item
+                                var model = globalEditor.getModel()
+                                if (!model) return item
+                                var pos = globalEditor.getPosition()
+                                if (!pos) return item
+
+                                item.data.aiDocPending = true
+                                var rawLabel = item.label
+                                var labelText = (typeof rawLabel === "string") ? rawLabel : ((rawLabel && rawLabel.label) ? rawLabel.label : "")
+                                var payload = {
+                                        uid: window.currentSelectedCode[0].uid,
+                                        property: window.currentSelectedProperty,
+                                        label: labelText || "",
+                                        insertText: item.data.insertText || item.insertText || "",
+                                        detail: item.data.detail || item.detail || "",
+                                        displayText: item.data.displayText || labelText || "",
+                                        existingDocumentation: (item.documentation && item.documentation.value) ? item.documentation.value : "",
+                                        allCode: model.getValue(),
+                                        line: pos.lineNumber,
+                                        column: pos.column,
+                                        position: model.getOffsetAt({lineNumber: pos.lineNumber, column: pos.column})
+                                }
+
+                                return new Promise(resolve => {
+                                        sendWithReply("resolve-completion", payload, "resolve-completion", (message, payload) => {
+                                                if (payload && payload.documentation) {
+                                                        var existing = (item.documentation && item.documentation.value) || ""
+                                                        var combined = existing ? (existing + "\n\n---\n\n" + payload.documentation) : payload.documentation
+                                                        item.documentation = {
+                                                                value: combined,
+                                                                isTrusted: true,
+                                                                supportThemeIcons: true,
+                                                                supportHtml: true,
+                                                        }
+                                                }
+                                                item.data.aiDocPending = false
+                                                item.data.aiDocResolved = true
+                                                resolve(item)
+                                                return true
+                                        })
+                                })
+                        } catch (e) {
+                                if (item && item.data) {
+                                        item.data.aiDocPending = false
+                                        item.data.aiDocResolved = true
+                                }
+                                return item
+                        }
                 }
         }
         monaco.languages.registerCompletionItemProvider("kotlin", completionProvider)
         monaco.languages.registerCompletionItemProvider("python", completionProvider)
         monaco.languages.registerCompletionItemProvider("clojure", completionProvider)
+        monaco.languages.registerCompletionItemProvider("glsl", completionProvider)
 
 
         console.log(" monitoring selection ")

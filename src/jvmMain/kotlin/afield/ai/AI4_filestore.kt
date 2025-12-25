@@ -208,6 +208,8 @@ class OpenAiFileStoreCache(
             if (existing != null) {
                 val kHash = keyHash(openAiApiKey)
                 val cHash = contentHash(contentBytes)
+
+                println(" checking cache ${fileName} ${kHash}; ${cHash} ")
                 val rec = lock.read {
                     db.byKey[kHash]?.get(cHash)?.lastOrNull()
                 } ?: FileRecord(existing, fileName, purpose, contentBytes.size.toLong())
@@ -215,22 +217,36 @@ class OpenAiFileStoreCache(
             }
         }
 
+        println("AI4_filestore: uploading $fileName")
         // Upload then record
         val fileId = uploader.upload(
             openAiApiKey = openAiApiKey, fileName = fileName, contentBytes = contentBytes, purpose = purpose
         )
 
-        return put(
-            openAiApiKey = openAiApiKey,
-            contentBytes = contentBytes,
-            fileId = fileId,
-            fileName = fileName,
-            purpose = purpose,
-            duplicatePolicy = when (duplicatePolicy) {
-                DuplicatePolicy.REUSE_EXISTING -> DuplicatePolicy.OVERWRITE // after upload, prefer to store it
-                else -> duplicatePolicy
+        val kHash = keyHash(openAiApiKey)
+        val cHash = contentHash(contentBytes)
+        val rec = FileRecord(fileId, fileName, purpose, contentBytes.size.toLong())
+
+        return try {
+            put(
+                openAiApiKey = openAiApiKey,
+                contentBytes = contentBytes,
+                fileId = fileId,
+                fileName = fileName,
+                purpose = purpose,
+                duplicatePolicy = when (duplicatePolicy) {
+                    DuplicatePolicy.REUSE_EXISTING -> DuplicatePolicy.OVERWRITE // after upload, prefer to store it
+                    else -> duplicatePolicy
+                }
+            )
+        } catch (e: Exception) {
+            lock.write {
+                val byContent = db.byKey.getOrPut(kHash) { mutableMapOf() }
+                byContent[cHash] = mutableListOf(rec)
             }
-        )
+            println("AI4_filestore: cache persist failed for $fileName: ${e.message}")
+            CachePutResult(cHash, kHash, rec, action = "added-unpersisted")
+        }
     }
 
     fun removeByContent(openAiApiKey: String, contentBytes: ByteArray): Boolean {
@@ -245,6 +261,10 @@ class OpenAiFileStoreCache(
 
     fun snapshot(): FileStoreCacheDb = lock.read { db.copy(byKey = deepCopy(db.byKey)) }
 
+    fun flush() {
+        lock.write { persistLocked() }
+    }
+
     /* ----------------------------- persistence ----------------------------- */
 
     private fun loadOrCreate(): FileStoreCacheDb {
@@ -253,7 +273,8 @@ class OpenAiFileStoreCache(
             Files.newBufferedReader(dbPath, StandardCharsets.UTF_8).use { r ->
                 mapper.readValue(r, FileStoreCacheDb::class.java)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             // If corrupt, keep a backup and start fresh.
             val backup = dbPath.resolveSibling(dbPath.fileName.toString() + ".corrupt")
             try {
@@ -274,9 +295,14 @@ class OpenAiFileStoreCache(
             mapper.writerWithDefaultPrettyPrinter().writeValue(w, db)
         }
 
-        Files.move(
-            tmp, dbPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE
-        )
+        println(" -- persistLocked ${tmp} ${dbPath} ${db.byKey.size} entries")
+        try {
+            Files.move(
+                tmp, dbPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE
+            )
+        } catch (_: Exception) {
+            Files.move(tmp, dbPath, StandardCopyOption.REPLACE_EXISTING)
+        }
     }
 
     companion object {
@@ -348,6 +374,33 @@ class OkHttpOpenAiFileUploader(
             }
             return id
         }
+    }
+}
+
+data class VirtualUploadResult(
+    val file: VirtualTextFile,
+    val result: CachePutResult
+)
+
+fun uploadVirtualFiles(
+    cache: OpenAiFileStoreCache,
+    uploader: OpenAiFileUploader,
+    openAiApiKey: String,
+    purpose: String,
+    files: List<VirtualTextFile>,
+    duplicatePolicy: DuplicatePolicy = DuplicatePolicy.REUSE_EXISTING
+): List<VirtualUploadResult> {
+    return files.map { file ->
+        val bytes = file.content.toByteArray(StandardCharsets.UTF_8)
+        val result = cache.uploadIfNeeded(
+            openAiApiKey = openAiApiKey,
+            fileName = file.ref.fileName,
+            contentBytes = bytes,
+            purpose = purpose,
+            uploader = uploader,
+            duplicatePolicy = duplicatePolicy
+        )
+        VirtualUploadResult(file, result)
     }
 }
 
@@ -546,20 +599,20 @@ class OpenAiKnowledgeStore(
     )
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private data class VectorStoreFileItem(
+    data class VectorStoreFileItem(
         @JsonProperty("file_id") val fileId: String? = null
     )
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private data class VectorStoreFileBatchCreateResponse(val id: String)
+    data class VectorStoreFileBatchCreateResponse(val id: String)
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private data class VectorStoreFileBatchGetResponse(
+    data class VectorStoreFileBatchGetResponse(
         val id: String, val status: String? = null, @JsonProperty("last_error") val lastError: LastError? = null
     )
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private data class LastError(val message: String? = null)
+    data class LastError(val message: String? = null)
 
     private data class CreatedVectorStore(val vectorStoreId: String)
     private data class CreatedBatch(val batchId: String)
@@ -731,6 +784,7 @@ class OpenAiKnowledgeStore(
     }
 
     private fun writeAtomic(path: Path, bytes: ByteArray) {
+        println(" -- writing atomically to ${path} ${bytes.size} bytes")
         Files.createDirectories(path.parent)
         val tmp = path.resolveSibling(path.fileName.toString() + ".tmp-" + UUID.randomUUID())
         Files.write(tmp, bytes)

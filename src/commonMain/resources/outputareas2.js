@@ -24,7 +24,7 @@ function sizeIframeToContent(iframe, cb) {
                 const width  = Math.max(body.scrollWidth,  html.scrollWidth)-5;
 
                 iframe.style.height = height + 'px';
-                iframe.style.width  = width  + 'px';
+                iframe.style.width  = "100%";//width  + 'px';
 
                 cb({ width, height });
         }
@@ -78,7 +78,8 @@ function disclosureInterface(container) {
                                 requestAnimationFrame(() => {
                                         cw.style.height = targetHeight;
                                         // width based on content width
-                                        wrap.style.width = (cw.scrollWidth + 2) + 'px';
+                                        // wrap.style.width = (cw.scrollWidth + 2) + 'px';
+                                        wrap.style.width = "100%"
                                 });
 
                                 // when done, set height to auto so it can grow/shrink later
@@ -103,7 +104,7 @@ function disclosureInterface(container) {
 
                 requestAnimationFrame(() => {
                         cw.style.height = height;
-                        wrap.style.width = (cw.scrollWidth + 2) + 'px';
+                        wrap.style.width = "100%";//(cw.scrollWidth + 2) + 'px';
                 });
 
                 cw.addEventListener('transitionend', function once(e) {

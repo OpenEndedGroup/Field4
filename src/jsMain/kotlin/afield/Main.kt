@@ -145,6 +145,32 @@ fun deselectBox(it: HTMLElement) {
 
 }
 
+private fun bringBoxToFront(it: HTMLElement) {
+    val boxes = document.body!!.getElementsByClassName("box").asList()
+    if (boxes.isEmpty()) return
+    var maxZ = Int.MIN_VALUE
+    var maxCount = 0
+    var maxBox: HTMLElement? = null
+    boxes.forEach { box ->
+        val z = box.unsafeCast<HTMLElement>().style.zIndex.toIntOrNull() ?: 0
+        if (z > maxZ) {
+            maxZ = z
+            maxCount = 1
+            maxBox = box as HTMLElement
+        } else if (z == maxZ) {
+            maxCount++
+        }
+    }
+    val selectedZ = it.style.zIndex.toIntOrNull() ?: 0
+    if (maxBox == null) return
+    if (maxCount == 1 && maxBox != it) {
+        maxBox!!.style.zIndex = selectedZ.toString()
+        it.style.zIndex = maxZ.toString()
+    } else {
+        it.style.zIndex = (maxZ + 1).toString()
+    }
+}
+
 fun selectBox(it: HTMLElement) {
     it.classList.add("selected")
     it.unsafeCast<dynamic>().selected = true
@@ -155,6 +181,7 @@ fun selectBox(it: HTMLElement) {
 //        if (p.lastChild != it) {
 //            p.appendChild(it)
 //        }
+        bringBoxToFront(it)
 
         selectedList = eval("[]")
         selected.forEach { selectedList.push(it) }
