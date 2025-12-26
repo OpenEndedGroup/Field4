@@ -71,7 +71,10 @@ private class OpenXRSwapchainWrapper(
                 val vkImage = images[i].image()
                 swapchainImages.add(vkImage)
                 
-                // Create ImageView for this swapchain image
+                // Create ImageView for this swapchain image.
+                // Note: We pass the VkImage handle directly (obtained from OpenXR) to ImageView.
+                // OpenXR manages the underlying VkImage lifecycle, but we create and own the VkImageView.
+                // This differs from typical Image creation where Field4 allocates the VkImage itself.
                 val viewData = ImageViewData()
                     .format(format)
                     .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
@@ -280,6 +283,10 @@ class OpenXRRenderTarget(
     private val leftProjMatrix = Matrix4f()
     private val rightViewMatrix = Matrix4f()
     private val rightProjMatrix = Matrix4f()
+    
+    // Near/far clip planes (can be overridden in leftMVP/rightMVP calls)
+    private var currentZNear = 0.01f
+    private var currentZFar = 1000f
 
     init {
         initOpenXR()
@@ -369,7 +376,7 @@ class OpenXRRenderTarget(
             recommendedWidth = configViews[0].recommendedImageRectWidth()
             recommendedHeight = configViews[0].recommendedImageRectHeight()
 
-            println("[OpenXR] Recommended render target size: ${recommendedWidth}x${recommendedHeight}")
+            System.err.println("[OpenXR] Recommended render target size: ${recommendedWidth}x${recommendedHeight}")
         }
     }
 
@@ -592,9 +599,9 @@ class OpenXRRenderTarget(
         // Update view and projection matrices
         if (countBuf[0] >= 2) {
             updateViewMatrix(views[0], leftViewMatrix)
-            updateProjectionMatrix(views[0].fov(), leftProjMatrix)
+            updateProjectionMatrix(views[0].fov(), leftProjMatrix, currentZNear, currentZFar)
             updateViewMatrix(views[1], rightViewMatrix)
-            updateProjectionMatrix(views[1].fov(), rightProjMatrix)
+            updateProjectionMatrix(views[1].fov(), rightProjMatrix, currentZNear, currentZFar)
         }
     }
 
@@ -612,9 +619,7 @@ class OpenXRRenderTarget(
         outMatrix.invert()
     }
 
-    private fun updateProjectionMatrix(fov: XrFovf, outMatrix: Matrix4f) {
-        val zNear = 0.01f
-        val zFar = 1000f
+    private fun updateProjectionMatrix(fov: XrFovf, outMatrix: Matrix4f, zNear: Float, zFar: Float) {
 
         val tanLeft = kotlin.math.tan(fov.angleLeft())
         val tanRight = kotlin.math.tan(fov.angleRight())
@@ -703,11 +708,40 @@ class OpenXRRenderTarget(
         }
     }
 
+    /**
+     * Get view and projection matrices for the left eye.
+     * The matrices are updated during the frame loop based on current HMD tracking.
+     * 
+     * @param zNear Near clipping plane distance (default: 0.01)
+     * @param zFar Far clipping plane distance (default: 1000)
+     * @return Pair of (view matrix, projection matrix)
+     */
     fun leftMVP(zNear: Float = 0.01f, zFar: Float = 1000f): Pair<Matrix4f, Matrix4f> {
+        // Update clip planes if changed and recalculate projection if needed
+        if (zNear != currentZNear || zFar != currentZFar) {
+            currentZNear = zNear
+            currentZFar = zFar
+            if (::views.isInitialized && views.remaining() >= 2) {
+                updateProjectionMatrix(views[0].fov(), leftProjMatrix, zNear, zFar)
+                updateProjectionMatrix(views[1].fov(), rightProjMatrix, zNear, zFar)
+            }
+        }
         return leftViewMatrix to leftProjMatrix
     }
 
+    /**
+     * Get view and projection matrices for the right eye.
+     * The matrices are updated during the frame loop based on current HMD tracking.
+     * 
+     * @param zNear Near clipping plane distance (default: 0.01)
+     * @param zFar Far clipping plane distance (default: 1000)
+     * @return Pair of (view matrix, projection matrix)
+     */
     fun rightMVP(zNear: Float = 0.01f, zFar: Float = 1000f): Pair<Matrix4f, Matrix4f> {
+        // Projection matrices are updated in leftMVP if needed
+        if (zNear != currentZNear || zFar != currentZFar) {
+            leftMVP(zNear, zFar)  // This will update both left and right
+        }
         return rightViewMatrix to rightProjMatrix
     }
 
