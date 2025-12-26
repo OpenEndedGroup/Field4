@@ -72,49 +72,14 @@ private class OpenXRSwapchainWrapper(
                 swapchainImages.add(vkImage)
                 
                 // Create ImageView for this swapchain image
-                // Note: We wrap the OpenXR-provided VkImage without creating our own Image object
-                val imageView = createImageViewForSwapchainImage(vkImage)
-                imageViews.add(imageView)
-            }
-        }
-    }
-
-    private fun createImageViewForSwapchainImage(vkImage: Long): ImageView {
-        MemoryStack.stackPush().use { stack ->
-            val viewInfo = VkImageViewCreateInfo.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-                .image(vkImage)
-                .viewType(VK_IMAGE_VIEW_TYPE_2D)
-                .format(format)
-                .components { it
-                    .r(VK_COMPONENT_SWIZZLE_R)
-                    .g(VK_COMPONENT_SWIZZLE_G)
-                    .b(VK_COMPONENT_SWIZZLE_B)
-                    .a(VK_COMPONENT_SWIZZLE_A)
-                }
-                .subresourceRange { it
+                val viewData = ImageViewData()
+                    .format(format)
                     .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0)
-                    .levelCount(1)
-                    .baseArrayLayer(0)
+                    .mipLevels(1)
                     .layerCount(1)
-                }
-            
-            val pView = stack.mallocLong(1)
-            vkCreateImageView(renderer.device.vkDevice, viewInfo, null, pView)
-            
-            return object : ImageView(renderer.device, null, ImageViewData()) {
-                init {
-                    // Override the vkImageView with our created view
-                    this.vkImageView = pView[0]
-                }
                 
-                override fun cleanup() {
-                    if (vkImageView != 0L) {
-                        vkDestroyImageView(renderer.device.vkDevice, vkImageView, null)
-                        vkImageView = 0L
-                    }
-                }
+                val imageView = ImageView(renderer.device, vkImage, viewData)
+                imageViews.add(imageView)
             }
         }
     }
@@ -242,40 +207,6 @@ private class OpenXRSwapchainWrapper(
         if (xrSwapchain != 0L) {
             xrDestroySwapchain(xrSwapchain)
         }
-    }
-}
-
-// Helper to transition image layouts with raw VkImage handle
-private fun image_layout_transition(
-    cmd: VkCommandBuffer,
-    vkImage: Long,
-    srcStageMask: Long,
-    dstStageMask: Long,
-    srcAccessMask: Long,
-    dstAccessMask: Long,
-    oldLayout: Int,
-    newLayout: Int,
-    subresourceRange: VkImageSubresourceRange
-) {
-    MemoryStack.stackPush().use { stack ->
-        val barrier = VkImageMemoryBarrier2.calloc(1, stack)
-            .sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2)
-            .srcStageMask(srcStageMask)
-            .srcAccessMask(srcAccessMask)
-            .dstStageMask(dstStageMask)
-            .dstAccessMask(dstAccessMask)
-            .oldLayout(oldLayout)
-            .newLayout(newLayout)
-            .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .image(vkImage)
-            .subresourceRange(subresourceRange)
-
-        val depInfo = VkDependencyInfo.calloc(stack)
-            .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
-            .pImageMemoryBarriers(barrier)
-
-        vkCmdPipelineBarrier2(cmd, depInfo)
     }
 }
 
