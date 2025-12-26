@@ -200,6 +200,10 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vulkan")
+                
+                // OpenXR dependencies (keep OpenVR above)
+                implementation("org.lwjgl:lwjgl-openxr:$lwjglVersion")
+                implementation("org.lwjgl:lwjgl-openxr::${lwjglNatives}")
 
                 if (lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-vulkan::${lwjglNatives}")
                 implementation("org.joml:joml:$jomlVersion")

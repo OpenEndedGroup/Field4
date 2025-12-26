@@ -346,6 +346,119 @@ class Instance(validate: Boolean) {
                 emptyList()
             }
         }
+
+        // --- OpenXR helpers (optional) --------------------------------------
+
+        /**
+         * Check if OpenXR runtime is available.
+         * This attempts to enumerate OpenXR instance extensions.
+         */
+        private fun isOpenXRAvailable(): Boolean {
+            return try {
+                MemoryStack.stackPush().use { stack ->
+                    val countBuf = stack.mallocInt(1)
+                    org.lwjgl.openxr.XR10.xrEnumerateInstanceExtensionProperties(
+                        null as String?,
+                        countBuf,
+                        null
+                    )
+                    countBuf[0] > 0
+                }
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
+        /**
+         * Get Vulkan instance extensions required by OpenXR.
+         * Returns empty list if OpenXR is not available or VR is disabled.
+         * Note: This doesn't require an OpenXR instance to be created yet.
+         */
+        fun getOpenXRRequiredInstanceExts(): List<String> {
+            if (!Options.enableVR) return emptyList()
+            if (!isOpenXRAvailable()) return emptyList()
+            
+            // For OpenXR, we need to check if the Vulkan extension is available
+            // The actual extension strings will be queried after creating a temporary XR instance
+            return try {
+                MemoryStack.stackPush().use { stack ->
+                    // Check if XR_KHR_vulkan_enable is available
+                    val countBuf = stack.mallocInt(1)
+                    org.lwjgl.openxr.XR10.xrEnumerateInstanceExtensionProperties(
+                        null as String?,
+                        countBuf,
+                        null
+                    )
+                    val count = countBuf[0]
+                    if (count == 0) return emptyList()
+                    
+                    val props = org.lwjgl.openxr.XrExtensionProperties.calloc(count, stack)
+                    for (i in 0 until count) {
+                        props[i].type(org.lwjgl.openxr.XR10.XR_TYPE_EXTENSION_PROPERTIES)
+                    }
+                    
+                    org.lwjgl.openxr.XR10.xrEnumerateInstanceExtensionProperties(
+                        null as String?,
+                        countBuf,
+                        props
+                    )
+                    
+                    var hasVulkanEnable = false
+                    for (i in 0 until count) {
+                        if (props[i].extensionNameString() == org.lwjgl.openxr.KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME) {
+                            hasVulkanEnable = true
+                            break
+                        }
+                    }
+                    
+                    if (!hasVulkanEnable) return emptyList()
+                    
+                    // For now, return an empty list as we'll add the required extensions
+                    // when the OpenXRRenderTarget initializes and can properly query them
+                    // The alternative would be to create a temporary XR instance here which is expensive
+                    emptyList()
+                }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        }
+
+        /**
+         * Get Vulkan device extensions required by OpenXR.
+         * Returns empty list if OpenXR is not available or VR is disabled.
+         * This should be called after OpenXR instance and system are available.
+         */
+        fun getOpenXRRequiredDeviceExts(xrInstance: Long, systemId: Long): List<String> {
+            if (!Options.enableVR) return emptyList()
+            if (xrInstance == 0L || systemId == 0L) return emptyList()
+            return try {
+                MemoryStack.stackPush().use { stack ->
+                    // First call to get the size
+                    val countBuf = stack.mallocInt(1)
+                    org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanDeviceExtensionsKHR(
+                        xrInstance,
+                        systemId,
+                        countBuf,
+                        null as java.nio.ByteBuffer?
+                    )
+                    val count = countBuf[0]
+                    if (count == 0) return emptyList()
+                    
+                    // Second call to get the actual extensions
+                    val buffer = stack.malloc(count)
+                    org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanDeviceExtensionsKHR(
+                        xrInstance,
+                        systemId,
+                        countBuf,
+                        buffer
+                    )
+                    val exts = org.lwjgl.system.MemoryUtil.memUTF8(buffer, count)
+                    exts.split(' ').filter { it.isNotBlank() }
+                }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        }
     }
 
 // --- Tooling info dump (optional) ----------------------------------------
