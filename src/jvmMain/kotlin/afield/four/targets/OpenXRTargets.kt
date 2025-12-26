@@ -210,6 +210,39 @@ private class OpenXRSwapchainWrapper(
     }
 }
 
+/**
+ * OpenXR-based stereo VR render target for Field4.
+ * 
+ * This class provides OpenXR rendering support analogous to OpenVRRenderTarget.
+ * It creates an OpenXR instance, session, and per-eye swapchains, managing the
+ * complete frame loop (xrWaitFrame/xrBeginFrame/xrEndFrame) and view/pose tracking.
+ * 
+ * Usage:
+ * ```kotlin
+ * val xrTarget = OpenXRRenderTarget(renderer) {
+ *     format = VK_FORMAT_B8G8R8A8_SRGB
+ *     clearColor = vec(0.1, 0.1, 0.1, 1.0)
+ * }
+ * 
+ * // Add modules to render
+ * xrTarget += "myScene" to myModule
+ * 
+ * // Get view/projection matrices for rendering
+ * val (leftView, leftProj) = xrTarget.leftMVP()
+ * val (rightView, rightProj) = xrTarget.rightMVP()
+ * ```
+ * 
+ * Features:
+ * - Automatic OpenXR instance/system/session creation
+ * - Per-eye swapchains with recommended resolution from runtime
+ * - Vulkan graphics binding integration
+ * - Session state management (handles READY, STOPPING, EXITING events)
+ * - View/pose tracking via xrLocateViews
+ * - Swapchain image acquire/wait/release
+ * - Integration with renderer.renderStart/renderEnd hooks
+ * 
+ * Note: Requires an OpenXR runtime to be installed and running.
+ */
 class OpenXRRenderTarget(
     val renderer: Renderer,
     val eyeParams: OpenXREyeParams.() -> Unit = {}
