@@ -1,219 +1,163 @@
-
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send } from "./afield.mjs";
 
-// helper: try to resize iframe to its content, call cb({ width, height }) if it works
-function sizeIframeToContent(iframe, cb) {
-        function measure() {
-                let doc;
-                try {
-                        doc = iframe.contentDocument || iframe.contentWindow.document;
-                } catch (e) {
-                        // cross-origin: we can't inspect it
-                        cb(null);
-                        return;
-                }
-                if (!doc) {
-                        cb(null);
-                        return;
-                }
+const DEFAULT_W = 360;
+const DEFAULT_H = 240;
+const CLOSED_W = 200;
 
-                const body = doc.body;
-                const html = doc.documentElement;
-
-                const height = Math.max(body.scrollHeight, html.scrollHeight);
-                const width  = Math.max(body.scrollWidth,  html.scrollWidth)-5;
-
-                iframe.style.height = height + 'px';
-                iframe.style.width  = "100%";//width  + 'px';
-
-                cb({ width, height });
-        }
-
-        // if it's already loaded, measure immediately, otherwise wait
-        try {
-                const doc = iframe.contentDocument || iframe.contentWindow.document;
-                if (doc && doc.readyState === 'complete') {
-                        measure();
-                } else {
-                        iframe.addEventListener('load', () => measure(), { once: true });
-                }
-        } catch (e) {
-                // cross-origin: can't even touch contentDocument
-                cb(null);
-        }
-}
-
-
+// --- Disclosure handling (new behavior) ---
 function disclosureInterface(container) {
         if (container.__disclosureAPI) return container.__disclosureAPI;
-        const disclosures = {};
 
-        function animateOpen(d) {
-                const { wrap, cw } = d;
+        const disclosures = new Map(); // id -> { wrap, hdr, cw, arr }
+        const states = new Map(); // id -> { open, width, height, scrollTop, scrollLeft }
 
-                wrap.style.width = 'auto';
-                cw.style.display = 'block';
+        function ensureState(id) {
+            if (!states.has(id)) {
+                states.set(id, { open: false, width: DEFAULT_W, height: DEFAULT_H, scrollTop: 0, scrollLeft: 0 });
+            }
+            return states.get(id);
+        }
 
-                const onlyChild =
-                    cw.children.length === 1 ? cw.children[0] : null;
+        function saveScroll(id, d) {
+                const st = ensureState(id);
+                st.scrollTop = d.cw.scrollTop;
+                st.scrollLeft = d.cw.scrollLeft;
+                states.set(id, st);
+        }
 
-                // if single child is an iframe, try to use its "natural" size
-                if (onlyChild && onlyChild.tagName === 'IFRAME') {
-                        const iframe = onlyChild;
+        function rememberSize(id, d) {
+                if (d.cw.style.display === "none") return;
+                const st = ensureState(id);
+                const rect = d.cw.getBoundingClientRect();
+                st.width = Math.max(rect.width, 50);
+                st.height = Math.max(d.cw.clientHeight, 20);
+                states.set(id, st);
+                d.wrap.style.width = `${st.width}px`;
+        }
 
-                        sizeIframeToContent(iframe, (size) => {
-                                // if we couldn't measure (cross-origin), fall back to normal behavior
-                                const targetHeight = size
-                                    ? size.height + 'px'
-                                    : cw.scrollHeight + 'px';
+        function applyClosed(d) {
+                d.wrap.classList.remove("open");
+                d.cw.style.display = "none";
+                d.cw.style.height = "0px";
+                d.cw.style.padding = "0px";
+                d.wrap.style.width = `${CLOSED_W}px`;
+        }
 
-                                // start collapsed
-                                cw.style.height = '0px';
+        function applyOpen(id, d) {
+                const st = ensureState(id);
+                const w = st.width || DEFAULT_W;
+                const h = st.height || DEFAULT_H;
+                d.wrap.classList.add("open");
+                d.cw.style.display = "block";
+                d.cw.style.padding = d.cw.dataset.origPadding || "0px";
+                d.cw.style.width = `${w}px`;
+                d.cw.style.height = `${h}px`;
+                d.cw.scrollTop = st.scrollTop || 0;
+                d.cw.scrollLeft = st.scrollLeft || 0;
+                d.wrap.style.width = `${w}px`;
+        }
 
-                                // force reflow so the transition will apply
-                                void cw.offsetHeight;
+        function ensureBehaviors(id, d) {
+                d.cw.style.overflow = "auto";
+                d.cw.style.resize = "both";
+                d.cw.style.boxSizing = "border-box";
+                d.cw.style.maxWidth = "none";
+                d.cw.style.minHeight = "0px";
 
-                                cw.style.transition = 'height 0.2s ease';
-
-                                requestAnimationFrame(() => {
-                                        cw.style.height = targetHeight;
-                                        // width based on content width
-                                        // wrap.style.width = (cw.scrollWidth + 2) + 'px';
-                                        wrap.style.width = "100%"
-                                });
-
-                                // when done, set height to auto so it can grow/shrink later
-                                cw.addEventListener('transitionend', function once(e) {
-                                        if (e.target !== cw || e.propertyName !== 'height') return;
-                                        cw.removeEventListener('transitionend', once);
-                                        cw.style.height = 'auto';
-                                        cw.style.transition = '';
-                                });
-                        });
-
-                        return; // don't run the fallback below
+                if (!d.cw.dataset.origPadding) {
+                        const cs = getComputedStyle(d.cw);
+                        d.cw.dataset.origPadding = cs.padding;
                 }
 
-                // === fallback: original behavior when not a single iframe ===
-
-                const height = cw.scrollHeight + 'px';
-                cw.style.height = '0px';
-                void cw.offsetHeight; // force reflow
-
-                cw.style.transition = 'height 0.2s ease';
-
-                requestAnimationFrame(() => {
-                        cw.style.height = height;
-                        wrap.style.width = "100%";//(cw.scrollWidth + 2) + 'px';
-                });
-
-                cw.addEventListener('transitionend', function once(e) {
-                        if (e.target !== cw || e.propertyName !== 'height') return;
-                        cw.removeEventListener('transitionend', once);
-                        cw.style.height = 'auto';
-                        cw.style.transition = '';
-                });
-        }
-
-        function animateClose(d) {
-                const {wrap, cw} = d;
-                const height = cw.scrollHeight + 'px';
-                cw.style.height = height;
-                requestAnimationFrame(() => {
-                        // cw.style.transition = 'height 0.2s ease';
-                        cw.style.height = '0px';
-                        cw.style.display = 'none';
-                        cw.style.transition = '';
-                        wrap.style.width = '200px';
-                });
-                // cw.addEventListener('transitionend', function once() {
-                //         cw.removeEventListener('transitionend', once);
-                // });
-        }
-
-        function upsertDisclosure(id, title, content) {
-                let d = disclosures[id];
-                if (!d) {
-                        const wrap = document.createElement('div');
-                        wrap.className = 'disclosure';
-                        const hdr = document.createElement('div');
-                        hdr.className = 'disclosure-header';
-                        const arr = document.createElement('div');
-                        arr.className = 'arrow';
-                        const ttl = document.createElement('div');
-                        ttl.className = 'title';
-                        ttl.textContent = title;
-                        hdr.append(arr, ttl);
-                        if (content === null) hdr.classList.add('hide-arrow', 'no-hover');
-                        const cw = document.createElement('div');
-                        cw.className = 'disclosure-content';
-
-                        cw.innerHTML = content || '';
-
-                        hdr.addEventListener('mouseenter', () => wrap.classList.add('hover'));
-                        hdr.addEventListener('mouseleave', () => wrap.classList.remove('hover'));
-                        hdr.addEventListener('mousedown', (e) => {
-                                if (!e.target.closest('input, label') && !hdr.classList.contains('no-hover')) toggle(id);
-                        });
-                        hdr.addEventListener('click', e => {
-                                // if (!e.target.closest('input, label') && !hdr.classList.contains('no-hover')) toggle(id);
-                        });
-                        wrap.append(hdr, cw);
-                        container.appendChild(wrap);
-                        d = {wrap, hdr, cw, arr};
-                        disclosures[id] = d;
-                        return cw
-                } else {
-                        const {wrap, hdr, cw} = d;
-                        hdr.querySelector('.title').textContent = title;
-                        if (content === null) {
-                                hdr.classList.add('hide-arrow', 'no-hover');
-                                cw.innerHTML = '';
-                                close(id);
-                        } else {
-                                hdr.classList.remove('hide-arrow', 'no-hover');
-                                cw.innerHTML = content;
-                                // if (wrap.classList.contains('open')) wrap.style.width = (cw.scrollWidth -2) + 'px';
-                        }
-                        return cw
-                }
-        }
-
-        function setContent(id, content) {
-                const d = disclosures[id];
-                if (!d) return;
-                return upsertDisclosure(id, d.hdr.querySelector('.title').textContent, content);
-        }
-
-        function toggle(id) {
-                const d = disclosures[id];
-                if (!d) return;
-                d.wrap.classList.contains('open') ? close(id) : open(id);
+                d.cw.addEventListener("scroll", () => saveScroll(id, d));
+                d.cw.addEventListener("mouseup", () => rememberSize(id, d));
+                d.cw.addEventListener("mouseleave", () => rememberSize(id, d));
         }
 
         function open(id) {
-                const d = disclosures[id];
-                if (d.hdr.classList.contains('no-hover')) return;
-                if (d.wrap.classList.contains('open')) {
-                        const width = d.cw.scrollWidth + 2;
-                        d.wrap.style.width = width + 'px';
-                        return;
-                }
-                d.wrap.classList.add('open');
-                animateOpen(d);
+                const d = disclosures.get(id);
+                if (!d) return;
+                const st = ensureState(id);
+                if (!st.width) st.width = DEFAULT_W;
+                if (!st.height) st.height = DEFAULT_H;
+                applyOpen(id, d);
+                st.open = true;
+                states.set(id, st);
         }
 
         function close(id) {
-                const d = disclosures[id];
-                d.wrap.classList.remove('open');
-                animateClose(d);
+                const d = disclosures.get(id);
+                if (!d) return;
+                rememberSize(id, d);
+                saveScroll(id, d);
+                const st = ensureState(id);
+                st.open = false;
+                states.set(id, st);
+                applyClosed(d);
         }
 
-        const api = {upsertDisclosure, setContent, toggle, open, close};
+        function toggle(id) {
+                const st = ensureState(id);
+                st.open ? close(id) : open(id);
+        }
+
+        function upsertDisclosure(id, title, content) {
+                let d = disclosures.get(id);
+                if (!d) {
+                        const wrap = document.createElement("div");
+                        wrap.className = "disclosure";
+                        wrap.__disclosureId = id;
+                        const hdr = document.createElement("div");
+                        hdr.className = "disclosure-header";
+                        const arr = document.createElement("div");
+                        arr.className = "arrow";
+                        const ttl = document.createElement("div");
+                        ttl.className = "title";
+                        ttl.textContent = title;
+                        hdr.append(arr, ttl);
+                        const cw = document.createElement("div");
+                        cw.className = "disclosure-content";
+                        cw.innerHTML = content || "";
+
+                        hdr.addEventListener("click", (e) => {
+                                if (!e.target.closest("input, label")) toggle(id);
+                        });
+
+                        wrap.append(hdr, cw);
+                        container.appendChild(wrap);
+                        d = { wrap, hdr, cw, arr };
+                        disclosures.set(id, d);
+                        ensureBehaviors(id, d);
+                        applyClosed(d);
+                } else {
+                        const { hdr, cw } = d;
+                        hdr.querySelector(".title").textContent = title;
+                        cw.innerHTML = content || "";
+                }
+
+                return disclosures.get(id).cw;
+        }
+
+        function setContent(id, content) {
+                const d = disclosures.get(id);
+                if (!d) return;
+                d.cw.innerHTML = content || "";
+                const st = ensureState(id);
+                if (st.open) {
+                        const rect = d.cw.getBoundingClientRect();
+                        st.width = Math.max(rect.width, 50);
+                        st.height = Math.max(d.cw.scrollHeight, 20);
+                        states.set(id, st);
+                        applyOpen(id, d);
+                }
+        }
+
+        const api = { upsertDisclosure, setContent, toggle, open, close };
         container.__disclosureAPI = api;
         return api;
 }
 
+window.disclosureInterface = disclosureInterface;
 window.aiChatMarkdownToHtml = aiChatMarkdownToHtml;
 window.aiChatHistoryToHtml = aiChatHistoryToHtml;
 
@@ -382,6 +326,5 @@ function openAiChatForBox(uid, property) {
         }, 0);
 }
 
-window.disclosureInterface = disclosureInterface;
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;

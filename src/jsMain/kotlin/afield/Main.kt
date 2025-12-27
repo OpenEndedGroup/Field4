@@ -104,7 +104,6 @@ fun select(selector: String): List<HTMLElement> {
 
 
 fun showCheatsheet() {
-    println(select("#cheatsheet"))
     (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter =
         "blur(20px) brightness(0.0)"
     select("#cheatsheet").forEach {
@@ -219,6 +218,8 @@ suspend fun main() {
     window.unsafeCast<dynamic>().selected = selected
     window.unsafeCast<dynamic>().selectedList = selectedList
     window.unsafeCast<dynamic>().selectedProperty = selectedProperty
+    window.unsafeCast<dynamic>().selectBox = ::selectBox
+    window.unsafeCast<dynamic>().deselectBox = ::deselectBox
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
 
@@ -231,15 +232,16 @@ suspend fun main() {
     }
 
     doubleTap["Shift"] = {
-        if (window.unsafeCast<dynamic>().globalEditor.hasTextFocus()) {
-            console.log(" body ")
-            window.unsafeCast<dynamic>().globalEditor._domElement.blur()
-            document.body!!.focus()
+        val w = window.unsafeCast<dynamic>()
+        val fn = w.openAnywherePalette
+        if (fn != undefined && fn != null) {
+            try { fn() } catch (e: Exception) { console.log("openAnywherePalette failed", e) }
         } else {
-            console.log(" editor ")
-            window.unsafeCast<dynamic>().globalEditor.focus()
+            console.log("openAnywherePalette not available")
         }
+        null
     }
+
 
     handlers.put("local-eval") { message, _ ->
         val le = Json.decodeFromJsonElement<LocalEval>(message.payload!!)
@@ -375,12 +377,70 @@ suspend fun main() {
         return found!!
     }
 
+    fun ensureNestedOutputArea(box: HTMLElement): HTMLElement {
+        val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
+            ?: return box
+        val contain = outputArea.querySelector(".disclosure-group")
+        val di = js("window.disclosureInterface")
+        if (di == null) {
+            console.log("disclosureInterface not ready yet; skipping nested output area init")
+            return outputArea
+        }
+        val inter = di(contain!!)
+        val nestedRoot = (inter.upsertDisclosure as (String, String, String) -> HTMLElement).invoke(
+            "nested",
+            "nested",
+            ""
+        ) as HTMLElement
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+        return nestedRoot
+    }
+
+    fun handleNestedTopology(parent: HTMLElement, nestedIds: List<String>) {
+        val previous = (parent.unsafeCast<dynamic>().box_nested as? Array<String>)?.toSet() ?: emptySet()
+        val newSet = nestedIds.toSet()
+        val toRemove = previous - newSet
+
+        val nestedRoot = ensureNestedOutputArea(parent)
+
+        toRemove.forEach { childId ->
+            val child = document.body!!.getElementsByClassName("box").asList()
+                .firstOrNull { it.unsafeCast<dynamic>().uid == childId } as? HTMLElement
+            if (child != null && child != parent) {
+                mainCanvas.appendChild(child)
+            }
+        }
+
+        nestedIds.forEach { childId ->
+            val child = defaultCreate(childId)
+            if (child != parent) {
+                nestedRoot.appendChild(child)
+            }
+        }
+
+        parent.unsafeCast<dynamic>().box_nested = nestedIds.toTypedArray()
+    }
+
     handlers.put("set-topology") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_topology>(message.payload!!)
         val u = set.uid
 
         var found = defaultCreate(u)
-        found.unsafeCast<dynamic>().box_children = set.value.toTypedArray()
+
+        when (set.kind) {
+            "box_children" -> {
+                found.unsafeCast<dynamic>().box_children = set.value.toTypedArray()
+            }
+
+            "box_nested" -> {
+                handleNestedTopology(found, set.value)
+            }
+
+            "box_nestedIn" -> {
+                found.unsafeCast<dynamic>().box_nestedIn = set.value.firstOrNull()
+            }
+        }
 
         canvasGestures.rebuildConnectionGroup()
         Handled.yes
@@ -432,6 +492,7 @@ suspend fun main() {
                 } else {
                     found!!.getElementsByClassName("doubleClickToEdit").asList()[0].innerHTML = set.value
                 }
+                found.unsafeCast<dynamic>().name = set.value
             }
 
             "code" -> {
@@ -636,24 +697,24 @@ suspend fun main() {
     mainCanvas.unsafeCast<dynamic>().data_y = 0
 
     // TODO!
-    val outputAreaResizing = interact(".outputArea")
-
-    val outputResizeHandler = { event: dynamic ->
-        val target: dynamic = event.target
-
-        val parent_w = target.parentElement.parentElement.data_w
-        target.style.width = event.rect.width + "px"
-        target.style.height = event.rect.height + "px"
-
-        target.data_w = event.rect.width
-        target.data_h = event.rect.height
-    }
-
-    outputAreaResizing.resizable(
-        json("edges" to json("top" to false, "bottom" to true, "left" to false, "right" to true))
-    ).on("resizemove") { event: dynamic ->
-        outputResizeHandler(event)
-    }
+//    val outputAreaResizing = interact(".outputArea")
+//
+//    val outputResizeHandler = { event: dynamic ->
+//        val target: dynamic = event.target
+//
+//        val parent_w = target.parentElement.parentElement.data_w
+//        target.style.width = event.rect.width + "px"
+//        target.style.height = event.rect.height + "px"
+//
+//        target.data_w = event.rect.width
+//        target.data_h = event.rect.height
+//    }
+//
+//    outputAreaResizing.resizable(
+//        json("edges" to json("top" to false, "bottom" to true, "left" to false, "right" to true))
+//    ).on("resizemove") { event: dynamic ->
+//        outputResizeHandler(event)
+//    }
 
     val moncaoResizing = interact(".monaco-editor-container")
 
@@ -793,7 +854,7 @@ suspend fun main() {
 
         val target: dynamic = event.target
 
-        console.log(" inside resize handler ", event.deltaRect, event.delta)
+        console.log(" inside resize handler ", event.deltaRect, event.delta, target)
         var x: Double = (target.data_x ?: 0.0) + event.deltaRect.left
         var y: Double = (target.data_y ?: 0.0) + event.deltaRect.top
 
@@ -847,7 +908,13 @@ suspend fun main() {
         )
     ).on("resizemove") { event: dynamic ->
 
-        console.log(" RESIZING ")
+        console.log(" RESIZING, original target", event)
+
+        val originalTarget = event._interaction.downEvent.target
+        val isBox = originalTarget?.unsafeCast<HTMLElement>()?.classList?.contains("box") ?: false
+        if (!isBox) {
+            return@on
+        }
 
         if (originatingMouseDown.altKey) {
         } else if (event.altKey) {
@@ -992,7 +1059,7 @@ fun TagConsumer<HTMLElement>.createBox(
 //                padding = Padding(5.px)
                 position = Position.absolute
                 left = 0.px;
-                top = LinearDimension("calc( 100% + 10px )");
+                top = LinearDimension("calc( 100% + 5px )");
 //                right = 0.px;
 //                borderRadius = 5.px;
 //                background = "rgba(0,0,0,0.5)";
@@ -1000,6 +1067,7 @@ fun TagConsumer<HTMLElement>.createBox(
                 overflow = Overflow.visible;
                 visibility = Visibility.hidden;
                 height = 0.px;
+                width = 0.px;
             }.toString()
             div(classes = "disclosure-group") {
             }

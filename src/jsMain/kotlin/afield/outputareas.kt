@@ -50,7 +50,12 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
     outputArea.style.visibility = "visible"
 
     val contain = outputArea.querySelector(".disclosure-group")
-    val inter = disclosureInterface(contain!!)
+    val di = js("window.disclosureInterface")
+    if (di == null) {
+        console.log("disclosureInterface not ready yet; skipping output area for channel ${set.channel}")
+        return
+    }
+    val inter = di(contain!!)
 
     val channelId = set.channel
     val title = if (set.channel == "ai-chat") "AI Chat" else set.channel

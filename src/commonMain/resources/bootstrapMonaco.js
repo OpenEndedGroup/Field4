@@ -292,45 +292,33 @@ const showMonaco = () => {
 }
 
 const showActionMenu = () => {
-        let isFocused = document.activeElement === document.querySelector("textarea.inputarea.monaco-mouse-cursor-text")
-        if (isFocused) {
+        if (window.triggerQuickInput) {
+                triggerQuickInput(() => {
+                        globalEditor.getAction("editor.action.quickCommand").run()
+                })
         } else {
-                document.querySelector('.monaco-editor-container').style.opacity = "1"
-                document.querySelector('.monaco-editor-container').style.visibility = "visible"
-                document.querySelector("textarea.inputarea.monaco-mouse-cursor-text").focus()
                 globalEditor.getAction("editor.action.quickCommand").run()
-                document.querySelector(".monaco-findInput .input").focus()
-                document.querySelector('.quick-input-widget').style.visibility = "visible"
-                document.querySelector('.quick-input-widget').style.display = "block"
-                document.querySelector('.quick-input-widget').style.boxShadow = "none"
-                document.querySelector('.monaco-editor-container').style.visibility = "hidden"
         }
 }
 
 const showPickMenu_custom = (options) => {
-        document.querySelector('.monaco-editor-container').style.opacity = "1"
-        document.querySelector('.monaco-editor-container').style.visibility = "visible"
-        document.querySelector("textarea.inputarea.monaco-mouse-cursor-text").focus()
-        globalEditor.getAction("editor.action.quickCommand").run()
-        document.querySelector(".monaco-findInput .input").focus()
-        document.querySelector('.quick-input-widget').style.visibility = "visible"
-        document.querySelector('.quick-input-widget').style.display = "block"
-        document.querySelector('.quick-input-widget').style.boxShadow = "none"
-        document.querySelector('.monaco-editor-container').style.visibility = "hidden"
-        globalPickMenu_custom(options)
+        if (window.triggerQuickInput) {
+                triggerQuickInput(() => {
+                        globalPickMenu_custom(options)
+                })
+        } else {
+                globalPickMenu_custom(options)
+        }
 }
 
 const showPickMenu = () => {
-        document.querySelector('.monaco-editor-container').style.opacity = "1"
-        document.querySelector('.monaco-editor-container').style.visibility = "visible"
-        document.querySelector("textarea.inputarea.monaco-mouse-cursor-text").focus()
-        globalPickMenu()
-        document.querySelector("textarea.inputarea.monaco-mouse-cursor-text").blur()
-        document.querySelector(".monaco-findInput .input").focus()
-        document.querySelector('.quick-input-widget').style.visibility = "visible"
-        document.querySelector('.quick-input-widget').style.display = "block"
-        document.querySelector('.quick-input-widget').style.boxShadow = "none"
-        document.querySelector('.monaco-editor-container').style.visibility = "hidden"
+        if (window.triggerQuickInput) {
+                triggerQuickInput(() => {
+                        globalPickMenu()
+                })
+        } else {
+                globalPickMenu()
+        }
 }
 
 
