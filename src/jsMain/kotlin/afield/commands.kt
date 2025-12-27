@@ -64,7 +64,40 @@ fun copySelectedBoxesToClipboard() {
 
     sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
-        clipboard.writeText(result.edn)
+        
+        // Write both text and file formats to clipboard using the modern Clipboard API.
+        // This enables two use cases:
+        // 1. text/plain: Standard in-app paste (Cmd/Ctrl+V) for copying boxes within Field4
+        // 2. application/edn: File paste to filesystem (Cmd/Ctrl+V in Finder/Explorer) as metadata.edn
+        // The browser automatically selects the appropriate format based on the paste target.
+        try {
+            // Create a Blob containing the EDN data
+            val blob = js("new Blob([result.edn], { type: 'application/edn' })")
+            
+            // Create a File object with the proper filename
+            val file = js("new File([blob], 'metadata.edn', { type: 'application/edn' })")
+            
+            // Create ClipboardItem with both text/plain and the file
+            val clipboardData = js("({})")
+            clipboardData["text/plain"] = js("new Blob([result.edn], { type: 'text/plain' })")
+            clipboardData["application/edn"] = file
+            
+            val clipboardItem = js("new ClipboardItem(clipboardData)")
+            
+            // Write to clipboard
+            clipboard.write(js("Array").of(clipboardItem)).then({
+                console.log("Copied to clipboard as both text and file")
+            }, { error: dynamic ->
+                console.log("Failed to write file to clipboard, falling back to text-only:", error)
+                // Fallback to text-only if file writing is not supported
+                clipboard.writeText(result.edn)
+            })
+        } catch (e: Exception) {
+            console.log("Modern clipboard API failed, using text-only fallback:", e)
+            // Fallback for browsers that don't support ClipboardItem
+            clipboard.writeText(result.edn)
+        }
+        
         Handled.yes_remove
     }
 }
@@ -78,27 +111,86 @@ fun pasteBoxesFromClipboard() {
         return
     }
 
-    clipboard.readText().then({ text: String ->
-        if (text.isBlank()) return@then
-
-        sendWithReply(Message("paste-boxes").payload(PasteBoxes(text)), "paste-boxes") { message, _ ->
-            val result = Json.decodeFromJsonElement<PasteBoxesResult>(message.payload!!)
-            later({
-                val boxes = result.newUids.mapNotNull { uid ->
-                    document.body!!.getElementsByClassName("box").asList()
-                        .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
-                }
-                if (boxes.isNotEmpty()) {
-                    selected.copy().forEach { deselectBox(it) }
-                    boxes.forEach { selectBox(it) }
-                    canvasGestures.rebuildConnectionGroup()
-                }
-            }, 50)
-            Handled.yes_remove
+    // Try to read clipboard items (supports both text and files)
+    clipboard.read().then({ clipboardItems: dynamic ->
+        var processed = false
+        
+        // Iterate through clipboard items
+        val items = clipboardItems
+        if (items.length > 0) {
+            val item = items[0]
+            
+            // Check if there's an EDN file in the clipboard
+            if (item.types.includes("application/edn")) {
+                item.getType("application/edn").then({ blob: dynamic ->
+                    blob.text().then({ text: String ->
+                        if (text.isNotBlank()) {
+                            processPasteText(text)
+                        }
+                    }, { err: dynamic ->
+                        console.log("Failed to read EDN blob:", err)
+                    })
+                }, { err: dynamic ->
+                    console.log("Failed to get EDN type:", err)
+                })
+                processed = true
+            }
+            // Fallback to plain text
+            else if (item.types.includes("text/plain")) {
+                item.getType("text/plain").then({ blob: dynamic ->
+                    blob.text().then({ text: String ->
+                        if (text.isNotBlank()) {
+                            processPasteText(text)
+                        }
+                    }, { err: dynamic ->
+                        console.log("Failed to read text blob:", err)
+                    })
+                }, { err: dynamic ->
+                    console.log("Failed to get text type:", err)
+                })
+                processed = true
+            }
         }
-    }, { err ->
-        console.log("clipboard read failed", err)
+        
+        // If no items were processed, try the old text-only API as fallback
+        if (!processed) {
+            clipboard.readText().then({ text: String ->
+                if (text.isNotBlank()) {
+                    processPasteText(text)
+                }
+            }, { err: dynamic ->
+                console.log("clipboard read failed", err)
+            })
+        }
+    }, { err: dynamic ->
+        console.log("Failed to read clipboard items, falling back to text:", err)
+        // Fallback to text-only API
+        clipboard.readText().then({ text: String ->
+            if (text.isNotBlank()) {
+                processPasteText(text)
+            }
+        }, { err: dynamic ->
+            console.log("clipboard read failed", err)
+        })
     })
+}
+
+private fun processPasteText(text: String) {
+    sendWithReply(Message("paste-boxes").payload(PasteBoxes(text)), "paste-boxes") { message, _ ->
+        val result = Json.decodeFromJsonElement<PasteBoxesResult>(message.payload!!)
+        later({
+            val boxes = result.newUids.mapNotNull { uid ->
+                document.body!!.getElementsByClassName("box").asList()
+                    .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
+            }
+            if (boxes.isNotEmpty()) {
+                selected.copy().forEach { deselectBox(it) }
+                boxes.forEach { selectBox(it) }
+                canvasGestures.rebuildConnectionGroup()
+            }
+        }, 50)
+        Handled.yes_remove
+    }
 }
 
 
