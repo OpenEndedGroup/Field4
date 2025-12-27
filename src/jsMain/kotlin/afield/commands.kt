@@ -65,8 +65,11 @@ fun copySelectedBoxesToClipboard() {
     sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
         
-        // Try to write both text and file to clipboard using the modern Clipboard API
-        // This allows pasting as text (for in-app paste) or as a file (to Finder/Explorer)
+        // Write both text and file formats to clipboard using the modern Clipboard API.
+        // This enables two use cases:
+        // 1. text/plain: Standard in-app paste (Cmd/Ctrl+V) for copying boxes within Field4
+        // 2. application/edn: File paste to filesystem (Cmd/Ctrl+V in Finder/Explorer) as metadata.edn
+        // The browser automatically selects the appropriate format based on the paste target.
         try {
             // Create a Blob containing the EDN data
             val blob = js("new Blob([result.edn], { type: 'application/edn' })")
@@ -133,7 +136,7 @@ fun pasteBoxesFromClipboard() {
                 processed = true
             }
             // Fallback to plain text
-            else if (item.types.includes("text/plain") && !processed) {
+            else if (item.types.includes("text/plain")) {
                 item.getType("text/plain").then({ blob: dynamic ->
                     blob.text().then({ text: String ->
                         if (text.isNotBlank()) {
