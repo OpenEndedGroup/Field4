@@ -40,11 +40,23 @@ class SavingContext {
     }
 
     fun listTemplates(dir: String): List<String> {
-        val d = File(dir).listFiles { file ->
+        val directory = File(dir)
+        if (!directory.exists()) return emptyList()
+        
+        val files = directory.listFiles() ?: return emptyList()
+        val result = mutableListOf<String>()
+        
+        // Add subdirectories containing metadata files
+        files.filter { file ->
             file.isDirectory && (File(file, METADATA_EDN).exists() || File(file, METADATA_JSON).exists())
-        }
-        if (d == null) return emptyList()
-        return d.map { it.name }
+        }.mapTo(result) { it.name }
+        
+        // Add standalone metadata.edn files (but not the main metadata.edn)
+        files.filter { file ->
+            file.isFile && file.name.endsWith(".edn") && file.name != METADATA_EDN
+        }.mapTo(result) { it.name }
+        
+        return result
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -211,11 +223,30 @@ class SavingContext {
         }
     }
 
+    /**
+     * Save boxes as a standalone template file (metadata.edn without subdirectory)
+     */
+    fun saveAsTemplate(templateName: String, boxes: Set<Box>, templatesDir: String) {
+        val ednText = exportEdnPackage(boxes, templatesDir)
+        val templateFile = File(templatesDir, "$templateName.edn")
+        templateFile.writeText(ednText)
+    }
+
+
     fun load(
         fn: String,
         filterId: (String) -> String = { it },
         upgradeOnLoad: Boolean = true
     ): Set<Box> {
+        val file = File(fn)
+        
+        // Check if fn points to a standalone .edn file
+        if (file.isFile && file.name.endsWith(".edn")) {
+            val ednText = file.readText()
+            return loadFromEdnText(ednText, file.parent ?: ".", filterId)
+        }
+        
+        // Otherwise, treat as directory
         val root = ensureDirectory(fn)
         val ednFile = File(root, METADATA_EDN)
         if (ednFile.exists()) {

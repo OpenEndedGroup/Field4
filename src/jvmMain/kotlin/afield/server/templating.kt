@@ -47,4 +47,25 @@ fun templating() {
 
         Handled.yes
     })
+
+    handlers["save-as-template"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<SaveAsTemplate>(message.payload!!)
+        
+        val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
+        if (boxes.isEmpty()) {
+            Handled.yes
+        } else {
+            try {
+                val templatesDir = "$home/templates"
+                File(templatesDir).mkdirs()
+                SavingContext().saveAsTemplate(request.templateName, boxes, templatesDir)
+                notify("Template saved: ${request.templateName}", "success")
+                Handled.yes
+            } catch (e: Exception) {
+                notify("Failed to save template: ${e.message}", "error")
+                Handled.yes
+            }
+        }
+    })
 }
+

@@ -196,6 +196,10 @@ data class Describe_actions(val uid: String, val value: List<Action_Desc>)
 class Directory(val command: String, val value: List<String> = emptyList<String>())
 
 @Serializable
+data class SaveAsTemplate(val uids: List<String>, val templateName: String)
+
+
+@Serializable
 class RequestHashtags(val boxes: List<String>, val getOrSet: Boolean, val value: String = "")
 
 

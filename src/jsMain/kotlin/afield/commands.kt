@@ -5,6 +5,7 @@ import kotlinx.browser.window
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.encodeToString
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
@@ -146,6 +147,53 @@ fun insertFromWorkspace() {
         Handled.yes_remove
     }
 }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport()
+fun saveAsTemplate() {
+    val selectedIds = getSelectedIds()
+    if (selectedIds.isEmpty()) {
+        notify("No boxes selected", "error")
+        return
+    }
+
+    // Use Monaco's quick input API to prompt for template name
+    val js = """
+        (() => {
+            const ed = window.ensureEditor && window.ensureEditor()
+            if (!ed) {
+                console.error("No editor available for quick input")
+                return
+            }
+            const cmd = ed.addCommand(0, (accessor, func) => {
+                let quickInputService = accessor.get(window.globalIS.IQuickInputService)
+                func(quickInputService)
+            })
+            ed.trigger("", cmd, (quickInput) => {
+                const inputBox = quickInput.createInputBox()
+                inputBox.placeholder = "Enter template name"
+                inputBox.prompt = "Save selection as template"
+                inputBox.onDidAccept(() => {
+                    const templateName = inputBox.value.trim()
+                    if (templateName) {
+                        inputBox.hide()
+                        import("./afield.mjs").then((afield) => {
+                            afield.send("save-as-template", {
+                                uids: ${Json.encodeToString(selectedIds)},
+                                templateName: templateName
+                            })
+                        })
+                    }
+                })
+                inputBox.onDidHide(() => inputBox.dispose())
+                inputBox.show()
+            })
+        })()
+    """.trimIndent()
+    
+    eval(js)
+}
+
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
@@ -395,6 +443,13 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='h') && (event.ctrlKey || event.metaKey),
             run: () => {
                 editHashtag()
+            }
+        },{
+            id:'save-as-template',
+            label:"Save selection as template",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                saveAsTemplate()
             }
         },{
             id:'provisional-accept-all',
