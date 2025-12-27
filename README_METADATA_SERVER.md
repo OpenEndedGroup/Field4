@@ -24,9 +24,16 @@ These templates can then be imported into Field through the "import from workspa
    python metadata_server.py
    ```
 
-The server will start on `http://localhost:5001` by default. You can change the port by setting the `METADATA_SERVER_PORT` environment variable:
+The server will start on `http://localhost:5001` by default. You can configure the server using environment variables:
+
+   **Port Configuration:**
    ```bash
    METADATA_SERVER_PORT=8000 python metadata_server.py
+   ```
+
+   **Debug Mode (disable for production):**
+   ```bash
+   METADATA_SERVER_DEBUG=false python metadata_server.py
    ```
 
 ## Usage
@@ -59,8 +66,7 @@ Returns JSON array of available templates:
 [
   {
     "name": "my_template",
-    "has_edn": true,
-    "path": "my_template"
+    "has_edn": true
   }
 ]
 ```
@@ -158,5 +164,10 @@ The server has CORS enabled to allow the Field frontend (running on a different 
 ## Security Notes
 
 - The server uses basic path sanitization to prevent directory traversal attacks
-- For production use, consider adding authentication and HTTPS
+- Debug mode is enabled by default for development but should be disabled in production using `METADATA_SERVER_DEBUG=false`
+- For production use, consider:
+  - Using a production WSGI server (e.g., Gunicorn, uWSGI)
+  - Adding authentication (e.g., API keys, OAuth)
+  - Enabling HTTPS for secure transport
+  - Using a reverse proxy (e.g., nginx) for better performance
 - The server runs on all interfaces (0.0.0.0) - adjust if needed for security

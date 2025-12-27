@@ -31,7 +31,6 @@ def list_files():
     Returns a JSON array of objects containing:
     - name: The directory name (identifier for the template)
     - has_edn: Whether metadata.edn exists
-    - path: Relative path to the directory
     """
     entries = []
     
@@ -44,8 +43,7 @@ def list_files():
             if edn_file.exists():
                 entries.append({
                     "name": item.name,
-                    "has_edn": True,
-                    "path": item.name
+                    "has_edn": True
                 })
     
     return jsonify(entries)
@@ -76,9 +74,14 @@ def download_file(filename):
 if __name__ == '__main__':
     # Allow port to be configured via environment variable
     port = int(os.environ.get('METADATA_SERVER_PORT', 5001))
+    # Allow debug mode to be configured via environment variable
+    debug_mode = os.environ.get('METADATA_SERVER_DEBUG', 'true').lower() == 'true'
+    
     print(f"Metadata server starting...")
     print(f"Storing files in: {METADATA_DIR.absolute()}")
     print(f"Available at: http://localhost:{port}")
     print(f"  - List files: http://localhost:{port}/list")
     print(f"  - Download: http://localhost:{port}/download/<template-name>")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    if debug_mode:
+        print(f"  - Debug mode: enabled (set METADATA_SERVER_DEBUG=false to disable)")
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
