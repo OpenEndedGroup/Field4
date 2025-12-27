@@ -511,7 +511,7 @@ fun File.safeSave(text: String): Boolean {
         val currentContent = file.readText()
         if (currentContent != text) {
             // Only create the backup directory when a backup is needed
-            val backupDir = File(file.parentFile, "backup")
+            val backupDir = File(file.parentFile, "backups")
             if (!backupDir.exists()) {
                 backupDir.mkdirs()
             }

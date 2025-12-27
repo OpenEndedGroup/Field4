@@ -208,6 +208,9 @@ data class PasteBoxes(val edn: String)
 data class PasteBoxesResult(val newUids: List<String>)
 
 @Serializable
+data class ImportMetadata(val ednText: String)
+
+@Serializable
 data class Set_rect(val uid: String, val property: String, val value: Rect)
 
 @Serializable
