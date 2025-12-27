@@ -14,6 +14,19 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Handler for importing metadata.edn files from the frontend.
+ * 
+ * This allows users to drag and drop metadata.edn files into the web UI,
+ * which will then be added to the current document with all box IDs remapped
+ * to avoid conflicts (similar to copy/paste behavior).
+ * 
+ * The import process:
+ * 1. Frontend reads the dropped metadata.edn file
+ * 2. Sends the EDN text content to this handler via "import-metadata-edn" message
+ * 3. Backend parses the EDN and creates new boxes with fresh UUIDs
+ * 4. Boxes are added to the current session and synced to all clients
+ */
 @RunsAt(installHandlers)
 fun importing() {
     handlers["import-metadata-edn"] = mutableSetOf({ message, reply ->
@@ -22,6 +35,7 @@ fun importing() {
         val si = thisSessionInfo.get()
         
         // Create a map to track ID remapping (similar to cloneInto)
+        // This ensures all imported boxes get fresh IDs to avoid conflicts
         @OptIn(ExperimentalUuidApi::class)
         val seen = mutableMapOf<String, String>("root" to "root")
         
@@ -37,10 +51,12 @@ fun importing() {
         )
         
         // Add the imported boxes to the current session
+        // resyncAll() ensures they appear in all connected clients
         boxes.forEach { box ->
             box.resyncAll()
         }
         
+        // Increment topology generation to trigger connection graph rebuild
         si.topologyGeneration++
         
         Handled.yes

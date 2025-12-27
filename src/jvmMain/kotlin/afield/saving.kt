@@ -504,6 +504,15 @@ class SavingContext {
 }
 
 
+/**
+ * Safely saves text to a file, creating backups of previous versions.
+ * 
+ * Changed from "backup" to "backups" directory to match the requirement
+ * that previous metadata.edn files should be stored in backups/ directory.
+ * 
+ * @param text The text content to save
+ * @return true if the file was modified, false if content was unchanged
+ */
 fun File.safeSave(text: String): Boolean {
     val file = this
     if (file.exists()) {

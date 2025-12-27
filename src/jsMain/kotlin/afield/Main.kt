@@ -635,7 +635,9 @@ suspend fun main() {
     mainCanvas.unsafeCast<dynamic>().data_x = 0
     mainCanvas.unsafeCast<dynamic>().data_y = 0
 
-    // File drop handler for importing metadata.edn files
+    // File drop handler for importing metadata.edn files into the current document
+    // This allows users to drag and drop .edn files onto the page to import boxes
+    // All imported boxes get new UUIDs to avoid ID conflicts (similar to copy/paste)
     body.ondragover = { event ->
         event.preventDefault()
         null
@@ -650,9 +652,9 @@ suspend fun main() {
                 val reader = js("new FileReader()")
                 reader.onload = { loadEvent: dynamic ->
                     val ednText = loadEvent.target.result as String
-                    console.log("Importing metadata.edn file...")
-                    send(Message("import-metadata-edn").payload(js("{ ednText: ednText }")))
-                    notify("Importing metadata.edn file...", "import")
+                    console.log("Importing metadata.edn file: ${file.name}")
+                    send(Message("import-metadata-edn").payload(ImportMetadata(ednText)))
+                    notify("Importing ${file.name}...", "import")
                 }
                 reader.readAsText(file)
             } else {
