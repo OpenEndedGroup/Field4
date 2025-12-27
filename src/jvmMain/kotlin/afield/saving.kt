@@ -208,6 +208,20 @@ class SavingContext {
         if (altered) {
             commit(fn, message)
             notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
+            
+            // Mark all saved sidecar files as internal saves
+            try {
+                thisSessionInfo.get()?.fileWatchManager?.let { watchManager ->
+                    File(root).listFiles()?.forEach { file ->
+                        if (file.isFile && file.name.contains("_") && 
+                            Box.ioSeparateProperties.values.contains(file.extension)) {
+                            watchManager.markInternalSave(file)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Silently ignore if session info is not available
+            }
         }
     }
 
