@@ -92,6 +92,13 @@ data class Execute(
 )
 
 @Serializable
+data class ExecuteSymbol(
+    val uid: String,
+    val symbol: String,
+    val line: Int
+)
+
+@Serializable
 data class AiAssist(val uid: String, val prompt: String, val extraPrompt: String, val startLine: Int, val property: String, val kind: String)
 
 @Serializable

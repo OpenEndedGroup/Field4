@@ -518,6 +518,23 @@ class ClojureExecution(val inside: Box) : BoxExecution {
         }
     }
 
+    override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
+        // For Clojure, construct a function call: (symbolName)
+        val functionCall = "(${executeSymbol.symbol})"
+        
+        // Create an Execute object for executeFragment
+        val exec = Execute(
+            uid = executeSymbol.uid,
+            type = "fragment",
+            line = executeSymbol.line,
+            code = functionCall,
+            singleLine = true
+        )
+        
+        // Execute as a fragment
+        executeFragment(inside, exec, reply)
+    }
+
     override val languageName: String
         get() = "clojure"
 

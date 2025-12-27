@@ -598,3 +598,92 @@ fun monacoRunStopAll(editor: dynamic) {
     val callback: (dynamic, dynamic) -> Boolean = { _, _ -> true }
     sendWithReply("stop-all", payload, "stop_$uid", callback.asDynamic())
 }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
+    // Install Alt+DoubleClick handler
+    editor.onMouseDown(fun(e: dynamic) {
+        // Check if Alt key is pressed and it's a double click
+        val altKey = e.event.altKey as? Boolean ?: false
+        val detail = e.event.detail as? Int ?: 0
+        
+        if (altKey && detail == 2) {
+            val position = e.target.position
+            if (position != null) {
+                val model = editor.getModel()
+                val lineNumber = (position.lineNumber as Number).toInt()
+                val column = (position.column as Number).toInt()
+                
+                // Get the word at the position
+                val wordAtPosition = model.getWordAtPosition(position)
+                if (wordAtPosition != null) {
+                    val word = wordAtPosition.word as String
+                    val startColumn = (wordAtPosition.startColumn as Number).toInt()
+                    val endColumn = (wordAtPosition.endColumn as Number).toInt()
+                    
+                    // Handle true/false toggle
+                    when (word) {
+                        "true" -> {
+                            // Replace with false
+                            val range = js("{}")
+                            range.startLineNumber = lineNumber
+                            range.endLineNumber = lineNumber
+                            range.startColumn = startColumn
+                            range.endColumn = endColumn
+                            
+                            val edit = js("{}")
+                            edit.range = range
+                            edit.text = "false"
+                            edit.forceMoveMarkers = true
+                            editor.executeEdits("toggle-boolean", arrayOf(edit))
+                            
+                            // Execute fragment
+                            monacoRunExecuteFragment(editor)
+                        }
+                        "false" -> {
+                            // Replace with true
+                            val range = js("{}")
+                            range.startLineNumber = lineNumber
+                            range.endLineNumber = lineNumber
+                            range.startColumn = startColumn
+                            range.endColumn = endColumn
+                            
+                            val edit = js("{}")
+                            edit.range = range
+                            edit.text = "true"
+                            edit.forceMoveMarkers = true
+                            editor.executeEdits("toggle-boolean", arrayOf(edit))
+                            
+                            // Execute fragment
+                            monacoRunExecuteFragment(editor)
+                        }
+                        else -> {
+                            // Execute symbol
+                            monacoRunExecuteSymbol(editor, word, lineNumber - 1)
+                        }
+                    }
+                }
+            }
+        }
+    })
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunExecuteSymbol(editor: dynamic, symbol: String, lineNumber: Int) {
+    val w = js("window")
+    val uid = w.currentSelectedCode[0].uid as String
+    
+    val payload = js("{}")
+    payload.uid = uid
+    payload.symbol = symbol
+    payload.line = lineNumber
+    
+    val handler = w.handleOutput
+    val callback: (dynamic, dynamic) -> Boolean = { message, response ->
+        handler(response, message, uid)
+        true
+    }
+    sendWithReply("execute-symbol", payload, "exec_$uid", callback.asDynamic())
+}

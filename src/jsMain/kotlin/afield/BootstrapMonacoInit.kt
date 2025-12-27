@@ -154,6 +154,9 @@ fun monacoInit(monaco: dynamic): dynamic {
         ed.addAction(action)
     }
 
+    // Add Alt+DoubleClick handler for execute symbol feature
+    monacoInstallAltDoubleClickHandler(ed, monaco)
+
     return ed
 }
 
