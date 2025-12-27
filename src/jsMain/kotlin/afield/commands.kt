@@ -157,9 +157,13 @@ fun saveAsTemplate() {
         return
     }
 
+    // Serialize the selected IDs to JSON
+    val selectedIdsJson = Json.encodeToString(selectedIds)
+    
     // Use Monaco's quick input API to prompt for template name
     val js = """
         (() => {
+            const selectedIds = $selectedIdsJson;
             const ed = window.ensureEditor && window.ensureEditor()
             if (!ed) {
                 console.error("No editor available for quick input")
@@ -179,7 +183,7 @@ fun saveAsTemplate() {
                         inputBox.hide()
                         import("./afield.mjs").then((afield) => {
                             afield.send("save-as-template", {
-                                uids: ${Json.encodeToString(selectedIds)},
+                                uids: selectedIds,
                                 templateName: templateName
                             })
                         })
