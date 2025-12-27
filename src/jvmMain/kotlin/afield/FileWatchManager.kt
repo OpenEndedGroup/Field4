@@ -189,8 +189,13 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val filename = file.name
             
             // Parse filename: <boxId>_<propertyName>_.<extension>
-            val parts = filename.split("_")
-            if (parts.size < 3) return
+            // Note the pattern has an underscore before the dot
+            val lastUnderscore = filename.lastIndexOf("_.")
+            if (lastUnderscore == -1) return
+            
+            val beforeLastUnderscore = filename.substring(0, lastUnderscore)
+            val parts = beforeLastUnderscore.split("_")
+            if (parts.size < 2) return
             
             val boxId = parts[0]
             val propertyName = parts[1]
