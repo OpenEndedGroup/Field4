@@ -54,7 +54,7 @@ class SavingContext {
         // Add standalone metadata.edn files (but not the main metadata.edn)
         files.filter { file ->
             file.isFile && file.name.endsWith(".edn") && file.name != METADATA_EDN
-        }.mapTo(result) { it.name }
+        }.mapTo(result) { it.nameWithoutExtension }
         
         return result
     }

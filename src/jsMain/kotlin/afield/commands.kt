@@ -5,6 +5,7 @@ import kotlinx.browser.window
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.encodeToString
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
@@ -156,9 +157,15 @@ fun saveAsTemplate() {
         return
     }
     
+    // Store selected IDs in a global variable accessible from JavaScript
+    eval("window._saveTemplateSelectedIds = ${Json.encodeToString(selectedIds)}")
+    
     // Use Monaco's quick input API to prompt for template name
     eval("""
         (() => {
+            const selectedIds = window._saveTemplateSelectedIds;
+            delete window._saveTemplateSelectedIds;
+            
             const ed = window.ensureEditor && window.ensureEditor()
             if (!ed) {
                 console.error("No editor available for quick input")
@@ -174,15 +181,26 @@ fun saveAsTemplate() {
                 inputBox.prompt = "Save selection as template"
                 inputBox.onDidAccept(() => {
                     const templateName = inputBox.value.trim()
-                    if (templateName) {
-                        inputBox.hide()
-                        import("./afield.mjs").then((afield) => {
-                            afield.send("save-as-template", {
-                                uids: getSelectedIds(),
-                                templateName: templateName
-                            })
-                        })
+                    // Validate template name
+                    if (!templateName) {
+                        return
                     }
+                    if (templateName.includes('/') || templateName.includes('\\') || 
+                        templateName.includes('..') || templateName === '.' || 
+                        templateName === 'metadata') {
+                        console.error('Invalid template name: ' + templateName)
+                        import("./afield.mjs").then((afield) => {
+                            afield.notify("Invalid template name. Avoid path separators and reserved names.", "error")
+                        })
+                        return
+                    }
+                    inputBox.hide()
+                    import("./afield.mjs").then((afield) => {
+                        afield.send("save-as-template", {
+                            uids: selectedIds,
+                            templateName: templateName
+                        })
+                    })
                 })
                 inputBox.onDidHide(() => inputBox.dispose())
                 inputBox.show()

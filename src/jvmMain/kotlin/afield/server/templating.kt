@@ -58,19 +58,17 @@ fun templating() {
         val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
         if (boxes.isEmpty()) {
             notify("No valid boxes found for template", "error")
-            Handled.yes
         } else {
             try {
                 val templatesDir = "$home/templates"
                 File(templatesDir).mkdirs()
                 SavingContext().saveAsTemplate(request.templateName, boxes, templatesDir)
                 notify("Template saved: ${request.templateName}", "success")
-                Handled.yes
             } catch (e: Exception) {
                 notify("Failed to save template: ${e.message}", "error")
-                Handled.yes
             }
         }
+        Handled.yes
     })
 }
 
