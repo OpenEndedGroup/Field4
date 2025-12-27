@@ -4,15 +4,19 @@ import afield.Directory
 import afield.Handled
 import afield.Message
 import afield.RunsAt
+import afield.SaveAsTemplate
 import afield.SavingContext
 import afield.app
+import afield.box
 import afield.handlers
 import afield.home
 import afield.installHandlers
+import afield.notify
 import afield.payload
 import afield.thisSessionInfo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import java.io.File
 
 @RunsAt(installHandlers)
 fun templating() {
@@ -47,4 +51,24 @@ fun templating() {
 
         Handled.yes
     })
+
+    handlers["save-as-template"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<SaveAsTemplate>(message.payload!!)
+        
+        val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
+        if (boxes.isEmpty()) {
+            notify("No valid boxes found for template", "error")
+        } else {
+            try {
+                val templatesDir = "$home/templates"
+                File(templatesDir).mkdirs()
+                SavingContext().saveAsTemplate(request.templateName, boxes, templatesDir)
+                notify("Template saved: ${request.templateName}", "success")
+            } catch (e: Exception) {
+                notify("Failed to save template: ${e.message}", "error")
+            }
+        }
+        Handled.yes
+    })
 }
+
