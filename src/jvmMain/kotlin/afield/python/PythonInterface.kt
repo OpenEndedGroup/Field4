@@ -1,8 +1,6 @@
 package afield.python
 
 import afield.*
-import afield.logger.lblock
-import afield.logger.lprint
 import afield.python.PythonInterface.Companion.conf
 import afield.python.PythonInterface.Companion.deliverErr
 import afield.python.PythonInterface.Companion.deliverStdOut
@@ -10,11 +8,9 @@ import afield.python.PythonInterface.Companion.hasHadOutput
 import afield.python.PythonInterface.Companion.inited
 import afield.python.PythonInterface.Companion.thisBox
 import afield.python.PythonInterface.Companion.thisLineOffset
-import afield.remotejs.code_language
+import afield.runtime.TopologyWatcher
+import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
-import afield.stdlib.invoke
-import io.ktor.utils.io.core.ByteOrder
-import io.ktor.websocket.*
 import jep.*
 import jep.python.PyCallable
 import jep.python.PyObject
@@ -25,7 +21,6 @@ import org.jetbrains.kotlin.util.classNameAndMessage
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
-import java.util.*
 
 var Box.isPythonRoot by Delegation<Boolean?>()
 var Box._pythonLocals by Delegation<LinkedHashMap<*,*>>(defaultValue = { LinkedHashMap<Any, Any>() })
@@ -42,62 +37,26 @@ fun makeInterpreter() {
 }
 
 @RunsAt(early)
-fun installClojure() {
-    println(" -- install clojure is adding isClojureRoot to ioPersistentProperties")
-    Box.ioPersistentProperties.add("isClojureRoot")
+fun installPython() {
+    Box.ioPersistentProperties.add("isPythonRoot")
 }
 
 @RunsAt(plugins)
 fun install() {
-
-    inMain {
-        val was = WeakHashMap<WebSocketSession, Int>()
-        while (true) {
-            sessions.entries.forEach { entry ->
-                if (was.computeIfAbsent(entry.key) { -1 } != entry.value.topologyGeneration) {
-                    was.put(entry.key, entry.value.topologyGeneration)
-                    lblock("topology needs updating") {
-                        pythonTopologyNeedsUpdating(entry.value.boxes.values)
-                    }
-                }
-            }
-            5 {
-                yield()
-            }
-        }
-    }
+    TopologyWatcher("python") { pythonTopologyNeedsUpdating(it) }.start()
 }
 
 
 fun pythonTopologyNeedsUpdating(values: Collection<Box>) {
-    values.forEach {
-        if (it.isPythonRoot ?: false) {
-            it.children.forEach { child ->
-                if (child.ke is PythonExecution) {
-                    child.offline = false
-
-                } else {
-                    child.ke = PythonExecution()
-                    child.customization = """this.style.border = "1px dashed #40008B"; this.style.margin = "-5px" """
-                    child.code_language = "Python"
-                    lprint("transitioned $child to js")
-                    child.offline = false
-                    notify("'${child.name}' becomes Python", "python")
-                }
-            }
-        } else {
-            it.children.forEach { child ->
-                if (child.ke is PythonExecution) {
-                    child.ke = KotlinExecution()
-                    child.customization = """this.style.border = """""
-                    child.code_language = "Kotlin"
-                    lprint("transitioned $child from js")
-                    notify("'${child.name}' no longer Python", "python")
-                } else {
-                }
-            }
-        }
-    }
+    applyRuntimeToggle(
+        boxes = values,
+        isRoot = { it.isPythonRoot },
+        runtimeClass = PythonExecution::class,
+        newExecution = { _ -> PythonExecution() },
+        language = "Python",
+        customization = """this.style.border = "1px dashed #40008B"; this.style.margin = "-5px" """,
+        notifyCategory = "python"
+    )
 }
 
 

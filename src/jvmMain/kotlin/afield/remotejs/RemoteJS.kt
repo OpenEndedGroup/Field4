@@ -4,6 +4,8 @@ import afield.*
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.stdlib.*
+import afield.runtime.TopologyWatcher
+import afield.runtime.applyRuntimeToggle
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import org.json.JSONArray
@@ -20,32 +22,15 @@ var Box.code_language by Delegation<String>()
 var lastBoxExec : Box? = null
 
 fun topologyNeedsUpdating(values: Collection<Box>) {
-    values.forEach {
-        if (it.isRemoteJSRoot ?: false) {
-            it.children.forEach { child ->
-                if (child.ke is RemoteJSExectution) {
-
-                } else {
-                    child.ke = RemoteJSExectution()
-                    child.customization = """this.style.border = "1px dashed #8B4000"; this.style.margin = "-5px" """
-                    child.code_language = "Javascript"
-                    lprint("transitioned $child to js")
-                    notify("'${child.name}' becomes remote JS", "remotejs")
-                }
-            }
-        } else {
-            it.children.forEach { child ->
-                if (child.ke is RemoteJSExectution) {
-                    child.ke = KotlinExecution()
-                    child.customization = """this.style.border = """""
-                    child.code_language = "Kotlin"
-                    lprint("transitioned $child from js")
-                    notify("'${child.name}' no longer remote JS", "remotejs")
-                } else {
-                }
-            }
-        }
-    }
+    applyRuntimeToggle(
+        boxes = values,
+        isRoot = { it.isRemoteJSRoot },
+        runtimeClass = RemoteJSExectution::class,
+        newExecution = { _ -> RemoteJSExectution() },
+        language = "Javascript",
+        customization = """this.style.border = "1px dashed #8B4000"; this.style.margin = "-5px" """,
+        notifyCategory = "remotejs"
+    )
 }
 
 @RunsAt(plugins)
@@ -134,20 +119,7 @@ fun install() {
         Handled.yes
     })
 
-    inMain {
-        val was = WeakHashMap<WebSocketSession, Int>()
-        while (true) {
-            sessions.entries.forEach { entry ->
-                if (was.computeIfAbsent(entry.key) { -1 } != entry.value.topologyGeneration) {
-                    was.put(entry.key, entry.value.topologyGeneration)
-                    lblock("topology needs updating") {
-                        topologyNeedsUpdating(entry.value.boxes.values)
-                    }
-                }
-            }
-            yield()
-        }
-    }
+    TopologyWatcher("remotejs") { topologyNeedsUpdating(it) }.start()
 
 }
 

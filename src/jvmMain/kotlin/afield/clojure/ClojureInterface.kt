@@ -4,20 +4,13 @@ package afield.clojure
 
 import afield.*
 import afield.Box
-import afield.logger.lblock
-import afield.logger.lprint
-import afield.python.PythonExecution
-import afield.remotejs.code_language
+import afield.runtime.TopologyWatcher
+import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
-import afield.stdlib.invoke
 import clojure.java.api.Clojure
 import clojure.lang.*
-import io.ktor.websocket.*
-import jep.python.PyCallable
-import kotlinx.coroutines.yield
 import java.io.PrintWriter
 import java.io.Writer
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -407,22 +400,7 @@ class ClojureHost(private val defaultNs: String = "user") {
 
 @RunsAt(plugins)
 fun install() {
-    inMain {
-        val was = WeakHashMap<WebSocketSession, Int>()
-        while (true) {
-            sessions.entries.forEach { entry ->
-                if (was.computeIfAbsent(entry.key) { -1 } != entry.value.topologyGeneration) {
-                    was.put(entry.key, entry.value.topologyGeneration)
-                    lblock("topology needs updating") {
-                        clojureTopologyNeedsUpdating(entry.value.boxes.values)
-                    }
-                }
-            }
-            5 {
-                yield()
-            }
-        }
-    }
+    TopologyWatcher("clojure") { clojureTopologyNeedsUpdating(it) }.start()
 }
 
 class ClojureExecution(val inside: Box) : BoxExecution {
@@ -547,35 +525,19 @@ class ClojureExecution(val inside: Box) : BoxExecution {
 
 var Box.isClojureRoot by Delegation<Boolean?>()
 
-fun clojureTopologyNeedsUpdating(values: Collection<Box>) {
-    values.forEach {
-        if (it.isClojureRoot ?: false) {
-            it.children.forEach { child ->
-                if (child.ke is ClojureExecution) {
-                    child.offline = false
-
-                } else {
-                    child.ke = ClojureExecution(child)
-                    child.customization = """this.style.border = "1px dashed #8B4000"; this.style.margin = "-5px" """
-                    child.code_language = "Clojure"
-                    lprint("transitioned $child to clojure")
-                    child.offline = false
-                    notify("'${child.name}' becomes Clojure", "clojure")
-                }
-            }
-        } else {
-            it.children.forEach { child ->
-                if (child.ke is PythonExecution) {
-                    child.ke = KotlinExecution()
-                    child.customization = """this.style.border = """""
-                    child.code_language = "Kotlin"
-                    lprint("transitioned $child to kotlin")
-                    notify("'${child.name}' no longer Clojure", "clojure")
-                } else {
-                }
-            }
-        }
-    }
+@RunsAt(early)
+fun installClojure() {
+    Box.ioPersistentProperties.add("isClojureRoot")
 }
 
-
+fun clojureTopologyNeedsUpdating(values: Collection<Box>) {
+    applyRuntimeToggle(
+        boxes = values,
+        isRoot = { it.isClojureRoot },
+        runtimeClass = ClojureExecution::class,
+        newExecution = { child -> ClojureExecution(child) },
+        language = "Clojure",
+        customization = """this.style.border = "1px dashed #8B4000"; this.style.margin = "-5px" """,
+        notifyCategory = "clojure"
+    )
+}
