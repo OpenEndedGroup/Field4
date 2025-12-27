@@ -222,6 +222,10 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 // Only update if content has actually changed
                 if (currentValue != content) {
                     box.setPropertyRaw(propertyName, content, doResync = true)
+                    // External change to a sidecar-backed property needs persistence
+                    if (Box.ioSeparateProperties.containsKey(propertyName) && box.isInsideInitialized()) {
+                        box.inside.pendingSidecarSaves += box.id to propertyName
+                    }
                     
                     lprintln("Reloaded external change: $propertyName in box ${box.name} (${box.id})")
                     notify("Reloaded external change to $propertyName in ${box.name}", "file-watch")

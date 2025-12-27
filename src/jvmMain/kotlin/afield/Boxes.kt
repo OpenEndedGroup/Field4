@@ -387,6 +387,9 @@ fun doResync() {
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
                     is String -> {
                         println(" sending set-string for $name = $value")
+                        if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized()) {
+                            box.inside.pendingSidecarSaves += box.id to name
+                        }
                         Message("set-string").payload(Set_string(box.id, name, value))
                     }
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))

@@ -51,6 +51,9 @@ class SessionInformation(
     var sessions: MutableSet<WebSocketSession> = mutableSetOf<WebSocketSession>(),
     var topologyGeneration: Int = 0
 ) {
+    // Track sidecar-bearing properties that need to be written to disk on next save.
+    val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
+
     val fileWatchManager: FileWatchManager by lazy {
         FileWatchManager(this).also { it.start() }
     }
@@ -172,10 +175,14 @@ class Server {
                         }
 
                         documents.forEach { _, info ->
+                            // Only persist when we know sidecar-bearing properties changed.
+                            if (info.pendingSidecarSaves.isEmpty()) return@forEach
+
 //                            lblock(" saving to ${info.filename}")
                             run {
                                 try {
                                     SavingContext().save(info.filename, info.boxes.values.toSet())
+                                    info.pendingSidecarSaves.clear()
                                 } catch (ex: Exception) {
                                     lprintln("ERROR: trouble saving")
                                     ex.printStackTrace()
@@ -298,6 +305,11 @@ class Server {
                     box(set.uid).name = set.value
                 } else
                     box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
+
+                // If this is a sidecar-backed property, mark it for persistence.
+                if (Box.ioSeparateProperties.containsKey(set.property)) {
+                    thisSessionInfo.get().pendingSidecarSaves += set.uid to set.property
+                }
 
                 Handled.yes
             })
