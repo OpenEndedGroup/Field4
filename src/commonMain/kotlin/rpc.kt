@@ -210,7 +210,7 @@ data class Perform_action(val uid_currentSelection: List<String>, val uid_action
 data class CopyBoxes(val uids: List<String>)
 
 @Serializable
-data class CopyBoxesResult(val edn: String)
+data class CopyBoxesResult(val edn: String, val filename: String = "")
 
 @Serializable
 data class ExportDocumentResult(val edn: String, val filename: String = "")

@@ -2,8 +2,8 @@
 
 package afield
 
-import afield.four.util.Options
 import afield.ai.Ai4CompletionDoc
+import afield.four.util.Options
 import afield.logger.lprintln
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.Browser
@@ -54,7 +54,7 @@ class SessionInformation(
     val fileWatchManager: FileWatchManager by lazy {
         FileWatchManager(this).also { it.start() }
     }
-    
+
     fun cleanup() {
         fileWatchManager.stop()
     }
@@ -265,7 +265,7 @@ class Server {
                         } // kick off stdlib load
 
                         si.topologyGeneration++
-                        
+
                         // Initialize the file watch manager
                         si.fileWatchManager
                     } catch (fnf: FileNotFoundException) {
@@ -408,8 +408,9 @@ class Server {
                 val info = thisSessionInfo.get()
                 val boxes = req.uids.mapNotNull { info.boxes[it] }.toSet()
                 val edn = SavingContext().exportEdnPackage(boxes, info.filename)
+                val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
                 notify("Copied ${boxes.size} box${if (boxes.size == 1) "" else "es"} to clipboard", "copy")
-                reply(Message("copy-boxes").payload(CopyBoxesResult(edn)))
+                reply(Message("copy-boxes").payload(CopyBoxesResult(edn, filename)))
                 Handled.yes
             })
 

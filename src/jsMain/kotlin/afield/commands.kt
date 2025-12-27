@@ -135,7 +135,8 @@ fun exportSelectedBoxesToDownload() {
 
     sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
-        downloadEdnFile("selection.edn", result.edn)
+        val base = if (result.filename.isNotBlank()) result.filename else "selection"
+        downloadEdnFile("${base}_selection.edn", result.edn)
         Handled.yes_remove
     }
 }

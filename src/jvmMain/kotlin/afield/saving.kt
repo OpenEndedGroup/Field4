@@ -222,12 +222,12 @@ class SavingContext {
         if (altered) {
             commit(fn, message)
             notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
-            
+
             // Mark all saved sidecar files as internal saves
             try {
                 thisSessionInfo.get()?.fileWatchManager?.let { watchManager ->
                     File(root).listFiles()?.forEach { file ->
-                        if (file.isFile && file.name.contains("_") && 
+                        if (file.isFile && file.name.contains("_") &&
                             Box.ioSeparateProperties.values.contains(file.extension)) {
                             watchManager.markInternalSave(file)
                         }
@@ -587,10 +587,10 @@ class SavingContext {
 
 /**
  * Safely saves text to a file, creating backups of previous versions.
- * 
+ *
  * Changed from "backup" to "backups" directory to match the requirement
  * that previous metadata.edn files should be stored in backups/ directory.
- * 
+ *
  * @param text The text content to save
  * @return true if the file was modified, false if content was unchanged
  */
