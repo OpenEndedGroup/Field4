@@ -9,6 +9,9 @@ import afield.handlers
 import afield.installHandlers
 import afield.thisSessionInfo
 import afield.ImportMetadata
+import afield.doResync
+import afield.notify
+import afield.logger.lprintln
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.uuid.ExperimentalUuidApi
@@ -30,35 +33,47 @@ import kotlin.uuid.Uuid
 @RunsAt(installHandlers)
 fun importing() {
     handlers["import-metadata-edn"] = mutableSetOf({ message, reply ->
-        
-        val importData = Json.decodeFromJsonElement<ImportMetadata>(message.payload!!)
-        val si = thisSessionInfo.get()
-        
-        // Create a map to track ID remapping (similar to cloneInto)
-        // This ensures all imported boxes get fresh IDs to avoid conflicts
-        @OptIn(ExperimentalUuidApi::class)
-        val seen = mutableMapOf<String, String>("root" to "root")
-        
-        // Load the boxes from the EDN text with ID remapping
-        @OptIn(ExperimentalUuidApi::class)
-        val boxes = SavingContext().loadFromEdnText(
-            importData.ednText,
-            si.filename,
-            { id ->
-                val next = seen.computeIfAbsent(id) { Uuid.random().toString() }
-                next
+        try {
+            val importData = Json.decodeFromJsonElement<ImportMetadata>(message.payload!!)
+            val si = thisSessionInfo.get()
+            
+            // Create a map to track ID remapping (similar to paste-boxes)
+            // This ensures all imported boxes get fresh IDs to avoid conflicts
+            @OptIn(ExperimentalUuidApi::class)
+            val seen = mutableMapOf<String, String>("root" to "root")
+            
+            // Load the boxes from the EDN text with ID remapping
+            @OptIn(ExperimentalUuidApi::class)
+            val boxes = SavingContext().loadFromEdnText(
+                importData.ednText,
+                si.filename,
+                { id ->
+                    val next = seen.computeIfAbsent(id) { Uuid.random().toString() }
+                    next
+                }
+            )
+            
+            // Add the imported boxes to the current session
+            // resyncAll() ensures they appear in all connected clients
+            boxes.forEach { box ->
+                if (box.id != "root") {
+                    box.resyncAll()
+                }
             }
-        )
-        
-        // Add the imported boxes to the current session
-        // resyncAll() ensures they appear in all connected clients
-        boxes.forEach { box ->
-            box.resyncAll()
+            
+            // Increment topology generation and sync to trigger connection graph rebuild
+            si.topologyGeneration++
+            doResync()
+            
+            // Notify user of successful import
+            notify("Imported ${boxes.size} box${if (boxes.size == 1) "" else "es"} from metadata.edn", "import")
+            
+            Handled.yes
+        } catch (e: Exception) {
+            lprintln("ERROR: Failed to import metadata.edn: ${e.message}")
+            e.printStackTrace()
+            notify("Failed to import metadata.edn: ${e.message}", "error")
+            Handled.yes
         }
-        
-        // Increment topology generation to trigger connection graph rebuild
-        si.topologyGeneration++
-        
-        Handled.yes
     })
 }
