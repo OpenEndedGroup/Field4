@@ -40,7 +40,7 @@ fun ensureRepository(dir: String) = cached_git.computeIfAbsent(dir) {
 
 fun commit(dir: String, messageText: String?): RevCommit? {
     val r = ensureRepository(dir)
-    val allFiles = File(dir).listFiles { _, name -> !name.startsWith("backup") && !name.startsWith(".git")}
+    val allFiles = File(dir).listFiles { _, name -> !name.startsWith("backups") && !name.startsWith(".git")}
     if (allFiles != null) {
         r.add {
             allFiles.map { it.name }.forEach {
