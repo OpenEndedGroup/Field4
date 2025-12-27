@@ -243,7 +243,8 @@ class SavingContext {
         // Check if fn points to a standalone .edn file
         if (file.isFile && file.name.endsWith(".edn")) {
             val ednText = file.readText()
-            return loadFromEdnText(ednText, file.parent ?: ".", filterId)
+            val directory = file.absoluteFile.parentFile?.absolutePath ?: file.absolutePath
+            return loadFromEdnText(ednText, directory, filterId)
         }
         
         // Otherwise, treat as directory
