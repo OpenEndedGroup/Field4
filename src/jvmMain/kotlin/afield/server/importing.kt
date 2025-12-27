@@ -66,7 +66,7 @@ fun importing() {
             doResync()
             
             // Notify user of successful import
-            notify("Imported ${boxes.size} box${if (boxes.size == 1) "" else "es"} from metadata.edn", "import")
+            notify("Imported ${boxes.size} box${if (boxes.size == 1) "" else "es"} from EDN file", "import")
             
             Handled.yes
         } catch (e: Exception) {
