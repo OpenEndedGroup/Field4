@@ -65,36 +65,46 @@ fun copySelectedBoxesToClipboard() {
     sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
         
-        // Write both text and file formats to clipboard using the modern Clipboard API.
-        // This enables two use cases:
-        // 1. text/plain: Standard in-app paste (Cmd/Ctrl+V) for copying boxes within Field4
-        // 2. application/edn: File paste to filesystem (Cmd/Ctrl+V in Finder/Explorer) as metadata.edn
-        // The browser automatically selects the appropriate format based on the paste target.
+        // Write both text and file formats when the browser allows it.
         try {
-            // Create a Blob containing the EDN data
-            val blob = js("new Blob([result.edn], { type: 'application/edn' })")
-            
-            // Create a File object with the proper filename
-            val file = js("new File([blob], 'metadata.edn', { type: 'application/edn' })")
-            
-            // Create ClipboardItem with both text/plain and the file
+            // ClipboardItem.supports is optional and not universally implemented; guard all calls.
+            val supportsEdn = try {
+                js("typeof ClipboardItem !== 'undefined' && ClipboardItem.supports && ClipboardItem.supports('application/edn')") as Boolean
+            } catch (_: dynamic) { false }
+            val supportsOctetStream = try {
+                js("typeof ClipboardItem !== 'undefined' && ClipboardItem.supports && ClipboardItem.supports('application/octet-stream')") as Boolean
+            } catch (_: dynamic) { false }
+
             val clipboardData = js("({})")
             clipboardData["text/plain"] = js("new Blob([result.edn], { type: 'text/plain' })")
-            clipboardData["application/edn"] = file
-            
-            val clipboardItem = js("new ClipboardItem(clipboardData)")
-            
-            // Write to clipboard
-            clipboard.write(js("Array").of(clipboardItem)).then({
-                console.log("Copied to clipboard as both text and file")
-            }, { error: dynamic ->
-                console.log("Failed to write file to clipboard, falling back to text-only:", error)
-                // Fallback to text-only if file writing is not supported
+
+            var fileType: String? = null
+            if (supportsEdn) {
+                fileType = "application/edn"
+            } else if (supportsOctetStream) {
+                fileType = "application/octet-stream"
+            }
+
+            if (fileType != null) {
+                val blob = js("new Blob([result.edn], { type: fileType })")
+                val file = js("new File([blob], 'metadata.edn', { type: fileType })")
+                clipboardData[fileType] = file
+            }
+
+            if (fileType != null) {
+                val clipboardItem = js("new ClipboardItem(clipboardData)")
+                clipboard.write(js("Array").of(clipboardItem)).then({
+                    console.log("Copied to clipboard as text and file type $fileType")
+                }, { error: dynamic ->
+                    console.log("Clipboard write failed, falling back to text-only:", error)
+                    clipboard.writeText(result.edn)
+                })
+            } else {
+                // Browsers sanitize custom file types; fall back to text-only.
                 clipboard.writeText(result.edn)
-            })
+            }
         } catch (e: Exception) {
             console.log("Modern clipboard API failed, using text-only fallback:", e)
-            // Fallback for browsers that don't support ClipboardItem
             clipboard.writeText(result.edn)
         }
         
