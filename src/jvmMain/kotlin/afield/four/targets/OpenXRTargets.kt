@@ -709,39 +709,47 @@ class OpenXRRenderTarget(
     }
 
     /**
+     * Update near/far clip planes and recalculate projection matrices if needed.
+     *
+     * This helper is shared by both leftMVP and rightMVP to avoid duplicated logic.
+     */
+    private fun updateClipPlanes(zNear: Float, zFar: Float) {
+        // Only update if values have changed
+        if (zNear == currentZNear && zFar == currentZFar) {
+            return
+        }
+        currentZNear = zNear
+        currentZFar = zFar
+        // Recalculate projection matrices for both eyes if view data is available
+        if (::views.isInitialized && views.remaining() >= 2) {
+            updateProjectionMatrix(views[0].fov(), leftProjMatrix, zNear, zFar)
+            updateProjectionMatrix(views[1].fov(), rightProjMatrix, zNear, zFar)
+        }
+    }
+
+    /**
      * Get view and projection matrices for the left eye.
      * The matrices are updated during the frame loop based on current HMD tracking.
-     * 
+     *
      * @param zNear Near clipping plane distance (default: 0.01)
      * @param zFar Far clipping plane distance (default: 1000)
      * @return Pair of (view matrix, projection matrix)
      */
     fun leftMVP(zNear: Float = 0.01f, zFar: Float = 1000f): Pair<Matrix4f, Matrix4f> {
-        // Update clip planes if changed and recalculate projection if needed
-        if (zNear != currentZNear || zFar != currentZFar) {
-            currentZNear = zNear
-            currentZFar = zFar
-            if (::views.isInitialized && views.remaining() >= 2) {
-                updateProjectionMatrix(views[0].fov(), leftProjMatrix, zNear, zFar)
-                updateProjectionMatrix(views[1].fov(), rightProjMatrix, zNear, zFar)
-            }
-        }
+        updateClipPlanes(zNear, zFar)
         return leftViewMatrix to leftProjMatrix
     }
 
     /**
      * Get view and projection matrices for the right eye.
      * The matrices are updated during the frame loop based on current HMD tracking.
-     * 
+     *
      * @param zNear Near clipping plane distance (default: 0.01)
      * @param zFar Far clipping plane distance (default: 1000)
      * @return Pair of (view matrix, projection matrix)
      */
     fun rightMVP(zNear: Float = 0.01f, zFar: Float = 1000f): Pair<Matrix4f, Matrix4f> {
-        // Projection matrices are updated in leftMVP if needed
-        if (zNear != currentZNear || zFar != currentZFar) {
-            leftMVP(zNear, zFar)  // This will update both left and right
-        }
+        updateClipPlanes(zNear, zFar)
         return rightViewMatrix to rightProjMatrix
     }
 
