@@ -57,6 +57,7 @@ fun templating() {
         
         val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
         if (boxes.isEmpty()) {
+            notify("No valid boxes found for template", "error")
             Handled.yes
         } else {
             try {

@@ -5,7 +5,6 @@ import kotlinx.browser.window
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.encodeToString
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
@@ -156,14 +155,10 @@ fun saveAsTemplate() {
         notify("No boxes selected", "error")
         return
     }
-
-    // Serialize the selected IDs to JSON
-    val selectedIdsJson = Json.encodeToString(selectedIds)
     
     // Use Monaco's quick input API to prompt for template name
-    val js = """
+    eval("""
         (() => {
-            const selectedIds = $selectedIdsJson;
             const ed = window.ensureEditor && window.ensureEditor()
             if (!ed) {
                 console.error("No editor available for quick input")
@@ -183,7 +178,7 @@ fun saveAsTemplate() {
                         inputBox.hide()
                         import("./afield.mjs").then((afield) => {
                             afield.send("save-as-template", {
-                                uids: selectedIds,
+                                uids: getSelectedIds(),
                                 templateName: templateName
                             })
                         })
@@ -193,9 +188,7 @@ fun saveAsTemplate() {
                 inputBox.show()
             })
         })()
-    """.trimIndent()
-    
-    eval(js)
+    """.trimIndent())
 }
 
 
