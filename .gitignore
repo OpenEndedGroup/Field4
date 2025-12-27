@@ -131,6 +131,7 @@ hs_err_pid*
 .gradletasknamecache
 
 ### Metadata Server
-# User-provided metadata.edn files (keep example only)
+# User-provided metadata.edn files (keep examples only)
 metadata_store/*
 !metadata_store/example_template/
+!metadata_store/simple_hello/

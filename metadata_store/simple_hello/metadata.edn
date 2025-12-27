@@ -1,0 +1,6 @@
+{:version 2
+ :boxes [{:id "hello-box"
+          :properties {:name "Hello World"
+                       :code "(println \"Hello, Field!\\nThis is a simple template from the metadata server.\")"
+                       :frame [50.0 50.0 300.0 200.0]
+                       :metadata "tags:\n  - hello\n  - simple\n  - example\ndescription: A simple hello world template"}}]}

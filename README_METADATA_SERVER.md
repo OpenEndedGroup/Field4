@@ -98,6 +98,59 @@ This metadata server provides an additional source for templates that can be:
 - Version controlled separately from Field
 - Distributed without modifying Field's installation
 
+### Using Templates from the Metadata Server
+
+There are several ways to use templates from the metadata server with Field:
+
+#### Option 1: Manual Download and Import
+1. Download a template from the server:
+   ```bash
+   curl -O http://localhost:5001/download/example_template
+   ```
+2. Drag and drop the downloaded `metadata.edn` file into Field's interface
+3. Field will import the boxes with fresh UUIDs to avoid conflicts
+
+#### Option 2: Programmatic Integration
+You can extend Field's template system to fetch from this metadata server by:
+
+1. Adding a new handler in Field that queries this server's `/list` endpoint
+2. When a user selects a template from this server, fetch it via `/download/<name>`
+3. Import it using the existing `import-metadata-edn` handler
+
+Example workflow:
+```kotlin
+// Fetch available templates from metadata server
+val templates = fetchJson("http://localhost:5001/list")
+
+// When user selects one, download and import it
+val ednContent = fetchText("http://localhost:5001/download/template_name")
+send(Message("import-metadata-edn").payload(ImportMetadata(ednContent)))
+```
+
+#### Option 3: Copy to Local Workspace
+For frequently used templates, you can copy them to your local workspace:
+```bash
+# Download template
+curl -o ~/Documents/AFieldWorkspace/my_template/metadata.edn \
+  http://localhost:5001/download/my_template
+
+# Now it appears in Field's built-in template list
+```
+
+### Remote Hosting
+
+The metadata server can be deployed on a team server or cloud instance to share templates across your organization:
+
+1. Deploy the server on a shared host
+2. Team members configure their Field instances to point to your server
+3. Templates are automatically available to everyone
+
+For remote deployment, consider:
+- Using a production WSGI server (e.g., Gunicorn)
+- Adding authentication (e.g., API keys, OAuth)
+- Enabling HTTPS for secure transport
+- Using a reverse proxy (e.g., nginx) for better performance
+
 ## CORS
 
 The server has CORS enabled to allow the Field frontend (running on a different port) to access the metadata files.
