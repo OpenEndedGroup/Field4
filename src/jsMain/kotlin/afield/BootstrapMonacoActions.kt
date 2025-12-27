@@ -86,7 +86,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.id = "ai-chat-panel"
         action.label = "AI Chat (panel)"
         action.keybindings = arrayOf(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.Digit4))
-        action.run = {
+        action.run = { _: dynamic ->
             monacoRunAiChatPanel()
         }
         addAction(action)
@@ -140,7 +140,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
         action.contextMenuOrder = 1.6
-        action.run = {
+        action.run = { _: dynamic ->
             monacoRunProvisionalAcceptCurrent()
         }
         addAction(action)
@@ -155,7 +155,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
         action.contextMenuOrder = 1.61
-        action.run = {
+        action.run = { _: dynamic ->
             monacoRunProvisionalRejectCurrent()
         }
         addAction(action)
@@ -170,7 +170,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
         action.contextMenuOrder = 1.62
-        action.run = {
+        action.run = { _: dynamic ->
             monacoRunProvisionalAcceptAll()
         }
         addAction(action)
@@ -185,13 +185,13 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
         action.contextMenuOrder = 1.63
-        action.run = {
+        action.run = { _: dynamic ->
             monacoRunProvisionalRejectAll()
         }
         addAction(action)
     }
 
-    editor.addCommand(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.KeyP)) {
+    editor.addCommand(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.KeyP)) { _: dynamic ->
         editor.trigger("", "editor.action.quickCommand", null)
     }
 
