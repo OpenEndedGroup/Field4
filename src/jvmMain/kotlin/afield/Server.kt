@@ -50,7 +50,15 @@ class SessionInformation(
     var root: Box,
     var sessions: MutableSet<WebSocketSession> = mutableSetOf<WebSocketSession>(),
     var topologyGeneration: Int = 0
-)
+) {
+    val fileWatchManager: FileWatchManager by lazy {
+        FileWatchManager(this).also { it.start() }
+    }
+    
+    fun cleanup() {
+        fileWatchManager.stop()
+    }
+}
 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
@@ -257,6 +265,9 @@ class Server {
                         } // kick off stdlib load
 
                         si.topologyGeneration++
+                        
+                        // Initialize the file watch manager
+                        si.fileWatchManager
                     } catch (fnf: FileNotFoundException) {
                         lprintln(" file '${fn}' is not found, continuing on, file will be created on first save")
                     }
@@ -470,6 +481,10 @@ class Server {
                                     sessions.entries.removeIf { (session, info) ->
                                         if (session.outgoing.isClosedForSend) {
                                             info.sessions.remove(session)
+                                            // Stop file watcher if this was the last session for this document
+                                            if (info.sessions.isEmpty()) {
+                                                info.cleanup()
+                                            }
                                             true
                                         } else false
                                     }
@@ -518,6 +533,10 @@ class Server {
                             val info = sessions.remove(ts)
                             if (info != null) {
                                 info.sessions.remove(ts)
+                                // Stop file watcher if this was the last session for this document
+                                if (info.sessions.isEmpty()) {
+                                    info.cleanup()
+                                }
                             }
                         }
                     }
