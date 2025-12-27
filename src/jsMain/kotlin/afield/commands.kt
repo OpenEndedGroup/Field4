@@ -8,10 +8,25 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
+import web.url.URL
 
 var lastMouse = 0.0 to 0.0
 
 external fun showPickMenu_custom(options: dynamic): dynamic
+
+private fun downloadEdnFile(filename: String, edn: String) {
+    val blob = js("new Blob([edn], { type: 'application/edn' })")
+    val url = URL.createObjectURL(blob)
+    val link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", filename)
+    document.body!!.appendChild(link)
+    link.asDynamic().click()
+    window.setTimeout({
+        document.body!!.removeChild(link)
+        URL.revokeObjectURL(url)
+    }, 0)
+}
 
 
 fun registerMouseBug() {
@@ -64,7 +79,7 @@ fun copySelectedBoxesToClipboard() {
 
     sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
-        
+
         // Write both text and file formats when the browser allows it.
         try {
             // ClipboardItem.supports is optional and not universally implemented; guard all calls.
@@ -107,7 +122,31 @@ fun copySelectedBoxesToClipboard() {
             console.log("Modern clipboard API failed, using text-only fallback:", e)
             clipboard.writeText(result.edn)
         }
-        
+
+        Handled.yes_remove
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun exportSelectedBoxesToDownload() {
+    val ids = getSelectedIds()
+    if (ids.isEmpty()) return
+
+    sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
+        val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
+        downloadEdnFile("selection.edn", result.edn)
+        Handled.yes_remove
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun exportDocumentToDownload() {
+    sendWithReply(Message("export-document"), "export-document") { message, _ ->
+        val result = Json.decodeFromJsonElement<ExportDocumentResult>(message.payload!!)
+        val name = if (result.filename.isNotBlank()) result.filename else "document"
+        downloadEdnFile("$name.edn", result.edn)
         Handled.yes_remove
     }
 }
@@ -124,12 +163,12 @@ fun pasteBoxesFromClipboard() {
     // Try to read clipboard items (supports both text and files)
     clipboard.read().then({ clipboardItems: dynamic ->
         var processed = false
-        
+
         // Iterate through clipboard items
         val items = clipboardItems
         if (items.length > 0) {
             val item = items[0]
-            
+
             // Check if there's an EDN file in the clipboard
             if (item.types.includes("application/edn")) {
                 item.getType("application/edn").then({ blob: dynamic ->
@@ -161,7 +200,7 @@ fun pasteBoxesFromClipboard() {
                 processed = true
             }
         }
-        
+
         // If no items were processed, try the old text-only API as fallback
         if (!processed) {
             clipboard.readText().then({ text: String ->
@@ -471,6 +510,20 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             val a = eval(e)
             all.push(a)
         }
+
+        run {
+            val e = """
+            ({
+                id:'export-selection-edn', label:'Export selection (.edn)', 
+                canvasKeybinding: (event) => false,
+                run: () => { 
+                    exportSelectedBoxesToDownload()
+                }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
     }
     if (boxes.size == 2) {
         // todo, check connections before presenting // n1.box_children contains uid of n2?
@@ -564,6 +617,13 @@ fun registerBuiltinCommands() {
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
                 pasteBoxesFromClipboard()
+            }
+        },{
+            id:'export-document-edn',
+            label:"Export document (.edn)",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                exportDocumentToDownload()
             }
         },{
             id:'move-forward',

@@ -213,6 +213,9 @@ data class CopyBoxes(val uids: List<String>)
 data class CopyBoxesResult(val edn: String)
 
 @Serializable
+data class ExportDocumentResult(val edn: String, val filename: String = "")
+
+@Serializable
 data class PasteBoxes(val edn: String)
 
 @Serializable

@@ -413,6 +413,14 @@ class Server {
                 Handled.yes
             })
 
+            handlers["export-document"] = mutableSetOf({ _, reply ->
+                val info = thisSessionInfo.get()
+                val edn = SavingContext().exportEdnPackage(info.boxes.values.toSet(), info.filename)
+                val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
+                reply(Message("export-document").payload(ExportDocumentResult(edn, filename)))
+                Handled.yes
+            })
+
             handlers["paste-boxes"] = mutableSetOf({ message, reply ->
                 val req = Json.decodeFromJsonElement<PasteBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()
