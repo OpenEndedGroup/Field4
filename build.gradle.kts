@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 
-val lwjglVersion = "3.3.6"
+val lwjglVersion = "3.4.0-SNAPSHOT"
 val jomlVersion = "1.10.7"
 val `joml-primitivesVersion` = "1.10.0"
 
@@ -64,6 +64,7 @@ version = "1.1-SNAPSHOT"
 repositories {
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+    maven("https://central.sonatype.com/repository/maven-snapshots")
     maven("https://repo.kotlin.link")
     maven(url = "https://repo.clojars.org/")
 
@@ -180,8 +181,8 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-glfw:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-glfw::$lwjglNatives")
                 implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-openvr:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
+//                implementation("org.lwjgl:lwjgl-openvr:${lwjglVersion}")
+                implementation("org.lwjgl:lwjgl-openxr:${lwjglVersion}")
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-stb::$lwjglNatives")
                 implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
@@ -194,7 +195,8 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-glfw:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
-                if (!lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-openvr::${lwjglNatives}")
+//                if (!lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-openvr::${lwjglNatives}")
+                if (!lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-openxr::${lwjglNatives}")
                 implementation("org.lwjgl:lwjgl-vma::${lwjglNatives}")
 
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")

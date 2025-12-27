@@ -6,18 +6,18 @@ import afield.four.util.Options
 import afield.four.util.vkCheck
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
-import org.lwjgl.openvr.OpenVR
-import org.lwjgl.openvr.VR
-import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanDeviceExtensionsRequired
-import org.lwjgl.openvr.VRCompositor.VRCompositor_GetVulkanInstanceExtensionsRequired
+import org.lwjgl.openxr.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.EXTDebugUtils
 import org.lwjgl.vulkan.EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT
 import org.lwjgl.vulkan.EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT
 import org.lwjgl.vulkan.KHRPortabilityEnumeration.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
 import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
 import org.lwjgl.vulkan.VK10.VK_SUCCESS
+import java.nio.ByteBuffer
+import java.nio.IntBuffer
 
 class Instance(validate: Boolean) {
 
@@ -75,7 +75,7 @@ class Instance(validate: Boolean) {
                 if (supportsValidation && hasValidationFeatures) add(EXTValidationFeatures.VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME)
                 if (supportsValidation && hasLayerSettings) add("VK_EXT_layer_settings")
                 if (usePortability) add(PORTABILITY_EXTENSION) // VK_KHR_portability_enumeration
-                if (Options.enableVR) addAll(getOpenVRRequiredInstanceExts())
+                if (Options.enableVR) addAll(getOpenXRRequiredInstanceExts())
             }
 
             val requiredExtensions = stack.mallocPointer(extNames.size).apply {
@@ -204,6 +204,90 @@ class Instance(validate: Boolean) {
 
         var globalAsyncDebugHandler: ((String) -> Unit)? = null
 
+        fun getOpenXRRequiredInstanceExts(): List<String> {
+            if (!Options.enableVR) return emptyList()
+            ensureOpenXRExtensions()
+            return xrCachedInstanceExts
+        }
+
+        fun getOpenXRRequiredDeviceExts(@Suppress("unused_parameter") physicalDeviceAddr: Long): List<String> {
+            if (!Options.enableVR) return emptyList()
+            ensureOpenXRExtensions()
+            return xrCachedDeviceExts
+        }
+
+        private var xrCachedInstanceExts: List<String> = emptyList()
+        private var xrCachedDeviceExts: List<String> = emptyList()
+        private var xrInitialized = false
+
+        private fun ensureOpenXRExtensions() {
+            if (xrInitialized) return
+            xrInitialized = true
+            MemoryStack.stackPush().use { stack ->
+                // Build minimal OpenXR instance with Vulkan enable2 so we can query required Vulkan extensions
+                val appInfo = XrApplicationInfo.calloc(stack)
+                appInfo.applicationName(stack.UTF8("afield"))
+                appInfo.applicationVersion(1)
+                appInfo.engineName(stack.UTF8("afield"))
+                appInfo.engineVersion(1)
+                appInfo.apiVersion(XR10.XR_CURRENT_API_VERSION)
+
+                val extNames = stack.pointers(stack.UTF8(org.lwjgl.openxr.KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME))
+
+                val createInfo = XrInstanceCreateInfo.calloc(stack)
+                    .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
+                    .applicationInfo(appInfo)
+                    .enabledExtensionNames(extNames)
+
+                val pInstance = stack.mallocPointer(1)
+                val created = XR10.xrCreateInstance(createInfo, pInstance) == XR10.XR_SUCCESS
+                if (!created) {
+                    xrCachedInstanceExts = emptyList()
+                    xrCachedDeviceExts = emptyList()
+                    return
+                }
+
+                val xrInstance = XrInstance(pInstance[0], createInfo)
+                try {
+                    val sysInfo = XrSystemGetInfo.calloc(stack)
+                        .type(XR10.XR_TYPE_SYSTEM_GET_INFO)
+                        .formFactor(XR10.XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY)
+                    val pSys = stack.mallocLong(1)
+                    val sysRes = XR10.xrGetSystem(xrInstance, sysInfo, pSys)
+                    if (sysRes != XR10.XR_SUCCESS) {
+                        xrCachedInstanceExts = emptyList()
+                        xrCachedDeviceExts = emptyList()
+                        return
+                    }
+                    val systemId = pSys[0]
+
+                    xrCachedInstanceExts = queryExts(stack) { cap, buf ->
+                        org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, cap, buf)
+                    }
+                    xrCachedDeviceExts = queryExts(stack) { cap, buf ->
+                        org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, cap, buf)
+                    }
+                } finally {
+                    XR10.xrDestroyInstance(xrInstance)
+                }
+            }
+        }
+
+        private fun queryExts(
+            stack: MemoryStack,
+            call: (IntBuffer, ByteBuffer?) -> Int
+        ): List<String> {
+            val size = stack.mallocInt(1)
+            call(size, null)
+            val byteCount = size[0]
+            if (byteCount <= 1) return emptyList()
+            val buf = stack.malloc(byteCount)
+            size.put(0, byteCount)
+            call(size, buf)
+            val s = MemoryUtil.memUTF8(buf, byteCount - 1)
+            return s.split(' ').filter { it.isNotBlank() }
+        }
+
         private fun createDebugCallBack(): VkDebugUtilsMessengerCreateInfoEXT {
             fun objectTypeName(t: Int) = when (t) {
                 VK10.VK_OBJECT_TYPE_INSTANCE -> "Instance"
@@ -310,42 +394,7 @@ class Instance(validate: Boolean) {
         }
 
 
-        // --- OpenVR helpers (optional) --------------------------------------
 
-        private fun tryInitOpenVR(): Boolean {
-            if (org.lwjgl.openvr.OpenVR.VRSystem != null) return true
-            if (!VR.VR_IsRuntimeInstalled()) return false
-            MemoryStack.stackPush().use { s ->
-                val pe = s.mallocInt(1)
-                VR.VR_InitInternal(pe, VR.EVRApplicationType_VRApplication_Scene)
-                if (pe[0] != VR.EVRInitError_VRInitError_None) return false
-            }
-            OpenVR.create(1)
-            return true
-        }
-
-        fun getOpenVRRequiredInstanceExts(): List<String> {
-            if (!Options.enableVR) return emptyList()
-            if (!tryInitOpenVR()) return emptyList()
-            return try {
-                val s = VRCompositor_GetVulkanInstanceExtensionsRequired(4096)
-                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
-            } catch (_: Throwable) {
-                emptyList()
-            }
-        }
-
-        @Suppress("unused")
-        fun getOpenVRRequiredDeviceExts(physicalDeviceAddr: Long): List<String> {
-            if (!Options.enableVR) return emptyList()
-            if (!tryInitOpenVR()) return emptyList()
-            return try {
-                val s = VRCompositor_GetVulkanDeviceExtensionsRequired(physicalDeviceAddr, 4096)
-                if (s.isNullOrEmpty()) emptyList() else s.split(' ').filter { it.isNotBlank() }
-            } catch (_: Throwable) {
-                emptyList()
-            }
-        }
     }
 
 // --- Tooling info dump (optional) ----------------------------------------

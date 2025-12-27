@@ -1,24 +1,15 @@
 package afield.four.device
 
-import afield.four.device.Instance.Companion.getOpenVRRequiredDeviceExts
 import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
-import org.lwjgl.vulkan.KHRPushDescriptor
-import org.lwjgl.vulkan.VK12
-import org.lwjgl.vulkan.VkPhysicalDevicePushDescriptorPropertiesKHR
-import org.lwjgl.vulkan.VkPhysicalDeviceProperties2
-import org.lwjgl.vulkan.VkPhysicalDeviceTimelineSemaphoreFeatures
-import org.lwjgl.vulkan.VkPhysicalDeviceExtendedDynamicStateFeaturesEXT
-import org.lwjgl.vulkan.VkPhysicalDeviceExtendedDynamicState3FeaturesEXT
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_KHR
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
 
 class Device(val physicalDevice: PhysicalDevice) {
@@ -93,11 +84,11 @@ class Device(val physicalDevice: PhysicalDevice) {
             addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
             addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
 
-                if (Options.enableVR) {
-                    getOpenVRRequiredDeviceExts(
-                        physicalDevice.vkPhysicalDevice.address()
-                    ).filter { it.isNotBlank() }.forEach { addIfSupported(it) }
-                }
+            if (Options.enableVR) {
+                addAll(Instance.getOpenXRRequiredDeviceExts(physicalDevice.vkPhysicalDevice.address()))
+                addIfSupported(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
+            }
+
             }
 
             val requiredExtensions = stack.mallocPointer(extNames.size).apply {
