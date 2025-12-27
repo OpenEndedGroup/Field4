@@ -1,0 +1,109 @@
+# Metadata Server
+
+A simple Flask server for hosting and serving metadata.edn files that can be imported into Field.
+
+## Purpose
+
+This server provides a lightweight way to share Field templates (metadata.edn files) that aren't part of Field's built-in templating system. Users can:
+
+1. Store additional templates in the `metadata_store/` directory
+2. List available templates via the `/list` endpoint
+3. Download specific templates via the `/download/<name>` endpoint
+
+These templates can then be imported into Field through the "import from workspace" feature.
+
+## Installation
+
+1. Install Python dependencies:
+   ```bash
+   pip install -r metadata_server_requirements.txt
+   ```
+
+2. Run the server:
+   ```bash
+   python metadata_server.py
+   ```
+
+The server will start on `http://localhost:5001` by default. You can change the port by setting the `METADATA_SERVER_PORT` environment variable:
+   ```bash
+   METADATA_SERVER_PORT=8000 python metadata_server.py
+   ```
+
+## Usage
+
+### Adding Templates
+
+To add a new template to the server:
+
+1. Create a directory in `metadata_store/` with your template name:
+   ```bash
+   mkdir metadata_store/my_template
+   ```
+
+2. Place your `metadata.edn` file in that directory:
+   ```bash
+   cp /path/to/template/metadata.edn metadata_store/my_template/
+   ```
+
+3. The template will automatically be available through the server
+
+### API Endpoints
+
+#### List Available Templates
+```bash
+GET http://localhost:5001/list
+```
+
+Returns JSON array of available templates:
+```json
+[
+  {
+    "name": "my_template",
+    "has_edn": true,
+    "path": "my_template"
+  }
+]
+```
+
+#### Download a Template
+```bash
+GET http://localhost:5001/download/my_template
+```
+
+Downloads the `metadata.edn` file from the specified template directory.
+
+## Directory Structure
+
+```
+.
+├── metadata_server.py              # The Flask server
+├── metadata_server_requirements.txt # Python dependencies
+├── README_METADATA_SERVER.md       # This file
+└── metadata_store/                 # Storage directory for templates
+    ├── example_template_1/
+    │   └── metadata.edn
+    └── example_template_2/
+        └── metadata.edn
+```
+
+## Integration with Field
+
+This server is designed to complement Field's existing template system. While Field's built-in templates are stored in:
+- `~/Documents/AFieldWorkspace/` (user workspace)
+- `app/templates/` (application templates)
+
+This metadata server provides an additional source for templates that can be:
+- Shared across teams
+- Hosted remotely
+- Version controlled separately from Field
+- Distributed without modifying Field's installation
+
+## CORS
+
+The server has CORS enabled to allow the Field frontend (running on a different port) to access the metadata files.
+
+## Security Notes
+
+- The server uses basic path sanitization to prevent directory traversal attacks
+- For production use, consider adding authentication and HTTPS
+- The server runs on all interfaces (0.0.0.0) - adjust if needed for security
