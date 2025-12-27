@@ -1,6 +1,7 @@
 package afield.server
 
 import afield.Execute
+import afield.ExecuteSymbol
 import afield.Handled
 import afield.Message
 import afield.RunsAt
@@ -35,6 +36,14 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
             box.ke.executeFragment(box, exec, reply)
+            Handled.yes
+        })
+
+    handlers["execute-symbol"] = mutableSetOf(
+        { message, reply: (Message) -> Unit ->
+            val exec = Json.decodeFromJsonElement<ExecuteSymbol>(message.payload!!)
+            val box = box(exec.uid)
+            box.ke.executeSymbol(box, exec, reply)
             Handled.yes
         })
 

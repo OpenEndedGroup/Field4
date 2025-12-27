@@ -408,6 +408,23 @@ class RemoteJSExectution : BoxExecution {
         afield.remotejs.stop(inside)
     }
 
+    override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
+        // For JavaScript, construct a function call: symbolName()
+        val functionCall = "${executeSymbol.symbol}()"
+        
+        // Create an Execute object for executeFragment
+        val exec = Execute(
+            uid = executeSymbol.uid,
+            type = "fragment",
+            line = executeSymbol.line,
+            code = functionCall,
+            singleLine = true
+        )
+        
+        // Execute as a fragment
+        executeFragment(inside, exec, reply)
+    }
+
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
         if (knownOpenRemoteClients.isEmpty())
             notify("Warning! no connected remote clients", "remotejs")
