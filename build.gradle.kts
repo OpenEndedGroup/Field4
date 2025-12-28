@@ -326,12 +326,7 @@ kotlin {
                 implementation("org.bytedeco:javacpp:$javacppVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$ffmpegPlatform")
-
-
-
             }
-
-
         }
 
 
