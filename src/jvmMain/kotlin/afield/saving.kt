@@ -34,7 +34,8 @@ class SavingContext {
         }
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
-            "boxes" to payloadBoxes
+            "boxes" to payloadBoxes,
+            "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         return Edn.write(payload, ednCustom)
     }
@@ -211,7 +212,8 @@ class SavingContext {
         }
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
-            "boxes" to payloadBoxes
+            "boxes" to payloadBoxes,
+            "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         val ednText = Edn.write(payload, ednCustom)
         val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
@@ -291,7 +293,20 @@ class SavingContext {
     fun readEdnTransfers(directory: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(File(directory, METADATA_EDN).readText(), ednCustom)
         val boxesValue = when (rootValue) {
-            is Map<*, *> -> rootValue["boxes"]
+            is Map<*, *> -> {
+                // Merge persistent properties from the document with the current global set
+                val savedProps = rootValue["persistentProperties"]
+                if (savedProps != null) {
+                    val propsList = when (savedProps) {
+                        is List<*> -> savedProps.mapNotNull { it?.toString() }
+                        is Set<*> -> savedProps.mapNotNull { it?.toString() }
+                        else -> emptyList()
+                    }
+                    // Merge the saved properties with the current global set
+                    Box.ioPersistentProperties.addAll(propsList)
+                }
+                rootValue["boxes"]
+            }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in ${File(directory, METADATA_EDN).path}")
@@ -319,7 +334,20 @@ class SavingContext {
     fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(ednText, ednCustom)
         val boxesValue = when (rootValue) {
-            is Map<*, *> -> rootValue["boxes"]
+            is Map<*, *> -> {
+                // Merge persistent properties from the document with the current global set
+                val savedProps = rootValue["persistentProperties"]
+                if (savedProps != null) {
+                    val propsList = when (savedProps) {
+                        is List<*> -> savedProps.mapNotNull { it?.toString() }
+                        is Set<*> -> savedProps.mapNotNull { it?.toString() }
+                        else -> emptyList()
+                    }
+                    // Merge the saved properties with the current global set
+                    Box.ioPersistentProperties.addAll(propsList)
+                }
+                rootValue["boxes"]
+            }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in provided text")
