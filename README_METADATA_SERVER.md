@@ -78,6 +78,30 @@ GET http://localhost:5001/download/my_template
 
 Downloads the `metadata.edn` file from the specified template directory.
 
+#### Get Telemetry Data
+```bash
+GET http://localhost:5001/telemetry
+```
+
+Returns telemetry data about server usage:
+```json
+{
+  "list_queries": 42,
+  "downloads": {
+    "my_template": 10,
+    "another_template": 5
+  },
+  "last_updated": "2025-12-28T07:01:47.311306"
+}
+```
+
+Telemetry tracks:
+- `list_queries`: Total number of times the `/list` endpoint has been queried
+- `downloads`: Object mapping template names to their download counts
+- `last_updated`: ISO timestamp of the last telemetry update
+
+Telemetry data is persisted to `metadata_server_telemetry.json` and survives server restarts.
+
 ## Directory Structure
 
 ```
@@ -104,34 +128,46 @@ This metadata server provides an additional source for templates that can be:
 - Version controlled separately from Field
 - Distributed without modifying Field's installation
 
+### Automatic Integration (Recommended)
+
+Field can automatically query template servers at startup and make their templates available alongside local templates.
+
+**Configuration:**
+
+Set the `AFIELD_TEMPLATE_SERVERS` environment variable with a comma-separated list of server URLs before starting Field:
+
+```bash
+export AFIELD_TEMPLATE_SERVERS="http://localhost:5001,http://templates.example.com:5001"
+./gradlew run
+```
+
+Or use the system property:
+
+```bash
+./gradlew run -Dafield.templateServers="http://localhost:5001,http://templates.example.com:5001"
+```
+
+**Features:**
+
+- Templates from configured servers are fetched in the background at startup to hide latency
+- Remote templates appear in Field's template list alongside local templates
+- When inserting a remote template, Field automatically downloads and imports it with fresh UUIDs
+- No manual download or drag-and-drop required
+
 ### Using Templates from the Metadata Server
 
 There are several ways to use templates from the metadata server with Field:
 
-#### Option 1: Manual Download and Import
+#### Option 1: Automatic Integration (Recommended)
+See "Automatic Integration" section above. This is the easiest way to use remote templates.
+
+#### Option 2: Manual Download and Import
 1. Download a template from the server:
    ```bash
    curl -O http://localhost:5001/download/example_template
    ```
 2. Drag and drop the downloaded `metadata.edn` file into Field's interface
 3. Field will import the boxes with fresh UUIDs to avoid conflicts
-
-#### Option 2: Programmatic Integration
-You can extend Field's template system to fetch from this metadata server by:
-
-1. Adding a new handler in Field that queries this server's `/list` endpoint
-2. When a user selects a template from this server, fetch it via `/download/<name>`
-3. Import it using the existing `import-metadata-edn` handler
-
-Example workflow:
-```kotlin
-// Fetch available templates from metadata server
-val templates = fetchJson("http://localhost:5001/list")
-
-// When user selects one, download and import it
-val ednContent = fetchText("http://localhost:5001/download/template_name")
-send(Message("import-metadata-edn").payload(ImportMetadata(ednContent)))
-```
 
 #### Option 3: Copy to Local Workspace
 For frequently used templates, you can copy them to your local workspace:
