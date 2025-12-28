@@ -4,6 +4,8 @@ import org.jetbrains.kotlin.utils.threadLocal
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 
 fun lprintln(message : Any?) {
@@ -28,19 +30,21 @@ var indent by threadLocal {
 
 var isNL = true
 
-@OptIn(ExperimentalContracts::class)
+@OptIn(ExperimentalContracts::class, ExperimentalUuidApi::class)
 inline fun lblock(message : Any?, block :  () -> Unit) {
     contract {
         callsInPlace(block, InvocationKind.EXACTLY_ONCE)
     }
-    lprintln(">|> ${message}")
-    indent += "\t"
+    val u = Uuid.random().toString()
+    lprintln(">|> ${message} - '${u}'")
+    val added = "${u}\t"
+    indent += added
     try {
         block()
     }
     finally {
-        if (indent.length>0) indent = indent.substring(1)
-        lprintln("<|<")
+        if (indent.length>0) indent = indent.substring(added.length)
+        lprintln("<|< - '${u}'")
     }
 }
 

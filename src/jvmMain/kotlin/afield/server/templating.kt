@@ -1,19 +1,6 @@
 package afield.server
 
-import afield.Directory
-import afield.Handled
-import afield.Message
-import afield.RunsAt
-import afield.SaveAsTemplate
-import afield.SavingContext
-import afield.app
-import afield.box
-import afield.handlers
-import afield.home
-import afield.installHandlers
-import afield.notify
-import afield.payload
-import afield.thisSessionInfo
+import afield.*
 import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +8,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.decodeFromString
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
@@ -57,9 +43,9 @@ private fun fetchTemplatesFromServer(serverUrl: String): List<String> {
             .uri(URI.create(listUrl))
             .GET()
             .build()
-        
+
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        
+
         if (response.statusCode() == 200) {
             val templates = Json.decodeFromString<List<RemoteTemplate>>(response.body())
             return templates.filter { it.has_edn }.map { it.name }
@@ -82,9 +68,9 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
             .uri(URI.create(downloadUrl))
             .GET()
             .build()
-        
+
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        
+
         if (response.statusCode() == 200) {
             return response.body()
         } else {
@@ -104,9 +90,9 @@ private fun initializeTemplateServers() {
         lprintln("No template servers configured (use AFIELD_TEMPLATE_SERVERS environment variable)")
         return
     }
-    
+
     lprintln("Initializing template servers in background: ${templateServers.joinToString(", ")}")
-    
+
     // Launch background coroutine to fetch templates from all servers
     CoroutineScope(Dispatchers.IO).launch {
         templateServers.forEach { serverUrl ->
@@ -123,6 +109,7 @@ private fun initializeTemplateServers() {
     }
 }
 
+@OptIn(ExperimentalUuidApi::class)
 @RunsAt(installHandlers)
 fun templating() {
     // Initialize remote template servers in the background
@@ -133,10 +120,10 @@ fun templating() {
 
         val templates2 = SavingContext().listTemplates(app + "/templates/")
         val templates = SavingContext().listTemplates(home)
-        
+
         // Include remote templates from all configured servers
         val remoteTemplates = remoteTemplatesCache.values.flatten()
-        
+
         reply(Message("list").payload(Directory(command = "list", value = templates + templates2 + remoteTemplates)))
 
         Handled.yes
@@ -153,9 +140,9 @@ fun templating() {
 
         exec.value.flatMap { templateName ->
             // Try local templates first
-            if (templates.contains(templateName)) {
+            if (templatesHome.contains(templateName)) {
                 SavingContext().cloneInto("$home/$templateName")
-            } else if (templates2.contains(templateName)) {
+            } else if (templatesApp.contains(templateName)) {
                 SavingContext().cloneInto("$app/templates/$templateName")
             } else {
                 // Try remote templates
@@ -187,7 +174,7 @@ fun templating() {
 
     handlers["save-as-template"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<SaveAsTemplate>(message.payload!!)
-        
+
         val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
         if (boxes.isEmpty()) {
             notify("No valid boxes found for template", "error")
