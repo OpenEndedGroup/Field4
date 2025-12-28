@@ -295,6 +295,10 @@ class SavingContext {
      * This ensures that all properties that were previously saved in a document
      * continue to be saved, even if they're not in the current global set.
      *
+     * Note: This function intentionally modifies global state (Box.ioPersistentProperties).
+     * This is by design to ensure all loaded documents' properties are preserved across saves.
+     * Documents are loaded sequentially in this application, so concurrent access is not a concern.
+     *
      * @param rootValue The root EDN value from metadata.edn (should be a Map)
      */
     private fun mergePersistentProperties(rootValue: Map<*, *>) {
@@ -306,8 +310,7 @@ class SavingContext {
                 else -> emptyList()
             }
             // Merge the saved properties with the current global set
-            // Note: This modifies global state, which is intentional to ensure
-            // all loaded documents' properties are preserved across saves
+            // mapNotNull ensures only valid string values are added
             Box.ioPersistentProperties.addAll(propsList)
         }
     }
