@@ -34,7 +34,8 @@ class SavingContext {
         }
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
-            "boxes" to payloadBoxes
+            "boxes" to payloadBoxes,
+            "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         return Edn.write(payload, ednCustom)
     }
@@ -211,7 +212,8 @@ class SavingContext {
         }
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
-            "boxes" to payloadBoxes
+            "boxes" to payloadBoxes,
+            "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         val ednText = Edn.write(payload, ednCustom)
         val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
@@ -288,10 +290,39 @@ class SavingContext {
         return resolveValue(value, directory, { it }, createBoxes = false)
     }
 
+    /**
+     * Merges persistent properties from a document with the current global set.
+     * This ensures that all properties that were previously saved in a document
+     * continue to be saved, even if they're not in the current global set.
+     *
+     * Note: This function intentionally modifies global state (Box.ioPersistentProperties).
+     * This is by design to ensure all loaded documents' properties are preserved across saves.
+     * Documents are loaded sequentially in this application, so concurrent access is not a concern.
+     *
+     * @param rootValue The root EDN value from metadata.edn (should be a Map)
+     */
+    private fun mergePersistentProperties(rootValue: Map<*, *>) {
+        val savedProps = rootValue["persistentProperties"]
+        if (savedProps != null) {
+            val propsList = when (savedProps) {
+                is List<*> -> savedProps.mapNotNull { it?.toString() }
+                is Set<*> -> savedProps.mapNotNull { it?.toString() }
+                else -> emptyList()
+            }
+            // Merge the saved properties with the current global set
+            // mapNotNull ensures only valid string values are added
+            Box.ioPersistentProperties.addAll(propsList)
+        }
+    }
+
     fun readEdnTransfers(directory: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(File(directory, METADATA_EDN).readText(), ednCustom)
         val boxesValue = when (rootValue) {
-            is Map<*, *> -> rootValue["boxes"]
+            is Map<*, *> -> {
+                // Merge persistent properties from the document with the current global set
+                mergePersistentProperties(rootValue)
+                rootValue["boxes"]
+            }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in ${File(directory, METADATA_EDN).path}")
@@ -319,7 +350,11 @@ class SavingContext {
     fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(ednText, ednCustom)
         val boxesValue = when (rootValue) {
-            is Map<*, *> -> rootValue["boxes"]
+            is Map<*, *> -> {
+                // Merge persistent properties from the document with the current global set
+                mergePersistentProperties(rootValue)
+                rootValue["boxes"]
+            }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in provided text")
