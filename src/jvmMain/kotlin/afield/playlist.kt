@@ -1,7 +1,6 @@
 package afield
 
 import afield.stdlib.begin
-import kotlinx.coroutines.launch
 
 /**
  * Playlist functionality for Field4
@@ -35,9 +34,9 @@ fun Box.findBoxesWithPlaylist(): List<Box> {
         if (box in visited) return
         visited.add(box)
         
-        // Check if this box has playlist property
+        // Check if this box has playlist property using getPropertyRaw to avoid null pointer
         val playlistValue = box.getPropertyRaw("playlist")
-        if (playlistValue != null && playlistValue is Number) {
+        if (playlistValue is Number) {
             result.add(box)
         }
         
@@ -68,9 +67,8 @@ fun Box.executePlaylist(strand: String = "default"): Frames {
         val boxes = findBoxesWithPlaylist()
         
         // Sort by playlist value (low to high)
-        val sorted = boxes.sortedBy { 
-            (it.getPropertyRaw("playlist") as? Number)?.toDouble() ?: 0.0 
-        }
+        // We know these boxes have the property set, so we can use the extension property
+        val sorted = boxes.sortedBy { it.playlist }
         
         // Execute each box in order
         for (box in sorted) {
@@ -78,6 +76,7 @@ fun Box.executePlaylist(strand: String = "default"): Frames {
             box.begin(strand)
             
             // Get the number of frames to wait (pauseList or default 1)
+            // Use getPropertyRaw to safely check if pauseList is set
             val pauseValue = box.getPropertyRaw("pauseList") as? Number
             val framesToWait = pauseValue?.toInt() ?: 1
             
