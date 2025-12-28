@@ -1,31 +1,22 @@
 package afield.four.modules
 
-import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
-import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
-
 import afield.Named
-import afield.Rect
-import afield.four.buffers.buffer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
-import afield.four.device.CommandBuffer
-import afield.four.device.DescriptorSetLayout
+import afield.four.buffers.buffer
+import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
-import afield.four.device.UpdatesDescriptorSet
-import afield.four.device.beginLabel
-import afield.four.device.endLabel
-import afield.four.device.nameObject
-import afield.four.util.Options
 import afield.four.util.AutoDisposer
+import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
-import afield.stdlib.d
 import afield.stdlib.f
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.VK13.*
-import org.lwjgl.vulkan.EXTExtendedDynamicState3
 import java.nio.ByteBuffer
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
@@ -52,7 +43,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         p.textureResolver = {
             if (forceReresolve) oTextureResolver(it) else try {
                 val tp = current.uniforms[it.name] as Module.TexturePointer
-                arrayOf(tp.texture) to tp.sampler
+                tp.texture to tp.sampler
             } catch (_: Exception) {
                 lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
@@ -335,11 +326,14 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 ti.textures.forEach { if (it.set == set) {
                     found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val views = texture.imageViewArray
+                    require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
+
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture[0], sampler)
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture, sampler)
                     } else {
-                        require(texture.size == it.arrayCount) {
-                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        require(views.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${views.size} but the shader is expecting ${it.arrayCount}"
                         }
                         uniforms[it.name] = Module.TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
@@ -347,11 +341,14 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 mi.textures.forEach { if (it.set == set) {
                     found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val views = texture.imageViewArray
+                    require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
+
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture[0], sampler)
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture, sampler)
                     } else {
-                        require(texture.size == it.arrayCount) {
-                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        require(views.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${views.size} but the shader is expecting ${it.arrayCount}"
                         }
                         uniforms[it.name] = Module.TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }
@@ -359,11 +356,14 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 fi.textures.forEach { if (it.set == set) {
                     found = true
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val views = texture.imageViewArray
+                    require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
+
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture[0], sampler)
+                        uniforms[it.name] = Module.TexturePointer(it.name, it, source = null, texture, sampler)
                     } else {
-                        require(texture.size == it.arrayCount) {
-                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        require(views.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${views.size} but the shader is expecting ${it.arrayCount}"
                         }
                         uniforms[it.name] = Module.TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }

@@ -41,6 +41,9 @@ class VideoTexture(
     // Current slot index (0 or 1) - indicates most recent frame
     private val currentSlot = AtomicInteger(0)
 
+    // When true, allow a one-off update while paused to reflect a scrubbed position
+    private var pendingFrameRefresh = false
+
         // Format constants for P010
     private val lumaFormat = VK10.VK_FORMAT_R16_UNORM  // 16-bit luma
     private val chromaFormat = VK10.VK_FORMAT_R16G16_UNORM  // 16-bit interleaved UV
@@ -108,6 +111,7 @@ class VideoTexture(
 
         currentTimestamp = 0.0
         currentSlot.set(0)
+        pendingFrameRefresh = true
 
         return true
     }
@@ -137,6 +141,9 @@ class VideoTexture(
             if (dec.seek(timestampSeconds)) {
                 currentTimestamp = timestampSeconds
                 lastUpdateTime = System.nanoTime()
+                if (!isPlaying) {
+                    pendingFrameRefresh = true
+                }
                 return true
             }
         }
@@ -148,17 +155,27 @@ class VideoTexture(
      * Returns true if a new frame was uploaded.
      */
     fun update(commandBuffer: CommandBuffer): Boolean {
-        if (!isPlaying || decoder == null) {
+        val activeDecoder = decoder ?: return false
+        val allowWhilePaused = pendingFrameRefresh
+        val shouldUpdate = isPlaying || allowWhilePaused
+
+        if (!shouldUpdate) {
             return false
         }
 
         // Calculate elapsed time
         val currentTime = System.nanoTime()
-        val deltaTime = (currentTime - lastUpdateTime) / 1_000_000_000.0
+        val deltaTime = if (isPlaying) {
+            (currentTime - lastUpdateTime) / 1_000_000_000.0
+        } else {
+            0.0
+        }
         lastUpdateTime = currentTime
 
-        // Update timestamp
-        currentTimestamp += deltaTime
+        // Update timestamp when actively playing
+        if (isPlaying) {
+            currentTimestamp += deltaTime
+        }
 
         // Check if we're past the video duration
         decoder?.let { dec ->
@@ -170,7 +187,7 @@ class VideoTexture(
         }
 
         // Decode next frame
-        val frame = decoder?.decodeNextFrame() ?: return false
+        val frame = activeDecoder.decodeNextFrame() ?: return false
 
         // Switch to next slot
         val nextSlot = (currentSlot.get() + 1) % 2
@@ -184,6 +201,14 @@ class VideoTexture(
 
         // Update current slot
         currentSlot.set(nextSlot)
+
+        // Align timestamp to decoded frame to avoid drift after scrubs
+        currentTimestamp = frame.timestamp
+
+        // If we were paused and refreshing after a scrub, stop the temporary refresh
+        if (!isPlaying && pendingFrameRefresh) {
+            pendingFrameRefresh = false
+        }
 
         return true
     }
