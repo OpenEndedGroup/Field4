@@ -36,8 +36,8 @@ class VideoDecoder(private val videoPath: String) {
     private var isOpen = false
     
     init {
-        // Register all codecs and formats
-        av_register_all()
+        // Note: av_register_all() is deprecated in FFmpeg 4.0+, registration is now implicit
+        // Initialize network protocols if needed
         avformat_network_init()
     }
     
@@ -56,7 +56,7 @@ class VideoDecoder(private val videoPath: String) {
             }
             
             // Retrieve stream information
-            if (avformat_find_stream_info(formatContext, null as AVDictionary?) < 0) {
+            if (avformat_find_stream_info(formatContext, null as PointerPointer<*>?) < 0) {
                 println("Error: Could not find stream information")
                 return false
             }
@@ -105,7 +105,7 @@ class VideoDecoder(private val videoPath: String) {
             }
             
             // Open codec
-            if (avcodec_open2(codecContext, codec, null as AVDictionary?) < 0) {
+            if (avcodec_open2(codecContext, codec, null as PointerPointer<*>?) < 0) {
                 println("Error: Could not open codec")
                 return false
             }
@@ -183,7 +183,7 @@ class VideoDecoder(private val videoPath: String) {
                     val ret = avcodec_receive_frame(codecContext, frame)
                     av_packet_unref(packet)
                     
-                    if (ret == AVERROR_EAGAIN() || ret == AVERROR_EOF) {
+                    if (ret == AVERROR_EAGAIN || ret == AVERROR_EOF) {
                         continue
                     } else if (ret < 0) {
                         return null
