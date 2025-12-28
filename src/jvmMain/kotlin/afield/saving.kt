@@ -290,21 +290,34 @@ class SavingContext {
         return resolveValue(value, directory, { it }, createBoxes = false)
     }
 
+    /**
+     * Merges persistent properties from a document with the current global set.
+     * This ensures that all properties that were previously saved in a document
+     * continue to be saved, even if they're not in the current global set.
+     *
+     * @param rootValue The root EDN value from metadata.edn (should be a Map)
+     */
+    private fun mergePersistentProperties(rootValue: Map<*, *>) {
+        val savedProps = rootValue["persistentProperties"]
+        if (savedProps != null) {
+            val propsList = when (savedProps) {
+                is List<*> -> savedProps.mapNotNull { it?.toString() }
+                is Set<*> -> savedProps.mapNotNull { it?.toString() }
+                else -> emptyList()
+            }
+            // Merge the saved properties with the current global set
+            // Note: This modifies global state, which is intentional to ensure
+            // all loaded documents' properties are preserved across saves
+            Box.ioPersistentProperties.addAll(propsList)
+        }
+    }
+
     fun readEdnTransfers(directory: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(File(directory, METADATA_EDN).readText(), ednCustom)
         val boxesValue = when (rootValue) {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
-                val savedProps = rootValue["persistentProperties"]
-                if (savedProps != null) {
-                    val propsList = when (savedProps) {
-                        is List<*> -> savedProps.mapNotNull { it?.toString() }
-                        is Set<*> -> savedProps.mapNotNull { it?.toString() }
-                        else -> emptyList()
-                    }
-                    // Merge the saved properties with the current global set
-                    Box.ioPersistentProperties.addAll(propsList)
-                }
+                mergePersistentProperties(rootValue)
                 rootValue["boxes"]
             }
             is List<*> -> rootValue
@@ -336,16 +349,7 @@ class SavingContext {
         val boxesValue = when (rootValue) {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
-                val savedProps = rootValue["persistentProperties"]
-                if (savedProps != null) {
-                    val propsList = when (savedProps) {
-                        is List<*> -> savedProps.mapNotNull { it?.toString() }
-                        is Set<*> -> savedProps.mapNotNull { it?.toString() }
-                        else -> emptyList()
-                    }
-                    // Merge the saved properties with the current global set
-                    Box.ioPersistentProperties.addAll(propsList)
-                }
+                mergePersistentProperties(rootValue)
                 rootValue["boxes"]
             }
             is List<*> -> rootValue
