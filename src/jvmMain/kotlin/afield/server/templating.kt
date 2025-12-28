@@ -24,9 +24,11 @@ fun templating() {
 
         val exec = Json.decodeFromJsonElement<Directory>(message.payload!!)
 
-        val templates2 = SavingContext().listTemplates(app + "/templates/")
-        val templates = SavingContext().listTemplates(home)
-        reply(Message("list").payload(Directory(command = "list", value = templates + templates2)))
+        val templatesHome = SavingContext().listTemplates("$home/templates")
+        val templatesApp = SavingContext().listTemplates("$app/templates")
+
+        val templates = (templatesHome + templatesApp).distinct()
+        reply(Message("list").payload(Directory(command = "list", value = templates)))
 
         Handled.yes
     })
@@ -35,15 +37,17 @@ fun templating() {
 
         val exec = Json.decodeFromJsonElement<Directory>(message.payload!!)
 
-        val templates = SavingContext().listTemplates(home)
-        val templates2 = SavingContext().listTemplates(app + "/templates/")
+        val templatesHome = SavingContext().listTemplates("$home/templates")
+        val templatesApp = SavingContext().listTemplates("$app/templates")
 
         val si = thisSessionInfo.get()
 
         exec.value.flatMap {
-            if (templates.contains(it)) SavingContext().cloneInto("$home/$it")
-            else if (templates2.contains(it)) SavingContext().cloneInto("$app/templates/$it")
-            else emptyList()
+            when {
+                templatesHome.contains(it) -> SavingContext().cloneInto(resolveTemplatePath("$home/templates", it))
+                templatesApp.contains(it) -> SavingContext().cloneInto(resolveTemplatePath("$app/templates", it))
+                else -> emptyList()
+            }
         }.forEach {
             it.resyncAll()
         }
@@ -70,5 +74,11 @@ fun templating() {
         }
         Handled.yes
     })
+}
+
+private fun resolveTemplatePath(baseDir: String, name: String): String {
+    val base = baseDir.trimEnd('/')
+    val withExt = "$base/$name.edn"
+    return if (File(withExt).isFile) withExt else "$base/$name"
 }
 

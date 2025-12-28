@@ -3,6 +3,9 @@ let globalIS = null
 const initQuickPick = (is) => {
         globalIS = is.IQuickInputService
 
+        // Expose the quick input module so other scripts (e.g. bootstrapMonaco.js) can access service identifiers.
+        window.globalIS = is
+
         window.addEventListener("keydown", (e) => {
                 if (document.activeElement == document.body) {
                         console.log(e.key)

@@ -272,9 +272,12 @@ fun insertFromWorkspace() {
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
-                    command:"insert",
-                    value:["$it"],
-                        })})}
+                            command:"insert",
+                            value:["$it"],
+                        })
+                    })
+                }
+            })
         """.trimIndent()
             options.push(eval(e))
         }
@@ -297,82 +300,15 @@ fun saveAsTemplate() {
         notify("No boxes selected", "error")
         return
     }
-    
-    // Create a helper function to validate and save
-    js("""
-        window._saveAsTemplateHelper = function(selectedIds) {
-            const ed = window.ensureEditor && window.ensureEditor();
-            if (!ed) {
-                console.error("No editor available for quick input");
-                return;
-            }
-            const cmd = ed.addCommand(0, (accessor, func) => {
-                let quickInputService = accessor.get(window.globalIS.IQuickInputService);
-                func(quickInputService);
-            });
-            ed.trigger("", cmd, (quickInput) => {
-                const inputBox = quickInput.createInputBox();
-                inputBox.placeholder = "Enter template name";
-                inputBox.prompt = "Save selection as template";
-                inputBox.onDidAccept(() => {
-                    const templateName = inputBox.value.trim();
-                    
-                    // Comprehensive validation
-                    if (!templateName) {
-                        return;
-                    }
-                    
-                    // Check for invalid characters and patterns
-                    const invalidPatterns = [
-                        /[\/\\]/,  // Path separators
-                        /\.\./,    // Parent directory
-                        /^\.$/,    // Current directory
-                        /[\x00]/,  // Null bytes
-                        /^\s/,     // Leading space
-                        /\s$/      // Trailing space
-                    ];
-                    
-                    const reservedNames = ['metadata', 'con', 'prn', 'aux', 'nul', 
-                                          'com1', 'com2', 'com3', 'com4', 'com5',
-                                          'com6', 'com7', 'com8', 'com9',
-                                          'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5',
-                                          'lpt6', 'lpt7', 'lpt8', 'lpt9'];
-                    
-                    for (const pattern of invalidPatterns) {
-                        if (pattern.test(templateName)) {
-                            import("./afield.mjs").then((afield) => {
-                                afield.notify("Invalid template name. Avoid path separators and special characters.", "error");
-                            });
-                            return;
-                        }
-                    }
-                    
-                    if (reservedNames.includes(templateName.toLowerCase())) {
-                        import("./afield.mjs").then((afield) => {
-                            afield.notify("Invalid template name. This is a reserved name.", "error");
-                        });
-                        return;
-                    }
-                    
-                    inputBox.hide();
-                    import("./afield.mjs").then((afield) => {
-                        afield.send("save-as-template", {
-                            uids: selectedIds,
-                            templateName: templateName
-                        });
-                    });
-                });
-                inputBox.onDidHide(() => {
-                    inputBox.dispose();
-                    delete window._saveAsTemplateHelper;
-                });
-                inputBox.show();
-            });
-        }
-    """)
-    
-    // Call the helper function with the selected IDs
-    js("window._saveAsTemplateHelper")(selectedIds.toTypedArray())
+
+    // Call the helper function with the selected IDs; guard when helper is missing
+    val helper = js("window._saveAsTemplateHelper")
+    val hasHelper = js("typeof window._saveAsTemplateHelper === 'function'") as Boolean
+    if (!hasHelper) {
+        notify("Template helper is not available yet. Try again after Monaco loads.", "error")
+        return
+    }
+    helper(selectedIds.toTypedArray())
 }
 
 
