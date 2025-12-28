@@ -1,0 +1,11 @@
+{:version 2
+ :boxes [{:id "b1"
+          :properties {:name "Example Box"
+                       :code "(println \"Hello from example template!\")"
+                       :frame [100.0 100.0 200.0 150.0]
+                       :metadata "tags:\n  - example\n  - template"}}
+         {:id "b2"
+          :properties {:name "Another Box"
+                       :code "(println \"This is a sample template\")"
+                       :frame [320.0 100.0 200.0 150.0]
+                       :metadata "tags:\n  - example"}}]}
