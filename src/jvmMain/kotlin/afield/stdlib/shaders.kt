@@ -456,53 +456,45 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     return this._shader!!
 }
 
-private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>?): (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler> =
+fun fromViews(views: List<HasImageView>, name : String ="",sampler : TextureSampler? = null): Pair<HasImageViewArray, TextureSampler> {
+    require(views.isNotEmpty()) { "No image views found for texture $name" }
+    val provider = object : HasImageViewArray {
+        override val imageViewArray = views
+    }
+    val sampler0 = sampler?: TextureSampler(
+        renderer = fromContext(),
+        views.first().imageView.imageViewData.mipLevels,
+        true
+    )
+    return provider to sampler0
+}
+private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?): (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler> =
     { textureSpec ->
-        val r: Pair<Array<HasImageView>, TextureSampler>? = previousResolver.invoke(textureSpec)
-        if (r != null) r else {
+        val cached: Pair<HasImageViewArray, TextureSampler>? = previousResolver.invoke(textureSpec)
+        if (cached != null) cached else {
             println(" searching for texture ${textureSpec.name}")
             val name = textureSpec.name
+
+
+
             val r =
-                findWithNameOrNull<ImageView>(this, name)?.let {
-                    arrayOf<HasImageView>(it) to TextureSampler(
+                findWithNameOrNull<HasImageViewArray>(this, name)?.let { provider ->
+                    val views = provider.imageViewArray
+                    require(views.isNotEmpty()) { "HasImageViewArray $name has no image views" }
+                    val sampler = TextureSampler(
                         renderer = fromContext(),
-                        it.imageViewData.mipLevels,
+                        views.first().imageView.imageViewData.mipLevels,
                         true
                     )
-                } ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let {
-                    it to TextureSampler(renderer = fromContext(), it[0].imageView.imageViewData.mipLevels, true)
-                } ?: findWithNameOrNull<Array<ImageView>>(this, name)?.let {
-                    it.map { view -> view as HasImageView }.toTypedArray() to TextureSampler(
-                        renderer = fromContext(),
-                        it[0].imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<LoadedTexture>(this, name)?.let {
-                    arrayOf<HasImageView>(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageView.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<RenderToTexture>(this, name)?.let {
-                    arrayOf<HasImageView>(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageView.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<HasImageView>(this, name)?.let {
-                    arrayOf(it) to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageView.imageViewData.mipLevels,
-                        true
-                    )
-                } ?: findWithNameOrNull<HasImageViewArray>(this, name)?.let {
-                    it.imageViewArray.toTypedArray() to TextureSampler(
-                        renderer = fromContext(),
-                        it.imageViewArray[0].imageView.imageViewData.mipLevels,
-                        true
-                    )
+                    provider to sampler
                 }
-                ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
+                    ?: findWithNameOrNull<HasImageView>(this, name)?.let { hv -> fromViews(listOf(hv), name) }
+                    ?: findWithNameOrNull<ImageView>(this, name)?.let { view -> fromViews(listOf(view), name) }
+                    ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let { arr -> fromViews(arr.toList(), name) }
+                    ?: findWithNameOrNull<Array<ImageView>>(this, name)?.let { arr -> fromViews(arr.map { it as HasImageView }, name) }
+                    ?: findWithNameOrNull<LoadedTexture>(this, name)?.let { tex -> fromViews(listOf(tex), name) }
+                    ?: findWithNameOrNull<RenderToTexture>(this, name)?.let { rtt -> fromViews(listOf(rtt), name) }
+                    ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
             println(" found $r")
             r
         }

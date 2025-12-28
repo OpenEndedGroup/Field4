@@ -26,9 +26,12 @@ fun nextCopyName(name: String): String {
 
 
 fun copyBoxes(boxes: List<Box>): List<Box> {
-    val oldToNew = boxes.associateWith { copyBox(it) }
+    val oldToNew = boxes.filter {
+        !it.getPropertyRaw("_tombstone").isTrue()
+    }.associateWith { copyBox(it) }
     oldToNew.entries.forEach { (older, newer) ->
         older.parents.forEach { parent ->
+            if (parent.getPropertyRaw("_tombstone").isTrue()) return@forEach
             when (parent) {
                 newer.root -> {}
                 in oldToNew -> {
@@ -41,6 +44,7 @@ fun copyBoxes(boxes: List<Box>): List<Box> {
             }
         }
         older.children.forEach { child ->
+            if (child.getPropertyRaw("_tombstone").isTrue()) return@forEach
             when (child) {
                 in oldToNew -> {
                     newer.connect(oldToNew[child]!!)

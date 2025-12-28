@@ -2,8 +2,8 @@
 
 package afield
 
-import afield.four.util.Options
 import afield.ai.Ai4CompletionDoc
+import afield.four.util.Options
 import afield.logger.lprintln
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.Browser
@@ -50,7 +50,18 @@ class SessionInformation(
     var root: Box,
     var sessions: MutableSet<WebSocketSession> = mutableSetOf<WebSocketSession>(),
     var topologyGeneration: Int = 0
-)
+) {
+    // Track sidecar-bearing properties that need to be written to disk on next save.
+    val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
+
+    val fileWatchManager: FileWatchManager by lazy {
+        FileWatchManager(this).also { it.start() }
+    }
+
+    fun cleanup() {
+        fileWatchManager.stop()
+    }
+}
 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
@@ -164,10 +175,14 @@ class Server {
                         }
 
                         documents.forEach { _, info ->
+                            // Only persist when we know sidecar-bearing properties changed.
+                            if (info.pendingSidecarSaves.isEmpty()) return@forEach
+
 //                            lblock(" saving to ${info.filename}")
                             run {
                                 try {
                                     SavingContext().save(info.filename, info.boxes.values.toSet())
+                                    info.pendingSidecarSaves.clear()
                                 } catch (ex: Exception) {
                                     lprintln("ERROR: trouble saving")
                                     ex.printStackTrace()
@@ -257,6 +272,9 @@ class Server {
                         } // kick off stdlib load
 
                         si.topologyGeneration++
+
+                        // Initialize the file watch manager
+                        si.fileWatchManager
                     } catch (fnf: FileNotFoundException) {
                         lprintln(" file '${fn}' is not found, continuing on, file will be created on first save")
                     }
@@ -287,6 +305,11 @@ class Server {
                     box(set.uid).name = set.value
                 } else
                     box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
+
+                // If this is a sidecar-backed property, mark it for persistence.
+                if (Box.ioSeparateProperties.containsKey(set.property)) {
+                    thisSessionInfo.get().pendingSidecarSaves += set.uid to set.property
+                }
 
                 Handled.yes
             })
@@ -397,8 +420,17 @@ class Server {
                 val info = thisSessionInfo.get()
                 val boxes = req.uids.mapNotNull { info.boxes[it] }.toSet()
                 val edn = SavingContext().exportEdnPackage(boxes, info.filename)
+                val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
                 notify("Copied ${boxes.size} box${if (boxes.size == 1) "" else "es"} to clipboard", "copy")
-                reply(Message("copy-boxes").payload(CopyBoxesResult(edn)))
+                reply(Message("copy-boxes").payload(CopyBoxesResult(edn, filename)))
+                Handled.yes
+            })
+
+            handlers["export-document"] = mutableSetOf({ _, reply ->
+                val info = thisSessionInfo.get()
+                val edn = SavingContext().exportEdnPackage(info.boxes.values.toSet(), info.filename)
+                val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
+                reply(Message("export-document").payload(ExportDocumentResult(edn, filename)))
                 Handled.yes
             })
 
@@ -470,6 +502,10 @@ class Server {
                                     sessions.entries.removeIf { (session, info) ->
                                         if (session.outgoing.isClosedForSend) {
                                             info.sessions.remove(session)
+                                            // Stop file watcher if this was the last session for this document
+                                            if (info.sessions.isEmpty()) {
+                                                info.cleanup()
+                                            }
                                             true
                                         } else false
                                     }
@@ -518,6 +554,10 @@ class Server {
                             val info = sessions.remove(ts)
                             if (info != null) {
                                 info.sessions.remove(ts)
+                                // Stop file watcher if this was the last session for this document
+                                if (info.sessions.isEmpty()) {
+                                    info.cleanup()
+                                }
                             }
                         }
                     }

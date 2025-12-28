@@ -34,6 +34,10 @@ val kotlinVersion = "2.2.10"
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
+
+// Bytedeco FFmpeg for video support
+val ffmpegVersion = "7.1-1.5.11"
+val javacppVersion = "1.5.11"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 
 plugins {
@@ -152,6 +156,14 @@ kotlin {
 
         val version = "0.8.9" // or any more recent version
         val target = "${targetOs}-${targetArch}"
+
+        // FFmpeg platform classifier for bytedeco (uses slightly different naming convention)
+        val ffmpegPlatform = when (targetOs) {
+            "macos" -> if (targetArch == "arm64") "macosx-arm64" else "macosx-x86_64"
+            "windows" -> "windows-x86_64"
+            "linux" -> if (targetArch == "arm64") "linux-arm64" else "linux-x86_64"
+            else -> error("Unsupported platform for FFmpeg: $targetOs-$targetArch")
+        }
 
 
 
@@ -310,11 +322,11 @@ kotlin {
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
 
-
-
+                // Bytedeco FFmpeg for video texture support
+                implementation("org.bytedeco:javacpp:$javacppVersion")
+                implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
+                implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$ffmpegPlatform")
             }
-
-
         }
 
 

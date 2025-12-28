@@ -196,6 +196,10 @@ data class Describe_actions(val uid: String, val value: List<Action_Desc>)
 class Directory(val command: String, val value: List<String> = emptyList<String>())
 
 @Serializable
+data class SaveAsTemplate(val uids: List<String>, val templateName: String)
+
+
+@Serializable
 class RequestHashtags(val boxes: List<String>, val getOrSet: Boolean, val value: String = "")
 
 
@@ -206,7 +210,10 @@ data class Perform_action(val uid_currentSelection: List<String>, val uid_action
 data class CopyBoxes(val uids: List<String>)
 
 @Serializable
-data class CopyBoxesResult(val edn: String)
+data class CopyBoxesResult(val edn: String, val filename: String = "")
+
+@Serializable
+data class ExportDocumentResult(val edn: String, val filename: String = "")
 
 @Serializable
 data class PasteBoxes(val edn: String)

@@ -8,10 +8,25 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
+import web.url.URL
 
 var lastMouse = 0.0 to 0.0
 
 external fun showPickMenu_custom(options: dynamic): dynamic
+
+private fun downloadEdnFile(filename: String, edn: String) {
+    val blob = js("new Blob([edn], { type: 'application/edn' })")
+    val url = URL.createObjectURL(blob)
+    val link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", filename)
+    document.body!!.appendChild(link)
+    link.asDynamic().click()
+    window.setTimeout({
+        document.body!!.removeChild(link)
+        URL.revokeObjectURL(url)
+    }, 0)
+}
 
 
 fun registerMouseBug() {
@@ -64,7 +79,75 @@ fun copySelectedBoxesToClipboard() {
 
     sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
-        clipboard.writeText(result.edn)
+
+        // Write both text and file formats when the browser allows it.
+        try {
+            // ClipboardItem.supports is optional and not universally implemented; guard all calls.
+            val supportsEdn = try {
+                js("typeof ClipboardItem !== 'undefined' && ClipboardItem.supports && ClipboardItem.supports('application/edn')") as Boolean
+            } catch (_: dynamic) { false }
+            val supportsOctetStream = try {
+                js("typeof ClipboardItem !== 'undefined' && ClipboardItem.supports && ClipboardItem.supports('application/octet-stream')") as Boolean
+            } catch (_: dynamic) { false }
+
+            val clipboardData = js("({})")
+            clipboardData["text/plain"] = js("new Blob([result.edn], { type: 'text/plain' })")
+
+            var fileType: String? = null
+            if (supportsEdn) {
+                fileType = "application/edn"
+            } else if (supportsOctetStream) {
+                fileType = "application/octet-stream"
+            }
+
+            if (fileType != null) {
+                val blob = js("new Blob([result.edn], { type: fileType })")
+                val file = js("new File([blob], 'metadata.edn', { type: fileType })")
+                clipboardData[fileType] = file
+            }
+
+            if (fileType != null) {
+                val clipboardItem = js("new ClipboardItem(clipboardData)")
+                clipboard.write(js("Array").of(clipboardItem)).then({
+                    console.log("Copied to clipboard as text and file type $fileType")
+                }, { error: dynamic ->
+                    console.log("Clipboard write failed, falling back to text-only:", error)
+                    clipboard.writeText(result.edn)
+                })
+            } else {
+                // Browsers sanitize custom file types; fall back to text-only.
+                clipboard.writeText(result.edn)
+            }
+        } catch (e: Exception) {
+            console.log("Modern clipboard API failed, using text-only fallback:", e)
+            clipboard.writeText(result.edn)
+        }
+
+        Handled.yes_remove
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun exportSelectedBoxesToDownload() {
+    val ids = getSelectedIds()
+    if (ids.isEmpty()) return
+
+    sendWithReply(Message("copy-boxes").payload(CopyBoxes(ids)), "copy-boxes") { message, _ ->
+        val result = Json.decodeFromJsonElement<CopyBoxesResult>(message.payload!!)
+        val base = if (result.filename.isNotBlank()) result.filename else "selection"
+        downloadEdnFile("${base}_selection.edn", result.edn)
+        Handled.yes_remove
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun exportDocumentToDownload() {
+    sendWithReply(Message("export-document"), "export-document") { message, _ ->
+        val result = Json.decodeFromJsonElement<ExportDocumentResult>(message.payload!!)
+        val name = if (result.filename.isNotBlank()) result.filename else "document"
+        downloadEdnFile("$name.edn", result.edn)
         Handled.yes_remove
     }
 }
@@ -78,27 +161,86 @@ fun pasteBoxesFromClipboard() {
         return
     }
 
-    clipboard.readText().then({ text: String ->
-        if (text.isBlank()) return@then
+    // Try to read clipboard items (supports both text and files)
+    clipboard.read().then({ clipboardItems: dynamic ->
+        var processed = false
 
-        sendWithReply(Message("paste-boxes").payload(PasteBoxes(text)), "paste-boxes") { message, _ ->
-            val result = Json.decodeFromJsonElement<PasteBoxesResult>(message.payload!!)
-            later({
-                val boxes = result.newUids.mapNotNull { uid ->
-                    document.body!!.getElementsByClassName("box").asList()
-                        .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
-                }
-                if (boxes.isNotEmpty()) {
-                    selected.copy().forEach { deselectBox(it) }
-                    boxes.forEach { selectBox(it) }
-                    canvasGestures.rebuildConnectionGroup()
-                }
-            }, 50)
-            Handled.yes_remove
+        // Iterate through clipboard items
+        val items = clipboardItems
+        if (items.length > 0) {
+            val item = items[0]
+
+            // Check if there's an EDN file in the clipboard
+            if (item.types.includes("application/edn")) {
+                item.getType("application/edn").then({ blob: dynamic ->
+                    blob.text().then({ text: String ->
+                        if (text.isNotBlank()) {
+                            processPasteText(text)
+                        }
+                    }, { err: dynamic ->
+                        console.log("Failed to read EDN blob:", err)
+                    })
+                }, { err: dynamic ->
+                    console.log("Failed to get EDN type:", err)
+                })
+                processed = true
+            }
+            // Fallback to plain text
+            else if (item.types.includes("text/plain")) {
+                item.getType("text/plain").then({ blob: dynamic ->
+                    blob.text().then({ text: String ->
+                        if (text.isNotBlank()) {
+                            processPasteText(text)
+                        }
+                    }, { err: dynamic ->
+                        console.log("Failed to read text blob:", err)
+                    })
+                }, { err: dynamic ->
+                    console.log("Failed to get text type:", err)
+                })
+                processed = true
+            }
         }
-    }, { err ->
-        console.log("clipboard read failed", err)
+
+        // If no items were processed, try the old text-only API as fallback
+        if (!processed) {
+            clipboard.readText().then({ text: String ->
+                if (text.isNotBlank()) {
+                    processPasteText(text)
+                }
+            }, { err: dynamic ->
+                console.log("clipboard read failed", err)
+            })
+        }
+    }, { err: dynamic ->
+        console.log("Failed to read clipboard items, falling back to text:", err)
+        // Fallback to text-only API
+        clipboard.readText().then({ text: String ->
+            if (text.isNotBlank()) {
+                processPasteText(text)
+            }
+        }, { err: dynamic ->
+            console.log("clipboard read failed", err)
+        })
     })
+}
+
+private fun processPasteText(text: String) {
+    sendWithReply(Message("paste-boxes").payload(PasteBoxes(text)), "paste-boxes") { message, _ ->
+        val result = Json.decodeFromJsonElement<PasteBoxesResult>(message.payload!!)
+        later({
+            val boxes = result.newUids.mapNotNull { uid ->
+                document.body!!.getElementsByClassName("box").asList()
+                    .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
+            }
+            if (boxes.isNotEmpty()) {
+                selected.copy().forEach { deselectBox(it) }
+                boxes.forEach { selectBox(it) }
+                canvasGestures.rebuildConnectionGroup()
+            }
+        }, 50)
+        Handled.yes_remove
+    }
 }
 
 
@@ -130,9 +272,12 @@ fun insertFromWorkspace() {
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
-                    command:"insert",
-                    value:["$it"],
-                        })})}
+                            command:"insert",
+                            value:["$it"],
+                        })
+                    })
+                }
+            })
         """.trimIndent()
             options.push(eval(e))
         }
@@ -146,6 +291,26 @@ fun insertFromWorkspace() {
         Handled.yes_remove
     }
 }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport()
+fun saveAsTemplate() {
+    val selectedIds = getSelectedIds()
+    if (selectedIds.isEmpty()) {
+        notify("No boxes selected", "error")
+        return
+    }
+
+    // Call the helper function with the selected IDs; guard when helper is missing
+    val helper = js("window._saveAsTemplateHelper")
+    val hasHelper = js("typeof window._saveAsTemplateHelper === 'function'") as Boolean
+    if (!hasHelper) {
+        notify("Template helper is not available yet. Try again after Monaco loads.", "error")
+        return
+    }
+    helper(selectedIds.toTypedArray())
+}
+
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
@@ -282,6 +447,20 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             val a = eval(e)
             all.push(a)
         }
+
+        run {
+            val e = """
+            ({
+                id:'export-selection-edn', label:'Export selection (.edn)', 
+                canvasKeybinding: (event) => false,
+                run: () => { 
+                    exportSelectedBoxesToDownload()
+                }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
     }
     if (boxes.size == 2) {
         // todo, check connections before presenting // n1.box_children contains uid of n2?
@@ -377,6 +556,13 @@ fun registerBuiltinCommands() {
                 pasteBoxesFromClipboard()
             }
         },{
+            id:'export-document-edn',
+            label:"Export document (.edn)",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                exportDocumentToDownload()
+            }
+        },{
             id:'move-forward',
             label:"Move selected boxes forward",
             run: () => {
@@ -395,6 +581,13 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='h') && (event.ctrlKey || event.metaKey),
             run: () => {
                 editHashtag()
+            }
+        },{
+            id:'save-as-template',
+            label:"Save selection as template",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                saveAsTemplate()
             }
         },{
             id:'provisional-accept-all',

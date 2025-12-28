@@ -9,6 +9,7 @@ import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Introspected.Bindable
 import afield.four.targets.RenderToTexture
 import afield.four.texture.HasImageView
+import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
 import afield.four.util.AutoDisposer
@@ -37,7 +38,7 @@ data class Parameters(
     var depth: Int = 1,
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    var textureResolver: (Introspected.Texture) -> Pair<Array<HasImageView>, TextureSampler>? = {
+    var textureResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>? = {
         println("WARNING: Cannot resolve texture ${it.name}")
         null
     },
@@ -96,7 +97,10 @@ data class Parameters(
         this.textureResolver = {
             val found = m[it.name]
             if (found != null) {
-                arrayOf(found) to TextureSampler(
+                val provider = object : HasImageViewArray {
+                    override val imageViewArray = listOf(found)
+                }
+                provider to TextureSampler(
                     renderer = fromContext(), found.imageView.imageViewData.mipLevels, true
                 )
             } else null
@@ -150,16 +154,20 @@ class ModulePointer(var current: Module) : Renderable {
             if (forceReresolve) {
                 val oo = oTextureResolver(it)
                 if (oo != null) oo
-                else try {
-                    val tp = current.uniforms[it.name] as Module.TexturePointer
-                    arrayOf(tp.texture) to tp.sampler
-                } catch (_: Exception) {
-                    lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
-                    oTextureResolver(it)
+                else when (val uniform = current.uniforms[it.name]) {
+                    is Module.TexturePointer -> uniform.texture to uniform.sampler
+                    is Module.TextureArrayPointer -> uniform.texture to uniform.sampler
+                    else -> {
+                        lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                        oTextureResolver(it)
+                    }
                 }
             } else try {
-                val tp = current.uniforms[it.name] as Module.TexturePointer
-                arrayOf(tp.texture) to tp.sampler
+                when (val uniform = current.uniforms[it.name]) {
+                    is Module.TexturePointer -> uniform.texture to uniform.sampler
+                    is Module.TextureArrayPointer -> uniform.texture to uniform.sampler
+                    else -> throw IllegalStateException("unsupported texture uniform type ${uniform?.javaClass}")
+                }
             } catch (_: Exception) {
                 lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
@@ -244,16 +252,20 @@ class Module(val parameters: Parameters) : Renderable {
         val name: String,
         override val binding: Bindable,
         override var source: BufferParameters? = null,
-        val texture: HasImageView,
+        val texture: HasImageViewArray,
         val sampler: TextureSampler,
     ) : UpdatesDescriptorSet {
         override fun pushDescriptorSet(
             command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
-                val imageInfo =
-                    VkDescriptorImageInfo.calloc(1, stack).imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .imageView(texture.imageView.vkImageView).sampler(sampler.vkSampler)
+                val views = texture.imageViewArray
+                require(views.isNotEmpty()) { "TexturePointer ${name} has no image views" }
+
+                val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
+                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .imageView(views.first().imageView.vkImageView)
+                    .sampler(sampler.vkSampler)
 
                 val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
                     .dstBinding(binding.binding).dstArrayElement(0)
@@ -270,22 +282,25 @@ class Module(val parameters: Parameters) : Renderable {
         val name: String,
         override val binding: Bindable,
         override var source: BufferParameters? = null,
-        val texture: Array<HasImageView>,
+        val texture: HasImageViewArray,
         val sampler: TextureSampler,
     ) : UpdatesDescriptorSet {
         override fun pushDescriptorSet(
             command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
-                val infos = VkDescriptorImageInfo.calloc(texture.size, stack)
-                for (i in texture.indices) {
+                val views = texture.imageViewArray
+                require(views.isNotEmpty()) { "TextureArrayPointer ${name} has no image views" }
+
+                val infos = VkDescriptorImageInfo.calloc(views.size, stack)
+                for (i in views.indices) {
                     infos[i].imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .imageView(texture[i].imageView.vkImageView).sampler(sampler.vkSampler)
+                        .imageView(views[i].imageView.vkImageView).sampler(sampler.vkSampler)
                 }
 
                 val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
                     .dstBinding(binding.binding).dstArrayElement(0)
-                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER).descriptorCount(texture.size)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER).descriptorCount(views.size)
                     .pImageInfo(infos)
 
                 vkCmdPushDescriptorSetKHR(
@@ -531,11 +546,14 @@ class Module(val parameters: Parameters) : Renderable {
 
                 tag.forEach {
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val views = texture.imageViewArray
+                    require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
+
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = TexturePointer(it.name, it, source = null, texture[0], sampler)
+                        uniforms[it.name] = TexturePointer(it.name, it, source = null, texture, sampler)
                     } else {
-                        require(texture.size == it.arrayCount) {
-                            "can't link texture resource ${it.name} of length ${texture.size} but the shader expects ${it.arrayCount}"
+                        require(views.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${views.size} but the shader expects ${it.arrayCount}"
                         }
                         uniforms[it.name] = TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }

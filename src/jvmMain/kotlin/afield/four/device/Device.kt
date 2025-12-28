@@ -43,8 +43,10 @@ class Device(val physicalDevice: PhysicalDevice) {
             val hasCalibrated = hasExt(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
             val hasPushDescriptor = hasExt(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
             supportsPushDescriptors = hasPushDescriptor
-            val hasExtDynamicState = hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
-            val hasExtDynamicState3 = hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+            val hasExtDynamicState =
+                hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
+            val hasExtDynamicState3 =
+                hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
             supportsExtendedDynamicState = hasExtDynamicState
             supportsExtendedDynamicState3 = hasExtDynamicState3
 
@@ -75,19 +77,19 @@ class Device(val physicalDevice: PhysicalDevice) {
                 }
 
                 if (Options.profiling) {
-                addIfSupported(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
-                addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
-                addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
-            }
+                    addIfSupported(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
+                    addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
+                    addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
+                }
 
-            addIfSupported(KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
-            addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
-            addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+                addIfSupported(KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+                addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
+                addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
 
-            if (Options.enableVR) {
-                addAll(Instance.getOpenXRRequiredDeviceExts(physicalDevice.vkPhysicalDevice.address()))
-                addIfSupported(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
-            }
+                if (Options.enableVR) {
+                    addAll(Instance.getOpenXRRequiredDeviceExts(physicalDevice.vkPhysicalDevice.address()))
+                    addIfSupported(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
+                }
 
             }
 

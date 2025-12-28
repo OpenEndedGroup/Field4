@@ -1,18 +1,21 @@
 package afield.four.examples
 
-import org.joml.Matrix4f
-import org.joml.Vector3f
-import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
-import afield.four.*
-import afield.four.modules.*
+import afield.four.Renderer
+import afield.four.modules.Mesh
+import afield.four.modules.Module
+import afield.four.modules.Parameters
+import afield.four.modules.pointer
 import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
-import afield.four.texture.HasImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Projection
 import afield.four.util.Window
 import afield.four.util.forever
+import afield.stdlib.fromViews
+import org.joml.Matrix4f
+import org.joml.Vector3f
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import java.io.File
 
 class NewMain6 {
@@ -51,7 +54,7 @@ class NewMain6 {
                 fragment = File("resources/shaders/fwd_fragment.glsl").readText(),
                 depth = 0,
                 textureResolver = {
-                    arrayOf<HasImageView>(texture) to TextureSampler(renderer, 4, true)
+                    fromViews(listOf(texture))
                 },
                 name = "inner square shader"
             )
@@ -67,7 +70,7 @@ class NewMain6 {
                 fragment = File("resources/shaders/plain_fragment.glsl").readText(),
                 depth = 0,
                 textureResolver = {
-                    arrayOf<HasImageView>(rt2) to TextureSampler(renderer, 4, true)
+                    rt2 to TextureSampler(renderer, 4, true)
                 },
                 name = "onscreen shader"
             )

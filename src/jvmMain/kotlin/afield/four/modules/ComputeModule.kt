@@ -1,19 +1,11 @@
 package afield.four.modules
 
-import afield.four.buffers.buffer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
-import afield.four.device.CommandBuffer
-import afield.four.device.DescriptorSetLayout
+import afield.four.buffers.buffer
+import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
-import afield.four.device.UpdatesDescriptorSet
-import afield.four.device.beginLabel
-import afield.four.device.endLabel
-import afield.four.device.nameObject
-import afield.four.modules.Module.ImagePointer
-import afield.four.modules.Module.TextureArrayPointer
-import afield.four.modules.Module.TexturePointer
-import afield.four.modules.Module.Uniform
+import afield.four.modules.Module.*
 import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
 import afield.logger.lprintln
@@ -55,7 +47,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         p.textureResolver = {
             try {
                 val tp = current.uniforms[it.name] as TexturePointer
-                arrayOf(tp.texture) to tp.sampler
+                tp.texture to tp.sampler
             } catch (_: Exception) {
                 lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
@@ -222,11 +214,14 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
                 tag.forEach {
                     val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val views = texture.imageViewArray
+                    require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
+
                     if (it.arrayCount == 0) {
-                        uniforms[it.name] = TexturePointer(it.name, it, source = null, texture[0], sampler)
+                        uniforms[it.name] = TexturePointer(it.name, it, source = null, texture, sampler)
                     } else {
-                        require(texture.size == it.arrayCount) {
-                            "can't link texture resource ${it.name} of length ${texture.size} but the shader is expecting ${it.arrayCount}"
+                        require(views.size == it.arrayCount) {
+                            "can't link texture resource ${it.name} of length ${views.size} but the shader is expecting ${it.arrayCount}"
                         }
                         uniforms[it.name] = TextureArrayPointer(it.name, it, source = null, texture, sampler)
                     }

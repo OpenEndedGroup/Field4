@@ -34,17 +34,30 @@ class SavingContext {
         }
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
-            "boxes" to payloadBoxes
+            "boxes" to payloadBoxes,
+            "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         return Edn.write(payload, ednCustom)
     }
 
     fun listTemplates(dir: String): List<String> {
-        val d = File(dir).listFiles { file ->
+        val directory = File(dir)
+        if (!directory.exists()) return emptyList()
+        
+        val files = directory.listFiles() ?: return emptyList()
+        val result = mutableListOf<String>()
+        
+        // Add subdirectories containing metadata files
+        files.filter { file ->
             file.isDirectory && (File(file, METADATA_EDN).exists() || File(file, METADATA_JSON).exists())
-        }
-        if (d == null) return emptyList()
-        return d.map { it.name }
+        }.mapTo(result) { it.name }
+        
+        // Add standalone metadata.edn files (but not the main metadata.edn)
+        files.filter { file ->
+            file.isFile && file.name.endsWith(".edn") && file.name != METADATA_EDN
+        }.mapTo(result) { it.nameWithoutExtension }
+        
+        return result
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -199,7 +212,8 @@ class SavingContext {
         }
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
-            "boxes" to payloadBoxes
+            "boxes" to payloadBoxes,
+            "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         val ednText = Edn.write(payload, ednCustom)
         val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
@@ -208,14 +222,48 @@ class SavingContext {
         if (altered) {
             commit(fn, message)
             notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
+
+            // Mark all saved sidecar files as internal saves
+            try {
+                thisSessionInfo.get()?.fileWatchManager?.let { watchManager ->
+                    File(root).listFiles()?.forEach { file ->
+                        if (file.isFile && file.name.contains("_") &&
+                            Box.ioSeparateProperties.values.contains(file.extension)) {
+                            watchManager.markInternalSave(file)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Silently ignore if session info is not available
+            }
         }
     }
+
+    /**
+     * Save boxes as a standalone template file (metadata.edn without subdirectory)
+     */
+    fun saveAsTemplate(templateName: String, boxes: Set<Box>, templatesDir: String) {
+        val ednText = exportEdnPackage(boxes, templatesDir)
+        val templateFile = File(templatesDir, "$templateName.edn")
+        templateFile.writeText(ednText)
+    }
+
 
     fun load(
         fn: String,
         filterId: (String) -> String = { it },
         upgradeOnLoad: Boolean = true
     ): Set<Box> {
+        val file = File(fn)
+        
+        // Check if fn points to a standalone .edn file
+        if (file.isFile && file.name.endsWith(".edn")) {
+            val ednText = file.readText()
+            val directory = file.absoluteFile.parentFile?.absolutePath ?: file.absolutePath
+            return loadFromEdnText(ednText, directory, filterId)
+        }
+        
+        // Otherwise, treat as directory
         val root = ensureDirectory(fn)
         val ednFile = File(root, METADATA_EDN)
         if (ednFile.exists()) {
@@ -242,10 +290,39 @@ class SavingContext {
         return resolveValue(value, directory, { it }, createBoxes = false)
     }
 
+    /**
+     * Merges persistent properties from a document with the current global set.
+     * This ensures that all properties that were previously saved in a document
+     * continue to be saved, even if they're not in the current global set.
+     *
+     * Note: This function intentionally modifies global state (Box.ioPersistentProperties).
+     * This is by design to ensure all loaded documents' properties are preserved across saves.
+     * Documents are loaded sequentially in this application, so concurrent access is not a concern.
+     *
+     * @param rootValue The root EDN value from metadata.edn (should be a Map)
+     */
+    private fun mergePersistentProperties(rootValue: Map<*, *>) {
+        val savedProps = rootValue["persistentProperties"]
+        if (savedProps != null) {
+            val propsList = when (savedProps) {
+                is List<*> -> savedProps.mapNotNull { it?.toString() }
+                is Set<*> -> savedProps.mapNotNull { it?.toString() }
+                else -> emptyList()
+            }
+            // Merge the saved properties with the current global set
+            // mapNotNull ensures only valid string values are added
+            Box.ioPersistentProperties.addAll(propsList)
+        }
+    }
+
     fun readEdnTransfers(directory: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(File(directory, METADATA_EDN).readText(), ednCustom)
         val boxesValue = when (rootValue) {
-            is Map<*, *> -> rootValue["boxes"]
+            is Map<*, *> -> {
+                // Merge persistent properties from the document with the current global set
+                mergePersistentProperties(rootValue)
+                rootValue["boxes"]
+            }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in ${File(directory, METADATA_EDN).path}")
@@ -273,7 +350,11 @@ class SavingContext {
     fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(ednText, ednCustom)
         val boxesValue = when (rootValue) {
-            is Map<*, *> -> rootValue["boxes"]
+            is Map<*, *> -> {
+                // Merge persistent properties from the document with the current global set
+                mergePersistentProperties(rootValue)
+                rootValue["boxes"]
+            }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in provided text")
@@ -506,10 +587,10 @@ class SavingContext {
 
 /**
  * Safely saves text to a file, creating backups of previous versions.
- * 
+ *
  * Changed from "backup" to "backups" directory to match the requirement
  * that previous metadata.edn files should be stored in backups/ directory.
- * 
+ *
  * @param text The text content to save
  * @return true if the file was modified, false if content was unchanged
  */

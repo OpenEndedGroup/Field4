@@ -21,7 +21,7 @@ import afield.macros.MacroRegistry
 import afield.macros.MacroRegistry.callRewrite
 import afield.stdlib.HasMatrix4f
 import afield.stdlib._moduleHere
-import afield.stdlib.invoke
+import afield.stdlib.fromViews
 import afield.stdlib.macro_moduleHereWithDefaultShaders
 import kotlinx.coroutines.DelicateCoroutinesApi
 import org.joml.Matrix4f
@@ -30,7 +30,8 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.assimp.*
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil.*
+import org.lwjgl.system.MemoryUtil.memAlloc
+import org.lwjgl.system.MemoryUtil.memAllocInt
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -77,7 +78,7 @@ fun Box._gltfModelHereWithTexture(
                 if (tex.name == "uTextures") {
                     val textures = loader.meshes[2].material.textures.map { slot -> slot.texture as HasImageView }
                     val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
-                    textures.toTypedArray() to TextureSampler(renderer = fromContext(), maxMip, true)
+                    fromViews(textures, sampler = TextureSampler(renderer = fromContext(), maxMip, true))
                 } else was(tex)
             }
         })
