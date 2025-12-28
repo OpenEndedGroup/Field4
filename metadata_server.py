@@ -34,9 +34,11 @@ METADATA_DIR.mkdir(exist_ok=True)
 # Telemetry tracking
 TELEMETRY_FILE = Path(__file__).parent / "metadata_server_telemetry.json"
 telemetry_lock = Lock()
+
+# Initialize telemetry with regular dict - defaultdict will be set up after loading
 telemetry_data = {
     "list_queries": 0,
-    "downloads": defaultdict(int),
+    "downloads": {},  # Will become defaultdict(int) after load_telemetry()
     "last_updated": None
 }
 
@@ -53,6 +55,9 @@ def load_telemetry():
                 telemetry_data["last_updated"] = data.get("last_updated")
         except Exception as e:
             print(f"Warning: Could not load telemetry data: {e}")
+    else:
+        # Initialize with defaultdict for automatic key creation
+        telemetry_data["downloads"] = defaultdict(int)
 
 
 def save_telemetry():
