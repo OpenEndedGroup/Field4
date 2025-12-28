@@ -196,9 +196,17 @@ class VideoDecoder(private val videoPath: String) {
                         frameP010!!.data(), frameP010!!.linesize()
                     )
                     
-                    // Extract luma and chroma planes
-                    val lumaSize = frameP010!!.linesize(0) * height
-                    val chromaSize = frameP010!!.linesize(1) * (height / 2)
+                    // Extract luma and chroma planes with validation
+                    val lumaLineSize = frameP010!!.linesize(0)
+                    val chromaLineSize = frameP010!!.linesize(1)
+                    
+                    if (lumaLineSize <= 0 || chromaLineSize <= 0) {
+                        println("Error: Invalid linesize values: luma=$lumaLineSize, chroma=$chromaLineSize")
+                        return null
+                    }
+                    
+                    val lumaSize = lumaLineSize * height
+                    val chromaSize = chromaLineSize * (height / 2)
                     
                     val lumaBuffer = frameP010!!.data(0).capacity(lumaSize.toLong()).asByteBuffer()
                     val chromaBuffer = frameP010!!.data(1).capacity(chromaSize.toLong()).asByteBuffer()
@@ -243,23 +251,28 @@ class VideoDecoder(private val videoPath: String) {
     }
     
     private fun cleanup() {
+        // Free scaler context
         swsContext?.let { sws_freeContext(it) }
         swsContext = null
         
+        // Free frame structures (bytedeco handles the double-pointer semantics)
         frame?.let { av_frame_free(it) }
         frame = null
         
         frameP010?.let { av_frame_free(it) }
         frameP010 = null
         
+        // Free packet structure
         packet?.let { av_packet_free(it) }
         packet = null
         
+        // Free codec context (bytedeco handles the double-pointer semantics)
         codecContext?.let { 
             avcodec_free_context(it)
         }
         codecContext = null
         
+        // Close format context (automatically frees the context)
         formatContext?.let {
             avformat_close_input(it)
         }

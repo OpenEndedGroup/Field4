@@ -157,14 +157,12 @@ kotlin {
         val version = "0.8.9" // or any more recent version
         val target = "${targetOs}-${targetArch}"
 
-        // FFmpeg platform classifier for bytedeco
-        val ffmpegPlatform = when {
-            osName == "Mac OS X" && osArch == "aarch64" -> "macosx-arm64"
-            osName == "Mac OS X" -> "macosx-x86_64"
-            osName.startsWith("Win") -> "windows-x86_64"
-            osName.startsWith("Linux") && osArch == "aarch64" -> "linux-arm64"
-            osName.startsWith("Linux") -> "linux-x86_64"
-            else -> error("Unsupported platform for FFmpeg: $osName $osArch")
+        // FFmpeg platform classifier for bytedeco (uses slightly different naming convention)
+        val ffmpegPlatform = when (targetOs) {
+            "macos" -> if (targetArch == "arm64") "macosx-arm64" else "macosx-x86_64"
+            "windows" -> "windows-x86_64"
+            "linux" -> if (targetArch == "arm64") "linux-arm64" else "linux-x86_64"
+            else -> error("Unsupported platform for FFmpeg: $targetOs-$targetArch")
         }
 
 

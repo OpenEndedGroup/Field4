@@ -310,11 +310,13 @@ private class VideoPlaneTexture(
      * Upload data to this texture plane.
      */
     fun upload(cmd: CommandBuffer, data: ByteBuffer) {
+        // Create a duplicate to avoid modifying the caller's buffer position
+        val dataCopy = data.duplicate()
+        
         // Copy data to staging buffer
         val mappedMemory = stagingBuffer.map()
-        val buffer = MemoryUtil.memByteBuffer(mappedMemory, data.remaining())
-        buffer.put(data)
-        data.flip()
+        val buffer = MemoryUtil.memByteBuffer(mappedMemory, dataCopy.remaining())
+        buffer.put(dataCopy)
         stagingBuffer.unmap()
         
         MemoryStack.stackPush().use { stack ->

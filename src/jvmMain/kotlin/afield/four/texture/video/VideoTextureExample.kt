@@ -134,7 +134,7 @@ object VideoTextureExample {
             commandBuffer.cleanup()
             frameCount++
             
-            // Simulate frame timing
+            // Simulate frame timing (for demonstration only - use proper frame timing in production)
             Thread.sleep(33)  // ~30 FPS
         }
         
