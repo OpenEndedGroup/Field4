@@ -177,6 +177,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "metadata",
             "nested",
             "nestedIn",
+            "playlist",
+            "pauseList",
         )
 
         var ioSeparateProperties = mutableMapOf(
