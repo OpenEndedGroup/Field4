@@ -2,6 +2,7 @@
 
 package afield
 
+import afield.logger.lprintln
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
 import kotlinx.coroutines.yield
@@ -92,7 +93,7 @@ fun Marker.toggle(cb: () -> Unit) {
                     "\n", " "
                 )
             ), clickCallback = {
-                println("!! clicked !!")
+                lprintln("info,decorations", "clicked ${this.name}")
                 cb()
             })
     )
@@ -105,7 +106,7 @@ fun Marker.beep(
     val color = if (tick % 2 == 0) "white" else "white"
     val glyph = if (tick % 2 == 0) "🞊" else "🞅"
     val q = tick % 2
-    println("$location -> ${q + 1}")
+    lprintln("debug,decorations", "$location -> ${q + 1}")
     if (location != null) this.box.decorationState.put(
         this.name + "_beep",
         RawDecoration(
@@ -678,5 +679,4 @@ fun seriesPlotToSvg(
         </svg>
     """.trimIndent()
 }
-
 

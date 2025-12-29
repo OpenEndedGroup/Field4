@@ -12,6 +12,7 @@ import afield.four.texture.ImageView.ImageViewData
 import afield.four.texture.image_layout_transition
 import afield.four.util.DownResult
 import afield.four.util.Options
+import afield.logger.lprintln
 import afield.stdlib.vec
 import org.joml.Matrix4f
 import org.joml.Quaternionf
@@ -1086,7 +1087,7 @@ class OpenXRRenderTarget(
 
         private fun warnNoSuchKey(key: String) {
             if (!isWellFormed(key)) {
-                println(" -- warning, controller key must be 'left_N' or 'right_N', got: $key")
+                lprintln("warning,openxr", "controller key must be 'left_N' or 'right_N', got: $key")
             }
         }
 
@@ -1104,7 +1105,7 @@ class OpenXRRenderTarget(
             }
             val id = parts[1].toIntOrNull()
             if (id == null || id < 0 || id >= 64) {
-                println(" -- warning, button id must be 0..63: $key")
+                lprintln("warning,openxr", "button id must be 0..63: $key")
                 return null
             }
             return Parsed(hand, id)

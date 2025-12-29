@@ -4,6 +4,7 @@ package afield.clojure
 
 import afield.*
 import afield.Box
+import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
@@ -419,10 +420,10 @@ class ClojureExecution(val inside: Box) : BoxExecution {
 
             try {
                 when (val c = clj.compileOnly(execute.code)) {
-                    is CompileOnlyResult.Ok -> println("OK, ${c.formsCount} forms")
+                    is CompileOnlyResult.Ok -> lprintln("info,clojure", "OK, ${c.formsCount} forms")
                     is CompileOnlyResult.Err -> {
                         // show c.errors to the user with line/col
-                        println("Syntax errs: ${c.errors}")
+                        lprintln("error,clojure", "Syntax errs: ${c.errors}")
                         inside.error(c.errors[0].message, line = c.errors[0].line ?: -1, property = "code")
                     }
                 }
@@ -448,7 +449,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                     }
 
                     is EvalResult.Err -> {
-                        println("Runtime err: ${e.error}")
+                        lprintln("error,clojure", "Runtime err: ${e.error}")
                         inside.error(e.error.message, line = e.error.line ?: -1, property = "code")
                     }
                 }

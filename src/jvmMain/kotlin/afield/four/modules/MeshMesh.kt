@@ -6,6 +6,7 @@ import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.device.CommandBuffer
 import afield.four.util.MapOfSequences
+import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import java.nio.ByteBuffer
@@ -106,7 +107,7 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
 
 
     override fun compute(inside: MeshModule, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
-        if (inside != this.inside.current) println("WARNING, MeshMesh was built in a different module ${inside}!=${this.inside.current}")
+        if (inside != this.inside.current) lprintln("warning,graphics", "MeshMesh built in a different module ${inside}!=${this.inside.current}")
         update.update()
 
         MemoryStack.stackPush().use { stack ->
@@ -136,7 +137,7 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
             if (x * y * z > 0) {
                 vkCmdDrawMeshTasksEXT(cmd.vkCommandBuffer, x, y, z);
             } else {
-                println(" MeshMesh has no work to do $x $y $z")
+                lprintln("warning,graphics", "MeshMesh has no work to do $x $y $z")
             }
         }
     }

@@ -8,20 +8,69 @@ import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+
+data class LogEvent(
+    val channel: String,
+    val message: String,
+    val timestamp: Instant = Instant.now(),
+    val indent: String = "",
+    val blockId: String? = null,
+    val boundary: BlockBoundary? = null
+)
+
+enum class BlockBoundary { BEGIN, END }
 
 fun interface LogSink {
-    fun log(msg: String)
+    fun log(event: LogEvent)
+}
+
+fun LogSink.log(
+    channel: String,
+    message: String,
+    indent: String = "",
+    blockId: String? = null,
+    boundary: BlockBoundary? = null
+) = log(LogEvent(channel = channel, message = message, indent = indent, blockId = blockId, boundary = boundary))
+
+object LogDispatcher {
+    private val sinks = CopyOnWriteArrayList<LogSink>().apply { add(StdoutLog) }
+
+    fun setSinks(newSinks: List<LogSink>) {
+        sinks.clear()
+        sinks.addAll(newSinks)
+    }
+
+    fun addSink(sink: LogSink) {
+        sinks.add(sink)
+    }
+
+    fun log(event: LogEvent) {
+        sinks.forEach { sink ->
+            runCatching { sink.log(event) }
+        }
+    }
+
+    fun log(
+        channel: String,
+        message: String,
+        indent: String = "",
+        blockId: String? = null,
+        boundary: BlockBoundary? = null
+    ) = log(LogEvent(channel = channel, message = message, indent = indent, blockId = blockId, boundary = boundary))
 }
 
 object StdoutLog : LogSink {
-    override fun log(msg: String) {
-        val prefix = "[OpenAiIde] "
-        val full = prefix + msg
-        val width = System.getenv("COLUMNS")?.toIntOrNull()?.coerceAtLeast(20) ?: 100
-        val padded = if (full.length < width) " ".repeat(width - full.length) + full else full
-        val ansiDarkGray = "\u001b[90m"
-        val ansiReset = "\u001b[0m"
-        println(ansiDarkGray + padded + ansiReset)
+    override fun log(event: LogEvent) {
+        val prefix = ""
+        val channelPart = if (event.channel.isNotBlank()) "[${event.channel}] " else ""
+        val boundaryMarker = when (event.boundary) {
+            BlockBoundary.BEGIN -> ">|> "
+            BlockBoundary.END -> "<|< "
+            null -> ""
+        }
+        val full = prefix + channelPart + event.indent + boundaryMarker + event.message
+        println(full)
     }
 }
 
@@ -31,15 +80,15 @@ class NotifyLog(
     private val maxLen: Int = 200,
     private val dedupeWindowMs: Long = 1000
 ) : LogSink {
-    override fun log(msg: String) {
-        StdoutLog.log(msg)
-        val cleaned = msg.replace(Regex("\\s+"), " ").trim()
+    override fun log(event: LogEvent) {
+        StdoutLog.log(event)
+        val cleaned = event.message.replace(Regex("\\s+"), " ").trim()
         val clipped = if (cleaned.length <= maxLen) cleaned else cleaned.substring(0, maxLen) + "..."
-        val key = "$label|$prefix|$clipped"
+        val key = "$label|$prefix|${event.channel}|$clipped"
         val now = System.currentTimeMillis()
         val prev = lastNotification.put(key, now)
         if (prev != null && now - prev < dedupeWindowMs) return
-        notify("$prefix: $clipped", label)
+        notify("$prefix: [${event.channel}] $clipped", label)
     }
 
     companion object {
@@ -48,7 +97,7 @@ class NotifyLog(
 }
 
 object SilentLog : LogSink {
-    override fun log(msg: String) {
+    override fun log(event: LogEvent) {
         // intentionally quiet
     }
 }

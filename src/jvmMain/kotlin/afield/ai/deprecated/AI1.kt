@@ -326,7 +326,7 @@
             )
 
             val inst = instructions.replace("Kotlin", languageName)
-            print(" running AI prompt is\n${inst}")
+            lprintln("info,ai", "running AI prompt is\n$inst")
             openAI.createStreamingRun(
                 thread!!.id,
                 request = RunRequest(
@@ -334,29 +334,28 @@
                     instructions = inst,
                 )
             ).onEach {
-                println("\n\n -- from ai\n")
+                lprintln("info,ai", "-- from ai")
                 notify("AI ${it.type.name.lowercase()}", "AI")
                 when (it.type) {
 
                     AssistantStreamEventType.THREAD_MESSAGE_COMPLETED -> {
-                        print(" handling ${it}")
+                        lprintln("debug,ai", "handling $it")
                         val completion =
                             (it.getData<Message>().content.firstNotNullOfOrNull { it as? MessageContent.Text }?.text)
                         if (completion == null) {
-                            lprintln(" something's wrong with the THREAD_MESSAGE_COMPLETED ${it}")
+                            lprintln("error,ai", "something's wrong with the THREAD_MESSAGE_COMPLETED $it")
                         } else
                             result(unwrap(completion?.value ?: ""))
                     }
 
                     else -> {
-                        print(" unhandled event type ${it.type}")
+                        lprintln("warning,ai", "unhandled event type ${it.type}")
                     }
                 }
             }.catch {
                 notify("AI failed ${it.message}", "AI")
-                println("problem running ai")
-                println(it)
-                it.printStackTrace()
+                lprintln("error,ai", "problem running ai: ${it.message}")
+                lprintln("error,ai", it.stackTraceToString())
             }.collect()
         }
 
@@ -383,7 +382,7 @@
             )
 
             val inst = instructions.replace("<<LANG>>", languageName)
-            print(" running AI prompt is\n${inst}")
+            lprintln("info,ai", "running AI prompt is\n$inst")
             openAI.createStreamingRun(
                 thread!!.id,
                 request = RunRequest(
@@ -391,29 +390,28 @@
                     instructions = inst,
                 )
             ).onEach {
-                println("\n\n -- from ai\n")
+                lprintln("info,ai", "-- from ai")
                 notify("AI(chat): ${it.type.name.lowercase()}", "AI")
                 when (it.type) {
 
                     AssistantStreamEventType.THREAD_MESSAGE_COMPLETED -> {
-                        print(" handling ${it}")
+                        lprintln("debug,ai", "handling $it")
                         val completion =
                             (it.getData<Message>().content.firstNotNullOfOrNull { it as? MessageContent.Text }?.text)
                         if (completion == null) {
-                            lprintln(" something's wrong with the THREAD_MESSAGE_COMPLETED ${it}")
+                            lprintln("error,ai", "something's wrong with the THREAD_MESSAGE_COMPLETED $it")
                         } else
                             result(unwrap(completion?.value ?: ""))
                     }
 
                     else -> {
-                        print(" unhandled event type ${it.type}")
+                        lprintln("warning,ai", "unhandled event type ${it.type}")
                     }
                 }
             }.catch {
                 notify("AI(chat) failed ${it.message}", "AI")
-                println("problem running ai")
-                println(it)
-                it.printStackTrace()
+                lprintln("error,ai", "problem running ai: ${it.message}")
+                lprintln("error,ai", it.stackTraceToString())
             }.collect()
         }
 
@@ -486,9 +484,9 @@
                 notify("Initializing AI", "AI")
                 ai!!.start(ai_assistant, ai_thread)
                 ai_thread = ai!!.thread!!.id.id
-                println(" AI thread id is ${ai_thread}")
+                lprintln("info,ai", "AI thread id is ${ai_thread}")
                 ai_assistant = ai!!.assistant!!.id.id
-                println("AI1 has started with ${ai_thread} ${ai_assistant}")
+                lprintln("info,ai", "AI1 has started with ${ai_thread} ${ai_assistant}")
             }
             val filename = thisSessionInfo.get().filename
 

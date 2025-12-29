@@ -95,7 +95,7 @@ class KotlinExecution : BoxExecution {
 
         val existingFunction = box.ki.context.functions.filter { it.key == code.trim() }.map { it.value }.firstOrNull()
         if (existingFunction != null) {
-            println(" found existing function: $existingFunction")
+            lprintln("debug,execution", "found existing function: $existingFunction")
 
             reply(
                 Message("output").payload(
@@ -111,7 +111,7 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        lprintln(" global scope ts is ${thisSession.get()}")
+        lprintln("debug,execution", "global scope ts is ${thisSession.get()}")
         val wm = ++box.fragmentGeneration
 
         box._currentlyExecutingFragment = true
@@ -187,7 +187,7 @@ class KotlinExecution : BoxExecution {
                 output[output.size - 1] = output[output.size - 1] + content.toString()
                 if (nl) output.add("")
 
-                println("out "+content)
+                lprintln("debug,execution", "out $content")
                 reply?.invoke(
                     Message("output").payload(
                         Output(
@@ -220,10 +220,10 @@ class KotlinExecution : BoxExecution {
 
             val returnValues: List<ResultValue?> = standardExecutionPractice(box.ki, code, { compileError ->
                 hasError = true
-                lprintln("compiler error")
+                lprintln("error,execution", "compiler error")
                 var first = true
                 compileError.forEach {
-                    lprintln("  ${it.code} ${it.message} ${it.location} ${it.severity}")
+                    lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
                     if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                         first = false
                         if (it.location != null) {
@@ -253,23 +253,22 @@ class KotlinExecution : BoxExecution {
                 }
             }, { evalError ->
                 hasError = true
-                lprintln("eval error")
+                lprintln("error,execution", "eval error")
                 evalError.forEach {
-                    lprintln("  ${it.code} ${it.message} ${it.location}")
+                    lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
                 }
             }, { evalException ->
                 hasError = true
-                lprintln("exception thrown in fragment ")
-                evalException.printStackTrace()
+                lprintln("error,execution", "exception thrown in fragment")
+                lprintln("error,execution", evalException.stackTraceToString())
 
                 var fallbackFirstLine = -1
                 var firstLineInThisBox = -1
                 evalException.stackTrace.forEach { e ->
-                    println("${e.fileName} ${e.className} ${e.lineNumber}")
                     if (fallbackFirstLine == -1) {
                         fallbackFirstLine = e.lineNumber
                     }
-                    if(e?.fileName?.contains(box.id) ?: false && firstLineInThisBox == -1) {
+                    if(e.fileName?.contains(box.id) == true && firstLineInThisBox == -1) {
                         firstLineInThisBox = e.lineNumber
                     }
                 }
@@ -383,7 +382,7 @@ class KotlinExecution : BoxExecution {
 
                 }
             } else {
-                lprintln("ERROR\n has error")
+                lprintln("error,execution", "execution finished with errors")
             }
         } finally {
             finishedHandler()
@@ -432,10 +431,9 @@ class KotlinExecution : BoxExecution {
                         // run atEnd (should it?)
                     } catch (e: CancellationException) {
                     } catch (t: Throwable) {
-                        t.printStackTrace()
+                        lprintln("error,execution", t.stackTraceToString())
                         var firstLine = -1
                         t.stackTrace.forEach { e ->
-                            println("${e.fileName} ${e.className} ${e.lineNumber}")
                             if (firstLine == -1 && e.fileName.contains(inside.id)) {
                                 firstLine = e.lineNumber
                             }

@@ -4,6 +4,7 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
@@ -251,7 +252,7 @@ class Device(val physicalDevice: PhysicalDevice) {
                 vkGetPhysicalDeviceProperties2(physicalDevice.vkPhysicalDevice, props2)
                 pushProps.maxPushDescriptors()
             } else 0
-            println("Device push descriptors: supported=$supportsPushDescriptors, maxPushDescriptors=$pushDescriptorMax")
+            lprintln("info,device", "Device push descriptors: supported=$supportsPushDescriptors, maxPushDescriptors=$pushDescriptorMax")
         }
     }
 

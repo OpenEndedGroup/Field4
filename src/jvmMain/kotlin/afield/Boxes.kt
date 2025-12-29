@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lblock
+import afield.logger.lprintln
 import afield.stdlib.Action
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
@@ -374,7 +375,7 @@ fun doResync() {
 
             "actions" -> {
                 val actionList = box.gather<MutableMap<String, Action>>("actions").entries.map { it.key to it.value }
-                println(" actions for ${box.id}: are ${actionList.map { it.first }} ${actionList.map { it.second.desc }}}")
+                lprintln("debug,boxes", "actions for ${box.id}: are ${actionList.map { it.first }} ${actionList.map { it.second.desc }}}")
 
                 message = Message("describe-action").payload(Describe_actions(box.id, actionList.map { (name, action) ->
                     actionTable[name] = { sel ->
@@ -389,7 +390,7 @@ fun doResync() {
                     null -> Message("set-null").payload(Set_null(box.id, name))
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
                     is String -> {
-                        println(" sending set-string for $name = $value")
+                        lprintln("info,boxes", "sending set-string for $name = $value")
                         if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized()) {
                             box.inside.pendingSidecarSaves += box.id to name
                         }
@@ -398,14 +399,14 @@ fun doResync() {
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
                     is Boolean -> Message("set-boolean").payload(Set_boolean(box.id, name, value))
                     else -> {
-                        println("WARNING: trying to resync something that can't be resync'd — unknown value type $value ${value.javaClass}")
+                        lprintln("warning,boxes", "trying to resync something that can't be resync'd -- unknown value type $value ${value.javaClass}")
                         null
                     }
                 }
             }
         }
 
-        println("resync $name -> $message (x${sessions.size} sessions)")
+        lprintln("info,boxes", "resync $name -> $message (x${sessions.size} sessions)")
         message?.let { message ->
             if (box.isInsideInitialized()) {
                 box.inside.sessions.forEach { _send(it, message) }
@@ -477,22 +478,22 @@ fun makeKI(box: Box): KotlinInterface {
 
             launch(Runloop.miscPool.asCoroutineDispatcher()) {
 
-                lblock("executing stdlib import ") {
+                lblock("info,ki", "executing stdlib import") {
 //                    if (box.properties.containsKey("_tombstone")) return@launch
                     if (box.properties.containsKey("_tombstone")) return@launch
-                    println(" $box executing imports")
+                    lprintln("info,ki", "$box executing imports")
                     ki.exec(
                         intro, implicits = listOf(box)
                     )
-                    println(" $box executing preamble")
+                    lprintln("info,ki", "$box executing preamble")
                     try {
                         box.preamble.let { ki.exec(it, implicits = listOf(box)) }
                     } catch (t: Throwable) {
-                        println(" -- preamble threw an exception, so we're going to clear it")
+                        lprintln("error,ki", "preamble threw an exception, clearing it")
                         t.printStackTrace()
                         box.preamble = ""
                     }
-                    println(" $box box is no longer offline")
+                    lprintln("info,ki", "$box box is no longer offline")
                     box.offline = false
                     si?.topologyGeneration++
                 }

@@ -1,6 +1,7 @@
 package afield
 
 import io.github.classgraph.ClassGraph
+import afield.logger.lprintln
 import kotlin.concurrent.thread
 import kotlin.time.measureTime
 
@@ -35,7 +36,7 @@ fun kotlinImportStatementFor(name: String): String? {
     val n = findClassesNamed(name)
     if (n == null) return null;
     if (n.size > 1) {
-        println("WARNING: multiple classes called ${name} = ${cache[name]}")
+        lprintln("warning,import", "multiple classes called ${name} = ${cache[name]}")
         return null
     }
 
@@ -48,6 +49,6 @@ fun initializeClassCache() {
         var time = measureTime {
             size = cache.size
         }
-        println("found ${size} classes on classpath in ${time.inWholeMilliseconds / 1000.0}s")
+        lprintln("info,import", "found ${size} classes on classpath in ${time.inWholeMilliseconds / 1000.0}s")
     }
 }

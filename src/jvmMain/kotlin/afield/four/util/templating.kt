@@ -2,8 +2,10 @@ package afield.four.util
 
 import afield.Box
 import afield.gather
+import afield.logger.lprintln
 import afield.stdlib.Action
 import afield.stdlib.Delegation
+import afield.logger.lprintln
 
 // A tiny, dynamic, Jinja-ish templating engine in *one file* using only Kotlin stdlib.
 // Features:
@@ -610,8 +612,8 @@ Global fallback via facade: {{ global }}
 
     try {
         val out = runTemplate(template, facade)
-        println(out)
+        lprintln("info,templating", out)
     } catch (e: TemplateException) {
-        System.err.println("Template error:\n${e.message}")
+        lprintln("error,templating", "Template error:\n${e.message}")
     }
 }

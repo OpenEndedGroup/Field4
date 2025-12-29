@@ -1,6 +1,7 @@
 package afield.four.modules
 
 import afield.four.util.Options
+import afield.logger.lprintln
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.NativeResource
 import org.lwjgl.util.shaderc.Shaderc
@@ -90,15 +91,15 @@ object ShaderSPIRVUtils {
         }
 
         if (Shaderc.shaderc_result_get_compilation_status(result) != Shaderc.shaderc_compilation_status_success) {
-            println("""WARNING: Failed to compile shader ${filename} into SPIR-V: error is""")
-            println(Shaderc.shaderc_result_get_error_message(result))
+            lprintln("error,graphics", "Failed to compile shader $filename into SPIR-V: error is")
+            lprintln("error,graphics", Shaderc.shaderc_result_get_error_message(result))
             throw CompilerError(Shaderc.shaderc_result_get_error_message(result)?:"")
         }
 
         Shaderc.shaderc_compiler_release(compiler)
 
         val res = SPIRV(result, Shaderc.shaderc_result_get_bytes(result))
-        println(" compiled, got results ${res} ${res.bytecode()}")
+        lprintln("info,graphics", "compiled, got results $res ${res.bytecode()}")
         return res
     }
 

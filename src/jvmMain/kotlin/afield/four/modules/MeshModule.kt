@@ -22,7 +22,7 @@ import java.nio.ByteBuffer
 class MeshModulePointer(var current: MeshModule) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid && current.enabled) current.render(command, bounds)
-        else println("module '${current.parameters.name}' not valid / not rendering")
+        else lprintln("warning,graphics", "module '${current.parameters.name}' not valid / not rendering")
     }
 
     fun reload(
@@ -45,7 +45,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
                 val tp = current.uniforms[it.name] as Module.TexturePointer
                 tp.texture to tp.sampler
             } catch (_: Exception) {
-                lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                lprintln("warning,graphics", "couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
             }
         }

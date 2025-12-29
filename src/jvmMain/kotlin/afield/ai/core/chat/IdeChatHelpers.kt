@@ -15,11 +15,13 @@ import afield.ai.core.tools.WorkspaceSymbolSearchResult
 import afield.ai.core.tools.validateNoMarkers
 import afield.ai.core.logging.LogSink
 import afield.ai.core.logging.StdoutLog
+import afield.ai.core.logging.log
 
 class IdeChatHelpers(
     private val bridge: OpenAiIdeCodexBridge,
     private val log: LogSink = StdoutLog
 ) {
+    private fun info(message: String) = log.log("info,ai.chat", message)
 
     data class HighLevelResult(
         val editedCode: String,
@@ -41,7 +43,7 @@ class IdeChatHelpers(
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
-        log.log("chatFile(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
+        info("chatFile(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
@@ -72,7 +74,7 @@ class IdeChatHelpers(
 
         validateNoMarkers(unwrapped)
 
-        log.log("chatFile(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
+        info("chatFile(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
         return HighLevelResult(
             editedCode = unwrapped,
             commentary = result.commentary,
@@ -94,7 +96,7 @@ class IdeChatHelpers(
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): OpenAiIdeCodexBridge.SendResult {
-        log.log("chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
+        info("chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
@@ -137,7 +139,7 @@ class IdeChatHelpers(
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
-        log.log("chatInline(): lang=${lang.name} line=$lineNumber codeChars=${code.length} attachments=${attachments.size}")
+        info("chatInline(): lang=${lang.name} line=$lineNumber codeChars=${code.length} attachments=${attachments.size}")
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
@@ -172,7 +174,7 @@ class IdeChatHelpers(
 
         validateNoMarkers(unwrapped)
 
-        log.log("chatInline(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
+        info("chatInline(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
         return HighLevelResult(
             editedCode = unwrapped,
             commentary = result.commentary,
@@ -194,7 +196,7 @@ class IdeChatHelpers(
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
-        log.log("chatError(): lang=${lang.name} error='${errorMessage.take(120)}' codeChars=${code.length}")
+        info("chatError(): lang=${lang.name} error='${errorMessage.take(120)}' codeChars=${code.length}")
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
@@ -225,7 +227,7 @@ class IdeChatHelpers(
 
         validateNoMarkers(unwrapped)
 
-        log.log("chatError(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
+        info("chatError(): done editedChars=${unwrapped.length} commentary=${result.commentary.size}")
         return HighLevelResult(
             editedCode = unwrapped,
             commentary = result.commentary,

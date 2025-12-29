@@ -2,6 +2,7 @@ package afield.four.util
 
 import afield.four.Renderer
 import afield.four.modules.fromContext
+import afield.logger.lprintln
 import org.lwjgl.glfw.GLFW
 import afield.Generator
 import afield.GeneratorScope
@@ -81,7 +82,7 @@ class KeyEvents(val renderer: Renderer = fromContext(), val name: String = "__ke
 
                 keys.forEach { n ->
                     namesToGLFW[n]?.let { if (renderer.window.isKeyPressed(it)) nowDown.add(n) }
-                        ?: println(" -- warning, no such key: $n")
+                        ?: lprintln("warning,input", "no such key: $n")
                 }
 
                 val newDown = nowDown - wasDown

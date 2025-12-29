@@ -4,6 +4,7 @@ import afield.Generator
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.stdlib.Vec2
+import afield.logger.lprintln
 import org.lwjgl.glfw.GLFW
 import kotlin.collections.set
 
@@ -106,7 +107,7 @@ class MouseEvents(
                     val glfw = namesToGLFW[bName]
                     if (glfw != null) {
                         if (renderer.window.isMouseButtonPressed(glfw)) nowDown.add(bName)
-                    } else println(" -- warning, no such mouse button: $bName")
+                    } else lprintln("warning,input", "no such mouse button: $bName")
                 }
 
                 val newDown = nowDown - wasDown

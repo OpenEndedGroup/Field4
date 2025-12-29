@@ -4,6 +4,7 @@ import afield.PersistOnExit.needingPersistance
 import afield.SavingContext.Companion.format
 import afield.stdlib.invoke
 import kotlinx.serialization.encodeToString
+import afield.logger.lprintln
 import java.io.File
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -59,10 +60,9 @@ inline fun LinkedList<Long>.windowedAppendAndPrint(name: String, max_window: Int
         var data = ArrayList<Long>(this)
         data.sort()
         var total = data.sum()
-        println(
-            ">>time '$name' = [${
-                data.first().tDP()
-            } | ${data[data.size / 2].tDP()}, ${(total / data.size.toDouble()).tDP()} | ${data.last().tDP()}]"
+        lprintln(
+            "info,perf",
+            ">>time '$name' = [${data.first().tDP()} | ${data[data.size / 2].tDP()}, ${(total / data.size.toDouble()).tDP()} | ${data.last().tDP()}]"
         )
     }
 }
@@ -143,7 +143,7 @@ object PersistOnExit {
     var checkThread = thread {
         while (true) {
             Thread.sleep(1000)
-            if (needingPersistance.size > 0) println("persistence number is ${needingPersistance.size}")
+            if (needingPersistance.size > 0) lprintln("info,persist", "persistence number is ${needingPersistance.size}")
             needingPersistance.entries.removeIf {
                 save(it.key, it.value)
                 true
@@ -182,11 +182,11 @@ object PersistOnExit {
                 }
             }
 
-            println(" saving ${name} to ${text} with path ${p}")
+            lprintln("info,persist", "saving $name to $text with path $p")
             File(p).writeText(text)
 
         } catch (e: Exception) {
-            println("problem saving $name — ${e.message}")
+            lprintln("error,persist", "problem saving $name — ${e.message}")
         }
     }
 
@@ -220,7 +220,7 @@ object PersistOnExit {
                 }
             }
         } catch (e: Exception) {
-            println("problem loading $name — ${e.message}")
+            lprintln("error,persist", "problem loading $name — ${e.message}")
             return null
         }
     }
@@ -338,4 +338,3 @@ fun <T> lazyVar(
 data class Named<T>(val name: String, val value: T)
 
 infix fun <T> T.named(name: String) = Named(name, this)
-

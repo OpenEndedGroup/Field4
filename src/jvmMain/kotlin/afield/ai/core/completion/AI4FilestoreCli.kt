@@ -1,5 +1,7 @@
 package afield.ai
 
+import afield.ai.core.logging.LogEvent
+import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -128,7 +130,8 @@ private fun waitForFileBatch(
 }
 
 private fun printUsage() {
-    println(
+    lprintln(
+        "info,filestore-cli",
         """
 AI4 filestore CLI
 
@@ -151,9 +154,10 @@ Example:
 }
 
 private class TputLog : LogSink {
-    override fun log(msg: String) {
+    override fun log(event: LogEvent) {
         val prefix = "[OpenAiIde] "
-        val full = prefix + msg
+        val channelPart = if (event.channel.isNotBlank()) "[${event.channel}] " else ""
+        val full = prefix + channelPart + event.message
         val width = resolveTerminalWidth()
         val padded = if (full.length < width) " ".repeat(width - full.length) + full else full
         val ansiDarkGray = "\u001b[90m"
@@ -365,7 +369,7 @@ private fun parseArgs(args: Array<String>): FilestoreCliConfig {
                 i += 1
             }
             else -> {
-                println("Unknown argument: $arg")
+                lprintln("warning,filestore-cli", "Unknown argument: $arg")
                 showHelp = true
                 i += 1
             }
@@ -395,7 +399,7 @@ private fun parseVirtualRoot(raw: String): URI? {
             uri
         }
     } catch (_: Exception) {
-        println("Invalid --vfs-root URI: $raw")
+        lprintln("error,filestore-cli", "Invalid --vfs-root URI: $raw")
         null
     }
 }
@@ -404,7 +408,7 @@ private fun parseVirtualUri(raw: String): URI? {
     return try {
         URI(raw)
     } catch (_: Exception) {
-        println("Invalid --vfs-file URI: $raw")
+        lprintln("error,filestore-cli", "Invalid --vfs-file URI: $raw")
         null
     }
 }
@@ -443,7 +447,7 @@ private fun collectFiles(config: FilestoreCliConfig): List<Path> {
 }
 
 fun main(args: Array<String>) {
-    println(System.getenv("COLUMNS"))
+    lprintln("debug,filestore-cli", System.getenv("COLUMNS"))
     val config = parseArgs(args)
     if (config.showHelp) {
         printUsage()
@@ -452,7 +456,7 @@ fun main(args: Array<String>) {
 
     val apiKey = config.apiKey ?: System.getenv("OPENAI_API_KEY")
     if (apiKey.isNullOrBlank()) {
-        println("Missing API key. Provide --api-key or set OPENAI_API_KEY.")
+        lprintln("error,filestore-cli", "Missing API key. Provide --api-key or set OPENAI_API_KEY.")
         return
     }
 
@@ -461,7 +465,7 @@ fun main(args: Array<String>) {
     val virtualFiles = collectVirtualFiles(config.virtualRoots, config.virtualUris, virtualFileSystems)
 
     if (targets.isEmpty() && virtualFiles.isEmpty()) {
-        println("No files found. Continuing without uploads.")
+        lprintln("warning,filestore-cli", "No files found. Continuing without uploads.")
     }
 
     Files.createDirectories(config.cacheDir)
@@ -471,13 +475,13 @@ fun main(args: Array<String>) {
     val http = HttpClient.newBuilder().build()
     val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
 
-    println("Cache: ${cachePath.toAbsolutePath()}")
-    println("Purpose: ${config.purpose}")
+    lprintln("info,filestore-cli", "Cache: ${cachePath.toAbsolutePath()}")
+    lprintln("info,filestore-cli", "Purpose: ${config.purpose}")
     if (targets.isNotEmpty()) {
-        println("Uploading ${targets.size} file(s)...")
+        lprintln("info,filestore-cli", "Uploading ${targets.size} file(s)...")
     }
     if (virtualFiles.isNotEmpty()) {
-        println("Uploading ${virtualFiles.size} virtual file(s)...")
+        lprintln("info,filestore-cli", "Uploading ${virtualFiles.size} virtual file(s)...")
     }
 
     val fileIds = mutableListOf<String>()
@@ -493,7 +497,7 @@ fun main(args: Array<String>) {
         )
         val id = result.record.fileId
         fileIds += id
-        println("${result.action.padEnd(10)} $fileName -> $id (${bytes.size} bytes)")
+        lprintln("info,filestore-cli", "${result.action.padEnd(10)} $fileName -> $id (${bytes.size} bytes)")
     }
     val virtualUploads = uploadVirtualFiles(
         cache = cache,
@@ -506,21 +510,21 @@ fun main(args: Array<String>) {
         val id = upload.result.record.fileId
         fileIds += id
         val bytes = upload.result.record.byteCount
-        println("${upload.result.action.padEnd(10)} ${upload.file.ref.uri} -> $id ($bytes bytes)")
+        lprintln("info,filestore-cli", "${upload.result.action.padEnd(10)} ${upload.file.ref.uri} -> $id ($bytes bytes)")
     }
 
     val uniqueIds = fileIds.distinct()
     if (uniqueIds.isNotEmpty()) {
-        println("\nfile_ids:")
-        uniqueIds.forEach { println("  $it") }
-        println("\nChat reference:")
-        println("Use these file_ids in your prompt/context: ${uniqueIds.joinToString(", ")}")
+        lprintln("info,filestore-cli", "file_ids:")
+        uniqueIds.forEach { lprintln("info,filestore-cli", "  $it") }
+        lprintln("info,filestore-cli", "Chat reference:")
+        lprintln("info,filestore-cli", "Use these file_ids in your prompt/context: ${uniqueIds.joinToString(", ")}")
     }
 
     val vectorStoreId = if (uniqueIds.isNotEmpty()) {
         try {
             val name = "afield-cli-${Instant.now().epochSecond}"
-            println("\nCreating vector store for file_search...")
+            lprintln("info,filestore-cli", "Creating vector store for file_search...")
             val created = createVectorStore(
                 http = http,
                 mapper = mapper,
@@ -543,10 +547,10 @@ fun main(args: Array<String>) {
                 batchId = batch.batchId,
                 maxWaitMs = 60_000
             )
-            println("Vector store ready: ${created.vectorStoreId}")
+            lprintln("info,filestore-cli", "Vector store ready: ${created.vectorStoreId}")
             created.vectorStoreId
         } catch (ex: Exception) {
-            println("Vector store setup failed: ${ex.message}")
+            lprintln("error,filestore-cli", "Vector store setup failed: ${ex.message}")
             null
         }
     } else null
@@ -582,7 +586,7 @@ fun main(args: Array<String>) {
     )
     val vectorStores = vectorStoreId?.let { listOf(it) } ?: emptyList()
 
-    println("\nCLI chat ready. Type /help for commands, /exit to quit.")
+    lprintln("info,filestore-cli", "CLI chat ready. Type /help for commands, /exit to quit.")
     while (true) {
         print("you> ")
         val line = readLine() ?: break
@@ -592,7 +596,8 @@ fun main(args: Array<String>) {
         when (input) {
             "/exit" -> break
             "/help" -> {
-                println(
+                lprintln(
+                    "info,filestore-cli",
                     """
 Commands:
   /help  Show this help
@@ -604,15 +609,15 @@ Commands:
             }
             "/files" -> {
                 if (uniqueIds.isEmpty()) {
-                    println("No file_ids loaded.")
+                    lprintln("info,filestore-cli", "No file_ids loaded.")
                 } else {
-                    println("file_ids:")
-                    uniqueIds.forEach { println("  $it") }
+                    lprintln("info,filestore-cli", "file_ids:")
+                    uniqueIds.forEach { lprintln("info,filestore-cli", "  $it") }
                 }
                 if (vectorStoreId != null) {
-                    println("vector_store_id: $vectorStoreId")
+                    lprintln("info,filestore-cli", "vector_store_id: $vectorStoreId")
                 } else {
-                    println("vector_store_id: <none>")
+                    lprintln("info,filestore-cli", "vector_store_id: <none>")
                 }
                 continue
             }
@@ -628,12 +633,12 @@ Commands:
                 System.out.flush()
             }
         )
-        println()
+        lprintln("info,filestore-cli", "")
         if (result.commentary.isNotEmpty()) {
-            println("\n[commentary]\n" + result.commentary.joinToString("\n"))
+            lprintln("info,filestore-cli", "[commentary]\n" + result.commentary.joinToString("\n"))
         }
         state = result.threadState
     }
 
-    println("bye.")
+    lprintln("info,filestore-cli", "bye.")
 }

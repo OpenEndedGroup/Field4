@@ -40,7 +40,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             watchLoop()
         }
         
-        lprintln("FileWatchManager started for ${sessionInfo.filename}")
+        lprintln("info,file-watch", "FileWatchManager started for ${sessionInfo.filename}")
     }
     
     /**
@@ -59,10 +59,10 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         try {
             watchService.close()
         } catch (e: Exception) {
-            lprintln("Error closing watch service: ${e.message}")
+            lprintln("error,file-watch", "Error closing watch service: ${e.message}")
         }
         
-        lprintln("FileWatchManager stopped for ${sessionInfo.filename}")
+        lprintln("info,file-watch", "FileWatchManager stopped for ${sessionInfo.filename}")
     }
     
     /**
@@ -81,7 +81,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             )
             watchKeys[key] = path
         } catch (e: Exception) {
-            lprintln("Failed to register directory ${path}: ${e.message}")
+            lprintln("error,file-watch", "Failed to register directory ${path}: ${e.message}")
         }
     }
     
@@ -150,7 +150,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             } catch (e: ClosedWatchServiceException) {
                 break
             } catch (e: Exception) {
-                lprintln("Error in watch loop: ${e.message}")
+                lprintln("error,file-watch", "Error in watch loop: ${e.message}")
                 delay(1000.milliseconds)
             }
         }
@@ -203,7 +203,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             // Find the box
             val box = sessionInfo.boxes[boxId]
             if (box == null) {
-                lprintln("Box not found for sidecar file: $filename")
+                lprintln("warning,file-watch", "Box not found for sidecar file: $filename")
                 return
             }
             
@@ -227,13 +227,13 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                         box.inside.pendingSidecarSaves += box.id to propertyName
                     }
                     
-                    lprintln("Reloaded external change: $propertyName in box ${box.name} (${box.id})")
+                    lprintln("info,file-watch", "Reloaded external change: $propertyName in box ${box.name} (${box.id})")
                     notify("Reloaded external change to $propertyName in ${box.name}", "file-watch")
                 }
             }
             
         } catch (e: Exception) {
-            lprintln("Error reloading sidecar file ${file.name}: ${e.message}")
+            lprintln("error,file-watch", "Error reloading sidecar file ${file.name}: ${e.message}")
         }
     }
 }

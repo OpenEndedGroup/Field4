@@ -3,6 +3,7 @@ package afield.ai.core.bridge
 import afield.ai.core.logging.LogSink
 import afield.ai.core.logging.StdoutLog
 import afield.ai.core.logging.TraceLogger
+import afield.ai.core.logging.log
 import afield.ai.core.tools.Commentary
 import afield.ai.core.tools.ToolExecutionContext
 import afield.ai.core.tools.ToolRegistry
@@ -39,10 +40,13 @@ class OpenAiIdeCodexBridge(
             .effort(reasoningEffort)
             .summary(Reasoning.Summary.DETAILED)
             .build()
+    private fun info(message: String) = log.log("info,ai.bridge", message)
+    private fun warn(message: String) = log.log("warning,ai.bridge", message)
+    private fun error(message: String) = log.log("error,ai.bridge", message)
 
     init {
         registerBuiltIns()
-        log.log("Initialized OpenAiIdeCodexBridge(model=$chatModel)")
+        info("Initialized OpenAiIdeCodexBridge(model=$chatModel)")
     }
 
     fun <T : Any> registerTool(toolClass: Class<T>, handler: (ToolExecutionContext, T) -> Any) {
@@ -54,7 +58,7 @@ class OpenAiIdeCodexBridge(
         fileText: String,
         instructions: String = defaultThreadInstructions
     ): ThreadState {
-        log.log("startThread(): fileKey=$fileKey")
+        info("startThread(): fileKey=$fileKey")
         val t0 = System.nanoTime()
 
         val localThreadId = UUID.randomUUID().toString()
@@ -78,7 +82,7 @@ class OpenAiIdeCodexBridge(
         )
 
         val ms = (System.nanoTime() - t0) / 1_000_000
-        log.log("startThread(): conversationId=$conversationId localThreadId=$localThreadId (${ms}ms)")
+        info("startThread(): conversationId=$conversationId localThreadId=$localThreadId (${ms}ms)")
         return ThreadState(localThreadId, conversationId, fileKey)
     }
 
@@ -130,7 +134,7 @@ class OpenAiIdeCodexBridge(
             }
         )
 
-        log.log(
+        info(
             "convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} " +
                 "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size}"
         )
@@ -151,13 +155,13 @@ class OpenAiIdeCodexBridge(
             paramsBuilder.addFileSearchTool(vectorStoreIds)
         }
 
-        log.log("running prompt <<spinner>>")
+        info("running prompt <<spinner>>")
         var response: Response = createResponse(paramsBuilder.build(), onTextDelta)
         if (onTextDelta != null) {
-            println()
+            info("")
         }
         state.previousResponseId = response.id()
-        log.log("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
+        info("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
 
         val commentaryMessages = mutableListOf<String>()
 
@@ -166,17 +170,17 @@ class OpenAiIdeCodexBridge(
             val msgCount = out.count { it.isMessage() }
             val fnCount = out.count { it.isFunctionCall() }
             val otherCount = out.size - msgCount - fnCount
-            log.log("output shape: messages=$msgCount functionCalls=$fnCount other=$otherCount")
+            info("output shape: messages=$msgCount functionCalls=$fnCount other=$otherCount")
             if (resp.error().isPresent) {
                 val e = resp.error().get()
-                log.log("response.error code=${e.code()} message=${e.message()}")
+                error("response.error code=${e.code()} message=${e.message()}")
             }
             val msgStatuses = out.mapNotNull { it.message().orElse(null)?.status() }
             if (msgStatuses.isNotEmpty()) {
                 val labels = msgStatuses.joinToString(",") { it.value().toString().lowercase() }
-                log.log("message status(es)=$labels")
+                info("message status(es)=$labels")
                 if (msgStatuses.any { it.value() == ResponseOutputMessage.Status.Value.INCOMPLETE }) {
-                    log.log("WARNING: message status incomplete; output may be truncated.")
+                    warn("message status incomplete; output may be truncated.")
                 }
             }
             if (msgCount == 0) logOutputDetails(resp)
@@ -191,14 +195,14 @@ class OpenAiIdeCodexBridge(
                 .mapNotNull { it.functionCall().orElse(null) }
 
             if (calls.isEmpty()) {
-                log.log("no tool calls; finishing")
+                info("no tool calls; finishing")
                 break
             }
 
-            log.log("toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
+            info("toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
             val toolOutputs = mutableListOf<ResponseInputItem>()
             for (call in calls) {
-                log.log("tool: name=${call.name()} callId=${call.callId()} ${call.arguments()}")
+                info("tool: name=${call.name()} callId=${call.callId()} ${call.arguments()}")
                 trace?.log(
                     "TOOL_CALL",
                     "name=${call.name()} callId=${call.callId()}\nargs=${call.arguments()}"
@@ -207,7 +211,7 @@ class OpenAiIdeCodexBridge(
                 val toolResult: Any = try {
                     tools.execute(ctx, call)
                 } catch (e: Exception) {
-                    log.log("tool: ERROR name=${call.name()} msg=${e.message}")
+                    error("tool: ERROR name=${call.name()} msg=${e.message}")
                     mapOf(
                         "error" to true,
                         "tool" to call.name(),
@@ -230,9 +234,9 @@ class OpenAiIdeCodexBridge(
                     try {
                         val c = call.arguments(Commentary::class.java)
                         commentaryMessages += c.text
-                        log.log("tool: Commentary captured (${c.text.length} chars)")
+                        info("tool: Commentary captured (${c.text.length} chars)")
                     } catch (e: Exception) {
-                        log.log("tool: Commentary parse failed: ${e.message}")
+                        error("tool: Commentary parse failed: ${e.message}")
                     }
                 }
 
@@ -243,7 +247,7 @@ class OpenAiIdeCodexBridge(
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
             }
 
-            log.log("creating response (follow-up) <<spinner>>")
+            info("creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
                 .model(chatModel)
                 .previousResponseId(response.id())
@@ -258,10 +262,10 @@ class OpenAiIdeCodexBridge(
 
             response = createResponse(followupBuilder.build(), onTextDelta)
             if (onTextDelta != null) {
-                println()
+                info("")
             }
             state.previousResponseId = response.id()
-            log.log("follow-up response id=${response.id()} outputItems=${response.output().size}")
+            info("follow-up response id=${response.id()} outputItems=${response.output().size}")
             logOutputShape(response)
 
             rounds++
@@ -282,18 +286,20 @@ class OpenAiIdeCodexBridge(
         if (text.isBlank() && reasoningSummaries.isNotEmpty()) {
             commentaryMessages += reasoningSummaries
             val combined = reasoningSummaries.joinToString(" ").trim()
-            log.log("reasoning summary (no output_text): ${truncate(combined, 400)}")
+            info("reasoning summary (no output_text): ${truncate(combined, 400)}")
         }
 
         if (text.isBlank()) {
             // This is a very common integration gotcha; log a big hint.
-            log.log("WARNING: model returned no output_text. " +
+            warn(
+                "model returned no output_text. " +
                 "If output shape shows messages=0, your model may be returning non-text items. " +
-                "Try increasing maxOutputTokens or simplifying prompt.")
+                "Try increasing maxOutputTokens or simplifying prompt."
+            )
         }
 
         val ms = (System.nanoTime() - t0) / 1_000_000
-        log.log(
+        info(
             "done responseId=${response.id()} textChars=${text.length} " +
                 "commentaryCount=${commentaryMessages.size} (${ms}ms)"
         )
@@ -430,10 +436,10 @@ class OpenAiIdeCodexBridge(
                 item.isCustomToolCall() -> "custom_tool_call"
                 else -> "unknown"
             }
-            log.log("output[$idx] $desc")
+            info("output[$idx] $desc")
             if (desc == "unknown") {
                 val raw = item._json().orElse(null)?.toString()
-                if (raw != null) log.log("output[$idx] raw=${truncate(raw, 400)}")
+                if (raw != null) warn("output[$idx] raw=${truncate(raw, 400)}")
             }
         }
     }

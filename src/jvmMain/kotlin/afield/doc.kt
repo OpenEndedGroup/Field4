@@ -2,6 +2,7 @@ package afield
 
 import afield.four.util.Window
 import afield.four.util.lastWindowToOpen
+import afield.logger.lprintln
 import afield.stdlib.invoke
 import com.microsoft.playwright.Page
 import kotlinx.coroutines.*
@@ -33,7 +34,7 @@ fun coerceToDouble(orDefault: Any?): Double {
         null -> Double.POSITIVE_INFINITY
         is Boolean -> if (orDefault) 1.0 else 0.0
         else -> {
-            print("warning cannot understand $orDefault as a number")
+            lprintln("warning,doc", "cannot understand $orDefault as a number")
             Double.POSITIVE_INFINITY
         }
     }
@@ -116,7 +117,7 @@ suspend fun exportToDocumentation(
     val fn = Path(baseDirectory) / Path(subDirectory) / Path(docName + ".md")
     fn.createParentDirectories()
 
-    println("would write --\n${mainDocument}\n-- to ${fn}")
+    lprintln("info,doc", "would write --\n${mainDocument}\n-- to ${fn}")
     if (mainDocument.length > 0) fn.writeText(mainDocument)
 }
 
@@ -165,7 +166,7 @@ suspend fun format(inside: Box, s: String, baseDir: String, allocateFilename: ()
             }
 
             else -> {
-                println(" warning, don't understand `${command}`")
+                lprintln("warning,doc", "don't understand `${command}`")
                 "[[$command]]"
             }
         }
@@ -625,7 +626,7 @@ suspend fun Window.raiseAndScreenshot(waitFrames: Int, outPath: String) {
     GLFW.glfwFocusWindow(windowHandle)
     activateThisProcessMac(processName = "java") // or your actual app/bundle name
     Thread.sleep(500)
-    waitFrames { println(" -- waiting for window to come to front --"); yield() }
+    waitFrames { lprintln("info,doc", " -- waiting for window to come to front --"); yield() }
     Thread.sleep(500)
     captureGlfwWindow(windowHandle) { x, y, w, h ->
         val proc = ProcessBuilder(
@@ -641,7 +642,7 @@ suspend fun Window.raiseAndRecord(waitFrames: Int, outPath: String) {
     GLFW.glfwFocusWindow(windowHandle)
     activateThisProcessMac(processName = "java") // or your actual app/bundle name
     Thread.sleep(500)
-    waitFrames { println(" -- waiting for window to come to front --"); yield() }
+    waitFrames { lprintln("info,doc", " -- waiting for window to come to front --"); yield() }
     Thread.sleep(500)
     captureGlfwWindow(windowHandle) { x, y, w, h ->
         recordProcessReturnMp4WithScreencaptureAsync(x + 10, y + 40, w - 20, h - 50, File(outPath).toPath())
@@ -721,7 +722,7 @@ suspend fun runProcessLogged(
             try {
                 reader.useLines { lines ->
                     lines.forEach { line ->
-                        println(line)
+                        lprintln("debug,doc", line)
                         sink.appendLine(line)
                         cb?.invoke(line) // print live if you want
                     }

@@ -8,6 +8,9 @@ import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.ImageView
+import afield.logger.lprintln
+import afield.server.Browsable
+import afield.server.HasBrowsable
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
@@ -16,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * VideoTexture manages video playback with P010 format support.
- * Maintains dual texture arrays for luma and chroma planes in semi-planar format.
+ * Maintains configurable texture slot arrays for luma and chroma planes in semi-planar format.
  * Supports load, play, scrub, and unload operations while reusing Vulkan resources when dimensions match.
  * 
  * @param renderer The Vulkan renderer
@@ -26,7 +29,39 @@ import java.util.concurrent.atomic.AtomicInteger
 class VideoTexture(
     private val renderer: Renderer = fromContext(),
     private val clock: PlaybackClock? = null
-) : HasImageViewArray, afield.four.Target {
+    private val textureSlots: Int = 2
+) : HasImageViewArray, afield.four.Target, HasBrowsable {
+
+    // Inspector support: expose state + version tied to timestamp
+    override fun browsable(): Browsable? = object : Browsable {
+        override fun heading(): String = "VideoTexture"
+        override fun dir(): Map<String, Any?>? = null
+        override fun html(): String {
+            fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            val video = esc(currentVideoPath ?: "(none)")
+            val ts = "%.2fs".format(currentTimestamp)
+            val size = if (videoWidth > 0) "${videoWidth}x${videoHeight}" else "(unloaded)"
+            val slotVal = currentSlot.get().toString()
+            val state = if (isPlaying) "playing" else "paused"
+            val pending = if (pendingFrameRefresh) " · pending" else ""
+            return """
+                <div style="font-family:inherit;color:#ddd;padding:6px 8px;">
+                  <div style="display:grid;grid-template-columns:120px 1fr;row-gap:4px;column-gap:10px;align-items:baseline;">
+                    <div style="text-align:right;color:#8a8a8a;letter-spacing:0.6px;font-size:12px;">video</div><div style="color:#d0d0d0;white-space:pre-wrap;">$video</div>
+                    <div style="text-align:right;color:#8a8a8a;letter-spacing:0.6px;font-size:12px;">state</div><div style="color:#d0d0d0;">$state$pending</div>
+                    <div style="text-align:right;color:#8a8a8a;letter-spacing:0.6px;font-size:12px;">timestamp</div><div style="color:#d0d0d0;">$ts</div>
+                    <div style="text-align:right;color:#8a8a8a;letter-spacing:0.6px;font-size:12px;">size</div><div style="color:#d0d0d0;">$size</div>
+                    <div style="text-align:right;color:#8a8a8a;letter-spacing:0.6px;font-size:12px;">slot</div><div style="color:#d0d0d0;">$slotVal</div>
+                  </div>
+                </div>
+            """.trimIndent()
+        }
+        override fun version(): Long =
+            (currentTimestamp * 1000).toLong() +
+                (if (isPlaying) 1 else 0) +
+                (if (pendingFrameRefresh) 2 else 0) +
+                (currentSlot.get().toLong() shl 2)
+    }
 
     // Current video state
     private var decoder: VideoDecoder? = null
@@ -47,19 +82,23 @@ class VideoTexture(
     private var videoWidth = 0
     private var videoHeight = 0
 
-    // Dual texture arrays for luma and chroma
-    private var lumaTextures = arrayOfNulls<VideoPlaneTexture>(2)
-    private var chromaTextures = arrayOfNulls<VideoPlaneTexture>(2)
+    // Texture slot arrays for luma and chroma
+    private var lumaTextures = arrayOfNulls<VideoPlaneTexture>(textureSlots)
+    private var chromaTextures = arrayOfNulls<VideoPlaneTexture>(textureSlots)
 
-    // Current slot index (0 or 1) - indicates most recent frame
+    // Current slot index - indicates most recent frame
     private val currentSlot = AtomicInteger(0)
 
     // When true, allow a one-off update while paused to reflect a scrubbed position
     private var pendingFrameRefresh = false
 
-        // Format constants for P010
+    // Format constants for P010
     private val lumaFormat = VK10.VK_FORMAT_R16_UNORM  // 16-bit luma
     private val chromaFormat = VK10.VK_FORMAT_R16G16_UNORM  // 16-bit interleaved UV
+
+    init {
+        require(textureSlots > 0) { "textureSlots must be at least 1" }
+    }
 
     /**
      * Load a video file. If dimensions match the previously loaded video, reuses Vulkan resources.
@@ -74,7 +113,7 @@ class VideoTexture(
         // Create new decoder
         val newDecoder = VideoDecoder(videoPath)
         if (!newDecoder.open()) {
-            println("Failed to open video: $videoPath")
+            lprintln("error,video", "Failed to open video: $videoPath")
             return false
         }
 
@@ -82,8 +121,8 @@ class VideoTexture(
         val newHeight = newDecoder.height
 
         // Check if we can reuse existing textures (same dimensions)
-        val canReuseTextures = (newWidth == videoWidth && newHeight == videoHeight &&
-                                lumaTextures[0] != null && chromaTextures[0] != null)
+        val texturesAllocated = lumaTextures.all { it != null } && chromaTextures.all { it != null }
+        val canReuseTextures = (newWidth == videoWidth && newHeight == videoHeight && texturesAllocated)
 
         // Close old decoder if exists
         decoder?.close()
@@ -91,9 +130,9 @@ class VideoTexture(
         currentVideoPath = videoPath
 
         if (canReuseTextures) {
-            println("Reusing existing textures for video: $videoPath (${newWidth}x${newHeight})")
+            lprintln("info,video", "Reusing existing textures for video: $videoPath (${newWidth}x${newHeight})")
         } else {
-            println("Creating new textures for video: $videoPath (${newWidth}x${newHeight})")
+            lprintln("info,video", "Creating new textures for video: $videoPath (${newWidth}x${newHeight})")
 
             // Clean up old textures if they exist
             cleanupTextures()
@@ -103,7 +142,7 @@ class VideoTexture(
             videoHeight = newHeight
 
             // Create new texture pairs
-            for (i in 0..1) {
+            for (i in 0 until textureSlots) {
                 lumaTextures[i] = VideoPlaneTexture(
                     renderer = renderer,
                     width = videoWidth,
@@ -257,7 +296,7 @@ class VideoTexture(
         }
 
         // Switch to next slot
-        val nextSlot = (currentSlot.get() + 1) % 2
+        val nextSlot = (currentSlot.get() + 1) % textureSlots
 
         // Upload frame data to textures
         val lumaTexture = lumaTextures[nextSlot] ?: return false
@@ -335,7 +374,7 @@ class VideoTexture(
     }
 
     private fun cleanupTextures() {
-        for (i in 0..1) {
+        for (i in 0 until textureSlots) {
             lumaTextures[i]?.cleanup()
             lumaTextures[i] = null
             chromaTextures[i]?.cleanup()
@@ -519,4 +558,7 @@ private class VideoPlaneTexture(
         image.cleanup()
         stagingBuffer.cleanup()
     }
+
+
+
 }

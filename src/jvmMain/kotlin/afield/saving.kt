@@ -164,7 +164,7 @@ class SavingContext {
             mapped
         }
         else -> {
-            lprintln(" unhandled class $value ${value.javaClass}")
+            lprintln("warning,save", "unhandled class $value ${value.javaClass}")
             null
         }
     }
@@ -193,7 +193,7 @@ class SavingContext {
             mapped
         }
         else -> {
-            lprintln(" unhandled class $value ${value.javaClass}")
+            lprintln("warning,save", "unhandled class $value ${value.javaClass}")
             null
         }
     }
@@ -280,7 +280,7 @@ class SavingContext {
             try {
                 save(root, boxes, "upgrade to edn")
             } catch (ex: Exception) {
-                lprintln(" error upgrading $root to EDN: ${ex.message}")
+                lprintln("error,save", "error upgrading $root to EDN: ${ex.message}")
             }
         }
         return boxes
@@ -415,7 +415,7 @@ class SavingContext {
             mapped
         }
         is EdnValue -> {
-            lprintln(" can't decode $value")
+            lprintln("warning,decode", "can't decode $value")
             null
         }
         else -> value
@@ -508,7 +508,7 @@ class SavingContext {
             fromTypedPair(it, directory, filterId, createBoxes)
         }.toMutableSet() as Any
         else -> {
-            lprintln(" can't decode $element")
+            lprintln("error,decode", "can't decode $element")
             null
         }
     }

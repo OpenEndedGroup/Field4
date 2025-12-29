@@ -39,7 +39,7 @@ data class Parameters(
     var depthFormat: Int = Options.defaultDepthFormat,
     var primitiveType: Int = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     var textureResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>? = {
-        println("WARNING: Cannot resolve texture ${it.name}")
+        lprintln("warning,graphics", "Cannot resolve texture ${it.name}")
         null
     },
     var uboResolver: (BufferParameters) -> BufferParameters? = {
@@ -52,14 +52,14 @@ data class Parameters(
     },
     var ssboSizer: (Introspected.UBO) -> Int? = { 0 },
     var imageResolver: (Introspected.Image) -> ImageView? = {
-        println("WARNING: Cannot resolve image ${it.name}")
+        lprintln("warning,graphics", "Cannot resolve image ${it.name}")
 //        throw Exception("Cannot resolve image ${it.name}")
         null
     },
     var name: String = "unnamed module",
     var errorHandler: (String, Throwable?) -> Unit = { desc, it ->
-        println(" error $desc while creating Module:\n\t$it")
-        it?.printStackTrace()
+        lprintln("error,graphics", "error $desc while creating Module: $it")
+        it?.let { ex -> lprintln("error,graphics", ex.stackTraceToString()) }
     },
     var colorMask: Array<Boolean> = arrayOf(true, true, true, true),
     var blend: Boolean = true,
@@ -158,7 +158,7 @@ class ModulePointer(var current: Module) : Renderable {
                     is Module.TexturePointer -> uniform.texture to uniform.sampler
                     is Module.TextureArrayPointer -> uniform.texture to uniform.sampler
                     else -> {
-                        lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                        lprintln("warning,graphics", "couldn't transfer over texture ${it.name}, falling back to originating resolution")
                         oTextureResolver(it)
                     }
                 }
@@ -169,7 +169,7 @@ class ModulePointer(var current: Module) : Renderable {
                     else -> throw IllegalStateException("unsupported texture uniform type ${uniform?.javaClass}")
                 }
             } catch (_: Exception) {
-                lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                lprintln("warning,graphics", "couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
             }
         }

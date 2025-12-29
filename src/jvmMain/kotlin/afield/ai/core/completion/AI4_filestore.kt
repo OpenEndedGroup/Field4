@@ -2,6 +2,7 @@
 
 package afield.ai
 
+import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -209,7 +210,7 @@ class OpenAiFileStoreCache(
                 val kHash = keyHash(openAiApiKey)
                 val cHash = contentHash(contentBytes)
 
-                println(" checking cache ${fileName} ${kHash}; ${cHash} ")
+                lprintln("debug,filestore", "checking cache $fileName key=$kHash content=$cHash")
                 val rec = lock.read {
                     db.byKey[kHash]?.get(cHash)?.lastOrNull()
                 } ?: FileRecord(existing, fileName, purpose, contentBytes.size.toLong())
@@ -217,7 +218,7 @@ class OpenAiFileStoreCache(
             }
         }
 
-        println("AI4_filestore: uploading $fileName")
+        lprintln("info,filestore", "uploading $fileName")
         // Upload then record
         val fileId = uploader.upload(
             openAiApiKey = openAiApiKey, fileName = fileName, contentBytes = contentBytes, purpose = purpose
@@ -244,7 +245,7 @@ class OpenAiFileStoreCache(
                 val byContent = db.byKey.getOrPut(kHash) { mutableMapOf() }
                 byContent[cHash] = mutableListOf(rec)
             }
-            println("AI4_filestore: cache persist failed for $fileName: ${e.message}")
+            lprintln("error,filestore", "cache persist failed for $fileName: ${e.message}")
             CachePutResult(cHash, kHash, rec, action = "added-unpersisted")
         }
     }
@@ -295,7 +296,7 @@ class OpenAiFileStoreCache(
             mapper.writerWithDefaultPrettyPrinter().writeValue(w, db)
         }
 
-        println(" -- persistLocked ${tmp} ${dbPath} ${db.byKey.size} entries")
+        lprintln("debug,filestore", "persistLocked $tmp -> $dbPath entries=${db.byKey.size}")
         try {
             Files.move(
                 tmp, dbPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE
@@ -784,7 +785,7 @@ class OpenAiKnowledgeStore(
     }
 
     private fun writeAtomic(path: Path, bytes: ByteArray) {
-        println(" -- writing atomically to ${path} ${bytes.size} bytes")
+        lprintln("debug,filestore", "writing atomically to $path bytes=${bytes.size}")
         Files.createDirectories(path.parent)
         val tmp = path.resolveSibling(path.fileName.toString() + ".tmp-" + UUID.randomUUID())
         Files.write(tmp, bytes)

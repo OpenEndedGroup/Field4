@@ -75,7 +75,7 @@ object KotlinSourceIndex {
         ).filter { Files.exists(it) }
 
         if (sourceRoots.isEmpty()) {
-            lprintln("KotlinSourceIndex: no source roots found under ${root.toAbsolutePath()}")
+            lprintln("warning,sourceindex", "no source roots found under ${root.toAbsolutePath()}")
             return
         }
 
@@ -128,7 +128,7 @@ object KotlinSourceIndex {
                             uploader = uploader
                         )
                     }.getOrElse {
-                        lprintln("KotlinSourceIndex: upload failed for $rel: ${it.message}")
+                        lprintln("error,sourceindex", "upload failed for $rel: ${it.message}")
                         null
                     }
                     result?.record?.fileId
@@ -188,17 +188,17 @@ object KotlinSourceIndex {
             Files.createDirectories(indexPath.parent)
             mapper.writerWithDefaultPrettyPrinter().writeValue(indexPath.toFile(), index)
         }.onFailure {
-            lprintln("KotlinSourceIndex: failed to persist index: ${it.message}")
+            lprintln("error,sourceindex", "failed to persist index: ${it.message}")
         }
 
         runCatching {
             cache.flush()
         }.onFailure {
-            lprintln("KotlinSourceIndex: failed to persist filestore cache: ${it.message}")
+            lprintln("error,sourceindex", "failed to persist filestore cache: ${it.message}")
         }
 
         latestIndex = index
-        lprintln("KotlinSourceIndex: indexed ${files.size} files, ${definitions.size} definitions")
+        lprintln("info,sourceindex", "indexed ${files.size} files, ${definitions.size} definitions")
     }
 
     fun currentVectorStoreId(): String? =
@@ -225,18 +225,18 @@ object KotlinSourceIndex {
             val created = runCatching {
                 createVectorStore(http, apiKey, name, metadata)
             }.getOrElse {
-                lprintln("KotlinSourceIndex: vector store create failed: ${it.message}")
+                lprintln("error,sourceindex", "vector store create failed: ${it.message}")
                 return null
             }
             val vsId = created
             val batch = runCatching {
                 createVectorStoreFileBatch(http, apiKey, vsId, fileIds)
             }.getOrElse {
-                lprintln("KotlinSourceIndex: vector store batch failed: ${it.message}")
+                lprintln("error,sourceindex", "vector store batch failed: ${it.message}")
                 return null
             }
             runCatching { waitForFileBatch(http, apiKey, vsId, batch) }
-                .onFailure { lprintln("KotlinSourceIndex: vector store batch wait failed: ${it.message}") }
+                .onFailure { lprintln("error,sourceindex", "vector store batch wait failed: ${it.message}") }
             return vsId
         }
 
@@ -249,7 +249,7 @@ object KotlinSourceIndex {
             waitForFileBatch(http, apiKey, existingId, batch)
             existingId
         }.getOrElse {
-            lprintln("KotlinSourceIndex: vector store update failed: ${it.message}")
+            lprintln("error,sourceindex", "vector store update failed: ${it.message}")
             null
         }
 

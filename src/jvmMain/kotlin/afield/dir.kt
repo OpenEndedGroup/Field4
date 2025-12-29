@@ -104,7 +104,7 @@ fun simpleDir(base: String): List<Entry> {
                         }
                     } catch (e: NullPointerException) {
                         // we supress this for now
-                        println("${entry.filename} failed to get name or code for ${transfer}")
+                        lprintln("warning,dir", "${entry.filename} failed to get name or code for ${transfer}")
                     }
                 }
 
@@ -114,7 +114,7 @@ fun simpleDir(base: String): List<Entry> {
             entries.add(entry)
         } catch (e: Exception) {
             // Skip directories with invalid metadata
-            lprintln("Error processing directory ${dir.name}: ${e.message}")
+            lprintln("error,dir", "Error processing directory ${dir.name}: ${e.message}")
         }
     }
 

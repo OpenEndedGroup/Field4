@@ -16,6 +16,7 @@ import afield.four.util.MapOfSequences
 import afield.four.util.AutoDisposer
 import afield.four.util.Options
 import afield.four.util.Window
+import afield.logger.lprintln
 import afield.logTime
 import afield.logTime_
 import org.joml.primitives.Rectanglef
@@ -34,6 +35,8 @@ import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
 import org.lwjgl.vulkan.VK13.*
 import kotlin.coroutines.coroutineContext
 import org.lwjgl.vulkan.VK13.vkQueueSubmit2
+import java.util.concurrent.atomic.AtomicLong
+import java.util.ArrayDeque
 import org.lwjgl.vulkan.VkCommandBuffer
 import org.lwjgl.vulkan.VkSubmitInfo2
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo
@@ -51,34 +54,92 @@ fun target(a: (CommandBuffer, Int) -> Unit) = object : Target {
 
 /** Lightweight CPU span stats. */
 object CPUSpan {
-    data class Stat(var n: Long = 0, var sumNs: Long = 0, var minNs: Long = Long.MAX_VALUE, var maxNs: Long = 0) {
-        fun add(dtNs: Long) { n++; sumNs += dtNs; if (dtNs < minNs) minNs = dtNs; if (dtNs > maxNs) maxNs = dtNs }
-        fun avgMs() = (sumNs.toDouble() / n) / 1e6
-        fun minMs() = if (n > 0) minNs / 1e6 else 0.0
-        fun maxMs() = if (n > 0) maxNs / 1e6 else 0.0
+    private const val WINDOW = 500
+    data class Stat(val samples: ArrayDeque<Long> = ArrayDeque()) {
+        fun add(dtNs: Long) {
+            samples.addLast(dtNs)
+            if (samples.size > WINDOW) samples.removeFirst()
+        }
     }
+    data class Snapshot(
+        val label: String,
+        val n: Int,
+        val avgMs: Double,
+        val minMs: Double,
+        val maxMs: Double,
+        val p1Ms: Double,
+        val p10Ms: Double,
+        val p50Ms: Double,
+        val p90Ms: Double,
+        val p99Ms: Double
+    )
     private val stats = linkedMapOf<String, Stat>()
     private val lock = Any()
+    private val version = AtomicLong(0)
+    private val listeners = mutableListOf<(Long) -> Unit>()
     fun time(label: String, block: () -> Unit) {
         val t0 = System.nanoTime()
         block()
         val dt = System.nanoTime() - t0
-        synchronized(lock) {
+        val v = synchronized(lock) {
             stats.getOrPut(label) { Stat() }.add(dt)
+            version.incrementAndGet()
         }
+        notifyListeners(v)
     }
+
+    private fun notifyListeners(v: Long) {
+        val targets = synchronized(lock) { listeners.toList() }
+        targets.forEach { l -> runCatching { l(v) } }
+    }
+
+    fun addListener(listener: (Long) -> Unit) {
+        synchronized(lock) { listeners.add(listener) }
+    }
+
+    fun snapshot(): List<Snapshot> {
+        val copy: Map<String, List<Long>> = synchronized(lock) {
+            stats.mapValues { it.value.samples.toList() }
+        }
+        return copy.map { (label, samples) -> buildSnapshot(label, samples) }
+    }
+
+    private fun buildSnapshot(label: String, samples: List<Long>): Snapshot {
+        if (samples.isEmpty()) return Snapshot(label, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        val sorted = samples.sorted()
+        fun perc(frac: Double): Double {
+            val idx = ((sorted.size - 1) * frac).toInt().coerceIn(0, sorted.size - 1)
+            return sorted[idx] / 1e6
+        }
+        val avgMs = sorted.average() / 1e6
+        return Snapshot(
+            label = label,
+            n = sorted.size,
+            avgMs = avgMs,
+            minMs = sorted.first() / 1e6,
+            maxMs = sorted.last() / 1e6,
+            p1Ms = perc(0.01),
+            p10Ms = perc(0.10),
+            p50Ms = perc(0.50),
+            p90Ms = perc(0.90),
+            p99Ms = perc(0.99)
+        )
+    }
+
     fun snapshotAndMaybePrint(everyNFrames: Int, frame: Long, header: String = "CPU") {
         if (frame % everyNFrames != 0L) return
-        val line = synchronized(lock) {
-            buildString {
-                append("$header: ")
-                append(stats.entries.joinToString("  ") { (k, s) ->
-                    "$k=${"%.3f".format(s.avgMs())}ms(avg) [${"%.3f".format(s.minMs())},${"%.3f".format(s.maxMs())}]"
-                })
-            }
+        val snaps = snapshot()
+        if (snaps.isEmpty()) return
+        val line = buildString {
+            append("$header: ")
+            append(snaps.joinToString("  ") { s ->
+                "${s.label}=avg ${"%.3f".format(s.avgMs)}ms p50 ${"%.3f".format(s.p50Ms)}ms p90 ${"%.3f".format(s.p90Ms)}ms"
+            })
         }
-        println(line)
+        lprintln("info,perf", line)
     }
+
+    fun version(): Long = version.get()
 }
 
 class Renderer(
@@ -327,7 +388,7 @@ class Renderer(
 
                 ctx.profilerState?.pending?.addLast(Pending(imageIndex))
             } catch (e: ImageNotAvailable) {
-                println(e.message)
+                lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
             }
         }
 
@@ -898,7 +959,7 @@ class Renderer(
             logTime("render") { render() }
             frame++
             if (frame % 100 == 0) {
-                print(" fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)} ")
+                lprintln("info,perf", "fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)}")
                 initialTime = System.currentTimeMillis()
             }
             logTime_("compute") { yield() }
@@ -938,10 +999,10 @@ class Renderer(
                 if (n > 0) {
                     val byScope = meta.withIndex().groupBy { it.value.scope }
                     for ((scope, items) in byScope) {
-                        println("PERF scope=$scope")
+                        lprintln("info,perf", "scope=$scope")
                         for (e in items) {
                             val i = e.index
-                            println("  ${e.value.name}: ${p.formatPerfValue(vals[i], e.value.unit)}")
+                            lprintln("info,perf", "  ${e.value.name}: ${p.formatPerfValue(vals[i], e.value.unit)}")
                         }
                     }
                 }
@@ -954,13 +1015,16 @@ class Renderer(
                     val computeNs = ts[1] - ts[0]
                     val graphicsNs = ts[2] - ts[1]
                     val postNs = ts[3] - ts[2]
-                    println("GPU frame=${frameNs/1e6} ms (compute=${computeNs/1e6} ms, graphics=${graphicsNs/1e6} ms, post=${postNs/1e6} ms)")
+                    lprintln(
+                        "info,perf",
+                        "GPU frame=${frameNs/1e6} ms (compute=${computeNs/1e6} ms, graphics=${graphicsNs/1e6} ms, post=${postNs/1e6} ms)"
+                    )
                 }
             }
 
             if (m.pipeStatsCompute >= 0 && p.opts.pipelineStats) {
                 val ps = p.fetchPipelineStats(imageIndex, m.pipeStatsCompute)
-                println("CS invocations: ${ps.getOrNull(10) ?: -1}")
+                lprintln("info,perf", "CS invocations: ${ps.getOrNull(10) ?: -1}")
             }
             if (m.pipeStatsGraphics >= 0 && p.opts.pipelineStats) {
                 val ps = p.fetchPipelineStats(imageIndex, m.pipeStatsGraphics)
@@ -968,7 +1032,7 @@ class Renderer(
                 val iaPrims = ps.getOrNull(1) ?: -1
                 val vsInv   = ps.getOrNull(2) ?: -1
                 val fsInv   = ps.getOrNull(7) ?: -1
-                println("GFX IA verts=$iaVerts, IA prims=$iaPrims, VS invoc=$vsInv, FS invoc=$fsInv")
+                lprintln("info,perf", "GFX IA verts=$iaVerts, IA prims=$iaPrims, VS invoc=$vsInv, FS invoc=$fsInv")
             }
 
             val pm = ps.perImageModuleMarks.getOrNull(imageIndex) ?: mutableListOf()
@@ -978,23 +1042,23 @@ class Renderer(
                         val ts = p.fetchTimestampNsRange(imageIndex, mm.tsBegin, mm.tsEnd)
                         if (ts.size >= 2) {
                             val dtMs = (ts.last() - ts.first()) / 1e6
-                            println("MOD '${mm.name}': ${"%.3f".format(dtMs)} ms")
+                            lprintln("info,perf", "MOD '${mm.name}': ${"%.3f".format(dtMs)} ms")
                         }
                     }
                     if (mm.pipeStatsIndex >= 0 && p.opts.pipelineStats) {
                         val ps = p.fetchPipelineStats(imageIndex, mm.pipeStatsIndex)
                         val fsInv = ps.getOrNull(7) ?: -1
-                        println("MOD '${mm.name}': FS invocations=$fsInv")
+                        lprintln("info,perf", "MOD '${mm.name}': FS invocations=$fsInv")
                     }
                     if (mm.perfIndex >= 0 && p.opts.perfCounters) {
                         val meta = p.perfMeta
                         val vals = p.fetchPerfCounters(imageIndex, mm.perfIndex, meta.size)
                         val n = kotlin.math.min(vals.size, meta.size)
                         if (n > 0) {
-                            println("MOD '${mm.name}' PERF:")
+                            lprintln("info,perf", "MOD '${mm.name}' PERF:")
                             for (i in 0 until n) {
                                 val mi = meta[i]
-                                println("  ${mi.name}: ${p.formatPerfValue(vals[i], mi.unit)}")
+                                lprintln("info,perf", "  ${mi.name}: ${p.formatPerfValue(vals[i], mi.unit)}")
                             }
                         }
                     }

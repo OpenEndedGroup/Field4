@@ -49,7 +49,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
                 val tp = current.uniforms[it.name] as TexturePointer
                 tp.texture to tp.sampler
             } catch (_: Exception) {
-                lprintln(" couldn't transfer over texture ${it.name}, falling back to originating resolution")
+                lprintln("warning,graphics", "couldn't transfer over texture ${it.name}, falling back to originating resolution")
                 oTextureResolver(it)
             }
         }

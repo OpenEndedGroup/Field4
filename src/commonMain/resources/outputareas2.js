@@ -1,6 +1,6 @@
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send } from "./afield.mjs";
 
-const DEFAULT_W = 360;
+const DEFAULT_W = 480;
 const DEFAULT_H = 240;
 const CLOSED_W = 200;
 

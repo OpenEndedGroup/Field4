@@ -5,7 +5,7 @@ This package provides video texture support for Field4 using bytedeco's FFmpeg b
 ## Features
 
 - **P010 Format Support**: Decodes video frames in P010 format with semi-planar output (separate luma and chroma planes)
-- **Dual Texture Arrays**: Maintains two sets of textures for smooth playback with double buffering
+- **Configurable Texture Slots**: Choose how many texture slots to rotate through (default double buffering)
 - **Resource Reuse**: Intelligently reuses Vulkan image resources when loading videos with matching dimensions
 - **Full Playback Control**: Load, play, pause, scrub, and unload videos
 - **Cross-Platform**: Supports macOS, Linux, and Windows with platform-specific FFmpeg binaries
@@ -21,7 +21,7 @@ Wraps FFmpeg functionality to:
 
 ### VideoTexture
 Manages Vulkan textures and playback state:
-- Maintains dual texture arrays (luma + chroma) with slot tracking
+- Maintains luma + chroma texture arrays with configurable slot count and slot tracking (default 2)
 - Handles upload to GPU via staging buffers
 - Provides playback control (play/pause/seek)
 - Reuses Vulkan resources when dimensions match
@@ -40,6 +40,8 @@ import afield.four.Renderer
 
 // Create video texture
 val videoTexture = VideoTexture(renderer)
+// Or customize slot count (e.g., triple buffering)
+// val videoTexture = VideoTexture(renderer, textureSlots = 3)
 
 // Load a video file
 if (videoTexture.load("path/to/video.mp4")) {
@@ -82,8 +84,8 @@ When loading a new video with the same dimensions as the previous one, VideoText
 - Switching between multiple camera feeds
 - Dynamic video content with consistent dimensions
 
-### Double Buffering
-VideoTexture maintains two sets of textures (slots 0 and 1) for each plane (luma and chroma). The current slot index tracks which set contains the most recent frame, enabling smooth uploads without synchronization issues.
+### Configurable Buffering
+VideoTexture maintains multiple texture slots (default 2) for each plane (luma and chroma). The current slot index tracks which set contains the most recent frame. Increase the slot count if you need extra buffering headroom for upload timing; reduce to 1 if memory is tight and you can tolerate overwriting in place.
 
 ## Platform-Specific Binaries
 

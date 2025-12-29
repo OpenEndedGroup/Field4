@@ -136,13 +136,13 @@ class KotlinInterface(
                 try {
                     it.forEach {
                         val target = (classLoader!! as URLClassLoader)
-                        println(" -- sketchy url classloader front running ${it}")
+                        lprintln("warning,kotlin", "sketchy url classloader front running ${it}")
                         val m = URLClassLoader::class.java.getDeclaredMethod("addURL", URL::class.java)
                         m.isAccessible = true
                         m.invoke(target, it.toURI().toURL())
                     }
                 } catch (e: Throwable) {
-                    println(" -- sketchy url classloader front running threw ")
+                    lprintln("error,kotlin", "sketchy url classloader front running threw")
                     e.printStackTrace()
                 }
 
@@ -172,7 +172,7 @@ class KotlinInterface(
                 val ns = measureNanoTime {
                     r = compiler.compile(code, compilerConfig)
                 }
-                lprintln("\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async), code = ${code.text}")
+                lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async), code = ${code.text}")
             }.await()
         }
 
@@ -198,7 +198,7 @@ class KotlinInterface(
             r = evaluator.eval(e, evalConfig)
             if (updateContext) contextUpdater.update()
         }
-        lprintln("\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
         return r
     }
 
@@ -219,7 +219,7 @@ class KotlinInterface(
             r = evaluator.eval(e, evalConfig)
             if (updateContext) contextUpdater.update()
         }
-        lprintln("\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
         return r
     }
 
@@ -280,7 +280,7 @@ class KotlinInterface(
 
         var s = _s
         val needsRerun = false
-        lblock("rewriting AST analysis") {
+        lblock("debug,kotlin", "rewriting AST analysis") {
             do {
                 val cs = compiler.state.getCompilationState(compilerConfig)
                 val env = cs.environment
@@ -302,7 +302,7 @@ class KotlinInterface(
                             expression.children.forEach {
                                 when (it) {
                                     is KtNameReferenceExpression -> {
-                                        lprintln("child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}")
+                                        lprintln("debug,kotlin", "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}")
 
                                         var ns = it.nextSibling
                                         val t = mutableListOf<String>()
@@ -348,10 +348,8 @@ class KotlinInterface(
                         }
                     }
                 }
-                print("\n")
-
                 while (edits.size > 0) {
-                    println(" applying edits ")
+                    lprintln("debug,kotlin", "applying edits")
                     val e = edits.pop()
                     s = s.replaceRange(e.first.first, e.first.second, e.second)
                     val shrink = (e.first.second - e.first.first) - e.second.length
@@ -363,7 +361,7 @@ class KotlinInterface(
                 }
             } while (needsRerun)
 
-            lprintln(" final string is:\n" + s)
+            lprintln("debug,kotlin", "final string is:\n$s")
         }
         return s
     }
@@ -409,9 +407,9 @@ class KotlinInterface(
     var execNumber = 0
     suspend fun exec(
         s: String,
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln(" onCompileError default handler $it") },
-        onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln(" onEvalError  default handler $it") },
-        onEvalException: (Throwable) -> Unit = { lprintln(" onEvalException  default handler $it"); throw it },
+        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onCompileError default handler $it") },
+        onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
+        onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it"); throw it },
         implicits: List<Any> = emptyList(),
     ): ResultValue? {
 
@@ -421,13 +419,13 @@ class KotlinInterface(
                     is ResultWithDiagnostics.Success -> {
                         when (val e = r2.value.get().result) {
                             is ResultValue.Error -> {
-                                lprintln(" Evaluation Error ${e.error} / ${e.error.javaClass}")
+                                lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
                                 onEvalException(e.error)
                                 e
                             }
 
                             is ResultValue.NotEvaluated -> {
-                                lprintln(" not evaluated for ${r2.reports}")
+                                lprintln("warning,kotlin", "not evaluated for ${r2.reports}")
                                 onEvalError(r2.reports)
                                 e
                             }
@@ -441,7 +439,7 @@ class KotlinInterface(
                     }
 
                     is ResultWithDiagnostics.Failure -> {
-                        print("evaluator error ${r2}")
+                        lprintln("error,kotlin", "evaluator error ${r2}")
                         onEvalError(r2.reports)
                         null
                     }
@@ -449,7 +447,7 @@ class KotlinInterface(
             }
 
             is ResultWithDiagnostics.Failure -> {
-                print("compiler error ${r}")
+                lprintln("error,kotlin", "compiler error ${r}")
                 onCompileError(r.reports)
                 null
             }
@@ -547,13 +545,13 @@ class KotlinInterface(
 
             val a1 = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
             var a2 = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
-            lprintln("###   " + a1.execAndWait("val x = mutableListOf(1,2,3)"))
-            lprintln("###   " + a1.execAndWait("x"))
+            lprintln("info,kotlin", "###   " + a1.execAndWait("val x = mutableListOf(1,2,3)"))
+            lprintln("info,kotlin", "###   " + a1.execAndWait("x"))
             runBlocking {
 
                 val cc = a1.complete("x.", 2)
 
-                lprintln("###   " + cc)
+                lprintln("info,kotlin", "###   " + cc)
             }
 
         }
@@ -563,6 +561,7 @@ class KotlinInterface(
 
             val a1 = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
             lprintln(
+                "info,kotlin",
                 "###   " + a1.parseAndRewrite(
                     """
                 val x = mutableListOf(1,2,3)
@@ -578,25 +577,25 @@ class KotlinInterface(
 
         @JvmStatic
         fun main2(a: Array<String>) {
-            lprintln("hello world")
+            lprintln("info,kotlin", "hello world")
             val a = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
             for (i in 0 until 2) {
                 runBlocking {
                     val r = a.exec("var x = ${i} + BANANA \n lprintln(\"from code \"+x)")
-                    lprintln("R1 = $r")
+                    lprintln("info,kotlin", "R1 = $r")
                     val r2 = a.exec("var x = ${i} + BANANA2 \n lprintln(\"from code \"+x)", onCompileError = {
 
-                        print("R2(onCompileError) = $it")
+                        lprintln("error,kotlin", "R2(onCompileError) = $it")
                     })
-                    lprintln("R2 = $r2")
+                    lprintln("info,kotlin", "R2 = $r2")
 
                     val r3 = a.exec("var x = ${i} + BANANA \n lprintln(\"from code \"+x/(1-1))", onEvalException = {
                         it.printStackTrace()
                     })
-                    lprintln("R3 = $r3")
+                    lprintln("info,kotlin", "R3 = $r3")
 
                     val r4 = a.exec("var x = ${i} + BANANA \n x")
-                    lprintln("R4 = $r4")
+                    lprintln("info,kotlin", "R4 = $r4")
 
                 }
 
@@ -681,9 +680,9 @@ class KotlinInterface(
 
                 lastProcessedSnippet = evaluator.lastEvaluatedSnippet
             } catch (e: ReflectiveOperationException) {
-                lprintln("Exception updating current variables $e")
+                lprintln("error,kotlin", "Exception updating current variables $e")
             } catch (e: NullPointerException) {
-                lprintln("Exception updating current variables $e")
+                lprintln("error,kotlin", "Exception updating current variables $e")
             }
         }
 

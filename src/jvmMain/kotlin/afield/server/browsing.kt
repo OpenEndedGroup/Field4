@@ -106,7 +106,10 @@ object Inspector {
         val version = (unwrapToBrowsable(target) ?: (target as? Browsable))?.version() ?: 0L
         val push = ChangedPush(nodeId = "", version = version)
         val msgFor: (String) -> String = { nodeId -> json.encodeToString(ChangedPush.serializer(), push.copy(nodeId = nodeId)) }
-        ids.forEach { nodeId -> subscribersByNode[nodeId]?.forEach { client -> runCatching { client.send(msgFor(nodeId)) } } }
+        ids.forEach { nodeId ->
+            nodeVersions[nodeId] = version
+            subscribersByNode[nodeId]?.forEach { client -> runCatching { client.send(msgFor(nodeId)) } }
+        }
     }
 
     // --- Internal plumbing -----------------------------------------------------------------------
@@ -143,6 +146,8 @@ object Inspector {
     private val subscribersByNode = ConcurrentHashMap<String, MutableSet<Client>>()
     private fun subscribe(nodeId: String, client: Client) { subscribersByNode.getOrPut(nodeId) { CopyOnWriteArraySet() }.add(client) }
     private fun unsubscribe(nodeId: String, client: Client) { subscribersByNode[nodeId]?.remove(client) }
+    // Track last sent versions so we can push when version() ticks without explicit change().
+    private val nodeVersions = ConcurrentHashMap<String, Long>()
 
     private fun unwrapToBrowsable(any: Any?): Browsable? = when (any) {
         is Browsable   -> any
@@ -275,6 +280,8 @@ object Inspector {
                                     items[cid] = Item(Kind.THUNK, thunk = thunk)
                                     listOf(name, cid)
                                 }
+                                val ver = (rootResolved.obj as? Browsable)?.version()
+                                ver?.let { nodeVersions[rootId] = it }
                                 json.encodeToString(
                                     DirResp.serializer(),
                                     DirResp(
@@ -283,13 +290,14 @@ object Inspector {
                                         id = rootId,                     // expose the node id for this root
                                         heading = rootResolved.heading,  // first column title = the object's heading
                                         entries = entries,
-                                        version = (rootResolved.obj as? Browsable)?.version()
+                                        version = ver
                                     )
                                 )
                             }
                             is Resolved.Leaf -> {
                                 items[rootId] = Item(Kind.LEAF, resolved = rootResolved, obj = rootResolved.obj)
                                 val version = (rootResolved.obj as? Browsable)?.version()
+                                version?.let { nodeVersions[rootId] = it }
                                 json.encodeToString(
                                     LeafResp.serializer(),
                                     LeafResp(reqId = req.reqId, nodeId = rootId, html = rootResolved.html(), version = version)
@@ -324,6 +332,7 @@ object Inspector {
                                 is Resolved.Leaf -> {
                                     items[id] = Item(Kind.LEAF, resolved = resolved, obj = resolved.obj)
                                     val version = (resolved.obj as? Browsable)?.version()
+                                    version?.let { nodeVersions[id] = it }
                                     json.encodeToString(LeafResp.serializer(), LeafResp(req.reqId, nodeId = id, html = resolved.html(), version = version))
                                 }
                                 is Resolved.Dir -> {
@@ -334,9 +343,11 @@ object Inspector {
                                         items[cid] = Item(Kind.THUNK, thunk = thunk)
                                         listOf(name, cid)
                                     }
+                                    val ver = (resolved.obj as? Browsable)?.version()
+                                    ver?.let { nodeVersions[id] = it }
                                     json.encodeToString(
                                         DirResp.serializer(),
-                                        DirResp(req.reqId, parentId = id, id = id, heading = resolved.heading, entries = entries, version = (resolved.obj as? Browsable)?.version())
+                                        DirResp(req.reqId, parentId = id, id = id, heading = resolved.heading, entries = entries, version = ver)
                                     )
                                 }
                             }
@@ -344,6 +355,7 @@ object Inspector {
                         Kind.LEAF -> {
                             val leaf = item.resolved as Resolved.Leaf
                             val version = (leaf.obj as? Browsable)?.version()
+                            version?.let { nodeVersions[id] = it }
                             json.encodeToString(LeafResp.serializer(), LeafResp(req.reqId, nodeId = id, html = leaf.html(), version = version))
                         }
                         Kind.DIR -> {
@@ -354,9 +366,11 @@ object Inspector {
                                 items[cid] = Item(Kind.THUNK, thunk = thunk)
                                 listOf(name, cid)
                             }
+                            val ver = (dir.obj as? Browsable)?.version()
+                            ver?.let { nodeVersions[id] = it }
                             json.encodeToString(
                                 DirResp.serializer(),
-                                DirResp(req.reqId, parentId = id, id = id, heading = dir.heading, entries = entries, version = (dir.obj as? Browsable)?.version())
+                                DirResp(req.reqId, parentId = id, id = id, heading = dir.heading, entries = entries, version = ver)
                             )
                         }
                     }
@@ -377,6 +391,39 @@ object Inspector {
     }
 
     fun handle(text: String): String = handle(text, clientKey = Any()) { /* drop pushes */ }
+
+    // Periodic version polling for watched nodes (best-effort, avoids UI focus issues).
+    private val versionPoller = java.util.Timer("inspector-version-poll", true).apply {
+        schedule(object : TimerTask() {
+            override fun run() {
+                try {
+                    pollVersions()
+                } catch (_: Throwable) { /* ignore */ }
+            }
+        }, 1000L, 1000L)
+    }
+
+    private fun pollVersions() {
+        // Snapshot subscriber node ids to avoid holding locks while querying versions.
+        val nodes = subscribersByNode.keys.toList()
+        for (id in nodes) {
+            val item = items[id] ?: continue
+            val obj = when (item.kind) {
+                Kind.THUNK -> null
+                Kind.LEAF  -> item.resolved?.let { (it as? Resolved.Leaf)?.obj }
+                Kind.DIR   -> item.resolved?.let { (it as? Resolved.Dir)?.obj }
+            } ?: continue
+            val b = unwrapToBrowsable(obj) ?: (obj as? Browsable) ?: continue
+            val v = b.version()
+            val last = nodeVersions[id]
+            if (last == null || last != v) {
+                nodeVersions[id] = v
+                val push = ChangedPush(nodeId = id, version = v)
+                val msg = json.encodeToString(ChangedPush.serializer(), push)
+                subscribersByNode[id]?.forEach { client -> runCatching { client.send(msg) } }
+            }
+        }
+    }
 }
 
 // -------------------------------------------------------------------------------------------------

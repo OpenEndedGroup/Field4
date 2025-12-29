@@ -4,6 +4,7 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import afield.logger.lprintln
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.openxr.*
@@ -43,7 +44,7 @@ class Instance(validate: Boolean) {
             val validationLayers = supportedValidationLayers
             var supportsValidation = validate && validationLayers.isNotEmpty()
             if (validate && !supportsValidation) {
-                println("Requested validation, but no supported layers found")
+                lprintln("warning,vulkan", "Requested validation, but no supported layers found")
             }
 
             var requiredLayers: PointerBuffer? = null
@@ -369,14 +370,14 @@ class Instance(validate: Boolean) {
                     }
 
                     when {
-                        isPrintf -> println("PRINTF$where: $msg")
+                        isPrintf -> lprintln("debug,vulkan", "PRINTF$where: $msg")
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ->
-                            println("ERROR$where: $msg")
+                            lprintln("error,vulkan", "ERROR$where: $msg")
 
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ->
-                            println("WARNING$where: $msg")
+                            lprintln("warning,vulkan", "WARNING$where: $msg")
 
-                        else -> println("INFO$where: $msg")
+                        else -> lprintln("info,vulkan", "INFO$where: $msg")
                     }
 
                     if (msg.contains(
@@ -424,13 +425,13 @@ class Instance(validate: Boolean) {
                         val props = VkPhysicalDeviceToolPropertiesEXT.calloc(count, stack)
                         res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(phys, pCount, props)
                         if (res == VK_SUCCESS) {
-                            println("== Tooling (physical device) ==")
+                            lprintln("info,vulkan", "== Tooling (physical device) ==")
                             for (i in 0 until count) {
                                 val t = props[i]
-                                println(" - ${t.nameString()} ${t.versionString()}")
-                                println("    layer='${t.layerString() ?: ""}'")
-                                println("    desc='${t.descriptionString() ?: ""}'")
-                                println("    purposes=${purposes(t.purposes())}")
+                                lprintln("info,vulkan", " - ${t.nameString()} ${t.versionString()}")
+                                lprintln("info,vulkan", "    layer='${t.layerString() ?: ""}'")
+                                lprintln("info,vulkan", "    desc='${t.descriptionString() ?: ""}'")
+                                lprintln("info,vulkan", "    purposes=${purposes(t.purposes())}")
                             }
                         }
                     }

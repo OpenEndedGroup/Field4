@@ -7,6 +7,7 @@ import afield.four.buffers.Structure
 import afield.four.buffers.VertexBuffer
 import afield.four.device.CommandBuffer
 import afield.four.util.MapOfSequences
+import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import java.nio.ByteBuffer
@@ -297,7 +298,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
     fun draw(inside: Module, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
         if (inside != this.inside.current)
-            println("WARNING, mesh was built in a different module ${inside}!=${this.inside.current}")
+            lprintln("warning,graphics", "mesh was built in a different module ${inside}!=${this.inside.current}")
 
         if (builder.isOpen) {
             builder.closeAndApply()
@@ -306,7 +307,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
         update.update()
 
         if (notInitialized)
-            println("WARNING, this mesh has not been initialized yet. Call .resize(v,t) to build it's buffers")
+            lprintln("warning,graphics", "mesh has not been initialized yet. Call .resize(v,t) to build its buffers")
 
         v.entries.forEach { (index, buffer) ->
             buffer.clean(false, null)
@@ -336,7 +337,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
             inside.vi.inputs.forEachIndexed { index, it ->
                 val buffer = v.get(it.location)
                 if (buffer == null) {
-                    println("WARNING: missing vertex buffer for $it at slot $index")
+                    lprintln("warning,graphics", "missing vertex buffer for $it at slot $index")
                     vertexBuffer.put(index, 0L)
                 } else {
                     vertexBuffer.put(index, buffer.dest.buffer)
@@ -368,7 +369,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
                     }
                 } catch (mre: MissingRefException) {
                     inside.parameters.errorHandler(mre.message, mre)
-                    println(" missing ref in PushConstants, not rendering mesh : ${mre.message}")
+                    lprintln("error,graphics", "missing ref in PushConstants, not rendering mesh : ${mre.message}")
                     return
                 }
                 pushConstantBuffer.clear()
@@ -397,14 +398,14 @@ class Mesh(var renderer: Renderer = fromContext()) {
                         0
                     )
                 } else {
-                    println(" mesh has no triangles in it, but still has a triangle buffer? skipping the actual drawIndexed call")
+                    lprintln("warning,graphics", "mesh has no triangles in it, but still has a triangle buffer? skipping drawIndexed call")
                 }
             } else {
                 if (numVert > 0) {
                     vkCmdDraw(cmd.vkCommandBuffer, numVert, instanceCount, 0, 0)
 //                    println(" mesh is not indexed (this is ... new?)")
                 } else {
-                    println(" mesh has no verts in it, skipping the actual draw call")
+                    lprintln("warning,graphics", "mesh has no verts in it, skipping draw call")
                 }
             }
 
@@ -422,4 +423,3 @@ class Mesh(var renderer: Renderer = fromContext()) {
         return "Mesh(${numVert}v, ${numTriangle}t)"
     }
 }
-

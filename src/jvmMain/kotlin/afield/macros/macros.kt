@@ -22,9 +22,9 @@ import kotlin.script.experimental.api.ScriptDiagnostic
 suspend fun standardExecutionPractice(
     ki: KotlinInterface,
     s: String,
-    onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln(" onCompileError default handler $it") },
-    onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln(" onEvalError  default handler $it") },
-    onEvalException: (Throwable) -> Unit = { lprintln(" onEvalException  default handler $it"); throw it },
+    onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onCompileError default handler $it") },
+    onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onEvalError default handler $it") },
+    onEvalException: (Throwable) -> Unit = { lprintln("error,macros", "onEvalException default handler $it"); throw it },
     implicits: List<Any> = emptyList()
 ): List<ResultValue?> {
 
@@ -220,4 +220,3 @@ data class Insert(
     val preambleAfterImports: String = "",
     val target: Box? = null
 )
-

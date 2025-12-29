@@ -6,6 +6,7 @@ import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.buffers.VulkanBuffer
 import afield.four.device.CommandBuffer
+import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.*
@@ -244,7 +245,7 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
     }
 
     override fun compute(inside: ComputeModule, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
-        if (inside != this.inside.current) println("WARNING, ComputeMesh was built in a different module $inside != ${this.inside.current}")
+        if (inside != this.inside.current) lprintln("warning,graphics", "ComputeMesh was built in a different module $inside != ${this.inside.current}")
         update.update()
 
         MemoryStack.stackPush().use { _ ->
@@ -270,7 +271,7 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
             if (x * y * z > 0) {
                 vkCmdDispatch(cmd.vkCommandBuffer, x, y, z)
             } else {
-                println(" ComputeMesh has no work to do $x $y $z")
+                lprintln("warning,graphics", "ComputeMesh has no work to do $x $y $z")
             }
         }
     }

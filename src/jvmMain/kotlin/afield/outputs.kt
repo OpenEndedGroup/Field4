@@ -2,6 +2,10 @@ package afield
 
 import afield.macros.Insert
 import afield.server.Inspector
+import afield.server.LogStream
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.util.*
 
 /**
  * printing inside a for loop just gives the last output?
@@ -85,4 +89,71 @@ fun Box.column(channel: String = "debug", a : Any?) {
     display(channel, """
 <iframe src='${ln}' style='border:none;padding:0;margin:0'>
 """)
+}
+
+fun Box.logs(
+    channel: String = "internal logging",
+    filter: LogStream.Filter = LogStream.Filter(),
+    latestOnly: Boolean = false,
+    subId: String = "logs-${UUID.randomUUID()}"
+) {
+    val effectiveFilter = if (latestOnly) filter.copy(limit = 1) else filter
+    fun enc(v: String): String = URLEncoder.encode(v, StandardCharsets.UTF_8)
+    val qs = buildString {
+        append("?subId=${enc(subId)}")
+        effectiveFilter.channels?.takeIf { it.isNotEmpty() }?.let { append("&channels=${enc(it.joinToString(","))}") }
+        effectiveFilter.messageContains?.let { append("&messageContains=${enc(it)}") }
+        effectiveFilter.messageRegex?.let { append("&messageRegex=${enc(it)}") }
+        effectiveFilter.blockId?.let { append("&blockId=${enc(it)}") }
+        if (effectiveFilter.includeBlockChildren) append("&includeBlockChildren=true")
+        effectiveFilter.sinceEpochMs?.let { append("&sinceEpochMs=$it") }
+        effectiveFilter.afterSeq?.let { append("&afterSeq=$it") }
+        append("&limit=${effectiveFilter.limit}")
+        append("&tail=${effectiveFilter.tail}")
+        if (latestOnly) append("&latestOnly=true")
+    }
+    display(channel, """
+<iframe src='/logs${qs}' style='border:none;padding:0;margin:0;width:100%;height:260px'>
+""")
+}
+
+// Simple DSL for log filters: Box.logs { matching = "foo"; cat = "info" }
+class LogFilterBuilder {
+    var channels: MutableList<String> = mutableListOf()
+    var cat: String? = null           // single channel token
+    var matching: String? = null      // substring match
+    var regex: String? = null         // regex match
+    var blockId: String? = null
+    var includeBlockChildren: Boolean = false
+    var sinceEpochMs: Long? = null
+    var afterSeq: Long? = null
+    var limit: Int = 500
+    var tail: Boolean = true
+
+    fun channel(vararg tokens: String) { channels.addAll(tokens) }
+
+    internal fun build(latestOnly: Boolean): LogStream.Filter {
+        val channelList = (cat?.let { listOf(it) } ?: emptyList()) + channels
+        return LogStream.Filter(
+            channels = channelList.ifEmpty { null },
+            messageContains = matching,
+            messageRegex = regex,
+            blockId = blockId,
+            includeBlockChildren = includeBlockChildren,
+            sinceEpochMs = sinceEpochMs,
+            afterSeq = afterSeq,
+            limit = if (latestOnly) 1 else limit,
+            tail = tail
+        )
+    }
+}
+
+fun Box.logs(
+    channel: String = "debug",
+    latestOnly: Boolean = false,
+    subId: String = "logs-${UUID.randomUUID()}",
+    build: LogFilterBuilder.() -> Unit
+) {
+    val filter = LogFilterBuilder().apply(build).build(latestOnly)
+    logs(channel = channel, filter = filter, latestOnly = latestOnly, subId = subId)
 }

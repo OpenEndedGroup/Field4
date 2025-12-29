@@ -90,6 +90,15 @@
     width: auto;
 }
 
+.disclosure-content iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: 0;
+    display: block;
+    resize: none !important;
+    box-sizing: border-box;
+}
+
 .disclosure-content.ai-chat-content {
     overflow: hidden;
     padding: 0;

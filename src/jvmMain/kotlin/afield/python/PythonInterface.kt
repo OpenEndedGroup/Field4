@@ -11,6 +11,7 @@ import afield.python.PythonInterface.Companion.thisLineOffset
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
+import afield.logger.lprintln
 import jep.*
 import jep.python.PyCallable
 import jep.python.PyObject
@@ -31,8 +32,8 @@ fun makeInterpreter() {
     try {
         PythonExecution().interpreter(null)
     } catch (e: Throwable) {
-        println(" - jep failed to initialize, this more of a warning than an error, unless you are planning to use Python support")
-        println(e.message)
+        lprintln("warning,python", "jep failed to initialize, more of a warning unless you plan to use Python support")
+        lprintln("warning,python", e.message ?: "unknown error")
     }
 }
 
@@ -621,9 +622,9 @@ print(" python interpreter has finished starting up ")
 
             """.trimIndent()
 
-            println(" -- calling startup text for python interpreter --")
+            lprintln("info,python", "calling startup text for python interpreter")
             globalInterpreter.exec(startupText)
-            println(" -- finished calling startup text for python interpreter --")
+            lprintln("info,python", "finished calling startup text for python interpreter")
         }
         return globalInterpreter
     }
@@ -652,7 +653,7 @@ print(" python interpreter has finished starting up ")
             try {
 
                 val i = interpreter(inside)
-                println("--code is\n${c}\n--end code")
+                lprintln("debug,python", "--code is\n${c}\n--end code")
                 i.set("_code", c.trimIndent())
                 i.set("_local_storage_", inside._pythonLocals)
                 thisBox = inside
@@ -670,7 +671,7 @@ print(" python interpreter has finished starting up ")
                             )
                             withholdEndNotification = true
                             launch {
-                                println(" -- running notification for box has started  ${wm}")
+                                lprintln("info,python", "running notification for box has started $wm")
                                 i.exec("_stillRunning = any_running('${inside.id}')")
                                 var stillRunning = i.getValue("_stillRunning") as Boolean
                                 send(
@@ -687,7 +688,7 @@ print(" python interpreter has finished starting up ")
                                     delay(100)
                                 }
                                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
-                                println(" -- running notification for box has ended ${wm}")
+                                lprintln("info,python", "running notification for box has ended $wm")
                             }
                         }
 
@@ -797,7 +798,7 @@ _interpreter_output = _interpreter.complete($line, $col)
                     metadata
                 }
 
-                println("metadata: $metadata")
+                lprintln("debug,python", "metadata: $metadata")
                 reply(
                     Message("complete").payload(
 
@@ -858,7 +859,7 @@ class PythonInterface {
         var hasHadOutput = false
 
         init {
-            println(" -- set python config")
+            lprintln("info,python", "set python config")
             //TODO!! — needs to be configurable, and configurable really early I suppose
             MainInterpreter.setInitParams(PyConfig().setPythonHome("/opt/homebrew/Caskroom/miniconda/base/"))
             MainInterpreter.setJepLibraryPath("/opt/homebrew/Caskroom/miniconda/base/lib/python3.11/site-packages/jep/libjep.jnilib")
@@ -879,8 +880,8 @@ class PythonInterface {
                         yield()
                     }
                 } catch (ex: Throwable) {
-                    println("error, exception ${ex.classNameAndMessage} thrown inside Python event loop, the python event loop is now dead, and you'll need to restart")
-                    ex.printStackTrace()
+                    lprintln("error,python", "exception ${ex.classNameAndMessage} thrown inside Python event loop; the loop is now dead, restart required")
+                    lprintln("error,python", ex.stackTraceToString())
                 }
             }
         }

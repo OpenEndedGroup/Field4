@@ -137,7 +137,7 @@ class Server {
                     }
                 }
             } catch (t: Throwable) {
-                lprintln("WARN: Failed Desktop browse: ${t.message}")
+                lprintln("warning,server", "Failed Desktop browse: ${t.message}")
             }
 
             val command = when {
@@ -149,7 +149,7 @@ class Server {
             try {
                 ProcessBuilder(command).start()
             } catch (t: Throwable) {
-                lprintln("WARN: Failed to launch system browser via ${command}: ${t.message}")
+                lprintln("warning,server", "Failed to launch system browser via $command: ${t.message}")
             }
         }
 
@@ -157,7 +157,7 @@ class Server {
         fun server() {
             Options.doVulkanSDK()
 
-            println("app directory is $app")
+            lprintln("info,server", "app directory is $app")
             System.setProperty("joml.format", "false")
 
             initializeClassCache()
@@ -187,13 +187,13 @@ class Server {
                                     SavingContext().save(info.filename, allBoxes)
                                     info.pendingSidecarSaves.clear()
                                 } catch (ex: Exception) {
-                                    lprintln("ERROR: trouble saving")
+                                    lprintln("error,server", "trouble saving")
                                     ex.printStackTrace()
                                 }
                             }
                         }
                     } catch (t: Throwable) {
-                        println("Exception thrown inside saving / resync loop — will retry")
+                        lprintln("error,server", "exception inside saving / resync loop -- will retry")
                         t.printStackTrace()
                     }
                 }
@@ -220,7 +220,7 @@ class Server {
 
             handlers["hello"] = mutableSetOf({ message, reply ->
                 val hello = Json.decodeFromJsonElement<Hello>(message.payload!!)
-                lprintln(" we are adding a session for $hello to ${thisSession.get()}")
+                lprintln("info,server", "adding a session for $hello to ${thisSession.get()}")
 
                 fun String.isHttpUrl(): Boolean =
                     startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
@@ -258,9 +258,9 @@ class Server {
 
                     try {
                         val boxes = SavingContext().load(fn)
-                        lprintln(" loaded boxes from $fn")
+                        lprintln("info,server", "loaded boxes from $fn")
                         boxes.forEach {
-                            lprintln("${it.id} ${it.frame} ${it.properties.get("_tombstone")}")
+                            lprintln("debug,server", "${it.id} ${it.frame} ${it.properties.get("_tombstone")}")
                         }
 
                         boxes.forEach {
@@ -279,7 +279,7 @@ class Server {
                         // Initialize the file watch manager
                         si.fileWatchManager
                     } catch (fnf: FileNotFoundException) {
-                        lprintln(" file '${fn}' is not found, continuing on, file will be created on first save")
+                        lprintln("warning,server", "file '$fn' not found; will be created on first save")
                     }
 
                 } else {
@@ -288,7 +288,7 @@ class Server {
                     found.sessions.add(thisSession.get())
 
                     found.boxes.values.forEach {
-                        println(" -- resync all -- ")
+                        lprintln("info,server", "resync all")
                         it.resyncAll()
                     }
                     found.topologyGeneration++
@@ -304,7 +304,7 @@ class Server {
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
 
                 if (set.property == "name") {
-                    println(" -- got set-string for name ${set.value}")
+                    lprintln("debug,server", "got set-string for name ${set.value}")
                     box(set.uid).name = set.value
                 } else
                     box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
@@ -411,7 +411,7 @@ class Server {
                     val exec = Json.decodeFromJsonElement<Perform_action>(message.payload!!)
                     val action = actionTable[exec.uid_action]
                     if (action == null) {
-                        lprintln("WARNING: no such action '${action}'")
+                        lprintln("warning,server", "no such action '$action'")
                     } else {
                         action.invoke(exec.uid_currentSelection.mapNotNull { box(it, createIfMissing = false) })
                     }
@@ -631,6 +631,14 @@ class Server {
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
                     }
+                    route("/logs") {
+                        handle {
+                            val originalContent =
+                                File("./src/commonMain/resources/logs.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
                     route("/keyframe") {
                         handle {
                             val originalContent =
@@ -674,7 +682,7 @@ class Server {
                                 if (indexFile != null) {
                                     val originalContent = indexFile.readText(Charsets.UTF_8)
 
-                                    println(" -- we're serving an index file from ${indexFile.absolutePath}")
+                                    lprintln("info,server", "serving index file from ${indexFile.absolutePath}")
 
                                     val modifiedContent = filter(originalContent)
                                     call.respondText(modifiedContent, ContentType.Text.Html)
@@ -687,7 +695,7 @@ class Server {
 
                     route("/local") {
                         get("{...}") {
-                            println(" -- routing a /local route dynamically ${call.request.uri}")
+                            lprintln("debug,server", "routing /local dynamically ${call.request.uri}")
                             // Obtain the full request URI, strip any query or fragment, and remove the "/local" prefix
                             val fullUri = call.request.uri
                             val pathOnly = URI(fullUri).path
@@ -705,22 +713,22 @@ class Server {
                                     call.respondFile(file)
                                     return@get
                                 } else {
-                                    println(" -- found route, but didn't find file ${fileRelativePath}")
+                                    lprintln("warning,server", "route found but missing file $fileRelativePath")
                                     call.respond(HttpStatusCode.NotFound, "File '${file}' not found")
                                     return@get
                                 }
                             }
-                            println(" -- failed to find route, checked ${dynamicRoutes.getRoutes().entries}")
+                            lprintln("warning,server", "failed to find route for $fullUri; checked ${dynamicRoutes.getRoutes().entries}")
                             call.respond(HttpStatusCode.NotFound, "No dynamic route for $fullUri")
                         }
                     }
                 }
 
                 val initialURL = "http://localhost:${port}/index.html?file=${lastFn}"
-                println("\n\n\n")
-                println(asciiWelcome)
-                println("\n\n\n         welcome to Field, alpha021\n         ${initialURL}")
-                println("\n\n\n                               ---")
+                lprintln("info,server", asciiWelcome)
+                lprintln("info,server", "welcome to Field, alpha021")
+                lprintln("info,server", initialURL)
+                lprintln("info,server", "---")
 
                 if (preferSystemBrowser) {
                     thread { openSystemBrowser(initialURL) }
@@ -741,7 +749,7 @@ class Server {
                             val page = ctx.newPage()
                             page.navigate(initialURL)
                             page.waitForLoadState(LoadState.NETWORKIDLE)
-                            println(" -- network idle -- ")
+                            lprintln("info,server", "network idle")
 
                             globalPlaywriteContext = page
                         }

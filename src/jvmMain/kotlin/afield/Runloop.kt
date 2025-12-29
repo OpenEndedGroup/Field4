@@ -12,8 +12,8 @@ fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloo
 class Runloop {
 
     private constructor() {
-        lprintln("Runloop is being constructed")
-        lprintln("main = ${System.identityHashCode(main)}")
+        lprintln("info,runloop", "Runloop is being constructed")
+        lprintln("info,runloop", "main = ${System.identityHashCode(main)}")
     }
 
     companion object {
@@ -30,12 +30,12 @@ class Runloop {
 
     fun start() {
         while (true) {
-            println(" run loop anybody? ${Thread.currentThread()}/${Thread.currentThread().name}")
+            lprintln("debug,runloop", "run loop anybody? ${Thread.currentThread()}/${Thread.currentThread().name}")
             main.frame()
             frame++
 
             if (shouldSleep) {
-                lprintln(" framer has run out of work ")
+                lprintln("debug,runloop", "framer has run out of work")
                 Thread.sleep(1)
             }
             shouldSleep = true

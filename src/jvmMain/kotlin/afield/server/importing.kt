@@ -70,7 +70,7 @@ fun importing() {
             
             Handled.yes
         } catch (e: Exception) {
-            lprintln("ERROR: Failed to import metadata.edn: ${e.message}")
+            lprintln("error,import", "Failed to import metadata.edn: ${e.message}")
             e.printStackTrace()
             notify("Failed to import metadata.edn: ${e.message}", "error")
             Handled.yes

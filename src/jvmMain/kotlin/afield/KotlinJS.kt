@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.lprintln
 import org.jetbrains.kotlin.cli.common.CLICompiler
 import org.jetbrains.kotlin.cli.js.K2JSCompiler
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -69,13 +70,13 @@ a2 = [-Xreport-all-warnings, -Wextra, -Xir-produce-js, -Xir-dce, -Xinclude=/priv
                 )
             ) {
                 val converted = File(outputPath, moduleName + ".mjs").readText()
-                println(" before import demangeling --- ")
-                println(converted)
-                println(" --- ")
+                lprintln("info,kjs", "before import demangling ---")
+                lprintln("debug,kjs", converted)
+                lprintln("info,kjs", "---")
                 val deconverted = transformImports(converted)
-                println(" after import demangeling --- ")
-                println(deconverted)
-                println(" --- ")
+                lprintln("info,kjs", "after import demangling ---")
+                lprintln("debug,kjs", deconverted)
+                lprintln("info,kjs", "---")
                 return deconverted
             }
         }
@@ -94,7 +95,12 @@ a2 = [-Xreport-all-warnings, -Wextra, -Xir-produce-js, -Xir-dce, -Xinclude=/priv
             override fun render(
                 severity: CompilerMessageSeverity, message: String, location: CompilerMessageSourceLocation?
             ): String {
-                println("compiler has message - $severity: $message @ $location")
+                val channel = when (severity) {
+                    CompilerMessageSeverity.ERROR, CompilerMessageSeverity.EXCEPTION -> "error,kjs"
+                    CompilerMessageSeverity.WARNING, CompilerMessageSeverity.STRONG_WARNING -> "warning,kjs"
+                    else -> "info,kjs"
+                }
+                lprintln(channel, "compiler message - $severity: $message @ $location")
                 return ""
             }
 
@@ -106,7 +112,7 @@ a2 = [-Xreport-all-warnings, -Wextra, -Xir-produce-js, -Xir-dce, -Xinclude=/priv
             override fun getName(): String = "Redirector"
         })
 
-        println(" ran and got exit code ${exitCode.code}")
+        lprintln("info,kjs", "ran and got exit code ${exitCode.code}")
 
 
 
@@ -163,7 +169,6 @@ a2 = [-Xreport-all-warnings, -Wextra, -Xir-produce-js, -Xir-dce, -Xinclude=/priv
 
 
 }
-
 
 
 

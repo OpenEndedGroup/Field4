@@ -1,7 +1,6 @@
 package afield
 
 import afield.logger.lblock
-import afield.logger.lprint
 import afield.logger.lprintln
 import arrow.core.right
 import io.github.classgraph.ClassGraph
@@ -51,14 +50,13 @@ fun runAll(time : String, vararg args : Any?) {
         fieldSourceCache
     }
     if (ns/1_000_000 > 10)
-        lprintln(" runAll precache time is ${ns/1_000_000} ms")
+        lprintln("info,di", "runAll precache time is ${ns/1_000_000} ms")
 
-    lblock("runall at `$time`") {
+    lblock("info,di", "runall at `$time`") {
         fieldSourceCache[time]?.sortedBy { it.first }?.forEach {
-            lblock("method ${it.second.name} (from ${it.second.declaringClass.name})") {
+            lblock("debug,di", "method ${it.second.name} (from ${it.second.declaringClass.name})") {
                 it.second.invoke(null, *args)
             }
         }
     }
 }
-

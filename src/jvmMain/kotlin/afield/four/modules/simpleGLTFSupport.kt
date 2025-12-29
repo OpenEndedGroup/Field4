@@ -15,6 +15,8 @@ import afield.four.texture.HasImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Camera
+import afield.logger.lprint
+import afield.logger.lprintln
 import afield.macroRegistration
 import afield.macros.Insert
 import afield.macros.MacroRegistry
@@ -171,16 +173,16 @@ object GltfSupport {
             val f = buffers.vertexData.asFloatBuffer()
             for (n in 0 until f.capacity()) {
                 val x = f.get(n)
-                print("$x ")
-                if (n % 12 == 11) println()
+                lprint("debug,gltf", "$x ")
+                if (n % 12 == 11) lprintln("debug,gltf", "")
             }
             indexData.write {
                 // TODO!
                 for (n in 0 until buffers.indexCount) {
                     val x = buffers.indexData.get(n)
-                    print("$x ")
+                    lprint("debug,gltf", "$x ")
                     this.putInt(x)
-                    if (n % 3 == 2) println()
+                    if (n % 3 == 2) lprintln("debug,gltf", "")
                 }
             }
 
@@ -325,7 +327,7 @@ object GltfSupport {
             // uv or default
             if (hasTex) {
                 val t = texBuf!![i]
-                println(" tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
+                lprintln("debug,gltf", "tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
                 vertexData.putFloat(t.x())
                 vertexData.putFloat(t.y())
             } else {
@@ -462,7 +464,7 @@ object GltfSupport {
         if (path.isEmpty()) return null
         // Embedded texture reference: "*0", "*1", ...
         if (path.startsWith("*")) {
-            println("Skipping embedded texture $path: embedded textures not yet handled")
+            lprintln("warning,gltf", "Skipping embedded texture $path: embedded textures not yet handled")
             return null
         } else {
             val p = Paths.get(path)

@@ -1,5 +1,6 @@
 package afield.four.texture.video
 
+import afield.logger.lprintln
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVPacket
 import org.bytedeco.ffmpeg.avformat.AVFormatContext
@@ -53,13 +54,13 @@ class VideoDecoder(private val videoPath: String) {
             // Open video file
             formatContext = avformat_alloc_context()
             if (avformat_open_input(formatContext, videoPath, null, null) != 0) {
-                println("Error: Could not open video file: $videoPath")
+                lprintln("error,video", "Could not open video file: $videoPath")
                 return false
             }
 
             // Retrieve stream information
             if (avformat_find_stream_info(formatContext, null as PointerPointer<*>?) < 0) {
-                println("Error: Could not find stream information")
+                lprintln("error,video", "Could not find stream information")
                 return false
             }
 
@@ -74,7 +75,7 @@ class VideoDecoder(private val videoPath: String) {
             }
 
             if (videoStreamIndex == -1) {
-                println("Error: Could not find video stream")
+                lprintln("error,video", "Could not find video stream")
                 return false
             }
 
@@ -95,20 +96,20 @@ class VideoDecoder(private val videoPath: String) {
             // Find decoder
             val codec = avcodec_find_decoder(codecPar.codec_id())
             if (codec == null) {
-                println("Error: Unsupported codec")
+                lprintln("error,video", "Unsupported codec")
                 return false
             }
 
             // Allocate codec context
             codecContext = avcodec_alloc_context3(codec)
             if (avcodec_parameters_to_context(codecContext, codecPar) < 0) {
-                println("Error: Could not copy codec parameters")
+                lprintln("error,video", "Could not copy codec parameters")
                 return false
             }
 
             // Open codec
             if (avcodec_open2(codecContext, codec, null as PointerPointer<*>?) < 0) {
-                println("Error: Could not open codec")
+                lprintln("error,video", "Could not open codec")
                 return false
             }
 
@@ -131,12 +132,12 @@ class VideoDecoder(private val videoPath: String) {
             )
 
             isOpen = true
-            println("Video opened: ${width}x${height}, duration: ${duration}s, fps: $fps")
+            lprintln("info,video", "Video opened: ${width}x${height}, duration: ${duration}s, fps: $fps")
             return true
 
         } catch (e: Exception) {
-            println("Error opening video: ${e.message}")
-            e.printStackTrace()
+            lprintln("error,video", "Error opening video: ${e.message}")
+            lprintln("error,video", e.stackTraceToString())
             cleanup()
             return false
         }
@@ -154,7 +155,7 @@ class VideoDecoder(private val videoPath: String) {
             val timestamp = (timestampSeconds / av_q2d(timeBase)).toLong()
 
             if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
-                println("Error seeking to timestamp: $timestampSeconds")
+                lprintln("error,video", "Error seeking to timestamp: $timestampSeconds")
                 return false
             }
 
@@ -162,7 +163,7 @@ class VideoDecoder(private val videoPath: String) {
             return true
 
         } catch (e: Exception) {
-            println("Error during seek: ${e.message}")
+            lprintln("error,video", "Error during seek: ${e.message}")
             return false
         }
     }
@@ -204,7 +205,7 @@ class VideoDecoder(private val videoPath: String) {
                     val chromaLineSize = frameP010!!.linesize(1)
 
                     if (lumaLineSize <= 0 || chromaLineSize <= 0) {
-                        println("Error: Invalid linesize values: luma=$lumaLineSize, chroma=$chromaLineSize")
+                        lprintln("error,video", "Invalid linesize values: luma=$lumaLineSize, chroma=$chromaLineSize")
                         return null
                     }
 
@@ -240,7 +241,7 @@ class VideoDecoder(private val videoPath: String) {
             return null
 
         } catch (e: Exception) {
-            println("Error decoding frame: ${e.message}")
+            lprintln("error,video", "Error decoding frame: ${e.message}")
             return null
         }
     }

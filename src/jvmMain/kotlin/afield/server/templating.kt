@@ -50,10 +50,10 @@ private fun fetchTemplatesFromServer(serverUrl: String): List<String> {
             val templates = Json.decodeFromString<List<RemoteTemplate>>(response.body())
             return templates.filter { it.has_edn }.map { it.name }
         } else {
-            lprintln("WARNING: Failed to fetch templates from $serverUrl - Status: ${response.statusCode()}")
+            lprintln("warning,template", "Failed to fetch templates from $serverUrl - Status: ${response.statusCode()}")
         }
     } catch (e: Exception) {
-        lprintln("WARNING: Error fetching templates from $serverUrl: ${e.message}")
+        lprintln("warning,template", "Error fetching templates from $serverUrl: ${e.message}")
     }
     return emptyList()
 }
@@ -74,10 +74,10 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
         if (response.statusCode() == 200) {
             return response.body()
         } else {
-            lprintln("WARNING: Failed to download template $templateName from $serverUrl - Status: ${response.statusCode()}")
+            lprintln("warning,template", "Failed to download template $templateName from $serverUrl - Status: ${response.statusCode()}")
         }
     } catch (e: Exception) {
-        lprintln("WARNING: Error downloading template $templateName from $serverUrl: ${e.message}")
+        lprintln("warning,template", "Error downloading template $templateName from $serverUrl: ${e.message}")
     }
     return null
 }
@@ -87,11 +87,11 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
  */
 private fun initializeTemplateServers() {
     if (templateServers.isEmpty()) {
-        lprintln("No template servers configured (use AFIELD_TEMPLATE_SERVERS environment variable)")
+        lprintln("warning,template", "No template servers configured (use AFIELD_TEMPLATE_SERVERS environment variable)")
         return
     }
 
-    lprintln("Initializing template servers in background: ${templateServers.joinToString(", ")}")
+    lprintln("info,template", "Initializing template servers in background: ${templateServers.joinToString(", ")}")
 
     // Launch background coroutine to fetch templates from all servers
     CoroutineScope(Dispatchers.IO).launch {
@@ -100,10 +100,10 @@ private fun initializeTemplateServers() {
                 val templates = fetchTemplatesFromServer(serverUrl)
                 if (templates.isNotEmpty()) {
                     remoteTemplatesCache[serverUrl] = templates
-                    lprintln("Fetched ${templates.size} templates from $serverUrl")
+                    lprintln("info,template", "Fetched ${templates.size} templates from $serverUrl")
                 }
             } catch (e: Exception) {
-                lprintln("ERROR: Failed to initialize template server $serverUrl: ${e.message}")
+                lprintln("error,template", "Failed to initialize template server $serverUrl: ${e.message}")
             }
         }
     }
@@ -157,7 +157,7 @@ fun templating() {
                             boxes = SavingContext().loadFromEdnText(ednContent, si.filename) { id ->
                                 seen.computeIfAbsent(id) { Uuid.random().toString() }
                             }
-                            lprintln("Imported template '$templateName' from remote server $serverUrl")
+                            lprintln("info,template", "Imported template '$templateName' from remote server $serverUrl")
                             break
                         }
                     }
@@ -226,4 +226,3 @@ private fun resolveTemplatePath(baseDir: String, name: String): String {
     val withExt = "$base/$name.edn"
     return if (File(withExt).isFile) withExt else "$base/$name"
 }
-

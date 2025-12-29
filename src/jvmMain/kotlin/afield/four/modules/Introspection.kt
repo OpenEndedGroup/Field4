@@ -1,6 +1,7 @@
 package afield.four.modules
 
 import afield.four.util.Options
+import afield.logger.lprintln
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
@@ -28,7 +29,7 @@ fun runCommand(command: List<String>, dir: String = "."): String {
 
     val exitCode = process.waitFor()
     if (exitCode != 0) {
-        println("Command exited with error code $exitCode")
+        lprintln("error,graphics", "Command exited with error code $exitCode")
     }
 
     return output.toString()
@@ -204,18 +205,18 @@ class Introspection(
             }
 
             if (!File(Options.spirv_cross_path).exists()) {
-                println("ERROR: -- cannot find pre-built spirv-cross at ${Options.spirv_cross_path} -- ")
+                lprintln("error,graphics", "cannot find pre-built spirv-cross at ${Options.spirv_cross_path}")
             }
             val check = runCommand(
                 listOf(
                     Options.spirv_cross_path, spv.path, "--vulkan-semantics"
                 )
             )
-            println(check)
+            lprintln("debug,graphics", check)
             val json = runCommand(listOf(Options.spirv_cross_path, spv.path, "--reflect"))
             val j = JSONObject(json)
 
-            println(j)
+            lprintln("debug,graphics", j.toString())
 
             val types = mutableMapOf<String, MutableList<Member>>()
             if (j.has("types")) {
@@ -232,7 +233,7 @@ class Introspection(
                     val name = to.getString("name")
                     types.get(e)!!.addAll(to.getJSONArray("members").mapNotNull { m ->
                         m as JSONObject
-                        println(m)
+                        lprintln("debug,graphics", m.toString())
                         if (!m.has("offset")) return@mapNotNull null // must be a builtin or something?
                         val offset = m.getInt("offset")
                         val n2 = m.getString("name")
@@ -260,7 +261,7 @@ class Introspection(
                 val ai = j.getJSONArray("inputs")
                 for (n in 0 until ai.length()) {
                     val ao = ai.getJSONObject(n)
-                    print(ao)
+                    lprintln("debug,graphics", ao.toString())
                     try {
                         inputs.add(
                             Input(
@@ -281,7 +282,7 @@ class Introspection(
 
 
             if (j.has("ubos")) {
-                println(" types are ${types}")
+                lprintln("debug,graphics", "types are ${types}")
                 val ui = j.getJSONArray("ubos")
                 for (i in 0 until ui.length()) {
                     val uo = ui.getJSONObject(i)
@@ -290,12 +291,12 @@ class Introspection(
                     val blockSize = uo.getInt("block_size")
                     val binding = uo.getInt("binding")
                     val set = uo.getInt("set")
-                    print("UO ${uo}")
+                    lprintln("debug,graphics", "UO $uo")
                     ubos.add(UBO(name, blockSize, set, binding, ty))
                 }
             }
             if (j.has("push_constants")) {
-                println(" types for pc are ${types}")
+                lprintln("debug,graphics", "types for pc are ${types}")
                 val ui = j.getJSONArray("push_constants")
                 for (i in 0 until ui.length()) {
                     val uo = ui.getJSONObject(i)
@@ -385,7 +386,7 @@ class Introspection(
 
             if (j.has("outputs")) {
                 val ui = j.getJSONArray("outputs")
-                println(ui)
+                lprintln("debug,graphics", ui.toString())
                 for (i in 0 until ui.length()) {
                     val uo = ui.getJSONObject(i)
                     val name = uo.getString("name")

@@ -98,7 +98,9 @@ private fun compileStage(
         source,
         kind,
         errorHandler = { message, throwable ->
-            println("error during $stageLabelForUI shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during $stageLabelForUI shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             box.error(message, stageLabelForUI, numberFromErrorMessage(message) ?: 0)
             hadError = true
         }
@@ -136,7 +138,7 @@ fun reloadShader(box: Box) {
     val (fi, fErr) = compileStage(box, box._fragment!!, ShaderKind.FRAGMENT_SHADER, "fragment")
 
     if (vErr || fErr) {
-        lprintln("ERROR: shader compilation failed; skipping module reload.")
+        lprintln("error,graphics", "shader compilation failed; skipping module reload.")
         return
     }
 
@@ -202,7 +204,7 @@ fun reloadComputeShader(box: Box) {
 
     val (ci, cErr) = compileStage(box, box._compute!!, ShaderKind.COMPUTE_SHADER, "compute")
     if (cErr) {
-        lprintln("ERROR: compute shader compilation failed; skipping compute module reload.")
+        lprintln("error,graphics", "compute shader compilation failed; skipping compute module reload.")
         return
     }
 
@@ -270,7 +272,7 @@ fun reloadMeshShader(box: Box) {
     val (fi, fErr) = compileStage(box, box._fragment!!, ShaderKind.FRAGMENT_SHADER, "fragment")
 
     if (tErr || mErr || fErr) {
-        lprintln("ERROR: mesh pipeline compilation failed; skipping mesh module reload.")
+        lprintln("error,graphics", "mesh pipeline compilation failed; skipping mesh module reload.")
         return
     }
 
@@ -353,13 +355,17 @@ fun Box.macro_moduleHereWithDefaultShaders(
     var hasError = false
     val vi = Introspection(
         this._vertex!!, ShaderKind.VERTEX_SHADER, errorHandler = { message, throwable ->
-            println("error during vertex shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during vertex shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             this.error(message, "vertex", numberFromErrorMessage(message) ?: 0)
             hasError = true
         })
     val fi = Introspection(
         this._fragment!!, ShaderKind.FRAGMENT_SHADER, errorHandler = { message, throwable ->
-            println("error during fragment shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during fragment shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             this.error(message, "fragment", numberFromErrorMessage(message) ?: 0)
             hasError = true
         })
@@ -449,7 +455,7 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
 
     p.errorHandler = { message, throwable ->
         this.error(message, "code", numberFromErrorMessage(message) ?: 0)
-        throwable?.printStackTrace()
+        throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
     this._shader = Module(p).pointer()
@@ -472,7 +478,7 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
     { textureSpec ->
         val cached: Pair<HasImageViewArray, TextureSampler>? = previousResolver.invoke(textureSpec)
         if (cached != null) cached else {
-            println(" searching for texture ${textureSpec.name}")
+            lprintln("debug,graphics", "searching for texture ${textureSpec.name}")
             val name = textureSpec.name
 
 
@@ -495,7 +501,7 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
                     ?: findWithNameOrNull<LoadedTexture>(this, name)?.let { tex -> fromViews(listOf(tex), name) }
                     ?: findWithNameOrNull<RenderToTexture>(this, name)?.let { rtt -> fromViews(listOf(rtt), name) }
                     ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
-            println(" found $r")
+            lprintln("debug,graphics", "found $r")
             r
         }
     }
@@ -542,7 +548,9 @@ void main() {
     var hasError = false
     val ci = Introspection(
         this._compute!!, ShaderKind.COMPUTE_SHADER, errorHandler = { message, throwable ->
-            println("error during compute shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during compute shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             this.error(message, "compute", numberFromErrorMessage(message) ?: 0)
             hasError = true
         })
@@ -571,7 +579,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
 
     p.errorHandler = { message, throwable ->
         this.error(message, "code", numberFromErrorMessage(message) ?: 0)
-        throwable?.printStackTrace()
+        throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
@@ -666,19 +674,25 @@ void main()
     var hasError = false
     val ti = Introspection(
         this._task!!, ShaderKind.TASK_SHADER, errorHandler = { message, throwable ->
-            println("error during task shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during task shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             this.error(message, "task", numberFromErrorMessage(message) ?: 0)
             hasError = true
         })
     val mi = Introspection(
         this._mesh!!, ShaderKind.MESH_SHADER, errorHandler = { message, throwable ->
-            println("error during mesh shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during mesh shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             this.error(message, "mesh", numberFromErrorMessage(message) ?: 0)
             hasError = true
         })
     val fi = Introspection(
         this._fragment!!, ShaderKind.FRAGMENT_SHADER, errorHandler = { message, throwable ->
-            println("error during fragment shader compilation $message ${throwable.message}")
+            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
+            lprintln("error,graphics", "error during fragment shader compilation $message$throwableMsg")
+            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
             this.error(message, "fragment", numberFromErrorMessage(message) ?: 0)
             hasError = true
         })
@@ -708,7 +722,7 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
 
     p.errorHandler = { message, throwable ->
         this.error(message, "code", numberFromErrorMessage(message) ?: 0)
-        throwable?.printStackTrace()
+        throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
     if (p.name == "unnamed module") p.name = "mesh module in box '${name}' (${id})"

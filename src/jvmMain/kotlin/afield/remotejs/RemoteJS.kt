@@ -1,13 +1,13 @@
 package afield.remotejs
 
 import afield.*
-import afield.logger.lblock
-import afield.logger.lprint
-import afield.stdlib.*
+import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
+import afield.stdlib.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import org.openjdk.nashorn.api.tree.Diagnostic
@@ -40,7 +40,7 @@ fun install() {
 
         val o = JSONObject(text)
         if (o.has("address") && o.getString("address") == "initialize") {
-            println(" -- initializing connection to ${text}")
+            lprintln("info,remotejs", "initializing connection: $text")
             knownOpenRemoteClients[o.getString("payload")!!] = thisSession.get()
             knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
             notify("Connected to ${knownOpenRemoteClients.size} browsers", "remotejs")
@@ -49,7 +49,7 @@ fun install() {
             if (!callAgain) returnHandlers.remove(o.getString("address"))
         } else if (o.has("address") && o.getString("address") == "kv.receive") {
             val source = o.getJSONObject("payload").getString("id")
-            println("echoing data to non $source clients ${o.getJSONObject("payload")}")
+            lprintln("debug,remotejs", "echoing data to non $source clients ${o.getJSONObject("payload")}")
             executeRemoteJS(
                 "__kv.receive('" + o.getJSONObject("payload").getString("name") + "', _field.__var0)",
                 __var0 = o.getJSONObject("payload").get("value"),
@@ -66,7 +66,7 @@ fun install() {
                 sessions.values.firstNotNullOfOrNull { it.boxes.values.firstNotNullOfOrNull { if (it.id == on) it else null } }
 
             if (box == null) {
-                println(" got shader upgrade request from non-box ${thisSessionInfo.get().boxes} => $box")
+                lprintln("warning,remotejs", "shader upgrade request from non-box ${thisSessionInfo.get().boxes} => $box")
             } else {
                 if (box.vertex == null || box.fragment == null) {
                     box.vertex = v
@@ -111,7 +111,7 @@ fun install() {
                 }
             }
         } else {
-            println(" =-- remote sent a message that I don't understand ${o}")
+//            lprintln("warning,remotejs", "remote sent a message that I don't understand $o")
             return@mutableSetOf       Handled.no
 
         }
@@ -187,8 +187,8 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0) {
         diagnosticsTo = {
             b.output.errorProxy(it.message, "code", it.lineNumber.toInt())
         }) {
-        println(" -- remote code execution got a json object through it's return channel")
-        println(it)
+        lprintln("info,remotejs", "remote code execution returned json object")
+        lprintln("debug,remotejs", it.toString())
 
         val p = it.getJSONObject("payload")
         val kind = p.getString("kind")
@@ -221,8 +221,8 @@ fun launchAll(b: Box, code: String, lineOffset: Int = 0) {
     executeRemoteJS(c, filename = target(b), launchable = true, doASTA = true, requiresSandbox = true, diagnosticsTo = {
         b.output.errorProxy(it.message, "code", it.lineNumber.toInt())
     }) {
-        println(" -- remote code launch got a json object through it's return channel")
-        println(it)
+        lprintln("info,remotejs", "remote code launch got a json object through its return channel")
+        lprintln("debug,remotejs", it.toString())
 
         val p = it.getJSONObject("payload")
         val kind = p.getString("kind")
@@ -272,16 +272,14 @@ fun complete(inside: Box, file: String, position: Int, success: (Completion) -> 
 
     val u = UUID.randomUUID().toString()
     returnHandlers.put(u, {
-        println(" return from completion ${it}")
+        lprintln("info,remotejs", "return from completion $it")
 
         var s = it.getJSONObject("payload").getString("message").trim()
         if (s.startsWith("<json>")) s = s.substring("<json>".length);
 //
         var j = JSONArray(s)
-        println(j)
-        j.forEach {
-            println(it)
-        }
+        lprintln("debug,remotejs", j.toString())
+        j.forEach { entry -> lprintln("debug,remotejs", entry.toString()) }
 
         success(
             Completion(
@@ -331,8 +329,8 @@ class RemoteJSExectution : BoxExecution {
         try {
             afield.remotejs.executeFragment(inside, execute.code, execute.line)
         } catch (e: Exception) {
-            println(" exception thrown in remotejs (parser?)")
-            e.printStackTrace()
+            lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
+            lprintln("error,remotejs", e.stackTraceToString())
             notify("Syntax Error in your Javascript", "remotejs")
         }
     }
@@ -348,8 +346,8 @@ class RemoteJSExectution : BoxExecution {
         try {
             afield.remotejs.executeFragment(inside, execute.code, execute.line)
         } catch (e: Exception) {
-            println(" exception thrown in remotejs (parser?)")
-            e.printStackTrace()
+            lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
+            lprintln("error,remotejs", e.stackTraceToString())
             notify("Syntax Error in your Javascript", "remotejs")
         }
 
@@ -366,8 +364,8 @@ class RemoteJSExectution : BoxExecution {
         try {
             afield.remotejs.launchAll(inside, execute.code, 0)
         } catch (e: Exception) {
-            println(" exception thrown in remotejs (parser?)")
-            e.printStackTrace()
+            lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
+            lprintln("error,remotejs", e.stackTraceToString())
             notify("Syntax Error in your Javascript", "remotejs")
         }
 
@@ -383,7 +381,7 @@ class RemoteJSExectution : BoxExecution {
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
         // For JavaScript, construct a function call: symbolName()
         val functionCall = "${executeSymbol.symbol}()"
-        
+
         // Create an Execute object for executeFragment
         val exec = Execute(
             uid = executeSymbol.uid,
@@ -392,7 +390,7 @@ class RemoteJSExectution : BoxExecution {
             code = functionCall,
             singleLine = true
         )
-        
+
         // Execute as a fragment
         executeFragment(inside, exec, reply)
     }
@@ -402,7 +400,7 @@ class RemoteJSExectution : BoxExecution {
             notify("Warning! no connected remote clients", "remotejs")
 
         complete(inside, inside.code, completionRequest.position) {
-            println(it)
+            lprintln("info,remotejs", it)
             reply(Message("complete").payload(it))
         }
     }
