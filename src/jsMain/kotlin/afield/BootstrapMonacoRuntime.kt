@@ -185,9 +185,9 @@ private fun monitorSelection() {
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
             if (state != null) {
-                val suppressRestore = (w.asDynamic().suppressNextEditorStateRestore as? Boolean) == true
+                val suppressRestore = (w.suppressNextEditorStateRestore as? Boolean) == true
                 if (suppressRestore) {
-                    w.asDynamic().suppressNextEditorStateRestore = false
+                    w.suppressNextEditorStateRestore = false
                 }
                 var disposable: dynamic = null
                 if (!suppressRestore) {

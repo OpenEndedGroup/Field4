@@ -245,6 +245,13 @@ class SlideShowInstance(
     }
 
     /**
+     * Jump back to the first step
+     */
+    suspend fun home() {
+        goToStep(0)
+    }
+
+    /**
      * Starts the slideshow from the beginning
      */
     suspend fun start() {

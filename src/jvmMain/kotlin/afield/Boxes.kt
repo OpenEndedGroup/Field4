@@ -20,6 +20,7 @@ import kotlin.script.experimental.api.KotlinType
 var needsResync = ConcurrentSet<Pair<Box, String>>()
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
+var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 
 
 interface HasProperties {
@@ -153,7 +154,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_decorationState",
             "metadata",
             "offline",
-            "bookmarks"
+            "bookmarks",
+            "autorun"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -183,6 +185,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "pauseList",
             "bookmarks",
             "slideShow",
+            "autorun",
         )
 
         var ioSeparateProperties = mutableMapOf(

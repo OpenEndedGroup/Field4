@@ -384,7 +384,7 @@ fun restoreBookmarkSlot(bookmarkNumber: Int) {
  */
 fun registerBookmarkShortcuts() {
     fun handler(event: dynamic) {
-        val ke = event.asDynamic()
+        val ke = event
         val key = ke.key as? String ?: return@handler
 
         // Check for F1-F9 keys

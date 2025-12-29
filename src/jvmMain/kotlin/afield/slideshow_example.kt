@@ -18,11 +18,14 @@ fun Box.exampleSlideShow() {
     val welcomeBox = this
     val codeBox = this.children.firstOrNull() ?: this
     val visualBox = this.children.iterator().next()
+    val homeLink = """<a href="#slideshow:home" style="float:right;text-decoration:none;color:inherit;opacity:0.85;">&#8962;</a>"""
+    this.autorun = true
 
     // Create the slideshow
     val show = slideShow {
         step("Welcome to Field") {
             note("""
+                $homeLink
                 <h2>Welcome to Field!</h2>
                 <p>This is an interactive guided tour of Field, a live coding environment.</p>
                 <p>Field combines high-performance graphics with powerful scripting capabilities.</p>
@@ -36,6 +39,7 @@ fun Box.exampleSlideShow() {
 
         step("Understanding Boxes") {
             note("""
+                $homeLink
                 <h3>Boxes are the Core Abstraction</h3>
                 <p>In Field, everything is a <strong>Box</strong>. Boxes can:</p>
                 <ul>
@@ -55,6 +59,7 @@ fun Box.exampleSlideShow() {
 
         step("Writing Code") {
             note("""
+                $homeLink
                 <h3>Live Coding</h3>
                 <p>You can write code directly in boxes and see the results immediately.</p>
                 <p>The code editor supports:</p>
@@ -78,6 +83,7 @@ fun Box.exampleSlideShow() {
 
         step("Visual Output") {
             note("""
+                $homeLink
                 <h3>Graphics and Visualization</h3>
                 <p>Field excels at real-time graphics and visualization.</p>
                 <p>You can create:</p>
@@ -96,6 +102,7 @@ fun Box.exampleSlideShow() {
 
         step("Next Steps") {
             note("""
+                $homeLink
                 <h3>Keep Exploring!</h3>
                 <p>You've completed the basic tour. Here are some things to try:</p>
                 <ul>

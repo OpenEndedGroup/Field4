@@ -49,7 +49,8 @@ class SessionInformation(
     var boxes: ConcurrentHashMap<String, Box> = ConcurrentHashMap<String, Box>(),
     var root: Box,
     var sessions: MutableSet<WebSocketSession> = mutableSetOf<WebSocketSession>(),
-    var topologyGeneration: Int = 0
+    var topologyGeneration: Int = 0,
+    var autorunTriggered: Boolean = false
 ) {
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
@@ -60,6 +61,28 @@ class SessionInformation(
 
     fun cleanup() {
         fileWatchManager.stop()
+    }
+}
+
+fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
+    if (autorunTriggered) return
+    autorunTriggered = true
+    GlobalScope.launch {
+        delay(delayMs)
+        boxes.values.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
+            launch {
+                var attempts = 0
+                while (box.offline && attempts < 20) {
+                    delay(100)
+                    attempts++
+                }
+                try {
+                    box.begin()
+                } catch (t: Throwable) {
+                    lprintln("warning,autorun", "autorun failed for ${box.name}: ${t.message}")
+                }
+            }
+        }
     }
 }
 
@@ -278,6 +301,7 @@ class Server {
 
                         // Initialize the file watch manager
                         si.fileWatchManager
+                        si.scheduleAutorunBoxes()
                     } catch (fnf: FileNotFoundException) {
                         lprintln("warning,server", "file '$fn' not found; will be created on first save")
                     }
@@ -292,6 +316,7 @@ class Server {
                         it.resyncAll()
                     }
                     found.topologyGeneration++
+                    found.scheduleAutorunBoxes()
                 }
 
 
@@ -484,6 +509,7 @@ class Server {
                                 "next" -> slideShow.next()
                                 "previous" -> slideShow.previous()
                                 "start" -> slideShow.start()
+                                "home" -> slideShow.home()
                                 "stop" -> slideShow.stop()
                                 else -> {
                                     // Try to parse as a step number
