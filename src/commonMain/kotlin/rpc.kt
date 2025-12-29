@@ -266,3 +266,16 @@ data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
     val cx: Double get() = x + w / 2.0
     val cy: Double get() = y + h / 2.0
 }
+
+// Slideshow messages
+@Serializable
+data class SelectAndEditBox(val uid: String, val property: String = "code", val scrollToLine: Int? = null, val highlightLine: Int? = null)
+
+@Serializable
+data class ShowSlideNote(val html: String, val uid: String = "", val persistent: Boolean = false)
+
+@Serializable
+data class HideSlideNote(val dummy: Boolean = true)
+
+@Serializable
+data class SlideShowCommand(val command: String)
