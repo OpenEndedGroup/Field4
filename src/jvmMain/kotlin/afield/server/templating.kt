@@ -192,11 +192,6 @@ fun templating() {
             }
         }
         Handled.yes
-    }) {
-                notify("Failed to save template: ${e.message}", "error")
-            }
-        }
-        Handled.yes
     })
 }
 

@@ -129,17 +129,17 @@ fun collectAllNestedBoxes(boxes: Set<Box>): Set<Box> {
  *
  * @param selectedCount The number of originally selected boxes
  * @param totalCount The total number including nested boxes
- * @param actionVerb The action being performed (e.g., "Copied", "Saved")
+ * @param actionVerb The action being performed (e.g., "Copied", "Saved"). Pass empty string for no verb.
  * @return A formatted message string
  */
 fun formatBoxCountMessage(selectedCount: Int, totalCount: Int, actionVerb: String = ""): String {
     val nestedCount = totalCount - selectedCount
     val boxWord = if (selectedCount == 1) "box" else "boxes"
-    val verb = actionVerb.ifBlank { "" }
+    val prefix = if (actionVerb.isNotEmpty()) "$actionVerb " else ""
     
     return if (nestedCount > 0) {
-        "$verb $selectedCount $boxWord + $nestedCount nested".trim()
+        "$prefix$selectedCount $boxWord + $nestedCount nested".trim()
     } else {
-        "$verb $selectedCount $boxWord".trim()
+        "$prefix$selectedCount $boxWord".trim()
     }
 }
