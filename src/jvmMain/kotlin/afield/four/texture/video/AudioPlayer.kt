@@ -29,6 +29,10 @@ class AudioPlayer(
     private val freeBuffers = ConcurrentLinkedQueue<Int>()
     private val queuedBuffers = ConcurrentLinkedQueue<Int>()
     
+    // Track total samples processed for accurate timing
+    private var totalSamplesProcessed: Long = 0
+    private var lastSampleOffset: Int = 0
+    
     // Format constants
     private val format = when (channels) {
         1 -> AL_FORMAT_MONO16
@@ -131,19 +135,17 @@ class AudioPlayer(
     /**
      * Queue an audio buffer for playback.
      * @param audioData PCM audio data (16-bit signed, interleaved)
+     * @param numSamples Number of samples in the buffer (for timing tracking)
      * @return true if buffer was successfully queued
      */
-    fun queueBuffer(audioData: ByteBuffer): Boolean {
+    fun queueBuffer(audioData: ByteBuffer, numSamples: Int = audioData.remaining() / (channels * 2)): Boolean {
         if (!isInitialized) return false
         
-        // Get a free buffer
-        val buffer = freeBuffers.poll() ?: run {
-            // No free buffers, try to process queued buffers
-            processBuffers()
-            freeBuffers.poll() ?: run {
-                println("Warning: No free audio buffers available")
-                return false
-            }
+        // Get a free buffer (non-blocking check)
+        val buffer = freeBuffers.poll()
+        if (buffer == null) {
+            // No free buffers available - caller should process buffers first
+            return false
         }
         
         // Upload data to buffer
@@ -167,7 +169,17 @@ class AudioPlayer(
     }
     
     /**
+     * Queue an AudioFrame for playback (convenience method).
+     * @param audioFrame Decoded audio frame from AudioDecoder
+     * @return true if buffer was successfully queued
+     */
+    fun queueAudioFrame(audioFrame: AudioFrame): Boolean {
+        return queueBuffer(audioFrame.data, audioFrame.samples)
+    }
+    
+    /**
      * Process finished buffers and return them to the free pool.
+     * Also updates timing information.
      */
     fun processBuffers() {
         if (!isInitialized) return
@@ -177,6 +189,11 @@ class AudioPlayer(
         for (i in 0 until processed) {
             val buffer = alSourceUnqueueBuffers(source)
             if (alGetError() == AL_NO_ERROR) {
+                // Get buffer size to update total samples
+                val bufferSize = alGetBufferi(buffer, AL_SIZE)
+                val samplesInBuffer = bufferSize / (channels * 2)  // 2 bytes per sample
+                totalSamplesProcessed += samplesInBuffer
+                
                 queuedBuffers.remove(buffer)
                 freeBuffers.offer(buffer)
             }
@@ -234,18 +251,33 @@ class AudioPlayer(
             }
         }
         
+        // Reset timing
+        totalSamplesProcessed = 0
+        lastSampleOffset = 0
+        
         isPlaying = false
     }
     
     /**
      * Get current playback time in seconds.
+     * Tracks total samples played across all buffers for accurate timing.
      * @return Current playback time, or 0.0 if not playing
      */
     fun getCurrentTime(): Double {
         if (!isInitialized) return 0.0
         
-        val sampleOffset = alGetSourcei(source, AL_SAMPLE_OFFSET)
-        return sampleOffset.toDouble() / sampleRate
+        // Get current sample offset within the current buffer
+        val currentOffset = alGetSourcei(source, AL_SAMPLE_OFFSET)
+        
+        // Handle offset wrap-around when buffers are processed
+        if (currentOffset < lastSampleOffset) {
+            // Offset wrapped, a buffer was completed
+            // (processBuffers() should have already updated totalSamplesProcessed)
+        }
+        lastSampleOffset = currentOffset
+        
+        // Total time = (all processed samples + current offset) / sample rate
+        return (totalSamplesProcessed + currentOffset).toDouble() / sampleRate
     }
     
     /**
@@ -316,6 +348,10 @@ class AudioPlayer(
         
         freeBuffers.clear()
         queuedBuffers.clear()
+        
+        // Reset timing
+        totalSamplesProcessed = 0
+        lastSampleOffset = 0
         
         isInitialized = false
         isPlaying = false

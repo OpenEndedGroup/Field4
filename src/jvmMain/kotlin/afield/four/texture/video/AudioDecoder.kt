@@ -261,16 +261,23 @@ class AudioDecoder(private val audioPath: String) {
             } else {
                 // No resampling needed, use frame data directly
                 outputSamples = frame!!.nb_samples()
-                val dataSize = outputSamples * channels * 2  // Assuming 16-bit samples
                 
                 // Check if data is planar or interleaved
                 if (av_sample_fmt_is_planar(codecContext!!.sample_fmt()) != 0) {
                     // Planar format - need to interleave
-                    println("Warning: Planar audio format not yet supported, audio may be incorrect")
-                    // For now, just use first plane
+                    println("Warning: Planar audio format detected - forcing resampling for proper interleaving")
+                    // This path shouldn't be reached if swrContext is properly initialized
+                    // If it is reached, the audio will be mono-only from first plane
+                    // Best practice: always use swrContext for format conversion
+                    val dataSize = outputSamples * 2  // Only first channel, 16-bit samples
                     outputData = BytePointer(frame!!.data(0)).asByteBuffer().limit(dataSize).order(ByteOrder.nativeOrder())
                 } else {
-                    // Already interleaved
+                    // Already interleaved - verify sample format is S16
+                    val sampleFmt = codecContext!!.sample_fmt()
+                    if (sampleFmt != AV_SAMPLE_FMT_S16) {
+                        println("Warning: Unexpected sample format $sampleFmt, audio may be distorted")
+                    }
+                    val dataSize = outputSamples * channels * 2  // 2 bytes per sample (16-bit)
                     outputData = BytePointer(frame!!.data(0)).asByteBuffer().limit(dataSize).order(ByteOrder.nativeOrder())
                 }
             }

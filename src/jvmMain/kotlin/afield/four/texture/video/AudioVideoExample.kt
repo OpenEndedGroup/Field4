@@ -11,6 +11,10 @@ package afield.four.texture.video
  * 4. Handle seeking, pause, and resume
  */
 
+// Constants for audio configuration
+private const val DEFAULT_SAMPLE_RATE = 44100
+private const val DEFAULT_CHANNELS = 2  // Stereo
+
 // Example 1: Basic synchronized audio/video playback
 fun basicAudioVideoPlayback() {
     // Assuming you have a renderer initialized
@@ -27,13 +31,13 @@ fun basicAudioVideoPlayback() {
     
     // Initialize audio decoder
     val audioDecoder = AudioDecoder(videoPath)
-    if (!audioDecoder.open(outputSampleRate = 44100, outputChannels = 2)) {
+    if (!audioDecoder.open(outputSampleRate = DEFAULT_SAMPLE_RATE, outputChannels = DEFAULT_CHANNELS)) {
         println("Failed to open audio")
         return
     }
     
-    // Initialize audio player
-    val audioPlayer = AudioPlayer(sampleRate = 44100, channels = 2)
+    // Initialize audio player with same settings
+    val audioPlayer = AudioPlayer(sampleRate = DEFAULT_SAMPLE_RATE, channels = DEFAULT_CHANNELS)
     if (!audioPlayer.initialize()) {
         println("Failed to initialize audio player")
         audioDecoder.close()
@@ -41,10 +45,12 @@ fun basicAudioVideoPlayback() {
     }
     
     // Pre-fill audio buffers before starting playback
+    // This prevents initial audio underruns
     for (i in 0 until 3) {
         val audioFrame = audioDecoder.decodeFrame()
         if (audioFrame != null) {
-            audioPlayer.queueBuffer(audioFrame.data)
+            // Can use either queueBuffer() or queueAudioFrame()
+            audioPlayer.queueAudioFrame(audioFrame)
         } else {
             break
         }
@@ -59,11 +65,16 @@ fun basicAudioVideoPlayback() {
     //     // Get current audio time for synchronization
     //     val audioTime = audioPlayer.getCurrentTime()
     //     
-    //     // Decode and queue more audio buffers as needed
+    //     // Process finished audio buffers and return them to free pool
     //     audioPlayer.processBuffers()
+    //     
+    //     // Decode and queue more audio buffers as needed
     //     while (audioPlayer.getFreeBufferCount() > 0) {
     //         val audioFrame = audioDecoder.decodeFrame() ?: break
-    //         audioPlayer.queueBuffer(audioFrame.data)
+    //         if (!audioPlayer.queueAudioFrame(audioFrame)) {
+    //             // Buffer queue is full, try again next frame
+    //             break
+    //         }
     //     }
     //     
     //     // Update video synchronized with audio
