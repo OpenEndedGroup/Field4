@@ -175,15 +175,18 @@ fun templating() {
     handlers["save-as-template"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<SaveAsTemplate>(message.payload!!)
 
-        val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
-        if (boxes.isEmpty()) {
+        val selectedBoxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
+        if (selectedBoxes.isEmpty()) {
             notify("No valid boxes found for template", "error")
         } else {
             try {
+                // Recursively collect all nested boxes
+                val boxesWithNested = collectAllNestedBoxes(selectedBoxes)
                 val templatesDir = "$home/templates"
                 File(templatesDir).mkdirs()
-                SavingContext().saveAsTemplate(request.templateName, boxes, templatesDir)
-                notify("Template saved: ${request.templateName}", "success")
+                SavingContext().saveAsTemplate(request.templateName, boxesWithNested, templatesDir)
+                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size)
+                notify("Template saved: ${request.templateName} ($countMessage)", "success")
             } catch (e: Exception) {
                 notify("Failed to save template: ${e.message}", "error")
             }

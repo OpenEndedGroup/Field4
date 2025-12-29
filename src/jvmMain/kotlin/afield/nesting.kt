@@ -100,3 +100,46 @@ fun Box.nestInto(parent: Box?) {
         nestedIn = parent
     }
 }
+
+/**
+ * Recursively collects all nested boxes from the given set of boxes.
+ * This ensures that when saving templates or copying boxes, all nested children are included.
+ *
+ * @param boxes The initial set of boxes
+ * @return A new set containing the original boxes plus all their recursively nested children
+ */
+fun collectAllNestedBoxes(boxes: Set<Box>): Set<Box> {
+    val result = mutableSetOf<Box>()
+    val queue = ArrayDeque(boxes)
+    
+    while (queue.isNotEmpty()) {
+        val box = queue.removeFirst()
+        if (result.add(box)) {
+            // result.add() returns true only if the box wasn't already in the set,
+            // which prevents infinite loops in circular references and duplicate processing
+            queue.addAll(box.nested)
+        }
+    }
+    
+    return result
+}
+
+/**
+ * Creates a notification message describing the number of boxes and nested boxes.
+ *
+ * @param selectedCount The number of originally selected boxes
+ * @param totalCount The total number including nested boxes
+ * @param actionVerb The action being performed (e.g., "Copied", "Saved"). Pass empty string for no verb.
+ * @return A formatted message string
+ */
+fun formatBoxCountMessage(selectedCount: Int, totalCount: Int, actionVerb: String = ""): String {
+    val nestedCount = totalCount - selectedCount
+    val boxWord = if (selectedCount == 1) "box" else "boxes"
+    val prefix = if (actionVerb.isNotEmpty()) "$actionVerb " else ""
+    
+    return if (nestedCount > 0) {
+        "$prefix$selectedCount $boxWord + $nestedCount nested".trim()
+    } else {
+        "$prefix$selectedCount $boxWord".trim()
+    }
+}

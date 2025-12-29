@@ -418,10 +418,13 @@ class Server {
             handlers["copy-boxes"] = mutableSetOf({ message, reply ->
                 val req = Json.decodeFromJsonElement<CopyBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()
-                val boxes = req.uids.mapNotNull { info.boxes[it] }.toSet()
-                val edn = SavingContext().exportEdnPackage(boxes, info.filename)
+                val selectedBoxes = req.uids.mapNotNull { info.boxes[it] }.toSet()
+                // Recursively collect all nested boxes
+                val boxesWithNested = collectAllNestedBoxes(selectedBoxes)
+                val edn = SavingContext().exportEdnPackage(boxesWithNested, info.filename)
                 val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
-                notify("Copied ${boxes.size} box${if (boxes.size == 1) "" else "es"} to clipboard", "copy")
+                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size, "Copied")
+                notify("$countMessage to clipboard", "copy")
                 reply(Message("copy-boxes").payload(CopyBoxesResult(edn, filename)))
                 Handled.yes
             })
