@@ -493,11 +493,31 @@ fun installAi4() {
                 )))
                 
                 // TODO: Integrate images with OpenAI vision API
+                // To add vision support:
+                // 1. Check if input.images is not empty
+                // 2. Use OpenAI's chat completion with vision model (e.g., gpt-4-vision-preview)
+                // 3. Format the message content as an array with text and image_url parts
+                // 4. Each image_url should have the format: { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
+                // 5. The images are already base64-encoded from the frontend
+                //
+                // Example structure:
+                // val content = listOf(
+                //     mapOf("type" to "text", "text" to input.value),
+                //     *input.images.map { base64 ->
+                //         mapOf("type" to "image_url", "image_url" to mapOf("url" to base64))
+                //     }.toTypedArray()
+                // )
+                
                 // For now, just process the text
+                val lang = LanguageSpec(
+                    name = "text",
+                    wrap = { it.trimEnd() },
+                    unwrap = { it.trimEnd() }
+                )
                 val result = chatHelpers!!.chatGeneral(
                     state = state,
                     code = "",
-                    lang = langSpecForName("text"),
+                    lang = lang,
                     userPrompt = userMessage
                 )
                 

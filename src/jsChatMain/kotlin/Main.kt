@@ -113,7 +113,6 @@ fun main() {
                     padding = Padding(10.px)
                     display = Display.flex
                     flexWrap = FlexWrap.wrap
-                    gap = Gap(10.px)
                 }.toString()
             }
             
