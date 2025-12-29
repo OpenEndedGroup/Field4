@@ -10,6 +10,8 @@ data class Action(
     val target: (List<Box>) -> Unit = {}
 )
 
+fun action(desc : String = "", payload : (List<Box>) -> Unit)  = Action(desc, payload)
+
 val Box.actions by Delegation<MutableMap<String, Action>>(
     defaultValue = {HashMap<String, Action>()},
     onGet = { inside, v ->

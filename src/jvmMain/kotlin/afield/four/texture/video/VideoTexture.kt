@@ -8,6 +8,7 @@ import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.ImageView
+import afield.logger.lprint
 import afield.logger.lprintln
 import afield.server.Browsable
 import afield.server.HasBrowsable
@@ -21,14 +22,14 @@ import java.util.concurrent.atomic.AtomicInteger
  * VideoTexture manages video playback with P010 format support.
  * Maintains configurable texture slot arrays for luma and chroma planes in semi-planar format.
  * Supports load, play, scrub, and unload operations while reusing Vulkan resources when dimensions match.
- * 
+ *
  * @param renderer The Vulkan renderer
  * @param clock Optional external clock for synchronization (e.g., AudioClock for A/V sync).
  *              If null, uses internal SystemClock which may drift over long durations.
  */
 class VideoTexture(
     private val renderer: Renderer = fromContext(),
-    private val clock: PlaybackClock? = null
+    private val clock: PlaybackClock? = null,
     private val textureSlots: Int = 2
 ) : HasImageViewArray, afield.four.Target, HasBrowsable {
 
@@ -67,14 +68,14 @@ class VideoTexture(
     private var decoder: VideoDecoder? = null
     private var currentVideoPath: String? = null
     private var isPlaying = false
-    
+
     // Internal clock used when no external clock is provided
     private val internalClock = SystemClock()
-    
+
     // Active clock (external if provided, internal otherwise)
     private val activeClock: PlaybackClock
         get() = clock ?: internalClock
-    
+
     private var currentTimestamp = 0.0
     private var lastFrameTimestamp = 0.0
 
@@ -165,7 +166,7 @@ class VideoTexture(
         lastFrameTimestamp = 0.0
         currentSlot.set(0)
         pendingFrameRefresh = true
-        
+
         // Reset internal clock when loading a new video
         if (clock == null) {
             internalClock.reset()
@@ -180,7 +181,7 @@ class VideoTexture(
     fun play() {
         if (decoder != null) {
             isPlaying = true
-            
+
             // If using internal clock, start it
             if (clock == null) {
                 internalClock.play()
@@ -193,7 +194,7 @@ class VideoTexture(
      */
     fun pause() {
         isPlaying = false
-        
+
         // If using internal clock, pause it
         if (clock == null) {
             internalClock.pause()
@@ -204,16 +205,17 @@ class VideoTexture(
      * Seek to a specific timestamp in seconds.
      */
     fun seek(timestampSeconds: Double): Boolean {
+        lprint("info,video", "Seeking to $timestampSeconds")
         decoder?.let { dec ->
             if (dec.seek(timestampSeconds)) {
                 currentTimestamp = timestampSeconds
                 lastFrameTimestamp = timestampSeconds
-                
+
                 // If using internal clock, seek it
                 if (clock == null) {
                     internalClock.seek(timestampSeconds)
                 }
-                
+
                 if (!isPlaying) {
                     pendingFrameRefresh = true
                 }
@@ -226,7 +228,7 @@ class VideoTexture(
     /**
      * Update the video texture. Call this every frame to decode and upload new frames when playing.
      * Returns true if a new frame was uploaded.
-     * 
+     *
      * When using an external clock (e.g., AudioClock), this method will sync video frames to the clock's time.
      * When using internal clock, it advances based on wall-clock time (may drift over long durations).
      */
@@ -241,14 +243,14 @@ class VideoTexture(
 
         // Get target timestamp from the active clock
         val targetTimestamp = activeClock.getCurrentTime()
-        
+
         // Check if we need to decode a new frame
-        // We decode if: 
+        // We decode if:
         // 1. We're significantly behind the clock (more than one frame)
         // 2. We're paused and need a refresh
         val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
         val needsNewFrame = (targetTimestamp - lastFrameTimestamp) >= frameDuration || allowWhilePaused
-        
+
         if (!needsNewFrame) {
             return false
         }
@@ -257,28 +259,30 @@ class VideoTexture(
         var decodedFrame: VideoFrame? = null
         var attempts = 0
         val maxAttempts = 10  // Prevent infinite loops
-        
+
         while (attempts < maxAttempts) {
             val frame = activeDecoder.decodeNextFrame() ?: break
-            
+
             decodedFrame = frame
             attempts++
-            
+
             // If this frame is at or past the target time, use it
             if (frame.timestamp >= targetTimestamp) {
                 break
             }
-            
+
             // If we're more than 2 frames ahead, we're seeking or lagging - use this frame
             if (targetTimestamp - frame.timestamp > frameDuration * 2) {
                 // Skip frames when catching up
                 continue
             }
-            
+
             // Frame is close enough to target, use it
             break
         }
-        
+
+        lprint("info, video", "decoded frame in ${attempts} attempts")
+
         val frame = decodedFrame ?: return false
 
         // Check if we're past the video duration
@@ -286,12 +290,12 @@ class VideoTexture(
             // Loop back to start
             activeDecoder.seek(0.0)
             lastFrameTimestamp = 0.0
-            
+
             // Reset internal clock if we're using it
             if (clock == null) {
                 internalClock.seek(0.0)
             }
-            
+
             return false
         }
 

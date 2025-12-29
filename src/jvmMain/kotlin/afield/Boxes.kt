@@ -181,7 +181,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "nestedIn",
             "playlist",
             "pauseList",
-            "bookmarks"
+            "bookmarks",
             "slideShow",
         )
 
@@ -325,7 +325,6 @@ fun doResync() {
             return@removeAll false
         }
         if (box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
-        if (box.toString() == "(root box)") return@removeAll true
         val value = box.getPropertyRaw(name, null)
         if (value == null) return@removeAll true
 

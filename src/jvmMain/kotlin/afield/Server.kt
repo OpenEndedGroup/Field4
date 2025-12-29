@@ -424,11 +424,10 @@ class Server {
                 val boxes = req.uids.mapNotNull { uid ->
                     if (uid == "root") info.root else info.boxes[uid]
                 }.toSet()
-                val edn = SavingContext().exportEdnPackage(boxes, info.filename)
                 val boxesWithNested = collectAllNestedBoxes(boxes)
                 val edn = SavingContext().exportEdnPackage(boxesWithNested, info.filename)
                 val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
-                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size, "Copied")
+                val countMessage = formatBoxCountMessage(boxes.size, boxesWithNested.size, "Copied")
                 notify("$countMessage to clipboard", "copy")
                 reply(Message("copy-boxes").payload(CopyBoxesResult(edn, filename)))
                 Handled.yes
@@ -474,7 +473,7 @@ class Server {
             handlers["slideshow-command"] = mutableSetOf({ message, reply ->
                 val cmd = Json.decodeFromJsonElement<SlideShowCommand>(message.payload!!)
                 val info = thisSessionInfo.get()
-                
+
                 // Find the box with an active slideshow
                 val slideShowBox = info.boxes.values.firstOrNull { it.getPropertyRaw("slideShow") != null }
                 if (slideShowBox != null) {
@@ -731,7 +730,7 @@ class Server {
                 lprintln("info,server", "---")
 
                 if (preferSystemBrowser) {
-                    thread { openSystemBrowser(initialURL) }
+//                    thread { openSystemBrowser(initialURL) }
                 }
                 else {
                     thread {

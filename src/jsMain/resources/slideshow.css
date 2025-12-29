@@ -1,23 +1,28 @@
 /* Slideshow overlay styling */
 #slide-note-overlay {
-    position: fixed;
-    top: 20px;
-    right: 20px;
+    position: absolute;
+    inset: auto;
     max-width: 400px;
     max-height: 80vh;
     overflow-y: auto;
-    background-color: rgba(40, 40, 50, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    color: white;
+    background-color: rgba(32, 32, 36, 0.9);
+    backdrop-filter: blur(12px) brightness(1.04);
+    -webkit-backdrop-filter: blur(12px) brightness(1.04);
+    color: #e6e6e6;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     z-index: 10000;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
+    font-family: "Iosevka", "Iosevka Term", "Iosevka Nerd Font", "Fira Code", Menlo, Consolas, monospace;
+    font-size: 13px;
     line-height: 1.6;
     animation: slideIn 0.3s ease-out;
+}
+
+#slide-note-overlay.fallback {
+    position: fixed;
+    top: 20px;
+    right: 20px;
 }
 
 @keyframes slideIn {
@@ -36,7 +41,7 @@
     margin-bottom: 12px;
     font-size: 20px;
     font-weight: 600;
-    color: #80b3ff;
+    color: #d8d8d8;
 }
 
 #slide-note-overlay h3 {
@@ -44,7 +49,7 @@
     margin-bottom: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: #80b3ff;
+    color: #d8d8d8;
 }
 
 #slide-note-overlay p {
@@ -61,14 +66,15 @@
 }
 
 #slide-note-overlay a {
-    color: #80b3ff;
+    color: #cfcfcf;
     text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s;
 }
 
 #slide-note-overlay a:hover {
-    border-bottom-color: #80b3ff;
+    border-bottom-color: #cfcfcf;
+    color: #ffffff;
 }
 
 #slide-note-overlay kbd {
@@ -83,11 +89,11 @@
 
 #slide-note-overlay strong {
     font-weight: 600;
-    color: #e0e0e0;
+    color: #f0f0f0;
 }
 
 #slide-note-overlay code {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.08);
     padding: 2px 4px;
     border-radius: 3px;
     font-family: 'Courier New', monospace;
@@ -95,7 +101,7 @@
 }
 
 #slide-note-overlay pre {
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(255, 255, 255, 0.05);
     padding: 12px;
     border-radius: 4px;
     overflow-x: auto;
@@ -146,4 +152,8 @@
 
 #slide-note-overlay::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
+}
+
+#slide-note-overlay > *:first-child {
+    margin-top: 0;
 }

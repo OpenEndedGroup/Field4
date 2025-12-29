@@ -93,6 +93,64 @@ fun serviceEvents() {
     }
 }
 
+var slideNoteAnchorUid: String? = null
+
+fun findBoxByUid(uid: String?): HTMLElement? {
+    if (uid.isNullOrBlank()) return null
+    val boxes = document.body!!.getElementsByClassName("box").asList()
+    return boxes.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
+}
+
+private fun positionSlideNoteOverlay(overlay: HTMLElement, anchorUid: String?) {
+    val anchorBox = findBoxByUid(anchorUid) ?: selected.firstOrNull()
+
+    overlay.setAttribute("data-anchor-uid", anchorUid ?: "")
+    if (anchorBox != null) {
+        overlay.classList.remove("fallback")
+        overlay.style.visibility = "hidden"
+        overlay.style.display = "block"
+
+        val rect = anchorBox.getBoundingClientRect()
+        val margin = 12.0
+        val overlayWidth = overlay.offsetWidth.toDouble().coerceAtLeast(1.0)
+        val overlayHeight = overlay.offsetHeight.toDouble().coerceAtLeast(1.0)
+        val scrollX = window.scrollX
+        val scrollY = window.scrollY
+        val spaceRight = window.innerWidth - rect.right
+        val spaceLeft = rect.left
+
+        var left = rect.right + margin + scrollX
+        if (spaceRight < overlayWidth + margin && spaceLeft > spaceRight) {
+            left = rect.left - overlayWidth - margin + scrollX
+        }
+
+        val minTop = scrollY + margin
+        val maxTop = scrollY + window.innerHeight - overlayHeight - margin
+        var top = rect.top + scrollY
+        top = top.coerceIn(minTop, maxTop)
+
+        overlay.style.left = "${left}px"
+        overlay.style.top = "${top}px"
+        overlay.style.right = "auto"
+        overlay.style.bottom = "auto"
+        overlay.style.visibility = "visible"
+    } else {
+        overlay.classList.add("fallback")
+        overlay.style.left = "auto"
+        overlay.style.top = "20px"
+        overlay.style.right = "20px"
+        overlay.style.bottom = "auto"
+        overlay.style.visibility = "visible"
+    }
+}
+
+private fun repositionSlideNoteOverlayIfVisible() {
+    val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return
+    if (overlay.style.display != "none") {
+        positionSlideNoteOverlay(overlay, slideNoteAnchorUid)
+    }
+}
+
 @JsExport
 @JsName("select")
 fun select(selector: String): List<HTMLElement> {
@@ -291,6 +349,7 @@ suspend fun main() {
             found.unsafeCast<dynamic>().data_h = set.value.h
         }
         canvasGestures.rebuildConnectionGroup()
+        repositionSlideNoteOverlayIfVisible()
 
         Handled.yes
     }
@@ -369,10 +428,22 @@ suspend fun main() {
     fun defaultCreate(u: String): HTMLElement {
         val boxes = document.body!!.getElementsByClassName("box").asList()
         var found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == u } as HTMLElement?
-        if (found != null) return found!!
+        if (found != null) {
+            if (u == "root") {
+                found!!.style.display = "none"
+                found!!.style.visibility = "hidden"
+            }
+            return found!!
+        }
 
         mainCanvas.append {
             found = createBox("untitled", frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
+        }
+
+        if (u == "root") {
+            // keep the root transport box invisible to users but present for state sync
+            found!!.style.display = "none"
+            found!!.style.visibility = "hidden"
         }
         return found!!
     }
@@ -560,10 +631,10 @@ suspend fun main() {
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
         val boxes = document.body!!.getElementsByClassName("box").asList()
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == sel.uid }
-        
+
         if (found != null) {
             val box = found as HTMLElement
-            
+
             // Open nested disclosure areas if the box is nested
             fun openNestedDisclosures(targetBox: HTMLElement) {
                 // Check if box is nested inside another box
@@ -571,14 +642,14 @@ suspend fun main() {
                 if (nestedIn != null) {
                     // Find the parent box
                     val parentBoxes = document.body!!.getElementsByClassName("box").asList()
-                    val parentBox = parentBoxes.firstOrNull { 
-                        it.unsafeCast<dynamic>().uid == nestedIn 
+                    val parentBox = parentBoxes.firstOrNull {
+                        it.unsafeCast<dynamic>().uid == nestedIn
                     } as? HTMLElement
-                    
+
                     if (parentBox != null) {
                         // Recursively open parent disclosures first
                         openNestedDisclosures(parentBox)
-                        
+
                         // Open the nested disclosure for this parent
                         val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
                         if (outputArea != null) {
@@ -594,7 +665,7 @@ suspend fun main() {
                                     console.log("Failed to open nested disclosure", e)
                                 }
                             }
-                            
+
                             // Make sure the output area is visible
                             outputArea.style.visibility = "visible"
                             outputArea.style.height = "auto"
@@ -602,29 +673,29 @@ suspend fun main() {
                     }
                 }
             }
-            
+
             // Open all parent disclosures
             openNestedDisclosures(box)
-            
+
             // Scroll the nested area so the target box is visible
-            setTimeout(50) {
+            setTimeout( {
                 try {
                     box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
                 } catch (e: Exception) {
                     console.log("Failed to scroll to box", e)
                 }
-            }
-            
+            }, 50)
+
             // Deselect all boxes first
             selected.toList().forEach { deselectBox(it) }
-            
+
             // Select the target box
             selectBox(box)
-            
+
             // Set the selected property
             selectedProperty = sel.property
             window.unsafeCast<dynamic>().selectedProperty = sel.property
-            
+
             // Trigger editor to show this property
             val w = window.unsafeCast<dynamic>()
             if (w.switchToProperty != null && w.switchToProperty != undefined) {
@@ -634,10 +705,10 @@ suspend fun main() {
                     console.log("switchToProperty failed", e)
                 }
             }
-            
+
             // Scroll to line if specified
             if (sel.scrollToLine != null) {
-                setTimeout(100) {
+                setTimeout( {
                     val editor = w.globalEditor
                     if (editor != null && editor != undefined) {
                         try {
@@ -645,7 +716,7 @@ suspend fun main() {
                             if (monaco != null && monaco != undefined) {
                                 // Reveal line at center
                                 editor.revealLineInCenter(sel.scrollToLine)
-                                
+
                                 // Highlight line if specified
                                 if (sel.highlightLine != null) {
                                     val Range = monaco.Range
@@ -658,66 +729,56 @@ suspend fun main() {
                             console.log("Failed to scroll to line", e)
                         }
                     }
-                }
+                }, 100)
             }
         }
-        
+
         Handled.yes
     }
-    
+
     handlers.put("show-slide-note") { message, _ ->
         val note = Json.decodeFromJsonElement<ShowSlideNote>(message.payload!!)
-        
+        slideNoteAnchorUid = note.uid.ifBlank { null }
+
         // Get or create the slide note overlay
         var overlay = document.getElementById("slide-note-overlay") as? HTMLElement
         if (overlay == null) {
             overlay = document.createElement("div") as HTMLElement
             overlay.id = "slide-note-overlay"
+            overlay.classList.add("fallback")
             overlay.style.apply {
-                position = "fixed"
-                top = "20px"
-                right = "20px"
+                position = "absolute"
                 maxWidth = "400px"
-                backgroundColor = "rgba(40, 40, 50, 0.95)"
-                color = "white"
+                backgroundColor = "rgba(32, 32, 36, 0.9)"
+                color = "#e6e6e6"
                 padding = "20px"
                 borderRadius = "8px"
-                boxShadow = "0 4px 6px rgba(0, 0, 0, 0.3)"
+                boxShadow = "0 4px 12px rgba(0, 0, 0, 0.4)"
                 zIndex = "10000"
-                fontFamily = "system-ui, -apple-system, sans-serif"
-                fontSize = "14px"
-                lineHeight = "1.5"
-                unsafeCast<dynamic>().backdropFilter = "blur(10px)"
+                fontFamily = "\"Iosevka\", \"Iosevka Term\", \"Iosevka Nerd Font\", \"Fira Code\", Menlo, Consolas, monospace"
+                fontSize = "13px"
+                lineHeight = "1.6"
+                unsafeCast<dynamic>().backdropFilter = "blur(12px) brightness(1.04)"
             }
             document.body!!.appendChild(overlay)
-            
-            // Add close button if persistent
-            if (note.persistent) {
-                val closeBtn = document.createElement("button") as HTMLElement
-                closeBtn.innerHTML = "×"
-                closeBtn.style.apply {
-                    position = "absolute"
-                    top = "5px"
-                    right = "5px"
-                    background = "transparent"
-                    border = "none"
-                    color = "white"
-                    fontSize = "24px"
-                    cursor = "pointer"
-                    padding = "0"
-                    width = "24px"
-                    height = "24px"
-                }
-                closeBtn.onclick = {
-                    overlay.style.display = "none"
-                }
-                overlay.appendChild(closeBtn)
-            }
         }
-        
+
         overlay.innerHTML = note.html
         overlay.style.display = "block"
-        
+
+        overlay.querySelector(".close-btn")?.let { overlay.removeChild(it) }
+        if (note.persistent) {
+            val closeBtn = document.createElement("button") as HTMLElement
+            closeBtn.classList.add("close-btn")
+            closeBtn.innerHTML = "×"
+            closeBtn.onclick = {
+                overlay.style.display = "none"
+            }
+            overlay.appendChild(closeBtn)
+        }
+
+        positionSlideNoteOverlay(overlay, slideNoteAnchorUid)
+
         // Setup link handlers for navigation
         val links = overlay.getElementsByTagName("a").asList()
         links.forEach { link ->
@@ -733,15 +794,16 @@ suspend fun main() {
                 null
             }
         }
-        
+
         Handled.yes
     }
-    
+
     handlers.put("hide-slide-note") { message, _ ->
         val overlay = document.getElementById("slide-note-overlay") as? HTMLElement
         if (overlay != null) {
             overlay.style.display = "none"
         }
+        slideNoteAnchorUid = null
         Handled.yes
     }
 
@@ -893,7 +955,7 @@ suspend fun main() {
         event.preventDefault()
         null
     }
-    
+
     body.ondrop = { event ->
         event.preventDefault()
         val files = event.asDynamic().dataTransfer.files
@@ -1230,6 +1292,7 @@ suspend fun main() {
 
     window.addEventListener("resize", {
         canvasGestures.rebuildConnectionGroup()
+        repositionSlideNoteOverlayIfVisible()
     })
 }
 

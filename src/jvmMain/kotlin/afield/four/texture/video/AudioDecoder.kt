@@ -3,6 +3,7 @@ package afield.four.texture.video
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVPacket
 import org.bytedeco.ffmpeg.avformat.AVFormatContext
+import org.bytedeco.ffmpeg.avutil.AVChannelLayout
 import org.bytedeco.ffmpeg.avutil.AVFrame
 import org.bytedeco.ffmpeg.global.avcodec.*
 import org.bytedeco.ffmpeg.global.avformat.*
@@ -10,7 +11,6 @@ import org.bytedeco.ffmpeg.global.avutil.*
 import org.bytedeco.ffmpeg.global.swresample.*
 import org.bytedeco.ffmpeg.swresample.SwrContext
 import org.bytedeco.javacpp.BytePointer
-import org.bytedeco.javacpp.IntPointer
 import org.bytedeco.javacpp.PointerPointer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -129,23 +129,21 @@ class AudioDecoder(private val audioPath: String) {
             val needsResampling = sampleRate != targetSampleRate || channels != targetChannels
             if (needsResampling) {
                 swrContext = swr_alloc()
-                
-                // Set input channel layout
-                val inChannelLayout = when (channels) {
-                    1 -> AV_CH_LAYOUT_MONO
-                    2 -> AV_CH_LAYOUT_STEREO
-                    else -> av_get_default_channel_layout(channels)
-                }
-                
-                // Set output channel layout
-                val outChannelLayout = when (targetChannels) {
-                    1 -> AV_CH_LAYOUT_MONO
-                    2 -> AV_CH_LAYOUT_STEREO
-                    else -> av_get_default_channel_layout(targetChannels)
+
+                // Configure channel layouts using the new AVChannelLayout API (av_get_default_channel_layout was removed)
+                val inChannelLayout = codecContext!!.ch_layout()
+                if (inChannelLayout.nb_channels() == 0) {
+                    av_channel_layout_default(inChannelLayout, channels)
                 }
 
-                av_opt_set_int(swrContext, "in_channel_layout", inChannelLayout, 0)
-                av_opt_set_int(swrContext, "out_channel_layout", outChannelLayout, 0)
+                val outChannelLayout = AVChannelLayout()
+                av_channel_layout_default(outChannelLayout, targetChannels)
+
+                if (av_opt_set_chlayout(swrContext, "in_chlayout", inChannelLayout, 0) < 0 ||
+                    av_opt_set_chlayout(swrContext, "out_chlayout", outChannelLayout, 0) < 0) {
+                    println("Error: Could not set channel layout on resampler")
+                    return false
+                }
                 av_opt_set_int(swrContext, "in_sample_rate", sampleRate.toLong(), 0)
                 av_opt_set_int(swrContext, "out_sample_rate", targetSampleRate.toLong(), 0)
                 av_opt_set_sample_fmt(swrContext, "in_sample_fmt", codecContext!!.sample_fmt(), 0)
@@ -261,7 +259,7 @@ class AudioDecoder(private val audioPath: String) {
             } else {
                 // No resampling needed, use frame data directly
                 outputSamples = frame!!.nb_samples()
-                
+
                 // Check if data is planar or interleaved
                 if (av_sample_fmt_is_planar(codecContext!!.sample_fmt()) != 0) {
                     // Planar format - need to interleave

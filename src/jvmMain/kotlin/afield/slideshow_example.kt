@@ -1,11 +1,14 @@
 package afield
 
+import afield.logger.lprintln
+import afield.stdlib.action
+import afield.stdlib.actions
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 /**
  * Example slideshow demonstrating the slideshow DSL
- * 
+ *
  * To use this, create boxes in Field and run this code in one of them.
  * The slideshow will guide users through the document.
  */
@@ -14,8 +17,8 @@ fun Box.exampleSlideShow() {
     // Get references to boxes (you can also use selectBoxByName)
     val welcomeBox = this
     val codeBox = this.children.firstOrNull() ?: this
-    val visualBox = this.children.getOrNull(1) ?: this
-    
+    val visualBox = this.children.iterator().next()
+
     // Create the slideshow
     val show = slideShow {
         step("Welcome to Field") {
@@ -27,10 +30,10 @@ fun Box.exampleSlideShow() {
                 <p><strong>Click the links below to navigate:</strong></p>
                 <p><a href="#slideshow:next">Start the tour →</a></p>
             """.trimIndent(), persistent = false)
-            
+
             selectBox(welcomeBox, property = "code")
         }
-        
+
         step("Understanding Boxes") {
             note("""
                 <h3>Boxes are the Core Abstraction</h3>
@@ -44,12 +47,12 @@ fun Box.exampleSlideShow() {
                 <br>
                 <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
             """.trimIndent())
-            
+
             // Example: Select box by name instead of by reference
             // selectBoxByName("My Code Box", property = "code", line = 1)
             selectBox(codeBox, property = "code", line = 1)
         }
-        
+
         step("Writing Code") {
             note("""
                 <h3>Live Coding</h3>
@@ -64,15 +67,15 @@ fun Box.exampleSlideShow() {
                 <br>
                 <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
             """.trimIndent())
-            
+
             selectBox(codeBox, property = "code", line = 5, highlight = 5)
-            
+
             onEnter {
                 // You could run some code when entering this step
-                lprintln("User entered the 'Writing Code' step")
+                lprintln("info,slideshow", "User entered the 'Writing Code' step")
             }
         }
-        
+
         step("Visual Output") {
             note("""
                 <h3>Graphics and Visualization</h3>
@@ -86,11 +89,11 @@ fun Box.exampleSlideShow() {
                 </ul>
                 <br>
                 <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
-            """.trimIndent())
-            
+            """.trimIndent(), anchorBox = visualBox)
+
             selectBox(visualBox, property = "fragment")
         }
-        
+
         step("Next Steps") {
             note("""
                 <h3>Keep Exploring!</h3>
@@ -106,15 +109,15 @@ fun Box.exampleSlideShow() {
                 <br>
                 <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:stop">Finish tour</a></p>
             """.trimIndent(), persistent = true)
-            
+
             selectBox(welcomeBox, property = "code")
-            
+
             onEnter {
-                lprintln("User completed the tour!")
+                lprintln("info,slideshow","User completed the tour!")
             }
         }
     }
-    
+
     // Start the slideshow
     GlobalScope.launch {
         show.start()
@@ -130,13 +133,13 @@ fun Box.simpleSlideShowExample() {
             note("<h3>First Step</h3><p>Welcome!</p><p><a href='#slideshow:next'>Next →</a></p>")
             selectBox(this@simpleSlideShowExample)
         }
-        
+
         step("Step 2") {
             note("<h3>Second Step</h3><p>Look at line 10!</p><p><a href='#slideshow:previous'>← Back</a></p>")
             selectBox(this@simpleSlideShowExample, line = 10, highlight = 10)
         }
     }
-    
+
     GlobalScope.launch {
         show.start()
     }
@@ -147,25 +150,25 @@ fun Box.simpleSlideShowExample() {
  */
 fun Box.installSlideShowControls() {
     // Add actions to control the slideshow
-    this.actions["▶ Start Slideshow"] = {
+    this.actions["▶ Start Slideshow"] = action {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.start()
         }
     }
-    
-    this.actions["→ Next Step"] = {
+
+    this.actions["→ Next Step"] = action {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.next()
         }
     }
-    
-    this.actions["← Previous Step"] = {
+
+    this.actions["← Previous Step"] = action {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.previous()
         }
     }
-    
-    this.actions["■ Stop Slideshow"] = {
+
+    this.actions["■ Stop Slideshow"] = action {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.stop()
         }

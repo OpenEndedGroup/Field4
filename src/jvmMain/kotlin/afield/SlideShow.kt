@@ -1,11 +1,11 @@
 package afield
 
+import afield.logger.lprintln
 import afield.stdlib.Delegation
-import kotlinx.coroutines.delay
 
 /**
  * SlideShow - A DSL for creating guided tours through Field documents
- * 
+ *
  * Example usage:
  * ```
  * slideShow {
@@ -17,7 +17,7 @@ import kotlinx.coroutines.delay
  *         """)
  *         selectBox(myBox)
  *     }
- *     
+ *
  *     step("Code Editing") {
  *         note("Now let's look at some code...")
  *         selectBox(codeBox, property = "code", line = 5)
@@ -45,7 +45,7 @@ fun Box.slideShow(init: SlideShowBuilder.() -> Unit): SlideShowInstance {
  */
 class SlideShowBuilder(val hostBox: Box) {
     private val steps = mutableListOf<SlideStep>()
-    
+
     /**
      * Defines a step in the slideshow
      */
@@ -54,7 +54,7 @@ class SlideShowBuilder(val hostBox: Box) {
         builder.init()
         steps.add(builder.build())
     }
-    
+
     fun build(): SlideShowInstance {
         return SlideShowInstance(hostBox, steps)
     }
@@ -65,6 +65,7 @@ class SlideShowBuilder(val hostBox: Box) {
  */
 class SlideStepBuilder(val title: String, val hostBox: Box) {
     private var noteHtml: String? = null
+    private var noteAnchorBox: Box? = null
     private var targetBox: Box? = null
     private var targetProperty: String = "code"
     private var targetLine: Int? = null
@@ -72,15 +73,23 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private var persistent: Boolean = false
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
-    
+
     /**
      * Sets the HTML note to display for this step
      */
-    fun note(html: String, persistent: Boolean = false) {
+    fun note(html: String, persistent: Boolean = false, anchorBox: Box? = null) {
         this.noteHtml = html
         this.persistent = persistent
+        this.noteAnchorBox = anchorBox
     }
-    
+
+    /**
+    * Anchors the note to a specific box (defaults to the slideshow host box)
+    */
+    fun anchorNoteTo(box: Box) {
+        this.noteAnchorBox = box
+    }
+
     /**
      * Selects a box and optionally scrolls to a specific line
      */
@@ -90,7 +99,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
         this.targetLine = line
         this.highlightLine = highlight
     }
-    
+
     /**
      * Selects a box by name (searches through children recursively) and optionally scrolls to a specific line
      */
@@ -104,7 +113,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             }
             return null
         }
-        
+
         val found = findBoxByName(hostBox.root, name)
         if (found != null) {
             this.targetBox = found
@@ -112,28 +121,29 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             this.targetLine = line
             this.highlightLine = highlight
         } else {
-            lprintln("Warning: Could not find box with name '$name'")
+            lprintln("warning,slideshow", "Warning: Could not find box with name '$name'")
         }
     }
-    
+
     /**
      * Code to execute when entering this step
      */
     fun onEnter(action: suspend () -> Unit) {
         this.onEnter = action
     }
-    
+
     /**
      * Code to execute when leaving this step
      */
     fun onExit(action: suspend () -> Unit) {
         this.onExit = action
     }
-    
+
     fun build(): SlideStep {
         return SlideStep(
             title = title,
             noteHtml = noteHtml,
+            noteAnchorBox = noteAnchorBox ?: hostBox,
             targetBox = targetBox,
             targetProperty = targetProperty,
             targetLine = targetLine,
@@ -151,6 +161,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
 data class SlideStep(
     val title: String,
     val noteHtml: String?,
+    val noteAnchorBox: Box?,
     val targetBox: Box?,
     val targetProperty: String,
     val targetLine: Int?,
@@ -169,10 +180,10 @@ class SlideShowInstance(
 ) {
     var currentStepIndex = -1
         private set
-    
+
     val currentStep: SlideStep?
         get() = if (currentStepIndex >= 0 && currentStepIndex < steps.size) steps[currentStepIndex] else null
-    
+
     /**
      * Goes to a specific step
      */
@@ -181,29 +192,29 @@ class SlideShowInstance(
             lprintln("SlideShow: Step $index out of bounds (0..${steps.size - 1})")
             return
         }
-        
+
         // Exit current step
         currentStep?.onExit?.invoke()
-        
+
         currentStepIndex = index
         val step = steps[index]
-        
+
         // Execute onEnter
         step.onEnter?.invoke()
-        
+
         // Show note if present
         if (step.noteHtml != null) {
             _send(Message("show-slide-note").payload(
                 ShowSlideNote(
                     html = step.noteHtml,
-                    uid = step.targetBox?.id ?: "",
+                    uid = step.noteAnchorBox?.id ?: hostBox.id,
                     persistent = step.persistent
                 )
             ))
         } else {
             _send(Message("hide-slide-note").payload(HideSlideNote()))
         }
-        
+
         // Select and scroll to box if specified
         if (step.targetBox != null) {
             _send(Message("select-and-edit-box").payload(
@@ -216,14 +227,14 @@ class SlideShowInstance(
             ))
         }
     }
-    
+
     /**
      * Goes to the next step
      */
     suspend fun next() {
         goToStep(currentStepIndex + 1)
     }
-    
+
     /**
      * Goes to the previous step
      */
@@ -232,14 +243,14 @@ class SlideShowInstance(
             goToStep(currentStepIndex - 1)
         }
     }
-    
+
     /**
      * Starts the slideshow from the beginning
      */
     suspend fun start() {
         goToStep(0)
     }
-    
+
     /**
      * Stops the slideshow and hides notes
      */
@@ -248,12 +259,12 @@ class SlideShowInstance(
         currentStepIndex = -1
         _send(Message("hide-slide-note").payload(HideSlideNote()))
     }
-    
+
     /**
      * Returns true if there is a next step
      */
     fun hasNext(): Boolean = currentStepIndex < steps.size - 1
-    
+
     /**
      * Returns true if there is a previous step
      */
@@ -279,11 +290,11 @@ fun Box.selectAndEdit(property: String = "code", line: Int? = null, highlight: I
 /**
  * Show a slide note
  */
-fun Box.showNote(html: String, persistent: Boolean = false) {
+fun Box.showNote(html: String, persistent: Boolean = false, anchorBox: Box? = this) {
     _send(Message("show-slide-note").payload(
         ShowSlideNote(
             html = html,
-            uid = this.id,
+            uid = anchorBox?.id ?: this.id,
             persistent = persistent
         )
     ))

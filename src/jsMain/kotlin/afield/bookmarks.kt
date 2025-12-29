@@ -5,9 +5,7 @@ import kotlinx.browser.window
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.w3c.dom.HTMLElement
-import org.w3c.dom.get
-import kotlin.js.ExperimentalJsExport
-import kotlin.js.JsExport
+import org.w3c.dom.asList
 
 /**
  * Bookmark System - Frontend Implementation
@@ -47,6 +45,12 @@ data class BookmarkData(
 )
 
 private val json = Json { ignoreUnknownKeys = true }
+private var cachedBookmarksJson: String? = null
+
+private fun findBoxByUid(uid: String): HTMLElement? {
+    val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
+    return boxes.firstOrNull { it.asDynamic().uid == uid } as? HTMLElement
+}
 
 /**
  * Captures the current scroll/pan position of the main canvas
@@ -64,7 +68,7 @@ fun captureScrollPosition(): ScrollPosition {
 fun captureSelectedBox(): String? {
     if (selected.size == 1) {
         val selectedBox = selected.iterator().next()
-        return selectedBox.getAttribute("uid")
+        return selectedBox.asDynamic().uid as? String
     }
     return null
 }
@@ -98,14 +102,14 @@ fun captureCursorPosition(): Pair<Int, Int>? {
  */
 fun captureNestingState(): Map<String, NestingInfo> {
     val state = mutableMapOf<String, NestingInfo>()
-    
+
     try {
-        val boxes = document.querySelectorAll("[uid]")
-        for (i in 0 until boxes.length) {
-            val box = boxes[i] as? HTMLElement ?: continue
+        val boxes = document.body?.getElementsByClassName("box")?.asList() ?: emptyList()
+        boxes.forEach { rawBox ->
+            val box = rawBox as? HTMLElement ?: return@forEach
             val nestedArea = box.querySelector(".disclosure-nested") as? HTMLElement
             if (nestedArea != null) {
-                val uid = box.getAttribute("uid")
+                val uid = box.asDynamic().uid as? String
                 if (uid != null) {
                     val isOpen = nestedArea.style.display != "none"
                     state[uid] = NestingInfo(isOpen)
@@ -115,7 +119,7 @@ fun captureNestingState(): Map<String, NestingInfo> {
     } catch (e: dynamic) {
         console.log("Error capturing nesting state:", e)
     }
-    
+
     return state
 }
 
@@ -125,7 +129,7 @@ fun captureNestingState(): Map<String, NestingInfo> {
 fun captureBookmark(bookmarkNumber: Int): Bookmark {
     val cursor = captureCursorPosition()
     val timestamp = js("Date.now()") as Double
-    
+
     return Bookmark(
         id = "bookmark_$bookmarkNumber",
         name = "Bookmark $bookmarkNumber",
@@ -157,15 +161,15 @@ fun restoreScrollPosition(position: ScrollPosition) {
  */
 fun restoreSelectedBox(boxId: String) {
     try {
-        val box = document.querySelector("[uid=\"$boxId\"]") as? HTMLElement
+        val box = findBoxByUid(boxId)
         if (box != null) {
             // Clear current selection
             val currentSelected = selected.toList()
             currentSelected.forEach { deselectBox(it) }
-            
+
             // Select the target box
             selectBox(box)
-            
+
             // Scroll into view
             box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
         }
@@ -181,6 +185,8 @@ fun restoreEditedProperty(boxId: String, property: String) {
     try {
         restoreSelectedBox(boxId)
         selectedProperty = property
+        // Tell Monaco runtime not to re-apply its remembered view state for the upcoming open
+        js("window").suppressNextEditorStateRestore = true
         showMonaco()
     } catch (e: dynamic) {
         console.log("Error restoring edited property:", e)
@@ -194,9 +200,14 @@ fun restoreCursorPosition(line: Int, column: Int) {
     try {
         val w = js("window")
         if (w.globalEditor != null && w.globalEditor != undefined) {
-            w.globalEditor.setPosition(js("{ lineNumber: $line, column: $column }"))
+            w.globalEditor.setPosition(JSON.parse("{ \"lineNumber\": $line, \"column\": $column }"))
             w.globalEditor.revealLineInCenter(line)
             w.globalEditor.focus()
+            // Persist this as the new remembered state so Monaco doesn't bounce back
+            val vs = w.globalEditor.saveViewState()
+            if (vs != null && vs != undefined) {
+                w.globalEditor.restoreViewState(vs)
+            }
         }
     } catch (e: dynamic) {
         console.log("Error restoring cursor position:", e)
@@ -209,7 +220,7 @@ fun restoreCursorPosition(line: Int, column: Int) {
 fun restoreNestingState(state: Map<String, NestingInfo>) {
     try {
         state.forEach { (boxId, boxState) ->
-            val box = document.querySelector("[uid=\"$boxId\"]")
+            val box = findBoxByUid(boxId)
             if (box != null) {
                 val nestedArea = box.querySelector(".disclosure-nested") as? HTMLElement
                 if (nestedArea != null) {
@@ -227,28 +238,41 @@ fun restoreNestingState(state: Map<String, NestingInfo>) {
  */
 fun restoreBookmark(bookmark: Bookmark) {
     try {
+        console.log(" restoring bookmark ", bookmark.name, " at ", bookmark.timestamp, "")
+        console.log(bookmark)
+
         // Restore scroll position
-        bookmark.scrollPosition?.let { restoreScrollPosition(it) }
-        
+        bookmark.scrollPosition?.let {
+            console.log(" restoring scroll position ", it)
+            restoreScrollPosition(it)
+        }
+
         // Restore nesting state first (before selecting boxes)
-        bookmark.nestingState?.let { restoreNestingState(it) }
-        
+        bookmark.nestingState?.let {
+            console.log(" restoring nesting state ", it)
+            restoreNestingState(it)
+        }
+
         // Restore selected box and edited property
         bookmark.selectedBox?.let { boxId ->
             if (bookmark.editedProperty != null) {
+                console.log(" restoring property ", bookmark.editedProperty, " in box ", boxId)
                 restoreEditedProperty(boxId, bookmark.editedProperty)
             } else {
+                console.log(" restoring selection in box ", boxId)
                 restoreSelectedBox(boxId)
             }
         }
-        
+
         // Restore cursor position (after opening editor)
         if (bookmark.cursorLine != null && bookmark.cursorColumn != null) {
+            // Wait longer than Monaco's own view-state restore to avoid flicker back
             window.setTimeout({
+                console.log(" restoring line / col", bookmark.cursorLine, bookmark.cursorColumn)
                 restoreCursorPosition(bookmark.cursorLine, bookmark.cursorColumn)
-            }, 300)
+            }, 500)
         }
-        
+
         notify("Restored ${bookmark.name}", "bookmarks")
     } catch (e: dynamic) {
         console.log("Error restoring bookmark:", e)
@@ -261,14 +285,11 @@ fun restoreBookmark(bookmark: Bookmark) {
  */
 fun loadBookmarks(): BookmarkData {
     return try {
-        val rootBox = document.querySelector("[uid=\"root\"]")
-        if (rootBox != null) {
-            val bookmarksJson = rootBox.asDynamic().bookmarks as? String
-            if (bookmarksJson != null && bookmarksJson.isNotEmpty()) {
-                json.decodeFromString<BookmarkData>(bookmarksJson)
-            } else {
-                BookmarkData(version = 1, bookmarks = emptyList())
-            }
+        val rootBox = findBoxByUid("root")
+        val bookmarksJson = (rootBox?.asDynamic()?.bookmarks as? String) ?: cachedBookmarksJson
+
+        if (bookmarksJson != null && bookmarksJson.isNotEmpty()) {
+            json.decodeFromString<BookmarkData>(bookmarksJson)
         } else {
             BookmarkData(version = 1, bookmarks = emptyList())
         }
@@ -284,6 +305,15 @@ fun loadBookmarks(): BookmarkData {
 fun saveBookmarks(bookmarkData: BookmarkData) {
     try {
         val bookmarksJson = json.encodeToString(BookmarkData.serializer(), bookmarkData)
+
+        cachedBookmarksJson = bookmarksJson
+
+        // Keep the DOM copy in sync so subsequent loads see the freshly saved value
+        val rootBox = findBoxByUid("root")
+        rootBox?.asDynamic()?.bookmarks = bookmarksJson
+
+
+
         send(
             Message("set-string").payload(
                 Set_string("root", "bookmarks", bookmarksJson)
@@ -305,14 +335,14 @@ fun saveBookmarkSlot(bookmarkNumber: Int) {
         notify("Invalid bookmark number: $bookmarkNumber", "error")
         return
     }
-    
+
     try {
         val bookmarkData = loadBookmarks()
         val newBookmark = captureBookmark(bookmarkNumber)
-        
+
         // Remove existing bookmark with same id, then add new one
         val updatedBookmarks = bookmarkData.bookmarks.filter { it.id != newBookmark.id } + newBookmark
-        
+
         saveBookmarks(BookmarkData(version = 1, bookmarks = updatedBookmarks))
         notify("Saved Bookmark $bookmarkNumber", "bookmarks")
     } catch (e: dynamic) {
@@ -331,11 +361,11 @@ fun restoreBookmarkSlot(bookmarkNumber: Int) {
         notify("Invalid bookmark number: $bookmarkNumber", "error")
         return
     }
-    
+
     try {
         val bookmarkData = loadBookmarks()
         val bookmark = bookmarkData.bookmarks.find { it.id == "bookmark_$bookmarkNumber" }
-        
+
         if (bookmark != null) {
             restoreBookmark(bookmark)
         } else {
@@ -353,10 +383,10 @@ fun restoreBookmarkSlot(bookmarkNumber: Int) {
  * - Shift+Ctrl/Cmd+F1-F9: Save bookmark 1-9
  */
 fun registerBookmarkShortcuts() {
-    document.addEventListener("keydown", { event ->
+    fun handler(event: dynamic) {
         val ke = event.asDynamic()
-        val key = ke.key as? String ?: return@addEventListener
-        
+        val key = ke.key as? String ?: return@handler
+
         // Check for F1-F9 keys
         if (key.startsWith("F") && key.length == 2) {
             val fKeyNumber = key.substring(1).toIntOrNull()
@@ -364,7 +394,7 @@ fun registerBookmarkShortcuts() {
                 val shiftKey = ke.shiftKey as? Boolean ?: false
                 val ctrlKey = ke.ctrlKey as? Boolean ?: false
                 val metaKey = ke.metaKey as? Boolean ?: false
-                
+
                 // Shift+Ctrl/Cmd+F-key: Save bookmark
                 if (shiftKey && (ctrlKey || metaKey)) {
                     ke.preventDefault()
@@ -377,7 +407,11 @@ fun registerBookmarkShortcuts() {
                 }
             }
         }
-    })
+    }
+
+    // Capture at the window level so Monaco's DOM doesn't swallow the F-keys
+    window.addEventListener("keydown", { event -> handler(event) }, true)
+    document.addEventListener("keydown", { event -> handler(event) })
 }
 
 /**
@@ -385,33 +419,33 @@ fun registerBookmarkShortcuts() {
  */
 fun registerBookmarkActions() {
     val bookmarkActions = js("[]")
-    
+
     // Add actions for bookmarks 1-9
     for (i in 1..9) {
         // Save bookmark action
         val saveAction = js("{}")
         saveAction.id = "save-bookmark-$i"
         saveAction.label = "Save Bookmark $i"
-        saveAction.canvasKeybinding = js("(event) => false") // Handled by global keydown
-        saveAction.run = js("() => { saveBookmarkSlot($i) }")
+        saveAction.canvasKeybinding = eval("(event) => false") // Handled by global keydown
+        saveAction.run = eval("() => { saveBookmarkSlot($i) }")
         bookmarkActions.push(saveAction)
-        
+
         // Restore bookmark action
         val restoreAction = js("{}")
         restoreAction.id = "restore-bookmark-$i"
         restoreAction.label = "Restore Bookmark $i"
-        restoreAction.canvasKeybinding = js("(event) => false") // Handled by global keydown
-        restoreAction.run = js("() => { restoreBookmarkSlot($i) }")
+        restoreAction.canvasKeybinding = eval("(event) => false") // Handled by global keydown
+        restoreAction.run = eval("() => { restoreBookmarkSlot($i) }")
         bookmarkActions.push(restoreAction)
     }
-    
+
     // Add to builtin actions
     val existingBuiltin = allActions.builtin ?: js("[]")
     for (i in 0 until bookmarkActions.length) {
         existingBuiltin.push(bookmarkActions[i])
     }
     allActions.builtin = existingBuiltin
-    
+
     updateActions()
 }
 
@@ -423,9 +457,9 @@ fun registerBookmarkActions() {
 fun initializeBookmarkSystem() {
     // Register keyboard shortcuts
     registerBookmarkShortcuts()
-    
+
     // Register actions
     registerBookmarkActions()
-    
+
     console.log("Bookmark system initialized")
 }

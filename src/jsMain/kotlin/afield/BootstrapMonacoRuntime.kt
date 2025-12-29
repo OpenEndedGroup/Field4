@@ -185,16 +185,22 @@ private fun monitorSelection() {
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
             if (state != null) {
+                val suppressRestore = (w.asDynamic().suppressNextEditorStateRestore as? Boolean) == true
+                if (suppressRestore) {
+                    w.asDynamic().suppressNextEditorStateRestore = false
+                }
                 var disposable: dynamic = null
-                disposable = globalEditor.onDidChangeModelContent { event: dynamic ->
-                    if (event.isFlush as? Boolean == true) {
-                        if (disposable != null) {
-                            disposable.dispose()
+                if (!suppressRestore) {
+                    disposable = globalEditor.onDidChangeModelContent { event: dynamic ->
+                        if (event.isFlush as? Boolean == true) {
+                            if (disposable != null) {
+                                disposable.dispose()
+                            }
+                            window.setTimeout({
+                                globalEditor.restoreViewState(js("JSON.parse")(state))
+                                globalEditor.focus()
+                            }, 300)
                         }
-                        window.setTimeout({
-                            globalEditor.restoreViewState(js("JSON.parse")(state))
-                            globalEditor.focus()
-                        }, 300)
                     }
                 }
             }
