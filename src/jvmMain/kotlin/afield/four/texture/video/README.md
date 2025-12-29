@@ -124,3 +124,73 @@ See `VideoTextureExample.kt` for complete usage examples including:
   - Semi-planar: U and V are interleaved in the same plane
 
 This format is efficient for high dynamic range (HDR) video content and modern video codecs.
+
+## Audio Support
+
+### Overview
+Synchronized audio playback is now available using OpenAL from LWJGL and FFmpeg audio decoding. The audio system integrates seamlessly with the video texture system.
+
+### Components
+
+- **AudioDecoder**: FFmpeg-based audio stream decoder
+  - Extracts audio from video/audio files
+  - Decodes to PCM format (16-bit signed)
+  - Automatic resampling to target sample rate
+  - Synchronized seeking with video
+
+- **AudioPlayer**: OpenAL-based audio playback
+  - Low-latency streaming playback
+  - Buffer queue management (4 buffers)
+  - Precise timing for A/V synchronization
+  - Volume control and playback state management
+
+### Usage Example
+
+```kotlin
+// Load audio from video file
+val audioDecoder = AudioDecoder("video.mp4")
+audioDecoder.open(outputSampleRate = 44100, outputChannels = 2)
+
+// Initialize OpenAL player
+val audioPlayer = AudioPlayer(sampleRate = 44100, channels = 2)
+audioPlayer.initialize()
+
+// Pre-fill audio buffers
+repeat(3) {
+    audioDecoder.decodeFrame()?.let { audioPlayer.queueBuffer(it.data) }
+}
+
+// Start synchronized playback
+audioPlayer.play()
+videoTexture.play()
+
+// In render loop:
+audioPlayer.processBuffers()
+while (audioPlayer.getFreeBufferCount() > 0) {
+    audioDecoder.decodeFrame()?.let { audioPlayer.queueBuffer(it.data) }
+}
+
+// Get audio time for video synchronization
+val audioTime = audioPlayer.getCurrentTime()
+```
+
+### Synchronization Strategy
+
+- **Master Clock**: Audio playback time serves as the master clock
+- **Video Sync**: Video frames are decoded to match audio time
+- **Precision**: Sample-accurate timing via OpenAL
+- **Buffer Management**: Continuous queuing prevents underruns
+
+### See Also
+
+- `AudioVideoExample.kt`: Complete examples and usage patterns
+- `AUDIO_OPTIONS.md`: Comparison of audio backend options
+- `AUDIO_IMPLEMENTATION.md`: Detailed implementation guide
+
+### Dependencies
+
+Audio support requires OpenAL from LWJGL (automatically included):
+```kotlin
+implementation("org.lwjgl:lwjgl-openal:$lwjglVersion")
+implementation("org.lwjgl:lwjgl-openal::$lwjglNatives")
+```
