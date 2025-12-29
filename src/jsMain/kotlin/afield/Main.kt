@@ -148,6 +148,10 @@ private fun repositionSlideNoteOverlayIfVisible() {
     val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return
     if (overlay.style.display != "none") {
         positionSlideNoteOverlay(overlay, slideNoteAnchorUid)
+        // Redraw annotations when the overlay moves
+        if (currentAnnotations.isNotEmpty()) {
+            redrawSlideAnnotations()
+        }
     }
 }
 
@@ -155,30 +159,42 @@ private fun repositionSlideNoteOverlayIfVisible() {
  * Animates slide note text letter by letter with pauses on punctuation
  */
 private fun animateSlideNoteText(overlay: HTMLElement, html: String) {
-    // Create a temporary container to parse HTML
+    // For animation, we'll create a wrapper that progressively reveals content
+    overlay.innerHTML = ""
+    val contentDiv = document.createElement("div") as HTMLElement
+    overlay.appendChild(contentDiv)
+    
+    // Extract text content while preserving structure
     val tempDiv = document.createElement("div") as HTMLElement
     tempDiv.innerHTML = html
-    
-    // Clear the overlay and create an animation container
-    overlay.innerHTML = ""
-    val animContainer = document.createElement("div") as HTMLElement
-    overlay.appendChild(animContainer)
+    val fullText = tempDiv.textContent ?: ""
     
     var charIndex = 0
-    val allText = tempDiv.textContent ?: ""
     val delay = 15.0 // milliseconds per character
+    var currentHtml = html
+    
+    // Simple progressive reveal by wrapping everything in a span with growing content
+    contentDiv.innerHTML = "<span style='opacity: 0;'>.</span>" + html
+    val textNodes = collectTextNodes(contentDiv)
     
     fun animateNextChar() {
-        if (charIndex < allText.length) {
-            val char = allText[charIndex]
+        if (charIndex < fullText.length) {
+            val char = fullText[charIndex]
+            
+            // Find and reveal the next character in the DOM
+            var revealed = 0
+            for (node in textNodes) {
+                val text = node.textContent ?: ""
+                if (revealed + text.length > charIndex) {
+                    // This node contains our target character
+                    val localIndex = charIndex - revealed
+                    node.textContent = text.substring(0, localIndex + 1)
+                    break
+                }
+                revealed += text.length
+            }
+            
             charIndex++
-            
-            // Rebuild HTML progressively
-            tempDiv.innerHTML = html
-            val visibleText = allText.substring(0, charIndex)
-            
-            // Create a version with truncated text content
-            animContainer.innerHTML = createTruncatedHTML(html, visibleText)
             
             // Extra pause for periods, commas, and other punctuation
             val pauseExtra = when (char) {
@@ -193,35 +209,66 @@ private fun animateSlideNoteText(overlay: HTMLElement, html: String) {
         }
     }
     
+    // Hide all text initially
+    for (node in textNodes) {
+        node.textContent = ""
+    }
+    
     animateNextChar()
 }
 
 /**
- * Creates HTML with text truncated to a certain length
+ * Collects all text nodes from a DOM tree for animation
  */
-private fun createTruncatedHTML(html: String, targetText: String): String {
-    // Simple approach: just progressively reveal the innerHTML
-    // For a more sophisticated version, we'd need to traverse DOM nodes
-    val tempDiv = document.createElement("div") as HTMLElement
-    tempDiv.innerHTML = html
-    val fullText = tempDiv.textContent ?: ""
+private fun collectTextNodes(element: org.w3c.dom.Node): List<org.w3c.dom.Node> {
+    val result = mutableListOf<org.w3c.dom.Node>()
     
-    if (targetText.length >= fullText.length) {
-        return html
+    fun traverse(node: org.w3c.dom.Node) {
+        if (node.nodeType == 3.toShort()) { // TEXT_NODE
+            result.add(node)
+        } else {
+            val children = node.childNodes
+            for (i in 0 until children.length) {
+                children.item(i)?.let { traverse(it) }
+            }
+        }
     }
     
-    // Simple truncation: find the text and show up to that point
-    // This is a simplified version - in production you'd want proper HTML parsing
-    return html // For now, just return full HTML - animation shows progressively
+    traverse(element)
+    return result
+}
+
+/**
+ * Creates HTML with text truncated to a certain length (DEPRECATED - kept for reference)
+ */
+private fun createTruncatedHTML(html: String, targetText: String): String {
+    return html
 }
 
 /**
  * Draws annotation lines from the slide note to targets
  */
+private var currentAnnotations: List<SlideAnnotation> = emptyList()
+private var currentNoteOverlay: HTMLElement? = null
+
 private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay: HTMLElement) {
-    clearSlideAnnotations()
+    currentAnnotations = annotations
+    currentNoteOverlay = noteOverlay
+    redrawSlideAnnotations()
+}
+
+private fun redrawSlideAnnotations() {
+    val annotations = currentAnnotations
+    val noteOverlay = currentNoteOverlay
+    
+    if (annotations.isEmpty() || noteOverlay == null) {
+        clearSlideAnnotations()
+        return
+    }
     
     val svg = canvasGestures.getNamedSVGGroup("slideAnnotations")
+    svg.innerHTML = ""
+    
     val noteRect = noteOverlay.getBoundingClientRect()
     
     annotations.forEach { annotation ->
@@ -233,29 +280,30 @@ private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay
             val ox = mainTranslation[0]
             val oy = mainTranslation[1]
             
-            // Start point: center-right of note overlay (or bottom for better visibility)
+            // Start point: right side of note overlay, vertically centered
             val startX = noteRect.right
             val startY = noteRect.top + noteRect.height / 2
             
             // End point: depends on whether we're targeting a specific line or the whole box
             val (endX, endY) = if (annotation.targetLine != null && annotation.targetProperty != null) {
-                // Try to find the specific line in the Monaco editor
-                // For now, target the center of the box (would need Monaco API for exact line position)
+                // For line-specific annotations, try to find the Monaco editor
+                // For now, we'll target the left-center of the box
+                // In a full implementation, we'd use Monaco API to get line position
                 Pair(
-                    targetRect.left + targetRect.width / 2 - ox,
-                    targetRect.top + targetRect.height / 2 - oy
+                    targetRect.left - ox,
+                    targetRect.top + (targetRect.height * 0.3) - oy
                 )
             } else {
-                // Target the center of the box
+                // Target the left-center of the box
                 Pair(
-                    targetRect.left + targetRect.width / 2 - ox,
+                    targetRect.left - ox,
                     targetRect.top + targetRect.height / 2 - oy
                 )
             }
             
-            // Draw the line with a simple curve
-            val midX = (startX + endX) / 2
-            val controlOffset = 30.0
+            // Draw the line with a cubic Bezier curve for smooth appearance
+            val dx = endX - startX
+            val controlOffset = kotlin.math.abs(dx) * 0.3
             
             path {
                 moveTo(startX, startY)
@@ -273,12 +321,23 @@ private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay
                 appendTo(svg)
             }
             
-            // Add a small circle at the end
+            // Add a small circle at the end point
             circle {
                 cx = endX
                 cy = endY
                 r = 4
                 fill = annotation.color
+                appendTo(svg)
+            }
+            
+            // Add a small circle at the start point  
+            circle {
+                cx = startX
+                cy = startY
+                r = 3
+                fill = annotation.color
+                stroke = annotation.color
+                strokeWidth = 1
                 appendTo(svg)
             }
         }
@@ -289,6 +348,8 @@ private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay
  * Clears all slide annotation lines
  */
 private fun clearSlideAnnotations() {
+    currentAnnotations = emptyList()
+    currentNoteOverlay = null
     val svg = canvasGestures.getNamedSVGGroup("slideAnnotations")
     svg.innerHTML = ""
 }
