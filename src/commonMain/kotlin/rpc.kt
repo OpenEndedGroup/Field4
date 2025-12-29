@@ -193,7 +193,12 @@ data class Action_Desc(val id: String, val description: String)
 data class Describe_actions(val uid: String, val value: List<Action_Desc>)
 
 @Serializable
-class Directory(val command: String, val value: List<String> = emptyList<String>())
+class Directory(
+    val command: String, 
+    val value: List<String> = emptyList<String>(),
+    val mouseX: Double? = null,
+    val mouseY: Double? = null
+)
 
 @Serializable
 data class SaveAsTemplate(val uids: List<String>, val templateName: String)

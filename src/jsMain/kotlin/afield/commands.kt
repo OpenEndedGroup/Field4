@@ -256,6 +256,10 @@ fun moveSelectedBoxesForward() {
 @OptIn(ExperimentalJsExport::class)
 @JsExport()
 fun insertFromWorkspace() {
+    // Capture mouse position when the menu is opened
+    val mouseX = lastMouse.first
+    val mouseY = lastMouse.second
+    
     sendWithReply(Message("request-templates").payload(Directory(command = "list")), "templates") { message, payload ->
 
         println(" request templates got $message $payload")
@@ -274,6 +278,8 @@ fun insertFromWorkspace() {
                         afield.send("insert-template", {
                             command:"insert",
                             value:["$it"],
+                            mouseX: $mouseX,
+                            mouseY: $mouseY
                         })
                     })
                 }
