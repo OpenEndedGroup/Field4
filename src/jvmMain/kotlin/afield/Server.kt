@@ -181,7 +181,10 @@ class Server {
 //                            lblock(" saving to ${info.filename}")
                             run {
                                 try {
-                                    SavingContext().save(info.filename, info.boxes.values.toSet())
+                                    // Include root box in saved boxes to persist root properties like bookmarks
+                                    val allBoxes = info.boxes.values.toMutableSet()
+                                    allBoxes.add(info.root)
+                                    SavingContext().save(info.filename, allBoxes)
                                     info.pendingSidecarSaves.clear()
                                 } catch (ex: Exception) {
                                     lprintln("ERROR: trouble saving")
@@ -418,9 +421,11 @@ class Server {
             handlers["copy-boxes"] = mutableSetOf({ message, reply ->
                 val req = Json.decodeFromJsonElement<CopyBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()
-                val selectedBoxes = req.uids.mapNotNull { info.boxes[it] }.toSet()
-                // Recursively collect all nested boxes
-                val boxesWithNested = collectAllNestedBoxes(selectedBoxes)
+                val boxes = req.uids.mapNotNull { uid ->
+                    if (uid == "root") info.root else info.boxes[uid]
+                }.toSet()
+                val edn = SavingContext().exportEdnPackage(boxes, info.filename)
+                val boxesWithNested = collectAllNestedBoxes(boxes)
                 val edn = SavingContext().exportEdnPackage(boxesWithNested, info.filename)
                 val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
                 val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size, "Copied")
@@ -431,7 +436,10 @@ class Server {
 
             handlers["export-document"] = mutableSetOf({ _, reply ->
                 val info = thisSessionInfo.get()
-                val edn = SavingContext().exportEdnPackage(info.boxes.values.toSet(), info.filename)
+                // Include root box in export to preserve root properties like bookmarks
+                val allBoxes = info.boxes.values.toMutableSet()
+                allBoxes.add(info.root)
+                val edn = SavingContext().exportEdnPackage(allBoxes, info.filename)
                 val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
                 reply(Message("export-document").payload(ExportDocumentResult(edn, filename)))
                 Handled.yes
