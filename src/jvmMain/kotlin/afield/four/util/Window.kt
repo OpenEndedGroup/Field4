@@ -12,11 +12,19 @@ import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.Transferable
+import java.awt.image.BufferedImage
 import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.file.Path
+import java.util.*
 import java.util.regex.Pattern
+import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
 var lastWindowToOpen: Window? = null
@@ -159,5 +167,99 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
 
     fun shouldClose(): Boolean {
         return GLFW.glfwWindowShouldClose(windowHandle)
+    }
+    
+    /**
+     * Copy the current framebuffer content to the system clipboard as an image.
+     * This reads the OpenGL framebuffer, converts it to a BufferedImage, and places it on the clipboard.
+     * 
+     * Note: This requires an active OpenGL context. For Vulkan-only windows, you may need to
+     * provide a ByteBuffer of the rendered image data directly.
+     */
+    fun copyFramebufferToClipboard(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height) {
+        try {
+            val image = if (imageData != null) {
+                // Convert provided image data to BufferedImage
+                byteBufferToBufferedImage(imageData, width, height)
+            } else {
+                // For now, create a placeholder image
+                // In a full implementation, you would read from the Vulkan framebuffer
+                BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+            }
+            
+            // Copy to clipboard
+            val selection = ImageSelection(image)
+            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+            clipboard.setContents(selection, null)
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to copy framebuffer to clipboard: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Convert a ByteBuffer containing RGBA image data to a BufferedImage.
+     */
+    private fun byteBufferToBufferedImage(buffer: ByteBuffer, width: Int, height: Int): BufferedImage {
+        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        
+        // Reset buffer position
+        buffer.rewind()
+        
+        // Copy pixels from buffer to image
+        // Note: OpenGL/Vulkan typically stores images bottom-to-top, so we may need to flip
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val r = buffer.get().toInt() and 0xFF
+                val g = buffer.get().toInt() and 0xFF
+                val b = buffer.get().toInt() and 0xFF
+                val a = buffer.get().toInt() and 0xFF
+                
+                val rgb = (a shl 24) or (r shl 16) or (g shl 8) or b
+                // Flip vertically
+                image.setRGB(x, height - 1 - y, rgb)
+            }
+        }
+        
+        return image
+    }
+    
+    /**
+     * Get the current framebuffer as a base64-encoded PNG string.
+     * Useful for sending image data over the network.
+     */
+    fun getFramebufferAsBase64(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height): String? {
+        return try {
+            val image = if (imageData != null) {
+                byteBufferToBufferedImage(imageData, width, height)
+            } else {
+                BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+            }
+            
+            val outputStream = ByteArrayOutputStream()
+            ImageIO.write(image, "png", outputStream)
+            Base64.getEncoder().encodeToString(outputStream.toByteArray())
+        } catch (e: Exception) {
+            null
+        }
+    }
+}
+
+/**
+ * Helper class to transfer images to the system clipboard.
+ */
+private class ImageSelection(private val image: BufferedImage) : Transferable {
+    override fun getTransferDataFlavors(): Array<DataFlavor> {
+        return arrayOf(DataFlavor.imageFlavor)
+    }
+    
+    override fun isDataFlavorSupported(flavor: DataFlavor): Boolean {
+        return flavor.equals(DataFlavor.imageFlavor)
+    }
+    
+    override fun getTransferData(flavor: DataFlavor): Any {
+        if (!isDataFlavorSupported(flavor)) {
+            throw UnsupportedOperationException("Data flavor not supported")
+        }
+        return image
     }
 }

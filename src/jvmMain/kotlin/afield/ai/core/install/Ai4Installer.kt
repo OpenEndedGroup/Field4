@@ -8,6 +8,7 @@ import afield.ai.core.chat.IdeChatHelpers
 import afield.ai.core.lang.*
 import afield.ai.core.logging.NotifyLog
 import afield.ai.core.tools.*
+import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -454,4 +455,85 @@ fun installAi4() {
         }
         Handled.yes
     })
+    
+    // Chat interface handlers
+    handlers["hello_chat"] = mutableSetOf({ message, reply ->
+        val hello = Json.decodeFromJsonElement<Hello>(message.payload!!)
+        lprintln("info,chat", "Chat connection from ${hello.username} for file ${hello.filename}")
+        // Initialize chat state if needed
+        Handled.yes
+    })
+    
+    handlers["chat_input"] = mutableSetOf({ message, reply ->
+        val input = Json.decodeFromJsonElement<Chat_input>(message.payload!!)
+        
+        if (chatBridge == null) {
+            val uiLog = NotifyLog(label = "")
+            chatBridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = uiLog)
+            chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
+        }
+        
+        val fileKey = "chat:${documentName()}"
+        val state = chatThreadFor(fileKey, "")
+        
+        ai4Scope.launch {
+            try {
+                // Format the user message with images if present
+                val userMessage = buildString {
+                    append(input.value)
+                    if (input.images.isNotEmpty()) {
+                        append("\n\n[User attached ${input.images.size} image(s)]")
+                    }
+                }
+                
+                // Send intermediate response
+                reply(Message("chat_input").payload(Chat_input(
+                    value = "<div style='opacity: 0.5;'>Thinking...</div>",
+                    phase = 1
+                )))
+                
+                // TODO: Integrate images with OpenAI vision API
+                // For now, just process the text
+                val result = chatHelpers!!.chatGeneral(
+                    state = state,
+                    code = "",
+                    lang = langSpecForName("text"),
+                    userPrompt = userMessage
+                )
+                
+                chatThreadByKey[fileKey] = result.threadState
+                
+                // Format response with markdown
+                val formattedResponse = formatMarkdown(result.text)
+                
+                // Send final response
+                inMain {
+                    reply(Message("chat_input").payload(Chat_input(
+                        value = formattedResponse,
+                        phase = 20
+                    )))
+                }
+            } catch (e: Exception) {
+                inMain {
+                    reply(Message("chat_input").payload(Chat_input(
+                        value = "<div style='color: red;'>Error: ${e.message}</div>",
+                        phase = 20
+                    )))
+                }
+            }
+        }
+        
+        Handled.yes
+    })
+}
+
+private fun formatMarkdown(text: String): String {
+    // Simple markdown formatting for chat output
+    var result = text
+        .replace(Regex("```([\\s\\S]*?)```"), "<pre><code>$1</code></pre>")
+        .replace(Regex("`([^`]+)`"), "<code>$1</code>")
+        .replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
+        .replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
+        .replace("\n", "<br/>")
+    return result
 }
