@@ -43,18 +43,24 @@ val javacppVersion = "1.5.11"
 plugins {
     kotlin("multiplatform") version "2.2.10"
     kotlin("plugin.serialization") version "2.2.10"
-    id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
+    // Disabled jvmWrapper plugin - using Gradle's built-in toolchain support for Java 25
+    // id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
 }
 
+// jvmWrapper configuration disabled - using Gradle's built-in toolchain support
+// The toolchain will automatically download Java 25 if not available
+/*
 jvmWrapper {
     unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
-    linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
-    linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
-    macAarch64JvmUrl = "https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz"
-    macX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-macos-jdk.tar.gz"
-    windowsX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-windows-jdk.zip"
+    // Updated to Java 25 (Temurin/Adoptium)
+    linuxAarch64JvmUrl = "https://api.adoptium.net/v3/binary/latest/25/ga/linux/aarch64/jdk/hotspot/normal/eclipse"
+    linuxX64JvmUrl = "https://api.adoptium.net/v3/binary/latest/25/ga/linux/x64/jdk/hotspot/normal/eclipse"
+    macAarch64JvmUrl = "https://api.adoptium.net/v3/binary/latest/25/ga/mac/aarch64/jdk/hotspot/normal/eclipse"
+    macX64JvmUrl = "https://api.adoptium.net/v3/binary/latest/25/ga/mac/x64/jdk/hotspot/normal/eclipse"
+    windowsX64JvmUrl = "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jdk/hotspot/normal/eclipse"
 }
+*/
 
 java {
     toolchain {
@@ -409,7 +415,10 @@ tasks.named<Jar>("jvmJar").configure {
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_25)
+            // Using JVM_24 target for Kotlin compilation compatibility
+            // Note: Kotlin 2.2.10 doesn't fully support Java 25 parsing yet
+            // We use Java 25 runtime with JVM_24 bytecode target for compatibility
+            jvmTarget.set(JvmTarget.JVM_24)
             languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2)
             freeCompilerArgs.add("-Xannotations-in-metadata")
         }
