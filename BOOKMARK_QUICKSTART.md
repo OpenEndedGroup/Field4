@@ -9,6 +9,18 @@ A bookmark system that persists arbitrary key/value data with Field4 documents. 
 - Edited property
 - Cursor line and column
 
+**NEW: Fully integrated with keyboard shortcuts and actions!**
+
+## Keyboard Shortcuts
+
+### Save Bookmarks
+- **Shift + Ctrl/Cmd + F1-F9**: Save current state to bookmark 1-9
+
+### Restore Bookmarks  
+- **Shift + F1-F9**: Restore bookmark 1-9
+
+See [BOOKMARK_SHORTCUTS.md](BOOKMARK_SHORTCUTS.md) for complete shortcut reference.
+
 ## Changes Made (Backend)
 
 **File**: `src/jvmMain/kotlin/afield/Boxes.kt`  
@@ -39,7 +51,30 @@ That's it! The existing infrastructure handles everything else.
    ./gradlew jvmRun
    ```
 
-2. **Open browser console** (F12) and paste:
+2. **Try the keyboard shortcuts**:
+   - Set up your document (scroll, select box, edit code, position cursor)
+   - Press **Shift + Ctrl/Cmd + F1** to save bookmark 1
+   - Change something in the document
+   - Press **Shift + F1** to restore bookmark 1
+   - Your state should be restored!
+
+3. **Test multiple bookmarks**:
+   - Navigate to different areas
+   - Save with Shift + Ctrl/Cmd + F2, F3, F4...
+   - Jump between them with Shift + F1, F2, F3...
+
+4. **Verify persistence**:
+   - Save document with Ctrl+S (or Cmd+S on Mac)
+   - Close and reopen Field4
+   - Your bookmarks should still work!
+
+5. **Check in metadata.edn**:
+   ```bash
+   cat ~/Documents/AFieldWorkspace/default/metadata.edn | grep bookmarks
+   ```
+   You should see your bookmark data in the file.
+
+## Alternative: Browser Console Test
    ```javascript
    // Create a test bookmark
    send({
