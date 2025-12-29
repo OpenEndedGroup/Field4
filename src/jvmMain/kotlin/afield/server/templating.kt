@@ -138,7 +138,7 @@ fun templating() {
 
         val si = thisSessionInfo.get()
 
-        exec.value.flatMap { templateName ->
+        val loadedBoxes = exec.value.flatMap { templateName ->
             // Try local templates first
             if (templatesHome.contains(templateName)) {
                 SavingContext().cloneInto("$home/$templateName")
@@ -164,7 +164,33 @@ fun templating() {
                 }
                 boxes
             }
-        }.forEach {
+        }
+        
+        // Calculate center of mass and translate boxes to mouse position if provided
+        if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
+            // Calculate center of mass (average of all box centers)
+            val centers = loadedBoxes.map { box ->
+                val frame = box.frame
+                Pair(frame.cx, frame.cy)
+            }
+            
+            val centerX = centers.map { it.first }.average()
+            val centerY = centers.map { it.second }.average()
+            
+            // Calculate translation needed to move center of mass to mouse position
+            val deltaX = exec.mouseX - centerX
+            val deltaY = exec.mouseY - centerY
+            
+            // Apply translation to all boxes
+            loadedBoxes.forEach { box ->
+                val frame = box.frame
+                box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+            }
+            
+            lprintln("Translated ${loadedBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
+        }
+        
+        loadedBoxes.forEach {
             it.resyncAll()
         }
         si.topologyGeneration++
@@ -175,15 +201,18 @@ fun templating() {
     handlers["save-as-template"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<SaveAsTemplate>(message.payload!!)
 
-        val boxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
-        if (boxes.isEmpty()) {
+        val selectedBoxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
+        if (selectedBoxes.isEmpty()) {
             notify("No valid boxes found for template", "error")
         } else {
             try {
+                // Recursively collect all nested boxes
+                val boxesWithNested = collectAllNestedBoxes(selectedBoxes)
                 val templatesDir = "$home/templates"
                 File(templatesDir).mkdirs()
-                SavingContext().saveAsTemplate(request.templateName, boxes, templatesDir)
-                notify("Template saved: ${request.templateName}", "success")
+                SavingContext().saveAsTemplate(request.templateName, boxesWithNested, templatesDir)
+                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size)
+                notify("Template saved: ${request.templateName} ($countMessage)", "success")
             } catch (e: Exception) {
                 notify("Failed to save template: ${e.message}", "error")
             }

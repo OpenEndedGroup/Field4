@@ -22,8 +22,8 @@ fun Box.macro_prop(contents: List<String>): Insert? {
     val name = contents[1].trim().removeSurrounding("(", ")")
     return Insert(
         here = "$name", preamble = kotlinImportStatementFor(contents[0].replace("<", "").replace(">", "").trim())?: "", preambleAfterImports = """
-        var Box.${name} by Inheritance${contents[0]}()
-        val Once.${name} by Onceing${contents[0]}()
+        var Box.${name} by Inheritance${contents[0]}() /**/
+        val Once.${name} by Onceing${contents[0]}() /**/
     """.trimIndent()
     )
 }
@@ -35,8 +35,8 @@ fun Box.macro_root_prop(contents: List<String>): Insert? {
     val name = contents[1].trim().removeSurrounding("(", ")")
     return Insert(
         here = "root.$name", preamble = kotlinImportStatementFor(contents[0].replace("<", "").replace(">", "").trim())?: "", preambleAfterImports = """
-        var Box.${name} by Inheritance${contents[0]}()
-        val Once.${name} by Onceing${contents[0]}()
+        var Box.${name} by Inheritance${contents[0]}() /**/
+        val Once.${name} by Onceing${contents[0]}() /**/
     """.trimIndent(), target = this.root
     )
 }

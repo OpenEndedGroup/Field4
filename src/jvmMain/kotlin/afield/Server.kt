@@ -425,8 +425,11 @@ class Server {
                     if (uid == "root") info.root else info.boxes[uid]
                 }.toSet()
                 val edn = SavingContext().exportEdnPackage(boxes, info.filename)
+                val boxesWithNested = collectAllNestedBoxes(boxes)
+                val edn = SavingContext().exportEdnPackage(boxesWithNested, info.filename)
                 val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
-                notify("Copied ${boxes.size} box${if (boxes.size == 1) "" else "es"} to clipboard", "copy")
+                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size, "Copied")
+                notify("$countMessage to clipboard", "copy")
                 reply(Message("copy-boxes").payload(CopyBoxesResult(edn, filename)))
                 Handled.yes
             })
@@ -465,6 +468,35 @@ class Server {
                 doResync()
                 notify("Pasted ${newBoxes.size} box${if (newBoxes.size == 1) "" else "es"} (+10,+10)", "paste")
                 reply(Message("paste-boxes").payload(PasteBoxesResult(newBoxes.map { it.id })))
+                Handled.yes
+            })
+
+            handlers["slideshow-command"] = mutableSetOf({ message, reply ->
+                val cmd = Json.decodeFromJsonElement<SlideShowCommand>(message.payload!!)
+                val info = thisSessionInfo.get()
+                
+                // Find the box with an active slideshow
+                val slideShowBox = info.boxes.values.firstOrNull { it.getPropertyRaw("slideShow") != null }
+                if (slideShowBox != null) {
+                    val slideShow = slideShowBox.getPropertyRaw("slideShow") as? SlideShowInstance
+                    if (slideShow != null) {
+                        GlobalScope.launch {
+                            when (cmd.command) {
+                                "next" -> slideShow.next()
+                                "previous" -> slideShow.previous()
+                                "start" -> slideShow.start()
+                                "stop" -> slideShow.stop()
+                                else -> {
+                                    // Try to parse as a step number
+                                    val stepNum = cmd.command.toIntOrNull()
+                                    if (stepNum != null) {
+                                        slideShow.goToStep(stepNum)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Handled.yes
             })
 

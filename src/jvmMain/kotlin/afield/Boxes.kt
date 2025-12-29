@@ -181,6 +181,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "playlist",
             "pauseList",
             "bookmarks"
+            "slideShow",
         )
 
         var ioSeparateProperties = mutableMapOf(
