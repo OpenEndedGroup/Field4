@@ -718,6 +718,25 @@ class Server {
                         files(home + "/")
                     }
 
+                    route("/project") {
+                        get("{...}") {
+                            lprintln("debug,server", "routing /project for ${call.request.uri}")
+                            // Serve files from the project directory ($home)
+                            val fullUri = call.request.uri
+                            val pathOnly = URI(fullUri).path
+                            val relativeUri = pathOnly.removePrefix("/project/")
+                            
+                            val file = File(home, relativeUri)
+                            if (file.exists() && file.isFile && file.canonicalPath.startsWith(File(home).canonicalPath)) {
+                                // Security check: ensure the file is within the home directory
+                                call.respondFile(file)
+                            } else {
+                                lprintln("warning,server", "project file not found or outside project directory: $relativeUri")
+                                call.respond(HttpStatusCode.NotFound, "File not found in project directory")
+                            }
+                        }
+                    }
+
                     route("/local") {
                         get("{...}") {
                             lprintln("debug,server", "routing /local dynamically ${call.request.uri}")

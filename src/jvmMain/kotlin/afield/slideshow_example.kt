@@ -153,6 +153,62 @@ fun Box.simpleSlideShowExample() {
 }
 
 /**
+ * Example showing how to use images in slideshow notes
+ * 
+ * To use this:
+ * 1. Place an image (e.g., "example.png") in your project directory
+ * 2. Create a box and run this code
+ * 3. The slideshow will display the image in a note
+ */
+fun Box.slideShowWithImagesExample() {
+    val show = slideShow {
+        step("Welcome") {
+            note("""
+                <h2>Slideshow with Images</h2>
+                <p>This example demonstrates how to include images in your slideshows.</p>
+                <p>Images are served from your project directory (workspace).</p>
+                <br>
+                <p><a href="#slideshow:next">Continue →</a></p>
+            """)
+            selectBox(this@slideShowWithImagesExample)
+        }
+        
+        step("Image Example") {
+            note("""
+                <h3>Including Images</h3>
+                <p>Place images in your project directory and reference them with <code>/project/</code>:</p>
+                <img src="/project/example.png" alt="Example image" 
+                     style="max-width: 100%; border: 2px solid #444; border-radius: 4px; margin: 10px 0;">
+                <p><em>Note: If the image doesn't appear, make sure "example.png" exists in your project directory.</em></p>
+                <br>
+                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
+            """)
+            selectBox(this@slideShowWithImagesExample)
+        }
+        
+        step("Subdirectories") {
+            note("""
+                <h3>Organizing Images</h3>
+                <p>You can organize images in subdirectories:</p>
+                <ul>
+                  <li><code>/project/images/diagram.png</code></li>
+                  <li><code>/project/screenshots/ui.jpg</code></li>
+                  <li><code>/project/docs/architecture.svg</code></li>
+                </ul>
+                <p>Always use forward slashes, even on Windows.</p>
+                <br>
+                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:stop">Finish</a></p>
+            """)
+            selectBox(this@slideShowWithImagesExample)
+        }
+    }
+    
+    GlobalScope.launch {
+        show.start()
+    }
+}
+
+/**
  * Helper to install slideshow controls as actions on a box
  */
 fun Box.installSlideShowControls() {

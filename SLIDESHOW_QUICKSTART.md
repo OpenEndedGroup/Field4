@@ -159,11 +159,35 @@ slideShow {
 
 <p>Press <kbd>Cmd+Enter</kbd> to execute code.</p>
 
+<!-- Images from your project directory -->
+<img src="/project/screenshot.png" alt="Example" style="max-width: 100%; margin: 10px 0;">
+
 <p>
   <a href="#slideshow:next">Next →</a>
   <a href="#slideshow:previous">← Back</a>
 </p>
 ```
+
+### Using Images in Slideshows
+
+You can include images from your project directory (workspace) in slideshow notes:
+
+```kotlin
+step("Visual Guide") {
+    note("""
+        <h3>System Overview</h3>
+        <img src="/project/diagram.png" alt="System diagram" style="max-width: 100%;">
+        <p>The image above shows the key components.</p>
+        <a href="#slideshow:next">Continue →</a>
+    """)
+}
+```
+
+**Tips:**
+- Place images in your project directory (the workspace folder)
+- Use the `/project/` prefix in image URLs
+- Subdirectories work: `/project/images/photo.jpg`
+- Recommended max-width: 100% for responsive sizing
 
 ## Troubleshooting
 
