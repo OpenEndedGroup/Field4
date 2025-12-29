@@ -151,7 +151,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             ".*_editorState",
             "code_decorationState",
             "metadata",
-            "offline"
+            "offline",
+            "bookmarks"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -179,6 +180,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "nestedIn",
             "playlist",
             "pauseList",
+            "bookmarks"
         )
 
         var ioSeparateProperties = mutableMapOf(
