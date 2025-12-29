@@ -171,7 +171,7 @@ fun templating() {
             // Calculate center of mass (average of all box centers)
             val centers = loadedBoxes.map { box ->
                 val frame = box.frame
-                Pair(frame.x + frame.w / 2.0, frame.y + frame.h / 2.0)
+                Pair(frame.cx, frame.cy)
             }
             
             val centerX = centers.map { it.first }.average()
