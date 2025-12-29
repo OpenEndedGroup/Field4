@@ -423,13 +423,8 @@ class Server {
                 val boxesWithNested = collectAllNestedBoxes(selectedBoxes)
                 val edn = SavingContext().exportEdnPackage(boxesWithNested, info.filename)
                 val filename = File(info.filename).nameWithoutExtension.ifBlank { "document" }
-                val nestedCount = boxesWithNested.size - selectedBoxes.size
-                val message = if (nestedCount > 0) {
-                    "Copied ${selectedBoxes.size} box${if (selectedBoxes.size == 1) "" else "es"} + ${nestedCount} nested to clipboard"
-                } else {
-                    "Copied ${selectedBoxes.size} box${if (selectedBoxes.size == 1) "" else "es"} to clipboard"
-                }
-                notify(message, "copy")
+                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size, "Copied")
+                notify("$countMessage to clipboard", "copy")
                 reply(Message("copy-boxes").payload(CopyBoxesResult(edn, filename)))
                 Handled.yes
             })

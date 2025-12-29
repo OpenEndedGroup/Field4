@@ -115,10 +115,31 @@ fun collectAllNestedBoxes(boxes: Set<Box>): Set<Box> {
     while (queue.isNotEmpty()) {
         val box = queue.removeFirst()
         if (result.add(box)) {
-            // Only process nested children if we haven't seen this box before
+            // result.add() returns true only if the box wasn't already in the set,
+            // which prevents infinite loops in circular references and duplicate processing
             queue.addAll(box.nested)
         }
     }
     
     return result
+}
+
+/**
+ * Creates a notification message describing the number of boxes and nested boxes.
+ *
+ * @param selectedCount The number of originally selected boxes
+ * @param totalCount The total number including nested boxes
+ * @param actionVerb The action being performed (e.g., "Copied", "Saved")
+ * @return A formatted message string
+ */
+fun formatBoxCountMessage(selectedCount: Int, totalCount: Int, actionVerb: String = ""): String {
+    val nestedCount = totalCount - selectedCount
+    val boxWord = if (selectedCount == 1) "box" else "boxes"
+    val verb = actionVerb.ifBlank { "" }
+    
+    return if (nestedCount > 0) {
+        "$verb $selectedCount $boxWord + $nestedCount nested".trim()
+    } else {
+        "$verb $selectedCount $boxWord".trim()
+    }
 }

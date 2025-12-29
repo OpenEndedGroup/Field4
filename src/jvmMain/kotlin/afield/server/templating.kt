@@ -185,14 +185,14 @@ fun templating() {
                 val templatesDir = "$home/templates"
                 File(templatesDir).mkdirs()
                 SavingContext().saveAsTemplate(request.templateName, boxesWithNested, templatesDir)
-                val nestedCount = boxesWithNested.size - selectedBoxes.size
-                val message = if (nestedCount > 0) {
-                    "Template saved: ${request.templateName} (${selectedBoxes.size} boxes + ${nestedCount} nested)"
-                } else {
-                    "Template saved: ${request.templateName} (${selectedBoxes.size} boxes)"
-                }
-                notify(message, "success")
+                val countMessage = formatBoxCountMessage(selectedBoxes.size, boxesWithNested.size)
+                notify("Template saved: ${request.templateName} ($countMessage)", "success")
             } catch (e: Exception) {
+                notify("Failed to save template: ${e.message}", "error")
+            }
+        }
+        Handled.yes
+    }) {
                 notify("Failed to save template: ${e.message}", "error")
             }
         }
