@@ -112,7 +112,8 @@ data class MyData(val values: List<Double>) : ToHTML {
 2. **Truncation at 5 Items** - Balances preview with performance
 3. **100 Character String Limit** - Prevents DOM bloat
 4. **Depth Limit of 3** - Prevents infinite recursion
-5. **Statistics Only for Numeric Collections** - Efficient and meaningful
+5. **Circular Reference Detection** - Uses identity hash tracking to prevent infinite loops
+6. **Statistics Only for Numeric Collections** - Efficient and meaningful
 
 ## Color Scheme
 

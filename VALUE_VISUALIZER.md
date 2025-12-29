@@ -141,7 +141,27 @@ The `viz()` extension function wraps the visualizer and sends HTML to the disclo
 - Truncation limits prevent DOM bloat
 - Statistics calculated on-demand only for numeric collections
 - HTML is pre-escaped for safety
-- Shallow recursion limit (depth 3) prevents infinite loops
+- Maximum depth limit (3 levels) prevents infinite loops
+- **Circular reference detection** using identity hash tracking prevents infinite loops
+
+### Circular Reference Handling
+
+The visualizer automatically detects and prevents infinite loops from circular references:
+
+```kotlin
+class Node(val name: String) {
+    var next: Node? = null
+}
+
+val node1 = Node("A")
+val node2 = Node("B")
+node1.next = node2
+node2.next = node1  // Circular reference
+
+viz("nodes", node1)  // Shows [circular reference] when it encounters node1 again
+```
+
+Objects are tracked using `System.identityHashCode()` to detect when the same object instance is visited multiple times. Primitives and value types (like JOML vectors) are not tracked as they cannot create circular references.
 
 ## Examples
 

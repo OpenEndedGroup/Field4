@@ -54,6 +54,7 @@ object ValueVisualizer {
     private const val MAX_LIST_PREVIEW = 5
     private const val MAX_STRING_LENGTH = 100
     private const val MAX_MAP_ENTRIES = 5
+    private const val MAX_DEPTH = 3
     
     /**
      * Visualize any value and return compact HTML representation
@@ -61,13 +62,16 @@ object ValueVisualizer {
     fun visualize(value: Any?): String {
         return buildString {
             append("<div class='value-viz' style='font-family: \"Iosevka Web\", monospace; font-size: 12px; color: #ccc; line-height: 1.4;'>")
-            append(visualizeValue(value))
+            // Use identity hash set to track visited objects and detect circular references
+            val visited = mutableSetOf<Int>()
+            append(visualizeValue(value, 0, visited))
             append("</div>")
         }
     }
     
-    private fun visualizeValue(value: Any?, depth: Int = 0): String {
-        if (depth > 3) return "<span style='color: #888;'>…</span>"
+    private fun visualizeValue(value: Any?, depth: Int, visited: MutableSet<Int>): String {
+        // Check depth limit
+        if (depth > MAX_DEPTH) return "<span style='color: #888;'>…</span>"
         
         return when (value) {
             null -> "<span style='color: #888;'>null</span>"
@@ -77,12 +81,40 @@ object ValueVisualizer {
             
             // Check custom printers
             else -> {
-                ValuePrinterRegistry.getPrinter(value)?.invoke(value) ?: visualizeBuiltIn(value, depth)
+                // For complex objects, check for circular references
+                if (shouldCheckCircular(value)) {
+                    val identityHash = System.identityHashCode(value)
+                    if (identityHash in visited) {
+                        return "<span style='color: #f88;'>[circular reference]</span>"
+                    }
+                    visited.add(identityHash)
+                }
+                
+                ValuePrinterRegistry.getPrinter(value)?.invoke(value) ?: visualizeBuiltIn(value, depth, visited)
             }
         }
     }
     
-    private fun visualizeBuiltIn(value: Any, depth: Int): String = when (value) {
+    /**
+     * Determine if a value should be checked for circular references.
+     * Primitives and immutable types don't need circular reference checks.
+     */
+    private fun shouldCheckCircular(value: Any): Boolean {
+        return when (value) {
+            // Skip primitives and value types
+            is Number, is Boolean, is Char, is String -> false
+            // Skip JOML types (they are value types)
+            is Vector2fc, is Vector3fc, is Vector4fc,
+            is Vector2dc, is Vector3dc, is Vector4dc,
+            is Quaternionfc, is Quaterniondc,
+            is Matrix2fc, is Matrix3fc, is Matrix4fc,
+            is Matrix2dc, is Matrix3dc, is Matrix4dc -> false
+            // Check collections and other objects
+            else -> true
+        }
+    }
+    
+    private fun visualizeBuiltIn(value: Any, depth: Int, visited: MutableSet<Int>): String = when (value) {
         // Primitives
         is Boolean -> "<span style='color: #f88;'>${value}</span>"
         is Number -> formatNumber(value)
@@ -110,10 +142,10 @@ object ValueVisualizer {
         is Matrix4dc -> formatMatrix(Matrix4f(value))
         
         // Collections
-        is Map<*, *> -> formatMap(value, depth)
-        is List<*> -> formatList(value, depth)
-        is Set<*> -> formatSet(value, depth)
-        is Array<*> -> formatArray(value, depth)
+        is Map<*, *> -> formatMap(value, depth, visited)
+        is List<*> -> formatList(value, depth, visited)
+        is Set<*> -> formatSet(value, depth, visited)
+        is Array<*> -> formatArray(value, depth, visited)
         is ByteArray -> formatByteArray(value)
         is IntArray -> formatIntArray(value)
         is FloatArray -> formatFloatArray(value)
@@ -190,7 +222,7 @@ object ValueVisualizer {
         return """<span style='color: #cf8;'>mat4</span> <span style='color: #888;'>[det=${fmt(det)}, t=(${fmt(translation.x)},${fmt(translation.y)},${fmt(translation.z)})]</span>"""
     }
     
-    private fun formatList(list: List<*>, depth: Int): String {
+    private fun formatList(list: List<*>, depth: Int, visited: MutableSet<Int>): String {
         if (list.isEmpty()) return "<span style='color: #888;'>[empty list]</span>"
         
         val size = list.size
@@ -200,7 +232,7 @@ object ValueVisualizer {
             val preview = list.take(MAX_LIST_PREVIEW)
             preview.forEachIndexed { i, item ->
                 if (i > 0) append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(item, depth + 1))
+                append(visualizeValue(item, depth + 1, visited))
             }
             
             if (size > MAX_LIST_PREVIEW) {
@@ -221,7 +253,7 @@ object ValueVisualizer {
         }
     }
     
-    private fun formatSet(set: Set<*>, depth: Int): String {
+    private fun formatSet(set: Set<*>, depth: Int, visited: MutableSet<Int>): String {
         if (set.isEmpty()) return "<span style='color: #888;'>{empty set}</span>"
         
         val size = set.size
@@ -231,7 +263,7 @@ object ValueVisualizer {
             val preview = set.take(MAX_LIST_PREVIEW)
             preview.forEachIndexed { i, item ->
                 if (i > 0) append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(item, depth + 1))
+                append(visualizeValue(item, depth + 1, visited))
             }
             
             if (size > MAX_LIST_PREVIEW) {
@@ -243,7 +275,7 @@ object ValueVisualizer {
         }
     }
     
-    private fun formatMap(map: Map<*, *>, depth: Int): String {
+    private fun formatMap(map: Map<*, *>, depth: Int, visited: MutableSet<Int>): String {
         if (map.isEmpty()) return "<span style='color: #888;'>{empty map}</span>"
         
         val size = map.size
@@ -255,9 +287,9 @@ object ValueVisualizer {
             entries.forEachIndexed { i, (key, value) ->
                 if (i > 0) append("<span style='color: #888;'>,</span>")
                 append("<div style='margin-left: 10px;'>")
-                append(visualizeValue(key, depth + 1))
+                append(visualizeValue(key, depth + 1, visited))
                 append("<span style='color: #888;'> → </span>")
-                append(visualizeValue(value, depth + 1))
+                append(visualizeValue(value, depth + 1, visited))
                 append("</div>")
             }
             
@@ -271,8 +303,8 @@ object ValueVisualizer {
         }
     }
     
-    private fun formatArray(arr: Array<*>, depth: Int): String {
-        return formatList(arr.toList(), depth)
+    private fun formatArray(arr: Array<*>, depth: Int, visited: MutableSet<Int>): String {
+        return formatList(arr.toList(), depth, visited)
     }
     
     private fun formatByteArray(arr: ByteArray): String {

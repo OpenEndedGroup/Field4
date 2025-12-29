@@ -76,4 +76,26 @@ data class ComplexData(val name: String, val values: List<Double>) : ToHTML {
 
 viz("tohtml", ComplexData("Dataset A", (1..50).map { it * 1.5 }))
 
+// Circular reference test
+class Node(val name: String) {
+    var next: Node? = null
+}
+
+val node1 = Node("A")
+val node2 = Node("B")
+val node3 = Node("C")
+node1.next = node2
+node2.next = node3
+node3.next = node1  // Creates a circular reference
+
+viz("circular", node1)
+
+// Self-referencing list
+val selfRefList = mutableListOf<Any>()
+selfRefList.add("item1")
+selfRefList.add("item2")
+selfRefList.add(selfRefList)  // Add itself to create circular reference
+
+viz("self-ref list", selfRefList)
+
 println("Value visualizer demo complete!")
