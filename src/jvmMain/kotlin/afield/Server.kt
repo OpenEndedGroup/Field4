@@ -460,6 +460,35 @@ class Server {
                 Handled.yes
             })
 
+            handlers["slideshow-command"] = mutableSetOf({ message, reply ->
+                val cmd = Json.decodeFromJsonElement<SlideShowCommand>(message.payload!!)
+                val info = thisSessionInfo.get()
+                
+                // Find the box with an active slideshow
+                val slideShowBox = info.boxes.values.firstOrNull { it.getPropertyRaw("slideShow") != null }
+                if (slideShowBox != null) {
+                    val slideShow = slideShowBox.getPropertyRaw("slideShow") as? SlideShowInstance
+                    if (slideShow != null) {
+                        GlobalScope.launch {
+                            when (cmd.command) {
+                                "next" -> slideShow.next()
+                                "previous" -> slideShow.previous()
+                                "start" -> slideShow.start()
+                                "stop" -> slideShow.stop()
+                                else -> {
+                                    // Try to parse as a step number
+                                    val stepNum = cmd.command.toIntOrNull()
+                                    if (stepNum != null) {
+                                        slideShow.goToStep(stepNum)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Handled.yes
+            })
+
 
             registerTemplate(home)
 

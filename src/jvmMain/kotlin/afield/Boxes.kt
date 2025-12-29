@@ -179,6 +179,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "nestedIn",
             "playlist",
             "pauseList",
+            "slideShow",
         )
 
         var ioSeparateProperties = mutableMapOf(

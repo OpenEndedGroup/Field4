@@ -555,6 +555,145 @@ suspend fun main() {
         Handled.yes
     }
 
+    // Slideshow handlers
+    handlers.put("select-and-edit-box") { message, _ ->
+        val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
+        val boxes = document.body!!.getElementsByClassName("box").asList()
+        val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == sel.uid }
+        
+        if (found != null) {
+            val box = found as HTMLElement
+            
+            // Deselect all boxes first
+            selected.toList().forEach { deselectBox(it) }
+            
+            // Select the target box
+            selectBox(box)
+            
+            // Set the selected property
+            selectedProperty = sel.property
+            window.unsafeCast<dynamic>().selectedProperty = sel.property
+            
+            // Trigger editor to show this property
+            val w = window.unsafeCast<dynamic>()
+            if (w.switchToProperty != null && w.switchToProperty != undefined) {
+                try {
+                    w.switchToProperty(sel.uid, sel.property)
+                } catch (e: Exception) {
+                    console.log("switchToProperty failed", e)
+                }
+            }
+            
+            // Scroll to line if specified
+            if (sel.scrollToLine != null) {
+                setTimeout(100) {
+                    val editor = w.globalEditor
+                    if (editor != null && editor != undefined) {
+                        try {
+                            val monaco = w.globalMonaco
+                            if (monaco != null && monaco != undefined) {
+                                // Reveal line at center
+                                editor.revealLineInCenter(sel.scrollToLine)
+                                
+                                // Highlight line if specified
+                                if (sel.highlightLine != null) {
+                                    val Range = monaco.Range
+                                    val range = Range.`new`(sel.highlightLine, 1, sel.highlightLine, 1)
+                                    editor.setSelection(range)
+                                    editor.revealLineInCenter(sel.highlightLine)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            console.log("Failed to scroll to line", e)
+                        }
+                    }
+                }
+            }
+        }
+        
+        Handled.yes
+    }
+    
+    handlers.put("show-slide-note") { message, _ ->
+        val note = Json.decodeFromJsonElement<ShowSlideNote>(message.payload!!)
+        
+        // Get or create the slide note overlay
+        var overlay = document.getElementById("slide-note-overlay") as? HTMLElement
+        if (overlay == null) {
+            overlay = document.createElement("div") as HTMLElement
+            overlay.id = "slide-note-overlay"
+            overlay.style.apply {
+                position = "fixed"
+                top = "20px"
+                right = "20px"
+                maxWidth = "400px"
+                backgroundColor = "rgba(40, 40, 50, 0.95)"
+                color = "white"
+                padding = "20px"
+                borderRadius = "8px"
+                boxShadow = "0 4px 6px rgba(0, 0, 0, 0.3)"
+                zIndex = "10000"
+                fontFamily = "system-ui, -apple-system, sans-serif"
+                fontSize = "14px"
+                lineHeight = "1.5"
+                unsafeCast<dynamic>().backdropFilter = "blur(10px)"
+            }
+            document.body!!.appendChild(overlay)
+            
+            // Add close button if persistent
+            if (note.persistent) {
+                val closeBtn = document.createElement("button") as HTMLElement
+                closeBtn.innerHTML = "×"
+                closeBtn.style.apply {
+                    position = "absolute"
+                    top = "5px"
+                    right = "5px"
+                    background = "transparent"
+                    border = "none"
+                    color = "white"
+                    fontSize = "24px"
+                    cursor = "pointer"
+                    padding = "0"
+                    width = "24px"
+                    height = "24px"
+                }
+                closeBtn.onclick = {
+                    overlay.style.display = "none"
+                }
+                overlay.appendChild(closeBtn)
+            }
+        }
+        
+        overlay.innerHTML = note.html
+        overlay.style.display = "block"
+        
+        // Setup link handlers for navigation
+        val links = overlay.getElementsByTagName("a").asList()
+        links.forEach { link ->
+            val a = link as HTMLElement
+            a.onclick = { event ->
+                event.preventDefault()
+                val href = a.getAttribute("href")
+                if (href != null && href.startsWith("#slideshow:")) {
+                    val command = href.substring(11) // Remove "#slideshow:" prefix
+                    // Send command to server to control slideshow
+                    send("slideshow-command", js("{command: command}"))
+                }
+                null
+            }
+        }
+        
+        Handled.yes
+    }
+    
+    handlers.put("hide-slide-note") { message, _ ->
+        val overlay = document.getElementById("slide-note-overlay") as? HTMLElement
+        if (overlay != null) {
+            overlay.style.display = "none"
+        }
+        Handled.yes
+    }
+
     val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
     val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
     val hello = Message("hello").payload(Hello(filename, username))
