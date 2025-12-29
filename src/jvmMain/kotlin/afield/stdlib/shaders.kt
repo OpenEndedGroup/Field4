@@ -164,27 +164,27 @@ private fun buildComputeInsert(ci: Introspection): Insert {
     // Push constants
     ci.pushConstants.forEach { pc ->
         pc.members.forEach { member ->
-            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>()\n"
+            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>() /**/\n"
             val ty = member.type.fold({ it.kotlinTypeName }) {
                 if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
             }
-            postImport += "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()\n"
+            postImport += "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>() /**/\n"
         }
     }
 
     // UBOs
     ci.ubos.forEach { ubo ->
-        postImport += "val ModulePointer.${ubo.name} by FromUniform()\n"
-        postImport += "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>()\n"
+        postImport += "val ModulePointer.${ubo.name} by FromUniform() /**/\n"
+        postImport += "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>() /**/\n"
         ubo.members.forEach { m ->
             val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
-            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>()\n"
+            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>() /**/\n"
         }
     }
 
     // SSBOs
     ci.ssbo.forEach { ssbo ->
-        postImport += "val ComputeModulePointer.${ssbo.name} by ComputeMesh.FromUniform()\n"
+        postImport += "val ComputeModulePointer.${ssbo.name} by ComputeMesh.FromUniform() /**/\n"
         // Arrays / headers would need special handling if you decide to expose members
     }
 
@@ -228,27 +228,27 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
     // Push constants across task+mesh+fragment
     (ti.pushConstants + mi.pushConstants + fi.pushConstants).forEach { pc ->
         pc.members.forEach { member ->
-            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>()\n"
+            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>() /**/\n"
             val ty = member.type.fold({ it.kotlinTypeName }) {
                 if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
             }
-            postImport += "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()\n"
+            postImport += "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>() /**/\n"
         }
     }
 
     // UBOs across task+mesh+fragment
     (ti.ubos + mi.ubos + fi.ubos).forEach { ubo ->
-        postImport += "val MeshModulePointer.${ubo.name} by FromUniform()\n"
-        postImport += "var MeshMesh.${ubo.name} by MeshMesh.FromStructure<Structure>()\n"
+        postImport += "val MeshModulePointer.${ubo.name} by FromUniform() /**/\n"
+        postImport += "var MeshMesh.${ubo.name} by MeshMesh.FromStructure<Structure>() /**/\n"
         ubo.members.forEach { m ->
             val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
-            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>()\n"
+            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>() /**/\n"
         }
     }
 
     // SSBOs across task+mesh+fragment
     (ti.ssbo + mi.ssbo + fi.ssbo).forEach { ssbo ->
-        postImport += "val MeshModulePointer.${ssbo.name} by MeshMesh.FromUniform()\n"
+        postImport += "val MeshModulePointer.${ssbo.name} by MeshMesh.FromUniform() /**/\n"
     }
 
     return Insert(
@@ -386,31 +386,31 @@ fun insertForShader(
 ): Insert {
     var postImport = ""
     vi.inputs.forEach {
-        postImport += "val Mesh.${it.name} by FromInput()\n"
+        postImport += "val Mesh.${it.name} by FromInput() /**/\n"
     }
 
-    postImport += writeSuperMap(vi.inputs) + "\n"
+    postImport += writeSuperMap(vi.inputs) + " /**/\n"
 
     (vi.pushConstants + fi.pushConstants).forEach {
         it.members.forEach { member ->
-            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>()\n"
+            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>() /**/\n"
             val ty = member.type.fold({ it.kotlinTypeName }, {
                 if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
             })
-            postImport += "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()\n"
+            postImport += "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>() /**/\n"
         }
     }
 
     (fi.ubos + vi.ubos).forEach {
-        postImport += "val ModulePointer.${it.name} by FromUniform()\n"
+        postImport += "val ModulePointer.${it.name} by FromUniform() /**/\n"
         it.members.forEach { m ->
             val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
-            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>()\n"
+            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>() /**/\n"
         }
     }
 
     (fi.ssbo + vi.ssbo).forEach {
-        postImport += "val ModulePointer.${it.name} by FromUniform()\n"
+        postImport += "val ModulePointer.${it.name} by FromUniform() /**/\n"
     }
 
     var here = "$resolvesToCall${args[0]}"

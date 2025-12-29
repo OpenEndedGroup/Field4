@@ -82,12 +82,24 @@ fun searchUpwards(f: HasHierarchy, name: String, found: (String?) -> Unit) {
 
 fun gatherPreambleUpwards(startingAt: Box): String {
     var total = ""
+    var isFirstBox = true
     searchUpwards(startingAt, "preamble") {
         if (it == null) return@searchUpwards
-        it.split("\n").forEach {
-            if (it.trim().startsWith("import")) total = it + "\n" + total
-            else total = total + "\n" + it
+        it.split("\n").forEach { line ->
+            // For the first box (startingAt), include all lines
+            if (isFirstBox) {
+                if (line.trim().startsWith("import")) total = line + "\n" + total
+                else total = total + "\n" + line
+            } else {
+                // For parent boxes, only include import statements and lines ending with /**/
+                if (line.trim().startsWith("import")) {
+                    total = line + "\n" + total
+                } else if (line.trimEnd().endsWith("/**/")) {
+                    total = total + "\n" + line
+                }
+            }
         }
+        isFirstBox = false
     }
 
 
