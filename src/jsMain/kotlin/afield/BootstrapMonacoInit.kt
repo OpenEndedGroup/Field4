@@ -142,22 +142,29 @@ fun monacoInit(monaco: dynamic): dynamic {
         val baseLabel = "Edit: " + monacoPropertyDescriptions[i]
         val propName = monacoPropertyNames[i]
         
-        val action = js("""({
-            id: '$actionId',
-            get label() {
-                var w = window;
-                var currentCode = w.currentSelectedCode;
-                if (currentCode && currentCode.length > 0 && currentCode[0]) {
-                    var propValue = currentCode[0]['$propName'];
-                    // Check if property has content (truthy and non-empty string)
-                    var hasContent = propValue && (typeof propValue !== 'string' || propValue.trim().length > 0);
-                    return '$baseLabel' + (hasContent ? ' ✓' : ' ○');
-                }
-                return '$baseLabel';
-            },
-            contextMenuGroupId: 'navigation',
-            contextMenuOrder: 2.0
-        })""")
+        // Create action with dynamic label using object with getter
+        val action = js("{}")
+        action.id = actionId
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 2.0
+        
+        // Define getter for label property - capturing variables from closure
+        js("""(function(action, propName, baseLabel) {
+            Object.defineProperty(action, 'label', {
+                get: function() {
+                    var w = window;
+                    var currentCode = w.currentSelectedCode;
+                    if (currentCode && currentCode.length > 0 && currentCode[0]) {
+                        var propValue = currentCode[0][propName];
+                        // Check if property has content (truthy and non-empty string)
+                        var hasContent = propValue && (typeof propValue !== 'string' || propValue.trim().length > 0);
+                        return baseLabel + (hasContent ? ' ✓' : ' ○');
+                    }
+                    return baseLabel;
+                },
+                enumerable: true
+            });
+        })""")(action, propName, baseLabel)
         
         if (i < keyCodes.size) {
             val binding = (monaco.KeyMod.Alt as Int) or (keyCodes[i] as Int)
