@@ -219,6 +219,7 @@ private fun buildSliderHtml(
     step: Double,
     value: Double
 ): String {
+    val decimalPlaces = calculateDecimalPlaces(step)
     return """
         <div class="slider-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -232,12 +233,21 @@ private fun buildSliderHtml(
                 max="$max" 
                 step="$step" 
                 value="$value"
+                data-decimal-places="$decimalPlaces"
                 style="width: 100%; cursor: pointer; accent-color: #4a9eff;"
-                oninput="
-                    document.getElementById('${sliderId}-value').textContent = parseFloat(this.value).toFixed(${step.toString().split('.').getOrNull(1)?.length ?: 0});
-                    window.sendSliderUpdate && window.sendSliderUpdate('$sliderId', parseFloat(this.value));
-                "
+                oninput="handleSliderInput(this)"
             />
         </div>
     """.trimIndent()
+}
+
+private fun calculateDecimalPlaces(step: Double): Int {
+    if (step >= 1.0) return 0
+    val stepStr = step.toString()
+    val decimalIndex = stepStr.indexOf('.')
+    return if (decimalIndex >= 0) {
+        stepStr.substring(decimalIndex + 1).trimEnd('0').length
+    } else {
+        0
+    }
 }

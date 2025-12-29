@@ -39,6 +39,7 @@ var r = 255.0
 var g = 128.0
 var b = 0.0
 
+// Define the update function after variables
 fun updateColorDisplay() {
     val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
     display("color", """
