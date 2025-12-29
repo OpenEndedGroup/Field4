@@ -128,7 +128,25 @@ This format is efficient for high dynamic range (HDR) video content and modern v
 ## Audio Support
 
 ### Overview
-Synchronized audio playback is now available using OpenAL from LWJGL and FFmpeg audio decoding. The audio system integrates seamlessly with the video texture system.
+Synchronized audio playback is now available using OpenAL from LWJGL and FFmpeg audio decoding. The audio system integrates seamlessly with the video texture system through a PlaybackClock interface.
+
+### Clock-Based Synchronization
+
+**PlaybackClock Interface**: Provides timing for video playback synchronization
+- `AudioClock`: Uses audio hardware timing (recommended for A/V sync, prevents drift)
+- `SystemClock`: Uses wall-clock time (internal fallback, may drift over long durations)
+
+**Integration**: Pass a PlaybackClock to VideoTexture for synchronized playback
+
+```kotlin
+// Audio-synchronized playback (prevents drift)
+val audioPlayer = AudioPlayer(44100, 2)
+val audioClock = AudioClock(audioPlayer)
+val videoTexture = VideoTexture(renderer, clock = audioClock)
+
+// Video-only playback (uses internal SystemClock)
+val videoTexture = VideoTexture(renderer)  // No clock = internal timing
+```
 
 ### Components
 
@@ -144,6 +162,11 @@ Synchronized audio playback is now available using OpenAL from LWJGL and FFmpeg 
   - Precise timing for A/V synchronization
   - Volume control and playback state management
 
+- **PlaybackClock**: Timing interface for synchronization
+  - `AudioClock`: Syncs to audio hardware (recommended)
+  - `SystemClock`: Internal wall-clock timing
+  - Custom implementations supported
+
 ### Usage Example
 
 ```kotlin
@@ -155,9 +178,16 @@ audioDecoder.open(outputSampleRate = 44100, outputChannels = 2)
 val audioPlayer = AudioPlayer(sampleRate = 44100, channels = 2)
 audioPlayer.initialize()
 
+// Create AudioClock for video synchronization
+val audioClock = AudioClock(audioPlayer)
+
+// Create VideoTexture with audio clock
+val videoTexture = VideoTexture(renderer, clock = audioClock)
+videoTexture.load("video.mp4")
+
 // Pre-fill audio buffers
 repeat(3) {
-    audioDecoder.decodeFrame()?.let { audioPlayer.queueBuffer(it.data) }
+    audioDecoder.decodeFrame()?.let { audioPlayer.queueAudioFrame(it) }
 }
 
 // Start synchronized playback
@@ -167,23 +197,32 @@ videoTexture.play()
 // In render loop:
 audioPlayer.processBuffers()
 while (audioPlayer.getFreeBufferCount() > 0) {
-    audioDecoder.decodeFrame()?.let { audioPlayer.queueBuffer(it.data) }
+    audioDecoder.decodeFrame()?.let { audioPlayer.queueAudioFrame(it) }
 }
 
-// Get audio time for video synchronization
-val audioTime = audioPlayer.getCurrentTime()
+// Video automatically syncs to audio clock - no manual time passing needed!
+videoTexture.update(commandBuffer)
 ```
 
 ### Synchronization Strategy
 
-- **Master Clock**: Audio playback time serves as the master clock
-- **Video Sync**: Video frames are decoded to match audio time
-- **Precision**: Sample-accurate timing via OpenAL
-- **Buffer Management**: Continuous queuing prevents underruns
+- **Master Clock**: AudioPlayer provides hardware-accurate timing via AudioClock
+- **Video Sync**: VideoTexture queries clock and decodes frames to match timestamp
+- **Frame Skipping**: Automatically skips frames when falling behind  
+- **Precision**: Sample-accurate timing via OpenAL, prevents drift over long durations
+- **Buffer Management**: Continuous audio queuing prevents underruns
+
+### Benefits of Clock-Based Sync
+
+1. **No Drift**: Audio hardware provides stable timing reference
+2. **Long Duration**: Maintains sync over hours of playback
+3. **Automatic**: Video handles frame timing internally
+4. **Flexible**: Support custom clocks for other timing sources
 
 ### See Also
 
-- `AudioVideoExample.kt`: Complete examples and usage patterns
+- `AudioVideoExample.kt`: Complete examples with clock integration
+- `PlaybackClock.kt`: Clock interface and implementations  
 - `AUDIO_OPTIONS.md`: Comparison of audio backend options
 - `AUDIO_IMPLEMENTATION.md`: Detailed implementation guide
 
