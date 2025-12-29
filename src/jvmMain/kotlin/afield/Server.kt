@@ -525,6 +525,28 @@ class Server {
                 Handled.yes
             })
 
+            handlers["slider-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<SliderUpdate>(message.payload!!)
+                lprintln("debug,slider", "Received slider update: ${update.sliderId} = ${update.value}")
+                
+                // Get the callback for this slider and invoke it
+                val callback = getSliderCallback(update.sliderId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.value)
+                        } catch (e: Exception) {
+                            lprintln("error,slider", "Error in slider callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,slider", "No callback registered for slider: ${update.sliderId}")
+                }
+                
+                Handled.yes
+            })
+
 
             registerTemplate(home)
 

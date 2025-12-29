@@ -157,3 +157,87 @@ fun Box.logs(
     val filter = LogFilterBuilder().apply(build).build(latestOnly)
     logs(channel = channel, filter = filter, latestOnly = latestOnly, subId = subId)
 }
+
+// Slider support
+data class SliderConfig(
+    val label: String,
+    val min: Double,
+    val max: Double,
+    val step: Double,
+    val initialValue: Double,
+    val onUpdate: (Double) -> Unit
+)
+
+// Global registry for slider callbacks
+private val sliderCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Double) -> Unit>()
+
+fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit) {
+    sliderCallbacks[sliderId] = callback
+}
+
+fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
+    return sliderCallbacks[sliderId]
+}
+
+fun Box.slider(
+    label: String,
+    min: Double = 0.0,
+    max: Double = 1.0,
+    step: Double = 0.01,
+    initialValue: Double = (min + max) / 2,
+    channel: String = "controls",
+    onUpdate: (Double) -> Unit
+) {
+    val sliderId = "slider-${UUID.randomUUID()}"
+    registerSliderCallback(sliderId, onUpdate)
+    
+    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue)
+    display(channel, html)
+}
+
+fun Box.sliders(
+    channel: String = "controls",
+    vararg configs: Pair<String, SliderConfig>
+) {
+    val html = buildString {
+        append("<div class='slider-group'>")
+        configs.forEach { (id, config) ->
+            val sliderId = "slider-$id-${UUID.randomUUID()}"
+            registerSliderCallback(sliderId, config.onUpdate)
+            append(buildSliderHtml(sliderId, config.label, config.min, config.max, config.step, config.initialValue))
+        }
+        append("</div>")
+    }
+    display(channel, html)
+}
+
+private fun buildSliderHtml(
+    sliderId: String,
+    label: String,
+    min: Double,
+    max: Double,
+    step: Double,
+    value: Double
+): String {
+    return """
+        <div class="slider-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label for="$sliderId" style="font-size: 11px; color: #ddd; user-select: none;">$label</label>
+                <span id="${sliderId}-value" style="font-size: 10px; color: #aaa; font-family: monospace; min-width: 60px; text-align: right;">$value</span>
+            </div>
+            <input 
+                type="range" 
+                id="$sliderId" 
+                min="$min" 
+                max="$max" 
+                step="$step" 
+                value="$value"
+                style="width: 100%; cursor: pointer; accent-color: #4a9eff;"
+                oninput="
+                    document.getElementById('${sliderId}-value').textContent = parseFloat(this.value).toFixed(${step.toString().split('.').getOrNull(1)?.length ?: 0});
+                    window.sendSliderUpdate && window.sendSliderUpdate('$sliderId', parseFloat(this.value));
+                "
+            />
+        </div>
+    """.trimIndent()
+}

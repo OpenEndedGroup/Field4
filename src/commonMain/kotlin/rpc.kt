@@ -279,3 +279,7 @@ data class HideSlideNote(val dummy: Boolean = true)
 
 @Serializable
 data class SlideShowCommand(val command: String)
+
+// Slider messages
+@Serializable
+data class SliderUpdate(val sliderId: String, val value: Double)
