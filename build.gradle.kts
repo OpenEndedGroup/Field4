@@ -58,7 +58,7 @@ jvmWrapper {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -409,7 +409,7 @@ tasks.named<Jar>("jvmJar").configure {
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_24)
+            jvmTarget.set(JvmTarget.JVM_25)
             languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2)
             freeCompilerArgs.add("-Xannotations-in-metadata")
         }
@@ -423,7 +423,7 @@ tasks.named<JavaExec>("runJvm").configure {
 
 tasks.register<JavaExec>("runai") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(25))
     })
     group = "application"
     description = "Runs ai3 tests"
@@ -436,7 +436,7 @@ tasks.register<JavaExec>("runai") {
 
 tasks.register<JavaExec>("runai2") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(25))
     })
     group = "application"
     description = "Runs ai2 chat"
@@ -449,7 +449,7 @@ tasks.register<JavaExec>("runai2") {
 
 tasks.register<JavaExec>("runmcp") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(25))
     })
     group = "application"
     description = "Runs ai2 tests"
@@ -462,7 +462,7 @@ tasks.register<JavaExec>("runmcp") {
 
 tasks.register<JavaExec>("runfilestore") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(25))
     })
     group = "application"
     description = "Runs AI4 filestore CLI"
