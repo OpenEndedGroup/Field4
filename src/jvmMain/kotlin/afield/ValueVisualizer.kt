@@ -296,7 +296,9 @@ object ValueVisualizer {
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
             val preview = arr.take(MAX_LIST_PREVIEW)
-            append(preview.joinToString(", ") { formatNumber(it) })
+            append("<span style='color: #8cf;'>")
+            append(preview.joinToString(", "))
+            append("</span>")
             
             if (arr.size > MAX_LIST_PREVIEW) {
                 append(" <span style='color: #888;'>… +${arr.size - MAX_LIST_PREVIEW} more</span>")
@@ -316,7 +318,9 @@ object ValueVisualizer {
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
             val preview = arr.take(MAX_LIST_PREVIEW)
+            append("<span style='color: #8cf;'>")
             append(preview.joinToString(", ") { fmt(it) })
+            append("</span>")
             
             if (arr.size > MAX_LIST_PREVIEW) {
                 append(" <span style='color: #888;'>… +${arr.size - MAX_LIST_PREVIEW} more</span>")
@@ -336,7 +340,9 @@ object ValueVisualizer {
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
             val preview = arr.take(MAX_LIST_PREVIEW)
+            append("<span style='color: #8cf;'>")
             append(preview.joinToString(", ") { fmt(it) })
+            append("</span>")
             
             if (arr.size > MAX_LIST_PREVIEW) {
                 append(" <span style='color: #888;'>… +${arr.size - MAX_LIST_PREVIEW} more</span>")
