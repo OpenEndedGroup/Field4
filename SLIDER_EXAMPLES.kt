@@ -39,40 +39,79 @@ var r = 255.0
 var g = 128.0
 var b = 0.0
 
-// Define the update function after variables
-fun updateColorDisplay() {
-    val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
-    display("color", """
-        <div style="
-            width: 150px; 
-            height: 150px; 
-            background-color: $hex;
-            border: 2px solid white;
-            border-radius: 8px;
-            margin: 10px auto;
-        "></div>
-        <div style="text-align: center; color: white; font-family: monospace;">
-            $hex
-        </div>
-    """)
-}
-
 sliders(
     channel = "color picker",
     "r" to SliderConfig("Red", 0.0, 255.0, 1.0, r) { 
         r = it
-        updateColorDisplay()
+        // Local update function
+        val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
+        display("color", """
+            <div style="
+                width: 150px; 
+                height: 150px; 
+                background-color: $hex;
+                border: 2px solid white;
+                border-radius: 8px;
+                margin: 10px auto;
+            "></div>
+            <div style="text-align: center; color: white; font-family: monospace;">
+                $hex
+            </div>
+        """)
     },
     "g" to SliderConfig("Green", 0.0, 255.0, 1.0, g) { 
         g = it
-        updateColorDisplay()
+        // Local update function
+        val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
+        display("color", """
+            <div style="
+                width: 150px; 
+                height: 150px; 
+                background-color: $hex;
+                border: 2px solid white;
+                border-radius: 8px;
+                margin: 10px auto;
+            "></div>
+            <div style="text-align: center; color: white; font-family: monospace;">
+                $hex
+            </div>
+        """)
     },
     "b" to SliderConfig("Blue", 0.0, 255.0, 1.0, b) { 
         b = it
-        updateColorDisplay()
+        // Local update function
+        val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
+        display("color", """
+            <div style="
+                width: 150px; 
+                height: 150px; 
+                background-color: $hex;
+                border: 2px solid white;
+                border-radius: 8px;
+                margin: 10px auto;
+            "></div>
+            <div style="text-align: center; color: white; font-family: monospace;">
+                $hex
+            </div>
+        """)
     }
 )
-updateColorDisplay() // Initial display
+
+// Initial display
+val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
+display("color", """
+    <div style="
+        width: 150px; 
+        height: 150px; 
+        background-color: $hex;
+        border: 2px solid white;
+        border-radius: 8px;
+        margin: 10px auto;
+    "></div>
+    <div style="text-align: center; color: white; font-family: monospace;">
+        $hex
+    </div>
+""")
 
 // ============================================
 // Example 4: Fine Control with Different Steps

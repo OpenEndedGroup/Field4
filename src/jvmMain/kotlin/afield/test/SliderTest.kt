@@ -61,7 +61,7 @@ suspend fun Box.testMultipleSliders() {
     
     // Print values periodically to show they're updating
     repeat(10) {
-        kotlinx.coroutines.delay(1000)
+        delay(1000)
         println("Position: ($x, $y, $z)")
     }
 }
@@ -159,6 +159,6 @@ suspend fun Box.testAnimationParams() {
         time += 0.1
         val y = amplitude * kotlin.math.sin(frequency * time * speed)
         println("y = $y")
-        kotlinx.coroutines.delay(50)
+        delay(50)
     }
 }
