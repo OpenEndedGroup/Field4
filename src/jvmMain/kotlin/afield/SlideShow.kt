@@ -92,6 +92,31 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     }
     
     /**
+     * Selects a box by name (searches through children recursively) and optionally scrolls to a specific line
+     */
+    fun selectBoxByName(name: String, property: String = "code", line: Int? = null, highlight: Int? = null) {
+        // Search for box with matching name in all children recursively
+        fun findBoxByName(box: Box, targetName: String): Box? {
+            if (box.name == targetName) return box
+            for (child in box.children) {
+                val found = findBoxByName(child, targetName)
+                if (found != null) return found
+            }
+            return null
+        }
+        
+        val found = findBoxByName(hostBox.root, name)
+        if (found != null) {
+            this.targetBox = found
+            this.targetProperty = property
+            this.targetLine = line
+            this.highlightLine = highlight
+        } else {
+            lprintln("Warning: Could not find box with name '$name'")
+        }
+    }
+    
+    /**
      * Code to execute when entering this step
      */
     fun onEnter(action: suspend () -> Unit) {

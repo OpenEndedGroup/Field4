@@ -564,6 +564,57 @@ suspend fun main() {
         if (found != null) {
             val box = found as HTMLElement
             
+            // Open nested disclosure areas if the box is nested
+            fun openNestedDisclosures(targetBox: HTMLElement) {
+                // Check if box is nested inside another box
+                val nestedIn = targetBox.unsafeCast<dynamic>().box_nestedIn as? String
+                if (nestedIn != null) {
+                    // Find the parent box
+                    val parentBoxes = document.body!!.getElementsByClassName("box").asList()
+                    val parentBox = parentBoxes.firstOrNull { 
+                        it.unsafeCast<dynamic>().uid == nestedIn 
+                    } as? HTMLElement
+                    
+                    if (parentBox != null) {
+                        // Recursively open parent disclosures first
+                        openNestedDisclosures(parentBox)
+                        
+                        // Open the nested disclosure for this parent
+                        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
+                        if (outputArea != null) {
+                            val contain = outputArea.querySelector(".disclosure-group")
+                            val di = js("window.disclosureInterface")
+                            if (di != null && di != undefined) {
+                                try {
+                                    val inter = di(contain)
+                                    if (inter.open != null && inter.open != undefined) {
+                                        (inter.open as (String) -> Unit).invoke("nested")
+                                    }
+                                } catch (e: Exception) {
+                                    console.log("Failed to open nested disclosure", e)
+                                }
+                            }
+                            
+                            // Make sure the output area is visible
+                            outputArea.style.visibility = "visible"
+                            outputArea.style.height = "auto"
+                        }
+                    }
+                }
+            }
+            
+            // Open all parent disclosures
+            openNestedDisclosures(box)
+            
+            // Scroll the nested area so the target box is visible
+            setTimeout(50) {
+                try {
+                    box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
+                } catch (e: Exception) {
+                    console.log("Failed to scroll to box", e)
+                }
+            }
+            
             // Deselect all boxes first
             selected.toList().forEach { deselectBox(it) }
             

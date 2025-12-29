@@ -91,6 +91,16 @@ Selects a box and optionally scrolls/highlights a line.
 selectBox(myBox, property = "code", line = 15, highlight = 15)
 ```
 
+#### `selectBoxByName(name: String, property: String = "code", line: Int? = null, highlight: Int? = null)`
+
+Selects a box by searching for it by name (recursively through all children). This is useful when you want to reference boxes by name rather than keeping explicit references.
+
+```kotlin
+selectBoxByName("My Code Box", property = "code", line = 15, highlight = 15)
+```
+
+**Note**: If the box is nested inside other boxes, the slideshow will automatically open all parent disclosure areas and scroll to make the box visible.
+
 #### `onEnter(action: suspend () -> Unit)`
 
 Code to execute when entering this step.

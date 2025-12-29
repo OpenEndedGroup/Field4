@@ -18,7 +18,7 @@ Create a new box that will contain the slideshow script. Add this code:
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-// Get references to your boxes
+// Option 1: Get references to your boxes
 val box1 = root.children.first { it.name == "Box 1" }
 val box2 = root.children.first { it.name == "Box 2" }
 
@@ -40,6 +40,7 @@ val tour = slideShow {
             <p><a href="#slideshow:previous">← Back</a> | 
                <a href="#slideshow:next">Next →</a></p>
         """)
+        // Option 1: Use box reference
         selectBox(box1, property = "code", line = 1)
     }
     
@@ -50,7 +51,9 @@ val tour = slideShow {
             <p><a href="#slideshow:previous">← Back</a> | 
                <a href="#slideshow:stop">Finish</a></p>
         """)
-        selectBox(box2, property = "code", line = 10, highlight = 10)
+        // Option 2: Use box name (searches recursively)
+        // This also works with nested boxes - disclosure areas will open automatically!
+        selectBoxByName("Box 2", property = "code", line = 10, highlight = 10)
     }
 }
 

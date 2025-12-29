@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
  */
 
 fun Box.exampleSlideShow() {
-    // Get references to boxes (you would replace these with actual box IDs)
+    // Get references to boxes (you can also use selectBoxByName)
     val welcomeBox = this
     val codeBox = this.children.firstOrNull() ?: this
     val visualBox = this.children.getOrNull(1) ?: this
@@ -45,6 +45,8 @@ fun Box.exampleSlideShow() {
                 <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
             """.trimIndent())
             
+            // Example: Select box by name instead of by reference
+            // selectBoxByName("My Code Box", property = "code", line = 1)
             selectBox(codeBox, property = "code", line = 1)
         }
         
