@@ -157,7 +157,14 @@ fun monacoInit(monaco: dynamic): dynamic {
                     if (currentCode && currentCode.length > 0 && currentCode[0]) {
                         var propValue = currentCode[0][propName];
                         // Check if property has content (truthy and non-empty string)
-                        var hasContent = propValue && (typeof propValue !== 'string' || propValue.trim().length > 0);
+                        var hasContent = false;
+                        if (propValue) {
+                            if (typeof propValue === 'string') {
+                                hasContent = propValue.trim().length > 0;
+                            } else {
+                                hasContent = true; // Non-string truthy values are considered set
+                            }
+                        }
                         return baseLabel + (hasContent ? ' ✓' : ' ○');
                     }
                     return baseLabel;
