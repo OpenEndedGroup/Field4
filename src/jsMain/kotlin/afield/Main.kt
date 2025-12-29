@@ -1015,6 +1015,7 @@ suspend fun main() {
     later({
         initMenuSupport()
         registerBuiltinCommands()
+        initializeBookmarkSystem()
         hideMonaco()
 
         later({
