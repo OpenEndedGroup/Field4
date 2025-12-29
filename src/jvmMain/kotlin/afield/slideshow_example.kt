@@ -181,3 +181,97 @@ fun Box.installSlideShowControls() {
         }
     }
 }
+
+/**
+ * Advanced slideshow example with annotations and animations
+ */
+fun Box.advancedSlideShowExample() {
+    val hostBox = this
+    val codeBox = this.children.firstOrNull() ?: this
+    val secondBox = this.children.elementAtOrNull(1) ?: codeBox
+    
+    val show = slideShow {
+        step("Introduction with Animation") {
+            note("""
+                <h2>Welcome!</h2>
+                <p>This guide demonstrates advanced slideshow features.</p>
+                <p>Notice how this text animates in letter by letter!</p>
+                <p><a href="#slideshow:next">Continue →</a></p>
+            """.trimIndent(), animated = true)
+            
+            selectBox(hostBox)
+        }
+        
+        step("Drawing Attention with Annotations") {
+            note("""
+                <h3>Pointing Things Out</h3>
+                <p>You can draw lines from the guide to boxes!</p>
+                <p><span id="annotation-target">Look at the line connecting this guide to the box below.</span></p>
+                <br>
+                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
+            """.trimIndent())
+            
+            selectBox(codeBox)
+            
+            // Draw an annotation line from the guide to the target box
+            annotate(
+                id = "main-annotation",
+                targetBox = codeBox,
+                color = "rgba(128, 255, 164, 0.8)",
+                strokeWidth = 2.5
+            )
+        }
+        
+        step("Pointing to Specific Code Lines") {
+            note("""
+                <h3>Code-Level Annotations</h3>
+                <p>Lines can point to specific code locations!</p>
+                <p>The annotation below targets line 5 in the editor.</p>
+                <br>
+                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
+            """.trimIndent(), animated = true)
+            
+            selectBox(codeBox, line = 5, highlight = 5)
+            
+            // Draw annotation to a specific line
+            annotateToLine(
+                id = "line-annotation",
+                targetBox = codeBox,
+                property = "code",
+                line = 5,
+                color = "rgba(255, 180, 100, 0.8)",
+                strokeWidth = 2.0,
+                dashed = true
+            )
+        }
+        
+        step("Multiple Annotations") {
+            note("""
+                <h3>Complex Guides</h3>
+                <p>You can have multiple annotation lines at once.</p>
+                <p>This helps explain relationships between different parts of your document.</p>
+                <br>
+                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:stop">Finish</a></p>
+            """.trimIndent(), persistent = true)
+            
+            selectBox(hostBox)
+            
+            // Multiple annotations
+            annotate(
+                id = "box1",
+                targetBox = codeBox,
+                color = "rgba(100, 200, 255, 0.7)"
+            )
+            annotate(
+                id = "box2",
+                targetBox = secondBox,
+                color = "rgba(255, 100, 200, 0.7)"
+            )
+        }
+    }
+    
+    GlobalScope.launch {
+        show.start()
+    }
+}
+

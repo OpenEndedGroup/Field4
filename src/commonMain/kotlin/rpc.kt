@@ -272,10 +272,28 @@ data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
 data class SelectAndEditBox(val uid: String, val property: String = "code", val scrollToLine: Int? = null, val highlightLine: Int? = null)
 
 @Serializable
-data class ShowSlideNote(val html: String, val uid: String = "", val persistent: Boolean = false)
+data class ShowSlideNote(
+    val html: String, 
+    val uid: String = "", 
+    val persistent: Boolean = false,
+    val animated: Boolean = false,
+    val annotations: List<SlideAnnotation> = emptyList()
+)
 
 @Serializable
 data class HideSlideNote(val dummy: Boolean = true)
 
 @Serializable
 data class SlideShowCommand(val command: String)
+
+// Slide annotation for drawing lines from guide text to boxes/editor positions
+@Serializable
+data class SlideAnnotation(
+    val id: String,
+    val targetUid: String,
+    val targetProperty: String? = null,
+    val targetLine: Int? = null,
+    val color: String = "rgba(128, 255, 164, 0.7)",
+    val strokeWidth: Double = 2.0,
+    val dashed: Boolean = false
+)
