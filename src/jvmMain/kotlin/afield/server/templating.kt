@@ -138,7 +138,7 @@ fun templating() {
 
         val si = thisSessionInfo.get()
 
-        exec.value.flatMap { templateName ->
+        val loadedBoxes = exec.value.flatMap { templateName ->
             // Try local templates first
             if (templatesHome.contains(templateName)) {
                 SavingContext().cloneInto("$home/$templateName")
@@ -164,7 +164,41 @@ fun templating() {
                 }
                 boxes
             }
-        }.forEach {
+        }
+        
+        // Calculate center of mass and translate boxes to mouse position if provided
+        if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
+            // Calculate center of mass (average of all box centers)
+            var sumX = 0.0
+            var sumY = 0.0
+            var count = 0
+            
+            loadedBoxes.forEach { box ->
+                val frame = box.frame
+                sumX += frame.x + frame.w / 2.0
+                sumY += frame.y + frame.h / 2.0
+                count++
+            }
+            
+            if (count > 0) {
+                val centerX = sumX / count
+                val centerY = sumY / count
+                
+                // Calculate translation needed to move center of mass to mouse position
+                val deltaX = exec.mouseX - centerX
+                val deltaY = exec.mouseY - centerY
+                
+                // Apply translation to all boxes
+                loadedBoxes.forEach { box ->
+                    val frame = box.frame
+                    box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+                }
+                
+                lprintln("Translated ${loadedBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
+            }
+        }
+        
+        loadedBoxes.forEach {
             it.resyncAll()
         }
         si.topologyGeneration++
