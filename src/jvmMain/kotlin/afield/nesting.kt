@@ -31,11 +31,15 @@ private fun onNestedChange(owner: HasProperties, currentValue: MutableSet<Box>, 
             if (child.nestedIn == parent) {
                 child.nestedIn = null
             }
+            // Disconnect parent-child relationship when removing from nested
+            parent.disconnect(child)
         }
         added.forEach { child ->
             if (child.nestedIn != parent) {
                 child.nestedIn = parent
             }
+            // Connect parent-child relationship when adding to nested
+            parent.connect(child)
         }
         target
     }
@@ -54,12 +58,16 @@ private fun onNestedInChange(owner: HasProperties, currentValue: Box?, incomingV
             if (updated.remove(child)) {
                 oldParent.nested = updated
             }
+            // Disconnect parent-child relationship from old parent
+            oldParent.disconnect(child)
         }
 
         if (newParent != null && !newParent.nested.contains(child)) {
             val updated = newParent.nested.toMutableSet()
             updated.add(child)
             newParent.nested = updated
+            // Connect parent-child relationship to new parent
+            newParent.connect(child)
         }
 
         newParent
