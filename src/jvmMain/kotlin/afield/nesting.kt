@@ -100,3 +100,25 @@ fun Box.nestInto(parent: Box?) {
         nestedIn = parent
     }
 }
+
+/**
+ * Recursively collects all nested boxes from the given set of boxes.
+ * This ensures that when saving templates or copying boxes, all nested children are included.
+ *
+ * @param boxes The initial set of boxes
+ * @return A new set containing the original boxes plus all their recursively nested children
+ */
+fun collectAllNestedBoxes(boxes: Set<Box>): Set<Box> {
+    val result = mutableSetOf<Box>()
+    val queue = ArrayDeque(boxes)
+    
+    while (queue.isNotEmpty()) {
+        val box = queue.removeFirst()
+        if (result.add(box)) {
+            // Only process nested children if we haven't seen this box before
+            queue.addAll(box.nested)
+        }
+    }
+    
+    return result
+}
