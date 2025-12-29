@@ -185,13 +185,12 @@ If bookmarks are not persisting:
 3. Verify the message was sent:
    ```javascript
    // Enable message logging
-   console.log = (function(oldLog) {
-       return function() {
-           if (arguments[0].includes("set-string")) {
-               oldLog.apply(console, arguments);
-           }
-       };
-   })(console.log);
+   const oldLog = console.log;
+   console.log = function() {
+       if (typeof arguments[0] === 'string' && arguments[0].includes("set-string")) {
+           oldLog.apply(console, arguments);
+       }
+   };
    ```
 
 4. Check that saving.kt includes "bookmarks" in ioPersistentProperties:

@@ -46,7 +46,7 @@ send(Message("set-string").payload(
 // Bookmarks will be automatically persisted when the document is saved
 ```
 
-#### Restoring Bookmarks
+#### Restoring Bookmarks (Frontend - JavaScript/Kotlin.js)
 ```javascript
 // Bookmarks are automatically loaded from disk when document is opened
 // The frontend receives them via the set-string message handler
@@ -55,8 +55,8 @@ handlers.put("set-string") { message, _ ->
     val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
     
     if (set.uid == "root" && set.property == "bookmarks") {
-        // Parse and restore bookmark state
-        val bookmarkData = JSON.parse(set.value);
+        // Parse and restore bookmark state (frontend JavaScript)
+        val bookmarkData = js("JSON.parse")(set.value);
         restoreBookmarkState(bookmarkData);
     }
     

@@ -119,7 +119,7 @@ function captureBookmark(name: string): Bookmark {
     const cursor = captureCursorPosition();
     
     return {
-        id: `bookmark_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `bookmark_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
         name: name,
         timestamp: Date.now(),
         scrollPosition: captureScrollPosition(),
