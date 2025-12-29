@@ -243,11 +243,11 @@ private fun buildSliderHtml(
 
 private fun calculateDecimalPlaces(step: Double): Int {
     if (step >= 1.0) return 0
-    val stepStr = step.toString()
-    val decimalIndex = stepStr.indexOf('.')
-    return if (decimalIndex >= 0) {
-        stepStr.substring(decimalIndex + 1).trimEnd('0').length
-    } else {
-        0
-    }
+    
+    // Handle very small numbers and scientific notation
+    if (step == 0.0) return 0
+    
+    // Use BigDecimal for accurate decimal place calculation
+    val bd = java.math.BigDecimal.valueOf(step)
+    return bd.stripTrailingZeros().scale().coerceAtLeast(0)
 }

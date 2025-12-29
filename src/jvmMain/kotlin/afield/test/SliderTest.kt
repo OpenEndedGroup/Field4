@@ -1,6 +1,7 @@
 package afield.test
 
 import afield.*
+import kotlinx.coroutines.delay
 
 /**
  * Test file demonstrating the slider functionality.
@@ -25,7 +26,7 @@ fun Box.testSimpleSlider() {
 }
 
 // Example 2: Multiple sliders
-fun Box.testMultipleSliders() {
+suspend fun Box.testMultipleSliders() {
     var x = 0.0
     var y = 0.0
     var z = 0.0
@@ -58,9 +59,9 @@ fun Box.testMultipleSliders() {
         )
     )
     
-    // Print values every second to show they're updating
+    // Print values periodically to show they're updating
     repeat(10) {
-        Thread.sleep(1000)
+        kotlinx.coroutines.delay(1000)
         println("Position: ($x, $y, $z)")
     }
 }
@@ -119,7 +120,7 @@ private fun Box.updateColor(r: Double, g: Double, b: Double) {
 }
 
 // Example 4: Animation parameters
-fun Box.testAnimationParams() {
+suspend fun Box.testAnimationParams() {
     var speed = 1.0
     var amplitude = 10.0
     var frequency = 2.0
@@ -158,6 +159,6 @@ fun Box.testAnimationParams() {
         time += 0.1
         val y = amplitude * kotlin.math.sin(frequency * time * speed)
         println("y = $y")
-        Thread.sleep(50)
+        kotlinx.coroutines.delay(50)
     }
 }
