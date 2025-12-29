@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Log Stream</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        @import url("/iosevka.css");
+        :root{
+            --bg: #0f0f0f;
+            --panel: #111;
+            --fg: #e7e7e7;
+            --muted: #9aa0a6;
+            --accent: #7fd0ff;
+            --warn: #ffc66d;
+            --error: #ff8a80;
+            --border: #000;
+            --sep: rgba(255,255,255,0.08);
+            --sb-size: 8px;
+            --sb-thumb: rgba(255,255,255,.22);
+            --sb-thumb-hover: rgba(255,255,255,.35);
+        }
+        *{ box-sizing:border-box; font-family:"Iosevka Web", system-ui, sans-serif; }
+        body{ margin:0; background:transparent; color:var(--fg); font-size:12px; line-height:1.25; }
+        #chrome{ padding:6px; display:flex; flex-direction:column; gap:6px; background:transparent; }
+        #filters{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            /* float: right; */
+            position: absolute;
+            backdrop-filter: blur(4px);
+            right: 4px;
+            top: 4px;
+            background: none;
+        }
+        .pill{
+            padding: 4px 8px;
+            color: var(--fg);
+            font-size: 11px;
+        }
+        #log{
+            border:2px solid var(--border); border-radius:6px;
+            background:var(--panel); min-height:120px; max-height:calc( 100vh - 24px );
+            overflow:auto; padding:6px;
+        }
+        .row{
+            display:grid; grid-template-columns: 90px 140px 1fr; gap:6px;
+            padding:6px 6px; border-bottom:1px solid var(--sep);
+            align-items:flex-start;
+        }
+        .row.block{ border-left:2px solid rgba(255,255,255,0.12); }
+        .row.block-level-1{ margin-left:24px; }
+        .row.block-level-2{ margin-left:40px; }
+        .row.block-level-3{ margin-left:56px; }
+        .row.block-level-4{ margin-left:72px; }
+        .row.block-level-5{ margin-left:88px; }
+        .block-group{
+            border-left:2px solid rgba(255,255,255,0.22);
+            margin:6px 0 10px 0;
+            padding-left:10px;
+            border-radius:6px;
+            background:rgba(255,255,255,0.02);
+        }
+        .block-group > .row:first-child{
+            background:rgba(255,255,255,0.05);
+            border-radius:4px;
+        }
+        .row:last-child{ border-bottom:none; }
+        .ts{ color:var(--muted); font-variant-numeric: tabular-nums; }
+        .ch{ color:var(--accent); }
+        .msg{ white-space:pre-wrap; word-break:break-word; }
+        .msg.boundary{ color:var(--muted); }
+        .msg.error{ color:var(--error); }
+        .msg.warn{ color:var(--warn); }
+        .badge{
+            display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid var(--sep);
+            background:rgba(255,255,255,0.04); font-size:10px; color:var(--muted);
+            margin-left:4px;
+        }
+        .badge.block { background:rgba(255,255,255,0.08); color:var(--muted); }
+        #log, #log *{ scrollbar-width: thin; scrollbar-color: var(--sb-thumb) transparent; }
+        #log::-webkit-scrollbar{ width: var(--sb-size); height: var(--sb-size); }
+        #log::-webkit-scrollbar-thumb{ background-color: var(--sb-thumb); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+        #log::-webkit-scrollbar-thumb:hover{ background-color: var(--sb-thumb-hover); }
+    </style>
+</head>
+<body>
+<div id="chrome">
+    <div id="filters"></div>
+    <div id="log" aria-live="polite"></div>
+</div>
+<script>
+(function(){
+    const qs = new URLSearchParams(location.search);
+    const subId = qs.get("subId") || `logs-${Math.random().toString(36).slice(2)}`;
+    const latestOnly = qs.get("latestOnly") === "true";
+    const parseBool = (k, def=false) => {
+        const v = qs.get(k);
+        return v === null ? def : v.toLowerCase() === "true";
+    };
+    const parseNum = (k) => {
+        const v = qs.get(k); return v ? Number(v) : null;
+    };
+    const channels = qs.get("channels") ? qs.get("channels").split(",").filter(Boolean) : null;
+    const filter = {
+        channels,
+        messageContains: qs.get("messageContains"),
+        messageRegex: qs.get("messageRegex"),
+        blockId: qs.get("blockId"),
+        includeBlockChildren: parseBool("includeBlockChildren", false),
+        sinceEpochMs: parseNum("sinceEpochMs"),
+        afterSeq: parseNum("afterSeq"),
+        limit: qs.get("limit") ? Number(qs.get("limit")) : (latestOnly ? 1 : 500),
+        tail: parseBool("tail", true)
+    };
+
+    const logEl = document.getElementById("log");
+    const filtersEl = document.getElementById("filters");
+    let autoScroll = true;
+
+    function pill(label){
+        const el = document.createElement("div");
+        el.className = "pill";
+        el.textContent = label;
+        filtersEl.appendChild(el);
+    }
+
+    if (channels) pill("channels: " + channels.join(","));
+    if (filter.messageContains) pill("msg contains: " + filter.messageContains);
+    if (filter.messageRegex) pill("msg regex: " + filter.messageRegex);
+    if (filter.blockId) pill("block: " + filter.blockId);
+    if (latestOnly) pill("latest only");
+
+    const ws = new WebSocket(`ws://${document.location.host}/ws`);
+    let open = false;
+
+    function escape(text){
+        const el = document.createElement("div");
+        el.textContent = text;
+        return el.innerHTML;
+    }
+
+    function classifyChannel(ch){
+        const lc = ch.toLowerCase();
+        if (lc.includes("error")) return "error";
+        if (lc.includes("warn")) return "warn";
+        return "";
+    }
+
+    function blockLevel(indent){
+        if (!indent) return 0;
+        const tokens = indent.split(/\t/).map(s => s.trim()).filter(Boolean);
+        return Math.min(5, tokens.length);
+    }
+
+    function cleanBeginMessage(msg, blockId){
+        let out = msg.replace(/^BEGIN\\s+/i, "");
+        if (blockId) out = out.replace(new RegExp(`-\\s*['"]?${blockId}['"]?$`), "").trim();
+        return out;
+    }
+
+    function stripBlockId(msg, blockId){
+        if (!blockId) return msg;
+        const re = new RegExp(`^['"]?${blockId}['"]?\\s*[:\\-]?\\s*`, "i");
+        return msg.replace(re, "").trim();
+    }
+
+    const blockGroups = new Map();
+
+    function addRow(evt){
+        if (latestOnly) logEl.innerHTML = "";
+        const shouldStick = autoScroll || latestOnly;
+        const level = blockLevel(evt.indent);
+        const ts = new Date(evt.timestampEpochMs);
+        const boundaryText = evt.boundary && evt.boundary !== "BEGIN" ? evt.boundary + " " : "";
+
+        if (evt.boundary === "END" && evt.blockId) {
+            blockGroups.delete(evt.blockId);
+            return;
+        }
+
+        const row = document.createElement("div");
+        row.className = `row block block-level-${level}`;
+        const messageText = (evt.boundary === "BEGIN" && evt.blockId)
+            ? cleanBeginMessage(evt.message, evt.blockId)
+            : stripBlockId(evt.message, evt.blockId);
+        row.innerHTML = `
+            <div class="ts">${ts.toLocaleTimeString()}</div>
+            <div class="ch">${escape(evt.channel)}</div>
+            <div class="msg ${evt.boundary ? "boundary" : ""} ${classifyChannel(evt.channel)}">${escape(boundaryText + messageText)}</div>
+        `;
+
+        if (evt.boundary === "BEGIN" && evt.blockId) {
+            const group = document.createElement("div");
+            group.className = "block-group";
+            group.dataset.blockId = evt.blockId;
+            group.appendChild(row);
+            blockGroups.set(evt.blockId, group);
+            logEl.appendChild(group);
+        } else if (evt.blockId && blockGroups.has(evt.blockId)) {
+            const group = blockGroups.get(evt.blockId);
+            if (group) {
+                group.appendChild(row);
+                // Keep the active block together and bumped to the bottom as new rows arrive
+                logEl.appendChild(group);
+            }
+        } else {
+            logEl.appendChild(row);
+        }
+
+        if (!latestOnly) {
+            const max = filter.limit || 500;
+            while (logEl.children.length > max) logEl.removeChild(logEl.firstChild);
+        }
+        if (shouldStick) {
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+    }
+
+    logEl.addEventListener("scroll", () => {
+        const nearBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 8;
+        autoScroll = nearBottom;
+    });
+
+    function addSeparator(){
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<div class="ts"></div><div class="ch"></div><div class="msg"><hr style="border:0;border-top:1px solid var(--sep);"></div>`;
+        logEl.appendChild(row);
+        if (autoScroll) logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "k") {
+            logEl.innerHTML = "";
+        } else if (e.key === "t") {
+            addSeparator();
+        }
+    });
+
+    ws.addEventListener("open", () => {
+        open = true;
+        ws.send(JSON.stringify({type:"logs/subscribe", subId, filter}));
+    });
+
+    ws.addEventListener("message", (ev) => {
+        try {
+            const msg = JSON.parse(ev.data);
+            if (!msg.type || !msg.type.startsWith("logs/")) return; // ignore non-log traffic on the shared socket
+            if (msg.subId && msg.subId !== subId) return;
+            if (msg.type === "logs/event") addRow(msg);
+        } catch (_){
+            // ignore parse errors from other traffic
+        }
+    });
+
+    function cleanClose(){
+        if (open) {
+            try { ws.send(JSON.stringify({type:"logs/unsubscribe", subId})); } catch(_){}
+        }
+    }
+
+    window.addEventListener("beforeunload", () => { cleanClose(); ws.close(); });
+})();
+</script>
+</body>
+</html>
