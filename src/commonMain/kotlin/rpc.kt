@@ -297,3 +297,18 @@ data class SlideAnnotation(
     val strokeWidth: Double = 2.0,
     val dashed: Boolean = false
 )
+// Control messages
+@Serializable
+data class SliderUpdate(val sliderId: String, val value: Double)
+
+@Serializable
+data class Vec2Update(val controlId: String, val x: Double, val y: Double)
+
+@Serializable
+data class CheckboxUpdate(val controlId: String, val value: Boolean)
+
+@Serializable
+data class StringUpdate(val controlId: String, val value: String)
+
+@Serializable
+data class ColorUpdate(val controlId: String, val r: Double, val g: Double, val b: Double, val a: Double)

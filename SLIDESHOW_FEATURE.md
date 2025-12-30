@@ -175,6 +175,10 @@ Notes support full HTML with inline styles. Use links for navigation:
 <!-- Jump to specific step (0-indexed) -->
 <a href="#slideshow:5">Go to step 5</a>
 
+<!-- Images from project directory -->
+<img src="/project/myimage.png" alt="Description" style="max-width: 100%;">
+<img src="/project/images/diagram.jpg" alt="Diagram">
+
 <!-- Formatting -->
 <h2>Title</h2>
 <h3>Subtitle</h3>
@@ -185,6 +189,28 @@ Notes support full HTML with inline styles. Use links for navigation:
 </ul>
 <code>inline code</code>
 <kbd>Cmd+Enter</kbd>
+```
+
+### Using Images
+
+Images stored in your project directory (`$home` / workspace) can be referenced using the `/project/` prefix:
+
+- If you have `myimage.png` in your project root: `<img src="/project/myimage.png">`
+- For images in subdirectories: `<img src="/project/images/diagram.jpg">`
+- Always use forward slashes in paths, even on Windows
+
+Example with styled image:
+```kotlin
+step("Visual Example") {
+    note("""
+        <h3>System Architecture</h3>
+        <img src="/project/architecture.png" 
+             alt="Architecture diagram" 
+             style="max-width: 100%; border: 1px solid #ccc; margin: 10px 0;">
+        <p>The diagram above shows the overall structure.</p>
+        <a href="#slideshow:next">Next →</a>
+    """)
+}
 ```
 
 ## Styling
