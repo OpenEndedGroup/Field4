@@ -206,7 +206,7 @@ function disclosureInterface(container) {
                 }
         }
 
-        const api = { upsertDisclosure, setContent, toggle, open, close };
+        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo };
         container.__disclosureAPI = api;
         return api;
 }

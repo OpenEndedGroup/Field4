@@ -80,6 +80,7 @@
     width: 12px;
     height: 2px;
     background-color: #ff0000;
+    /* Center the X lines vertically (half of 12px height minus half of 2px line height) */
     top: 5px;
     left: 0;
 }
