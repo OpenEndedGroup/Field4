@@ -6,6 +6,7 @@ import afield.stdlib.d
 import afield.stdlib.i
 import afield.stdlib.invoke
 import afield.stdlib.vec
+import afield.util.PngEncoder
 import kotlinx.coroutines.*
 import org.lwjgl.glfw.Callbacks
 import org.lwjgl.glfw.GLFW
@@ -14,8 +15,13 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import java.io.BufferedReader
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.regex.Pattern
 import kotlin.math.roundToInt
 
@@ -159,5 +165,73 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
 
     fun shouldClose(): Boolean {
         return GLFW.glfwWindowShouldClose(windowHandle)
+    }
+    
+    /**
+     * Save the current framebuffer content to a temporary PNG file.
+     * 
+     * When imageData is provided, it is interpreted as raw RGBA pixel data for an image of the
+     * given width and height. The pixel data may come from any rendering backend (e.g. Vulkan,
+     * OpenGL, or software rendering).
+     * 
+     * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
+     * @param width Image width in pixels
+     * @param height Image height in pixels
+     * @return File object pointing to the created temporary PNG file
+     * @throws IllegalArgumentException if imageData is null
+     * @throws IllegalArgumentException if buffer size doesn't match width * height * 4
+     * @throws RuntimeException if file creation or image encoding fails
+     */
+    fun saveFramebufferToTempFile(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height): File {
+        if (imageData == null) {
+            throw IllegalArgumentException("imageData is null; cannot save framebuffer without explicit image data")
+        }
+        
+        // Validate buffer size
+        val expectedSize = width * height * 4
+        if (imageData.capacity() < expectedSize) {
+            throw IllegalArgumentException(
+                "Buffer too small: expected at least $expectedSize bytes for ${width}x${height} RGBA image, " +
+                "but got ${imageData.capacity()} bytes"
+            )
+        }
+        
+        try {
+            // Create temp file with timestamp
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+            val tempFile = Files.createTempFile("field4_screenshot_$timestamp", ".png").toFile()
+            
+            // Convert buffer to PNG and write to file
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
+            Files.write(tempFile.toPath(), pngBytes, StandardOpenOption.WRITE)
+            
+            return tempFile
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to save framebuffer to temp file: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Get the current framebuffer as a base64-encoded PNG string.
+     * Useful for sending image data over the network.
+     * 
+     * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
+     * @param width Image width in pixels
+     * @param height Image height in pixels
+     * @return Base64-encoded PNG string, or null if encoding fails
+     */
+    fun getFramebufferAsBase64(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height): String? {
+        if (imageData == null) {
+            return null
+        }
+        
+        return try {
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
+            Base64.getEncoder().encodeToString(pngBytes)
+        } catch (e: Exception) {
+            System.err.println("Failed to get framebuffer as base64 PNG: ${e.message}")
+            e.printStackTrace()
+            null
+        }
     }
 }

@@ -8,6 +8,7 @@ import afield.ai.core.chat.IdeChatHelpers
 import afield.ai.core.lang.*
 import afield.ai.core.logging.NotifyLog
 import afield.ai.core.tools.*
+import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -454,4 +455,105 @@ fun installAi4() {
         }
         Handled.yes
     })
+    
+    // Chat interface handlers
+    handlers["hello_chat"] = mutableSetOf({ message, reply ->
+        val hello = Json.decodeFromJsonElement<Hello>(message.payload!!)
+        lprintln("info,chat", "Chat connection from ${hello.username} for file ${hello.filename}")
+        // Initialize chat state if needed
+        Handled.yes
+    })
+    
+    handlers["chat_input"] = mutableSetOf({ message, reply ->
+        val input = Json.decodeFromJsonElement<Chat_input>(message.payload!!)
+        
+        if (chatBridge == null) {
+            val uiLog = NotifyLog(label = "")
+            chatBridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = uiLog)
+            chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
+        }
+        
+        val fileKey = "chat:${documentName()}"
+        val state = chatThreadFor(fileKey, "")
+        
+        ai4Scope.launch {
+            try {
+                // Format the user message with images if present
+                val userMessage = buildString {
+                    append(input.value)
+                    if (input.images.isNotEmpty()) {
+                        append("\n\n[User attached ${input.images.size} image(s)]")
+                    }
+                }
+                
+                // Send intermediate response
+                reply(Message("chat_input").payload(Chat_input(
+                    value = "<div style='opacity: 0.5;'>Thinking...</div>",
+                    phase = 1
+                )))
+                
+                // TODO: Integrate images with OpenAI vision API
+                // To add vision support:
+                // 1. Check if input.images is not empty
+                // 2. Use OpenAI's chat completion with vision model (e.g., gpt-4-vision-preview)
+                // 3. Format the message content as an array with text and image_url parts
+                // 4. Each image_url should have the format: { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
+                // 5. The images are already base64-encoded from the frontend
+                //
+                // Example structure:
+                // val content = listOf(
+                //     mapOf("type" to "text", "text" to input.value),
+                //     *input.images.map { base64 ->
+                //         mapOf("type" to "image_url", "image_url" to mapOf("url" to base64))
+                //     }.toTypedArray()
+                // )
+                
+                // For now, just process the text
+                val lang = LanguageSpec(
+                    name = "text",
+                    wrap = { it.trimEnd() },
+                    unwrap = { it.trimEnd() }
+                )
+                val result = chatHelpers!!.chatGeneral(
+                    state = state,
+                    code = "",
+                    lang = lang,
+                    userPrompt = userMessage
+                )
+                
+                chatThreadByKey[fileKey] = result.threadState
+                
+                // Format response with markdown
+                val formattedResponse = formatMarkdown(result.text)
+                
+                // Send final response
+                inMain {
+                    reply(Message("chat_input").payload(Chat_input(
+                        value = formattedResponse,
+                        phase = 20
+                    )))
+                }
+            } catch (e: Exception) {
+                inMain {
+                    reply(Message("chat_input").payload(Chat_input(
+                        value = "<div style='color: red;'>Error: ${e.message}</div>",
+                        phase = 20
+                    )))
+                }
+            }
+        }
+        
+        Handled.yes
+    })
+}
+
+private fun formatMarkdown(text: String): String {
+    // Simple markdown formatting for chat output
+    var result = text
+        .replace(Regex("```([\\s\\S]*?)```"), "<pre><code>$1</code></pre>")
+        .replace(Regex("`([^`]+)`"), "<code>$1</code>")
+        .replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
+        .replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
+        .replace("\n", "<br/>")
+    return result
 }
