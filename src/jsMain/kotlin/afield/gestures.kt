@@ -60,10 +60,10 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
 }
 
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
-var dubinsMinRadius = 30.0
+var dubinsMinRadius = 190.0 // ends up being length / 3
 
 private const val FILTER_RESAMPLE_COUNT = 64
-private const val FILTER_ALPHA = 0.05
+private const val FILTER_ALPHA = 0.01
 private const val FILTER_EPS = 0.5
 private const val MAX_SEGMENTS = 128
 
@@ -115,8 +115,10 @@ private fun filterConnection(key: String, target: List<Point>): List<Point> {
     }
 
     if (state.filtered.isEmpty()) {
-        state.filtered = targetResampled
-        return state.filtered
+        val straight = resamplePolyline(listOf(targetResampled.first(), targetResampled.last()), resampleCount)
+        state.filtered = straight
+        needsFilterFrame = true
+        return straight
     }
 
     val prev = state.filtered

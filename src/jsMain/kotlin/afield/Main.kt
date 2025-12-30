@@ -1464,6 +1464,14 @@ suspend fun main() {
         val x: Number = (target.data_x ?: 0.0) + event.dx
         val y: Number = (target.data_y ?: 0.0) + event.dy
 
+        console.log("two ways ", x, y, originatingMouseDown, event)
+
+        val tdx = (event.clientX - originatingMouseDown.clientX) as Number
+        val tdy = (event.clientY - originatingMouseDown.clientY) as Number
+        val odx = (target.originalFramePosition as List<Number>)[0].toDouble() + tdx.toDouble()
+        val ody = (target.originalFramePosition as List<Number>)[1].toDouble() + tdy.toDouble()
+        console.log("two ways => ", odx, ody)
+
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round trip to server
 //        target.data_x = x
 //        target.data_y = y
@@ -1476,7 +1484,7 @@ suspend fun main() {
                 Set_rect(
                     uid = uid,
                     property = "frame",
-                    Rect(x.toDouble(), y.toDouble(), event.rect.width - t * 2, event.rect.height - t * 2)
+                    Rect(odx.toDouble(), ody.toDouble(), event.rect.width - t * 2, event.rect.height - t * 2)
                 )
             )
         )
@@ -1489,6 +1497,13 @@ suspend fun main() {
     interactable.on("dragend") { event ->
         console.log(" interact dragend ", event)
         provideMissingMouseup(event)
+    }
+
+    interactable.on("dragstart") { event ->
+        selected.copy().forEach {
+            it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
+            it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)
+        }
     }
 
     interactable.on("down") { event ->
@@ -1536,7 +1551,19 @@ suspend fun main() {
 //            event.preventDefault();
 //            event.stopPropagation();
 
+            selected.copy().forEach {
+                it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
+                it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)
+            }
         } else {
+
+            originatingMouseDown = event
+
+            selected.copy().forEach {
+                it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
+                it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)
+            }
+
             if (event.metaKey) {}
             else if (event.shiftKey) {
                 if (selected.contains(event.target)) deselectBox(target)

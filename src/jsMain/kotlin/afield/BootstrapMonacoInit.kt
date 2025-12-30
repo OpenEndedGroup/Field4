@@ -179,7 +179,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.cursorStyle = "block"
     options.cursorBlinking = "blink"
     options.matchBrackets = "never"
-    options["renderLineHighlight"] = "all"
+    options["renderLineHighlight"] = "line"
+    options["renderLineHighlightOnlyWhenFocus"] = false
     options["bracketPairColorization.enabled"] = true
     val scrollbar = js("{}")
     scrollbar.verticalScrollbarSize = 5
