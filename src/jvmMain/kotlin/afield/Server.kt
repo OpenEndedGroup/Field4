@@ -5,6 +5,7 @@ package afield
 import afield.ai.Ai4CompletionDoc
 import afield.four.util.Options
 import afield.logger.lprintln
+import afield.stdlib.begin
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserType
@@ -833,7 +834,7 @@ class Server {
                             val fullUri = call.request.uri
                             val pathOnly = URI(fullUri).path
                             val relativeUri = pathOnly.removePrefix("/project/")
-                            
+
                             val file = File(home, relativeUri)
                             if (file.exists() && file.isFile && file.canonicalPath.startsWith(File(home).canonicalPath)) {
                                 // Security check: ensure the file is within the home directory

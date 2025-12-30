@@ -1276,8 +1276,14 @@ suspend fun main() {
     }
 
     interactable.on("down") { event ->
+        val originalTarget = event.target as? HTMLElement
+        val insideOutputArea = originalTarget?.closest(".outputArea") != null
+
         val target: dynamic = reorient(event.target)
         if (event.altKey) {
+            if (insideOutputArea) {
+                return@on
+            }
 
             var already = false
             if (target.classList.contains("running")) {

@@ -43,6 +43,81 @@ private fun propertyIndexOf(name: String?): Int {
 
 private fun isTruthy(value: dynamic): Boolean = js("Boolean(value)") as Boolean
 
+private fun computePropertyActionLabel(w: dynamic, baseLabel: String, propName: String): String {
+    val currentCode = w.currentSelectedCode
+    val len = (currentCode?.length as? Number)?.toInt() ?: 0
+    if (len > 0 && currentCode[0] != null) {
+        val propValue = currentCode[0][propName]
+        val exists = js("propValue !== undefined && propValue !== null") as Boolean
+        if (exists) {
+            val hasContent = if (js("typeof propValue === 'string' || propValue instanceof String") as Boolean) {
+                val trimmed = (propValue as String).trim()
+                trimmed.isNotEmpty()
+            } else {
+                js("Boolean(propValue)") as Boolean
+            }
+            return baseLabel + if (hasContent) " ✓" else " ○"
+        }
+    }
+    return baseLabel
+}
+
+private fun disposePropertySwitchActions(previous: dynamic) {
+    val len = (previous?.length as? Number)?.toInt() ?: 0
+    if (len <= 0) return
+    for (i in 0 until len) {
+        val entry = previous[i]
+        try {
+            entry?.dispose?.invoke()
+        } catch (_: dynamic) {
+        }
+    }
+}
+
+internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
+    val w = js("window")
+    disposePropertySwitchActions(w.propertyActionDisposables)
+
+    val keyCodes = arrayOf(
+        monaco.KeyCode.KeyM,
+        monaco.KeyCode.KeyV,
+        monaco.KeyCode.KeyF,
+        monaco.KeyCode.KeyM,
+        monaco.KeyCode.KeyP,
+        monaco.KeyCode.KeyD
+    )
+
+    val disposables = mutableListOf<dynamic>()
+
+    for (i in monacoPropertyNames.indices) {
+        val actionId = "switch-property-" + monacoPropertyNames[i]
+        val baseLabel = "Edit: " + monacoPropertyDescriptions[i]
+        val propName = monacoPropertyNames[i]
+
+        val action = js("{}")
+        action.id = actionId
+        action.label = computePropertyActionLabel(w, baseLabel, propName)
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 2.0
+
+        if (i < keyCodes.size) {
+            val binding = (monaco.KeyMod.Alt as Int) or (keyCodes[i] as Int)
+            action.keybindings = arrayOf(binding)
+        } else {
+            action.keybindings = emptyArray<Int>()
+        }
+
+        action.run = { editorNow: dynamic ->
+            monacoApplyPropertySelection(monaco, editorNow, i)
+        }
+
+        val handle = ed.addAction(action)
+        disposables.add(handle)
+    }
+
+    w.propertyActionDisposables = disposables.toTypedArray()
+}
+
 internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, index: Int) {
     if (index !in monacoPropertyNames.indices) return
     val w = js("window")
@@ -127,65 +202,7 @@ fun monacoInit(monaco: dynamic): dynamic {
     w.addOutput = w.addOutput
     w.clear = w.clear
 
-    val keyCodes = arrayOf(
-        monaco.KeyCode.KeyM,
-        monaco.KeyCode.KeyV,
-        monaco.KeyCode.KeyF,
-        monaco.KeyCode.KeyM,
-        monaco.KeyCode.KeyP,
-        monaco.KeyCode.KeyD
-    )
-
-    for (i in monacoPropertyNames.indices) {
-        // Create action object with a getter for label that computes dynamically
-        val actionId = "switch-property-" + monacoPropertyNames[i]
-        val baseLabel = "Edit: " + monacoPropertyDescriptions[i]
-        val propName = monacoPropertyNames[i]
-        
-        // Create action with dynamic label using object with getter
-        val action = js("{}")
-        action.id = actionId
-        action.contextMenuGroupId = "navigation"
-        action.contextMenuOrder = 2.0
-        
-        // Define getter for label property - capturing variables from closure
-        js("""(function(action, propName, baseLabel) {
-            Object.defineProperty(action, 'label', {
-                get: function() {
-                    var w = window;
-                    var currentCode = w.currentSelectedCode;
-                    if (currentCode && currentCode.length > 0 && currentCode[0]) {
-                        var propValue = currentCode[0][propName];
-                        // Check if property has content (truthy and non-empty string)
-                        var hasContent = false;
-                        if (propValue) {
-                            if (typeof propValue === 'string') {
-                                hasContent = propValue.trim().length > 0;
-                            } else {
-                                hasContent = true; // Non-string truthy values are considered set
-                            }
-                        }
-                        return baseLabel + (hasContent ? ' ✓' : ' ○');
-                    }
-                    return baseLabel;
-                },
-                enumerable: true
-            });
-        })""")(action, propName, baseLabel)
-        
-        if (i < keyCodes.size) {
-            val binding = (monaco.KeyMod.Alt as Int) or (keyCodes[i] as Int)
-            action.keybindings = arrayOf(binding)
-        } else {
-            action.keybindings = emptyArray<Int>()
-        }
-        
-        action.run = { editorNow: dynamic ->
-            monacoApplyPropertySelection(monaco, editorNow, i)
-        }
-        
-        ed.addAction(action)
-    }
+    monacoInstallPropertySwitchActions(monaco, ed)
 
     // Add Alt+DoubleClick handler for execute symbol feature
     monacoInstallAltDoubleClickHandler(ed, monaco)

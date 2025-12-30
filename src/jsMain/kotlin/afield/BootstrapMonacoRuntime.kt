@@ -227,6 +227,11 @@ private fun monitorSelection() {
             globalEditor._domElement.querySelectorAll(".hoverlay")[0].innerHTML = ""
         }
 
+        val monaco = w.globalMonaco
+        if (monaco != null && monaco != undefined) {
+            monacoInstallPropertySwitchActions(monaco, globalEditor)
+        }
+
         updateProvisionalDiff()
     }
 
