@@ -172,11 +172,11 @@ data class SliderConfig(
 // Global registry for slider callbacks
 private val sliderCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Double) -> Unit>()
 
-fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit) {
+internal fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit) {
     sliderCallbacks[sliderId] = callback
 }
 
-fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
+internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
     return sliderCallbacks[sliderId]
 }
 
