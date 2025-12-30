@@ -498,7 +498,7 @@ var styles = CssBuilder().apply {
     }
 
     ".selected" {
-        borderColor = important(rgb(0, 128, 255, 1.0))
+        borderColor = important(rgb(72, 201, 255, 0.78))
     }
 
     ".doubleClickToEdit" {

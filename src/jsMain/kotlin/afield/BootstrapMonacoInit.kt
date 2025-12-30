@@ -148,7 +148,7 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
 fun monacoInit(monaco: dynamic): dynamic {
     val themeColors = js("{}")
     themeColors["editor.background"] = "#1e1e1e"
-    themeColors["editor.lineHighlightBackground"] = "#1e1e1e"
+    themeColors["editor.lineHighlightBackground"] = "#2e2e2e"
     themeColors["editorCursor.foreground"] = "#ff3b30"
     themeColors["editorCursor.background"] = "#ff3b30"
     val theme = js("{}")
@@ -169,6 +169,7 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.cursorStyle = "block"
     options.cursorBlinking = "blink"
     options.matchBrackets = "never"
+    options["renderLineHighlight"] = "all"
     options["bracketPairColorization.enabled"] = true
     val scrollbar = js("{}")
     scrollbar.verticalScrollbarSize = 5
