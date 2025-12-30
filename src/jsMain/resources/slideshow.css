@@ -16,8 +16,9 @@
     font-family: "Iosevka", "Iosevka Term", "Iosevka Nerd Font", "Fira Code", Menlo, Consolas, monospace;
     font-size: 13px;
     line-height: 1.6;
-    animation: slideIn 0.3s ease-out;
-    transition: top 0.5s ease, left 0.5s ease, right 0.5s ease, bottom 0.5s ease;
+    /*animation: slideIn 0.3s ease-out;*/
+    /*transition: top 0.5s ease, left 0.5s ease, right 0.5s ease, bottom 0.5s ease;*/
+    z-index:10000;
 }
 
 #slide-note-overlay.fallback {

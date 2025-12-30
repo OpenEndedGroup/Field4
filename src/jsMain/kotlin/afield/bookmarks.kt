@@ -188,6 +188,11 @@ fun restoreEditedProperty(boxId: String, property: String) {
         // Tell Monaco runtime not to re-apply its remembered view state for the upcoming open
         js("window").suppressNextEditorStateRestore = true
         showMonaco()
+        js("window").selectionContextChanged?.let { fn ->
+            try {
+                fn()
+            } catch (_: dynamic) {}
+        }
     } catch (e: dynamic) {
         console.log("Error restoring edited property:", e)
     }

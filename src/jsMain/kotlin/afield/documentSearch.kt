@@ -376,6 +376,11 @@ private fun openMatch(match: SearchMatch, allowEditorFocus: Boolean) {
 
     selectedProperty = match.property
     window.asDynamic().selectedProperty = match.property
+    window.asDynamic().selectionContextChanged?.let { fn ->
+        try {
+            fn()
+        } catch (_: dynamic) {}
+    }
 
     val uid = match.box.asDynamic().uid as? String
     val w = window.asDynamic()

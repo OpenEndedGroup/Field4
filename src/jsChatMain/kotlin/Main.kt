@@ -1,7 +1,6 @@
 package afield
 
 import kotlinx.browser.document
-import kotlinx.browser.window
 import kotlinx.css.*
 import kotlinx.html.*
 import kotlinx.html.dom.append
@@ -9,12 +8,13 @@ import kotlinx.html.js.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.*
-import org.w3c.dom.events.Event
+import org.w3c.dom.clipboard.ClipboardEvent
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.url.URLSearchParams
 import org.w3c.files.File
 import org.w3c.files.FileReader
 import org.w3c.files.get
+import react.dom.onPaste
 
 val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
 val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
@@ -46,7 +46,7 @@ fun appendOperatorInput(s: String, images: List<String> = emptyList()) {
             +s
         }
     }.first()
-    
+
     // Add images if any
     if (images.isNotEmpty()) {
         val imagesDiv = body.append {
@@ -61,7 +61,7 @@ fun appendOperatorInput(s: String, images: List<String> = emptyList()) {
                 }.toString()
             }
         }.first()
-        
+
         images.forEach { imageData ->
             val img = document.createElement("img") as HTMLImageElement
             img.src = imageData
@@ -75,7 +75,7 @@ fun appendOperatorInput(s: String, images: List<String> = emptyList()) {
         }
         conversation.insertBefore(imagesDiv, entry)
     }
-    
+
     conversation.insertBefore(div, entry)
 }
 
@@ -115,7 +115,7 @@ fun main() {
                     flexWrap = FlexWrap.wrap
                 }.toString()
             }
-            
+
             // File input for image upload (hidden)
             input(type = InputType.file) {
                 id = "image-upload-input"
@@ -124,7 +124,7 @@ fun main() {
                 style = CssBuilder().apply {
                     display = Display.none
                 }.toString()
-                
+
                 onChangeFunction = { event ->
                     val input = event.target as HTMLInputElement
                     val files = input.files
@@ -138,7 +138,7 @@ fun main() {
                     }
                 }
             }
-            
+
             // Upload button
             button {
                 +"📎"
@@ -150,12 +150,12 @@ fun main() {
                     cursor = Cursor.pointer
                     padding = Padding(5.px, 10.px)
                 }.toString()
-                
+
                 onClickFunction = {
                     (document.getElementById("image-upload-input") as HTMLInputElement).click()
                 }
             }
-            
+
             textArea(rows = "1") {
                 id = "chat-input"
                 style = CssBuilder().apply {
@@ -182,24 +182,24 @@ fun main() {
                     // Then set to scrollHeight so it grows with content
                     ta.style.height = "${ta.scrollHeight - 40}px"
                 }
-                
+
                 // Handle paste events for images
-                addEventListener("paste", { event ->
-                    val clipboardEvent = event.unsafeCast<dynamic>()
+                onPaste = { event ->
+                    val clipboardEvent = event as ClipboardEvent
                     val items = clipboardEvent.clipboardData?.items
                     if (items != null) {
-                        for (i in 0 until items.length.unsafeCast<Int>()) {
-                            val item = items[i].unsafeCast<dynamic>()
-                            if (item.type.toString().startsWith("image/")) {
+                        for (i in 0 until items.length) {
+                            val item = items[i]
+                            if (item != null && item.type.startsWith("image/")) {
                                 event.preventDefault()
-                                val file = item.getAsFile() as File?
+                                val file = item.getAsFile()
                                 if (file != null) {
                                     readImageFile(file)
                                 }
                             }
                         }
                     }
-                })
+                }
 
                 onKeyUpFunction = { event ->
                     val keyEvent = event as KeyboardEvent
@@ -230,13 +230,13 @@ fun readImageFile(file: File) {
 
 fun displayImagePreview(imageData: String) {
     val previewArea = document.getElementById("image-preview-area") as? HTMLElement ?: return
-    
+
     val container = document.createElement("div") as HTMLDivElement
     container.style.apply {
         position = "relative"
         display = "inline-block"
     }
-    
+
     val img = document.createElement("img") as HTMLImageElement
     img.src = imageData
     img.style.apply {
@@ -245,7 +245,7 @@ fun displayImagePreview(imageData: String) {
         borderRadius = "5px"
         border = "2px solid rgba(255, 255, 255, 0.2)"
     }
-    
+
     // Add remove button
     val removeBtn = document.createElement("button") as HTMLButtonElement
     removeBtn.innerHTML = "×"
@@ -263,13 +263,13 @@ fun displayImagePreview(imageData: String) {
         fontSize = "14px"
         lineHeight = "14px"
     }
-    
+
     removeBtn.onclick = {
         attachedImages.remove(imageData)
         previewArea.removeChild(container)
         null
     }
-    
+
     container.appendChild(img)
     container.appendChild(removeBtn)
     previewArea.appendChild(container)
@@ -279,7 +279,7 @@ fun sendChatMessage(text: String) {
     val images = attachedImages.toList()
     appendOperatorInput(text, images)
     val d = appendOperatorOutput()
-    
+
     sendWithReply(
         Message("chat_input").payload(Chat_input(value = text, phase = 0, images = images)), "input"
     ) { message, payload ->
@@ -292,10 +292,9 @@ fun sendChatMessage(text: String) {
         }
         Handled.yes
     }
-    
+
     // Clear attached images
     attachedImages.clear()
     val previewArea = document.getElementById("image-preview-area") as? HTMLElement
     previewArea?.innerHTML = ""
 }
-

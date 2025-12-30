@@ -148,9 +148,9 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     fun annotate(
         id: String,
         targetBox: Box,
-        color: String = "rgba(128, 255, 164, 0.7)",
+        color : String = "rgba(255, 180, 100, 0.8)",
         strokeWidth: Double = 2.0,
-        dashed: Boolean = false
+        dashed: Boolean = true
     ) {
         annotations.add(
             SlideAnnotation(
@@ -353,9 +353,9 @@ fun Box.selectAndEdit(property: String = "code", line: Int? = null, highlight: I
  * Show a slide note
  */
 fun Box.showNote(
-    html: String, 
-    persistent: Boolean = false, 
-    anchorBox: Box? = this, 
+    html: String,
+    persistent: Boolean = false,
+    anchorBox: Box? = this,
     animated: Boolean = false,
     annotations: List<SlideAnnotation> = emptyList()
 ) {

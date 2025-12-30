@@ -123,6 +123,11 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
     val w = js("window")
     val property = monacoPropertyNames[index]
     w.selectedProperty = property
+    if (w.selectionContextChanged != null) {
+        try {
+            w.selectionContextChanged()
+        } catch (_: dynamic) {}
+    }
 
     var lang = monacoPropertyLanguages[index]
     val currentSelectedCode = w.currentSelectedCode
@@ -140,6 +145,11 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
         globalEditor._domElement
             .querySelectorAll(".hoverlay")[0]
             .innerHTML = "$property <i>($lang)</i>"
+        if (w.selectionContextChanged != null) {
+            try {
+                w.selectionContextChanged()
+            } catch (_: dynamic) {}
+        }
     }
 }
 

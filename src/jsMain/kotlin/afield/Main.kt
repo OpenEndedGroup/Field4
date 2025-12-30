@@ -18,13 +18,15 @@ import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.MutationObserver
+import org.w3c.dom.MutationObserverInit
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
+import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
 import org.w3c.dom.url.URLSearchParams
 import registerDoubleTap
 import web.cssom.important
-import web.svg.SVGElement
 import web.timers.setTimeout
 import kotlin.js.json
 import kotlin.uuid.ExperimentalUuidApi
@@ -66,6 +68,9 @@ lateinit var moveHandler: (dynamic) -> Unit
 lateinit var resizeHandler: (dynamic) -> Unit
 lateinit var monacoResizeHandler: (dynamic) -> Unit
 var mainTranslation = listOf(0.0, 0.0)
+lateinit var annotationSVGLayer: SVGSVGElement
+private var editorVisibilityObserver: MutationObserver? = null
+private var editorPropertyObserver: MutationObserver? = null
 
 @JsExport
 @JsName("launchNumber")
@@ -86,6 +91,13 @@ var selectedProperty = "code"
 var onSelectedChange = mutableMapOf<String, () -> Boolean>()
 
 var events = HashMap<String, () -> Boolean>()
+
+private fun selectionContextChanged() {
+    if (currentAnnotations.isNotEmpty()) {
+        redrawSlideAnnotations()
+        scheduleSlideAnnotationRedraw(10)
+    }
+}
 
 fun serviceEvents() {
     events.entries.retainAll { (k, v) ->
@@ -151,6 +163,7 @@ private fun repositionSlideNoteOverlayIfVisible() {
         // Redraw annotations when the overlay moves
         if (currentAnnotations.isNotEmpty()) {
             redrawSlideAnnotations()
+            scheduleSlideAnnotationRedraw(80)
         }
     }
 }
@@ -163,57 +176,62 @@ private fun animateSlideNoteText(overlay: HTMLElement, html: String) {
     overlay.innerHTML = ""
     val contentDiv = document.createElement("div") as HTMLElement
     overlay.appendChild(contentDiv)
-    
-    // Extract text content while preserving structure
-    val tempDiv = document.createElement("div") as HTMLElement
-    tempDiv.innerHTML = html
-    val fullText = tempDiv.textContent ?: ""
-    
+
+    // Build DOM structure and capture the original text nodes
+    contentDiv.innerHTML = html
+    val textNodes = collectTextNodes(contentDiv)
+    val originalTexts = textNodes.map { it.textContent ?: "" }
+    val fullText = originalTexts.joinToString("")
+
+    // Nothing to animate if there's no text
+    if (fullText.isEmpty()) return
+
+    // Hide all text initially; we'll progressively restore characters
+    textNodes.forEach { it.textContent = "" }
+
     var charIndex = 0
     val delay = 15.0 // milliseconds per character
-    var currentHtml = html
-    
-    // Simple progressive reveal by wrapping everything in a span with growing content
-    contentDiv.innerHTML = "<span style='opacity: 0;'>.</span>" + html
-    val textNodes = collectTextNodes(contentDiv)
-    
+
     fun animateNextChar() {
-        if (charIndex < fullText.length) {
-            val char = fullText[charIndex]
-            
-            // Find and reveal the next character in the DOM
-            var revealed = 0
-            for (node in textNodes) {
-                val text = node.textContent ?: ""
-                if (revealed + text.length > charIndex) {
-                    // This node contains our target character
-                    val localIndex = charIndex - revealed
-                    node.textContent = text.substring(0, localIndex + 1)
-                    break
+        if (charIndex >= fullText.length) return
+
+        // Reveal characters up to the current index across all nodes
+        var remaining = charIndex
+        textNodes.zip(originalTexts).forEach { (node, original) ->
+            val len = original.length
+            when {
+                remaining >= len -> {
+                    if (node.textContent != original) node.textContent = original
+                    remaining -= len
                 }
-                revealed += text.length
+                remaining >= 0 -> {
+                    node.textContent = original.substring(0, remaining + 1)
+                    remaining = -1
+                }
+                else -> node.textContent = ""
             }
-            
-            charIndex++
-            
-            // Extra pause for periods, commas, and other punctuation
-            val pauseExtra = when (char) {
-                '.', '!', '?' -> 300.0
-                ',', ';', ':' -> 150.0
-                else -> 0.0
-            }
-            
-            setTimeout({
-                animateNextChar()
-            }, (delay + pauseExtra).toInt())
         }
+
+        val char = fullText[charIndex]
+        charIndex++
+
+        // Extra pause for periods, commas, and other punctuation
+        val pauseExtra = when (char) {
+            '.', '!', '?' -> 300.0
+            ',', ';', ':' -> 150.0
+            else -> 0.0
+        }
+
+        // If we have active annotations, keep redrawing so the line start tracks the growing note width
+        if (currentAnnotations.isNotEmpty()) {
+            scheduleSlideAnnotationRedraw(10)
+        }
+
+        setTimeout({
+            animateNextChar()
+        }, (delay + pauseExtra).toInt())
     }
-    
-    // Hide all text initially
-    for (node in textNodes) {
-        node.textContent = ""
-    }
-    
+
     animateNextChar()
 }
 
@@ -222,7 +240,7 @@ private fun animateSlideNoteText(overlay: HTMLElement, html: String) {
  */
 private fun collectTextNodes(element: org.w3c.dom.Node): List<org.w3c.dom.Node> {
     val result = mutableListOf<org.w3c.dom.Node>()
-    
+
     fun traverse(node: org.w3c.dom.Node) {
         if (node.nodeType == 3.toShort()) { // TEXT_NODE
             result.add(node)
@@ -233,9 +251,116 @@ private fun collectTextNodes(element: org.w3c.dom.Node): List<org.w3c.dom.Node> 
             }
         }
     }
-    
+
     traverse(element)
     return result
+}
+
+private fun ensureAnnotationLayer(): SVGSVGElement {
+    if (::annotationSVGLayer.isInitialized && annotationSVGLayer.parentNode != null) return annotationSVGLayer
+
+    val existing = document.getElementById("slide-annotation-layer") as? SVGSVGElement
+    if (existing != null) {
+        annotationSVGLayer = existing
+        return existing
+    }
+
+    val svg = document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement
+    svg.id = "slide-annotation-layer"
+    svg.setAttribute("width", "100%")
+    svg.setAttribute("height", "100%")
+    svg.style.apply {
+        position = "absolute"
+        top = "0"
+        left = "0"
+        right = "0"
+        bottom = "0"
+        zIndex = "10002"
+    }
+    svg.style.asDynamic().pointerEvents = "none"
+    document.body!!.appendChild(svg)
+    annotationSVGLayer = svg
+    return svg
+}
+
+private fun ensureEditorVisibilityObserver() {
+    if (editorVisibilityObserver != null) return
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
+
+    val observer = MutationObserver { _, _ ->
+        if (currentAnnotations.isNotEmpty()) {
+            scheduleSlideAnnotationRedraw(5)
+        }
+    }
+    observer.observe(
+        container,
+        MutationObserverInit(
+            attributes = true,
+            attributeFilter = arrayOf("style", "class"),
+            attributeOldValue = false,
+            childList = false,
+            subtree = false
+        )
+    )
+    editorVisibilityObserver = observer
+}
+
+private fun ensureEditorPropertyObserver() {
+    if (editorPropertyObserver != null) return
+    val overlay = (window.asDynamic().globalEditor?.unsafeCast<dynamic>()?._domElement as? HTMLElement)
+        ?.querySelector(".hoverlay") as? HTMLElement ?: return
+
+    val observer = MutationObserver { _, _ ->
+        selectionContextChanged()
+    }
+    observer.observe(
+        overlay,
+        MutationObserverInit(
+            childList = true,
+            characterData = true,
+            subtree = true
+        )
+    )
+    editorPropertyObserver = observer
+}
+
+private fun slideAnnotationGroup(): SVGElement {
+    val svg = ensureAnnotationLayer()
+    val name = "slideAnnotations"
+    val existing = svg.querySelector("[data-name=\"$name\"]")
+    if (existing != null) return existing as SVGElement
+    val g = document.createElementNS("http://www.w3.org/2000/svg", "g") as SVGElement
+    g.setAttribute("data-name", name)
+    svg.appendChild(g)
+    return g
+}
+
+private fun syncAnnotationViewBoxToTranslation() {
+    val svg = ensureAnnotationLayer()
+    val rect = svg.getBoundingClientRect()
+    svg.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} ${rect.width} ${rect.height}")
+}
+
+private var annotationRedrawFramesRemaining = 0
+private var annotationRedrawScheduled = false
+
+private fun scheduleSlideAnnotationRedraw(frames: Int = 0) {
+    if (frames > annotationRedrawFramesRemaining) {
+        annotationRedrawFramesRemaining = frames
+    }
+    if (annotationRedrawScheduled) return
+
+    annotationRedrawScheduled = true
+    fun tick() {
+        redrawSlideAnnotations()
+        if (annotationRedrawFramesRemaining > 0) {
+            annotationRedrawFramesRemaining--
+            window.requestAnimationFrame { tick() }
+        } else {
+            annotationRedrawScheduled = false
+        }
+    }
+    window.requestAnimationFrame { tick() }
 }
 
 /**
@@ -254,45 +379,95 @@ private var currentNoteOverlay: HTMLElement? = null
 private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay: HTMLElement) {
     currentAnnotations = annotations
     currentNoteOverlay = noteOverlay
+    ensureEditorVisibilityObserver()
+    ensureEditorPropertyObserver()
     redrawSlideAnnotations()
+    if (annotations.isNotEmpty()) {
+        scheduleSlideAnnotationRedraw(100)
+    }
 }
 
 private fun redrawSlideAnnotations() {
     val annotations = currentAnnotations
     val noteOverlay = currentNoteOverlay
-    
+
     if (annotations.isEmpty() || noteOverlay == null) {
         clearSlideAnnotations()
         return
     }
-    
-    val svg = canvasGestures.getNamedSVGGroup("slideAnnotations")
+
+    // Keep selectedProperty in sync with the global window state in case external UI changed it
+    window.asDynamic().selectedProperty?.toString()?.let { prop ->
+        if (prop != selectedProperty) {
+            selectedProperty = prop
+        }
+    }
+
+    syncAnnotationViewBoxToTranslation()
+
+    val svg = slideAnnotationGroup()
     svg.innerHTML = ""
-    
+
     val noteRect = noteOverlay.getBoundingClientRect()
-    
+    val ox = mainTranslation[0]
+    val oy = mainTranslation[1]
+
     annotations.forEach { annotation ->
         val targetBox = findBoxByUid(annotation.targetUid)
         if (targetBox != null) {
             val targetRect = targetBox.getBoundingClientRect()
-            
-            // Calculate positions accounting for scroll and translation
-            val ox = mainTranslation[0]
-            val oy = mainTranslation[1]
-            
+
+            val targetingEditorLine = annotation.targetLine != null && annotation.targetProperty != null
+            if (targetingEditorLine) {
+                val propertyMatches = selectedProperty == annotation.targetProperty ||
+                        (window.asDynamic().selectedProperty?.toString() == annotation.targetProperty)
+                val boxMatches = selected.contains(targetBox) || targetBox.asDynamic().selected == true
+                if (!propertyMatches || !boxMatches) {
+                    return@forEach
+                }
+            }
+
             // Start point: right side of note overlay, vertically centered
-            val startX = noteRect.right
-            val startY = noteRect.top + noteRect.height / 2
-            
+            val startX = noteRect.right - ox
+            val startY = noteRect.top + noteRect.height / 2 - oy
+
             // End point: depends on whether we're targeting a specific line or the whole box
             val (endX, endY) = if (annotation.targetLine != null && annotation.targetProperty != null) {
-                // For line-specific annotations, try to find the Monaco editor
-                // For now, we'll target the left-center of the box
-                // In a full implementation, we'd use Monaco API to get line position
-                Pair(
-                    targetRect.left - ox,
-                    targetRect.top + (targetRect.height * 0.3) - oy
-                )
+                // Prefer anchoring to the Monaco editor line when available
+                val w = window.asDynamic()
+                val editor = w.globalEditor
+                val monaco = w.globalMonaco
+                val editorDom = try { editor?.getDomNode() } catch (e: dynamic) { null }
+
+                if (editor != null && editorDom != null) {
+                    val editorRect = (editorDom as HTMLElement).getBoundingClientRect()
+                    val editorHost = editorDom as HTMLElement
+                    val editorVisible = editorRect.width > 0 && editorRect.height > 0 && editorHost.offsetParent != null
+                    if (!editorVisible) return@forEach
+                    val topForLine = (try { editor.getTopForLineNumber(annotation.targetLine) } catch (e: dynamic) { null }) as? Number
+                    val scrollTop = (try { editor.getScrollTop() } catch (e: dynamic) { null }) as? Number ?: 0.0
+                    val lineHeight = if (monaco != null) {
+                        val opt = try { monaco.editor.EditorOption?.lineHeight } catch (e: dynamic) { null }
+                        if (opt != null) (try { editor.getOption(opt) } catch (e: dynamic) { null }) as? Number else null
+                    } else null
+
+                    val y = if (topForLine != null) {
+                        editorRect.top + (topForLine.toDouble() - scrollTop.toDouble()) + (lineHeight?.toDouble() ?: 16.0) / 2.0 - oy
+                    } else {
+                        editorRect.top + editorRect.height * 0.3 - oy
+                    }
+
+                    Pair(
+                        editorRect.left - ox,
+                        y
+                    )
+                } else {
+                    // Fallback: aim toward the box (legacy behavior)
+                    Pair(
+                        targetRect.left - ox,
+                        targetRect.top + (targetRect.height * 0.3) - oy
+                    )
+                }
             } else {
                 // Target the left-center of the box
                 Pair(
@@ -300,11 +475,11 @@ private fun redrawSlideAnnotations() {
                     targetRect.top + targetRect.height / 2 - oy
                 )
             }
-            
+
             // Draw the line with a cubic Bezier curve for smooth appearance
             val dx = endX - startX
             val controlOffset = kotlin.math.abs(dx) * 0.3
-            
+
             path {
                 moveTo(startX, startY)
                 cubicTo(
@@ -318,19 +493,19 @@ private fun redrawSlideAnnotations() {
                 if (annotation.dashed) {
                     path.setAttribute("stroke-dasharray", "5,5")
                 }
-                appendTo(svg)
+                appendTo(svg as org.w3c.dom.svg.SVGElement)
             }
-            
+
             // Add a small circle at the end point
             circle {
                 cx = endX
                 cy = endY
                 r = 4
                 fill = annotation.color
-                appendTo(svg)
+                appendTo(svg as org.w3c.dom.svg.SVGElement)
             }
-            
-            // Add a small circle at the start point  
+
+            // Add a small circle at the start point
             circle {
                 cx = startX
                 cy = startY
@@ -338,7 +513,7 @@ private fun redrawSlideAnnotations() {
                 fill = annotation.color
                 stroke = annotation.color
                 strokeWidth = 1
-                appendTo(svg)
+                appendTo(svg as org.w3c.dom.svg.SVGElement)
             }
         }
     }
@@ -350,7 +525,7 @@ private fun redrawSlideAnnotations() {
 private fun clearSlideAnnotations() {
     currentAnnotations = emptyList()
     currentNoteOverlay = null
-    val svg = canvasGestures.getNamedSVGGroup("slideAnnotations")
+    val svg = slideAnnotationGroup()
     svg.innerHTML = ""
 }
 
@@ -436,6 +611,7 @@ fun deselectBox(it: HTMLElement) {
         }
     }
     updateSelectionBadges()
+    selectionContextChanged()
 
 }
 
@@ -488,6 +664,7 @@ fun selectBox(it: HTMLElement) {
         }
     }
     updateSelectionBadges()
+    selectionContextChanged()
 }
 
 var styles = CssBuilder().apply {
@@ -514,6 +691,7 @@ suspend fun main() {
     window.unsafeCast<dynamic>().selected = selected
     window.unsafeCast<dynamic>().selectedList = selectedList
     window.unsafeCast<dynamic>().selectedProperty = selectedProperty
+    window.unsafeCast<dynamic>().selectionContextChanged = { selectionContextChanged() }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
 
@@ -933,6 +1111,7 @@ suspend fun main() {
             // Set the selected property
             selectedProperty = sel.property
             window.unsafeCast<dynamic>().selectedProperty = sel.property
+            selectionContextChanged()
 
             // Trigger editor to show this property
             val w = window.unsafeCast<dynamic>()
@@ -989,7 +1168,7 @@ suspend fun main() {
                 maxWidth = "400px"
                 backgroundColor = "rgba(32, 32, 36, 0.9)"
                 color = "#e6e6e6"
-                padding = "20px"
+                padding = "5px 20px 5px 20px"
                 borderRadius = "8px"
                 boxShadow = "0 4px 12px rgba(0, 0, 0, 0.4)"
                 zIndex = "10000"
@@ -1102,6 +1281,7 @@ suspend fun main() {
     }.first()
 
     overlaySVGLayer = document.getElementById("overlaysvglayer") as SVGSVGElement
+    ensureAnnotationLayer()
 
     mainViewport.oncontextmenu = {
         console.log(" (suppressed right click) ")

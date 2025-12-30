@@ -14,7 +14,44 @@ import kotlin.math.*
 
 fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_rect: DOMRect, svg: SVGElement, opacity: Double = 1.0) {
     val (a, b) = connectCenters(a_rect, b_rect)
-    val sc = min(50.0, a.point.distance(b.point) / 3);
+    val startHeading = atan2(a.normal.y, a.normal.x)
+    val endHeading = atan2(-b.normal.y, -b.normal.x)
+    val startScreen = DubinsPose(a.point.x, a.point.y, startHeading)
+    val endScreen = DubinsPose(b.point.x, b.point.y, endHeading)
+
+    val straight = a.point.distance(b.point)
+    val maxAllowedRadius = max(1.0, straight / 3.0)
+    val radius = min(dubinsMinRadius, maxAllowedRadius)
+
+    val dubins = dubinsShortestPath(screenToStandard(startScreen), screenToStandard(endScreen), radius)
+    if (dubins == null) {
+        drawFallbackBezier(a, b, svg, opacity)
+        return
+    }
+
+    val step = max(3.0, dubins.radius / 2.5)/2
+    val sampledStd = sampleDubinsPath(dubins, screenToStandard(startScreen), step)
+    val sampled = sampledStd.map { standardToScreen(it) }
+    val arrowPose = midPose(sampled)
+
+    path {
+        moveTo(sampled.first().x, sampled.first().y)
+        sampled.drop(1).forEach { pose ->
+            lineTo(pose.x, pose.y)
+        }
+        stroke = "rgba(128,128,128,${opacity})"
+        strokeWidth = 1
+        fill = "none"
+        appendTo(svg)
+    }
+
+    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, opacity)
+}
+
+var knownConnections = mutableMapOf("parent->child" to ::connect_center)
+
+private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double) {
+    val sc = min(50.0, a.point.distance(b.point) / 3)
     path {
         d =
             "M${a.point.x} ${a.point.y} C${a.point.x + a.normal.x * sc} ${a.point.y + a.normal.y * sc} ${b.point.x + b.normal.x * sc} ${b.point.y + b.normal.y * sc} ${b.point.x} ${b.point.y}"
@@ -33,11 +70,219 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
         b.point.x + b.normal.x * sc,
         b.point.y + b.normal.y * sc,
         b.point.x,
-        b.point.y, opacity
+        b.point.y,
+        opacity
     )
 }
 
-var knownConnections = mutableMapOf("parent->child" to ::connect_center)
+var dubinsMinRadius = 30.0
+
+data class DubinsPose(val x: Double, val y: Double, val heading: Double)
+
+enum class DubinsSegmentType { L, S, R }
+
+data class DubinsSegment(val type: DubinsSegmentType, val length: Double)
+
+data class DubinsPath(val radius: Double, val segments: List<DubinsSegment>) {
+    val totalLength: Double
+        get() = radius * segments.sumOf { it.length }
+}
+
+private data class DubinsCandidate(val types: List<DubinsSegmentType>, val lengths: List<Double>)
+
+private fun mod2pi(angle: Double): Double {
+    var a = angle % (2 * PI)
+    if (a < 0) a += 2 * PI
+    return a
+}
+
+private fun safeSqrt(v: Double): Double? {
+    if (v < -1e-9) return null
+    return sqrt(max(0.0, v))
+}
+
+private fun computeDubinsCandidates(alpha: Double, beta: Double, d: Double): List<DubinsCandidate> {
+    val sa = sin(alpha)
+    val sb = sin(beta)
+    val ca = cos(alpha)
+    val cb = cos(beta)
+    val cAB = cos(alpha - beta)
+
+    val candidates = mutableListOf<DubinsCandidate>()
+
+    run {
+        val tmp0 = d + sa - sb
+        val tmp2 = 2 + d * d - 2 * cAB + 2 * d * (sa - sb)
+        val p = safeSqrt(tmp2)
+        if (p != null) {
+            val tmp1 = atan2(cb - ca, tmp0)
+            val t = mod2pi(-alpha + tmp1)
+            val q = mod2pi(beta - tmp1)
+            candidates += DubinsCandidate(listOf(DubinsSegmentType.L, DubinsSegmentType.S, DubinsSegmentType.L), listOf(t, p, q))
+        }
+    }
+
+    run {
+        val tmp0 = d - sa + sb
+        val tmp2 = 2 + d * d - 2 * cAB + 2 * d * (sb - sa)
+        val p = safeSqrt(tmp2)
+        if (p != null) {
+            val tmp1 = atan2(ca - cb, tmp0)
+            val t = mod2pi(alpha - tmp1)
+            val q = mod2pi(-beta + tmp1)
+            candidates += DubinsCandidate(listOf(DubinsSegmentType.R, DubinsSegmentType.S, DubinsSegmentType.R), listOf(t, p, q))
+        }
+    }
+
+    run {
+        val tmp0 = d + sa + sb
+        val tmp2 = -2 + d * d + 2 * cAB + 2 * d * (sa + sb)
+        val p = safeSqrt(tmp2)
+        if (p != null) {
+            val tmp1 = atan2(-ca - cb, tmp0) - atan2(-2.0, p)
+            val t = mod2pi(-alpha + tmp1)
+            val q = mod2pi(-beta + tmp1)
+            candidates += DubinsCandidate(listOf(DubinsSegmentType.L, DubinsSegmentType.S, DubinsSegmentType.R), listOf(t, p, q))
+        }
+    }
+
+    run {
+        val tmp0 = d - sa - sb
+        val tmp2 = d * d - 2 + 2 * cAB - 2 * d * (sa + sb)
+        val p = safeSqrt(tmp2)
+        if (p != null) {
+            val tmp1 = atan2(ca + cb, tmp0) - atan2(2.0, p)
+            val t = mod2pi(alpha - tmp1)
+            val q = mod2pi(beta - tmp1)
+            candidates += DubinsCandidate(listOf(DubinsSegmentType.R, DubinsSegmentType.S, DubinsSegmentType.L), listOf(t, p, q))
+        }
+    }
+
+    run {
+        val tmp0 = (6 - d * d + 2 * cAB + 2 * d * (sa - sb)) / 8.0
+        if (abs(tmp0) <= 1.0 + 1e-9) {
+            val p = mod2pi(2 * PI - acos(tmp0.coerceIn(-1.0, 1.0)))
+            val t = mod2pi(alpha - atan2(ca - cb, d - sa + sb) + p / 2.0)
+            val q = mod2pi(alpha - beta - t + p)
+            candidates += DubinsCandidate(listOf(DubinsSegmentType.R, DubinsSegmentType.L, DubinsSegmentType.R), listOf(t, p, q))
+        }
+    }
+
+    run {
+        val tmp0 = (6 - d * d + 2 * cAB + 2 * d * (-sa + sb)) / 8.0
+        if (abs(tmp0) <= 1.0 + 1e-9) {
+            val p = mod2pi(2 * PI - acos(tmp0.coerceIn(-1.0, 1.0)))
+            val t = mod2pi(-alpha - atan2(ca - cb, d + sa - sb) + p / 2.0)
+            val q = mod2pi(beta - alpha - t + p)
+            candidates += DubinsCandidate(listOf(DubinsSegmentType.L, DubinsSegmentType.R, DubinsSegmentType.L), listOf(t, p, q))
+        }
+    }
+
+    return candidates
+}
+
+fun dubinsShortestPath(start: DubinsPose, end: DubinsPose, minRadius: Double): DubinsPath? {
+    val radius = max(1e-3, minRadius)
+    val dx = end.x - start.x
+    val dy = end.y - start.y
+    val d = hypot(dx, dy) / radius
+    val theta = atan2(dy, dx)
+    val alpha = mod2pi(start.heading - theta)
+    val beta = mod2pi(end.heading - theta)
+
+    val candidates = computeDubinsCandidates(alpha, beta, d)
+    val best = candidates.minByOrNull { it.lengths.sum() } ?: return null
+    val segments = best.types.zip(best.lengths) { type, len -> DubinsSegment(type, len) }
+    return DubinsPath(radius, segments)
+}
+
+fun sampleDubinsPath(path: DubinsPath, start: DubinsPose, step: Double = 2.0): List<DubinsPose> {
+    val poses = mutableListOf<DubinsPose>()
+    var x = start.x
+    var y = start.y
+    var heading = start.heading
+    poses += DubinsPose(x, y, heading)
+
+    path.segments.forEach { seg ->
+        when (seg.type) {
+            DubinsSegmentType.S -> {
+                val dist = seg.length * path.radius
+                val count = max(1, ceil(dist / step).toInt())
+                val delta = dist / count
+                repeat(count) {
+                    x += delta * cos(heading)
+                    y += delta * sin(heading)
+                    poses += DubinsPose(x, y, heading)
+                }
+            }
+
+            DubinsSegmentType.L, DubinsSegmentType.R -> {
+                val dir = if (seg.type == DubinsSegmentType.L) 1.0 else -1.0
+                val angle = seg.length
+                val arcLen = angle * path.radius
+                val count = max(1, ceil(arcLen / step).toInt())
+                val center = if (dir > 0) {
+                    Point(x - path.radius * sin(heading), y + path.radius * cos(heading))
+                } else {
+                    Point(x + path.radius * sin(heading), y - path.radius * cos(heading))
+                }
+                (1..count).forEach { i ->
+                    val newHeading = heading + dir * angle * (i.toDouble() / count.toDouble())
+                    val pos = if (dir > 0) {
+                        Point(center.x + path.radius * sin(newHeading), center.y - path.radius * cos(newHeading))
+                    } else {
+                        Point(center.x - path.radius * sin(newHeading), center.y + path.radius * cos(newHeading))
+                    }
+                    poses += DubinsPose(pos.x, pos.y, newHeading)
+                }
+                heading += dir * angle
+                x = poses.last().x
+                y = poses.last().y
+            }
+        }
+    }
+
+    return poses
+}
+
+private fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
+private fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
+
+private fun interpolateHeading(a: Double, b: Double, t: Double): Double {
+    var delta = mod2pi(b - a)
+    if (delta > PI) delta -= 2 * PI
+    return a + delta * t
+}
+
+fun midPose(sampled: List<DubinsPose>): DubinsPose {
+    if (sampled.isEmpty()) error("Cannot compute mid pose from empty path")
+    if (sampled.size == 1) return sampled.first()
+
+    var total = 0.0
+    for (i in 1 until sampled.size) {
+        val p0 = sampled[i - 1]
+        val p1 = sampled[i]
+        total += hypot(p1.x - p0.x, p1.y - p0.y)
+    }
+    if (total < 1e-6) return sampled.first()
+
+    val target = total / 2.0
+    var acc = 0.0
+    for (i in 1 until sampled.size) {
+        val p0 = sampled[i - 1]
+        val p1 = sampled[i]
+        val seg = hypot(p1.x - p0.x, p1.y - p0.y)
+        if (acc + seg >= target) {
+            val f = (target - acc) / seg
+            val x = p0.x + (p1.x - p0.x) * f
+            val y = p0.y + (p1.y - p0.y) * f
+            val heading = interpolateHeading(p0.heading, p1.heading, f)
+            return DubinsPose(x, y, heading)
+        }
+        acc += seg
+    }
+    return sampled.last()
+}
 
 
 class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
@@ -494,6 +739,30 @@ fun addArrowHeadToCubicSpline(
         close()
         stroke = "black"
         strokeWidth = 2.0+(1-opacity)*2.0
+        fill = "rgba(255,255,255,$opacity)"
+        appendTo(svg)
+    }
+}
+
+fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double = 1.0) {
+    val arrowLength = 12.0
+    val arrowAngle = PI / 6
+
+    val angle1 = heading + PI - arrowAngle
+    val angle2 = heading + PI + arrowAngle
+
+    val ax1 = tip.x + arrowLength * cos(angle1)
+    val ay1 = tip.y + arrowLength * sin(angle1)
+    val ax2 = tip.x + arrowLength * cos(angle2)
+    val ay2 = tip.y + arrowLength * sin(angle2)
+
+    path {
+        moveTo(ax1, ay1)
+        lineTo(tip.x, tip.y)
+        lineTo(ax2, ay2)
+        close()
+        stroke = "black"
+        strokeWidth = 2.0 + (1 - opacity) * 2.0
         fill = "rgba(255,255,255,$opacity)"
         appendTo(svg)
     }
