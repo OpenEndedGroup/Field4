@@ -137,20 +137,53 @@ fun monacoInit(monaco: dynamic): dynamic {
     )
 
     for (i in monacoPropertyNames.indices) {
+        // Create action object with a getter for label that computes dynamically
+        val actionId = "switch-property-" + monacoPropertyNames[i]
+        val baseLabel = "Edit: " + monacoPropertyDescriptions[i]
+        val propName = monacoPropertyNames[i]
+        
+        // Create action with dynamic label using object with getter
         val action = js("{}")
-        action.id = "switch-property-" + monacoPropertyNames[i]
-        action.label = "Edit: " + monacoPropertyDescriptions[i]
+        action.id = actionId
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 2.0
+        
+        // Define getter for label property - capturing variables from closure
+        js("""(function(action, propName, baseLabel) {
+            Object.defineProperty(action, 'label', {
+                get: function() {
+                    var w = window;
+                    var currentCode = w.currentSelectedCode;
+                    if (currentCode && currentCode.length > 0 && currentCode[0]) {
+                        var propValue = currentCode[0][propName];
+                        // Check if property has content (truthy and non-empty string)
+                        var hasContent = false;
+                        if (propValue) {
+                            if (typeof propValue === 'string') {
+                                hasContent = propValue.trim().length > 0;
+                            } else {
+                                hasContent = true; // Non-string truthy values are considered set
+                            }
+                        }
+                        return baseLabel + (hasContent ? ' ✓' : ' ○');
+                    }
+                    return baseLabel;
+                },
+                enumerable: true
+            });
+        })""")(action, propName, baseLabel)
+        
         if (i < keyCodes.size) {
             val binding = (monaco.KeyMod.Alt as Int) or (keyCodes[i] as Int)
             action.keybindings = arrayOf(binding)
         } else {
             action.keybindings = emptyArray<Int>()
         }
-        action.contextMenuGroupId = "navigation"
-        action.contextMenuOrder = 2.0
+        
         action.run = { editorNow: dynamic ->
             monacoApplyPropertySelection(monaco, editorNow, i)
         }
+        
         ed.addAction(action)
     }
 
