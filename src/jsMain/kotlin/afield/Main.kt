@@ -386,6 +386,38 @@ fun hideCheatsheet() {
     }
 }
 
+private fun ensureSelectionBadge(box: HTMLElement): HTMLElement {
+    val existing = box.getElementsByClassName("selection-order-badge").asList().firstOrNull() as? HTMLElement
+    if (existing != null) return existing
+
+    val badge = document.createElement("div") as HTMLElement
+    badge.classList.add("selection-order-badge")
+    box.appendChild(badge)
+    return badge
+}
+
+private fun updateSelectionBadges() {
+    val orderMap = if (selected.size >= 2) {
+        selected.toList().withIndex().associate { (idx, element) -> element to idx + 1 }
+    } else emptyMap()
+    val boxes = document.body?.getElementsByClassName("box")?.asList().orEmpty()
+
+    boxes.forEach { element ->
+        val box = element as HTMLElement
+        val badge = ensureSelectionBadge(box)
+        val order = orderMap[box]
+        if (order != null) {
+            badge.textContent = order.toString()
+            badge.classList.add("visible")
+            box.setAttribute("data-selection-order", order.toString())
+        } else {
+            badge.textContent = ""
+            badge.classList.remove("visible")
+            box.removeAttribute("data-selection-order")
+        }
+    }
+}
+
 
 fun deselectBox(it: HTMLElement) {
     it.classList.remove("selected")
@@ -403,6 +435,7 @@ fun deselectBox(it: HTMLElement) {
             false
         }
     }
+    updateSelectionBadges()
 
 }
 
@@ -454,6 +487,7 @@ fun selectBox(it: HTMLElement) {
             false
         }
     }
+    updateSelectionBadges()
 }
 
 var styles = CssBuilder().apply {
@@ -923,8 +957,8 @@ suspend fun main() {
 
                                 // Highlight line if specified
                                 if (sel.highlightLine != null) {
-                                    val Range = monaco.Range
-                                    val range = Range.`new`(sel.highlightLine, 1, sel.highlightLine, 1)
+                                    val line = sel.highlightLine!!
+                                    val range = js("new monaco.Range(line, 1, line, 1)")
                                     editor.setSelection(range)
                                     editor.revealLineInCenter(sel.highlightLine)
                                 }
@@ -1121,6 +1155,7 @@ suspend fun main() {
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
             canvasGestures.rebuildConnectionGroup()
+            repositionSlideNoteOverlayIfVisible()
         }
         else
             canvasGestures.move(event)
@@ -1157,6 +1192,7 @@ suspend fun main() {
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
             canvasGestures.rebuildConnectionGroup()
+            repositionSlideNoteOverlayIfVisible()
         }
 
         null
@@ -1517,6 +1553,9 @@ suspend fun main() {
 
     window.addEventListener("resize", {
         canvasGestures.rebuildConnectionGroup()
+        repositionSlideNoteOverlayIfVisible()
+    })
+    window.addEventListener("scroll", {
         repositionSlideNoteOverlayIfVisible()
     })
 }

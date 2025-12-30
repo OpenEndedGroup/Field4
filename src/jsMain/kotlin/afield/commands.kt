@@ -468,19 +468,33 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             all.push(a)
         }
     }
-    if (boxes.size == 2) {
-        // todo, check connections before presenting // n1.box_children contains uid of n2?
-        val n1 = boxes[0].unsafeCast<dynamic>().name as String
-        val n2 = boxes[1].unsafeCast<dynamic>().name as String
+    if (boxes.size >= 2) {
+        val sourceName = (boxes.first().unsafeCast<dynamic>().name as? String)?.trim().orEmpty()
+        val targetNames = boxes.drop(1).map { (it.unsafeCast<dynamic>().name as? String)?.trim().orEmpty() }
+        val escape = { name: String -> name.replace("'", "\\'") }
+        val escapedSource = escape(sourceName.ifBlank { "box 1" })
+        val escapedTargets = targetNames.map { escape(it.ifBlank { "..." }) }
+
+        val targetLabel = when {
+            escapedTargets.isEmpty() -> ""
+            escapedTargets.size <= 3 -> escapedTargets.mapIndexed { idx, name -> "${idx + 2}:$name" }.joinToString(", ")
+            else -> escapedTargets.take(2).mapIndexed { idx, name -> "${idx + 2}:$name" }
+                .joinToString(", ") + ", +${escapedTargets.size - 2} more"
+        }
+
+        val connectLabel = if (targetLabel.isNotEmpty()) "Connect 1:$escapedSource to $targetLabel" else "Connect $escapedSource"
+        val disconnectLabel =
+            if (targetLabel.isNotEmpty()) "Disconnect 1:$escapedSource from $targetLabel" else "Disconnect $escapedSource"
+
         run {
             val e = """
             ({
-                id:'connect', label:'Connect `$n1` to `$n2`', 
+                id:'connect', label:'$connectLabel', 
                 canvasKeybinding: (event) => event.key=='g' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-connect',
-                                uid_currentSelection: [${selId}]
+                                uid_currentSelection: getSelectedIds()
                         })})}
             })
         """.trimIndent()
@@ -491,12 +505,12 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'disconnect', label:'Disconnect `$n1` from `$n2`', 
+                id:'disconnect', label:'$disconnectLabel', 
                 canvasKeybinding: (event) => event.key=='u' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-disconnect',
-                                uid_currentSelection: [${selId}]
+                                uid_currentSelection: getSelectedIds()
                         })})}
             })
         """.trimIndent()

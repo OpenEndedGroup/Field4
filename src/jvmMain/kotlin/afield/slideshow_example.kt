@@ -18,20 +18,46 @@ fun Box.exampleSlideShow() {
     val welcomeBox = this
     val codeBox = this.children.firstOrNull() ?: this
     val visualBox = this.children.iterator().next()
-    val homeLink = """<a href="#slideshow:home" style="float:right;text-decoration:none;color:inherit;opacity:0.85;">&#8962;</a>"""
     this.autorun = true
+
+    val navStart = """
+        <div class="slide-nav">
+          <div class="slide-nav__links">
+            <a href="#slideshow:next">Start the tour →</a>
+          </div>
+          <a class="slide-nav__home" href="#slideshow:home" aria-label="Home">&#127968;</a>
+        </div>
+    """.trimIndent()
+
+    val navBackNext = """
+        <div class="slide-nav">
+          <div class="slide-nav__links">
+            <a href="#slideshow:previous">← Back</a>
+            <a href="#slideshow:next">Next →</a>
+          </div>
+          <a class="slide-nav__home" href="#slideshow:home" aria-label="Home">&#127968;</a>
+        </div>
+    """.trimIndent()
+
+    val navBackFinish = """
+        <div class="slide-nav">
+          <div class="slide-nav__links">
+            <a href="#slideshow:previous">← Back</a>
+            <a href="#slideshow:stop">Finish tour</a>
+          </div>
+          <a class="slide-nav__home" href="#slideshow:home" aria-label="Home">&#127968;</a>
+        </div>
+    """.trimIndent()
 
     // Create the slideshow
     val show = slideShow {
         step("Welcome to Field") {
             note("""
-                $homeLink
-                <h2>Welcome to Field!</h2>
-                <p>This is an interactive guided tour of Field, a live coding environment.</p>
-                <p>Field combines high-performance graphics with powerful scripting capabilities.</p>
-                <br>
-                <p><strong>Click the links below to navigate:</strong></p>
-                <p><a href="#slideshow:next">Start the tour →</a></p>
+<h2>Welcome to Field!</h2>
+<p>This is an interactive guided tour of Field, a live coding environment.</p>
+<p>Field combines high-performance graphics with powerful scripting capabilities.</p>
+<p><strong>Click the links below to navigate:</strong></p>
+$navStart
             """.trimIndent(), persistent = false)
 
             selectBox(welcomeBox, property = "code")
@@ -39,17 +65,15 @@ fun Box.exampleSlideShow() {
 
         step("Understanding Boxes") {
             note("""
-                $homeLink
-                <h3>Boxes are the Core Abstraction</h3>
-                <p>In Field, everything is a <strong>Box</strong>. Boxes can:</p>
-                <ul>
-                  <li>Contain code in multiple languages (Kotlin, Python, JavaScript, Clojure)</li>
-                  <li>Have properties and metadata</li>
-                  <li>Connect to other boxes to form execution graphs</li>
-                  <li>Execute code and produce output</li>
-                </ul>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
+<h3>Boxes are the Core Abstraction</h3>
+<p>In Field, everything is a <strong>Box</strong>. Boxes can:</p>
+<ul>
+  <li>Contain code in multiple languages (Kotlin, Python, JavaScript, Clojure)</li>
+  <li>Have properties and metadata</li>
+  <li>Connect to other boxes to form execution graphs</li>
+  <li>Execute code and produce output</li>
+</ul>
+$navBackNext
             """.trimIndent())
 
             // Example: Select box by name instead of by reference
@@ -59,18 +83,16 @@ fun Box.exampleSlideShow() {
 
         step("Writing Code") {
             note("""
-                $homeLink
-                <h3>Live Coding</h3>
-                <p>You can write code directly in boxes and see the results immediately.</p>
-                <p>The code editor supports:</p>
-                <ul>
-                  <li>Syntax highlighting</li>
-                  <li>Code completion</li>
-                  <li>AI-powered assistance</li>
-                </ul>
-                <p>Try editing the code and pressing <kbd>Cmd+Enter</kbd> (Mac) or <kbd>Ctrl+Enter</kbd> (Windows/Linux) to execute!</p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
+<h3>Live Coding</h3>
+<p>You can write code directly in boxes and see the results immediately.</p>
+<p>The code editor supports:</p>
+<ul>
+  <li>Syntax highlighting</li>
+  <li>Code completion</li>
+  <li>AI-powered assistance</li>
+</ul>
+<p>Try editing the code and pressing <kbd>Cmd+Enter</kbd> (Mac) or <kbd>Ctrl+Enter</kbd> (Windows/Linux) to execute!</p>
+$navBackNext
             """.trimIndent())
 
             selectBox(codeBox, property = "code", line = 5, highlight = 5)
@@ -83,18 +105,16 @@ fun Box.exampleSlideShow() {
 
         step("Visual Output") {
             note("""
-                $homeLink
-                <h3>Graphics and Visualization</h3>
-                <p>Field excels at real-time graphics and visualization.</p>
-                <p>You can create:</p>
-                <ul>
-                  <li>2D and 3D graphics</li>
-                  <li>Shaders (GLSL)</li>
-                  <li>Interactive visualizations</li>
-                  <li>Data plots</li>
-                </ul>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
+<h3>Graphics and Visualization</h3>
+<p>Field excels at real-time graphics and visualization.</p>
+<p>You can create:</p>
+<ul>
+  <li>2D and 3D graphics</li>
+  <li>Shaders (GLSL)</li>
+  <li>Interactive visualizations</li>
+  <li>Data plots</li>
+</ul>
+$navBackNext
             """.trimIndent(), anchorBox = visualBox)
 
             selectBox(visualBox, property = "fragment")
@@ -102,19 +122,16 @@ fun Box.exampleSlideShow() {
 
         step("Next Steps") {
             note("""
-                $homeLink
-                <h3>Keep Exploring!</h3>
-                <p>You've completed the basic tour. Here are some things to try:</p>
-                <ul>
-                  <li>Create new boxes by double-clicking on the canvas</li>
-                  <li>Connect boxes by dragging from one to another</li>
-                  <li>Explore the example templates</li>
-                  <li>Ask the AI assistant for help</li>
-                </ul>
-                <br>
-                <p><strong>Happy coding!</strong></p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:stop">Finish tour</a></p>
+<h3>Keep Exploring!</h3>
+<p>You've completed the basic tour. Here are some things to try:</p>
+<ul>
+  <li>Create new boxes by double-clicking on the canvas</li>
+  <li>Connect boxes by dragging from one to another</li>
+  <li>Explore the example templates</li>
+  <li>Ask the AI assistant for help</li>
+</ul>
+<p><strong>Happy coding!</strong></p>
+$navBackFinish
             """.trimIndent(), persistent = true)
 
             selectBox(welcomeBox, property = "code")
