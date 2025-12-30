@@ -2,6 +2,7 @@
 
 import afield.*
 import kotlinx.browser.document
+import kotlinx.browser.window
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.DOMRect
 import org.w3c.dom.HTMLCanvasElement
@@ -20,8 +21,11 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val endScreen = DubinsPose(b.point.x, b.point.y, endHeading)
 
     val straight = a.point.distance(b.point)
-    val maxAllowedRadius = max(1.0, straight / 3.0)
+    val maxAllowedRadius = max(1.0, straight / 3.1)
     val radius = min(dubinsMinRadius, maxAllowedRadius)
+
+    val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
+    currentFrameKeys += key
 
     val dubins = dubinsShortestPath(screenToStandard(startScreen), screenToStandard(endScreen), radius)
     if (dubins == null) {
@@ -29,14 +33,21 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
         return
     }
 
-    val step = max(3.0, dubins.radius / 2.5)/2
+    val step = max(3.0, radius / 3.0) /2.0
     val sampledStd = sampleDubinsPath(dubins, screenToStandard(startScreen), step)
     val sampled = sampledStd.map { standardToScreen(it) }
-    val arrowPose = midPose(sampled)
+    val targetPoints = sampled.map { Point(it.x, it.y) }
+    val smoothedPoints = filterConnection(key, targetPoints)
+    var drawPoints = (if (smoothedPoints.isNotEmpty()) smoothedPoints else targetPoints)
+    if (drawPoints.size > MAX_SEGMENTS + 1) {
+        drawPoints = resamplePolyline(drawPoints, MAX_SEGMENTS + 1)
+    }
+    if (drawPoints.isEmpty()) return
+    val arrowPose = midPose(posesFromPolyline(drawPoints))
 
     path {
-        moveTo(sampled.first().x, sampled.first().y)
-        sampled.drop(1).forEach { pose ->
+        moveTo(drawPoints.first().x, drawPoints.first().y)
+        drawPoints.drop(1).forEach { pose ->
             lineTo(pose.x, pose.y)
         }
         stroke = "rgba(128,128,128,${opacity})"
@@ -49,6 +60,19 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
 }
 
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
+var dubinsMinRadius = 30.0
+
+private const val FILTER_RESAMPLE_COUNT = 64
+private const val FILTER_ALPHA = 0.05
+private const val FILTER_EPS = 0.5
+private const val MAX_SEGMENTS = 128
+
+data class ConnectionFilterState(var filtered: List<Point> = emptyList())
+
+private val connectionFilterStates = mutableMapOf<String, ConnectionFilterState>()
+private var needsFilterFrame = false
+private var filterFrameScheduled = false
+private val currentFrameKeys = mutableSetOf<String>()
 
 private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double) {
     val sc = min(50.0, a.point.distance(b.point) / 3)
@@ -75,7 +99,145 @@ private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGEleme
     )
 }
 
-var dubinsMinRadius = 30.0
+private fun filterConnection(key: String, target: List<Point>): List<Point> {
+    if (target.isEmpty()) return target
+    if (!target.all { it.isFinite() }) {
+        connectionFilterStates.remove(key)
+        return target
+    }
+
+    val state = connectionFilterStates.getOrPut(key) { ConnectionFilterState() }
+    val resampleCount = max(FILTER_RESAMPLE_COUNT, target.size)
+    val targetResampled = resamplePolyline(target, resampleCount)
+    if (!targetResampled.all { it.isFinite() }) {
+        connectionFilterStates.remove(key)
+        return target
+    }
+
+    if (state.filtered.isEmpty()) {
+        state.filtered = targetResampled
+        return state.filtered
+    }
+
+    val prev = state.filtered
+    val aligned = alignPolyline(prev, prev.first(), prev.last(), target.first(), target.last())
+    val alignedResampled = resamplePolyline(aligned, resampleCount)
+    if (!alignedResampled.all { it.isFinite() }) {
+        connectionFilterStates.remove(key)
+        return target
+    }
+
+    val blended = alignedResampled.mapIndexed { idx, prevPt ->
+        when (idx) {
+            0 -> targetResampled.first()
+            alignedResampled.lastIndex -> targetResampled.last()
+            else -> {
+                val t = targetResampled[idx]
+                Point(
+                    prevPt.x * (1 - FILTER_ALPHA) + t.x * FILTER_ALPHA,
+                    prevPt.y * (1 - FILTER_ALPHA) + t.y * FILTER_ALPHA
+                )
+            }
+        }
+    }
+
+    if (!blended.all { it.isFinite() }) {
+        connectionFilterStates.remove(key)
+        return target
+    }
+
+    val maxDelta = blended.zip(targetResampled).maxOf { (a, b) -> hypot(a.x - b.x, a.y - b.y) }
+    if (maxDelta > FILTER_EPS) {
+        needsFilterFrame = true
+    }
+
+    state.filtered = blended
+    connectionFilterStates[key] = state
+    return blended
+}
+
+private fun alignPolyline(points: List<Point>, oldStart: Point, oldEnd: Point, newStart: Point, newEnd: Point): List<Point> {
+    if (points.isEmpty()) return points
+
+    val oldDx = oldEnd.x - oldStart.x
+    val oldDy = oldEnd.y - oldStart.y
+    val newDx = newEnd.x - newStart.x
+    val newDy = newEnd.y - newStart.y
+
+    val oldLen = hypot(oldDx, oldDy)
+    val newLen = hypot(newDx, newDy)
+    if (oldLen < 1e-6 || newLen < 1e-6) {
+        return points.mapIndexed { idx, _ ->
+            when (idx) {
+                0 -> newStart
+                points.lastIndex -> newEnd
+                else -> newStart
+            }
+        }
+    }
+
+    val scale = newLen / oldLen
+    val angle = atan2(newDy, newDx) - atan2(oldDy, oldDx)
+    val cosA = cos(angle)
+    val sinA = sin(angle)
+
+    val transformed = points.map { p ->
+        val px = (p.x - oldStart.x) * scale
+        val py = (p.y - oldStart.y) * scale
+        val rx = px * cosA - py * sinA
+        val ry = px * sinA + py * cosA
+        Point(rx + newStart.x, ry + newStart.y)
+    }.toMutableList()
+
+    transformed[0] = newStart
+    transformed[transformed.lastIndex] = newEnd
+    return transformed
+}
+
+private fun resamplePolyline(points: List<Point>, count: Int): List<Point> {
+    if (points.isEmpty()) return points
+    if (count <= 2) return listOf(points.first(), points.last())
+
+    val lengths = DoubleArray(points.size)
+    for (i in 1 until points.size) {
+        lengths[i] = lengths[i - 1] + points[i - 1].distance(points[i])
+    }
+    val total = lengths.last()
+    if (total < 1e-6) return List(count) { idx ->
+        when (idx) {
+            0 -> points.first()
+            count - 1 -> points.last()
+            else -> points.first()
+        }
+    }
+
+    val step = total / (count - 1)
+    val result = mutableListOf<Point>()
+    var seg = 1
+    for (i in 0 until count) {
+        val targetDist = step * i
+        while (seg < lengths.size && lengths[seg] < targetDist) seg++
+        if (seg >= lengths.size) {
+            result += points.last()
+        } else {
+            val prevDist = lengths[seg - 1]
+            val nextDist = lengths[seg]
+            val ratio = if (nextDist - prevDist < 1e-9) 0.0 else (targetDist - prevDist) / (nextDist - prevDist)
+            val p0 = points[seg - 1]
+            val p1 = points[seg]
+            result += Point(
+                p0.x + (p1.x - p0.x) * ratio,
+                p0.y + (p1.y - p0.y) * ratio
+            )
+        }
+    }
+    result[0] = points.first()
+    result[result.lastIndex] = points.last()
+    return result
+}
+
+private fun Point.isFinite(): Boolean = x.isFinite() && y.isFinite()
+
 
 data class DubinsPose(val x: Double, val y: Double, val heading: Double)
 
@@ -248,6 +410,33 @@ fun sampleDubinsPath(path: DubinsPath, start: DubinsPose, step: Double = 2.0): L
 private fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
 private fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
 
+private fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
+    if (points.isEmpty()) return emptyList()
+    if (points.size == 1) return listOf(DubinsPose(points.first().x, points.first().y, 0.0))
+
+    return points.mapIndexed { idx, p ->
+        val (dx, dy) = when (idx) {
+            0 -> {
+                val next = points[idx + 1]
+                next.x - p.x to next.y - p.y
+            }
+
+            points.lastIndex -> {
+                val prev = points[idx - 1]
+                p.x - prev.x to p.y - prev.y
+            }
+
+            else -> {
+                val prev = points[idx - 1]
+                val next = points[idx + 1]
+                next.x - prev.x to next.y - prev.y
+            }
+        }
+        val heading = atan2(dy, dx)
+        DubinsPose(p.x, p.y, heading)
+    }
+}
+
 private fun interpolateHeading(a: Double, b: Double, t: Double): Double {
     var delta = mod2pi(b - a)
     if (delta > PI) delta -= 2 * PI
@@ -276,7 +465,7 @@ fun midPose(sampled: List<DubinsPose>): DubinsPose {
             val f = (target - acc) / seg
             val x = p0.x + (p1.x - p0.x) * f
             val y = p0.y + (p1.y - p0.y) * f
-            val heading = interpolateHeading(p0.heading, p1.heading, f)
+            val heading = if (seg < 1e-9) p0.heading else atan2(p1.y - p0.y, p1.x - p0.x)
             return DubinsPose(x, y, heading)
         }
         acc += seg
@@ -322,6 +511,9 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
 
     fun rebuildConnectionGroup() {
+        currentFrameKeys.clear()
+        needsFilterFrame = false
+
         val parent = document.getElementById("overlaysvglayer") as SVGSVGElement
 
         val (vbw, vbh) = parent.getBoundingClientRect().let { it.width to it.height }
@@ -387,6 +579,17 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
         traverse("parent->child") { from ->
             (from.unsafeCast<dynamic>().box_children as Array<String>?)?.toList()
+        }
+
+        val obsolete = connectionFilterStates.keys - currentFrameKeys
+        obsolete.forEach { connectionFilterStates.remove(it) }
+
+        if (needsFilterFrame && !filterFrameScheduled) {
+            filterFrameScheduled = true
+            window.requestAnimationFrame {
+                filterFrameScheduled = false
+                rebuildConnectionGroup()
+            }
         }
     }
 
