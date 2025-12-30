@@ -1,15 +1,43 @@
 // Slider support for Field4
 // Sends slider value updates back to the server
 
-window.sendSliderUpdate = function(sliderId, value) {
+let afieldModulePromise = null;
+
+function getAfield() {
     if (typeof afield !== 'undefined' && typeof afield.send === 'function') {
-        afield.send('slider-update', {
-            sliderId: sliderId,
-            value: value
-        });
-    } else {
-        console.warn('afield.send not available yet for slider updates');
+        return Promise.resolve(afield);
     }
+
+    if (!afieldModulePromise) {
+        afieldModulePromise = import("./afield.mjs").catch((err) => {
+            console.warn('Failed to load afield.mjs for slider updates', err);
+            afieldModulePromise = null;
+            throw err;
+        });
+    }
+
+    return afieldModulePromise;
+}
+
+function sendViaAfield(type, payload) {
+    getAfield()
+        .then((afieldModule) => {
+            if (afieldModule && typeof afieldModule.send === 'function') {
+                afieldModule.send(type, payload);
+            } else {
+                console.warn('afield.send not available yet for slider updates');
+            }
+        })
+        .catch((err) => {
+            console.warn(`Unable to send ${type}`, err);
+        });
+}
+
+window.sendSliderUpdate = function(sliderId, value) {
+    sendViaAfield('slider-update', {
+        sliderId: sliderId,
+        value: value
+    });
 };
 
 // Handle slider input events
@@ -45,8 +73,8 @@ window.handleVec2Input = function(sliderElement) {
     const xSlider = document.getElementById(controlId + '-x');
     const ySlider = document.getElementById(controlId + '-y');
     
-    if (xSlider && ySlider && typeof afield !== 'undefined' && typeof afield.send === 'function') {
-        afield.send('vec2-update', {
+    if (xSlider && ySlider) {
+        sendViaAfield('vec2-update', {
             controlId: controlId,
             x: parseFloat(xSlider.value),
             y: parseFloat(ySlider.value)
@@ -59,12 +87,10 @@ window.handleCheckboxInput = function(checkboxElement) {
     const controlId = checkboxElement.id;
     const value = checkboxElement.checked;
     
-    if (typeof afield !== 'undefined' && typeof afield.send === 'function') {
-        afield.send('checkbox-update', {
-            controlId: controlId,
-            value: value
-        });
-    }
+    sendViaAfield('checkbox-update', {
+        controlId: controlId,
+        value: value
+    });
 };
 
 // String input control support
@@ -72,12 +98,10 @@ window.handleStringInput = function(inputElement) {
     const controlId = inputElement.id;
     const value = inputElement.value;
     
-    if (typeof afield !== 'undefined' && typeof afield.send === 'function') {
-        afield.send('string-update', {
-            controlId: controlId,
-            value: value
-        });
-    }
+    sendViaAfield('string-update', {
+        controlId: controlId,
+        value: value
+    });
 };
 
 // Color picker control support
@@ -99,16 +123,13 @@ window.handleColorInput = function(colorElement) {
     if (valueDisplay) {
         valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${a.toFixed(2)})`;
     }
-    
-    if (typeof afield !== 'undefined' && typeof afield.send === 'function') {
-        afield.send('color-update', {
-            controlId: controlId,
-            r: r,
-            g: g,
-            b: b,
-            a: a
-        });
-    }
+    sendViaAfield('color-update', {
+        controlId: controlId,
+        r: r,
+        g: g,
+        b: b,
+        a: a
+    });
 };
 
 // Color alpha slider support
@@ -135,15 +156,12 @@ window.handleColorAlphaInput = function(alphaSlider) {
         if (valueDisplay) {
             valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${alpha.toFixed(2)})`;
         }
-        
-        if (typeof afield !== 'undefined' && typeof afield.send === 'function') {
-            afield.send('color-update', {
-                controlId: controlId,
-                r: r,
-                g: g,
-                b: b,
-                a: alpha
-            });
-        }
+        sendViaAfield('color-update', {
+            controlId: controlId,
+            r: r,
+            g: g,
+            b: b,
+            a: alpha
+        });
     }
 };

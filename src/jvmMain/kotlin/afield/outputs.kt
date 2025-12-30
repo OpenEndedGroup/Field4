@@ -1,9 +1,9 @@
 package afield
 
+import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
-import afield.logger.lprintln
 import org.joml.Vector2f
 import org.joml.Vector4f
 import java.net.URLEncoder
@@ -193,7 +193,7 @@ fun Box.slider(
 ) {
     val sliderId = "slider-${UUID.randomUUID()}"
     registerSliderCallback(sliderId, onUpdate)
-    
+
     val html = buildSliderHtml(sliderId, label, min, max, step, initialValue)
     display(channel, html)
 }
@@ -246,10 +246,10 @@ private fun buildSliderHtml(
 
 private fun calculateDecimalPlaces(step: Double): Int {
     if (step >= 1.0) return 0
-    
+
     // Handle very small numbers and scientific notation
     if (step == 0.0) return 0
-    
+
     // Use BigDecimal for accurate decimal place calculation
     val bd = java.math.BigDecimal.valueOf(step)
     return bd.stripTrailingZeros().scale().coerceAtLeast(0)
@@ -279,7 +279,7 @@ fun Box.vec2Control(
 ) {
     val controlId = "vec2-${UUID.randomUUID()}"
     registerVec2Callback(controlId, onUpdate)
-    
+
     val decimalPlaces = calculateDecimalPlaces(step)
     val html = """
         <div class="vec2-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
@@ -328,7 +328,7 @@ fun Box.checkbox(
 ) {
     val controlId = "checkbox-${UUID.randomUUID()}"
     registerCheckboxCallback(controlId, onUpdate)
-    
+
     val checkedAttr = if (initialValue) "checked" else ""
     val html = """
         <div class="checkbox-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
@@ -362,7 +362,7 @@ fun Box.stringInput(
 ) {
     val controlId = "string-${UUID.randomUUID()}"
     registerStringCallback(controlId, onUpdate)
-    
+
     val escapedValue = initialValue.replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
     val html = """
         <div class="string-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
@@ -394,13 +394,13 @@ fun Box.colorPicker(
 ) {
     val controlId = "color-${UUID.randomUUID()}"
     registerColorCallback(controlId, onUpdate)
-    
+
     // Convert normalized values to RGB hex
     val r = (initialValue.x * 255).toInt().coerceIn(0, 255)
     val g = (initialValue.y * 255).toInt().coerceIn(0, 255)
     val b = (initialValue.z * 255).toInt().coerceIn(0, 255)
     val hexColor = String.format("#%02X%02X%02X", r, g, b)
-    
+
     val html = """
         <div class="color-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -478,14 +478,6 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
                 setPropertyRaw(propertyName, value, doResync = true)
             }
             if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        else -> {
-            lprintln("warning,controls", "syncToProperty: unsupported type for property '$propertyName': ${initialValue::class}")
-        }
-    }
-}
                 Box.ioPersistentProperties.add(propertyName)
             }
         }
