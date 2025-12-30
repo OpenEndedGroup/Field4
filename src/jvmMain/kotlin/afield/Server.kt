@@ -547,6 +547,90 @@ class Server {
                 Handled.yes
             })
 
+            handlers["vec2-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<Vec2Update>(message.payload!!)
+                lprintln("debug,controls", "Received vec2 update: ${update.controlId} = (${update.x}, ${update.y})")
+                
+                val callback = getVec2Callback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(Vec2(update.x, update.y))
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in vec2 callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for vec2: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["checkbox-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<CheckboxUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received checkbox update: ${update.controlId} = ${update.value}")
+                
+                val callback = getCheckboxCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.value)
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in checkbox callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for checkbox: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["string-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")
+                
+                val callback = getStringCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.value)
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in string callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for string: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["color-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<ColorUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})")
+                
+                val callback = getColorCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(Vec4(update.r, update.g, update.b, update.a))
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in color callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
 
             registerTemplate(home)
 
