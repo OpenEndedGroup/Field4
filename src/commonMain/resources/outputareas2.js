@@ -101,6 +101,29 @@ function disclosureInterface(container) {
                 st.open ? close(id) : open(id);
         }
 
+        function remove(id) {
+                const d = disclosures.get(id);
+                if (!d) return;
+                d.wrap.remove();
+                disclosures.delete(id);
+                states.delete(id);
+        }
+
+        function closeAll() {
+                for (const id of disclosures.keys()) {
+                        close(id);
+                }
+        }
+
+        function solo(id) {
+                const st = ensureState(id);
+                const wasOpen = st.open;
+                closeAll();
+                if (!wasOpen) {
+                        open(id);
+                }
+        }
+
         function upsertDisclosure(id, title, content) {
                 let d = disclosures.get(id);
                 if (!d) {
@@ -119,8 +142,39 @@ function disclosureInterface(container) {
                         cw.className = "disclosure-content";
                         cw.innerHTML = content || "";
 
+                        // Handle arrow hover effects for alt key
+                        arr.addEventListener("mouseenter", (e) => {
+                                if (e.altKey) {
+                                        arr.classList.add("remove-mode");
+                                }
+                        });
+
+                        arr.addEventListener("mouseleave", (e) => {
+                                arr.classList.remove("remove-mode");
+                        });
+
+                        // Track alt key state during hover
+                        arr.addEventListener("mousemove", (e) => {
+                                if (e.altKey) {
+                                        arr.classList.add("remove-mode");
+                                } else {
+                                        arr.classList.remove("remove-mode");
+                                }
+                        });
+
                         hdr.addEventListener("click", (e) => {
-                                if (!e.target.closest("input, label")) toggle(id);
+                                if (!e.target.closest("input, label")) {
+                                        if (e.altKey) {
+                                                // Alt+click removes the disclosure
+                                                remove(id);
+                                        } else if (e.shiftKey) {
+                                                // Shift+click solos this disclosure
+                                                solo(id);
+                                        } else {
+                                                // Normal click toggles
+                                                toggle(id);
+                                        }
+                                }
                         });
 
                         wrap.append(hdr, cw);
@@ -152,7 +206,7 @@ function disclosureInterface(container) {
                 }
         }
 
-        const api = { upsertDisclosure, setContent, toggle, open, close };
+        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo };
         container.__disclosureAPI = api;
         return api;
 }

@@ -64,6 +64,32 @@
     opacity: 1.0;
     margin-left:-24px;
 }
+/* Red X mode when alt key is held */
+.disclosure-header .arrow.remove-mode {
+    border: none;
+    width: 12px;
+    height: 12px;
+    position: relative;
+    margin-right: 6px;
+    margin-left: -26px;
+}
+.disclosure-header .arrow.remove-mode::before,
+.disclosure-header .arrow.remove-mode::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 2px;
+    background-color: #ff0000;
+    /* Center the X lines vertically (half of 12px height minus half of 2px line height) */
+    top: 5px;
+    left: 0;
+}
+.disclosure-header .arrow.remove-mode::before {
+    transform: rotate(45deg);
+}
+.disclosure-header .arrow.remove-mode::after {
+    transform: rotate(-45deg);
+}
 .disclosure-header.hide-arrow .arrow { visibility: hidden; }
 .disclosure-header:hover .arrow { border-left-color: var(--fg-hover); opacity:1; }
 .disclosure.open .disclosure-header .arrow { transform: rotate(90deg); opacity:1; }
