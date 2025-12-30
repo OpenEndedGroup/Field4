@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
     <title>Field | 4</title>
     <script src="/interact.min.js"></script>
     <script src="/plotly-2.24.1.min.js"></script>
@@ -35,7 +36,7 @@
             background: var(--field-panel);
             border: 1px solid rgba(72, 201, 255, 0.22);
             border-radius: 10px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             margin: 10px 0;
             box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
         }
@@ -52,18 +53,42 @@
 
         .field-label {
             text-transform: uppercase;
-            opacity: 0.8;
+            opacity: 0.9;
+            color: var(--field-cyan);
+        }
+
+        .field-slider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field-slider .field-label {
+            flex: 0 0 auto;
+            color: var(--field-text);
+            font-size: 11px;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
         }
 
         .field-value {
             font-family: "Iosevka Web", monospace;
             color: var(--field-text-soft);
             font-size: 11px;
+            flex: 0 0 auto;
+            min-width: 48px;
+            text-align: right;
         }
 
         .field-slider-visual {
             width: 100%;
-            height: 38px;
+            aspect-ratio: 12 / 1;
+            height: auto;
+            display: block;
+            touch-action: none;
+            pointer-events: all;
+            user-select: none;
+            cursor: crosshair;
         }
 
         .slider-track {
@@ -88,15 +113,62 @@
         }
 
         .vec2-visual {
-            width: 100%;
-            height: 220px;
+            width: 200px;
+            height: 200px;
+            max-width: 200px;
+            max-height: 200px;
+            aspect-ratio: 1 / 1;
+            min-width: 180px;
+            min-height: 180px;
+            display: block;
+            touch-action: none;
+            pointer-events: all;
+            user-select: none;
+            cursor: crosshair;
+        }
+
+        .vec2-metrics {
+            display: flex;
+            justify-content: space-between;
+            color: var(--field-text-soft);
+            font-size: 10px;
+            margin-bottom: 6px;
+            padding: 0 2px;
+            font-family: "Iosevka Web", monospace;
+        }
+
+        .vec2-shell {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 8px 12px 8px;
+        }
+        .vec2-shell .vec2-visual {
+            flex: 0 0 auto;
+        }
+        .vec2-shell .vec2-tl,
+        .vec2-shell .vec2-tr,
+        .vec2-shell .vec2-angle,
+        .vec2-shell .vec2-mag,
+        .vec2-shell .vec2-x,
+        .vec2-shell .vec2-y {
+            position: absolute;
+            font-size: 10px;
+            color: var(--field-text-soft);
+            font-family: "Iosevka Web", monospace;
+        }
+        .vec2-shell .vec2-tl { top: 4px; left: 6px; }
+        .vec2-shell .vec2-tr { top: 4px; right: 6px; }
+        .vec2-shell .vec2-angle { left: 8px; top: 50%; transform: translateY(-50%); }
+        .vec2-shell .vec2-mag { right: 8px; top: 50%; transform: translateY(-50%); }
+        .vec2-shell .vec2-x { left: 8px; bottom: 6px; }
+        .vec2-shell .vec2-y { right: 8px; bottom: 6px; }
         }
 
         .vec2-pane {
-            fill: rgba(0, 0, 0, 0.2);
-            stroke: var(--field-cyan-muted);
-            stroke-width: 1;
-            stroke-dasharray: 4 4;
+            fill: #080808;
+            stroke: none;
         }
 
         .vec2-axis {
@@ -105,11 +177,33 @@
             stroke-dasharray: 2 4;
         }
 
+        .vec2-line {
+            stroke: var(--field-cyan);
+            stroke-width: 1.75;
+            opacity: 0.9;
+        }
+
+        .vec2-arc {
+            stroke: var(--field-cyan);
+            stroke-width: 1;
+            fill: none;
+            opacity: 0.85;
+        }
+
+        .vec2-angle-label,
+        .vec2-mag-label {
+            fill: var(--field-text-soft);
+            font-size: 9px;
+            font-family: "Iosevka Web", monospace;
+            font-weight: 100;
+            pointer-events: none;
+        }
+
         .vec2-handle {
             fill: #0a1822;
             stroke: var(--field-cyan);
             stroke-width: 2;
-            filter: drop-shadow(0 0 6px rgba(72, 201, 255, 0.5));
+            filter: drop-shadow(0 0 6px rgba(72, 201, 255, 0.45));
         }
 
         .field-subtext {
@@ -122,6 +216,167 @@
 
         .field-subtext span {
             font-family: "Iosevka Web", monospace;
+        }
+
+        /* Checkbox */
+        .field-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field-checkbox .checkbox-toggle {
+            width: 16px;
+            height: 16px;
+            appearance: none;
+            -webkit-appearance: none;
+            background: #000;
+            border: 1px solid rgba(72, 201, 255, 0.7);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            display: grid;
+            place-items: center;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset, 0 0 6px rgba(72, 201, 255, 0.35);
+        }
+
+        .field-checkbox .checkbox-toggle::after {
+            content: "";
+            width: 10px;
+            height: 10px;
+            background: var(--field-cyan);
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 120ms ease;
+        }
+
+        .field-checkbox .checkbox-toggle:checked::after {
+            opacity: 1;
+        }
+
+        .field-checkbox .checkbox-toggle:focus-visible {
+            outline: 1px solid rgba(72, 201, 255, 0.8);
+            outline-offset: 2px;
+        }
+
+        /* Text input */
+        .field-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field-text-input {
+            background: #000;
+            border: 1px solid rgba(72, 201, 255, 0.6);
+            border-radius: 6px;
+            padding: 6px 8px;
+            color: var(--field-cyan);
+            font-family: "Iosevka Web", monospace;
+            font-size: 11px;
+            outline: none;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+            flex: 1 1 auto;
+        }
+
+        .field-text-input:focus {
+            border-color: var(--field-cyan);
+            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.6);
+        }
+
+        /* Color picker */
+        .field-color {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .color-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .color-swatch {
+            position: relative;
+            width: 52px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+            background: #050505;
+            padding: 0;
+        }
+
+        .color-swatch input[type="color"] {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            background: transparent;
+            outline: 1px solid rgba(72, 201, 255, 0.4);
+            outline-offset: -2px;
+        }
+
+        .alpha-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .alpha-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alpha-row .alpha-label {
+            flex: 0 0 auto;
+        }
+
+        .alpha-row .field-value {
+            flex: 0 0 auto;
+        }
+
+        .alpha-slider {
+            width: 100%;
+            accent-color: var(--field-cyan);
+            cursor: pointer;
+        }
+
+        .alpha-visual {
+            width: 100%;
+            aspect-ratio: 12 / 1;
+            height: auto;
+            display: block;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        .alpha-track {
+            stroke: var(--field-cyan-muted);
+            stroke-width: 1;
+            stroke-dasharray: 3 5;
+        }
+
+        .alpha-fill {
+            stroke: var(--field-cyan);
+            stroke-width: 2;
+        }
+
+        .alpha-thumb {
+            fill: #0a1822;
+            stroke: var(--field-cyan);
+            stroke-width: 2;
+        }
+
+        .alpha-thumb-dot {
+            fill: var(--field-cyan);
         }
 
         * {
@@ -361,6 +616,36 @@
             pointer-events: none;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
             white-space: nowrap;
+        }
+
+        .selection-order-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 19px;
+            height: 19px;
+            border-radius: 50%;
+            background: var(--field-cyan);
+            color: #000;
+            font-family: "Iosevka Web", monospace;
+            font-weight: 700;
+            font-size: 11px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            z-index: 3;
+            border: 2px solid #0b0b0b;
+            letter-spacing: 0.2px;
+        }
+
+        .selection-order-badge.visible {
+            display: flex;
+        }
+
+        .box > .selection-order-badge {
+            position: absolute !important;
         }
 
         .running {

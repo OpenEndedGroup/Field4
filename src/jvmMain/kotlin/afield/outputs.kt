@@ -164,10 +164,10 @@ fun Box.logs(
 // Slider support
 data class SliderConfig(
     val label: String,
-    val min: Double,
-    val max: Double,
-    val step: Double,
-    val initialValue: Double,
+    val min: Double = 0.0,
+    val max: Double = 1.0,
+    val step: Double = 100.0,
+    val initialValue: Double = 0.0,
     val onUpdate: (Double) -> Unit
 )
 
@@ -225,6 +225,8 @@ private fun buildSliderHtml(
     val decimalPlaces = calculateDecimalPlaces(step)
     val formattedValue = "%.${decimalPlaces}f".format(value)
     val viewWidth = 320
+    val viewHeight = 32
+    val centerY = viewHeight / 2
     val padding = 14
     val clampedValue = value.coerceIn(min, max)
     val trackLength = viewWidth - (padding * 2)
@@ -240,16 +242,14 @@ private fun buildSliderHtml(
              data-value="$value"
              data-view-width="$viewWidth"
              data-padding="$padding">
-            <div class="field-header">
-                <span class="field-label">$label</span>
-                <span class="field-value" id="${sliderId}-value">$formattedValue</span>
-            </div>
-            <svg class="field-slider-visual" viewBox="0 0 $viewWidth 32" preserveAspectRatio="none">
-                <line x1="$padding" y1="16" x2="${viewWidth - padding}" y2="16" class="slider-track"></line>
-                <line x1="$padding" y1="16" x2="$cx" y2="16" class="slider-fill"></line>
-                <circle cx="$cx" cy="16" r="5" class="slider-thumb"></circle>
-                <circle cx="$cx" cy="16" r="2" class="slider-thumb-dot"></circle>
+            <span class="field-label">$label</span>
+            <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+                <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="slider-track"></line>
+                <line x1="$padding" y1="$centerY" x2="$cx" y2="$centerY" class="slider-fill"></line>
+                <circle cx="$cx" cy="$centerY" r="5" class="slider-thumb"></circle>
+                <circle cx="$cx" cy="$centerY" r="2" class="slider-thumb-dot"></circle>
             </svg>
+            <span class="field-value" id="${sliderId}-value">$formattedValue</span>
         </div>
     """.trimIndent()
 }
@@ -265,7 +265,7 @@ private fun calculateDecimalPlaces(step: Double): Int {
     return bd.stripTrailingZeros().scale().coerceAtLeast(0)
 }
 
-// Additional control types
+// Additional control types + HTML builders
 
 // 2D Vector control (using JOML Vector2f)
 private val vec2Callbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector2f) -> Unit>()
@@ -278,21 +278,17 @@ internal fun getVec2Callback(controlId: String): ((Vector2f) -> Unit)? {
     return vec2Callbacks[controlId]
 }
 
-fun Box.vec2Control(
+private fun buildVec2Html(
+    controlId: String,
     label: String,
-    initialValue: Vector2f = Vector2f(0.0f, 0.0f),
-    xRange: Pair<Double, Double> = -1.0 to 1.0,
-    yRange: Pair<Double, Double> = -1.0 to 1.0,
-    step: Double = 0.01,
-    channel: String = "controls",
-    onUpdate: (Vector2f) -> Unit
-) {
-    val controlId = "vec2-${UUID.randomUUID()}"
-    registerVec2Callback(controlId, onUpdate)
-
-    val decimalPlaces = calculateDecimalPlaces(step)
-    val viewSize = 240
-    val padding = 14
+    xRange: Pair<Double, Double>,
+    yRange: Pair<Double, Double>,
+    step: Double,
+    decimalPlaces: Int,
+    initialValue: Vector2f
+): String {
+    val viewSize = 150
+    val padding = 10
     val area = viewSize - (padding * 2)
 
     fun clamp(value: Double, range: Pair<Double, Double>): Double {
@@ -313,8 +309,11 @@ fun Box.vec2Control(
     val cy = mapToY(initialValue.y.toDouble())
     val formattedX = "%.${decimalPlaces}f".format(initialValue.x)
     val formattedY = "%.${decimalPlaces}f".format(initialValue.y)
+    val angleDeg = Math.toDegrees(Math.atan2(initialValue.y.toDouble(), initialValue.x.toDouble()))
+    val magnitude = kotlin.math.sqrt((initialValue.x * initialValue.x + initialValue.y * initialValue.y).toDouble())
+    val center = viewSize / 2.0
 
-    val html = """
+    return """
         <div class="field-control field-vec2"
              data-control-id="$controlId"
              data-min-x="${xRange.first}"
@@ -327,22 +326,52 @@ fun Box.vec2Control(
              data-decimal-places="$decimalPlaces"
              data-view-size="$viewSize"
              data-padding="$padding">
-            <div class="field-header">
-                <span class="field-label">$label</span>
-                <span class="field-value" id="${controlId}-value">(${formattedX}, ${formattedY})</span>
-            </div>
-            <svg class="vec2-visual" viewBox="0 0 $viewSize $viewSize" preserveAspectRatio="none">
-                <rect x="0" y="0" width="$viewSize" height="$viewSize" class="vec2-pane"></rect>
-                <line x1="${viewSize / 2}" y1="$padding" x2="${viewSize / 2}" y2="${viewSize - padding}" class="vec2-axis"></line>
-                <line x1="$padding" y1="${viewSize / 2}" x2="${viewSize - padding}" y2="${viewSize / 2}" class="vec2-axis"></line>
-                <circle cx="$cx" cy="$cy" r="6" class="vec2-handle"></circle>
-            </svg>
-            <div class="field-subtext">
-                <span>X: <span id="${controlId}-x-value">$formattedX</span></span>
-                <span>Y: <span id="${controlId}-y-value">$formattedY</span></span>
+            <div class="vec2-shell">
+                <span class="field-label vec2-tl">$label</span>
+                <span class="field-value vec2-tr" id="${controlId}-value">(${formattedX}, ${formattedY})</span>
+                <span class="field-value vec2-angle" id="${controlId}-angle">${String.format("θ %.0f°", angleDeg)}</span>
+                <svg class="vec2-visual vec2-center" viewBox="0 0 $viewSize $viewSize" preserveAspectRatio="xMidYMid meet"
+                     width="$viewSize" height="$viewSize"
+                     style="width:${viewSize}px;height:${viewSize}px;">
+                    <rect x="0" y="0" width="$viewSize" height="$viewSize" class="vec2-pane"></rect>
+                    <line x1="${viewSize / 2}" y1="$padding" x2="${viewSize / 2}" y2="${viewSize - padding}" class="vec2-axis"></line>
+                    <line x1="$padding" y1="${viewSize / 2}" x2="${viewSize - padding}" y2="${viewSize / 2}" class="vec2-axis"></line>
+                    <line x1="$center" y1="$center" x2="$cx" y2="$cy" class="vec2-line"></line>
+                    <path class="vec2-arc" d="" data-center="$center"></path>
+                    <text class="vec2-angle-label" x="${center + 20}" y="${center - 8}"></text>
+                    <text class="vec2-mag-label" x="${cx + 8}" y="${cy - 8}"></text>
+                    <circle cx="$cx" cy="$cy" r="3.5" class="vec2-handle"></circle>
+                </svg>
+                <span class="field-value vec2-mag" id="${controlId}-mag">${String.format("|v| %.2f", magnitude)}</span>
+                <span class="field-value vec2-x">X: <span id="${controlId}-x-value">$formattedX</span></span>
+                <span class="field-value vec2-y">Y: <span id="${controlId}-y-value">$formattedY</span></span>
             </div>
         </div>
     """.trimIndent()
+}
+
+fun Box.vec2Control(
+    label: String,
+    initialValue: Vector2f = Vector2f(0.0f, 0.0f),
+    xRange: Pair<Double, Double> = -1.0 to 1.0,
+    yRange: Pair<Double, Double> = -1.0 to 1.0,
+    step: Double = 0.01,
+    channel: String = "controls",
+    onUpdate: (Vector2f) -> Unit
+) {
+    val controlId = "vec2-${UUID.randomUUID()}"
+    registerVec2Callback(controlId, onUpdate)
+
+    val decimalPlaces = calculateDecimalPlaces(step)
+    val html = buildVec2Html(
+        controlId = controlId,
+        label = label,
+        xRange = xRange,
+        yRange = yRange,
+        step = step,
+        decimalPlaces = decimalPlaces,
+        initialValue = initialValue
+    )
     display(channel, html)
 }
 
@@ -357,6 +386,16 @@ internal fun getCheckboxCallback(controlId: String): ((Boolean) -> Unit)? {
     return checkboxCallbacks[controlId]
 }
 
+private fun buildCheckboxHtml(controlId: String, label: String, initialValue: Boolean): String {
+    val checkedAttr = if (initialValue) "checked" else ""
+    return """
+        <div class="field-control field-checkbox">
+            <label class="field-label" for="$controlId" style="flex:0 0 auto;">$label</label>
+            <input type="checkbox" class="checkbox-toggle" id="$controlId" $checkedAttr onchange="handleCheckboxInput(this)" />
+        </div>
+    """.trimIndent()
+}
+
 fun Box.checkbox(
     label: String,
     initialValue: Boolean = false,
@@ -365,18 +404,7 @@ fun Box.checkbox(
 ) {
     val controlId = "checkbox-${UUID.randomUUID()}"
     registerCheckboxCallback(controlId, onUpdate)
-
-    val checkedAttr = if (initialValue) "checked" else ""
-    val html = """
-        <div class="checkbox-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-            <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
-                <input type="checkbox" id="$controlId" $checkedAttr
-                    style="margin-right: 8px; cursor: pointer; width: 16px; height: 16px;"
-                    onchange="handleCheckboxInput(this)" />
-                <span style="font-size: 11px; color: #ddd;">$label</span>
-            </label>
-        </div>
-    """.trimIndent()
+    val html = buildCheckboxHtml(controlId, label, initialValue)
     display(channel, html)
 }
 
@@ -391,6 +419,16 @@ internal fun getStringCallback(controlId: String): ((String) -> Unit)? {
     return stringCallbacks[controlId]
 }
 
+private fun buildStringInputHtml(controlId: String, label: String, initialValue: String): String {
+    val escapedValue = initialValue.replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    return """
+        <div class="field-control field-text">
+            <label class="field-label" for="$controlId" style="flex:0 0 auto;">$label</label>
+            <input type="text" class="field-text-input" id="$controlId" value="$escapedValue" onchange="handleStringInput(this)" />
+        </div>
+    """.trimIndent()
+}
+
 fun Box.stringInput(
     label: String,
     initialValue: String = "",
@@ -400,15 +438,7 @@ fun Box.stringInput(
     val controlId = "string-${UUID.randomUUID()}"
     registerStringCallback(controlId, onUpdate)
 
-    val escapedValue = initialValue.replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
-    val html = """
-        <div class="string-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-            <label style="display: block; font-size: 11px; color: #ddd; margin-bottom: 4px;">$label</label>
-            <input type="text" id="$controlId" value="$escapedValue"
-                style="width: 100%; padding: 4px 8px; background: rgba(0,0,0,0.3); color: #ddd; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; font-size: 11px; font-family: monospace;"
-                onchange="handleStringInput(this)" />
-        </div>
-    """.trimIndent()
+    val html = buildStringInputHtml(controlId, label, initialValue)
     display(channel, html)
 }
 
@@ -423,6 +453,54 @@ internal fun getColorCallback(controlId: String): ((Vector4f) -> Unit)? {
     return colorCallbacks[controlId]
 }
 
+private fun buildColorPickerHtml(
+    controlId: String,
+    label: String,
+    initialValue: Vector4f
+): String {
+    val r = (initialValue.x * 255).toInt().coerceIn(0, 255)
+    val g = (initialValue.y * 255).toInt().coerceIn(0, 255)
+    val b = (initialValue.z * 255).toInt().coerceIn(0, 255)
+    val hexColor = String.format("#%02X%02X%02X", r, g, b)
+    val alpha = initialValue.w.coerceIn(0f, 1f)
+    val viewWidth = 320
+    val viewHeight = 32
+    val centerY = viewHeight / 2
+    val padding = 14
+    val trackLen = viewWidth - (padding * 2)
+    val cx = padding + (trackLen * alpha)
+
+    return """
+        <div class="field-control field-color">
+            <div class="field-header">
+                <span class="field-label">$label</span>
+                <span class="field-value" id="${controlId}-value">${String.format("rgba(%.2f, %.2f, %.2f, %.2f)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
+            </div>
+            <div class="color-row">
+                <label class="color-swatch">
+                    <input type="color" id="$controlId" value="$hexColor" onchange="handleColorInput(this)" />
+                </label>
+                <div class="alpha-column">
+                    <div class="alpha-row">
+                        <span class="field-label alpha-label">&alpha;</span>
+                        <svg class="alpha-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet"
+                             data-view-width="$viewWidth" data-view-height="$viewHeight" data-padding="$padding">
+                            <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="alpha-track"></line>
+                            <line x1="$padding" y1="$centerY" x2="$cx" y2="$centerY" class="alpha-fill"></line>
+                            <circle cx="$cx" cy="$centerY" r="5" class="alpha-thumb"></circle>
+                            <circle cx="$cx" cy="$centerY" r="2" class="alpha-thumb-dot"></circle>
+                        </svg>
+                        <span class="field-value" id="${controlId}-alpha-value">${String.format("%.2f", initialValue.w)}</span>
+                    </div>
+                    <input type="range" class="alpha-slider" id="${controlId}-alpha" min="0" max="1" step="0.01" value="${initialValue.w}"
+                        data-control-id="$controlId"
+                        oninput="handleColorAlphaInput(this)" style="display:none;" />
+                </div>
+            </div>
+        </div>
+    """.trimIndent()
+}
+
 fun Box.colorPicker(
     label: String,
     initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
@@ -431,37 +509,89 @@ fun Box.colorPicker(
 ) {
     val controlId = "color-${UUID.randomUUID()}"
     registerColorCallback(controlId, onUpdate)
-
-    // Convert normalized values to RGB hex
-    val r = (initialValue.x * 255).toInt().coerceIn(0, 255)
-    val g = (initialValue.y * 255).toInt().coerceIn(0, 255)
-    val b = (initialValue.z * 255).toInt().coerceIn(0, 255)
-    val hexColor = String.format("#%02X%02X%02X", r, g, b)
-
-    val html = """
-        <div class="color-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <label style="font-size: 11px; color: #ddd;">$label</label>
-                <span id="${controlId}-value" style="font-size: 10px; color: #aaa; font-family: monospace;">${String.format("rgba(%.2f, %.2f, %.2f, %.2f)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="color" id="$controlId" value="$hexColor"
-                    style="width: 60px; height: 30px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); background: transparent;"
-                    onchange="handleColorInput(this)" />
-                <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                        <label style="font-size: 9px; color: #aaa;">Alpha:</label>
-                        <span id="${controlId}-alpha-value" style="font-size: 9px; color: #aaa; font-family: monospace;">${String.format("%.2f", initialValue.w)}</span>
-                    </div>
-                    <input type="range" id="${controlId}-alpha" min="0" max="1" step="0.01" value="${initialValue.w}"
-                        data-control-id="$controlId"
-                        style="width: 100%; cursor: pointer; accent-color: #4a9eff;"
-                        oninput="handleColorAlphaInput(this)" />
-                </div>
-            </div>
-        </div>
-    """.trimIndent()
+    val html = buildColorPickerHtml(controlId, label, initialValue)
     display(channel, html)
+}
+
+// ------------------------------------------------------------------------
+// DSL-style grouping of controls
+
+class ControlGroupBuilder(private val box: Box, private val channel: String) {
+    private val htmlParts = mutableListOf<String>()
+
+    fun slider(
+        label: String,
+        min: Double = 0.0,
+        max: Double = 1.0,
+        step: Double = 0.01,
+        initialValue: Double = (min + max) / 2,
+        onUpdate: (Double) -> Unit
+    ) {
+        val sliderId = "slider-${UUID.randomUUID()}"
+        registerSliderCallback(sliderId, onUpdate)
+        htmlParts += buildSliderHtml(sliderId, label, min, max, step, initialValue)
+    }
+
+    fun colorPicker(
+        label: String,
+        initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
+        onUpdate: (Vector4f) -> Unit
+    ) {
+        val controlId = "color-${UUID.randomUUID()}"
+        registerColorCallback(controlId, onUpdate)
+        htmlParts += buildColorPickerHtml(controlId, label, initialValue)
+    }
+
+    fun vec2Control(
+        label: String,
+        initialValue: Vector2f = Vector2f(0.0f, 0.0f),
+        xRange: Pair<Double, Double> = -1.0 to 1.0,
+        yRange: Pair<Double, Double> = -1.0 to 1.0,
+        step: Double = 0.01,
+        onUpdate: (Vector2f) -> Unit
+    ) {
+        val controlId = "vec2-${UUID.randomUUID()}"
+        registerVec2Callback(controlId, onUpdate)
+        val decimalPlaces = calculateDecimalPlaces(step)
+        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, initialValue)
+    }
+
+    fun checkbox(
+        label: String,
+        initialValue: Boolean = false,
+        onUpdate: (Boolean) -> Unit
+    ) {
+        val controlId = "checkbox-${UUID.randomUUID()}"
+        registerCheckboxCallback(controlId, onUpdate)
+        htmlParts += buildCheckboxHtml(controlId, label, initialValue)
+    }
+
+    fun text(
+        label: String,
+        initialValue: String = "",
+        onUpdate: (String) -> Unit
+    ) {
+        val controlId = "string-${UUID.randomUUID()}"
+        registerStringCallback(controlId, onUpdate)
+        htmlParts += buildStringInputHtml(controlId, label, initialValue)
+    }
+
+    fun stringInput(
+        label: String,
+        initialValue: String = "",
+        onUpdate: (String) -> Unit
+    ) = text(label, initialValue, onUpdate)
+
+    internal fun buildHtml(): String = htmlParts.joinToString("\n")
+}
+
+fun Box.controlGroup(channel: String = "controls", block: ControlGroupBuilder.() -> Unit) {
+    val builder = ControlGroupBuilder(this, channel)
+    builder.apply(block)
+    val grouped = builder.buildHtml()
+    if (grouped.isNotBlank()) {
+        display(channel, """<div class="control-group">$grouped</div>""")
+    }
 }
 
 // Convenience method for syncing controls to box properties

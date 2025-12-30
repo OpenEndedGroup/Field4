@@ -395,8 +395,11 @@ private fun openMatch(match: SearchMatch, allowEditorFocus: Boolean) {
             val editor = w.globalEditor
             val monaco = w.globalMonaco
             if (editor != null && editor != undefined && monaco != null && monaco != undefined) {
-                val Range = monaco.Range
-                val range = Range.`new`(match.startLine, match.startColumn, match.endLine, match.endColumn)
+                val startLine = match.startLine
+                val startColumn = match.startColumn
+                val endLine = match.endLine
+                val endColumn = match.endColumn
+                val range = js("new monaco.Range(startLine, startColumn, endLine, endColumn)")
                 editor.setSelection(range)
                 editor.revealRangeInCenter(range)
                 if (allowEditorFocus) editor.focus()

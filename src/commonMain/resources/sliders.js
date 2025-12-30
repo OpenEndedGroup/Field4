@@ -109,6 +109,9 @@ function updateSlider(container, value, { send = false } = {}) {
 
 function startSliderDrag(container, event) {
     event.preventDefault();
+    if (event.target?.setPointerCapture && event.pointerId !== undefined) {
+        try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
+    }
     const v = sliderValueFromPointer(container, event);
     if (v !== null) {
         updateSlider(container, v, { send: true });
@@ -132,21 +135,6 @@ function endSliderDrag() {
     window.removeEventListener('pointerup', endSliderDrag);
 }
 
-function initSliders(root = document) {
-    root.querySelectorAll('.field-slider').forEach((container) => {
-        if (container.dataset.wired === 'true') return;
-        container.dataset.wired = 'true';
-        const svg = container.querySelector('.field-slider-visual');
-        if (!svg) return;
-        svg.addEventListener('pointerdown', (evt) => startSliderDrag(container, evt));
-        // Ensure visuals match initial value
-        const initial = parseFloat(container.dataset.value);
-        if (!Number.isNaN(initial)) {
-            updateSlider(container, initial, { send: false });
-        }
-    });
-}
-
 // Vec2 (2D) ---------------------------------------------------------------
 const vec2State = { active: null };
 
@@ -155,7 +143,7 @@ function vec2ValueFromPointer(container, event) {
     if (!svg) return null;
     const rect = svg.getBoundingClientRect();
     const viewSize = parseFloat(container.dataset.viewSize || '240');
-    const padding = parseFloat(container.dataset.padding || '14');
+    const padding = parseFloat(container.dataset.padding || '10');
     const area = Math.max(viewSize - padding * 2, 1);
 
     const minX = parseFloat(container.dataset.minX);
@@ -196,24 +184,87 @@ function updateVec2(container, x, y, { send = false } = {}) {
 
     const cx = padding + area * ((nx - minX) / (maxX - minX || 1));
     const cy = padding + area * (1 - (ny - minY) / (maxY - minY || 1));
+    const center = viewSize / 2;
 
     const svg = container.querySelector('.vec2-visual');
     if (svg) {
         const handle = svg.querySelector('.vec2-handle');
+        const line = svg.querySelector('.vec2-line');
+        const arc = svg.querySelector('.vec2-arc');
+        const angleLabelSvg = svg.querySelector('.vec2-angle-label');
+        const magLabelSvg = svg.querySelector('.vec2-mag-label');
         if (handle) {
             handle.setAttribute('cx', cx);
             handle.setAttribute('cy', cy);
         }
+        if (line) {
+            line.setAttribute('x1', center);
+            line.setAttribute('y1', center);
+            line.setAttribute('x2', cx);
+            line.setAttribute('y2', cy);
+        }
+        if (arc) {
+            const dx = cx - center;
+            const dy = cy - center;
+            const angle = Math.atan2(dy, dx);
+            const mag = Math.sqrt(dx * dx + dy * dy);
+            const arcR = Math.min(Math.max(10, mag * 0.35), 28);
+            const startX = center + arcR;
+            const startY = center;
+            const endX = center + arcR * Math.cos(angle);
+            const endY = center + arcR * Math.sin(angle);
+            const largeArc = Math.abs(angle) > Math.PI ? 1 : 0;
+            const sweep = angle >= 0 ? 1 : 0;
+            const d = `M ${startX} ${startY} A ${arcR} ${arcR} 0 ${largeArc} ${sweep} ${endX} ${endY}`;
+            arc.setAttribute('d', d);
+        }
+        if (angleLabelSvg) {
+            const dx = cx - center;
+            const dy = cy - center;
+            const angle = Math.atan2(dy, dx);
+            const arcR = Math.min(Math.max(10, Math.sqrt(dx * dx + dy * dy) * 0.35), 28);
+            const midA = angle / 2;
+            const lx = center + (arcR + 6) * Math.cos(midA);
+            const ly = center + (arcR + 6) * Math.sin(midA);
+            angleLabelSvg.setAttribute('x', lx);
+            angleLabelSvg.setAttribute('y', ly);
+            angleLabelSvg.textContent = `${Math.atan2(dy, dx) * 180 / Math.PI >= 0 ? '' : ''}${(Math.atan2(dy, dx) * 180 / Math.PI).toFixed(0)}°`;
+            angleLabelSvg.setAttribute('text-anchor', 'middle');
+        }
+        if (magLabelSvg) {
+            const mx = (center + cx) / 2;
+            const my = (center + cy) / 2;
+            const dx = cx - center;
+            const dy = cy - center;
+            const angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+            const perpGap = 10; // push label slightly off the line
+            const norm = Math.sqrt(dx * dx + dy * dy) || 1;
+            const offsetX = (-dy / norm) * perpGap;
+            const offsetY = (dx / norm) * perpGap;
+            const lx = mx + offsetX;
+            const ly = my + offsetY;
+            magLabelSvg.setAttribute('x', lx);
+            magLabelSvg.setAttribute('y', ly);
+            magLabelSvg.setAttribute('text-anchor', 'middle');
+            magLabelSvg.setAttribute('transform', `rotate(${angleDeg} ${lx} ${ly})`);
+            magLabelSvg.textContent = `|v| ${Math.sqrt(nx * nx + ny * ny).toFixed(2)}`;
+        }
     }
 
-    const xSpan = document.getElementById(`${controlId}-x-value`);
-    const ySpan = document.getElementById(`${controlId}-y-value`);
-    const composite = document.getElementById(`${controlId}-value`);
-    const fx = fmt(nx, decimals);
-    const fy = fmt(ny, decimals);
+        const xSpan = document.getElementById(`${controlId}-x-value`);
+        const ySpan = document.getElementById(`${controlId}-y-value`);
+        const composite = document.getElementById(`${controlId}-value`);
+        const angleSpan = document.getElementById(`${controlId}-angle`);
+        const magSpan = document.getElementById(`${controlId}-mag`);
+        const fx = fmt(nx, decimals);
+        const fy = fmt(ny, decimals);
+        const angle = Math.atan2(ny, nx) * 180 / Math.PI;
+        const mag = Math.sqrt(nx * nx + ny * ny);
     if (xSpan) xSpan.textContent = fx;
     if (ySpan) ySpan.textContent = fy;
     if (composite) composite.textContent = `(${fx}, ${fy})`;
+    if (angleSpan) angleSpan.textContent = `θ ${angle.toFixed(0)}°`;
+    if (magSpan) magSpan.textContent = `|v| ${mag.toFixed(2)}`;
 
     if (send && controlId) {
         sendViaAfield('vec2-update', {
@@ -226,6 +277,9 @@ function updateVec2(container, x, y, { send = false } = {}) {
 
 function startVec2Drag(container, event) {
     event.preventDefault();
+    if (event.target?.setPointerCapture && event.pointerId !== undefined) {
+        try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
+    }
     const next = vec2ValueFromPointer(container, event);
     if (next) {
         updateVec2(container, next.x, next.y, { send: true });
@@ -249,33 +303,60 @@ function endVec2Drag() {
     window.removeEventListener('pointerup', endVec2Drag);
 }
 
-function initVec2(root = document) {
+function refreshControls(root = document) {
+    root.querySelectorAll('.field-slider').forEach((container) => {
+        const initial = parseFloat(container.dataset.value);
+        if (!Number.isNaN(initial)) {
+            updateSlider(container, initial, { send: false });
+        }
+    });
     root.querySelectorAll('.field-vec2').forEach((container) => {
-        if (container.dataset.wired === 'true') return;
-        container.dataset.wired = 'true';
-        const svg = container.querySelector('.vec2-visual');
-        if (!svg) return;
-        svg.addEventListener('pointerdown', (evt) => startVec2Drag(container, evt));
         const x = parseFloat(container.dataset.x || '0');
         const y = parseFloat(container.dataset.y || '0');
         updateVec2(container, x, y, { send: false });
     });
+    root.querySelectorAll('.field-color').forEach((container) => {
+        const alphaSlider = container.querySelector('.alpha-slider');
+        if (alphaSlider) {
+            const alpha = parseFloat(alphaSlider.value);
+            updateAlphaVisual(alphaSlider, alpha);
+        }
+    });
 }
 
-// Auto-wire any controls that appear on the page
-function wireControls(root = document) {
-    initSliders(root);
-    initVec2(root);
+function addDelegatedListeners() {
+    const pointerHandler = (evt) => {
+        const sliderVis = evt.target.closest?.('.field-slider-visual');
+        if (sliderVis) {
+            const container = sliderVis.closest('.field-slider');
+            if (container) startSliderDrag(container, evt);
+            return;
+        }
+        const alphaVis = evt.target.closest?.('.alpha-visual');
+        if (alphaVis) {
+            startAlphaDrag(alphaVis, evt);
+            return;
+        }
+        const vec2Vis = evt.target.closest?.('.vec2-visual');
+        if (vec2Vis) {
+            const container = vec2Vis.closest('.field-vec2');
+            if (container) startVec2Drag(container, evt);
+        }
+    };
+    document.addEventListener('pointerdown', pointerHandler, true);
+    document.addEventListener('mousedown', pointerHandler, true);
+    document.addEventListener('touchstart', (evt) => pointerHandler(evt), { passive: false, capture: true });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    wireControls(document);
+    refreshControls(document);
+    addDelegatedListeners();
     if (window.MutationObserver) {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1) {
-                        wireControls(node);
+                        refreshControls(node);
                     }
                 });
             });
@@ -358,6 +439,7 @@ window.handleColorAlphaInput = function(alphaSlider) {
         if (valueDisplay) {
             valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${alpha.toFixed(2)})`;
         }
+        updateAlphaVisual(alphaSlider, alpha);
         sendViaAfield('color-update', {
             controlId: controlId,
             r: r,
@@ -367,3 +449,86 @@ window.handleColorAlphaInput = function(alphaSlider) {
         });
     }
 };
+
+function updateAlphaVisual(alphaSlider, alpha) {
+    let svg = null;
+    if (alphaSlider.previousElementSibling) {
+        svg = alphaSlider.previousElementSibling.querySelector?.('.alpha-visual');
+    }
+    if (!svg) {
+        svg = alphaSlider.closest('.field-color')?.querySelector('.alpha-visual');
+    }
+    if (!svg) return;
+
+    const padding = parseFloat(svg.dataset.padding || '14');
+    const viewWidth = svg.viewBox?.baseVal?.width || parseFloat(svg.dataset.viewWidth || '320');
+    const viewHeight = svg.viewBox?.baseVal?.height || parseFloat(svg.dataset.viewHeight || '32');
+    const centerY = viewHeight / 2;
+    const trackLen = Math.max(viewWidth - padding * 2, 1);
+    const clamped = clamp(alpha, 0, 1);
+    const cx = padding + trackLen * clamped;
+
+    const track = svg.querySelector('.alpha-track');
+    const fill = svg.querySelector('.alpha-fill');
+    const thumb = svg.querySelector('.alpha-thumb');
+    const dot = svg.querySelector('.alpha-thumb-dot');
+    if (track) {
+        track.setAttribute('x1', padding);
+        track.setAttribute('x2', viewWidth - padding);
+        track.setAttribute('y1', centerY);
+        track.setAttribute('y2', centerY);
+    }
+    if (fill) {
+        fill.setAttribute('x1', padding);
+        fill.setAttribute('x2', cx);
+        fill.setAttribute('y1', centerY);
+        fill.setAttribute('y2', centerY);
+    }
+    if (thumb) {
+        thumb.setAttribute('cx', cx);
+        thumb.setAttribute('cy', centerY);
+    }
+    if (dot) {
+        dot.setAttribute('cx', cx);
+        dot.setAttribute('cy', centerY);
+    }
+}
+
+// Alpha slider (SVG) -------------------------------------------------------
+function alphaValueFromPointer(svg, event) {
+    const rect = svg.getBoundingClientRect();
+    const viewWidth = svg.viewBox?.baseVal?.width || parseFloat(svg.dataset.viewWidth || '320');
+    const padding = parseFloat(svg.dataset.padding || '14');
+    const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
+    const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
+    return t;
+}
+
+function startAlphaDrag(svg, event) {
+    event.preventDefault();
+    if (event.target?.setPointerCapture && event.pointerId !== undefined) {
+        try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
+    }
+    const alphaSlider = svg.closest('.field-color')?.querySelector('.alpha-slider');
+    if (!alphaSlider) return;
+    const value = alphaValueFromPointer(svg, event);
+    if (value != null) {
+        alphaSlider.value = value;
+        updateAlphaVisual(alphaSlider, value);
+        window.handleColorAlphaInput(alphaSlider);
+    }
+    const move = (evt) => {
+        const v = alphaValueFromPointer(svg, evt);
+        if (v != null) {
+            alphaSlider.value = v;
+            updateAlphaVisual(alphaSlider, v);
+            window.handleColorAlphaInput(alphaSlider);
+        }
+    };
+    const end = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', end);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+}
