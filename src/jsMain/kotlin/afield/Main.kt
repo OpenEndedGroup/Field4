@@ -148,8 +148,212 @@ private fun repositionSlideNoteOverlayIfVisible() {
     val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return
     if (overlay.style.display != "none") {
         positionSlideNoteOverlay(overlay, slideNoteAnchorUid)
+        // Redraw annotations when the overlay moves
+        if (currentAnnotations.isNotEmpty()) {
+            redrawSlideAnnotations()
+        }
     }
 }
+
+/**
+ * Animates slide note text letter by letter with pauses on punctuation
+ */
+private fun animateSlideNoteText(overlay: HTMLElement, html: String) {
+    // For animation, we'll create a wrapper that progressively reveals content
+    overlay.innerHTML = ""
+    val contentDiv = document.createElement("div") as HTMLElement
+    overlay.appendChild(contentDiv)
+    
+    // Extract text content while preserving structure
+    val tempDiv = document.createElement("div") as HTMLElement
+    tempDiv.innerHTML = html
+    val fullText = tempDiv.textContent ?: ""
+    
+    var charIndex = 0
+    val delay = 15.0 // milliseconds per character
+    var currentHtml = html
+    
+    // Simple progressive reveal by wrapping everything in a span with growing content
+    contentDiv.innerHTML = "<span style='opacity: 0;'>.</span>" + html
+    val textNodes = collectTextNodes(contentDiv)
+    
+    fun animateNextChar() {
+        if (charIndex < fullText.length) {
+            val char = fullText[charIndex]
+            
+            // Find and reveal the next character in the DOM
+            var revealed = 0
+            for (node in textNodes) {
+                val text = node.textContent ?: ""
+                if (revealed + text.length > charIndex) {
+                    // This node contains our target character
+                    val localIndex = charIndex - revealed
+                    node.textContent = text.substring(0, localIndex + 1)
+                    break
+                }
+                revealed += text.length
+            }
+            
+            charIndex++
+            
+            // Extra pause for periods, commas, and other punctuation
+            val pauseExtra = when (char) {
+                '.', '!', '?' -> 300.0
+                ',', ';', ':' -> 150.0
+                else -> 0.0
+            }
+            
+            setTimeout({
+                animateNextChar()
+            }, (delay + pauseExtra).toInt())
+        }
+    }
+    
+    // Hide all text initially
+    for (node in textNodes) {
+        node.textContent = ""
+    }
+    
+    animateNextChar()
+}
+
+/**
+ * Collects all text nodes from a DOM tree for animation
+ */
+private fun collectTextNodes(element: org.w3c.dom.Node): List<org.w3c.dom.Node> {
+    val result = mutableListOf<org.w3c.dom.Node>()
+    
+    fun traverse(node: org.w3c.dom.Node) {
+        if (node.nodeType == 3.toShort()) { // TEXT_NODE
+            result.add(node)
+        } else {
+            val children = node.childNodes
+            for (i in 0 until children.length) {
+                children.item(i)?.let { traverse(it) }
+            }
+        }
+    }
+    
+    traverse(element)
+    return result
+}
+
+/**
+ * Creates HTML with text truncated to a certain length (DEPRECATED - kept for reference)
+ */
+private fun createTruncatedHTML(html: String, targetText: String): String {
+    return html
+}
+
+/**
+ * Draws annotation lines from the slide note to targets
+ */
+private var currentAnnotations: List<SlideAnnotation> = emptyList()
+private var currentNoteOverlay: HTMLElement? = null
+
+private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay: HTMLElement) {
+    currentAnnotations = annotations
+    currentNoteOverlay = noteOverlay
+    redrawSlideAnnotations()
+}
+
+private fun redrawSlideAnnotations() {
+    val annotations = currentAnnotations
+    val noteOverlay = currentNoteOverlay
+    
+    if (annotations.isEmpty() || noteOverlay == null) {
+        clearSlideAnnotations()
+        return
+    }
+    
+    val svg = canvasGestures.getNamedSVGGroup("slideAnnotations")
+    svg.innerHTML = ""
+    
+    val noteRect = noteOverlay.getBoundingClientRect()
+    
+    annotations.forEach { annotation ->
+        val targetBox = findBoxByUid(annotation.targetUid)
+        if (targetBox != null) {
+            val targetRect = targetBox.getBoundingClientRect()
+            
+            // Calculate positions accounting for scroll and translation
+            val ox = mainTranslation[0]
+            val oy = mainTranslation[1]
+            
+            // Start point: right side of note overlay, vertically centered
+            val startX = noteRect.right
+            val startY = noteRect.top + noteRect.height / 2
+            
+            // End point: depends on whether we're targeting a specific line or the whole box
+            val (endX, endY) = if (annotation.targetLine != null && annotation.targetProperty != null) {
+                // For line-specific annotations, try to find the Monaco editor
+                // For now, we'll target the left-center of the box
+                // In a full implementation, we'd use Monaco API to get line position
+                Pair(
+                    targetRect.left - ox,
+                    targetRect.top + (targetRect.height * 0.3) - oy
+                )
+            } else {
+                // Target the left-center of the box
+                Pair(
+                    targetRect.left - ox,
+                    targetRect.top + targetRect.height / 2 - oy
+                )
+            }
+            
+            // Draw the line with a cubic Bezier curve for smooth appearance
+            val dx = endX - startX
+            val controlOffset = kotlin.math.abs(dx) * 0.3
+            
+            path {
+                moveTo(startX, startY)
+                cubicTo(
+                    startX + controlOffset, startY,
+                    endX - controlOffset, endY,
+                    endX, endY
+                )
+                stroke = annotation.color
+                strokeWidth = annotation.strokeWidth
+                fill = "none"
+                if (annotation.dashed) {
+                    path.setAttribute("stroke-dasharray", "5,5")
+                }
+                appendTo(svg)
+            }
+            
+            // Add a small circle at the end point
+            circle {
+                cx = endX
+                cy = endY
+                r = 4
+                fill = annotation.color
+                appendTo(svg)
+            }
+            
+            // Add a small circle at the start point  
+            circle {
+                cx = startX
+                cy = startY
+                r = 3
+                fill = annotation.color
+                stroke = annotation.color
+                strokeWidth = 1
+                appendTo(svg)
+            }
+        }
+    }
+}
+
+/**
+ * Clears all slide annotation lines
+ */
+private fun clearSlideAnnotations() {
+    currentAnnotations = emptyList()
+    currentNoteOverlay = null
+    val svg = canvasGestures.getNamedSVGGroup("slideAnnotations")
+    svg.innerHTML = ""
+}
+
 
 @JsExport
 @JsName("select")
@@ -763,7 +967,12 @@ suspend fun main() {
             document.body!!.appendChild(overlay)
         }
 
-        overlay.innerHTML = note.html
+        // Set content with optional animation
+        if (note.animated) {
+            animateSlideNoteText(overlay, note.html)
+        } else {
+            overlay.innerHTML = note.html
+        }
         overlay.style.display = "block"
 
         overlay.querySelector(".close-btn")?.let { overlay.removeChild(it) }
@@ -773,6 +982,7 @@ suspend fun main() {
             closeBtn.innerHTML = "×"
             closeBtn.onclick = {
                 overlay.style.display = "none"
+                clearSlideAnnotations()
             }
             overlay.appendChild(closeBtn)
         }
@@ -795,6 +1005,13 @@ suspend fun main() {
             }
         }
 
+        // Draw annotation lines
+        if (note.annotations.isNotEmpty()) {
+            drawSlideAnnotations(note.annotations, overlay)
+        } else {
+            clearSlideAnnotations()
+        }
+
         Handled.yes
     }
 
@@ -804,6 +1021,7 @@ suspend fun main() {
             overlay.style.display = "none"
         }
         slideNoteAnchorUid = null
+        clearSlideAnnotations()
         Handled.yes
     }
 

@@ -71,16 +71,19 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private var targetLine: Int? = null
     private var highlightLine: Int? = null
     private var persistent: Boolean = false
+    private var animated: Boolean = false
+    private val annotations = mutableListOf<SlideAnnotation>()
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
 
     /**
      * Sets the HTML note to display for this step
      */
-    fun note(html: String, persistent: Boolean = false, anchorBox: Box? = null) {
+    fun note(html: String, persistent: Boolean = false, anchorBox: Box? = null, animated: Boolean = false) {
         this.noteHtml = html
         this.persistent = persistent
         this.noteAnchorBox = anchorBox
+        this.animated = animated
     }
 
     /**
@@ -139,6 +142,52 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
         this.onExit = action
     }
 
+    /**
+     * Add an annotation line from the guide text to a box
+     */
+    fun annotate(
+        id: String,
+        targetBox: Box,
+        color: String = "rgba(128, 255, 164, 0.7)",
+        strokeWidth: Double = 2.0,
+        dashed: Boolean = false
+    ) {
+        annotations.add(
+            SlideAnnotation(
+                id = id,
+                targetUid = targetBox.id,
+                color = color,
+                strokeWidth = strokeWidth,
+                dashed = dashed
+            )
+        )
+    }
+
+    /**
+     * Add an annotation line from the guide text to a specific line in a box's editor
+     */
+    fun annotateToLine(
+        id: String,
+        targetBox: Box,
+        property: String = "code",
+        line: Int,
+        color: String = "rgba(128, 255, 164, 0.7)",
+        strokeWidth: Double = 2.0,
+        dashed: Boolean = false
+    ) {
+        annotations.add(
+            SlideAnnotation(
+                id = id,
+                targetUid = targetBox.id,
+                targetProperty = property,
+                targetLine = line,
+                color = color,
+                strokeWidth = strokeWidth,
+                dashed = dashed
+            )
+        )
+    }
+
     fun build(): SlideStep {
         return SlideStep(
             title = title,
@@ -149,6 +198,8 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             targetLine = targetLine,
             highlightLine = highlightLine,
             persistent = persistent,
+            animated = animated,
+            annotations = annotations.toList(),
             onEnter = onEnter,
             onExit = onExit
         )
@@ -167,6 +218,8 @@ data class SlideStep(
     val targetLine: Int?,
     val highlightLine: Int?,
     val persistent: Boolean,
+    val animated: Boolean,
+    val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?
 )
@@ -208,7 +261,9 @@ class SlideShowInstance(
                 ShowSlideNote(
                     html = step.noteHtml,
                     uid = step.noteAnchorBox?.id ?: hostBox.id,
-                    persistent = step.persistent
+                    persistent = step.persistent,
+                    animated = step.animated,
+                    annotations = step.annotations
                 )
             ))
         } else {
@@ -297,12 +352,20 @@ fun Box.selectAndEdit(property: String = "code", line: Int? = null, highlight: I
 /**
  * Show a slide note
  */
-fun Box.showNote(html: String, persistent: Boolean = false, anchorBox: Box? = this) {
+fun Box.showNote(
+    html: String, 
+    persistent: Boolean = false, 
+    anchorBox: Box? = this, 
+    animated: Boolean = false,
+    annotations: List<SlideAnnotation> = emptyList()
+) {
     _send(Message("show-slide-note").payload(
         ShowSlideNote(
             html = html,
             uid = anchorBox?.id ?: this.id,
-            persistent = persistent
+            persistent = persistent,
+            animated = animated,
+            annotations = annotations
         )
     ))
 }
