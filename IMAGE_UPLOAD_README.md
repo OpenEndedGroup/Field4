@@ -1,6 +1,6 @@
 # Image Upload and Window Capture Implementation
 
-This implementation adds comprehensive image support to Field4, including uploading images to AI chat and capturing Vulkan window content to the clipboard.
+This implementation adds comprehensive image support to Field4, including uploading images to AI chat and capturing Vulkan window content to temporary PNG files.
 
 ## Quick Links
 
@@ -27,13 +27,13 @@ This implementation adds comprehensive image support to Field4, including upload
 - ✅ Extended `Chat_input` with `images: List<String>` field
 - ✅ Base64 encoding for efficient JSON serialization
 
-### 2. Window Clipboard Capture (COMPLETE)
+### 2. Window Screenshot Capture (COMPLETE)
 
 **Window API** (`src/jvmMain/kotlin/afield/four/util/Window.kt`):
-- ✅ `copyFramebufferToClipboard()` - Copy rendered content to system clipboard
+- ✅ `saveFramebufferToTempFile()` - Save rendered content to temporary PNG file
 - ✅ `getFramebufferAsBase64()` - Export as base64 PNG for network transfer
-- ✅ `byteBufferToBufferedImage()` - Convert raw RGBA pixels to Java image
-- ✅ `ImageSelection` class - Clipboard transfer implementation
+- ✅ `bufferToPngBytes()` - Convert raw RGBA pixels to PNG format
+- ✅ `encodePng()` - Custom PNG encoder (no AWT dependencies)
 
 ## Usage Examples
 
@@ -57,13 +57,14 @@ This implementation adds comprehensive image support to Field4, including upload
 // 4. Type message and press Enter
 ```
 
-### Window: Copy to Clipboard
+### Window: Save Screenshot
 
 ```kotlin
 // In your Vulkan rendering code:
 val window = lastWindowToOpen
 val pixels = readVulkanImagePixels()  // Your implementation
-window?.copyFramebufferToClipboard(pixels, width, height)
+val screenshotFile = window?.saveFramebufferToTempFile(pixels, width, height)
+println("Screenshot saved: ${screenshotFile?.absolutePath}")
 MemoryUtil.memFree(pixels)
 ```
 
@@ -121,7 +122,7 @@ Basic steps:
 2. Transition swapchain image to TRANSFER_SRC layout
 3. Copy image to staging buffer
 4. Map buffer memory and read pixels
-5. Call `window.copyFramebufferToClipboard(pixels, w, h)`
+5. Call `window.saveFramebufferToTempFile(pixels, w, h)` or `getFramebufferAsBase64()`
 
 ## File Structure
 
@@ -164,8 +165,9 @@ Field4/
 
 ### Window Tests (Vulkan)
 - [ ] Capture framebuffer pixels from Vulkan
-- [ ] Call `window.copyFramebufferToClipboard()`
-- [ ] Open Paint/Photoshop and paste (Ctrl+V)
+- [ ] Call `val file = window.saveFramebufferToTempFile(pixels, w, h)`
+- [ ] Check that file exists and is a valid PNG
+- [ ] Open the file in an image viewer
 - [ ] Verify rendered content appears correctly
 - [ ] Verify image is not upside down (auto-flipped)
 
@@ -200,18 +202,21 @@ Browser (Kotlin/JS)              Server (Kotlin/JVM)            OpenAI API
 
 Vulkan Window
      │
-     │  copyFramebufferToClipboard()
-     ├──> byteBufferToBufferedImage()
-     │    (converts RGBA to Java image)
+     │  saveFramebufferToTempFile()
+     ├──> bufferToPngBytes()
+     │    (converts RGBA to PNG format)
      │
-     │  ImageSelection (Transferable)
-     └──> System Clipboard
+     │  encodePng() (custom PNG encoder)
+     └──> Temporary PNG File
 ```
 
 ## Dependencies
 
 No new external dependencies required. Uses:
 - **Frontend**: kotlinx-html, kotlinx-css, Web FileReader API
+- **Backend**: Kotlin serialization, existing OpenAI client
+- **Window**: Java NIO, Java ZIP (for DEFLATE), LWJGL Vulkan
+- **No AWT dependencies**
 - **Backend**: Kotlin serialization, existing OpenAI client
 - **Window**: Java AWT (Toolkit, BufferedImage, ImageIO), LWJGL Vulkan
 
@@ -235,7 +240,7 @@ No new external dependencies required. Uses:
 ### Immediate (No Code Changes)
 1. Test chat interface image paste/upload
 2. Verify backend receives images correctly
-3. Test Window.copyFramebufferToClipboard() with dummy data
+3. Test Window.saveFramebufferToTempFile() with dummy data
 
 ### Short Term (API Integration)
 1. Add vision model support to OpenAiIdeCodexBridge

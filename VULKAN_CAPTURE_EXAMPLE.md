@@ -1,6 +1,6 @@
 # Vulkan Framebuffer Capture Example
 
-This document provides a complete example of how to capture a Vulkan swapchain image and copy it to the system clipboard using the new `Window.copyFramebufferToClipboard()` method.
+This document provides a complete example of how to capture a Vulkan swapchain image and save it to a temporary PNG file using the new `Window.saveFramebufferToTempFile()` method.
 
 ## Quick Example
 
@@ -20,11 +20,11 @@ val queue: VkQueue
 // In your render loop:
 fun handleKeyPress() {
     if (window.isKeyPressed(GLFW.GLFW_KEY_F12)) {
-        captureFramebufferToClipboard()
+        captureFramebufferToFile()
     }
 }
 
-fun captureFramebufferToClipboard() {
+fun captureFramebufferToFile() {
     // Get the current swapchain image
     val currentImage = getCurrentSwapchainImage()
     
@@ -32,9 +32,12 @@ fun captureFramebufferToClipboard() {
     val pixels = readVulkanImage(currentImage, window.width, window.height)
     
     try {
-        // Copy to clipboard
-        window.copyFramebufferToClipboard(pixels, window.width, window.height)
-        println("Screenshot copied to clipboard!")
+        // Save to temp file
+        val screenshotFile = window.saveFramebufferToTempFile(pixels, window.width, window.height)
+        println("Screenshot saved to: ${screenshotFile.absolutePath}")
+    } finally {
+        // Always free the pixel buffer
+        MemoryUtil.memFree(pixels)
     } finally {
         // Always free the pixel buffer
         MemoryUtil.memFree(pixels)
@@ -255,7 +258,7 @@ fun endOneTimeCommands(cmdBuffer: VkCommandBuffer) {
 
 ## Alternative: Export as Base64
 
-If you want to send the image over the network instead of copying to clipboard:
+If you want to send the image over the network instead of saving to a file:
 
 ```kotlin
 fun captureFramebufferAsBase64(): String? {
@@ -276,6 +279,13 @@ if (base64Image != null) {
 }
 ```
 
+// Then send via WebSocket:
+val base64Image = captureFramebufferAsBase64()
+if (base64Image != null) {
+    sendToChat(base64Image)
+}
+```
+
 ## Integration with Field4 Boxes
 
 You can add a keyboard shortcut to any box:
@@ -285,7 +295,7 @@ You can add a keyboard shortcut to any box:
 val window = lastWindowToOpen
 window?.onPoll?.add("screenshot") { 
     if (window.isKeyPressed(GLFW.GLFW_KEY_F12)) {
-        captureToClipboard()
+        captureToFile()
     }
 }
 ```
@@ -305,7 +315,15 @@ lastWindowToOpen?.onPoll?.add("screenshot") {
         try {
             val image = getCurrentSwapchainImage()
             val pixels = readVulkanImage(image, window.width, window.height)
-            window.copyFramebufferToClipboard(pixels, window.width, window.height)
+            val file = window.saveFramebufferToTempFile(pixels, window.width, window.height)
+            MemoryUtil.memFree(pixels)
+            println("✓ Screenshot saved: ${file.absolutePath}")
+        } catch (e: Exception) {
+            println("✗ Screenshot failed: ${e.message}")
+        }
+    }
+}
+```
             MemoryUtil.memFree(pixels)
             println("✓ Screenshot copied!")
         } catch (e: Exception) {
@@ -317,13 +335,14 @@ lastWindowToOpen?.onPoll?.add("screenshot") {
 
 ## Troubleshooting
 
-### "Failed to copy framebuffer to clipboard"
-- Make sure you're calling this from the main thread (where GLFW events are processed)
-- Check that the ByteBuffer contains valid RGBA data
-- Verify the width and height match the buffer size
+### "Failed to save framebuffer to temp file"
+- Make sure the ByteBuffer contains valid RGBA data
+- Verify the width and height match the buffer size (width * height * 4 bytes)
+- Check that the temp directory is writable
+- Ensure imageData is not null
 
 ### Image appears upside down
-- The `byteBufferToBufferedImage()` method in Window.kt automatically flips the image
+- The `bufferToPngBytes()` method in Window.kt automatically flips the image
 - If your image appears upside down, you may be double-flipping
 - Check your Vulkan image coordinate system (typically bottom-to-top)
 
@@ -337,8 +356,15 @@ lastWindowToOpen?.onPoll?.add("screenshot") {
 - Use a cooldown timer (see integration example above)
 - Consider capturing at lower resolution for preview purposes
 
+### PNG encoding issues
+- The custom PNG encoder handles standard RGBA format
+- If you get corrupted images, verify pixel byte order
+- Check that buffer position is reset before reading
+
 ## See Also
 
-- `src/jvmMain/kotlin/afield/four/util/Window.kt` - Window clipboard methods
+- `src/jvmMain/kotlin/afield/four/util/Window.kt` - Window screenshot methods
+- `IMAGE_UPLOAD_FEATURE.md` - Complete image upload documentation
+- LWJGL Vulkan documentation: https://www.lwjgl.org/guide
 - `IMAGE_UPLOAD_FEATURE.md` - Complete image upload documentation
 - LWJGL Vulkan documentation: https://www.lwjgl.org/guide

@@ -5,7 +5,7 @@
 This feature adds comprehensive image support to the Field4 AI chat interface, including:
 - Paste images from clipboard directly into chat
 - Upload images via file picker
-- Copy rendered Vulkan window content to clipboard
+- Save rendered Vulkan window content to temporary PNG files
 - Send images to AI for analysis (infrastructure ready)
 
 ## Usage
@@ -30,17 +30,18 @@ This feature adds comprehensive image support to the Field4 AI chat interface, i
 - Click × to remove an image before sending
 - All images are cleared automatically after sending
 
-### Window Clipboard Copy (Vulkan Graphics)
+### Window Screenshot Save (Vulkan Graphics)
 
-The `Window` class now supports copying rendered content to the clipboard:
+The `Window` class now supports saving rendered content to temporary PNG files:
 
 ```kotlin
 // Get the current window
 val window = lastWindowToOpen
 
-// Option 1: Copy current framebuffer to clipboard (requires ByteBuffer from Vulkan)
+// Option 1: Save current framebuffer to a temp PNG file (requires ByteBuffer from Vulkan)
 val imageData: ByteBuffer = ... // Get pixels from your Vulkan rendering
-window?.copyFramebufferToClipboard(imageData, width, height)
+val tempFile = window?.saveFramebufferToTempFile(imageData, width, height)
+println("Screenshot saved to: ${tempFile.absolutePath}")
 
 // Option 2: Get framebuffer as base64 PNG string for network transfer
 val base64Image = window?.getFramebufferAsBase64(imageData, width, height)
@@ -66,9 +67,10 @@ fun captureFramebuffer(): ByteBuffer {
     return imageBuffer
 }
 
-// To copy to clipboard:
+// To save screenshot to temp file:
 val pixels = captureFramebuffer()
-window?.copyFramebufferToClipboard(pixels, window.width, window.height)
+val screenshotFile = window?.saveFramebufferToTempFile(pixels, window.width, window.height)
+println("Screenshot saved: ${screenshotFile?.absolutePath}")
 MemoryUtil.memFree(pixels)
 ```
 
@@ -160,34 +162,32 @@ You'll need to modify the `OpenAiIdeCodexBridge` to support vision models and mu
 
 Added methods:
 
-1. **`copyFramebufferToClipboard(imageData: ByteBuffer?, width: Int, height: Int)`**
-   - Converts ByteBuffer RGBA pixels to BufferedImage
-   - Flips image vertically (OpenGL/Vulkan stores bottom-to-top)
-   - Uses AWT `Toolkit.getDefaultToolkit().systemClipboard`
-   - Places image on system clipboard via `ImageSelection` helper
+1. **`saveFramebufferToTempFile(imageData: ByteBuffer?, width: Int, height: Int): File`**
+   - Converts ByteBuffer RGBA pixels to PNG format
+   - Saves to a temporary file with timestamp in filename
+   - Returns File object pointing to the saved screenshot
+   - Throws exception if imageData is null or buffer size is invalid
 
 2. **`getFramebufferAsBase64(imageData: ByteBuffer?, width: Int, height: Int): String?`**
-   - Converts pixels to BufferedImage
-   - Encodes as PNG using `ImageIO.write()`
+   - Converts pixels to PNG format
    - Returns Base64-encoded string
    - Suitable for network transfer or embedding in HTML
+   - Returns null on error
 
-3. **`byteBufferToBufferedImage(buffer: ByteBuffer, width: Int, height: Int): BufferedImage`**
-   - Helper to convert raw RGBA bytes to Java image
+3. **`bufferToPngBytes(buffer: ByteBuffer, width: Int, height: Int): ByteArray`**
+   - Helper to convert raw RGBA bytes to PNG format
    - Handles vertical flip for OpenGL/Vulkan coordinate system
-   - Creates `BufferedImage.TYPE_INT_ARGB`
+   - Uses custom PNG encoder to avoid AWT dependencies
 
-4. **`ImageSelection` class**
-   - Implements `Transferable` interface
-   - Supports `DataFlavor.imageFlavor`
-   - Required for AWT clipboard operations
+4. **`encodePng(pixels: IntArray, width: Int, height: Int): ByteArray`**
+   - Pure Kotlin PNG encoder
+   - Creates valid PNG files without external dependencies
+   - Handles IHDR, IDAT, and IEND chunks with proper CRC calculation
 
-**Dependencies Added:**
-- `java.awt.Toolkit`
-- `java.awt.datatransfer.*`
-- `java.awt.image.BufferedImage`
-- `javax.imageio.ImageIO`
-- `java.util.Base64`
+**Dependencies:**
+- Standard Java NIO for file operations
+- Standard Java ZIP for DEFLATE compression
+- No AWT or javax.imageio dependencies
 
 ## Testing Checklist
 
@@ -220,12 +220,12 @@ Added methods:
   4. Verify final response is formatted with HTML
   5. Check that image count is logged correctly
 
-- [ ] **Window - Clipboard Copy**
+- [ ] **Window - Save Screenshot**
   1. Render something in a Vulkan window
-  2. Call `window.copyFramebufferToClipboard(pixels, w, h)`
-  3. Open an image editor (Paint, Photoshop, etc.)
-  4. Paste (Ctrl+V)
-  5. Verify the rendered content appears
+  2. Call `val file = window.saveFramebufferToTempFile(pixels, w, h)`
+  3. Check that file exists and is a valid PNG
+  4. Open the file in an image viewer
+  5. Verify the rendered content appears correctly
 
 - [ ] **Window - Base64 Export**
   1. Render something in a Vulkan window
@@ -355,12 +355,12 @@ handlers["chat_input"] = { message, reply ->
 │   Window    │
 └──────┬──────┘
        │
-       │  copyFramebufferToClipboard()
-       ├─> byteBufferToBufferedImage()
-       │   (converts pixels to Java image)
+       │  saveFramebufferToTempFile()
+       ├─> bufferToPngBytes()
+       │   (converts pixels to PNG format)
        │
-       │  ImageSelection (Transferable)
-       └─> System Clipboard
+       │  encodePng() (custom PNG encoder)
+       └─> Temporary PNG File
 ```
 
 ## Files Modified
@@ -368,15 +368,17 @@ handlers["chat_input"] = { message, reply ->
 1. `src/commonMain/kotlin/rpc.kt` - Added `images` field to `Chat_input`
 2. `src/jsChatMain/kotlin/Main.kt` - Full image paste/upload UI implementation
 3. `src/jvmMain/kotlin/afield/ai/core/install/Ai4Installer.kt` - Chat message handlers
-4. `src/jvmMain/kotlin/afield/four/util/Window.kt` - Clipboard and export methods
+4. `src/jvmMain/kotlin/afield/four/util/Window.kt` - Temp file save and export methods
 
 ## Dependencies
 
 No new external dependencies were added. The implementation uses:
 - Existing kotlinx-html and kotlinx-css libraries
-- Standard Web APIs (FileReader, Clipboard)
-- Java AWT (already available in JVM)
+- Standard Web APIs (FileReader, Clipboard for paste)
+- Java NIO (already available in JVM)
+- Java ZIP for DEFLATE compression (already available)
 - LWJGL (already in project for Vulkan/GLFW)
+- No AWT dependencies
 
 ## Conclusion
 

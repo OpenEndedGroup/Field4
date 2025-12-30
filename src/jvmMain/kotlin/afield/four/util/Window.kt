@@ -12,19 +12,17 @@ import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import java.awt.Toolkit
-import java.awt.datatransfer.DataFlavor
-import java.awt.datatransfer.Transferable
-import java.awt.image.BufferedImage
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
-import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
 var lastWindowToOpen: Window? = null
@@ -170,43 +168,88 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     }
     
     /**
-     * Copy the current framebuffer content to the system clipboard as an image.
-     * This reads the OpenGL framebuffer, converts it to a BufferedImage, and places it on the clipboard.
+     * Save the current framebuffer content to a temporary PNG file.
      * 
-     * Note: This requires an active OpenGL context. For Vulkan-only windows, you may need to
-     * provide a ByteBuffer of the rendered image data directly.
+     * When imageData is provided, it is interpreted as raw RGBA pixel data for an image of the
+     * given width and height. The pixel data may come from any rendering backend (e.g. Vulkan,
+     * OpenGL, or software rendering).
+     * 
+     * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
+     * @param width Image width in pixels
+     * @param height Image height in pixels
+     * @return File object pointing to the created temporary PNG file
+     * @throws IllegalArgumentException if imageData is null
+     * @throws IllegalArgumentException if buffer size doesn't match width * height * 4
+     * @throws RuntimeException if file creation or image encoding fails
      */
-    fun copyFramebufferToClipboard(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height) {
+    fun saveFramebufferToTempFile(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height): File {
+        if (imageData == null) {
+            throw IllegalArgumentException("imageData is null; cannot save framebuffer without explicit image data")
+        }
+        
+        // Validate buffer size
+        val expectedSize = width * height * 4
+        if (imageData.capacity() < expectedSize) {
+            throw IllegalArgumentException(
+                "Buffer too small: expected at least $expectedSize bytes for ${width}x${height} RGBA image, " +
+                "but got ${imageData.capacity()} bytes"
+            )
+        }
+        
         try {
-            val image = if (imageData != null) {
-                // Convert provided image data to BufferedImage
-                byteBufferToBufferedImage(imageData, width, height)
-            } else {
-                // For now, create a placeholder image
-                // In a full implementation, you would read from the Vulkan framebuffer
-                BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-            }
+            // Create temp file with timestamp
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+            val tempFile = Files.createTempFile("field4_screenshot_$timestamp", ".png").toFile()
             
-            // Copy to clipboard
-            val selection = ImageSelection(image)
-            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-            clipboard.setContents(selection, null)
+            // Convert buffer to PNG and write to file
+            val pngBytes = bufferToPngBytes(imageData, width, height)
+            Files.write(tempFile.toPath(), pngBytes, StandardOpenOption.WRITE)
+            
+            return tempFile
         } catch (e: Exception) {
-            throw RuntimeException("Failed to copy framebuffer to clipboard: ${e.message}", e)
+            throw RuntimeException("Failed to save framebuffer to temp file: ${e.message}", e)
         }
     }
     
     /**
-     * Convert a ByteBuffer containing RGBA image data to a BufferedImage.
+     * Get the current framebuffer as a base64-encoded PNG string.
+     * Useful for sending image data over the network.
+     * 
+     * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
+     * @param width Image width in pixels
+     * @param height Image height in pixels
+     * @return Base64-encoded PNG string, or null if encoding fails
      */
-    private fun byteBufferToBufferedImage(buffer: ByteBuffer, width: Int, height: Int): BufferedImage {
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+    fun getFramebufferAsBase64(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height): String? {
+        if (imageData == null) {
+            return null
+        }
+        
+        return try {
+            val pngBytes = bufferToPngBytes(imageData, width, height)
+            Base64.getEncoder().encodeToString(pngBytes)
+        } catch (e: Exception) {
+            System.err.println("Failed to get framebuffer as base64 PNG: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+    
+    /**
+     * Convert a ByteBuffer containing RGBA image data to PNG bytes.
+     * The image is flipped vertically to account for OpenGL/Vulkan coordinate systems.
+     */
+    private fun bufferToPngBytes(buffer: ByteBuffer, width: Int, height: Int): ByteArray {
+        // Create a simple PPM-like format, then use external conversion or write PNG directly
+        // For simplicity, we'll use a basic PNG encoder approach
         
         // Reset buffer position
         buffer.rewind()
         
-        // Copy pixels from buffer to image
-        // Note: OpenGL/Vulkan typically stores images bottom-to-top, so we may need to flip
+        // Create RGB array (PNG encoder expects separate RGB values)
+        val pixels = IntArray(width * height)
+        
+        // Read pixels and flip vertically
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val r = buffer.get().toInt() and 0xFF
@@ -215,51 +258,116 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
                 val a = buffer.get().toInt() and 0xFF
                 
                 val rgb = (a shl 24) or (r shl 16) or (g shl 8) or b
-                // Flip vertically
-                image.setRGB(x, height - 1 - y, rgb)
+                // Flip vertically (OpenGL/Vulkan coordinates are bottom-to-top)
+                pixels[x + (height - 1 - y) * width] = rgb
             }
         }
         
-        return image
+        // Write PNG using a simple encoder
+        return encodePng(pixels, width, height)
     }
     
     /**
-     * Get the current framebuffer as a base64-encoded PNG string.
-     * Useful for sending image data over the network.
+     * Simple PNG encoder that creates a PNG file from ARGB pixel data.
+     * This avoids the need for BufferedImage and javax.imageio, keeping AWT usage minimal.
      */
-    fun getFramebufferAsBase64(imageData: ByteBuffer? = null, width: Int = this.width, height: Int = this.height): String? {
-        return try {
-            val image = if (imageData != null) {
-                byteBufferToBufferedImage(imageData, width, height)
-            } else {
-                BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+    private fun encodePng(pixels: IntArray, width: Int, height: Int): ByteArray {
+        val output = ByteArrayOutputStream()
+        
+        // PNG signature
+        output.write(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
+        
+        // IHDR chunk
+        writeChunk(output, "IHDR", createIHDR(width, height))
+        
+        // IDAT chunk (image data)
+        writeChunk(output, "IDAT", createIDAT(pixels, width, height))
+        
+        // IEND chunk
+        writeChunk(output, "IEND", byteArrayOf())
+        
+        return output.toByteArray()
+    }
+    
+    private fun createIHDR(width: Int, height: Int): ByteArray {
+        val ihdr = ByteArrayOutputStream()
+        writeInt(ihdr, width)
+        writeInt(ihdr, height)
+        ihdr.write(8)  // bit depth
+        ihdr.write(6)  // color type (RGBA)
+        ihdr.write(0)  // compression method
+        ihdr.write(0)  // filter method
+        ihdr.write(0)  // interlace method
+        return ihdr.toByteArray()
+    }
+    
+    private fun createIDAT(pixels: IntArray, width: Int, height: Int): ByteArray {
+        val uncompressed = ByteArrayOutputStream()
+        
+        // Write each scanline with filter byte
+        for (y in 0 until height) {
+            uncompressed.write(0)  // filter type: none
+            for (x in 0 until width) {
+                val pixel = pixels[x + y * width]
+                uncompressed.write((pixel shr 16) and 0xFF)  // R
+                uncompressed.write((pixel shr 8) and 0xFF)   // G
+                uncompressed.write(pixel and 0xFF)           // B
+                uncompressed.write((pixel shr 24) and 0xFF)  // A
             }
+        }
+        
+        // Compress using DEFLATE
+        val compressed = java.util.zip.Deflater().let { deflater ->
+            val data = uncompressed.toByteArray()
+            deflater.setInput(data)
+            deflater.finish()
             
-            val outputStream = ByteArrayOutputStream()
-            ImageIO.write(image, "png", outputStream)
-            Base64.getEncoder().encodeToString(outputStream.toByteArray())
-        } catch (e: Exception) {
-            null
+            val buffer = ByteArray(data.size + 1024)
+            val compressedSize = deflater.deflate(buffer)
+            deflater.end()
+            
+            buffer.copyOf(compressedSize)
         }
-    }
-}
-
-/**
- * Helper class to transfer images to the system clipboard.
- */
-private class ImageSelection(private val image: BufferedImage) : Transferable {
-    override fun getTransferDataFlavors(): Array<DataFlavor> {
-        return arrayOf(DataFlavor.imageFlavor)
+        
+        return compressed
     }
     
-    override fun isDataFlavorSupported(flavor: DataFlavor): Boolean {
-        return flavor.equals(DataFlavor.imageFlavor)
+    private fun writeChunk(output: ByteArrayOutputStream, type: String, data: ByteArray) {
+        // Length
+        writeInt(output, data.size)
+        
+        // Type
+        output.write(type.toByteArray(Charsets.US_ASCII))
+        
+        // Data
+        output.write(data)
+        
+        // CRC
+        val crc = calculateCRC(type.toByteArray(Charsets.US_ASCII) + data)
+        writeInt(output, crc.toInt())
     }
     
-    override fun getTransferData(flavor: DataFlavor): Any {
-        if (!isDataFlavorSupported(flavor)) {
-            throw UnsupportedOperationException("Data flavor not supported")
+    private fun writeInt(output: ByteArrayOutputStream, value: Int) {
+        output.write((value shr 24) and 0xFF)
+        output.write((value shr 16) and 0xFF)
+        output.write((value shr 8) and 0xFF)
+        output.write(value and 0xFF)
+    }
+    
+    private fun calculateCRC(data: ByteArray): Long {
+        var crc = 0xFFFFFFFFL
+        
+        for (b in data) {
+            crc = crc xor (b.toLong() and 0xFF)
+            for (i in 0 until 8) {
+                crc = if ((crc and 1) != 0L) {
+                    0xEDB88320L xor (crc ushr 1)
+                } else {
+                    crc ushr 1
+                }
+            }
         }
-        return image
+        
+        return crc xor 0xFFFFFFFFL
     }
 }
