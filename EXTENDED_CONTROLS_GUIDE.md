@@ -26,7 +26,7 @@ slider("Speed", 0.0, 5.0, 0.1, speed, "controls") { speed = it }
 Two sliders for X/Y coordinate editing.
 
 ```kotlin
-var position = Vec2(0.0, 0.0)
+var position = Vector2f(0.0f, 0.0f)
 vec2Control(
     label = "Position",
     initialValue = position,
@@ -41,15 +41,16 @@ vec2Control(
 
 **Parameters:**
 - `label`: Display label
-- `initialValue`: Starting Vec2 value
+- `initialValue`: Starting Vector2f value
 - `xRange`, `yRange`: Range bounds for each axis (Pair<Double, Double>)
 - `step`: Increment size
 - `channel`: Disclosure channel
-- `onUpdate`: Callback receiving new Vec2
+- `onUpdate`: Callback receiving new Vector2f
 
 **Data Type:**
+JOML Vector2f from `org.joml.Vector2f`. The codebase has a type alias:
 ```kotlin
-data class Vec2(var x: Double, var y: Double)
+typealias Vec2 = Vector2f  // from afield.stdlib.linalg
 ```
 
 ### 3. Checkbox (Boolean)
@@ -84,33 +85,34 @@ stringInput("Name", name, "settings") { name = it }
 Color selection with RGB picker and alpha slider. Colors are normalized (0.0-1.0 range).
 
 ```kotlin
-var color = Vec4(1.0, 0.5, 0.0, 1.0)  // Orange, fully opaque
+var color = Vector4f(1.0f, 0.5f, 0.0f, 1.0f)  // Orange, fully opaque
 colorPicker("Color", color, "appearance") { color = it }
 ```
 
 **Parameters:**
 - `label`: Display label
-- `initialValue`: Starting Vec4 color (RGBA normalized)
+- `initialValue`: Starting Vector4f color (RGBA normalized)
 - `channel`: Disclosure channel
-- `onUpdate`: Callback receiving new Vec4
+- `onUpdate`: Callback receiving new Vector4f
 
 **Data Type:**
+JOML Vector4f from `org.joml.Vector4f`. The codebase has a type alias:
 ```kotlin
-data class Vec4(var x: Double, var y: Double, var z: Double, var w: Double)
+typealias Vec4 = Vector4f  // from afield.stdlib.linalg
 // x = red, y = green, z = blue, w = alpha
-// All values normalized: 0.0 to 1.0
+// All values normalized: 0.0f to 1.0f
 ```
 
 **Color Conversion:**
 To convert to/from 0-255 range:
 ```kotlin
-// Vec4 to RGB
+// Vector4f to RGB
 val r = (color.x * 255).toInt()
 val g = (color.y * 255).toInt()
 val b = (color.z * 255).toInt()
 
-// RGB to Vec4
-val color = Vec4(r / 255.0, g / 255.0, b / 255.0, 1.0)
+// RGB to Vector4f
+val color = Vector4f(r / 255.0f, g / 255.0f, b / 255.0f, 1.0f)
 ```
 
 ## Property Sync Convenience Method
@@ -130,8 +132,8 @@ fun Box.syncToProperty(
 - `Double` → Creates slider (0.0 to 1.0 range)
 - `Boolean` → Creates checkbox
 - `String` → Creates string input
-- `Vec2` → Creates vec2 control
-- `Vec4` → Creates color picker
+- `Vector2f` → Creates vec2 control
+- `Vector4f` → Creates color picker
 
 **Usage:**
 ```kotlin
@@ -139,15 +141,15 @@ fun Box.syncToProperty(
 syncToProperty("scale", 1.0, "properties", "Scale")
 syncToProperty("visible", true, "properties", "Visible")
 syncToProperty("title", "Default", "properties", "Title")
-syncToProperty("offset", Vec2(0.0, 0.0), "properties", "Offset")
-syncToProperty("tint", Vec4(1.0, 1.0, 1.0, 1.0), "properties", "Tint")
+syncToProperty("offset", Vector2f(0.0f, 0.0f), "properties", "Offset")
+syncToProperty("tint", Vector4f(1.0f, 1.0f, 1.0f, 1.0f), "properties", "Tint")
 
 // Access synced properties later
 val scale = getPropertyRaw("scale") as Double
 val visible = getPropertyRaw("visible") as Boolean
 val title = getPropertyRaw("title") as String
-val offset = getPropertyRaw("offset") as Vec2
-val tint = getPropertyRaw("tint") as Vec4
+val offset = getPropertyRaw("offset") as Vector2f
+val tint = getPropertyRaw("tint") as Vector4f
 ```
 
 **Benefits:**
@@ -163,8 +165,8 @@ val tint = getPropertyRaw("tint") as Vec4
 var speed = 1.0
 var amplitude = 50.0
 var enabled = true
-var direction = Vec2(1.0, 0.0)
-var color = Vec4(1.0, 0.0, 0.0, 1.0)
+var direction = Vector2f(1.0f, 0.0f)
+var color = Vector4f(1.0f, 0.0f, 0.0f, 1.0f)
 var label = "Animation"
 
 // Create all controls in one channel
@@ -205,10 +207,10 @@ Browser UI → JavaScript Handler → WebSocket Message → Server Handler → C
 ### Callback Registries
 Each control type has its own thread-safe callback registry:
 - `sliderCallbacks: ConcurrentHashMap<String, (Double) -> Unit>`
-- `vec2Callbacks: ConcurrentHashMap<String, (Vec2) -> Unit>`
+- `vec2Callbacks: ConcurrentHashMap<String, (Vector2f) -> Unit>`
 - `checkboxCallbacks: ConcurrentHashMap<String, (Boolean) -> Unit>`
 - `stringCallbacks: ConcurrentHashMap<String, (String) -> Unit>`
-- `colorCallbacks: ConcurrentHashMap<String, (Vec4) -> Unit>`
+- `colorCallbacks: ConcurrentHashMap<String, (Vector4f) -> Unit>`
 
 ### HTML Generation
 Each control generates HTML with:
@@ -219,7 +221,7 @@ Each control generates HTML with:
 
 ### JavaScript Handlers
 - `handleSliderInput()`
-- `handleVec2Input()`
+- `handleVector2fInput()`
 - `handleCheckboxInput()`
 - `handleStringInput()`
 - `handleColorInput()`
@@ -253,8 +255,8 @@ All controls use consistent styling:
 
 ### Scene Configuration
 ```kotlin
-var cameraPos = Vec2(0.0, 0.0)
-var backgroundColor = Vec4(0.1, 0.1, 0.1, 1.0)
+var cameraPos = Vector2f(0.0f, 0.0f)
+var backgroundColor = Vector4f(0.1f, 0.1f, 0.1f, 1.0f)
 var gridVisible = true
 var gridSize = 20.0
 
@@ -269,7 +271,7 @@ slider("Grid Size", 10.0, 100.0, 5.0, gridSize, "scene") { gridSize = it }
 ### Effect Parameters
 ```kotlin
 var effectStrength = 0.5
-var effectColor = Vec4(1.0, 1.0, 1.0, 1.0)
+var effectColor = Vector4f(1.0f, 1.0f, 1.0f, 1.0f)
 var effectEnabled = true
 var effectMode = "blur"
 
@@ -285,5 +287,5 @@ stringInput("Mode", effectMode, "effects") { effectMode = it }
 syncToProperty("uiScale", 1.0, "settings", "UI Scale")
 syncToProperty("showHelp", true, "settings", "Show Help")
 syncToProperty("userName", "User", "settings", "User Name")
-syncToProperty("themeColor", Vec4(0.5, 0.5, 1.0, 1.0), "settings", "Theme Color")
+syncToProperty("themeColor", Vector4f(0.5f, 0.5f, 1.0f, 1.0f), "settings", "Theme Color")
 ```

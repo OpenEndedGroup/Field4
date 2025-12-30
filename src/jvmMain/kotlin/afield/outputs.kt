@@ -4,6 +4,8 @@ import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
 import afield.logger.lprintln
+import org.joml.Vector2f
+import org.joml.Vector4f
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -255,27 +257,25 @@ private fun calculateDecimalPlaces(step: Double): Int {
 
 // Additional control types
 
-// 2D Vector control
-data class Vec2(var x: Double, var y: Double)
+// 2D Vector control (using JOML Vector2f)
+private val vec2Callbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector2f) -> Unit>()
 
-private val vec2Callbacks = java.util.concurrent.ConcurrentHashMap<String, (Vec2) -> Unit>()
-
-internal fun registerVec2Callback(controlId: String, callback: (Vec2) -> Unit) {
+internal fun registerVec2Callback(controlId: String, callback: (Vector2f) -> Unit) {
     vec2Callbacks[controlId] = callback
 }
 
-internal fun getVec2Callback(controlId: String): ((Vec2) -> Unit)? {
+internal fun getVec2Callback(controlId: String): ((Vector2f) -> Unit)? {
     return vec2Callbacks[controlId]
 }
 
 fun Box.vec2Control(
     label: String,
-    initialValue: Vec2 = Vec2(0.0, 0.0),
+    initialValue: Vector2f = Vector2f(0.0f, 0.0f),
     xRange: Pair<Double, Double> = -100.0 to 100.0,
     yRange: Pair<Double, Double> = -100.0 to 100.0,
     step: Double = 1.0,
     channel: String = "controls",
-    onUpdate: (Vec2) -> Unit
+    onUpdate: (Vector2f) -> Unit
 ) {
     val controlId = "vec2-${UUID.randomUUID()}"
     registerVec2Callback(controlId, onUpdate)
@@ -375,24 +375,22 @@ fun Box.stringInput(
     display(channel, html)
 }
 
-// Color picker control (vec4, normalized)
-data class Vec4(var x: Double, var y: Double, var z: Double, var w: Double)
+// Color picker control (vec4, normalized - using JOML Vector4f)
+private val colorCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector4f) -> Unit>()
 
-private val colorCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Vec4) -> Unit>()
-
-internal fun registerColorCallback(controlId: String, callback: (Vec4) -> Unit) {
+internal fun registerColorCallback(controlId: String, callback: (Vector4f) -> Unit) {
     colorCallbacks[controlId] = callback
 }
 
-internal fun getColorCallback(controlId: String): ((Vec4) -> Unit)? {
+internal fun getColorCallback(controlId: String): ((Vector4f) -> Unit)? {
     return colorCallbacks[controlId]
 }
 
 fun Box.colorPicker(
     label: String,
-    initialValue: Vec4 = Vec4(1.0, 1.0, 1.0, 1.0),
+    initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
     channel: String = "controls",
-    onUpdate: (Vec4) -> Unit
+    onUpdate: (Vector4f) -> Unit
 ) {
     val controlId = "color-${UUID.randomUUID()}"
     registerColorCallback(controlId, onUpdate)
@@ -463,7 +461,7 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
                 Box.ioPersistentProperties.add(propertyName)
             }
         }
-        is Vec2 -> {
+        is Vector2f -> {
             var value = initialValue
             vec2Control(label, value, channel = channel) { newValue ->
                 value = newValue
@@ -473,13 +471,21 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
                 Box.ioPersistentProperties.add(propertyName)
             }
         }
-        is Vec4 -> {
+        is Vector4f -> {
             var value = initialValue
             colorPicker(label, value, channel) { newValue ->
                 value = newValue
                 setPropertyRaw(propertyName, value, doResync = true)
             }
             if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
+                Box.ioPersistentProperties.add(propertyName)
+            }
+        }
+        else -> {
+            lprintln("warning,controls", "syncToProperty: unsupported type for property '$propertyName': ${initialValue::class}")
+        }
+    }
+}
                 Box.ioPersistentProperties.add(propertyName)
             }
         }

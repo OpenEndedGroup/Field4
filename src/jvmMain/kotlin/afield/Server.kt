@@ -31,6 +31,8 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import org.joml.Vector2f
+import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
 import java.io.FileNotFoundException
@@ -555,7 +557,7 @@ class Server {
                 if (callback != null) {
                     GlobalScope.launch {
                         try {
-                            callback(Vec2(update.x, update.y))
+                            callback(Vector2f(update.x.toFloat(), update.y.toFloat()))
                         } catch (e: Exception) {
                             lprintln("error,controls", "Error in vec2 callback: ${e.message}")
                             e.printStackTrace()
@@ -618,7 +620,7 @@ class Server {
                 if (callback != null) {
                     GlobalScope.launch {
                         try {
-                            callback(Vec4(update.r, update.g, update.b, update.a))
+                            callback(Vector4f(update.r.toFloat(), update.g.toFloat(), update.b.toFloat(), update.a.toFloat()))
                         } catch (e: Exception) {
                             lprintln("error,controls", "Error in color callback: ${e.message}")
                             e.printStackTrace()

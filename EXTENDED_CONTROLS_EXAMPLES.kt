@@ -1,10 +1,13 @@
 // EXTENDED CONTROL TYPES EXAMPLES
 // Copy these into Field4 boxes to test the new control functionality
 
+import org.joml.Vector2f
+import org.joml.Vector4f
+
 // ============================================
 // Example 1: 2D Vector Control
 // ============================================
-var position = Vec2(0.0, 0.0)
+var position = Vector2f(0.0f, 0.0f)
 
 vec2Control(
     label = "Position",
@@ -47,9 +50,9 @@ stringInput(
 }
 
 // ============================================
-// Example 4: Color Picker (Vec4, Normalized)
+// Example 4: Color Picker (Vector4f, Normalized)
 // ============================================
-var color = Vec4(1.0, 0.5, 0.0, 1.0)  // Orange, fully opaque
+var color = Vector4f(1.0f, 0.5f, 0.0f, 1.0f)  // Orange, fully opaque
 
 colorPicker(
     label = "Color",
@@ -70,8 +73,8 @@ colorPicker(
 syncToProperty("myScale", 1.0, "properties", "Scale")
 syncToProperty("myVisible", true, "properties", "Visible")
 syncToProperty("myTitle", "Default Title", "properties", "Title")
-syncToProperty("myOffset", Vec2(0.0, 0.0), "properties", "Offset")
-syncToProperty("myTint", Vec4(1.0, 1.0, 1.0, 1.0), "properties", "Tint")
+syncToProperty("myOffset", Vector2f(0.0f, 0.0f), "properties", "Offset")
+syncToProperty("myTint", Vector4f(1.0f, 1.0f, 1.0f, 1.0f), "properties", "Tint")
 
 // Access the synced properties later:
 // val scale = getPropertyRaw("myScale") as Double
@@ -84,8 +87,8 @@ syncToProperty("myTint", Vec4(1.0, 1.0, 1.0, 1.0), "properties", "Tint")
 var speed = 1.0
 var bounce = true
 var label = "Object"
-var velocity = Vec2(0.0, 0.0)
-var tint = Vec4(1.0, 1.0, 1.0, 1.0)
+var velocity = Vector2f(0.0f, 0.0f)
+var tint = Vector4f(1.0f, 1.0f, 1.0f, 1.0f)
 
 // All in one channel
 slider("Speed", 0.0, 5.0, 0.1, speed, "animation") { speed = it }
@@ -99,7 +102,7 @@ colorPicker("Tint", tint, "animation") { tint = it }
 // ============================================
 var animSpeed = 1.0
 var animAmplitude = 50.0
-var animColor = Vec4(1.0, 0.0, 0.0, 1.0)
+var animColor = Vector4f(1.0f, 0.0f, 0.0f, 1.0f)
 var animEnabled = true
 
 slider("Speed", 0.1, 3.0, 0.1, animSpeed, "animation") { animSpeed = it }
@@ -118,8 +121,8 @@ checkbox("Enabled", animEnabled, "animation") { animEnabled = it }
 // ============================================
 // Example 8: Scene Configuration
 // ============================================
-var cameraPos = Vec2(0.0, 0.0)
-var backgroundColor = Vec4(0.1, 0.1, 0.1, 1.0)
+var cameraPos = Vector2f(0.0f, 0.0f)
+var backgroundColor = Vector4f(0.1f, 0.1f, 0.1f, 1.0f)
 var gridVisible = true
 var gridSize = "20"
 
