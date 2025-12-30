@@ -6,6 +6,7 @@ import afield.stdlib.d
 import afield.stdlib.i
 import afield.stdlib.invoke
 import afield.stdlib.vec
+import afield.util.PngEncoder
 import kotlinx.coroutines.*
 import org.lwjgl.glfw.Callbacks
 import org.lwjgl.glfw.GLFW
@@ -13,7 +14,6 @@ import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import java.io.BufferedReader
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -202,7 +202,7 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
             val tempFile = Files.createTempFile("field4_screenshot_$timestamp", ".png").toFile()
             
             // Convert buffer to PNG and write to file
-            val pngBytes = bufferToPngBytes(imageData, width, height)
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
             Files.write(tempFile.toPath(), pngBytes, StandardOpenOption.WRITE)
             
             return tempFile
@@ -226,148 +226,12 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         }
         
         return try {
-            val pngBytes = bufferToPngBytes(imageData, width, height)
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
             Base64.getEncoder().encodeToString(pngBytes)
         } catch (e: Exception) {
             System.err.println("Failed to get framebuffer as base64 PNG: ${e.message}")
             e.printStackTrace()
             null
         }
-    }
-    
-    /**
-     * Convert a ByteBuffer containing RGBA image data to PNG bytes.
-     * The image is flipped vertically to account for OpenGL/Vulkan coordinate systems.
-     */
-    private fun bufferToPngBytes(buffer: ByteBuffer, width: Int, height: Int): ByteArray {
-        // Create a simple PPM-like format, then use external conversion or write PNG directly
-        // For simplicity, we'll use a basic PNG encoder approach
-        
-        // Reset buffer position
-        buffer.rewind()
-        
-        // Create RGB array (PNG encoder expects separate RGB values)
-        val pixels = IntArray(width * height)
-        
-        // Read pixels and flip vertically
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                val r = buffer.get().toInt() and 0xFF
-                val g = buffer.get().toInt() and 0xFF
-                val b = buffer.get().toInt() and 0xFF
-                val a = buffer.get().toInt() and 0xFF
-                
-                val rgb = (a shl 24) or (r shl 16) or (g shl 8) or b
-                // Flip vertically (OpenGL/Vulkan coordinates are bottom-to-top)
-                pixels[x + (height - 1 - y) * width] = rgb
-            }
-        }
-        
-        // Write PNG using a simple encoder
-        return encodePng(pixels, width, height)
-    }
-    
-    /**
-     * Simple PNG encoder that creates a PNG file from ARGB pixel data.
-     * This avoids the need for BufferedImage and javax.imageio, keeping AWT usage minimal.
-     */
-    private fun encodePng(pixels: IntArray, width: Int, height: Int): ByteArray {
-        val output = ByteArrayOutputStream()
-        
-        // PNG signature
-        output.write(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
-        
-        // IHDR chunk
-        writeChunk(output, "IHDR", createIHDR(width, height))
-        
-        // IDAT chunk (image data)
-        writeChunk(output, "IDAT", createIDAT(pixels, width, height))
-        
-        // IEND chunk
-        writeChunk(output, "IEND", byteArrayOf())
-        
-        return output.toByteArray()
-    }
-    
-    private fun createIHDR(width: Int, height: Int): ByteArray {
-        val ihdr = ByteArrayOutputStream()
-        writeInt(ihdr, width)
-        writeInt(ihdr, height)
-        ihdr.write(8)  // bit depth
-        ihdr.write(6)  // color type (RGBA)
-        ihdr.write(0)  // compression method
-        ihdr.write(0)  // filter method
-        ihdr.write(0)  // interlace method
-        return ihdr.toByteArray()
-    }
-    
-    private fun createIDAT(pixels: IntArray, width: Int, height: Int): ByteArray {
-        val uncompressed = ByteArrayOutputStream()
-        
-        // Write each scanline with filter byte
-        for (y in 0 until height) {
-            uncompressed.write(0)  // filter type: none
-            for (x in 0 until width) {
-                val pixel = pixels[x + y * width]
-                uncompressed.write((pixel shr 16) and 0xFF)  // R
-                uncompressed.write((pixel shr 8) and 0xFF)   // G
-                uncompressed.write(pixel and 0xFF)           // B
-                uncompressed.write((pixel shr 24) and 0xFF)  // A
-            }
-        }
-        
-        // Compress using DEFLATE
-        val compressed = java.util.zip.Deflater().let { deflater ->
-            val data = uncompressed.toByteArray()
-            deflater.setInput(data)
-            deflater.finish()
-            
-            val buffer = ByteArray(data.size + 1024)
-            val compressedSize = deflater.deflate(buffer)
-            deflater.end()
-            
-            buffer.copyOf(compressedSize)
-        }
-        
-        return compressed
-    }
-    
-    private fun writeChunk(output: ByteArrayOutputStream, type: String, data: ByteArray) {
-        // Length
-        writeInt(output, data.size)
-        
-        // Type
-        output.write(type.toByteArray(Charsets.US_ASCII))
-        
-        // Data
-        output.write(data)
-        
-        // CRC
-        val crc = calculateCRC(type.toByteArray(Charsets.US_ASCII) + data)
-        writeInt(output, crc.toInt())
-    }
-    
-    private fun writeInt(output: ByteArrayOutputStream, value: Int) {
-        output.write((value shr 24) and 0xFF)
-        output.write((value shr 16) and 0xFF)
-        output.write((value shr 8) and 0xFF)
-        output.write(value and 0xFF)
-    }
-    
-    private fun calculateCRC(data: ByteArray): Long {
-        var crc = 0xFFFFFFFFL
-        
-        for (b in data) {
-            crc = crc xor (b.toLong() and 0xFF)
-            for (i in 0 until 8) {
-                crc = if ((crc and 1) != 0L) {
-                    0xEDB88320L xor (crc ushr 1)
-                } else {
-                    crc ushr 1
-                }
-            }
-        }
-        
-        return crc xor 0xFFFFFFFFL
     }
 }
