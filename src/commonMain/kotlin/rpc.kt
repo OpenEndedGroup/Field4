@@ -279,3 +279,19 @@ data class HideSlideNote(val dummy: Boolean = true)
 
 @Serializable
 data class SlideShowCommand(val command: String)
+
+// Control messages
+@Serializable
+data class SliderUpdate(val sliderId: String, val value: Double)
+
+@Serializable
+data class Vec2Update(val controlId: String, val x: Double, val y: Double)
+
+@Serializable
+data class CheckboxUpdate(val controlId: String, val value: Boolean)
+
+@Serializable
+data class StringUpdate(val controlId: String, val value: String)
+
+@Serializable
+data class ColorUpdate(val controlId: String, val r: Double, val g: Double, val b: Double, val a: Double)

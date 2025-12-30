@@ -31,6 +31,8 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import org.joml.Vector2f
+import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
 import java.io.FileNotFoundException
@@ -522,6 +524,112 @@ class Server {
                         }
                     }
                 }
+                Handled.yes
+            })
+
+            handlers["slider-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<SliderUpdate>(message.payload!!)
+                lprintln("debug,slider", "Received slider update: ${update.sliderId} = ${update.value}")
+                
+                // Get the callback for this slider and invoke it
+                val callback = getSliderCallback(update.sliderId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.value)
+                        } catch (e: Exception) {
+                            lprintln("error,slider", "Error in slider callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,slider", "No callback registered for slider: ${update.sliderId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["vec2-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<Vec2Update>(message.payload!!)
+                lprintln("debug,controls", "Received vec2 update: ${update.controlId} = (${update.x}, ${update.y})")
+                
+                val callback = getVec2Callback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(Vector2f(update.x.toFloat(), update.y.toFloat()))
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in vec2 callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for vec2: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["checkbox-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<CheckboxUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received checkbox update: ${update.controlId} = ${update.value}")
+                
+                val callback = getCheckboxCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.value)
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in checkbox callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for checkbox: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["string-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")
+                
+                val callback = getStringCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.value)
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in string callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for string: ${update.controlId}")
+                }
+                
+                Handled.yes
+            })
+
+            handlers["color-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<ColorUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})")
+                
+                val callback = getColorCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(Vector4f(update.r.toFloat(), update.g.toFloat(), update.b.toFloat(), update.a.toFloat()))
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in color callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
+                }
+                
                 Handled.yes
             })
 
