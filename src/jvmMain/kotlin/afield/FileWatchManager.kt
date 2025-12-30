@@ -69,7 +69,14 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
      * Mark a file as saved by Field internally (so we don't reload it)
      */
     fun markInternalSave(file: File) {
-        internalSaveTimestamps[file.absolutePath] = System.currentTimeMillis()
+        if (!file.exists()) {
+            return
+        }
+        val lastModified = file.lastModified()
+        // Track the precise mtime we wrote so later events with a newer timestamp
+        // are treated as external edits rather than our own save.
+        internalSaveTimestamps[file.absolutePath] = lastModified
+        fileTimestamps[file.absolutePath] = lastModified
     }
     
     private fun registerDirectory(path: Path) {
@@ -168,10 +175,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         val lastKnownTime = fileTimestamps[absolutePath]
         val lastInternalSave = internalSaveTimestamps[absolutePath]
         
-        // Check if this was an internal save (within last 2 seconds)
-        val now = System.currentTimeMillis()
-        if (lastInternalSave != null && (now - lastInternalSave) < 2000) {
-            // This is our own save, just update timestamp and skip reload
+        // Treat events with the same or older mtime than our last internal write as ours.
+        if (lastInternalSave != null && currentTime <= lastInternalSave) {
             fileTimestamps[absolutePath] = currentTime
             return
         }
