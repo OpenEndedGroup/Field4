@@ -290,11 +290,15 @@ object ValueVisualizer {
 
             entries.forEachIndexed { i, (key, value) ->
                 val needsComma = i < entries.lastIndex || hasMore
-                append("<div style='margin-left: 10px;'>")
+                append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
+                append("<div>")
                 append(visualizeValue(key, depth + 1, visited))
-                append("<span style='color: #888;'> → </span>")
+                append("</div>")
+                append("<div style='color: #888; justify-self: center;'>→</div>")
+                append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
                 append(visualizeValue(value, depth + 1, visited))
                 if (needsComma) append("<span style='color: #888;'>,</span>")
+                append("</div>")
                 append("</div>")
             }
 
