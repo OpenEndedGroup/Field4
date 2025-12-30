@@ -223,23 +223,33 @@ private fun buildSliderHtml(
     value: Double
 ): String {
     val decimalPlaces = calculateDecimalPlaces(step)
+    val formattedValue = "%.${decimalPlaces}f".format(value)
+    val viewWidth = 320
+    val padding = 14
+    val clampedValue = value.coerceIn(min, max)
+    val trackLength = viewWidth - (padding * 2)
+    val normalized = if (max - min == 0.0) 0.0 else (clampedValue - min) / (max - min)
+    val cx = padding + (trackLength * normalized)
     return """
-        <div class="slider-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label for="$sliderId" style="font-size: 11px; color: #ddd; user-select: none;">$label</label>
-                <span id="${sliderId}-value" style="font-size: 10px; color: #aaa; font-family: monospace; min-width: 60px; text-align: right;">$value</span>
+        <div class="field-control field-slider"
+             data-slider-id="$sliderId"
+             data-min="$min"
+             data-max="$max"
+             data-step="$step"
+             data-decimal-places="$decimalPlaces"
+             data-value="$value"
+             data-view-width="$viewWidth"
+             data-padding="$padding">
+            <div class="field-header">
+                <span class="field-label">$label</span>
+                <span class="field-value" id="${sliderId}-value">$formattedValue</span>
             </div>
-            <input 
-                type="range" 
-                id="$sliderId" 
-                min="$min" 
-                max="$max" 
-                step="$step" 
-                value="$value"
-                data-decimal-places="$decimalPlaces"
-                style="width: 100%; cursor: pointer; accent-color: #4a9eff;"
-                oninput="handleSliderInput(this)"
-            />
+            <svg class="field-slider-visual" viewBox="0 0 $viewWidth 32" preserveAspectRatio="none">
+                <line x1="$padding" y1="16" x2="${viewWidth - padding}" y2="16" class="slider-track"></line>
+                <line x1="$padding" y1="16" x2="$cx" y2="16" class="slider-fill"></line>
+                <circle cx="$cx" cy="16" r="5" class="slider-thumb"></circle>
+                <circle cx="$cx" cy="16" r="2" class="slider-thumb-dot"></circle>
+            </svg>
         </div>
     """.trimIndent()
 }
@@ -271,9 +281,9 @@ internal fun getVec2Callback(controlId: String): ((Vector2f) -> Unit)? {
 fun Box.vec2Control(
     label: String,
     initialValue: Vector2f = Vector2f(0.0f, 0.0f),
-    xRange: Pair<Double, Double> = -100.0 to 100.0,
-    yRange: Pair<Double, Double> = -100.0 to 100.0,
-    step: Double = 1.0,
+    xRange: Pair<Double, Double> = -1.0 to 1.0,
+    yRange: Pair<Double, Double> = -1.0 to 1.0,
+    step: Double = 0.01,
     channel: String = "controls",
     onUpdate: (Vector2f) -> Unit
 ) {
@@ -281,28 +291,55 @@ fun Box.vec2Control(
     registerVec2Callback(controlId, onUpdate)
 
     val decimalPlaces = calculateDecimalPlaces(step)
+    val viewSize = 240
+    val padding = 14
+    val area = viewSize - (padding * 2)
+
+    fun clamp(value: Double, range: Pair<Double, Double>): Double {
+        return value.coerceIn(range.first, range.second)
+    }
+
+    fun mapToX(value: Double): Double {
+        val normalized = if (xRange.second - xRange.first == 0.0) 0.0 else (clamp(value, xRange) - xRange.first) / (xRange.second - xRange.first)
+        return padding + (area * normalized)
+    }
+
+    fun mapToY(value: Double): Double {
+        val normalized = if (yRange.second - yRange.first == 0.0) 0.0 else (clamp(value, yRange) - yRange.first) / (yRange.second - yRange.first)
+        return padding + (area * (1.0 - normalized))
+    }
+
+    val cx = mapToX(initialValue.x.toDouble())
+    val cy = mapToY(initialValue.y.toDouble())
+    val formattedX = "%.${decimalPlaces}f".format(initialValue.x)
+    val formattedY = "%.${decimalPlaces}f".format(initialValue.y)
+
     val html = """
-        <div class="vec2-control" style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-            <div style="font-size: 11px; color: #ddd; margin-bottom: 8px;">$label</div>
-            <div style="margin-bottom: 4px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                    <label style="font-size: 10px; color: #aaa;">X:</label>
-                    <span id="${controlId}-x-value" style="font-size: 10px; color: #aaa; font-family: monospace; min-width: 50px; text-align: right;">${initialValue.x}</span>
-                </div>
-                <input type="range" id="${controlId}-x" min="${xRange.first}" max="${xRange.second}" step="$step" value="${initialValue.x}"
-                    data-control-id="$controlId" data-axis="x" data-decimal-places="$decimalPlaces"
-                    style="width: 100%; cursor: pointer; accent-color: #4a9eff;"
-                    oninput="handleVec2Input(this)" />
+        <div class="field-control field-vec2"
+             data-control-id="$controlId"
+             data-min-x="${xRange.first}"
+             data-max-x="${xRange.second}"
+             data-min-y="${yRange.first}"
+             data-max-y="${yRange.second}"
+             data-x="${initialValue.x}"
+             data-y="${initialValue.y}"
+             data-step="$step"
+             data-decimal-places="$decimalPlaces"
+             data-view-size="$viewSize"
+             data-padding="$padding">
+            <div class="field-header">
+                <span class="field-label">$label</span>
+                <span class="field-value" id="${controlId}-value">(${formattedX}, ${formattedY})</span>
             </div>
-            <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                    <label style="font-size: 10px; color: #aaa;">Y:</label>
-                    <span id="${controlId}-y-value" style="font-size: 10px; color: #aaa; font-family: monospace; min-width: 50px; text-align: right;">${initialValue.y}</span>
-                </div>
-                <input type="range" id="${controlId}-y" min="${yRange.first}" max="${yRange.second}" step="$step" value="${initialValue.y}"
-                    data-control-id="$controlId" data-axis="y" data-decimal-places="$decimalPlaces"
-                    style="width: 100%; cursor: pointer; accent-color: #4a9eff;"
-                    oninput="handleVec2Input(this)" />
+            <svg class="vec2-visual" viewBox="0 0 $viewSize $viewSize" preserveAspectRatio="none">
+                <rect x="0" y="0" width="$viewSize" height="$viewSize" class="vec2-pane"></rect>
+                <line x1="${viewSize / 2}" y1="$padding" x2="${viewSize / 2}" y2="${viewSize - padding}" class="vec2-axis"></line>
+                <line x1="$padding" y1="${viewSize / 2}" x2="${viewSize - padding}" y2="${viewSize / 2}" class="vec2-axis"></line>
+                <circle cx="$cx" cy="$cy" r="6" class="vec2-handle"></circle>
+            </svg>
+            <div class="field-subtext">
+                <span>X: <span id="${controlId}-x-value">$formattedX</span></span>
+                <span>Y: <span id="${controlId}-y-value">$formattedY</span></span>
             </div>
         </div>
     """.trimIndent()

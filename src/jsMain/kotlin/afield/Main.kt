@@ -1492,6 +1492,7 @@ suspend fun main() {
         initMenuSupport()
         registerBuiltinCommands()
         initializeBookmarkSystem()
+        initializeDocumentSearch()
         hideMonaco()
 
         later({

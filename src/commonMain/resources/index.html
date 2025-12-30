@@ -21,6 +21,109 @@
             background: rgba(20, 20, 20, 1);
         }
 
+        /* Minimal cyan control skin */
+        :root {
+            --field-cyan: #48c9ff;
+            --field-cyan-muted: rgba(72, 201, 255, 0.4);
+            --field-panel: rgba(0, 0, 0, 0.26);
+            --field-text: #a9e6ff;
+            --field-text-soft: #7fd4ff;
+        }
+
+        .field-control {
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            background: var(--field-panel);
+            border: 1px solid rgba(72, 201, 255, 0.22);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin: 10px 0;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+        }
+
+        .field-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            letter-spacing: 0.2px;
+            color: var(--field-text);
+            margin-bottom: 6px;
+        }
+
+        .field-label {
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .field-value {
+            font-family: "Iosevka Web", monospace;
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        .field-slider-visual {
+            width: 100%;
+            height: 38px;
+        }
+
+        .slider-track {
+            stroke: var(--field-cyan-muted);
+            stroke-width: 1;
+            stroke-dasharray: 3 5;
+        }
+
+        .slider-fill {
+            stroke: var(--field-cyan);
+            stroke-width: 2;
+        }
+
+        .slider-thumb {
+            fill: #0a1822;
+            stroke: var(--field-cyan);
+            stroke-width: 2;
+        }
+
+        .slider-thumb-dot {
+            fill: var(--field-cyan);
+        }
+
+        .vec2-visual {
+            width: 100%;
+            height: 220px;
+        }
+
+        .vec2-pane {
+            fill: rgba(0, 0, 0, 0.2);
+            stroke: var(--field-cyan-muted);
+            stroke-width: 1;
+            stroke-dasharray: 4 4;
+        }
+
+        .vec2-axis {
+            stroke: var(--field-cyan-muted);
+            stroke-width: 1;
+            stroke-dasharray: 2 4;
+        }
+
+        .vec2-handle {
+            fill: #0a1822;
+            stroke: var(--field-cyan);
+            stroke-width: 2;
+            filter: drop-shadow(0 0 6px rgba(72, 201, 255, 0.5));
+        }
+
+        .field-subtext {
+            display: flex;
+            justify-content: space-between;
+            color: var(--field-text-soft);
+            font-size: 10px;
+            margin-top: 6px;
+        }
+
+        .field-subtext span {
+            font-family: "Iosevka Web", monospace;
+        }
+
         * {
             font-feature-settings: "dlig" 1;
             box-sizing: border-box;
