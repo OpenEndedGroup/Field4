@@ -544,17 +544,19 @@ fun select(selector: String): List<HTMLElement> {
 }
 
 // Layers system functions
-fun setVisibleLayers(layers: Set<String>) {
+fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: Double = 300.0) {
     visibleLayers.clear()
     visibleLayers.addAll(layers)
-    send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList())))
-    updateAllBoxVisibility()
-    canvasGestures.rebuildConnectionGroup()
+    send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList(), animated, duration)))
+    if (!animated) {
+        updateAllBoxVisibility()
+        canvasGestures.rebuildConnectionGroup()
+    }
 }
 
-fun setActiveLayer(layer: String?) {
+fun setActiveLayer(layer: String?, animated: Boolean = false, duration: Double = 500.0) {
     activeLayer = layer
-    send(Message("set-active-layer").payload(SetActiveLayer(layer)))
+    send(Message("set-active-layer").payload(SetActiveLayer(layer, animated, duration)))
 }
 
 fun getAllLayers(): Set<String> {
@@ -828,6 +830,84 @@ suspend fun main() {
 
         Handled.yes
     }
+    
+    handlers.put("set-animated-rect") { message, _ ->
+        val set = Json.decodeFromJsonElement<Set_animated_rect>(message.payload!!)
+        if (set.property !== "frame") return@put Handled.no
+        
+        val u = set.uid
+        val boxes = document.body!!.getElementsByClassName("box").asList()
+        val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == u } as? HTMLElement
+        
+        if (found != null) {
+            // Add transition CSS
+            found.style.transition = "transform ${set.duration}ms ease-in-out, width ${set.duration}ms ease-in-out, height ${set.duration}ms ease-in-out"
+            
+            // Apply new position and size
+            found.style.transform = "translate(${set.value.x}px, ${set.value.y}px)"
+            found.style.width = "${set.value.w}px"
+            found.style.height = "${set.value.h}px"
+            
+            // Update data attributes
+            found.unsafeCast<dynamic>().data_x = set.value.x
+            found.unsafeCast<dynamic>().data_y = set.value.y
+            found.unsafeCast<dynamic>().data_w = set.value.w
+            found.unsafeCast<dynamic>().data_h = set.value.h
+            
+            // Remove transition after animation completes
+            window.setTimeout({
+                found.style.transition = ""
+                canvasGestures.rebuildConnectionGroup()
+            }, set.duration.toInt())
+        }
+        
+        Handled.yes
+    }
+    
+    handlers.put("set-visibility-animated") { message, _ ->
+        val payload = message.payload?.let { Json.decodeFromJsonElement<Map<String, Any>>(it) } ?: return@put Handled.no
+        val uid = payload["uid"] as? String ?: return@put Handled.no
+        val visible = payload["visible"] as? Boolean ?: return@put Handled.no
+        val duration = (payload["duration"] as? Double) ?: 300.0
+        
+        val boxes = document.body!!.getElementsByClassName("box").asList()
+        val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
+        
+        if (found != null) {
+            if (visible) {
+                // Fade in: set visibility first with opacity 0, then animate to 1
+                found.style.visibility = "visible"
+                found.style.opacity = "0"
+                found.style.transition = "opacity ${duration}ms ease-in-out"
+                
+                window.setTimeout({
+                    found.style.opacity = "1"
+                }, 10)
+                
+                window.setTimeout({
+                    found.style.transition = ""
+                }, duration.toInt() + 10)
+            } else {
+                // Fade out: animate opacity to 0, then set visibility hidden
+                found.style.transition = "opacity ${duration}ms ease-in-out"
+                found.style.opacity = "0"
+                
+                window.setTimeout({
+                    found.style.visibility = "hidden"
+                    found.style.transition = ""
+                    found.style.opacity = "1" // Reset for next show
+                }, duration.toInt())
+            }
+            
+            // Update connections after animation
+            window.setTimeout({
+                canvasGestures.rebuildConnectionGroup()
+            }, duration.toInt())
+        }
+        
+        Handled.yes
+    }
+    
     handlers.put("set-boolean") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_boolean>(message.payload!!)
         val u = set.uid

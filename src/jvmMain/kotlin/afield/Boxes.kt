@@ -326,6 +326,19 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 needsResync.add(this to name)
         }
     }
+    
+    /**
+     * Animates the frame change over the specified duration (in milliseconds)
+     */
+    fun setFrameAnimated(newFrame: Rect, duration: Double = 500.0) {
+        frame = newFrame
+        if (isInsideInitialized()) {
+            val animMessage = Message("set-animated-rect").payload(
+                Set_animated_rect(id, "frame", newFrame, duration)
+            )
+            inside.sessions.forEach { _send(it, animMessage) }
+        }
+    }
 }
 
 var actionTable = mutableMapOf<String, (List<Box>) -> Unit>()

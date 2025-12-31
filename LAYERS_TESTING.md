@@ -74,19 +74,49 @@ println(layers) // Should show all unique layer names from boxes and layerFrames
 - Set visible layers to "layer1,layer2"
 - Verify the connection IS drawn (both visible)
 
+### 8. Test Animated Layer Transitions
+```kotlin
+// Assign box to layers
+thisBox.layers = "layer1,layer2"
+
+// Activate layer1 with animation
+setActiveLayer("layer1", animated = true, duration = 500.0)
+// Move box manually
+thisBox.frame = Rect(100.0, 100.0, 200.0, 150.0)
+
+// Switch to layer2 with smooth animation
+setActiveLayer("layer2", animated = true, duration = 500.0)
+// Box should smoothly transition to its saved position (or stay if none)
+
+// Test animated visibility changes
+setVisibleLayers(setOf("layer1"), animated = true, duration = 300.0)
+// Boxes should fade out if not in layer1
+setVisibleLayers(setOf("layer1", "layer2"), animated = true, duration = 300.0)
+// Boxes should fade back in
+```
+
+### 9. Test Backend-Initiated Animated Rect
+```kotlin
+// From box code, animate to a new position
+thisBox.setFrameAnimated(Rect(300.0, 200.0, 250.0, 200.0), duration = 1000.0)
+// Box should smoothly transition to the new position
+```
+
 ## API Reference
 
 ### Frontend Functions (JavaScript/Kotlin)
 
-#### `setVisibleLayers(layers: Set<String>)`
+#### `setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: Double = 300.0)`
 Sets which layers are currently visible.
 - Sends message to server
 - Updates all box visibility
+- If `animated = true`, boxes fade in/out over the specified duration
 - Triggers connection redraw
 
-#### `setActiveLayer(layer: String?)`
+#### `setActiveLayer(layer: String?, animated: Boolean = false, duration: Double = 500.0)`
 Sets which layer is "active" for frame overrides.
 - When a layer becomes active, boxes with frame overrides for that layer will move to those positions
+- If `animated = true`, boxes smoothly transition to their new positions over the specified duration
 - Pass `null` to deactivate all layers
 
 #### `getAllLayers(): Set<String>`
@@ -114,19 +144,34 @@ Map of layer names to frame positions.
 - When a layer becomes active, the box moves to its corresponding frame
 - Default: empty map
 
+#### `Box.setFrameAnimated(newFrame: Rect, duration: Double = 500.0)`
+Animates the box frame change over the specified duration.
+- Updates the frame property
+- Sends animated rect message to frontend
+- Duration in milliseconds (default 500ms)
+
 ### RPC Messages
 
-#### `SetVisibleLayers(layers: List<String>)`
+#### `SetVisibleLayers(layers: List<String>, animated: Boolean = false, duration: Double = 300.0)`
 Server message to set visible layers.
+- `animated`: If true, boxes fade in/out
+- `duration`: Animation duration in milliseconds
 
-#### `SetActiveLayer(layer: String?)`
+#### `SetActiveLayer(layer: String?, animated: Boolean = false, duration: Double = 500.0)`
 Server message to set active layer.
+- `animated`: If true, boxes smoothly transition to new positions
+- `duration`: Animation duration in milliseconds
 
 #### `GetAllLayers()`
 Request all layers from server.
 
 #### `AllLayersResult(layers: List<String>)`
 Response with all layer names.
+
+#### `Set_animated_rect(uid: String, property: String, value: Rect, duration: Double = 500.0)`
+Animates a box's rect property change.
+- Backend-initiated animation
+- Duration in milliseconds
 
 ## Expected Behavior
 
@@ -136,19 +181,19 @@ Response with all layer names.
 4. **Connection Drawing**: Connections only drawn when BOTH boxes are visible
 5. **Automatic Position Saving**: When switching from one active layer to another, current positions are automatically saved to the old layer before loading the new layer's positions
 6. **Frame Overrides**: When layer becomes active, boxes jump to their saved positions for that layer (or stay in place if no position saved)
-7. **Persistence**: Both `layers` and `layerFrames` are persisted to disk
+7. **Animated Transitions**: When `animated = true`, boxes smoothly transition positions and fade in/out
+8. **Persistence**: Both `layers` and `layerFrames` are persisted to disk
 
 ## Known Limitations
 
 1. Layer UI panel not yet implemented (planned for future PR)
 2. No layer creation UI (layers are created implicitly by setting properties)
 3. No visual indication of which layer is active
-4. No animation between layer transitions (instant jumps)
 
 ## Future Enhancements
 
 - Layer management UI panel
 - Visual indicators for active layer
 - Layer color coding
-- Animation between layer frame transitions
 - Undo/redo support for layer operations
+- Custom easing functions for animations

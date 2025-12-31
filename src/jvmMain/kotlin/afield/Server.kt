@@ -651,20 +651,35 @@ class Server {
             // Layers system handlers
             handlers["set-visible-layers"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<SetVisibleLayers>(message.payload!!)
-                lprintln("debug,layers", "Setting visible layers: ${update.layers}")
+                lprintln("debug,layers", "Setting visible layers: ${update.layers}, animated: ${update.animated}")
                 thisSessionInfo.get().visibleLayers.clear()
                 thisSessionInfo.get().visibleLayers.addAll(update.layers)
                 // Update visibility of all boxes based on their layers
                 thisSessionInfo.get().boxes.values.forEach { box ->
                     updateBoxVisibility(box, thisSessionInfo.get())
                 }
-                doResync()
+                
+                // If animated, send custom visibility change messages
+                if (update.animated) {
+                    thisSessionInfo.get().boxes.values.forEach { box ->
+                        val visibilityMessage = Message("set-visibility-animated").payload(
+                            mapOf(
+                                "uid" to box.id,
+                                "visible" to box.visible,
+                                "duration" to update.duration
+                            )
+                        )
+                        box.inside.sessions.forEach { _send(it, visibilityMessage) }
+                    }
+                } else {
+                    doResync()
+                }
                 Handled.yes
             })
 
             handlers["set-active-layer"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<SetActiveLayer>(message.payload!!)
-                lprintln("debug,layers", "Setting active layer: ${update.layer}")
+                lprintln("debug,layers", "Setting active layer: ${update.layer}, animated: ${update.animated}")
                 val oldActiveLayer = thisSessionInfo.get().activeLayer
                 
                 // When leaving an active layer, save current positions to that layer's frames
@@ -688,11 +703,23 @@ class Server {
                         if (layerFrame != null) {
                             box.frame = layerFrame
                             lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
+                            
+                            // Send animated rect if animation is requested
+                            if (update.animated) {
+                                val animMessage = Message("set-animated-rect").payload(
+                                    Set_animated_rect(box.id, "frame", layerFrame, update.duration)
+                                )
+                                box.inside.sessions.forEach { _send(it, animMessage) }
+                            }
                         }
                     }
                 }
                 
-                doResync()
+                // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
+                if (!update.animated) {
+                    doResync()
+                }
+                
                 Handled.yes
             })
 

@@ -148,15 +148,27 @@ thisBox.layerFrames["slide2"] = Rect(500.0, 300.0, 300.0, 200.0)
 
 ### Controlling Visibility (Frontend)
 ```kotlin
-// Show only presentation layers
+// Show only presentation layers (instant)
 setVisibleLayers(setOf("presentation", "demo"))
 
-// Activate slide1 - boxes move to their slide1 positions
+// Show with fade animation (300ms)
+setVisibleLayers(setOf("presentation", "demo"), animated = true, duration = 300.0)
+
+// Activate slide1 - boxes move to their slide1 positions (instant)
 setActiveLayer("slide1")
+
+// Activate with smooth transition (500ms)
+setActiveLayer("slide1", animated = true, duration = 500.0)
 
 // Get all available layers
 val allLayers = getAllLayers()
 println(allLayers) // ["default", "presentation", "demo", "slide1", "slide2"]
+```
+
+### Backend-Initiated Animation
+```kotlin
+// In box code, animate to a new position
+thisBox.setFrameAnimated(Rect(300.0, 200.0, 250.0, 200.0), duration = 1000.0)
 ```
 
 ## Known Limitations
@@ -171,8 +183,6 @@ println(allLayers) // ["default", "presentation", "demo", "slide1", "slide2"]
    - Which layers a box belongs to
    - Which layers are visible
 
-4. **No Animation**: Layer transitions are instant, no smooth animations between positions.
-
 ## Future Enhancements
 
 1. **Layer Management UI**
@@ -183,7 +193,7 @@ println(allLayers) // ["default", "presentation", "demo", "slide1", "slide2"]
 2. **Visual Polish**
    - Layer color coding
    - Visual indicators on boxes
-   - Smooth animations between layer frames
+   - Custom easing functions for animations
 
 3. **Advanced Features**
    - Layer groups/hierarchies
@@ -198,6 +208,7 @@ See `LAYERS_TESTING.md` for comprehensive testing procedures covering:
 - Setting layers property
 - Layer visibility toggling
 - Active layer and frame overrides
+- Animated transitions (frame and visibility)
 - Getting all layers
 - Persistence
 - Canvas gesture integration
