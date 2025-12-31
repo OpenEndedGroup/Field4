@@ -411,14 +411,27 @@ fun doResync() {
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
                     is Boolean -> Message("set-boolean").payload(Set_boolean(box.id, name, value))
                     is Map<*, *> -> {
-                        // Serialize map as JSON string - specifically for layerFrames: Map<String, Rect>
-                        try {
-                            @Suppress("UNCHECKED_CAST")
-                            val mapValue = value as Map<String, Rect>
-                            val jsonString = Json.encodeToString(MapSerializer(String.serializer(), Rect.serializer()), mapValue)
-                            Message("set-string").payload(Set_string(box.id, name, jsonString))
-                        } catch (e: Exception) {
-                            lprintln("warning,boxes", "failed to serialize map for property $name: ${e.message}")
+                        // Handle map serialization - specifically for layerFrames: Map<String, Rect>
+                        // Validate map contents before serialization
+                        if (name == "layerFrames") {
+                            try {
+                                // Validate all keys are strings and values are Rect
+                                val isValid = value.keys.all { it is String } && value.values.all { it is Rect }
+                                if (!isValid) {
+                                    lprintln("warning,boxes", "layerFrames property has invalid types - expected Map<String, Rect>")
+                                    null
+                                } else {
+                                    @Suppress("UNCHECKED_CAST")
+                                    val mapValue = value as Map<String, Rect>
+                                    val jsonString = Json.encodeToString(MapSerializer(String.serializer(), Rect.serializer()), mapValue)
+                                    Message("set-string").payload(Set_string(box.id, name, jsonString))
+                                }
+                            } catch (e: Exception) {
+                                lprintln("warning,boxes", "failed to serialize map for property $name: ${e.message}")
+                                null
+                            }
+                        } else {
+                            lprintln("warning,boxes", "unexpected map property $name - only layerFrames is supported")
                             null
                         }
                     }

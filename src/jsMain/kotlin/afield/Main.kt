@@ -566,10 +566,17 @@ fun getAllLayers(): Set<String> {
                 allLayers.add(it)
             }
         }
-        val layerFrames = box.asDynamic().box_layerFrames as? dynamic
-        if (layerFrames != null) {
-            val keys = js("Object.keys(layerFrames)") as Array<String>
-            allLayers.addAll(keys)
+        // Extract layer names from layerFrames map
+        val layerFrames = box.asDynamic().box_layerFrames
+        if (layerFrames != null && layerFrames != undefined) {
+            try {
+                // Use for..in loop to iterate over object keys safely
+                for (key in js("Object.keys(layerFrames)") as Array<String>) {
+                    allLayers.add(key)
+                }
+            } catch (e: Exception) {
+                console.warn("Failed to extract layer names from layerFrames for box ${box.asDynamic().uid}", e)
+            }
         }
     }
     if (allLayers.isEmpty()) {
@@ -1097,12 +1104,12 @@ suspend fun main() {
             }
 
             "layerFrames" -> {
-                // layerFrames comes as a JSON string
+                // layerFrames comes as a JSON string representation of Map<String, Rect>
                 try {
                     val parsed = JSON.parse<dynamic>(set.value)
                     found.unsafeCast<dynamic>().box_layerFrames = parsed
                 } catch (e: Exception) {
-                    console.log("Failed to parse layerFrames", e)
+                    console.error("Failed to parse layerFrames for box ${set.uid}. Value: '${set.value.take(100)}...'", e)
                 }
             }
         }

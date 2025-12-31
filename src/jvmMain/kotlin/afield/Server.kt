@@ -673,8 +673,9 @@ class Server {
                         }
                     }
                 }
-                // If there was an old active layer, we could restore original frames here
-                // but for now we just keep the current frame state
+                // Note: Currently, we don't restore the original frame when deactivating a layer.
+                // The box remains at its last activated layer's frame position.
+                // To track original positions, we would need to store them before first layer activation.
                 
                 doResync()
                 Handled.yes
