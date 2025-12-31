@@ -575,7 +575,7 @@ fun getAllLayers(): Set<String> {
                     allLayers.add(key)
                 }
             } catch (e: Exception) {
-                console.warn("Failed to extract layer names from layerFrames for box ${box.asDynamic().uid}", e)
+                console.warn("Failed to extract layer names from layerFrames for box " + box.asDynamic().uid, e)
             }
         }
     }
@@ -1109,7 +1109,7 @@ suspend fun main() {
                     val parsed = JSON.parse<dynamic>(set.value)
                     found.unsafeCast<dynamic>().box_layerFrames = parsed
                 } catch (e: Exception) {
-                    console.error("Failed to parse layerFrames for box ${set.uid}. Value: '${set.value.take(100)}...'", e)
+                    console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
                 }
             }
         }

@@ -72,9 +72,13 @@ class SessionInformation(
 }
 
 fun updateBoxVisibility(box: Box, sessionInfo: SessionInformation) {
-    val boxLayers = box.layers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    val boxLayers = parseLayersList(box.layers)
     val isVisible = boxLayers.any { layer -> sessionInfo.visibleLayers.contains(layer) }
     box.visible = isVisible
+}
+
+fun parseLayersList(layersString: String): List<String> {
+    return layersString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 }
 
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
@@ -684,7 +688,7 @@ class Server {
             handlers["get-all-layers"] = mutableSetOf({ message, reply ->
                 val allLayers = mutableSetOf<String>()
                 thisSessionInfo.get().boxes.values.forEach { box ->
-                    val layers = box.layers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    val layers = parseLayersList(box.layers)
                     allLayers.addAll(layers)
                     allLayers.addAll(box.layerFrames.keys)
                 }
