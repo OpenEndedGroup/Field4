@@ -58,6 +58,10 @@ class SessionInformation(
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
 
+    // Layers system state
+    var visibleLayers: MutableSet<String> = mutableSetOf("default")
+    var activeLayer: String? = null
+
     val fileWatchManager: FileWatchManager by lazy {
         FileWatchManager(this).also { it.start() }
     }
@@ -65,6 +69,12 @@ class SessionInformation(
     fun cleanup() {
         fileWatchManager.stop()
     }
+}
+
+fun updateBoxVisibility(box: Box, sessionInfo: SessionInformation) {
+    val boxLayers = box.layers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    val isVisible = boxLayers.any { layer -> sessionInfo.visibleLayers.contains(layer) }
+    box.visible = isVisible
 }
 
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
@@ -631,6 +641,56 @@ class Server {
                     lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
                 }
                 
+                Handled.yes
+            })
+
+            // Layers system handlers
+            handlers["set-visible-layers"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<SetVisibleLayers>(message.payload!!)
+                lprintln("debug,layers", "Setting visible layers: ${update.layers}")
+                thisSessionInfo.get().visibleLayers.clear()
+                thisSessionInfo.get().visibleLayers.addAll(update.layers)
+                // Update visibility of all boxes based on their layers
+                thisSessionInfo.get().boxes.values.forEach { box ->
+                    updateBoxVisibility(box, thisSessionInfo.get())
+                }
+                doResync()
+                Handled.yes
+            })
+
+            handlers["set-active-layer"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<SetActiveLayer>(message.payload!!)
+                lprintln("debug,layers", "Setting active layer: ${update.layer}")
+                val oldActiveLayer = thisSessionInfo.get().activeLayer
+                thisSessionInfo.get().activeLayer = update.layer
+                
+                // Apply frame overrides for the new active layer
+                if (update.layer != null) {
+                    thisSessionInfo.get().boxes.values.forEach { box ->
+                        val layerFrame = box.layerFrames[update.layer]
+                        if (layerFrame != null) {
+                            box.frame = layerFrame
+                        }
+                    }
+                }
+                // If there was an old active layer, we could restore original frames here
+                // but for now we just keep the current frame state
+                
+                doResync()
+                Handled.yes
+            })
+
+            handlers["get-all-layers"] = mutableSetOf({ message, reply ->
+                val allLayers = mutableSetOf<String>()
+                thisSessionInfo.get().boxes.values.forEach { box ->
+                    val layers = box.layers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    allLayers.addAll(layers)
+                    allLayers.addAll(box.layerFrames.keys)
+                }
+                if (allLayers.isEmpty()) {
+                    allLayers.add("default")
+                }
+                reply(Message("get-all-layers").payload(AllLayersResult(allLayers.sorted())))
                 Handled.yes
             })
 

@@ -92,6 +92,10 @@ var onSelectedChange = mutableMapOf<String, () -> Boolean>()
 
 var events = HashMap<String, () -> Boolean>()
 
+// Layers system state
+var visibleLayers = mutableSetOf("default")
+var activeLayer: String? = null
+
 private fun selectionContextChanged() {
     if (currentAnnotations.isNotEmpty()) {
         redrawSlideAnnotations()
@@ -536,6 +540,54 @@ fun select(selector: String): List<HTMLElement> {
     val s = document.querySelectorAll(selector)
     return (0 until s.length).mapNotNull {
         s.item(it) as? HTMLElement
+    }
+}
+
+// Layers system functions
+fun setVisibleLayers(layers: Set<String>) {
+    visibleLayers.clear()
+    visibleLayers.addAll(layers)
+    send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList())))
+    updateAllBoxVisibility()
+    canvasGestures.rebuildConnectionGroup()
+}
+
+fun setActiveLayer(layer: String?) {
+    activeLayer = layer
+    send(Message("set-active-layer").payload(SetActiveLayer(layer)))
+}
+
+fun getAllLayers(): Set<String> {
+    val allLayers = mutableSetOf<String>()
+    select(".box").forEach { box ->
+        val layers = box.asDynamic().box_layers as? String
+        if (layers != null) {
+            layers.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach {
+                allLayers.add(it)
+            }
+        }
+        val layerFrames = box.asDynamic().box_layerFrames as? dynamic
+        if (layerFrames != null) {
+            val keys = js("Object.keys(layerFrames)") as Array<String>
+            allLayers.addAll(keys)
+        }
+    }
+    if (allLayers.isEmpty()) {
+        allLayers.add("default")
+    }
+    return allLayers
+}
+
+fun isBoxVisible(box: HTMLElement): Boolean {
+    val boxLayers = (box.asDynamic().box_layers as? String) ?: "default"
+    val layers = boxLayers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    return layers.any { layer -> visibleLayers.contains(layer) }
+}
+
+fun updateAllBoxVisibility() {
+    select(".box").forEach { box ->
+        val visible = isBoxVisible(box)
+        box.style.visibility = if (visible) "visible" else "hidden"
     }
 }
 
@@ -1036,6 +1088,22 @@ suspend fun main() {
 
             "customization" -> {
                 handleCustomizationRequest(found as HTMLElement, set)
+            }
+
+            "layers" -> {
+                found.unsafeCast<dynamic>().box_layers = set.value
+                updateAllBoxVisibility()
+                canvasGestures.rebuildConnectionGroup()
+            }
+
+            "layerFrames" -> {
+                // layerFrames comes as a JSON string
+                try {
+                    val parsed = JSON.parse<dynamic>(set.value)
+                    found.unsafeCast<dynamic>().box_layerFrames = parsed
+                } catch (e: Exception) {
+                    console.log("Failed to parse layerFrames", e)
+                }
             }
         }
 

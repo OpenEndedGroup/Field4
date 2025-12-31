@@ -13,6 +13,8 @@ import fetchUpdateInfo
 import formatKotlinCode
 import io.ktor.util.collections.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import promoteStagingToLive
 import writeLocalVersion
 import kotlin.script.experimental.api.KotlinType
@@ -21,6 +23,8 @@ var needsResync = ConcurrentSet<Pair<Box, String>>()
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
+var Box.layers by Delegation<String>(defaultValue = { "default" })
+var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
 
 
 interface HasProperties {
@@ -155,7 +159,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "metadata",
             "offline",
             "bookmarks",
-            "autorun"
+            "autorun",
+            "layers",
+            "layerFrames"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -186,6 +192,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "bookmarks",
             "slideShow",
             "autorun",
+            "layers",
+            "layerFrames"
         )
 
         var ioSeparateProperties = mutableMapOf(
@@ -400,6 +408,16 @@ fun doResync() {
                     }
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
                     is Boolean -> Message("set-boolean").payload(Set_boolean(box.id, name, value))
+                    is Map<*, *> -> {
+                        // Serialize map as JSON string
+                        try {
+                            val jsonString = Json.encodeToString(value as Map<String, Any>)
+                            Message("set-string").payload(Set_string(box.id, name, jsonString))
+                        } catch (e: Exception) {
+                            lprintln("warning,boxes", "failed to serialize map for property $name: ${e.message}")
+                            null
+                        }
+                    }
                     else -> {
                         lprintln("warning,boxes", "trying to resync something that can't be resync'd -- unknown value type $value ${value.javaClass}")
                         null
