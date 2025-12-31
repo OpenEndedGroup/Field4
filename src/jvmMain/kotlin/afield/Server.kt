@@ -666,6 +666,19 @@ class Server {
                 val update = Json.decodeFromJsonElement<SetActiveLayer>(message.payload!!)
                 lprintln("debug,layers", "Setting active layer: ${update.layer}")
                 val oldActiveLayer = thisSessionInfo.get().activeLayer
+                
+                // When leaving an active layer, save current positions to that layer's frames
+                if (oldActiveLayer != null) {
+                    thisSessionInfo.get().boxes.values.forEach { box ->
+                        // Only save if box is visible in the old layer
+                        val boxLayers = parseLayersList(box.layers)
+                        if (boxLayers.contains(oldActiveLayer)) {
+                            box.layerFrames[oldActiveLayer] = box.frame
+                            lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
+                        }
+                    }
+                }
+                
                 thisSessionInfo.get().activeLayer = update.layer
                 
                 // Apply frame overrides for the new active layer
@@ -674,13 +687,10 @@ class Server {
                         val layerFrame = box.layerFrames[update.layer]
                         if (layerFrame != null) {
                             box.frame = layerFrame
+                            lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
                         }
                     }
                 }
-                // Note: Currently, we don't restore the original frame when deactivating a layer.
-                // The box remains at its last activated layer's frame position.
-                // To track original positions, we would need to store them before first layer activation.
-                // TODO: Consider adding frame restoration in a future enhancement.
                 
                 doResync()
                 Handled.yes

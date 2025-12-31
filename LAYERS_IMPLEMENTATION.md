@@ -110,10 +110,21 @@ Example:
 ### Active Layer Logic
 ```
 When layer becomes active:
+  // First, save current positions to old active layer (if any)
+  If oldActiveLayer exists:
+    For each box visible in oldActiveLayer:
+      box.layerFrames[oldActiveLayer] = box.frame
+  
+  // Then apply new active layer positions
   For each box:
-    If box.layerFrames[activeLayer] exists:
-      box.frame = box.layerFrames[activeLayer]
+    If box.layerFrames[newActiveLayer] exists:
+      box.frame = box.layerFrames[newActiveLayer]
 ```
+
+This means:
+- Moving a box while a layer is active automatically saves its position to that layer
+- Switching between layers captures and restores positions automatically
+- First activation of a layer uses whatever positions boxes currently have
 
 ### Connection Drawing
 - Connections only draw when BOTH boxes are visible
@@ -169,16 +180,12 @@ println(allLayers) // ["default", "presentation", "demo", "slide1", "slide2"]
    - Visual indicators for active layer
    - Layer creation/deletion interface
 
-2. **Frame Restoration**
-   - Track original positions before layer activation
-   - Restore when layer is deactivated
-
-3. **Visual Polish**
+2. **Visual Polish**
    - Layer color coding
    - Visual indicators on boxes
    - Smooth animations between layer frames
 
-4. **Advanced Features**
+3. **Advanced Features**
    - Layer groups/hierarchies
    - Layer-specific properties beyond just frame
    - Undo/redo for layer operations

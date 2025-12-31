@@ -27,18 +27,31 @@ setVisibleLayers(setOf("layer1"))
 - Boxes with only `layers = "layer2"` should be hidden
 - Connections between boxes should only draw for visible boxes
 
-### 4. Test Active Layer and Frame Overrides
+### 4. Test Active Layer and Automatic Position Saving
 ```kotlin
-// Set a frame override for a specific layer
-thisBox.layerFrames["layer1"] = Rect(100.0, 100.0, 200.0, 150.0)
-thisBox.layerFrames["layer2"] = Rect(300.0, 200.0, 200.0, 150.0)
+// Assign box to layers
+thisBox.layers = "layer1,layer2"
 
-// Activate layer1 - box should jump to (100, 100)
+// Activate layer1 and move box
 setActiveLayer("layer1")
+// Move box to position (100, 100) manually
+thisBox.frame = Rect(100.0, 100.0, 200.0, 150.0)
 
-// Activate layer2 - box should jump to (300, 200)
+// Switch to layer2 - position at (100, 100) is automatically saved to layer1
 setActiveLayer("layer2")
+// Move box to position (300, 200) manually
+thisBox.frame = Rect(300.0, 200.0, 200.0, 150.0)
+
+// Switch back to layer1 - box should return to (100, 100)
+setActiveLayer("layer1")
+// Verify box is at (100, 100)
+
+// Switch to layer2 again - box should return to (300, 200)
+setActiveLayer("layer2")
+// Verify box is at (300, 200)
 ```
+
+**Key behavior**: When switching between active layers, the current position is automatically saved to the old layer before loading the new layer's position. This means moving boxes while a layer is active automatically records their positions for that layer.
 
 ### 5. Test Get All Layers
 ```kotlin
@@ -121,15 +134,16 @@ Response with all layer names.
 2. **Layer Assignment**: Boxes can be on multiple layers (comma-separated)
 3. **Visibility Logic**: Box is visible if ANY of its layers is in the visible set
 4. **Connection Drawing**: Connections only drawn when BOTH boxes are visible
-5. **Frame Overrides**: When layer becomes active, boxes jump to their override positions for that layer
-6. **Persistence**: Both `layers` and `layerFrames` are persisted to disk
+5. **Automatic Position Saving**: When switching from one active layer to another, current positions are automatically saved to the old layer before loading the new layer's positions
+6. **Frame Overrides**: When layer becomes active, boxes jump to their saved positions for that layer (or stay in place if no position saved)
+7. **Persistence**: Both `layers` and `layerFrames` are persisted to disk
 
 ## Known Limitations
 
 1. Layer UI panel not yet implemented (planned for future PR)
 2. No layer creation UI (layers are created implicitly by setting properties)
 3. No visual indication of which layer is active
-4. Frame override behavior doesn't restore original positions when layer is deactivated
+4. No animation between layer transitions (instant jumps)
 
 ## Future Enhancements
 
