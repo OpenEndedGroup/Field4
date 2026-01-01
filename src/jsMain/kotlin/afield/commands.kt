@@ -274,7 +274,7 @@ fun insertFromWorkspace() {
                 Json.decodeFromJsonElement<List<TemplateMetadata>>(it)
             } ?: emptyList()
         } catch (e: Exception) {
-            console.log("Failed to parse template metadata", e)
+            console.log("Failed to parse template metadata: ${e.message}", e)
             emptyList()
         }
         
@@ -302,7 +302,8 @@ fun insertFromWorkspace() {
                 buildString {
                     // Add last modified date if available
                     if (metadata.lastModified > 0) {
-                        val date = Date(metadata.lastModified.toDouble())
+                        // lastModified is already in milliseconds
+                        val date = Date(metadata.lastModified)
                         append("Modified: ${date.toLocaleDateString()}\n\n")
                     }
                     

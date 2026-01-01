@@ -103,7 +103,8 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
         val ednContent = file.readText()
         
         // Load boxes to extract metadata
-        val boxes = SavingContext().loadFromEdnText(ednContent, file.parent ?: "") { it }
+        val directory = file.parentFile?.absolutePath ?: File(".").absolutePath
+        val boxes = SavingContext().loadFromEdnText(ednContent, directory) { it }
         
         // Sort boxes by frame.y (increasing)
         val sortedBoxes = boxes.sortedBy { it.frame.y }
@@ -165,7 +166,7 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
         
         if (boxDescriptions.isNotEmpty()) {
             if (docBuilder.isNotEmpty()) {
-                docBuilder.append("\n")
+                docBuilder.appendLine()
             }
             docBuilder.append("Boxes: ${boxDescriptions.joinToString(", ")}")
         }
