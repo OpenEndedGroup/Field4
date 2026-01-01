@@ -285,6 +285,8 @@ fun insertFromWorkspace() {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t")
+                .replace("\u2028", "\\u2028")  // Unicode line separator
+                .replace("\u2029", "\\u2029")  // Unicode paragraph separator
         }
 
         directory.value.forEach { templateName ->
