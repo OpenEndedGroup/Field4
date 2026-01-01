@@ -276,24 +276,37 @@ fun insertFromWorkspace() {
             "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
             "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium."
         )
+        
+        // Helper function to escape strings for JavaScript
+        fun escapeJs(str: String): String {
+            return str.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+        }
 
         directory.value.forEach { templateName ->
             val hashCode = templateName.hashCode()
             val loremIndex = (if (hashCode < 0) -hashCode else hashCode) % loremVariations.size
             val detail = loremVariations[loremIndex]
             
+            val escapedTemplateName = escapeJs(templateName)
+            val escapedDetail = escapeJs(detail)
+            
             val e = """
             ({
-                id:'insert-$templateName', 
-                label:'$templateName', 
+                id:'insert-$escapedTemplateName', 
+                label:'$escapedTemplateName', 
                 description: 'Template',
-                detail: '$detail',
+                detail: '$escapedDetail',
                 canvasKeybinding: (event) => false, 
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
                             command:"insert",
-                            value:["$templateName"],
+                            value:["$escapedTemplateName"],
                             mouseX: $mouseX,
                             mouseY: $mouseY
                         })

@@ -497,18 +497,18 @@ const globalPickMenu_custom = (options) => {
                         qp.matchOnDetail = true
                         qp.placeholder = "Select an option..."
                         
-                        // Store the original options with their run functions
+                        // Store the original options with their run functions and convert to QuickPick items
                         const optionMeta = []
+                        const items = []
                         
-                        // Convert options to QuickPick items
-                        const items = options.map((opt) => {
+                        options.forEach((opt) => {
                                 optionMeta.push(opt)
-                                return {
+                                items.push({
                                         label: opt.label || "",
                                         description: opt.description || "",
                                         detail: opt.detail || "",
                                         alwaysShow: true
-                                }
+                                })
                         })
                         
                         qp.items = items
