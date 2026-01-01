@@ -168,7 +168,9 @@ fun templating() {
         
         // Calculate center of mass and translate boxes to mouse position if provided
         if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
-            // Only translate top-level boxes, not nested children (whose frames are relative to their parents)
+            // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+            // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+            // Translating them would incorrectly add the offset twice since they move with their parent.
             val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
             val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
             

@@ -486,7 +486,9 @@ class Server {
 
                 val newBoxes = SavingContext().loadFromEdnText(req.edn, info.filename, filter)
                 
-                // Only translate top-level boxes, not nested children (whose frames are relative to their parents)
+                // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+                // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+                // Translating them would incorrectly add the offset twice since they move with their parent.
                 val nestedBoxes = newBoxes.flatMap { it.nested }.toSet()
                 newBoxes.forEach { b ->
                     if (b.id != "root" && b !in nestedBoxes) {
