@@ -470,7 +470,7 @@ class KotlinExecution : BoxExecution {
         }
         
         val currentLine = lines[currentLineIndex]
-        val beforeCursor = currentLine.substring(0, minOf(column - 1, currentLine.length))
+        val beforeCursor = currentLine.substring(0, minOf(column, currentLine.length))
         
         // Common YAML keys for Field metadata
         val commonKeys = listOf(
@@ -485,7 +485,7 @@ class KotlinExecution : BoxExecution {
         val completions = mutableListOf<Metadata>()
         
         // Check if we're completing a key (at start of line or after whitespace, before ':')
-        val keyPattern = Regex("^\\s*([a-zA-Z]*)$")
+        val keyPattern = Regex("^\\s*([a-zA-Z0-9_-]*)$")
         val keyMatch = keyPattern.find(beforeCursor)
         
         if (keyMatch != null) {
@@ -507,8 +507,8 @@ class KotlinExecution : BoxExecution {
         }
         
         // Check if we're completing a tag value (after "tags:" and optional "  - ")
-        val tagsValuePattern = Regex("tags:\\s*(?:(?:\\n\\s*-\\s*\\w+)*\\n\\s*-\\s*)?([a-zA-Z]*)$", RegexOption.MULTILINE)
-        val tagsOneLine = Regex("tags:\\s*\\[.*?,\\s*([a-zA-Z]*)$")
+        val tagsValuePattern = Regex("tags:\\s*(?:(?:\\n\\s*-\\s*[\\w-]+)*\\n\\s*-\\s*)?([a-zA-Z0-9_-]*)$", RegexOption.MULTILINE)
+        val tagsOneLine = Regex("tags:\\s*\\[.*?,\\s*([a-zA-Z0-9_-]*)$")
         
         // Check multi-line list format
         val textBeforeCursor = allCode.substring(0, position)
