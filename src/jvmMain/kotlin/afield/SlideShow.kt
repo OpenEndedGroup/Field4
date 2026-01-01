@@ -6,24 +6,51 @@ import afield.stdlib.Delegation
 /**
  * SlideShow - A DSL for creating guided tours through Field documents
  *
+ * This system supports creating interactive guides with:
+ * - Step-by-step navigation
+ * - Custom link callbacks that execute Kotlin code
+ * - Template system for displaying live data
+ * - Annotations and visual highlighting
+ *
  * Example usage:
- * ```
+ * ```kotlin
+ * // Set up properties that templates can reference
+ * var counter = 0
+ * this.properties["counter"] = counter
+ * 
  * slideShow {
  *     step("Introduction") {
  *         note("""
- *             <h2>Welcome to Field!</h2>
- *             <p>This is a guided tour of the basics.</p>
- *             <p><a href="#" onclick="nextStep()">Continue →</a></p>
+ *             <h2>Welcome!</h2>
+ *             <p>Counter value: {{counter}}</p>
+ *             <p><a href="#custom:increment">Click to increment</a></p>
+ *             <p><a href="#slideshow:next">Continue →</a></p>
  *         """)
+ *         
+ *         // Register a callback for the custom link
+ *         linkCallback("increment") {
+ *             counter++
+ *             here.properties["counter"] = counter
+ *             // Refresh to show new value
+ *             show.goToStep(show.currentStepIndex)
+ *         }
+ *         
  *         selectBox(myBox)
- *     }
- *
- *     step("Code Editing") {
- *         note("Now let's look at some code...")
- *         selectBox(codeBox, property = "code", line = 5)
  *     }
  * }
  * ```
+ * 
+ * **Custom Links:**
+ * Use `#custom:callbackName` in href attributes, then register with `linkCallback("callbackName") { ... }`
+ *
+ * **Templates:**
+ * Use `{{propertyName}}` to reference box properties or Kotlin variables in the guide's scope
+ *
+ * **Navigation Links:**
+ * - `#slideshow:next` - Go to next step
+ * - `#slideshow:previous` - Go to previous step
+ * - `#slideshow:home` - Go to first step
+ * - `#slideshow:stop` - Stop the slideshow
  */
 
 // Extension property to store slideshow on a box
@@ -75,6 +102,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private val annotations = mutableListOf<SlideAnnotation>()
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
+    private val linkCallbacks = mutableMapOf<String, suspend LinkCallbackContext.() -> Unit>()
 
     /**
      * Sets the HTML note to display for this step
@@ -143,6 +171,19 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     }
 
     /**
+     * Register a callback for a custom link in the note HTML.
+     * Use in markdown as: <a href="#custom:linkName">Click me</a>
+     * or in markdown link syntax: [Click me](#custom:linkName)
+     * 
+     * The callback receives a LinkCallbackContext with:
+     * - here: the box hosting the slideshow
+     * - show: the current slideshow instance (non-null)
+     */
+    fun linkCallback(name: String, action: suspend LinkCallbackContext.() -> Unit) {
+        linkCallbacks[name] = action
+    }
+
+    /**
      * Add an annotation line from the guide text to a box
      */
     fun annotate(
@@ -201,10 +242,19 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             animated = animated,
             annotations = annotations.toList(),
             onEnter = onEnter,
-            onExit = onExit
+            onExit = onExit,
+            linkCallbacks = linkCallbacks.toMap()
         )
     }
 }
+
+/**
+ * Context provided to link callbacks
+ */
+class LinkCallbackContext(
+    val here: Box,
+    val show: SlideShowInstance
+)
 
 /**
  * Represents a single step in a slideshow
@@ -221,7 +271,8 @@ data class SlideStep(
     val animated: Boolean,
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
-    val onExit: (suspend () -> Unit)?
+    val onExit: (suspend () -> Unit)?,
+    val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap()
 )
 
 /**
@@ -236,6 +287,32 @@ class SlideShowInstance(
 
     val currentStep: SlideStep?
         get() = if (currentStepIndex >= 0 && currentStepIndex < steps.size) steps[currentStepIndex] else null
+
+    /**
+     * Process templates in HTML, replacing {{propertyName}} with box properties/variables
+     */
+    private fun processTemplates(html: String): String {
+        return replaceTemplate(html) { placeholder, _ ->
+            // Try to get from box properties first
+            val property = hostBox.properties[placeholder]
+            if (property != null) {
+                return@replaceTemplate property.toString()
+            }
+            
+            // Try to get from Kotlin scripting context variables
+            try {
+                val variable = hostBox.ki.context.vars[placeholder]?.value
+                if (variable != null) {
+                    return@replaceTemplate variable.toString()
+                }
+            } catch (e: Exception) {
+                // Ignore if context not available
+            }
+            
+            // Try templates map and knownValues (from replacements.kt)
+            knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
+        }
+    }
 
     /**
      * Goes to a specific step
@@ -257,9 +334,12 @@ class SlideShowInstance(
 
         // Show note if present
         if (step.noteHtml != null) {
+            // Process templates in the HTML before sending to browser
+            val processedHtml = processTemplates(step.noteHtml)
+            
             _send(Message("show-slide-note").payload(
                 ShowSlideNote(
-                    html = step.noteHtml,
+                    html = processedHtml,
                     uid = step.noteAnchorBox?.id ?: hostBox.id,
                     persistent = step.persistent,
                     animated = step.animated,
@@ -281,6 +361,19 @@ class SlideShowInstance(
                 )
             ))
         }
+    }
+
+    /**
+     * Execute a custom link callback by name
+     */
+    suspend fun executeCallback(callbackName: String): Boolean {
+        val callback = currentStep?.linkCallbacks?.get(callbackName)
+        if (callback != null) {
+            val context = LinkCallbackContext(hostBox, this)
+            callback.invoke(context)
+            return true
+        }
+        return false
     }
 
     /**
@@ -359,9 +452,31 @@ fun Box.showNote(
     animated: Boolean = false,
     annotations: List<SlideAnnotation> = emptyList()
 ) {
+    // Process templates before displaying
+    val processedHtml = replaceTemplate(html) { placeholder, _ ->
+        // Try to get from box properties first
+        val property = this.properties[placeholder]
+        if (property != null) {
+            return@replaceTemplate property.toString()
+        }
+        
+        // Try to get from Kotlin scripting context variables
+        try {
+            val variable = this.ki.context.vars[placeholder]?.value
+            if (variable != null) {
+                return@replaceTemplate variable.toString()
+            }
+        } catch (e: Exception) {
+            // Ignore if context not available
+        }
+        
+        // Try templates map and knownValues (from replacements.kt)
+        knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
+    }
+    
     _send(Message("show-slide-note").payload(
         ShowSlideNote(
-            html = html,
+            html = processedHtml,
             uid = anchorBox?.id ?: this.id,
             persistent = persistent,
             animated = animated,

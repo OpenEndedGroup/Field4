@@ -513,12 +513,20 @@ class Server {
                     val slideShow = slideShowBox.getPropertyRaw("slideShow") as? SlideShowInstance
                     if (slideShow != null) {
                         GlobalScope.launch {
-                            when (cmd.command) {
-                                "next" -> slideShow.next()
-                                "previous" -> slideShow.previous()
-                                "start" -> slideShow.start()
-                                "home" -> slideShow.home()
-                                "stop" -> slideShow.stop()
+                            when {
+                                cmd.command == "next" -> slideShow.next()
+                                cmd.command == "previous" -> slideShow.previous()
+                                cmd.command == "start" -> slideShow.start()
+                                cmd.command == "home" -> slideShow.home()
+                                cmd.command == "stop" -> slideShow.stop()
+                                cmd.command.startsWith("callback:") -> {
+                                    // Handle custom link callbacks
+                                    val callbackName = cmd.command.substring(9) // Remove "callback:" prefix
+                                    val executed = slideShow.executeCallback(callbackName)
+                                    if (!executed) {
+                                        lprintln("warning,slideshow", "No callback registered for: $callbackName")
+                                    }
+                                }
                                 else -> {
                                     // Try to parse as a step number
                                     val stepNum = cmd.command.toIntOrNull()
