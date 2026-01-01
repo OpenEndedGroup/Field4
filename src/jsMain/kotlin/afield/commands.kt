@@ -290,8 +290,7 @@ fun insertFromWorkspace() {
         }
 
         directory.value.forEach { templateName ->
-            val hashCode = templateName.hashCode()
-            val loremIndex = (if (hashCode < 0) -hashCode else hashCode) % loremVariations.size
+            val loremIndex = kotlin.math.abs(templateName.hashCode()) % loremVariations.size
             val detail = loremVariations[loremIndex]
             
             val escapedTemplateName = escapeJs(templateName)
