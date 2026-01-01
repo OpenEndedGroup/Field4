@@ -268,14 +268,17 @@ fun insertFromWorkspace() {
 
         val options = eval("[]")
         
-        // Generate varied lorem ipsum for templates - moved outside loop
-        val loremVariations = listOf(
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-            "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-            "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-            "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-            "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium."
-        )
+        // Parse template metadata if available
+        val metadataList = try {
+            directory.metadata?.let { 
+                Json.decodeFromJsonElement<List<TemplateMetadata>>(it)
+            } ?: emptyList()
+        } catch (e: Exception) {
+            console.log("Failed to parse template metadata", e)
+            emptyList()
+        }
+        
+        val metadataMap = metadataList.associateBy { it.name }
         
         // Helper function to escape strings for JavaScript
         fun escapeJs(str: String): String {
@@ -290,17 +293,35 @@ fun insertFromWorkspace() {
         }
 
         directory.value.forEach { templateName ->
-            val loremIndex = kotlin.math.abs(templateName.hashCode()) % loremVariations.size
-            val detail = loremVariations[loremIndex]
+            val metadata = metadataMap[templateName]
+            
+            // Format the description and detail
+            val description = "Template"
+            
+            val detail = if (metadata != null && metadata.boxDocumentation.isNotEmpty()) {
+                buildString {
+                    // Add last modified date if available
+                    if (metadata.lastModified > 0) {
+                        val date = Date(metadata.lastModified.toDouble())
+                        append("Modified: ${date.toLocaleDateString()}\n\n")
+                    }
+                    
+                    // Add box documentation
+                    append(metadata.boxDocumentation)
+                }
+            } else {
+                "No documentation available"
+            }
             
             val escapedTemplateName = escapeJs(templateName)
+            val escapedDescription = escapeJs(description)
             val escapedDetail = escapeJs(detail)
             
             val e = """
             ({
                 id:'insert-$escapedTemplateName', 
                 label:'$escapedTemplateName', 
-                description: 'Template',
+                description: '$escapedDescription',
                 detail: '$escapedDetail',
                 canvasKeybinding: (event) => false, 
                 run: () => {

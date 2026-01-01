@@ -20,6 +20,13 @@ import kotlin.uuid.Uuid
 @Serializable
 data class RemoteTemplate(val name: String, val has_edn: Boolean)
 
+@Serializable
+data class TemplateMetadata(
+    val name: String,
+    val lastModified: Long,
+    val boxDocumentation: String // Formatted documentation from box metadata
+)
+
 // Configuration for template servers - comma-separated list of URLs
 val templateServers: List<String> by lazy {
     val serversEnv = System.getenv("AFIELD_TEMPLATE_SERVERS") ?: System.getProperty("afield.templateServers") ?: ""
@@ -83,6 +90,98 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
 }
 
 /**
+ * Extract documentation from template boxes.
+ * Accumulates metadata from all boxes, orders by increasing frame.y, 
+ * and creates a formatted documentation string.
+ */
+private fun extractTemplateMetadata(templatePath: String, templateName: String): TemplateMetadata? {
+    try {
+        val file = File(templatePath)
+        if (!file.exists()) return null
+        
+        val lastModified = file.lastModified()
+        val ednContent = file.readText()
+        
+        // Load boxes to extract metadata
+        val boxes = SavingContext().loadFromEdnText(ednContent, file.parent ?: "") { it }
+        
+        // Sort boxes by frame.y (increasing)
+        val sortedBoxes = boxes.sortedBy { it.frame.y }
+        
+        // Sidecar-able properties (excluding "code")
+        val sidecarProperties = listOf("vertex", "fragment", "compute", "task", "mesh")
+        
+        // Build documentation from metadata properties
+        val docBuilder = StringBuilder()
+        
+        sortedBoxes.forEach { box ->
+            // Get metadata from the box
+            val metadata = box.metadata
+            if (metadata.isNotEmpty()) {
+                // Parse YAML metadata
+                try {
+                    val parsed = parseMetadata(metadata)
+                    
+                    // Extract documentation fields if they exist
+                    parsed["doc"]?.let { doc ->
+                        if (doc.toString().isNotEmpty()) {
+                            docBuilder.append(doc.toString().trim()).append("\n\n")
+                        }
+                    }
+                    
+                    parsed["docPreamble"]?.let { preamble ->
+                        if (preamble.toString().isNotEmpty()) {
+                            docBuilder.append(preamble.toString().trim()).append("\n\n")
+                        }
+                    }
+                    
+                    parsed["boxPreamble"]?.let { boxPreamble ->
+                        if (boxPreamble.toString().isNotEmpty()) {
+                            docBuilder.append(boxPreamble.toString().trim()).append("\n\n")
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ignore metadata parsing errors
+                }
+            }
+        }
+        
+        // Add compressed box description
+        val boxDescriptions = sortedBoxes.mapNotNull { box ->
+            val boxName = box.name?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            
+            // Find which sidecar properties this box has
+            val properties = sidecarProperties.filter { prop ->
+                val value = box.getPropertyRaw(prop)
+                value is String && value.trim().isNotEmpty()
+            }
+            
+            if (properties.isEmpty()) {
+                boxName
+            } else {
+                "$boxName/{${properties.joinToString(",")}}"
+            }
+        }
+        
+        if (boxDescriptions.isNotEmpty()) {
+            if (docBuilder.isNotEmpty()) {
+                docBuilder.append("\n")
+            }
+            docBuilder.append("Boxes: ${boxDescriptions.joinToString(", ")}")
+        }
+        
+        return TemplateMetadata(
+            name = templateName,
+            lastModified = lastModified,
+            boxDocumentation = docBuilder.toString().trim()
+        )
+    } catch (e: Exception) {
+        lprintln("warning,template", "Failed to extract metadata for $templateName: ${e.message}")
+        return null
+    }
+}
+
+/**
  * Initialize template server querying in the background
  */
 private fun initializeTemplateServers() {
@@ -123,8 +222,41 @@ fun templating() {
 
         // Include remote templates from all configured servers
         val remoteTemplates = remoteTemplatesCache.values.flatten()
+        
+        val allTemplateNames = templates + templates2 + remoteTemplates
 
-        reply(Message("list").payload(Directory(command = "list", value = templates + templates2 + remoteTemplates)))
+        // Extract metadata for each template
+        val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
+            // Try to find the template file in order of preference
+            val paths = listOf(
+                "$home/$templateName.edn" to "$home",
+                "$home/$templateName/metadata.edn" to "$home/$templateName",
+                "$app/templates/$templateName.edn" to "$app/templates",
+                "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
+            )
+            
+            for ((templateFile, directory) in paths) {
+                val file = File(templateFile)
+                if (file.exists()) {
+                    return@mapNotNull extractTemplateMetadata(templateFile, templateName)
+                }
+            }
+            
+            // For remote templates, we don't have metadata yet
+            TemplateMetadata(
+                name = templateName,
+                lastModified = 0,
+                boxDocumentation = ""
+            )
+        }
+
+        reply(Message("list").payload(
+            Directory(
+                command = "list", 
+                value = allTemplateNames,
+                metadata = Json.encodeToJsonElement(templateMetadataList)
+            )
+        ))
 
         Handled.yes
     })
