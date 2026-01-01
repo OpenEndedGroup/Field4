@@ -6,24 +6,51 @@ import afield.stdlib.Delegation
 /**
  * SlideShow - A DSL for creating guided tours through Field documents
  *
+ * This system supports creating interactive guides with:
+ * - Step-by-step navigation
+ * - Custom link callbacks that execute Kotlin code
+ * - Template system for displaying live data
+ * - Annotations and visual highlighting
+ *
  * Example usage:
- * ```
+ * ```kotlin
+ * // Set up properties that templates can reference
+ * var counter = 0
+ * this.properties["counter"] = counter
+ * 
  * slideShow {
  *     step("Introduction") {
  *         note("""
- *             <h2>Welcome to Field!</h2>
- *             <p>This is a guided tour of the basics.</p>
- *             <p><a href="#" onclick="nextStep()">Continue →</a></p>
+ *             <h2>Welcome!</h2>
+ *             <p>Counter value: {{counter}}</p>
+ *             <p><a href="#custom:increment">Click to increment</a></p>
+ *             <p><a href="#slideshow:next">Continue →</a></p>
  *         """)
+ *         
+ *         // Register a callback for the custom link
+ *         linkCallback("increment") {
+ *             counter++
+ *             this@slideShow.properties["counter"] = counter
+ *             // Refresh to show new value
+ *             this@slideShow.slideShow?.goToStep(this@slideShow.slideShow!!.currentStepIndex)
+ *         }
+ *         
  *         selectBox(myBox)
- *     }
- *
- *     step("Code Editing") {
- *         note("Now let's look at some code...")
- *         selectBox(codeBox, property = "code", line = 5)
  *     }
  * }
  * ```
+ * 
+ * **Custom Links:**
+ * Use `#custom:callbackName` in href attributes, then register with `linkCallback("callbackName") { ... }`
+ *
+ * **Templates:**
+ * Use `{{propertyName}}` to reference box properties or Kotlin variables in the guide's scope
+ *
+ * **Navigation Links:**
+ * - `#slideshow:next` - Go to next step
+ * - `#slideshow:previous` - Go to previous step
+ * - `#slideshow:home` - Go to first step
+ * - `#slideshow:stop` - Stop the slideshow
  */
 
 // Extension property to store slideshow on a box

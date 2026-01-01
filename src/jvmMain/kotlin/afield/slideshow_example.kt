@@ -7,6 +7,57 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 /**
+ * Example slideshows demonstrating the slideshow DSL
+ *
+ * To use these, create boxes in Field and run the code in one of them.
+ * The slideshow will guide users through the document.
+ * 
+ * NEW FEATURES (as of this commit):
+ * - Custom link callbacks: Links can execute Kotlin code via #custom:callbackName
+ * - Template system: Use {{propertyName}} to reference box properties/variables
+ * 
+ * See interactiveGuideExample() for a comprehensive demonstration of these features.
+ */
+
+/**
+ * Simple example demonstrating custom link callbacks and templates
+ * 
+ * This is a minimal example showing the core new features:
+ * - Link callbacks that execute custom code
+ * - Template system for live data display
+ */
+fun Box.simpleInteractiveExample() {
+    // Variable that will be displayed and modified
+    var count = 0
+    this.properties["count"] = count
+    
+    val show = slideShow {
+        step("Interactive Example") {
+            note("""
+                <h3>Simple Interactive Guide</h3>
+                <p>Current count: <strong>{{count}}</strong></p>
+                <p><a href="#custom:increment">Increment</a></p>
+            """.trimIndent())
+            
+            linkCallback("increment") {
+                count++
+                this@simpleInteractiveExample.properties["count"] = count
+                // Refresh the step to show new count
+                this@simpleInteractiveExample.slideShow?.goToStep(
+                    this@simpleInteractiveExample.slideShow!!.currentStepIndex
+                )
+            }
+            
+            selectBox(this@simpleInteractiveExample)
+        }
+    }
+    
+    GlobalScope.launch {
+        show.start()
+    }
+}
+
+/**
  * Example slideshow demonstrating the slideshow DSL
  *
  * To use this, create boxes in Field and run this code in one of them.
