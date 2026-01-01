@@ -492,10 +492,43 @@ const globalPickMenu_custom = (options) => {
                 if (!ed || !cmd) return
 
                 ed.trigger("", cmd, (quickInput) => {
-                        quickInput.pick(options).then((selected) => {
-                                console.log("selection has happened, ", selected)
-                                selected.run()
+                        const qp = quickInput.createQuickPick()
+                        qp.matchOnDescription = true
+                        qp.matchOnDetail = true
+                        qp.placeholder = "Select an option..."
+                        
+                        // Store the original options with their run functions
+                        const optionMeta = []
+                        
+                        // Convert options to QuickPick items
+                        const items = options.map((opt) => {
+                                optionMeta.push(opt)
+                                return {
+                                        label: opt.label || "",
+                                        description: opt.description || "",
+                                        detail: opt.detail || "",
+                                        alwaysShow: true
+                                }
                         })
+                        
+                        qp.items = items
+                        
+                        qp.onDidAccept(() => {
+                                const idx = qp.items.indexOf(qp.selectedItems[0])
+                                const meta = idx >= 0 ? optionMeta[idx] : null
+                                if (!meta) return
+                                qp.hide()
+                                if (typeof meta.run === "function") {
+                                        console.log("selection has happened, ", meta)
+                                        meta.run()
+                                }
+                        })
+                        
+                        qp.onDidHide(() => {
+                                qp.dispose()
+                        })
+                        
+                        qp.show()
                 })
         })
 }

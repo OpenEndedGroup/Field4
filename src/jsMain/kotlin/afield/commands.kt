@@ -271,7 +271,10 @@ fun insertFromWorkspace() {
         directory.value.forEach {
             val e = """
             ({
-                id:'insert-$it', label:'$it', 
+                id:'insert-$it', 
+                label:'$it', 
+                description: 'Template',
+                detail: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
                 canvasKeybinding: (event) => false, 
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
