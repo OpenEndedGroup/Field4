@@ -220,11 +220,12 @@ fun templating() {
 
         val templates2 = SavingContext().listTemplates(app + "/templates/")
         val templates = SavingContext().listTemplates(home)
+        val templatesHome = SavingContext().listTemplates("$home/templates")
 
         // Include remote templates from all configured servers
         val remoteTemplates = remoteTemplatesCache.values.flatten()
         
-        val allTemplateNames = templates + templates2 + remoteTemplates
+        val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
 
         // Extract metadata for each template
         val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
@@ -232,6 +233,8 @@ fun templating() {
             val paths = listOf(
                 "$home/$templateName.edn" to "$home",
                 "$home/$templateName/metadata.edn" to "$home/$templateName",
+                "$home/templates/$templateName.edn" to "$home/templates",
+                "$home/templates/$templateName/metadata.edn" to "$home/templates/$templateName",
                 "$app/templates/$templateName.edn" to "$app/templates",
                 "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
             )
