@@ -168,26 +168,34 @@ fun templating() {
         
         // Calculate center of mass and translate boxes to mouse position if provided
         if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
-            // Calculate center of mass (average of all box centers)
-            val centers = loadedBoxes.map { box ->
-                val frame = box.frame
-                Pair(frame.cx, frame.cy)
+            // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+            // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+            // Translating them would incorrectly add the offset twice since they move with their parent.
+            val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
+            val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
+            
+            if (topLevelBoxes.isNotEmpty()) {
+                // Calculate center of mass (average of all top-level box centers)
+                val centers = topLevelBoxes.map { box ->
+                    val frame = box.frame
+                    Pair(frame.cx, frame.cy)
+                }
+                
+                val centerX = centers.map { it.first }.average()
+                val centerY = centers.map { it.second }.average()
+                
+                // Calculate translation needed to move center of mass to mouse position
+                val deltaX = exec.mouseX - centerX
+                val deltaY = exec.mouseY - centerY
+                
+                // Apply translation only to top-level boxes
+                topLevelBoxes.forEach { box ->
+                    val frame = box.frame
+                    box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+                }
+                
+                lprintln("Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
             }
-            
-            val centerX = centers.map { it.first }.average()
-            val centerY = centers.map { it.second }.average()
-            
-            // Calculate translation needed to move center of mass to mouse position
-            val deltaX = exec.mouseX - centerX
-            val deltaY = exec.mouseY - centerY
-            
-            // Apply translation to all boxes
-            loadedBoxes.forEach { box ->
-                val frame = box.frame
-                box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
-            }
-            
-            lprintln("Translated ${loadedBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
         }
         
         loadedBoxes.forEach {

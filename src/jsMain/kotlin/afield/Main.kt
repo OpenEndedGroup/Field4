@@ -889,15 +889,27 @@ suspend fun main() {
         val newSet = nestedIds.toSet()
         val toRemove = previous - newSet
 
-        val nestedRoot = ensureNestedOutputArea(parent)
-
-        toRemove.forEach { childId ->
-            val child = document.body!!.getElementsByClassName("box").asList()
-                .firstOrNull { it.unsafeCast<dynamic>().uid == childId } as? HTMLElement
-            if (child != null && child != parent) {
-                mainCanvas.appendChild(child)
+        fun removeChildrenFromNested(childIds: Set<String>) {
+            childIds.forEach { childId ->
+                val child = document.body!!.getElementsByClassName("box").asList()
+                    .firstOrNull { it.unsafeCast<dynamic>().uid == childId } as? HTMLElement
+                if (child != null && child != parent) {
+                    mainCanvas.appendChild(child)
+                }
             }
         }
+
+        // Only create nested output area if there are actually nested boxes
+        if (newSet.isEmpty()) {
+            // If there were previously nested boxes, remove them back to main canvas
+            removeChildrenFromNested(toRemove)
+            parent.unsafeCast<dynamic>().box_nested = emptyArray<String>()
+            return
+        }
+
+        val nestedRoot = ensureNestedOutputArea(parent)
+
+        removeChildrenFromNested(toRemove)
 
         nestedIds.forEach { childId ->
             val child = defaultCreate(childId)
