@@ -9,6 +9,7 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
 import web.url.URL
+import kotlin.js.Date
 
 var lastMouse = 0.0 to 0.0
 
@@ -259,7 +260,7 @@ fun insertFromWorkspace() {
     // Capture mouse position when the menu is opened
     val mouseX = lastMouse.first
     val mouseY = lastMouse.second
-    
+
     sendWithReply(Message("request-templates").payload(Directory(command = "list")), "templates") { message, payload ->
 
         println(" request templates got $message $payload")
@@ -267,19 +268,19 @@ fun insertFromWorkspace() {
         val directory = Json.decodeFromJsonElement<Directory>(message.payload!!)
 
         val options = eval("[]")
-        
+
         // Parse template metadata if available
         val metadataList = try {
-            directory.metadata?.let { 
+            directory.metadata?.let {
                 Json.decodeFromJsonElement<List<TemplateMetadata>>(it)
             } ?: emptyList()
         } catch (e: Exception) {
             console.log("Failed to parse template metadata: ${e.message}", e)
             emptyList()
         }
-        
+
         val metadataMap = metadataList.associateBy { it.name }
-        
+
         // Helper function to escape strings for JavaScript
         fun escapeJs(str: String): String {
             return str.replace("\\", "\\\\")
@@ -294,10 +295,10 @@ fun insertFromWorkspace() {
 
         directory.value.forEach { templateName ->
             val metadata = metadataMap[templateName]
-            
+
             // Format the description and detail
             val description = "Template"
-            
+
             val detail = if (metadata != null && metadata.boxDocumentation.isNotEmpty()) {
                 buildString {
                     // Add last modified date if available
@@ -306,18 +307,18 @@ fun insertFromWorkspace() {
                         val date = Date(metadata.lastModified)
                         append("Modified: ${date.toLocaleDateString()}\n\n")
                     }
-                    
+
                     // Add box documentation
                     append(metadata.boxDocumentation)
                 }
             } else {
                 "No documentation available"
             }
-            
+
             val escapedTemplateName = escapeJs(templateName)
             val escapedDescription = escapeJs(description)
             val escapedDetail = escapeJs(detail)
-            
+
             val e = """
             ({
                 id:'insert-$escapedTemplateName', 
