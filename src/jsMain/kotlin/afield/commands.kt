@@ -268,19 +268,30 @@ fun insertFromWorkspace() {
 
         val options = eval("[]")
 
-        directory.value.forEach {
+        directory.value.forEach { templateName ->
+            // Generate varied lorem ipsum for each template
+            val loremVariations = listOf(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+                "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+                "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+                "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium."
+            )
+            val loremIndex = templateName.hashCode().absoluteValue % loremVariations.size
+            val detail = loremVariations[loremIndex]
+            
             val e = """
             ({
-                id:'insert-$it', 
-                label:'$it', 
+                id:'insert-$templateName', 
+                label:'$templateName', 
                 description: 'Template',
-                detail: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+                detail: '$detail',
                 canvasKeybinding: (event) => false, 
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
                             command:"insert",
-                            value:["$it"],
+                            value:["$templateName"],
                             mouseX: $mouseX,
                             mouseY: $mouseY
                         })
