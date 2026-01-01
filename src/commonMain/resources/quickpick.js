@@ -514,6 +514,7 @@ const globalPickMenu_custom = (options) => {
                         qp.items = items
                         
                         qp.onDidAccept(() => {
+                                if (!qp.selectedItems || qp.selectedItems.length === 0) return
                                 const idx = qp.items.indexOf(qp.selectedItems[0])
                                 const meta = idx >= 0 ? optionMeta[idx] : null
                                 if (!meta) return
