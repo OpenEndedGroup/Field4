@@ -267,17 +267,69 @@ fun insertFromWorkspace() {
         val directory = Json.decodeFromJsonElement<Directory>(message.payload!!)
 
         val options = eval("[]")
+        
+        // Parse template metadata if available
+        val metadataList = try {
+            directory.metadata?.let { 
+                Json.decodeFromJsonElement<List<TemplateMetadata>>(it)
+            } ?: emptyList()
+        } catch (e: Exception) {
+            console.log("Failed to parse template metadata: ${e.message}", e)
+            emptyList()
+        }
+        
+        val metadataMap = metadataList.associateBy { it.name }
+        
+        // Helper function to escape strings for JavaScript
+        fun escapeJs(str: String): String {
+            return str.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+                .replace("\u2028", "\\u2028")  // Unicode line separator
+                .replace("\u2029", "\\u2029")  // Unicode paragraph separator
+        }
 
-        directory.value.forEach {
+        directory.value.forEach { templateName ->
+            val metadata = metadataMap[templateName]
+            
+            // Format the description and detail
+            val description = "Template"
+            
+            val detail = if (metadata != null && metadata.boxDocumentation.isNotEmpty()) {
+                buildString {
+                    // Add last modified date if available
+                    if (metadata.lastModified > 0) {
+                        // lastModified is already in milliseconds
+                        val date = Date(metadata.lastModified)
+                        append("Modified: ${date.toLocaleDateString()}\n\n")
+                    }
+                    
+                    // Add box documentation
+                    append(metadata.boxDocumentation)
+                }
+            } else {
+                "No documentation available"
+            }
+            
+            val escapedTemplateName = escapeJs(templateName)
+            val escapedDescription = escapeJs(description)
+            val escapedDetail = escapeJs(detail)
+            
             val e = """
             ({
-                id:'insert-$it', label:'$it', 
+                id:'insert-$escapedTemplateName', 
+                label:'$escapedTemplateName', 
+                description: '$escapedDescription',
+                detail: '$escapedDetail',
                 canvasKeybinding: (event) => false, 
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
                             command:"insert",
-                            value:["$it"],
+                            value:["$escapedTemplateName"],
                             mouseX: $mouseX,
                             mouseY: $mouseY
                         })

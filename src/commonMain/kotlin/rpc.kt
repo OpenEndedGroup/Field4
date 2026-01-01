@@ -196,8 +196,16 @@ data class Describe_actions(val uid: String, val value: List<Action_Desc>)
 class Directory(
     val command: String, 
     val value: List<String> = emptyList<String>(),
+    val metadata: JsonElement? = null,
     val mouseX: Double? = null,
     val mouseY: Double? = null
+)
+
+@Serializable
+data class TemplateMetadata(
+    val name: String,
+    val lastModified: Long,
+    val boxDocumentation: String
 )
 
 @Serializable
