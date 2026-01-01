@@ -40,12 +40,12 @@ fun Box.simpleInteractiveExample() {
             """.trimIndent())
             
             linkCallback("increment") {
+                val box = this@simpleInteractiveExample
+                val show = box.slideShow!!
                 count++
-                this@simpleInteractiveExample.properties["count"] = count
+                box.properties["count"] = count
                 // Refresh the step to show new count
-                this@simpleInteractiveExample.slideShow?.goToStep(
-                    this@simpleInteractiveExample.slideShow!!.currentStepIndex
-                )
+                show.goToStep(show.currentStepIndex)
             }
             
             selectBox(this@simpleInteractiveExample)
@@ -454,18 +454,22 @@ fun Box.interactiveGuideExample() {
             
             // Register callbacks for the links
             linkCallback("incrementCounter") {
+                val box = this@interactiveGuideExample
+                val show = box.slideShow!!
                 clickCount++
-                this@interactiveGuideExample.properties["clickCount"] = clickCount
+                box.properties["clickCount"] = clickCount
                 // Refresh the current step to show updated count
-                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                show.goToStep(show.currentStepIndex)
                 lprintln("info,slideshow", "Counter incremented to $clickCount")
             }
             
             linkCallback("resetCounter") {
+                val box = this@interactiveGuideExample
+                val show = box.slideShow!!
                 clickCount = 0
-                this@interactiveGuideExample.properties["clickCount"] = clickCount
+                box.properties["clickCount"] = clickCount
                 // Refresh the current step to show updated count
-                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                show.goToStep(show.currentStepIndex)
                 lprintln("info,slideshow", "Counter reset")
             }
             
@@ -518,23 +522,29 @@ fun Box.interactiveGuideExample() {
             """.trimIndent())
             
             linkCallback("choiceA") {
+                val box = this@interactiveGuideExample
+                val show = box.slideShow!!
                 userChoice = "Performance Mode"
-                this@interactiveGuideExample.properties["userChoice"] = userChoice
-                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                box.properties["userChoice"] = userChoice
+                show.goToStep(show.currentStepIndex)
                 notify("Selected: Performance Mode", "slideshow")
             }
             
             linkCallback("choiceB") {
+                val box = this@interactiveGuideExample
+                val show = box.slideShow!!
                 userChoice = "Quality Mode"
-                this@interactiveGuideExample.properties["userChoice"] = userChoice
-                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                box.properties["userChoice"] = userChoice
+                show.goToStep(show.currentStepIndex)
                 notify("Selected: Quality Mode", "slideshow")
             }
             
             linkCallback("choiceC") {
+                val box = this@interactiveGuideExample
+                val show = box.slideShow!!
                 userChoice = "Balanced Mode"
-                this@interactiveGuideExample.properties["userChoice"] = userChoice
-                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                box.properties["userChoice"] = userChoice
+                show.goToStep(show.currentStepIndex)
                 notify("Selected: Balanced Mode", "slideshow")
             }
             

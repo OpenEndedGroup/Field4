@@ -29,10 +29,12 @@ import afield.stdlib.Delegation
  *         
  *         // Register a callback for the custom link
  *         linkCallback("increment") {
+ *             val box = this@myBox
+ *             val show = box.slideShow!!
  *             counter++
- *             this@slideShow.properties["counter"] = counter
+ *             box.properties["counter"] = counter
  *             // Refresh to show new value
- *             this@slideShow.slideShow?.goToStep(this@slideShow.slideShow!!.currentStepIndex)
+ *             show.goToStep(show.currentStepIndex)
  *         }
  *         
  *         selectBox(myBox)

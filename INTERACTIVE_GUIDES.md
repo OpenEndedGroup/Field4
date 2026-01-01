@@ -52,10 +52,12 @@ slideShow {
         """)
         
         linkCallback("increment") {
+            val box = this@myBox
+            val show = box.slideShow!!
             count++
-            this@myBox.properties["count"] = count
+            box.properties["count"] = count
             // Refresh to show new value
-            this@myBox.slideShow?.goToStep(this@myBox.slideShow!!.currentStepIndex)
+            show.goToStep(show.currentStepIndex)
         }
     }
 }
@@ -131,15 +133,19 @@ slideShow {
         """)
         
         linkCallback("optionA") {
+            val box = this@myBox
+            val show = box.slideShow!!
             choice = "Option A"
-            this@myBox.properties["choice"] = choice
-            this@myBox.slideShow?.goToStep(this@myBox.slideShow!!.currentStepIndex)
+            box.properties["choice"] = choice
+            show.goToStep(show.currentStepIndex)
         }
         
         linkCallback("optionB") {
+            val box = this@myBox
+            val show = box.slideShow!!
             choice = "Option B"
-            this@myBox.properties["choice"] = choice
-            this@myBox.slideShow?.goToStep(this@myBox.slideShow!!.currentStepIndex)
+            box.properties["choice"] = choice
+            show.goToStep(show.currentStepIndex)
         }
     }
 }
