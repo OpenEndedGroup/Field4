@@ -464,6 +464,7 @@ class KotlinExecution : BoxExecution {
     private fun completeYamlMetadata(box: Box, allCode: String, position: Int, line: Int, column: Int): Completion {
         // Helper function to calculate bounds for replacing a prefix
         fun calculateBounds(lines: List<String>, currentLineIndex: Int, prefixInLine: String, currentPosition: Int): Pair<Int, Int> {
+            // Calculate line start position, accounting for newline characters
             val lineStart = lines.take(currentLineIndex).sumOf { it.length + 1 }
             val beforeCursor = lines[currentLineIndex].substring(0, minOf(column, lines[currentLineIndex].length))
             val prefixStart = beforeCursor.lastIndexOf(prefixInLine)
@@ -539,18 +540,21 @@ class KotlinExecution : BoxExecution {
             .find(beforeCursor)
         
         if (tagsMultiLineMatch != null || tagsSingleLineMatch != null) {
-            // Complete tag values - collect existing tags from the workspace
-            val existingTags = collectTagsFromWorkspace(box)
             val prefix = tagsMultiLineMatch?.groupValues?.getOrNull(1) 
                 ?: tagsSingleLineMatch?.groupValues?.getOrNull(1) 
                 ?: ""
             
-            // Calculate bounds to replace the prefix
-            if (prefix.isNotEmpty()) {
-                val bounds = calculateBounds(lines, currentLineIndex, prefix, position)
-                boundsStart = bounds.first
-                boundsEnd = bounds.second
-            }
+            // Only collect tags if we have a meaningful context
+            if (tagsMultiLineMatch != null || tagsSingleLineMatch != null) {
+                // Complete tag values - collect existing tags from the workspace
+                val existingTags = collectTagsFromWorkspace(box)
+                
+                // Calculate bounds to replace the prefix
+                if (prefix.isNotEmpty()) {
+                    val bounds = calculateBounds(lines, currentLineIndex, prefix, position)
+                    boundsStart = bounds.first
+                    boundsEnd = bounds.second
+                }
             
             existingTags.forEach { tag ->
                 if (tag.startsWith(prefix, ignoreCase = true)) {
@@ -597,6 +601,7 @@ class KotlinExecution : BoxExecution {
                     }
                 }
             }
+          }
         }
         
         return Completion(
@@ -608,11 +613,12 @@ class KotlinExecution : BoxExecution {
     
     private fun collectTagsFromWorkspace(box: Box): Set<String> {
         val tags = mutableSetOf<String>()
+        val maxBoxesToScan = 100  // Limit scanning for performance
         
         // Collect tags from all boxes in the current workspace
         try {
             val root = box.root
-            root.children.forEach { child ->
+            root.children.take(maxBoxesToScan).forEach { child ->
                 val metadata = child.metadata
                 if (metadata.isNotBlank()) {
                     // Pass "tags" as the key to extract
@@ -634,7 +640,7 @@ class KotlinExecution : BoxExecution {
             }
         } catch (e: Exception) {
             // If we can't collect tags, just return what we have
-            lprintln("warning,completion", "Failed to collect tags from workspace")
+            lprintln("warning,completion", "Failed to collect tags from workspace: ${e.javaClass.simpleName}")
         }
         
         return tags
