@@ -12,7 +12,9 @@ Field's guide system now supports:
 
 ### How it Works
 
-You can define links in your guide that trigger custom Kotlin code when clicked:
+You can define links in your guide that trigger custom Kotlin code when clicked. The callback automatically receives a context with:
+- **`here`**: The box hosting the slideshow (non-null)
+- **`show`**: The current slideshow instance (non-null)
 
 ```kotlin
 slideShow {
@@ -22,9 +24,9 @@ slideShow {
             <p><a href="#custom:myCallback">Click this link</a></p>
         """)
         
-        // Register the callback
+        // Register the callback - receives 'here' (the box) and 'show' (the slideshow)
         linkCallback("myCallback") {
-            // Your code here
+            // Your code here - 'here' and 'show' are automatically available
             lprintln("Link was clicked!")
         }
     }
@@ -52,10 +54,8 @@ slideShow {
         """)
         
         linkCallback("increment") {
-            val box = this@myBox
-            val show = box.slideShow!!
             count++
-            box.properties["count"] = count
+            here.properties["count"] = count
             // Refresh to show new value
             show.goToStep(show.currentStepIndex)
         }
@@ -133,18 +133,14 @@ slideShow {
         """)
         
         linkCallback("optionA") {
-            val box = this@myBox
-            val show = box.slideShow!!
             choice = "Option A"
-            box.properties["choice"] = choice
+            here.properties["choice"] = choice
             show.goToStep(show.currentStepIndex)
         }
         
         linkCallback("optionB") {
-            val box = this@myBox
-            val show = box.slideShow!!
             choice = "Option B"
-            box.properties["choice"] = choice
+            here.properties["choice"] = choice
             show.goToStep(show.currentStepIndex)
         }
     }

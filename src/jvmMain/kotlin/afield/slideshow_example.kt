@@ -40,10 +40,8 @@ fun Box.simpleInteractiveExample() {
             """.trimIndent())
             
             linkCallback("increment") {
-                val box = this@simpleInteractiveExample
-                val show = box.slideShow!!
                 count++
-                box.properties["count"] = count
+                here.properties["count"] = count
                 // Refresh the step to show new count
                 show.goToStep(show.currentStepIndex)
             }
@@ -454,20 +452,16 @@ fun Box.interactiveGuideExample() {
             
             // Register callbacks for the links
             linkCallback("incrementCounter") {
-                val box = this@interactiveGuideExample
-                val show = box.slideShow!!
                 clickCount++
-                box.properties["clickCount"] = clickCount
+                here.properties["clickCount"] = clickCount
                 // Refresh the current step to show updated count
                 show.goToStep(show.currentStepIndex)
                 lprintln("info,slideshow", "Counter incremented to $clickCount")
             }
             
             linkCallback("resetCounter") {
-                val box = this@interactiveGuideExample
-                val show = box.slideShow!!
                 clickCount = 0
-                box.properties["clickCount"] = clickCount
+                here.properties["clickCount"] = clickCount
                 // Refresh the current step to show updated count
                 show.goToStep(show.currentStepIndex)
                 lprintln("info,slideshow", "Counter reset")
@@ -522,28 +516,22 @@ fun Box.interactiveGuideExample() {
             """.trimIndent())
             
             linkCallback("choiceA") {
-                val box = this@interactiveGuideExample
-                val show = box.slideShow!!
                 userChoice = "Performance Mode"
-                box.properties["userChoice"] = userChoice
+                here.properties["userChoice"] = userChoice
                 show.goToStep(show.currentStepIndex)
                 notify("Selected: Performance Mode", "slideshow")
             }
             
             linkCallback("choiceB") {
-                val box = this@interactiveGuideExample
-                val show = box.slideShow!!
                 userChoice = "Quality Mode"
-                box.properties["userChoice"] = userChoice
+                here.properties["userChoice"] = userChoice
                 show.goToStep(show.currentStepIndex)
                 notify("Selected: Quality Mode", "slideshow")
             }
             
             linkCallback("choiceC") {
-                val box = this@interactiveGuideExample
-                val show = box.slideShow!!
                 userChoice = "Balanced Mode"
-                box.properties["userChoice"] = userChoice
+                here.properties["userChoice"] = userChoice
                 show.goToStep(show.currentStepIndex)
                 notify("Selected: Balanced Mode", "slideshow")
             }

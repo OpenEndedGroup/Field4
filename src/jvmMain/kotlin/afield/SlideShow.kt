@@ -29,10 +29,8 @@ import afield.stdlib.Delegation
  *         
  *         // Register a callback for the custom link
  *         linkCallback("increment") {
- *             val box = this@myBox
- *             val show = box.slideShow!!
  *             counter++
- *             box.properties["counter"] = counter
+ *             here.properties["counter"] = counter
  *             // Refresh to show new value
  *             show.goToStep(show.currentStepIndex)
  *         }
@@ -104,7 +102,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private val annotations = mutableListOf<SlideAnnotation>()
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
-    private val linkCallbacks = mutableMapOf<String, suspend () -> Unit>()
+    private val linkCallbacks = mutableMapOf<String, suspend LinkCallbackContext.() -> Unit>()
 
     /**
      * Sets the HTML note to display for this step
@@ -176,8 +174,12 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
      * Register a callback for a custom link in the note HTML.
      * Use in markdown as: <a href="#custom:linkName">Click me</a>
      * or in markdown link syntax: [Click me](#custom:linkName)
+     * 
+     * The callback receives a LinkCallbackContext with:
+     * - here: the box hosting the slideshow
+     * - show: the current slideshow instance (non-null)
      */
-    fun linkCallback(name: String, action: suspend () -> Unit) {
+    fun linkCallback(name: String, action: suspend LinkCallbackContext.() -> Unit) {
         linkCallbacks[name] = action
     }
 
@@ -247,6 +249,14 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
 }
 
 /**
+ * Context provided to link callbacks
+ */
+class LinkCallbackContext(
+    val here: Box,
+    val show: SlideShowInstance
+)
+
+/**
  * Represents a single step in a slideshow
  */
 data class SlideStep(
@@ -262,7 +272,7 @@ data class SlideStep(
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?,
-    val linkCallbacks: Map<String, suspend () -> Unit> = emptyMap()
+    val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap()
 )
 
 /**
@@ -359,7 +369,8 @@ class SlideShowInstance(
     suspend fun executeCallback(callbackName: String): Boolean {
         val callback = currentStep?.linkCallbacks?.get(callbackName)
         if (callback != null) {
-            callback.invoke()
+            val context = LinkCallbackContext(hostBox, this)
+            callback.invoke(context)
             return true
         }
         return false
