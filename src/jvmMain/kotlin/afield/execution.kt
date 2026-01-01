@@ -462,6 +462,18 @@ class KotlinExecution : BoxExecution {
     }
 
     private fun completeYamlMetadata(box: Box, allCode: String, position: Int, line: Int, column: Int): Completion {
+        // Helper function to calculate bounds for replacing a prefix
+        fun calculateBounds(lines: List<String>, currentLineIndex: Int, prefixInLine: String, currentPosition: Int): Pair<Int, Int> {
+            val lineStart = lines.take(currentLineIndex).sumOf { it.length + 1 }
+            val beforeCursor = lines[currentLineIndex].substring(0, minOf(column, lines[currentLineIndex].length))
+            val prefixStart = beforeCursor.lastIndexOf(prefixInLine)
+            return if (prefixStart >= 0) {
+                Pair(lineStart + prefixStart, currentPosition)
+            } else {
+                Pair(currentPosition, currentPosition)
+            }
+        }
+        
         // Get the current line text to understand context
         val lines = allCode.split("\n")
         val currentLineIndex = line - 1
@@ -493,11 +505,11 @@ class KotlinExecution : BoxExecution {
         if (keyMatch != null) {
             // Complete YAML keys
             val prefix = keyMatch.groupValues.getOrNull(1) ?: ""
-            // Calculate bounds to replace the prefix
-            val prefixStart = keyMatch.range.first + keyMatch.groupValues[0].indexOf(prefix)
-            val lineStart = lines.take(currentLineIndex).sumOf { it.length + 1 }
-            boundsStart = lineStart + prefixStart
-            boundsEnd = position
+            if (prefix.isNotEmpty()) {
+                val bounds = calculateBounds(lines, currentLineIndex, prefix, position)
+                boundsStart = bounds.first
+                boundsEnd = bounds.second
+            }
             
             commonKeys.forEach { (key, description) ->
                 if (key.startsWith(prefix, ignoreCase = true)) {
@@ -514,29 +526,30 @@ class KotlinExecution : BoxExecution {
             }
         }
         
-        // Check if we're completing a tag value (after "tags:" and optional "  - ")
-        val tagsValuePattern = Regex("tags:\\s*(?:(?:\\n\\s*-\\s*[\\w\\-]+)*\\n\\s*-\\s*)?([a-zA-Z0-9_\\-]*)$", RegexOption.MULTILINE)
-        val tagsOneLine = Regex("tags:\\s*\\[.*?,\\s*([a-zA-Z0-9_\\-]*)$")
-        
-        // Check multi-line list format
+        // Check if we're completing a tag value
+        // Pattern matches: "tags:" followed by optional list items, then the current item prefix
         val textBeforeCursor = allCode.substring(0, position)
-        val tagsMatch = tagsValuePattern.find(textBeforeCursor)
-        val tagsOneLineMatch = tagsOneLine.find(beforeCursor)
         
-        if (tagsMatch != null || tagsOneLineMatch != null) {
+        // Match multi-line list format: tags:\n  - item\n  - [prefix]
+        val tagsMultiLineMatch = Regex("tags:\\s*(?:\\n\\s*-\\s*[\\w\\-]+)*\\n\\s*-\\s*([a-zA-Z0-9_\\-]*)$", RegexOption.MULTILINE)
+            .find(textBeforeCursor)
+        
+        // Match single-line array format: tags: [item1, item2, [prefix]
+        val tagsSingleLineMatch = Regex("tags:\\s*\\[(?:[^\\]]*,\\s*)?([a-zA-Z0-9_\\-]*)$")
+            .find(beforeCursor)
+        
+        if (tagsMultiLineMatch != null || tagsSingleLineMatch != null) {
             // Complete tag values - collect existing tags from the workspace
             val existingTags = collectTagsFromWorkspace(box)
-            val prefix = tagsMatch?.groupValues?.getOrNull(1) ?: tagsOneLineMatch?.groupValues?.getOrNull(1) ?: ""
+            val prefix = tagsMultiLineMatch?.groupValues?.getOrNull(1) 
+                ?: tagsSingleLineMatch?.groupValues?.getOrNull(1) 
+                ?: ""
             
             // Calculate bounds to replace the prefix
-            if (tagsMatch != null) {
-                boundsStart = position - prefix.length
-                boundsEnd = position
-            } else if (tagsOneLineMatch != null) {
-                val prefixStart = tagsOneLineMatch.range.first + tagsOneLineMatch.groupValues[0].indexOf(prefix)
-                val lineStart = lines.take(currentLineIndex).sumOf { it.length + 1 }
-                boundsStart = lineStart + prefixStart
-                boundsEnd = position
+            if (prefix.isNotEmpty()) {
+                val bounds = calculateBounds(lines, currentLineIndex, prefix, position)
+                boundsStart = bounds.first
+                boundsEnd = bounds.second
             }
             
             existingTags.forEach { tag ->
@@ -602,17 +615,21 @@ class KotlinExecution : BoxExecution {
             root.children.forEach { child ->
                 val metadata = child.metadata
                 if (metadata.isNotBlank()) {
+                    // Pass "tags" as the key to extract
                     val childTags = tagsForString(metadata, "tags")
                     childTags?.let { tags.addAll(it) }
                 }
             }
             
             // Also try to collect from saved documents in the workspace directory
-            val workspaceDir = File(thisSessionInfo.get().filename).parentFile
-            if (workspaceDir?.exists() == true) {
-                val tagDb = tagDatabase(workspaceDir.absolutePath)
-                tagDb.forEach { (_, tagList) ->
-                    tags.addAll(tagList)
+            val filename = thisSessionInfo.get().filename
+            if (filename != null) {
+                val workspaceDir = File(filename).parentFile
+                if (workspaceDir?.exists() == true) {
+                    val tagDb = tagDatabase(workspaceDir.absolutePath)
+                    tagDb.forEach { (_, tagList) ->
+                        tags.addAll(tagList)
+                    }
                 }
             }
         } catch (e: Exception) {
