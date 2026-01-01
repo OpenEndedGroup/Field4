@@ -338,6 +338,7 @@ fun templating() {
             it.resyncAll()
         }
         si.topologyGeneration++
+        si.autorunBoxes(loadedBoxes)
 
         Handled.yes
     })

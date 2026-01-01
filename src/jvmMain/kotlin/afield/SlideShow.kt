@@ -2,6 +2,9 @@ package afield
 
 import afield.logger.lprintln
 import afield.stdlib.Delegation
+import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.parser.MarkdownParser
 
 /**
  * SlideShow - A DSL for creating guided tours through Field documents
@@ -276,6 +279,50 @@ data class SlideStep(
 )
 
 /**
+ * Markdown renderer for slideshow notes with nav shortcuts.
+ */
+object SlideMarkdown {
+    private val flavour = CommonMarkFlavourDescriptor()
+    private val parser = MarkdownParser(flavour)
+    private val navPattern = Regex("""\[\[\s*(next|previous|prev|back|home|start|stop|finish)(?:\s*:\s*([^\]]+))?]]""", RegexOption.IGNORE_CASE)
+
+    fun render(markdown: String): String {
+        val mdWithNav = injectNavShortcuts(markdown)
+        val parsedTree = parser.buildMarkdownTreeFromString(mdWithNav)
+        return HtmlGenerator(mdWithNav, parsedTree, flavour).generateHtml()
+    }
+
+    private fun injectNavShortcuts(markdown: String): String {
+        return navPattern.replace(markdown) { m ->
+            val keyword = m.groupValues[1].lowercase()
+            val target = when (keyword) {
+                "next", "start" -> "next"
+                "previous", "prev", "back" -> "previous"
+                "home" -> "home"
+                "stop", "finish" -> "stop"
+                else -> keyword
+            }
+            val defaultKey = when (keyword) {
+                "start" -> "start"
+                "finish" -> "finish"
+                else -> target
+            }
+            val label = m.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() } ?: defaultLabel(defaultKey)
+            "[${label}](#slideshow:$target)"
+        }
+    }
+
+    private fun defaultLabel(target: String): String = when (target) {
+        "start" -> "Start →"
+        "next" -> "Next →"
+        "previous" -> "← Back"
+        "home" -> "Home"
+        "stop", "finish" -> "Finish"
+        else -> target
+    }
+}
+
+/**
  * A running instance of a slideshow
  */
 class SlideShowInstance(
@@ -442,6 +489,11 @@ fun Box.selectAndEdit(property: String = "code", line: Int? = null, highlight: I
     ))
 }
 
+fun SlideStepBuilder.markdownNote(markdown: String, persistent: Boolean = false, anchorBox: Box? = null, animated: Boolean = false) {
+    val html = SlideMarkdown.render(markdown)
+    note(html, persistent, anchorBox, animated)
+}
+
 /**
  * Show a slide note
  */
@@ -483,6 +535,17 @@ fun Box.showNote(
             annotations = annotations
         )
     ))
+}
+
+fun Box.showMarkdownNote(
+    markdown: String,
+    persistent: Boolean = false,
+    anchorBox: Box? = this,
+    animated: Boolean = false,
+    annotations: List<SlideAnnotation> = emptyList()
+) {
+    val html = SlideMarkdown.render(markdown)
+    showNote(html, persistent, anchorBox, animated, annotations)
 }
 
 /**

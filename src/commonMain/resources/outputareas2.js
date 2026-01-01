@@ -231,7 +231,7 @@ function readBoxProperty(box, property) {
         return "";
 }
 
-function buildAiChatPayload(uid, property, prompt) {
+function buildAiChatPayload(uid, property, prompt, images = []) {
         let code = "";
         if (window.globalEditor && window.currentSelectedCode && window.currentSelectedCode.length === 1) {
                 const currentUid = window.currentSelectedCode[0].uid;
@@ -250,7 +250,8 @@ function buildAiChatPayload(uid, property, prompt) {
                 startLine: 0,
                 extraPrompt: prompt,
                 property: property || "code",
-                kind: "general"
+                kind: "general",
+                images: images || []
         };
 }
 
@@ -303,6 +304,14 @@ function ensureAiChat(container, uid, property) {
         const inputWrap = document.createElement("div");
         inputWrap.className = "ai-chat-input";
 
+        const preview = document.createElement("div");
+        preview.className = "ai-chat-preview";
+        preview.style.display = "none";
+        preview.style.gap = "8px";
+        preview.style.flexWrap = "wrap";
+        preview.style.marginBottom = "6px";
+        preview.style.alignItems = "center";
+
         const textarea = document.createElement("textarea");
         textarea.rows = 4;
         textarea.placeholder = "Ask about this box...";
@@ -315,17 +324,84 @@ function ensureAiChat(container, uid, property) {
                 send("ai-assist", payload);
         }
 
+        const attachments = [];
+
+        function renderPreview() {
+                preview.innerHTML = "";
+                if (attachments.length === 0) {
+                        preview.style.display = "none";
+                        return;
+                }
+                preview.style.display = "flex";
+                attachments.forEach((src, idx) => {
+                        const wrap = document.createElement("div");
+                        wrap.className = "ai-chat-thumb";
+                        wrap.style.position = "relative";
+
+                        const img = document.createElement("img");
+                        img.src = src;
+                        img.alt = `attachment ${idx + 1}`;
+                        img.style.maxWidth = "72px";
+                        img.style.maxHeight = "72px";
+                        img.style.borderRadius = "4px";
+                        img.style.border = "1px solid rgba(255,255,255,0.25)";
+                        img.style.display = "block";
+
+                        const remove = document.createElement("button");
+                        remove.textContent = "x";
+                        remove.title = "Remove image";
+                        remove.style.position = "absolute";
+                        remove.style.top = "-6px";
+                        remove.style.right = "-6px";
+                        remove.style.width = "20px";
+                        remove.style.height = "20px";
+                        remove.style.borderRadius = "50%";
+                        remove.style.border = "none";
+                        remove.style.background = "#333";
+                        remove.style.color = "#fff";
+                        remove.style.cursor = "pointer";
+                        remove.addEventListener("click", (e) => {
+                                e.preventDefault();
+                                attachments.splice(idx, 1);
+                                renderPreview();
+                        });
+
+                        wrap.appendChild(img);
+                        wrap.appendChild(remove);
+                        preview.appendChild(wrap);
+                });
+        }
+
+        function addImageAttachment(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                        const result = e.target?.result;
+                        if (typeof result === "string") {
+                                attachments.push(result);
+                                renderPreview();
+                        }
+                };
+                reader.readAsDataURL(file);
+        }
+
         function submitPrompt() {
                 const text = textarea.value.trim();
-                if (!text) return;
+                if (!text && attachments.length === 0) return;
                 textarea.value = "";
                 const history = container.__aiChatHistory || "";
                 const nextHistory = history ? history + "\n" : "";
-                container.__aiChatHistory = nextHistory + "<<you>>\n" + text;
+                const imageMarkdown = attachments.map((src, idx) => `![image ${idx + 1}](${src})`).join("\n");
+                const withImages = imageMarkdown
+                        ? [text, imageMarkdown].filter((part) => part && part.length > 0).join("\n")
+                        : text;
+                container.__aiChatHistory = nextHistory + "<<you>>\n" + withImages;
                 messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory);
                 applyCodeHighlight(messages);
                 messages.scrollTop = messages.scrollHeight;
-                sendAiChat(buildAiChatPayload(uid, root.dataset.property, text));
+                const images = attachments.slice();
+                sendAiChat(buildAiChatPayload(uid, root.dataset.property, text, images));
+                attachments.length = 0;
+                renderPreview();
         }
 
         textarea.addEventListener("keydown", (event) => {
@@ -336,6 +412,26 @@ function ensureAiChat(container, uid, property) {
         });
         sendButton.addEventListener("click", submitPrompt);
 
+        textarea.addEventListener("paste", (event) => {
+                const items = event.clipboardData?.items;
+                if (!items || items.length === 0) return;
+                let handled = false;
+                for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        if (item && item.type && item.type.startsWith("image/")) {
+                                const file = item.getAsFile();
+                                if (file) {
+                                        addImageAttachment(file);
+                                        handled = true;
+                                }
+                        }
+                }
+                if (handled) {
+                        event.preventDefault();
+                }
+        });
+
+        inputWrap.appendChild(preview);
         inputWrap.appendChild(textarea);
         inputWrap.appendChild(sendButton);
 
@@ -344,7 +440,7 @@ function ensureAiChat(container, uid, property) {
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, uid, property: property || "code"};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code"};
         return container.__aiChat;
 }
 

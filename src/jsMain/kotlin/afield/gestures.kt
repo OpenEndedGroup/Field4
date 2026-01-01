@@ -56,7 +56,7 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
         appendTo(svg)
     }
 
-    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, opacity)
+    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, opacity, "rgba(128,128,128,$opacity)")
 }
 
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
@@ -409,10 +409,10 @@ fun sampleDubinsPath(path: DubinsPath, start: DubinsPose, step: Double = 2.0): L
     return poses
 }
 
-private fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
-private fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
+fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
+fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
 
-private fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
+fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
     if (points.isEmpty()) return emptyList()
     if (points.size == 1) return listOf(DubinsPose(points.first().x, points.first().y, 0.0))
 
@@ -439,7 +439,7 @@ private fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
     }
 }
 
-private fun interpolateHeading(a: Double, b: Double, t: Double): Double {
+fun interpolateHeading(a: Double, b: Double, t: Double): Double {
     var delta = mod2pi(b - a)
     if (delta > PI) delta -= 2 * PI
     return a + delta * t
@@ -905,7 +905,7 @@ fun connectCenters(rect1: DOMRect, rect2: DOMRect): Pair<ClippedResult, ClippedR
 
 
 fun addArrowHeadToCubicSpline(
-    svg: SVGElement, x0: Double, y0: Double, cx0: Double, cy0: Double, cx1: Double, cy1: Double, x1: Double, y1: Double, opacity: Double = 1.0
+    svg: SVGElement, x0: Double, y0: Double, cx0: Double, cy0: Double, cx1: Double, cy1: Double, x1: Double, y1: Double, opacity: Double = 1.0, color: String? = null
 ) {
     // Parameter at which to place the arrow head.
 //    val t = 40/(sqrt((x0-x1)*(x0-x1)+(y0-y1)*(y0-y1)) + sqrt((cx0-cx1)*(cx0-cx1)+(cy0-cy1)*(cy0-cy1)))
@@ -942,14 +942,14 @@ fun addArrowHeadToCubicSpline(
         lineTo(px, py)
         lineTo(ax2, ay2)
         close()
-        stroke = "black"
+        stroke = color ?: "black"
         strokeWidth = 2.0+(1-opacity)*2.0
-        fill = "rgba(255,255,255,$opacity)"
+        fill = color ?: "rgba(255,255,255,$opacity)"
         appendTo(svg)
     }
 }
 
-fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double = 1.0) {
+fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double = 1.0, color: String? = null) {
     val arrowLength = 12.0
     val arrowAngle = PI / 6
 
@@ -966,9 +966,9 @@ fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double =
         lineTo(tip.x, tip.y)
         lineTo(ax2, ay2)
         close()
-        stroke = "black"
+        stroke = color ?: "black"
         strokeWidth = 2.0 + (1 - opacity) * 2.0
-        fill = "rgba(255,255,255,$opacity)"
+        fill = color ?: "rgba(255,255,255,$opacity)"
         appendTo(svg)
     }
 }

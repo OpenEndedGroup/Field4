@@ -70,9 +70,13 @@ class SessionInformation(
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
     autorunTriggered = true
+    autorunBoxes(boxes.values, delayMs)
+}
+
+fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long = 500L) {
     GlobalScope.launch {
         delay(delayMs)
-        boxes.values.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
+        targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
             launch {
                 var attempts = 0
                 while (box.offline && attempts < 20) {

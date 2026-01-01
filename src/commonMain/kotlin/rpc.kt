@@ -99,7 +99,15 @@ data class ExecuteSymbol(
 )
 
 @Serializable
-data class AiAssist(val uid: String, val prompt: String, val extraPrompt: String, val startLine: Int, val property: String, val kind: String)
+data class AiAssist(
+    val uid: String,
+    val prompt: String,
+    val extraPrompt: String,
+    val startLine: Int,
+    val property: String,
+    val kind: String,
+    val images: List<String> = emptyList()
+)
 
 @Serializable
 data class Chat_input(val value: String, val phase: Int, val images: List<String> = emptyList())

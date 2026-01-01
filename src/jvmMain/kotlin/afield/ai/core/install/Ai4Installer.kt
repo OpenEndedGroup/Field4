@@ -320,15 +320,25 @@ fun installAi4() {
 
                     "general" -> {
                         val trimmedPrompt = exec.extraPrompt.trim()
+                        val attachmentMarkdown = exec.images.joinToString("\n") { url ->
+                            "![attachment]($url)"
+                        }.trim()
+                        val userBlock = buildString {
+                            if (trimmedPrompt.isNotEmpty()) append(trimmedPrompt)
+                            if (attachmentMarkdown.isNotEmpty()) {
+                                if (trimmedPrompt.isNotEmpty()) append("\n\n")
+                                append(attachmentMarkdown)
+                            }
+                        }.trim()
                         val previous = chatHistoryByKey[fileKey].orEmpty()
                         val prefix = buildString {
                             if (previous.isNotBlank()) {
                                 append(previous)
                                 append("\n")
                             }
-                            if (trimmedPrompt.isNotEmpty()) {
+                            if (userBlock.isNotEmpty()) {
                                 append("<<you>>\n")
-                                append(trimmedPrompt)
+                                append(userBlock)
                                 append("\n")
                             }
                             append("<<ai>>\n")
@@ -343,6 +353,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = exec.extraPrompt,
+                            imageUrls = exec.images,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
@@ -427,6 +438,16 @@ fun installAi4() {
                 if (chatResult != null) {
                     chatThreadByKey[fileKey] = chatResult.threadState
                     val trimmedPrompt = exec.extraPrompt.trim()
+                    val attachmentMarkdown = exec.images.joinToString("\n") { url ->
+                        "![attachment]($url)"
+                    }.trim()
+                    val userBlock = buildString {
+                        if (trimmedPrompt.isNotEmpty()) append(trimmedPrompt)
+                        if (attachmentMarkdown.isNotEmpty()) {
+                            if (trimmedPrompt.isNotEmpty()) append("\n\n")
+                            append(attachmentMarkdown)
+                        }
+                    }.trim()
                     val trimmedResponse = chatResult.text.trim()
                     val prefix = streamPrefix ?: buildString {
                         val previous = chatHistoryByKey[fileKey].orEmpty()
@@ -434,9 +455,9 @@ fun installAi4() {
                             append(previous)
                             append("\n")
                         }
-                        if (trimmedPrompt.isNotEmpty()) {
+                        if (userBlock.isNotEmpty()) {
                             append("<<you>>\n")
-                            append(trimmedPrompt)
+                            append(userBlock)
                             append("\n")
                         }
                         append("<<ai>>\n")
@@ -492,23 +513,6 @@ fun installAi4() {
                     phase = 1
                 )))
                 
-                // TODO: Integrate images with OpenAI vision API
-                // To add vision support:
-                // 1. Check if input.images is not empty
-                // 2. Use OpenAI's chat completion with vision model (e.g., gpt-4-vision-preview)
-                // 3. Format the message content as an array with text and image_url parts
-                // 4. Each image_url should have the format: { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
-                // 5. The images are already base64-encoded from the frontend
-                //
-                // Example structure:
-                // val content = listOf(
-                //     mapOf("type" to "text", "text" to input.value),
-                //     *input.images.map { base64 ->
-                //         mapOf("type" to "image_url", "image_url" to mapOf("url" to base64))
-                //     }.toTypedArray()
-                // )
-                
-                // For now, just process the text
                 val lang = LanguageSpec(
                     name = "text",
                     wrap = { it.trimEnd() },
@@ -518,7 +522,8 @@ fun installAi4() {
                     state = state,
                     code = "",
                     lang = lang,
-                    userPrompt = userMessage
+                    userPrompt = userMessage,
+                    imageUrls = input.images
                 )
                 
                 chatThreadByKey[fileKey] = result.threadState
