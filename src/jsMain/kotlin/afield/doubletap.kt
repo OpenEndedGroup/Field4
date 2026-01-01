@@ -16,8 +16,12 @@ fun registerDoubleTap() {
         if (k == lastKey && now - lastKeyAt < 300 && lastKeyWasReleased) {
             console.log(" double tap ", k)
             doubleTap[k]?.invoke()
+            // Reset all state after successful double-tap
+            lastKey = ""
+            lastKeyAt = 0.0
             lastKeyWasReleased = false
         } else {
+            // Track new key press
             lastKey = k
             lastKeyAt = now
             lastKeyWasReleased = false
@@ -27,6 +31,7 @@ fun registerDoubleTap() {
     document.body!!.addEventListener("keyup", {
         val ke = (it as KeyboardEvent)
         val k = ke.key
+        // Mark key as released only if it matches the tracked key
         if (k == lastKey) {
             lastKeyWasReleased = true
         }
