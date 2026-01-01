@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
@@ -91,30 +92,30 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
 
 /**
  * Extract documentation from template boxes.
- * Accumulates metadata from all boxes, orders by increasing frame.y, 
+ * Accumulates metadata from all boxes, orders by increasing frame.y,
  * and creates a formatted documentation string.
  */
 private fun extractTemplateMetadata(templatePath: String, templateName: String): TemplateMetadata? {
     try {
         val file = File(templatePath)
         if (!file.exists()) return null
-        
+
         val lastModified = file.lastModified()
         val ednContent = file.readText()
-        
+
         // Load boxes to extract metadata
         val directory = file.parentFile?.absolutePath ?: File(".").absolutePath
         val boxes = SavingContext().loadFromEdnText(ednContent, directory) { it }
-        
+
         // Sort boxes by frame.y (increasing)
         val sortedBoxes = boxes.sortedBy { it.frame.y }
-        
+
         // Sidecar-able properties (excluding "code")
         val sidecarProperties = listOf("vertex", "fragment", "compute", "task", "mesh")
-        
+
         // Build documentation from metadata properties
         val docBuilder = StringBuilder()
-        
+
         sortedBoxes.forEach { box ->
             // Get metadata from the box
             val metadata = box.metadata
@@ -122,20 +123,20 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
                 // Parse YAML metadata
                 try {
                     val parsed = parseMetadata(metadata)
-                    
+
                     // Extract documentation fields if they exist
                     parsed["doc"]?.let { doc ->
                         if (doc.toString().isNotEmpty()) {
                             docBuilder.append(doc.toString().trim()).append("\n\n")
                         }
                     }
-                    
+
                     parsed["docPreamble"]?.let { preamble ->
                         if (preamble.toString().isNotEmpty()) {
                             docBuilder.append(preamble.toString().trim()).append("\n\n")
                         }
                     }
-                    
+
                     parsed["boxPreamble"]?.let { boxPreamble ->
                         if (boxPreamble.toString().isNotEmpty()) {
                             docBuilder.append(boxPreamble.toString().trim()).append("\n\n")
@@ -146,31 +147,31 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
                 }
             }
         }
-        
+
         // Add compressed box description
         val boxDescriptions = sortedBoxes.mapNotNull { box ->
             val boxName = box.name?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-            
+
             // Find which sidecar properties this box has
             val properties = sidecarProperties.filter { prop ->
                 val value = box.getPropertyRaw(prop)
                 value is String && value.trim().isNotEmpty()
             }
-            
+
             if (properties.isEmpty()) {
                 boxName
             } else {
                 "$boxName/{${properties.joinToString(",")}}"
             }
         }
-        
+
         if (boxDescriptions.isNotEmpty()) {
             if (docBuilder.isNotEmpty()) {
                 docBuilder.appendLine()
             }
             docBuilder.append("Boxes: ${boxDescriptions.joinToString(", ")}")
         }
-        
+
         return TemplateMetadata(
             name = templateName,
             lastModified = lastModified,
@@ -224,7 +225,7 @@ fun templating() {
 
         // Include remote templates from all configured servers
         val remoteTemplates = remoteTemplatesCache.values.flatten()
-        
+
         val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
 
         // Extract metadata for each template
@@ -238,14 +239,14 @@ fun templating() {
                 "$app/templates/$templateName.edn" to "$app/templates",
                 "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
             )
-            
+
             for ((templateFile, directory) in paths) {
                 val file = File(templateFile)
                 if (file.exists()) {
                     return@mapNotNull extractTemplateMetadata(templateFile, templateName)
                 }
             }
-            
+
             // For remote templates, we don't have metadata yet
             TemplateMetadata(
                 name = templateName,
@@ -256,7 +257,7 @@ fun templating() {
 
         reply(Message("list").payload(
             Directory(
-                command = "list", 
+                command = "list",
                 value = allTemplateNames,
                 metadata = Json.encodeToJsonElement(templateMetadataList)
             )
@@ -301,7 +302,7 @@ fun templating() {
                 boxes
             }
         }
-        
+
         // Calculate center of mass and translate boxes to mouse position if provided
         if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
             // Only translate top-level boxes, not nested children. Nested boxes have frames that are
@@ -309,31 +310,31 @@ fun templating() {
             // Translating them would incorrectly add the offset twice since they move with their parent.
             val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
             val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
-            
+
             if (topLevelBoxes.isNotEmpty()) {
                 // Calculate center of mass (average of all top-level box centers)
                 val centers = topLevelBoxes.map { box ->
                     val frame = box.frame
                     Pair(frame.cx, frame.cy)
                 }
-                
+
                 val centerX = centers.map { it.first }.average()
                 val centerY = centers.map { it.second }.average()
-                
+
                 // Calculate translation needed to move center of mass to mouse position
                 val deltaX = exec.mouseX - centerX
                 val deltaY = exec.mouseY - centerY
-                
+
                 // Apply translation only to top-level boxes
                 topLevelBoxes.forEach { box ->
                     val frame = box.frame
                     box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
                 }
-                
+
                 lprintln("Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
             }
         }
-        
+
         loadedBoxes.forEach {
             it.resyncAll()
         }
