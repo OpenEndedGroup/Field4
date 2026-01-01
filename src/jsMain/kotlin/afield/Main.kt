@@ -1209,10 +1209,19 @@ suspend fun main() {
             a.onclick = { event ->
                 event.preventDefault()
                 val href = a.getAttribute("href")
-                if (href != null && href.startsWith("#slideshow:")) {
-                    val command = href.substring(11) // Remove "#slideshow:" prefix
-                    // Send command to server to control slideshow
-                    send("slideshow-command", js("{command: command}"))
+                if (href != null) {
+                    when {
+                        href.startsWith("#slideshow:") -> {
+                            val command = href.substring(11) // Remove "#slideshow:" prefix
+                            // Send command to server to control slideshow
+                            send("slideshow-command", js("{command: command}"))
+                        }
+                        href.startsWith("#custom:") -> {
+                            val callbackName = href.substring(8) // Remove "#custom:" prefix
+                            // Send callback command to server
+                            send("slideshow-command", js("{command: 'callback:' + callbackName}"))
+                        }
+                    }
                 }
                 null
             }

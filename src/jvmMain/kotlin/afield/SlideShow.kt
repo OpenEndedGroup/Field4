@@ -75,6 +75,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private val annotations = mutableListOf<SlideAnnotation>()
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
+    private val linkCallbacks = mutableMapOf<String, suspend () -> Unit>()
 
     /**
      * Sets the HTML note to display for this step
@@ -143,6 +144,15 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     }
 
     /**
+     * Register a callback for a custom link in the note HTML.
+     * Use in markdown as: <a href="#custom:linkName">Click me</a>
+     * or in markdown link syntax: [Click me](#custom:linkName)
+     */
+    fun linkCallback(name: String, action: suspend () -> Unit) {
+        linkCallbacks[name] = action
+    }
+
+    /**
      * Add an annotation line from the guide text to a box
      */
     fun annotate(
@@ -201,7 +211,8 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             animated = animated,
             annotations = annotations.toList(),
             onEnter = onEnter,
-            onExit = onExit
+            onExit = onExit,
+            linkCallbacks = linkCallbacks.toMap()
         )
     }
 }
@@ -221,7 +232,8 @@ data class SlideStep(
     val animated: Boolean,
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
-    val onExit: (suspend () -> Unit)?
+    val onExit: (suspend () -> Unit)?,
+    val linkCallbacks: Map<String, suspend () -> Unit> = emptyMap()
 )
 
 /**
@@ -236,6 +248,32 @@ class SlideShowInstance(
 
     val currentStep: SlideStep?
         get() = if (currentStepIndex >= 0 && currentStepIndex < steps.size) steps[currentStepIndex] else null
+
+    /**
+     * Process templates in HTML, replacing {{propertyName}} with box properties/variables
+     */
+    private fun processTemplates(html: String): String {
+        return replaceTemplate(html) { placeholder, _ ->
+            // Try to get from box properties first
+            val property = hostBox.properties[placeholder]
+            if (property != null) {
+                return@replaceTemplate property.toString()
+            }
+            
+            // Try to get from Kotlin scripting context variables
+            try {
+                val variable = hostBox.ki.context.vars[placeholder]?.value
+                if (variable != null) {
+                    return@replaceTemplate variable.toString()
+                }
+            } catch (e: Exception) {
+                // Ignore if context not available
+            }
+            
+            // Try templates map and knownValues (from replacements.kt)
+            knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
+        }
+    }
 
     /**
      * Goes to a specific step
@@ -257,9 +295,12 @@ class SlideShowInstance(
 
         // Show note if present
         if (step.noteHtml != null) {
+            // Process templates in the HTML before sending to browser
+            val processedHtml = processTemplates(step.noteHtml)
+            
             _send(Message("show-slide-note").payload(
                 ShowSlideNote(
-                    html = step.noteHtml,
+                    html = processedHtml,
                     uid = step.noteAnchorBox?.id ?: hostBox.id,
                     persistent = step.persistent,
                     animated = step.animated,
@@ -281,6 +322,18 @@ class SlideShowInstance(
                 )
             ))
         }
+    }
+
+    /**
+     * Execute a custom link callback by name
+     */
+    suspend fun executeCallback(callbackName: String): Boolean {
+        val callback = currentStep?.linkCallbacks?.get(callbackName)
+        if (callback != null) {
+            callback.invoke()
+            return true
+        }
+        return false
     }
 
     /**
@@ -359,9 +412,31 @@ fun Box.showNote(
     animated: Boolean = false,
     annotations: List<SlideAnnotation> = emptyList()
 ) {
+    // Process templates before displaying
+    val processedHtml = replaceTemplate(html) { placeholder, _ ->
+        // Try to get from box properties first
+        val property = this.properties[placeholder]
+        if (property != null) {
+            return@replaceTemplate property.toString()
+        }
+        
+        // Try to get from Kotlin scripting context variables
+        try {
+            val variable = this.ki.context.vars[placeholder]?.value
+            if (variable != null) {
+                return@replaceTemplate variable.toString()
+            }
+        } catch (e: Exception) {
+            // Ignore if context not available
+        }
+        
+        // Try templates map and knownValues (from replacements.kt)
+        knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
+    }
+    
     _send(Message("show-slide-note").payload(
         ShowSlideNote(
-            html = html,
+            html = processedHtml,
             uid = anchorBox?.id ?: this.id,
             persistent = persistent,
             animated = animated,

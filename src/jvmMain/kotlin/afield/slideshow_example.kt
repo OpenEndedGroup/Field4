@@ -348,3 +348,179 @@ fun Box.advancedSlideShowExample() {
     }
 }
 
+/**
+ * Example demonstrating interactive links with callbacks and template system
+ *
+ * This example shows:
+ * 1. Custom link callbacks defined in code
+ * 2. Template system that references box properties and variables
+ */
+fun Box.interactiveGuideExample() {
+    // Set up some properties and variables that can be referenced in templates
+    var clickCount = 0
+    var userChoice = "none"
+    val version = "1.0.0"
+    
+    // Store properties on the box for template access
+    this.properties["clickCount"] = clickCount
+    this.properties["userChoice"] = userChoice
+    this.properties["version"] = version
+    
+    val show = slideShow {
+        step("Welcome to Interactive Guides") {
+            note("""
+                <h2>Interactive Guides with Callbacks</h2>
+                <p>This guide demonstrates the new interactive features:</p>
+                <ul>
+                  <li><strong>Custom Link Callbacks</strong>: Links can trigger Kotlin code</li>
+                  <li><strong>Template System</strong>: Display live data from your code</li>
+                </ul>
+                <p>Version: <strong>{{version}}</strong></p>
+                <p><a href="#slideshow:next">Let's explore! →</a></p>
+            """.trimIndent())
+            
+            selectBox(this@interactiveGuideExample)
+        }
+        
+        step("Custom Link Callbacks") {
+            note("""
+                <h3>Click the Links Below</h3>
+                <p>These links execute Kotlin code when clicked:</p>
+                <div style="margin: 10px 0;">
+                  <a href="#custom:incrementCounter" style="display: inline-block; padding: 8px 16px; background: #4a5568; border-radius: 4px; text-decoration: none; margin: 4px;">
+                    Click Me!
+                  </a>
+                  <a href="#custom:resetCounter" style="display: inline-block; padding: 8px 16px; background: #742a2a; border-radius: 4px; text-decoration: none; margin: 4px;">
+                    Reset Counter
+                  </a>
+                </div>
+                <p>Times clicked: <strong>{{clickCount}}</strong></p>
+                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
+                  <a href="#slideshow:previous">← Back</a> | 
+                  <a href="#slideshow:next">Next →</a>
+                </p>
+            """.trimIndent())
+            
+            // Register callbacks for the links
+            linkCallback("incrementCounter") {
+                clickCount++
+                this@interactiveGuideExample.properties["clickCount"] = clickCount
+                // Refresh the current step to show updated count
+                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                lprintln("info,slideshow", "Counter incremented to $clickCount")
+            }
+            
+            linkCallback("resetCounter") {
+                clickCount = 0
+                this@interactiveGuideExample.properties["clickCount"] = clickCount
+                // Refresh the current step to show updated count
+                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                lprintln("info,slideshow", "Counter reset")
+            }
+            
+            selectBox(this@interactiveGuideExample)
+        }
+        
+        step("Template System") {
+            note("""
+                <h3>Live Data Display</h3>
+                <p>Templates automatically pull data from your box properties and variables.</p>
+                <p>Use <code>{{'{{'}}propertyName{{'}}'}}</code> syntax to reference:</p>
+                <ul>
+                  <li>Box properties</li>
+                  <li>Kotlin variables in scope</li>
+                </ul>
+                <div style="background: #2d3748; padding: 12px; border-radius: 4px; margin: 10px 0;">
+                  <p style="margin: 4px 0;">Counter value: <strong>{{clickCount}}</strong></p>
+                  <p style="margin: 4px 0;">Version: <strong>{{version}}</strong></p>
+                  <p style="margin: 4px 0;">User choice: <strong>{{userChoice}}</strong></p>
+                </div>
+                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
+                  <a href="#slideshow:previous">← Back</a> | 
+                  <a href="#slideshow:next">Next →</a>
+                </p>
+            """.trimIndent())
+            
+            selectBox(this@interactiveGuideExample)
+        }
+        
+        step("Make a Choice") {
+            note("""
+                <h3>Interactive Choices</h3>
+                <p>Click one of the options below:</p>
+                <div style="margin: 15px 0;">
+                  <a href="#custom:choiceA" style="display: block; padding: 12px; margin: 8px 0; background: #2b6cb0; border-radius: 4px; text-decoration: none;">
+                    Option A: Performance Mode
+                  </a>
+                  <a href="#custom:choiceB" style="display: block; padding: 12px; margin: 8px 0; background: #2c7a7b; border-radius: 4px; text-decoration: none;">
+                    Option B: Quality Mode
+                  </a>
+                  <a href="#custom:choiceC" style="display: block; padding: 12px; margin: 8px 0; background: #744210; border-radius: 4px; text-decoration: none;">
+                    Option C: Balanced Mode
+                  </a>
+                </div>
+                <p>Your choice: <strong>{{userChoice}}</strong></p>
+                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
+                  <a href="#slideshow:previous">← Back</a> | 
+                  <a href="#slideshow:next">Next →</a>
+                </p>
+            """.trimIndent())
+            
+            linkCallback("choiceA") {
+                userChoice = "Performance Mode"
+                this@interactiveGuideExample.properties["userChoice"] = userChoice
+                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                notify("Selected: Performance Mode", "slideshow")
+            }
+            
+            linkCallback("choiceB") {
+                userChoice = "Quality Mode"
+                this@interactiveGuideExample.properties["userChoice"] = userChoice
+                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                notify("Selected: Quality Mode", "slideshow")
+            }
+            
+            linkCallback("choiceC") {
+                userChoice = "Balanced Mode"
+                this@interactiveGuideExample.properties["userChoice"] = userChoice
+                this@interactiveGuideExample.slideShow?.goToStep(this@interactiveGuideExample.slideShow!!.currentStepIndex)
+                notify("Selected: Balanced Mode", "slideshow")
+            }
+            
+            selectBox(this@interactiveGuideExample)
+        }
+        
+        step("Advanced: Computed Properties") {
+            note("""
+                <h3>Computing Display Values</h3>
+                <p>You can compute values before displaying them:</p>
+                <div style="background: #2d3748; padding: 12px; border-radius: 4px; margin: 10px 0;">
+                  <p>Click count: {{clickCount}}</p>
+                  <p>Doubled: {{doubledCount}}</p>
+                  <p>Status: {{status}}</p>
+                </div>
+                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
+                  <a href="#slideshow:previous">← Back</a> | 
+                  <a href="#slideshow:stop">Finish</a>
+                </p>
+            """.trimIndent())
+            
+            onEnter {
+                // Compute derived values when entering this step
+                this@interactiveGuideExample.properties["doubledCount"] = clickCount * 2
+                this@interactiveGuideExample.properties["status"] = 
+                    if (clickCount > 10) "Very Active!" 
+                    else if (clickCount > 5) "Active" 
+                    else "Getting Started"
+            }
+            
+            selectBox(this@interactiveGuideExample)
+        }
+    }
+    
+    GlobalScope.launch {
+        show.start()
+    }
+}
+
+
