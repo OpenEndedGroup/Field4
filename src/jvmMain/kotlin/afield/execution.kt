@@ -461,12 +461,161 @@ class KotlinExecution : BoxExecution {
         }
     }
 
+    private fun completeYamlMetadata(box: Box, allCode: String, position: Int, line: Int, column: Int): Completion {
+        // Get the current line text to understand context
+        val lines = allCode.split("\n")
+        val currentLineIndex = line - 1
+        if (currentLineIndex < 0 || currentLineIndex >= lines.size) {
+            return Completion(boundsStart = position, boundsEnd = position, metadata = emptyList())
+        }
+        
+        val currentLine = lines[currentLineIndex]
+        val beforeCursor = currentLine.substring(0, minOf(column - 1, currentLine.length))
+        
+        // Common YAML keys for Field metadata
+        val commonKeys = listOf(
+            "tags" to "List of tags for categorizing this box (used in templates and documentation)",
+            "docOrder" to "Priority for documentation generation (lower numbers first)",
+            "docPreamble" to "Text added before every piece of documented code",
+            "boxPreamble" to "Text added before this specific box's code in documentation",
+            "execBeforeDoc" to "Execute code before documenting (integer value)",
+            "description" to "Description of this box"
+        )
+        
+        val completions = mutableListOf<Metadata>()
+        
+        // Check if we're completing a key (at start of line or after whitespace, before ':')
+        val keyPattern = Regex("^\\s*([a-zA-Z]*)$")
+        val keyMatch = keyPattern.find(beforeCursor)
+        
+        if (keyMatch != null) {
+            // Complete YAML keys
+            val prefix = keyMatch.groupValues[1]
+            commonKeys.forEach { (key, description) ->
+                if (key.startsWith(prefix, ignoreCase = true)) {
+                    completions.add(
+                        Metadata(
+                            icon = "keyword",
+                            tail = "metadata key",
+                            text = "$key: ",
+                            displayText = key,
+                            documentation = description
+                        )
+                    )
+                }
+            }
+        }
+        
+        // Check if we're completing a tag value (after "tags:" and optional "  - ")
+        val tagsValuePattern = Regex("tags:\\s*(?:(?:\\n\\s*-\\s*\\w+)*\\n\\s*-\\s*)?([a-zA-Z]*)$", RegexOption.MULTILINE)
+        val tagsOneLine = Regex("tags:\\s*\\[.*?,\\s*([a-zA-Z]*)$")
+        
+        // Check multi-line list format
+        val textBeforeCursor = allCode.substring(0, position)
+        val tagsMatch = tagsValuePattern.find(textBeforeCursor)
+        val tagsOneLineMatch = tagsOneLine.find(beforeCursor)
+        
+        if (tagsMatch != null || tagsOneLineMatch != null) {
+            // Complete tag values - collect existing tags from the workspace
+            val existingTags = collectTagsFromWorkspace(box)
+            val prefix = tagsMatch?.groupValues?.get(1) ?: tagsOneLineMatch?.groupValues?.get(1) ?: ""
+            
+            existingTags.forEach { tag ->
+                if (tag.startsWith(prefix, ignoreCase = true)) {
+                    completions.add(
+                        Metadata(
+                            icon = "value",
+                            tail = "tag",
+                            text = tag,
+                            displayText = tag,
+                            documentation = "Existing tag from workspace"
+                        )
+                    )
+                }
+            }
+            
+            // Also suggest some common tags if no prefix or few matches
+            if (completions.size < 3) {
+                val commonTags = listOf(
+                    "example" to "Example code",
+                    "template" to "Template code",
+                    "documentation" to "Code for documentation",
+                    "tutorial" to "Tutorial content",
+                    "demo" to "Demonstration",
+                    "utility" to "Utility code",
+                    "animation" to "Animation code",
+                    "graphics" to "Graphics code",
+                    "shader" to "Shader code",
+                    "audio" to "Audio code",
+                    "interaction" to "Interactive code"
+                )
+                
+                commonTags.forEach { (tag, description) ->
+                    if (tag.startsWith(prefix, ignoreCase = true) && 
+                        completions.none { it.text == tag }) {
+                        completions.add(
+                            Metadata(
+                                icon = "value",
+                                tail = "suggested",
+                                text = tag,
+                                displayText = tag,
+                                documentation = description
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        
+        return Completion(
+            boundsStart = position,
+            boundsEnd = position,
+            metadata = completions
+        )
+    }
+    
+    private fun collectTagsFromWorkspace(box: Box): Set<String> {
+        val tags = mutableSetOf<String>()
+        
+        // Collect tags from all boxes in the current workspace
+        try {
+            val root = box.root
+            root.children.forEach { child ->
+                val metadata = child.metadata
+                if (metadata.isNotBlank()) {
+                    val childTags = tagsForString(metadata, "tags")
+                    childTags?.let { tags.addAll(it) }
+                }
+            }
+            
+            // Also try to collect from saved documents in the workspace directory
+            val workspaceDir = File(thisSessionInfo.get().filename).parentFile
+            if (workspaceDir?.exists() == true) {
+                val tagDb = tagDatabase(workspaceDir.absolutePath)
+                tagDb.forEach { (_, tagList) ->
+                    tags.addAll(tagList)
+                }
+            }
+        } catch (e: Exception) {
+            // If we can't collect tags, just return what we have
+            lprintln("warning,completion", "Failed to collect tags: ${e.message}")
+        }
+        
+        return tags
+    }
 
     override fun complete(box: Box, exec: CompletionRequest, reply: (Message) -> Unit) {
 
         val position = exec.position
         val allCode = exec.allCode
         val property = exec.property
+
+        // Handle YAML metadata completion
+        if (property == "metadata") {
+            val completions = completeYamlMetadata(box, allCode, position, exec.line, exec.column)
+            reply(Message("complete").payload(completions))
+            return
+        }
 
         if (glslSpecForProperty(property) != null) {
             val docName = File(thisSessionInfo.get().filename).name
