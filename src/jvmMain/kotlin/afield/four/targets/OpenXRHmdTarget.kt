@@ -1,12 +1,15 @@
 package afield.four.targets
 
 import afield.Rect
+import afield.four.CPUSpan
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.Attachment
 import afield.four.device.CommandBuffer
 import afield.four.device.Fence
+import afield.four.device.GpuProfiler
 import afield.four.device.Instance
+import afield.four.device.ProfilingOptions
 import afield.four.modules.MeshModule
 import afield.four.modules.MeshModulePointer
 import afield.four.modules.Module
@@ -15,6 +18,7 @@ import afield.four.modules.pointer
 import afield.four.texture.HasImageView
 import afield.four.texture.image_layout_transition
 import afield.four.util.Options
+import afield.logger.lprintln
 import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -29,6 +33,7 @@ import org.lwjgl.vulkan.KHRDynamicRendering
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.*
+import java.util.ArrayDeque
 import kotlin.math.tan
 
 private data class XrEyeSwapchain(
@@ -394,6 +399,38 @@ class OpenXRHmdTarget(
     private var initialized = false
     private var disabledReason: String? = null
 
+    // --- Profiling infrastructure (similar to Renderer) ---
+    data class XrFrameMarkers(
+        var tsFrameBegin: Int = -1,
+        var tsAfterEyes: Int = -1,
+        var tsFrameEnd: Int = -1,
+        var pipeStatsEyes: Int = -1,
+        var perfFrameIndex: Int = -1
+    )
+
+    data class XrEyeMarks(
+        val eyeIndex: Int,
+        var tsBegin: Int = -1,
+        var tsEnd: Int = -1,
+        var pipeStatsIndex: Int = -1,
+        var perfIndex: Int = -1
+    )
+
+    data class XrProfilerState(
+        val profiler: GpuProfiler,
+        var markers: XrFrameMarkers = XrFrameMarkers(),
+        var perFrameEyeMarks: MutableList<XrEyeMarks> = mutableListOf(),
+        val pending: ArrayDeque<Pending> = ArrayDeque(),
+        val lock: Any = Any()
+    )
+
+    data class Pending(val frameCounter: Long)
+    private companion object { const val READBACK_LAG = 3 }
+
+    private var profilerState: XrProfilerState? = null
+    var xrFrameCounter = 0L
+        private set
+
     init {
         run {
             if (!Options.enableVR) {
@@ -431,8 +468,24 @@ class OpenXRHmdTarget(
             initialized = true
         }
 
+        // Drain ready frames (no stalls) for profiling readback
+        profilerState?.let { ps ->
+            synchronized(ps.lock) {
+                while (ps.pending.isNotEmpty()) {
+                    val head = ps.pending.first()
+                    val enoughLag = ps.pending.size > READBACK_LAG
+                    // For XR we only check lag, not fence (fence is per-frame, not per-swapchain-image)
+                    if (!enoughLag) break
+                    resolveProfilingForFrame(head.frameCounter)
+                    ps.pending.removeFirst()
+                }
+            }
+        }
+
         renderer.runOnQueueThread {
-            if (!pollEvents()) return@runOnQueueThread
+            CPUSpan.time("xr_events") {
+                if (!pollEvents()) return@runOnQueueThread
+            }
             if (!sessionRunning) return@runOnQueueThread
 
             val xrSessionLocal = xrSession ?: return@runOnQueueThread
@@ -443,12 +496,26 @@ class OpenXRHmdTarget(
                 val frameWaitInfo = XrFrameWaitInfo.calloc(stack).type(XR_TYPE_FRAME_WAIT_INFO)
                 val frameState = XrFrameState.calloc(stack).type(XR_TYPE_FRAME_STATE)
 
-                var res = xrWaitFrame(xrSessionLocal, frameWaitInfo, frameState)
+                var res = XR_SUCCESS
+                CPUSpan.time("xr_waitFrame") {
+                    res = xrWaitFrame(xrSessionLocal, frameWaitInfo, frameState)
+                }
                 if (res != XR_SUCCESS) return@use
+
+                // Begin profiling for this frame
+                profilerState?.let { ps ->
+                    synchronized(ps.lock) {
+                        ps.profiler.beginFrame(0) // single-frame index
+                        ps.markers = XrFrameMarkers()
+                        ps.perFrameEyeMarks.clear()
+                    }
+                }
 
                 // Begin frame
                 val frameBeginInfo = XrFrameBeginInfo.calloc(stack).type(XR_TYPE_FRAME_BEGIN_INFO)
-                res = xrBeginFrame(xrSessionLocal, frameBeginInfo)
+                CPUSpan.time("xr_beginFrame") {
+                    res = xrBeginFrame(xrSessionLocal, frameBeginInfo)
+                }
                 if (res != XR_SUCCESS) return@use
 
                 var layerCount = 0
@@ -469,11 +536,15 @@ class OpenXRHmdTarget(
                         viewsBuffer[i].type(XR_TYPE_VIEW)
                     }
 
-                    res = xrLocateViews(xrSessionLocal, viewLocateInfo, viewState, viewCapacityBuf, viewsBuffer)
+                    CPUSpan.time("xr_locateViews") {
+                        res = xrLocateViews(xrSessionLocal, viewLocateInfo, viewState, viewCapacityBuf, viewsBuffer)
+                    }
                     if (res == XR_SUCCESS) {
                         updateEyeMatricesFromLocatedViews(viewsBuffer)
 
-                        syncAndUpdateControllers(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                        CPUSpan.time("xr_controllers") {
+                            syncAndUpdateControllers(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                        }
 
                         // Acquire all swapchain images first (CPU), then render, then submit+wait, then release.
                         if (acquiredIndicesScratch.size != swapchains.size) {
@@ -482,37 +553,45 @@ class OpenXRHmdTarget(
                         val acquiredIndices = acquiredIndicesScratch
                         java.util.Arrays.fill(acquiredIndices, -1)
 
-                        for (i in swapchains.indices) {
-                            val sc = swapchains[i]
+                        CPUSpan.time("xr_acquire") {
+                            for (i in swapchains.indices) {
+                                val sc = swapchains[i]
 
-                            val acquireInfo = XrSwapchainImageAcquireInfo.calloc(stack)
-                                .type(XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO)
-                            val idxBuf = stack.callocInt(1)
-                            xrAcquireSwapchainImage(sc.swapchain, acquireInfo, idxBuf)
-                            val imageIndex = idxBuf[0]
-                            acquiredIndices[i] = imageIndex
+                                val acquireInfo = XrSwapchainImageAcquireInfo.calloc(stack)
+                                    .type(XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO)
+                                val idxBuf = stack.callocInt(1)
+                                xrAcquireSwapchainImage(sc.swapchain, acquireInfo, idxBuf)
+                                val imageIndex = idxBuf[0]
+                                acquiredIndices[i] = imageIndex
 
-                            val waitInfo = XrSwapchainImageWaitInfo.calloc(stack)
-                                .type(XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO)
-                                .timeout(XR_INFINITE_DURATION)
-                            xrWaitSwapchainImage(sc.swapchain, waitInfo)
+                                val waitInfo = XrSwapchainImageWaitInfo.calloc(stack)
+                                    .type(XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO)
+                                    .timeout(XR_INFINITE_DURATION)
+                                xrWaitSwapchainImage(sc.swapchain, waitInfo)
+                            }
                         }
 
                         // Record + submit Vulkan work that renders into the acquired swapchain images.
                         // NOTE: Depending on Options.openXRWaitForGpuBeforeRelease, we may or may not
                         // hard-wait for GPU completion before releasing.
-                        renderEyesVulkan(acquiredIndices)
+                        CPUSpan.time("xr_render") {
+                            renderEyesVulkan(acquiredIndices)
+                        }
 
                         if (Options.openXRWaitForGpuBeforeRelease) {
-                            fence.fenceWait()
+                            CPUSpan.time("xr_fence_wait") {
+                                fence.fenceWait()
+                            }
                         }
 
                         // Release swapchain images.
-                        for (i in swapchains.indices) {
-                            val sc = swapchains[i]
-                            val releaseInfo = XrSwapchainImageReleaseInfo.calloc(stack)
-                                .type(XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO)
-                            xrReleaseSwapchainImage(sc.swapchain, releaseInfo)
+                        CPUSpan.time("xr_release") {
+                            for (i in swapchains.indices) {
+                                val sc = swapchains[i]
+                                val releaseInfo = XrSwapchainImageReleaseInfo.calloc(stack)
+                                    .type(XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO)
+                                xrReleaseSwapchainImage(sc.swapchain, releaseInfo)
+                            }
                         }
 
                         // Build projection views
@@ -554,8 +633,18 @@ class OpenXRHmdTarget(
                     .layerCount(layerCount)
                     .layers(if (layerCount > 0) layers else null)
 
-                xrEndFrame(xrSessionLocal, endInfo)
+                CPUSpan.time("xr_endFrame") {
+                    xrEndFrame(xrSessionLocal, endInfo)
+                }
+
+                // Add to pending for profiling readback
+                profilerState?.pending?.addLast(Pending(xrFrameCounter))
             }
+
+            // Print profiling stats periodically
+            CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = xrFrameCounter, header = "XR CPU")
+
+            xrFrameCounter++
         }
     }
 
@@ -712,7 +801,30 @@ class OpenXRHmdTarget(
                     )
                 )
             }
+
+            // Initialize profiling if enabled
+            if (Options.profiling) {
+                profilerState = createProfilerState()
+            }
         }
+    }
+
+    private fun createProfilerState(): XrProfilerState {
+        val opts = ProfilingOptions(
+            enabled = true,
+            timestamps = true,
+            pipelineStats = Options.isWindows,
+            perfCounters = Options.isWindows
+        )
+        // We use a single frame for OpenXR profiling since we don't have per-swapchain-image tracking
+        val profiler = GpuProfiler(
+            device = renderer.device.vkDevice,
+            physicalDevice = renderer.device.physicalDevice.vkPhysicalDevice,
+            queueFamilyIndex = renderer.graphQueue.queueFamilyIndex,
+            framesInFlight = 1,
+            opts = opts
+        )
+        return XrProfilerState(profiler)
     }
 
     private fun updateEyeMatricesFromLocatedViews(views: XrView.Buffer) {
@@ -1627,6 +1739,21 @@ class OpenXRHmdTarget(
         cmd.reset()
         cmd.beginRecording()
 
+        // Begin GPU profiling for this frame
+        val ps = profilerState
+        var eyesScope: GpuProfiler.PipeStatScope? = null
+        var perfScope: GpuProfiler.PerfScope? = null
+        ps?.let { p ->
+            synchronized(p.lock) {
+                p.markers.tsFrameBegin = p.profiler.writeTimestamp2(
+                    cmd.vkCommandBuffer, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+                )
+                eyesScope = p.profiler.beginPipelineStats(cmd.vkCommandBuffer, 0)
+                eyesScope?.let { p.markers.pipeStatsEyes = it.index }
+                perfScope = p.profiler.beginPerfCounters(cmd.vkCommandBuffer, 0)
+            }
+        }
+
         val sbs = sideBySideSource
         if (sbs == null) {
             // Upload dirty mesh buffers once per frame BEFORE beginning dynamic rendering.
@@ -1773,6 +1900,16 @@ class OpenXRHmdTarget(
                     val imageIndex = acquiredIndices[eye]
                     if (imageIndex < 0) continue
 
+                    // Per-eye GPU timing markers
+                    val eyeMarks = XrEyeMarks(eyeIndex = eye)
+                    ps?.let { p ->
+                        synchronized(p.lock) {
+                            eyeMarks.tsBegin = p.profiler.writeTimestamp2(
+                                cmd.vkCommandBuffer, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+                            )
+                        }
+                    }
+
                     val width = sc.width
                     val height = sc.height
 
@@ -1893,7 +2030,32 @@ class OpenXRHmdTarget(
 
                     KHRDynamicRendering.vkCmdEndRenderingKHR(cmd.vkCommandBuffer)
                     cmd.inRenderPassInstance = false
+
+                    // End per-eye GPU timing
+                    ps?.let { p ->
+                        synchronized(p.lock) {
+                            eyeMarks.tsEnd = p.profiler.writeTimestamp2(
+                                cmd.vkCommandBuffer, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                            )
+                            p.perFrameEyeMarks.add(eyeMarks)
+                        }
+                    }
                 }
+            }
+        }
+
+        // End GPU profiling
+        ps?.let { p ->
+            synchronized(p.lock) {
+                p.profiler.endPerfCounters(cmd.vkCommandBuffer, 0, perfScope)
+                perfScope?.let { p.markers.perfFrameIndex = it.index }
+                p.profiler.endPipelineStats(cmd.vkCommandBuffer, eyesScope)
+                p.markers.tsAfterEyes = p.profiler.writeTimestamp2(
+                    cmd.vkCommandBuffer, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                )
+                p.markers.tsFrameEnd = p.profiler.writeTimestamp2(
+                    cmd.vkCommandBuffer, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+                )
             }
         }
 
@@ -1982,12 +2144,79 @@ class OpenXRHmdTarget(
         vkCmdSetScissor(cmd, 0, scissor)
     }
 
+    private fun resolveProfilingForFrame(@Suppress("UNUSED_PARAMETER") frameCounter: Long) {
+        val ps = profilerState ?: return
+        synchronized(ps.lock) {
+            val p = ps.profiler
+            val m = ps.markers
+
+            // Print performance counter data
+            if (m.perfFrameIndex >= 0 && p.opts.perfCounters) {
+                val meta = p.perfMeta
+                val vals = p.fetchPerfCounters(0, m.perfFrameIndex, meta.size)
+                val n = kotlin.math.min(vals.size, meta.size)
+                if (n > 0) {
+                    val byScope = meta.withIndex().groupBy { it.value.scope }
+                    for ((scope, items) in byScope) {
+                        lprintln("info,perf", "XR scope=$scope")
+                        for (e in items) {
+                            val i = e.index
+                            lprintln("info,perf", "  ${e.value.name}: ${p.formatPerfValue(vals[i], e.value.unit)}")
+                        }
+                    }
+                }
+            }
+
+            // Print frame timing data
+            if (m.tsFrameBegin >= 0 && m.tsFrameEnd >= 0) {
+                val ts = p.fetchTimestampNsRange(0, m.tsFrameBegin, m.tsFrameEnd)
+                if (ts.size >= 3) {
+                    val frameNs = ts[2] - ts[0]
+                    val eyesNs = ts[1] - ts[0]
+                    val postNs = ts[2] - ts[1]
+                    lprintln(
+                        "info,perf",
+                        "XR GPU frame=${frameNs/1e6} ms (eyes=${eyesNs/1e6} ms, post=${postNs/1e6} ms)"
+                    )
+                }
+            }
+
+            // Print pipeline stats
+            if (m.pipeStatsEyes >= 0 && p.opts.pipelineStats) {
+                val stats = p.fetchPipelineStats(0, m.pipeStatsEyes)
+                val iaVerts = stats.getOrNull(0) ?: -1
+                val iaPrims = stats.getOrNull(1) ?: -1
+                val vsInv   = stats.getOrNull(2) ?: -1
+                val fsInv   = stats.getOrNull(7) ?: -1
+                lprintln("info,perf", "XR Eyes IA verts=$iaVerts, IA prims=$iaPrims, VS invoc=$vsInv, FS invoc=$fsInv")
+            }
+
+            // Print per-eye timing
+            val eyeMarks = ps.perFrameEyeMarks
+            if (eyeMarks.isNotEmpty()) {
+                for (em in eyeMarks) {
+                    if (em.tsBegin >= 0 && em.tsEnd >= 0) {
+                        val ts = p.fetchTimestampNsRange(0, em.tsBegin, em.tsEnd)
+                        if (ts.size >= 2) {
+                            val dtMs = (ts.last() - ts.first()) / 1e6
+                            lprintln("info,perf", "XR Eye[${em.eyeIndex}]: ${"%.3f".format(dtMs)} ms")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun cleanup() {
         renderer.runOnQueueThread {
             if (initialized) {
                 fence.fenceWait()
             }
         }
+
+        // Profiling resources
+        profilerState?.profiler?.destroy()
+        profilerState = null
 
         // Vulkan resources
         swapchains.forEach { sc ->
