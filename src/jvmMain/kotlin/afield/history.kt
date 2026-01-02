@@ -47,24 +47,35 @@ object HistoryManager {
      */
     fun listVersions(documentPath: String): List<VersionInfo> {
         val docDir = File(documentPath)
-        val backupsDir = File(docDir, "backups")
         
-        if (!backupsDir.exists() || !backupsDir.isDirectory) {
-            lprintln("info,history", "No backups directory found at ${backupsDir.absolutePath}")
+        if (!docDir.exists()) {
+            lprintln("warning,history", "Document directory does not exist: ${docDir.absolutePath}")
             return emptyList()
         }
         
-        // Get all metadata backup files
-        val backupFiles = backupsDir.listFiles { file ->
-            file.name.startsWith("metadata_backup_") && file.name.endsWith(".edn")
-        }?.sortedBy { it.name } ?: emptyArray()
+        val backupsDir = File(docDir, "backups")
         
-        // Add the current metadata.edn as the latest version
+        // Get all metadata backup files
+        val backupFiles = if (backupsDir.exists() && backupsDir.isDirectory) {
+            backupsDir.listFiles { file ->
+                file.name.startsWith("metadata_backup_") && file.name.endsWith(".edn")
+            }?.sortedBy { it.name } ?: emptyArray()
+        } else {
+            lprintln("info,history", "No backups directory found at ${backupsDir.absolutePath}")
+            emptyArray()
+        }
+        
+        // Add the current metadata.edn as the latest version (if it exists)
         val currentMetadata = File(docDir, "metadata.edn")
         val allFiles = if (currentMetadata.exists()) {
             backupFiles + currentMetadata
         } else {
             backupFiles
+        }
+        
+        if (allFiles.isEmpty()) {
+            lprintln("info,history", "No version history found for document at $documentPath")
+            return emptyList()
         }
         
         return allFiles.mapIndexed { index, file ->
@@ -142,9 +153,11 @@ object HistoryManager {
                     existingBox.setPropertyRaw("_tombstone", null)
                     existingBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
                 } else {
-                    // Box doesn't exist - create it
-                    val newBox = targetBox
+                    // Box doesn't exist - create a new box in the current session
+                    val newBox = Box(targetBox.id)
                     newBox.inside = sessionInfo
+                    newBox.name = targetBox.name
+                    copyProperties(targetBox, newBox)
                     sessionInfo.boxes[newBox.id] = newBox
                     newBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
                 }
