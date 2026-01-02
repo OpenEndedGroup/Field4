@@ -236,9 +236,13 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                     break;
 
                 case 'field-create-box':
-                    // Create a new box
-                    // This would need to be implemented via server message
-                    console.log('Create box not yet implemented:', data.options);
+                    // Create a new box - not yet implemented server-side
+                    // For now, we'll log it and could potentially create via client-side if needed
+                    console.warn('createBox API called but server-side implementation pending:', data.options);
+                    // Future: Send message to server to create box
+                    // if (window.send) {
+                    //     window.send(Message("create-box").payload(data.options));
+                    // }
                     break;
 
                 case 'field-get-selection':
@@ -258,11 +262,14 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                         property: window.selectedProperty
                     };
                     
-                    iframe.contentWindow.postMessage({
-                        type: 'field-selection-response',
-                        messageId: data.messageId,
-                        selection: selection
-                    }, '*');
+                    const iframe = document.getElementById('docs-iframe');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({
+                            type: 'field-selection-response',
+                            messageId: data.messageId,
+                            selection: selection
+                        }, '*');
+                    }
                     break;
 
                 case 'field-navigate-to-box':

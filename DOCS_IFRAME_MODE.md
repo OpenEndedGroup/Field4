@@ -105,12 +105,17 @@ FieldAPI.switchToEditor();
 #### Box Creation
 
 ```javascript
-// Create a new box
+// Create a new box (Note: currently in development)
+// This API is exposed but the server-side implementation is pending
+// Use the client-side newBox() function instead for now
 FieldAPI.createBox({
     name: 'New Box',
     code: 'println("Hello!")',
     frame: { x: 100, y: 100, w: 200, h: 150 }
 });
+
+// Alternative: Use Field's native newBox function directly
+window.newBox(); // Creates box at last mouse position
 ```
 
 #### Commands

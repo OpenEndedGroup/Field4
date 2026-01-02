@@ -170,10 +170,10 @@
 
     <div class="demo-section">
         <h3>Create & Execute</h3>
-        <p>Create a new box and execute sample code:</p>
+        <p>Create a new box (uses Field's native function) and execute sample code:</p>
         <button class="button" onclick="createSampleBox()">Create Sample Box</button>
         <button class="button" onclick="executeInSelected()">Execute in Selected</button>
-        <div id="create-status" class="status">Ready</div>
+        <div id="create-status" class="status">Ready (Note: createBox API is in development, uses newBox() instead)</div>
     </div>
 
     <div class="demo-section">
@@ -263,13 +263,19 @@ if (window.FieldAPI) {
         function createSampleBox() {
             if (!isInField) return;
             
-            FieldAPI.createBox({
-                name: 'Sample from Docs',
-                code: 'println("Created from documentation!")'
-            });
+            // Use the native Field function since FieldAPI.createBox is in development
+            window.newBox();
             
-            document.getElementById('create-status').innerHTML = 
-                '<code>✓ Box creation requested</code>';
+            // Set some properties on the newly created box
+            setTimeout(() => {
+                FieldAPI.getSelection((selection) => {
+                    if (selection.boxes.length > 0) {
+                        // The newly created box should be selected
+                        document.getElementById('create-status').innerHTML = 
+                            '<code>✓ Box created (using native newBox)</code>';
+                    }
+                });
+            }, 100);
         }
 
         function executeInSelected() {
@@ -302,16 +308,19 @@ if (window.FieldAPI) {
         function createAnimationExample() {
             if (!isInField) return;
             
+            // Create box using native function
+            window.newBox();
+            
+            // The animation code that would be set (showing as example only)
             const code = `var t = 0.0
 _.stage.repeat {
-    println("Frame: \\$t")
+    println("Frame: ${'$'}{t}")
     t += 0.016
 }`;
             
-            FieldAPI.createBox({
-                name: 'Animation Example',
-                code: code
-            });
+            console.log('Animation example box created. Code to use:', code);
+            // Future: When FieldAPI.createBox is implemented, use:
+            // FieldAPI.createBox({ name: 'Animation Example', code: code });
         }
 
         function returnToEditor() {
