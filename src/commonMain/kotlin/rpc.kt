@@ -293,7 +293,9 @@ data class ShowSlideNote(
     val uid: String = "", 
     val persistent: Boolean = false,
     val animated: Boolean = false,
-    val annotations: List<SlideAnnotation> = emptyList()
+    val annotations: List<SlideAnnotation> = emptyList(),
+    val slideshowId: String = "",
+    val slideNumber: Int = -1
 )
 
 @Serializable
@@ -328,3 +330,39 @@ data class StringUpdate(val controlId: String, val value: String)
 
 @Serializable
 data class ColorUpdate(val controlId: String, val r: Double, val g: Double, val b: Double, val a: Double)
+
+// Chat messages for guide/slideshow system
+@Serializable
+data class PostChatMessage(
+    val slideshowId: String,
+    val slideNumber: Int,
+    val username: String,
+    val message: String
+)
+
+@Serializable
+data class LoadChatMessages(
+    val slideshowId: String,
+    val slideNumber: Int
+)
+
+@Serializable
+data class ChatMessage(
+    val username: String,
+    val message: String,
+    val timestamp: String
+)
+
+@Serializable
+data class ChatMessagesLoaded(
+    val slideshowId: String,
+    val slideNumber: Int,
+    val messages: List<ChatMessage>
+)
+
+@Serializable
+data class ChatMessagePosted(
+    val slideshowId: String,
+    val slideNumber: Int,
+    val message: ChatMessage
+)
