@@ -860,16 +860,29 @@
 
         .leftKey {
             display: inline-block;
-            width: 100px;
+            width: 140px;
             text-align: right;
             font-variant-caps: all-small-caps;
-            font-style: italic;
+            padding-right: 10px;
         }
 
         .rightKey {
-            opacity: 0.5;
+            opacity: 0.75;
             font-weight: 100;
-            font-size: 80%;
+            font-size: 85%;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            font-family: inherit;
+            font-size: 11px;
+            font-style: normal;
+            font-variant-caps: normal;
+            white-space: nowrap;
         }
 
         .hoverlay {
@@ -1087,19 +1100,23 @@
 <div class="centered-container" id="cheatsheet" style="opacity: 0;">
     <div class="centered-container-div">
         <span class="leftKey"></span> <span class="rightKey">use the url to open a document, e.g. <b>http://localhost:9091/index.html?file=helloWorld</b></span><br><br>
-        <span class="leftKey">n</span> <span class="rightKey">creates a <b>new box</b></span><br>
+        <span class="leftKey"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span><br>
         <span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span><br><br>
-        <span class="leftKey">F1</span> <span class="rightKey">opens a searchable <b>command menu</b> for <i>everything else</i></span><br><br>
-        <span class="leftKey">alt-0</span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
-        <span class="leftKey">alt-click</span> <span class="rightKey"><b>launches</b> a box</span><br>
-        <span class="leftKey">alt-up</span> <span class="rightKey">also <b>launches</b> a box</span><br>
-        <span class="leftKey">alt-down</span> <span class="rightKey"><b>stops</b> a launched box</span><br>
-        <span class="leftKey">alt-return</span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
-        <span class="leftKey">alt-drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
-        <span class="leftKey">esc-esc</span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
-        <span class="leftKey">command-space</span> <span class="rightKey">opens <b>autocomplete</b></span><br><br>
-        <span class="leftKey">g</span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
-        <span class="leftKey">u</span> <span class="rightKey"><b>ungroups</b> boxes</span><br>
+        <span class="leftKey"><kbd>F1</kbd></span> <span class="rightKey">opens a searchable <b>command menu</b> for <i>everything else</i> (align, route, etc.)</span><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>⇧</kbd></span> <span class="rightKey">double tap <b>opens box menu</b> (anywhere palette)</span><br><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> click</span> <span class="rightKey"><b>launches</b> a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↑</kbd></span> <span class="rightKey">also <b>launches</b> a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↓</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↩</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
+        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
+        <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span class="rightKey">opens <b>autocomplete</b></span><br><br>
+        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span><br><br>
+        <span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
+        <span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span><br><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span class="rightKey"><b>save bookmark</b> 1-9</span><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span class="rightKey"><b>restore bookmark</b> 1-9</span><br>
     </div>
 </div>
 
