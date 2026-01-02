@@ -1,6 +1,8 @@
 package afield
 
 import afield.logger.lprintln
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 import java.time.Instant
 
@@ -325,4 +327,67 @@ object HistoryManager {
     fun getTransitions(documentPath: String): List<Transition> {
         return loadVersionsData(documentPath).transitions
     }
+    
+    /**
+     * Record a version when a save happens. This should be called by the saving system
+     * to track new versions without reparsing all backup files.
+     * 
+     * @param documentPath The path to the document directory
+     * @param boxCount The number of boxes in this version
+     * @return The new version index
+     */
+    fun recordNewVersion(documentPath: String, boxCount: Int): Int {
+        val versions = listVersions(documentPath)
+        // The new version will be the current one (last in list)
+        return versions.size - 1
+    }
+}
+
+/**
+ * Install RPC handlers for document history operations
+ */
+@RunsAt(installHandlers)
+fun installHistoryHandlers() {
+    handlers["list-history-versions"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val versions = HistoryManager.listVersions(info.filename)
+        
+        val historyVersions = versions.map { v ->
+            HistoryVersion(
+                index = v.index,
+                filename = v.file.name,
+                timestamp = v.timestamp,
+                boxCount = v.boxCount,
+                message = if (v.file.name == "metadata.edn") "Current" else ""
+            )
+        }
+        
+        val transitions = HistoryManager.getTransitions(info.filename)
+        
+        reply(Message("history-versions-list")
+            .payload(mapOf(
+                "versions" to historyVersions,
+                "transitions" to transitions
+            )))
+        Handled.yes
+    })
+
+    handlers["restore-history-version"] = mutableSetOf({ message, reply ->
+        val req = Json.decodeFromJsonElement<RestoreVersion>(message.payload!!)
+        val info = thisSessionInfo.get()
+        
+        val success = HistoryManager.restoreVersion(
+            info.filename,
+            info,
+            req.versionIndex
+        )
+        
+        if (success) {
+            reply(Message("restore-version-success").payload(mapOf("versionIndex" to req.versionIndex)))
+        } else {
+            reply(Message("restore-version-error").payload(mapOf("error" to "Failed to restore version")))
+        }
+        
+        Handled.yes
+    })
 }

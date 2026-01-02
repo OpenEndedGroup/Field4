@@ -651,49 +651,6 @@ class Server {
                 Handled.yes
             })
 
-            handlers["list-history-versions"] = mutableSetOf({ message, reply ->
-                val info = thisSessionInfo.get()
-                val versions = HistoryManager.listVersions(info.filename)
-                
-                val historyVersions = versions.map { v ->
-                    HistoryVersion(
-                        index = v.index,
-                        filename = v.file.name,
-                        timestamp = v.timestamp,
-                        boxCount = v.boxCount,
-                        message = if (v.file.name == "metadata.edn") "Current" else ""
-                    )
-                }
-                
-                val transitions = HistoryManager.getTransitions(info.filename)
-                
-                reply(Message("history-versions-list")
-                    .payload(mapOf(
-                        "versions" to historyVersions,
-                        "transitions" to transitions
-                    )))
-                Handled.yes
-            })
-
-            handlers["restore-history-version"] = mutableSetOf({ message, reply ->
-                val req = Json.decodeFromJsonElement<RestoreVersion>(message.payload!!)
-                val info = thisSessionInfo.get()
-                
-                val success = HistoryManager.restoreVersion(
-                    info.filename,
-                    info,
-                    req.versionIndex
-                )
-                
-                if (success) {
-                    reply(Message("restore-version-success").payload(mapOf("versionIndex" to req.versionIndex)))
-                } else {
-                    reply(Message("restore-version-error").payload(mapOf("error" to "Failed to restore version")))
-                }
-                
-                Handled.yes
-            })
-
 
             registerTemplate(home)
 
