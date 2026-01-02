@@ -151,6 +151,179 @@ fun positionSlideNoteOverlay(overlay: HTMLElement, anchorUid: String?) {
     }
 }
 
+// Chat UI support
+var currentChatSlideshowId: String? = null
+var currentChatSlideNumber: Int = -1
+
+fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
+    currentChatSlideshowId = slideshowId
+    currentChatSlideNumber = slideNumber
+    
+    val chatContainer = document.createElement("div") as HTMLElement
+    chatContainer.id = "chat-container"
+    chatContainer.style.apply {
+        marginTop = "15px"
+        borderTop = "1px solid rgba(255, 255, 255, 0.1)"
+        paddingTop = "10px"
+    }
+    
+    // Create disclosure header
+    val chatHeader = document.createElement("div") as HTMLElement
+    chatHeader.style.apply {
+        cursor = "pointer"
+        fontWeight = "bold"
+        fontSize = "12px"
+        marginBottom = "8px"
+        color = "#a0a0a0"
+    }
+    chatHeader.innerHTML = "▸ Discussion"
+    
+    // Create chat content (initially hidden)
+    val chatContent = document.createElement("div") as HTMLElement
+    chatContent.id = "chat-content"
+    chatContent.style.display = "none"
+    
+    // Messages area
+    val messagesArea = document.createElement("div") as HTMLElement
+    messagesArea.id = "chat-messages"
+    messagesArea.style.apply {
+        maxHeight = "200px"
+        overflowY = "auto"
+        marginBottom = "10px"
+        padding = "8px"
+        backgroundColor = "rgba(0, 0, 0, 0.3)"
+        borderRadius = "4px"
+        fontSize = "12px"
+    }
+    
+    // Input area
+    val inputArea = document.createElement("div") as HTMLElement
+    inputArea.style.apply {
+        display = "flex"
+        gap = "8px"
+    }
+    
+    val messageInput = document.createElement("textarea") as HTMLElement
+    messageInput.id = "chat-input"
+    messageInput.setAttribute("placeholder", "Add a comment...")
+    messageInput.style.apply {
+        flex = "1"
+        minHeight = "60px"
+        padding = "6px"
+        backgroundColor = "rgba(255, 255, 255, 0.1)"
+        color = "#e6e6e6"
+        border = "1px solid rgba(255, 255, 255, 0.2)"
+        borderRadius = "4px"
+        fontSize = "12px"
+        fontFamily = "inherit"
+        resize = "vertical"
+    }
+    
+    val sendButton = document.createElement("button") as HTMLElement
+    sendButton.innerHTML = "Send"
+    sendButton.style.apply {
+        padding = "6px 12px"
+        backgroundColor = "rgba(100, 150, 255, 0.7)"
+        color = "#fff"
+        border = "none"
+        borderRadius = "4px"
+        cursor = "pointer"
+        fontSize = "12px"
+        alignSelf = "flex-end"
+    }
+    
+    sendButton.onclick = {
+        val message = (messageInput.unsafeCast<dynamic>().value as? String)?.trim() ?: ""
+        if (message.isNotBlank()) {
+            postChatMessage(slideshowId, slideNumber, message)
+            messageInput.unsafeCast<dynamic>().value = ""
+        }
+    }
+    
+    // Toggle disclosure
+    var isExpanded = false
+    chatHeader.onclick = {
+        isExpanded = !isExpanded
+        chatContent.style.display = if (isExpanded) "block" else "none"
+        chatHeader.innerHTML = if (isExpanded) "▾ Discussion" else "▸ Discussion"
+    }
+    
+    inputArea.appendChild(messageInput)
+    inputArea.appendChild(sendButton)
+    chatContent.appendChild(messagesArea)
+    chatContent.appendChild(inputArea)
+    chatContainer.appendChild(chatHeader)
+    chatContainer.appendChild(chatContent)
+    
+    return chatContainer
+}
+
+fun loadChatMessages(slideshowId: String, slideNumber: Int) {
+    send("load-chat-messages", js("{slideshowId: slideshowId, slideNumber: slideNumber}"))
+}
+
+fun postChatMessage(slideshowId: String, slideNumber: Int, message: String) {
+    val username = URLSearchParams(document.location?.search).get("username") ?: "anonymous"
+    send("post-chat-message", js("{slideshowId: slideshowId, slideNumber: slideNumber, username: username, message: message}"))
+}
+
+fun displayChatMessages(messages: List<ChatMessage>) {
+    val messagesArea = document.getElementById("chat-messages") as? HTMLElement ?: return
+    messagesArea.innerHTML = ""
+    
+    if (messages.isEmpty()) {
+        val emptyMsg = document.createElement("div") as HTMLElement
+        emptyMsg.style.apply {
+            color = "#888"
+            fontStyle = "italic"
+            fontSize = "11px"
+        }
+        emptyMsg.innerHTML = "No messages yet"
+        messagesArea.appendChild(emptyMsg)
+    } else {
+        messages.forEach { msg ->
+            val msgDiv = document.createElement("div") as HTMLElement
+            msgDiv.style.apply {
+                marginBottom = "8px"
+                paddingBottom = "8px"
+                borderBottom = "1px solid rgba(255, 255, 255, 0.05)"
+            }
+            
+            val header = document.createElement("div") as HTMLElement
+            header.style.apply {
+                fontSize = "11px"
+                color = "#999"
+                marginBottom = "4px"
+            }
+            
+            val timestamp = try {
+                val date = js("new Date(msg.timestamp)")
+                date.toLocaleTimeString("en-US", js("{hour: '2-digit', minute: '2-digit'}"))
+            } catch (e: dynamic) {
+                ""
+            }
+            
+            header.innerHTML = "<strong>${msg.username}</strong> <span style='opacity: 0.6'>$timestamp</span>"
+            
+            val content = document.createElement("div") as HTMLElement
+            content.style.apply {
+                fontSize = "12px"
+                color = "#e6e6e6"
+                whiteSpace = "pre-wrap"
+                wordWrap = "break-word"
+            }
+            content.textContent = msg.message
+            
+            msgDiv.appendChild(header)
+            msgDiv.appendChild(content)
+            messagesArea.appendChild(msgDiv)
+        }
+        
+        // Scroll to bottom
+        messagesArea.scrollTop = messagesArea.scrollHeight.toDouble()
+    }
+}
+
 fun repositionSlideNoteOverlayIfVisible() {
     val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return
     if (overlay.style.display != "none") {
@@ -833,19 +1006,44 @@ suspend fun main() {
             document.body!!.appendChild(overlay)
         }
 
-        // Set content with optional animation
-        if (note.animated) {
-            animateSlideNoteText(overlay, note.html)
-        } else {
-            overlay.innerHTML = note.html
+        // Clear previous content
+        overlay.innerHTML = ""
+        
+        // Add main content
+        val contentDiv = document.createElement("div") as HTMLElement
+        contentDiv.innerHTML = note.html
+        overlay.appendChild(contentDiv)
+        
+        // Add chat UI if slideshow ID and slide number are present
+        if (note.slideshowId.isNotBlank() && note.slideNumber >= 0) {
+            val chatContainer = createChatUI(note.slideshowId, note.slideNumber)
+            overlay.appendChild(chatContainer)
+            
+            // Load existing chat messages
+            loadChatMessages(note.slideshowId, note.slideNumber)
         }
+        
         overlay.style.display = "block"
 
-        overlay.querySelector(".close-btn")?.let { overlay.removeChild(it) }
         if (note.persistent) {
             val closeBtn = document.createElement("button") as HTMLElement
             closeBtn.classList.add("close-btn")
             closeBtn.innerHTML = "×"
+            closeBtn.style.apply {
+                position = "absolute"
+                top = "8px"
+                right = "8px"
+                background = "rgba(255, 255, 255, 0.2)"
+                border = "none"
+                borderRadius = "4px"
+                color = "#fff"
+                fontSize = "20px"
+                width = "24px"
+                height = "24px"
+                cursor = "pointer"
+                lineHeight = "20px"
+                textAlign = "center"
+            }
             closeBtn.onclick = {
                 overlay.style.display = "none"
                 clearSlideAnnotations()
@@ -897,6 +1095,23 @@ suspend fun main() {
         }
         slideNoteAnchorUid = null
         clearSlideAnnotations()
+        Handled.yes
+    }
+
+    handlers.put("chat-messages-loaded") { message, _ ->
+        val loaded = Json.decodeFromJsonElement<ChatMessagesLoaded>(message.payload!!)
+        if (loaded.slideshowId == currentChatSlideshowId && loaded.slideNumber == currentChatSlideNumber) {
+            displayChatMessages(loaded.messages)
+        }
+        Handled.yes
+    }
+
+    handlers.put("chat-message-posted") { message, _ ->
+        val posted = Json.decodeFromJsonElement<ChatMessagePosted>(message.payload!!)
+        if (posted.slideshowId == currentChatSlideshowId && posted.slideNumber == currentChatSlideNumber) {
+            // Reload all messages to show the new one
+            loadChatMessages(posted.slideshowId, posted.slideNumber)
+        }
         Handled.yes
     }
 

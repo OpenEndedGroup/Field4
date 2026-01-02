@@ -75,6 +75,7 @@ fun Box.slideShow(init: SlideShowBuilder.() -> Unit): SlideShowInstance {
  */
 class SlideShowBuilder(val hostBox: Box) {
     private val steps = mutableListOf<SlideStep>()
+    private var slideshowId: String? = null
 
     /**
      * Defines a step in the slideshow
@@ -85,8 +86,15 @@ class SlideShowBuilder(val hostBox: Box) {
         steps.add(builder.build())
     }
 
+    /**
+     * Set a custom slideshow ID (optional, will generate one if not set)
+     */
+    fun slideshowId(id: String) {
+        this.slideshowId = id
+    }
+
     fun build(): SlideShowInstance {
-        return SlideShowInstance(hostBox, steps)
+        return SlideShowInstance(hostBox, steps, slideshowId)
     }
 }
 
@@ -102,6 +110,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private var highlightLine: Int? = null
     private var persistent: Boolean = false
     private var animated: Boolean = false
+    private var withChat: Boolean = false
     private val annotations = mutableListOf<SlideAnnotation>()
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
@@ -187,6 +196,15 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     }
 
     /**
+     * Enable chat/discussion for this slide.
+     * When enabled, a collapsible "Discussion" section appears below the slide content
+     * where users can post messages and questions.
+     */
+    fun withChat() {
+        this.withChat = true
+    }
+
+    /**
      * Add an annotation line from the guide text to a box
      */
     fun annotate(
@@ -243,6 +261,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             highlightLine = highlightLine,
             persistent = persistent,
             animated = animated,
+            withChat = withChat,
             annotations = annotations.toList(),
             onEnter = onEnter,
             onExit = onExit,
@@ -272,6 +291,7 @@ data class SlideStep(
     val highlightLine: Int?,
     val persistent: Boolean,
     val animated: Boolean,
+    val withChat: Boolean,
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?,
@@ -327,8 +347,12 @@ object SlideMarkdown {
  */
 class SlideShowInstance(
     val hostBox: Box,
-    val steps: List<SlideStep>
+    val steps: List<SlideStep>,
+    customId: String? = null
 ) {
+    // Generate unique slideshow ID (use custom ID if provided, otherwise generate based on host box)
+    val slideshowId: String = customId ?: "slideshow_${hostBox.id}_${System.currentTimeMillis()}"
+    
     var currentStepIndex = -1
         private set
 
@@ -390,7 +414,9 @@ class SlideShowInstance(
                     uid = step.noteAnchorBox?.id ?: hostBox.id,
                     persistent = step.persistent,
                     animated = step.animated,
-                    annotations = step.annotations
+                    annotations = step.annotations,
+                    slideshowId = if (step.withChat) slideshowId else "",
+                    slideNumber = if (step.withChat) index else -1
                 )
             ))
         } else {
