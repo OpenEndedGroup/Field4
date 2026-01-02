@@ -18,9 +18,23 @@ import writeLocalVersion
 import kotlin.script.experimental.api.KotlinType
 
 var needsResync = ConcurrentSet<Pair<Box, String>>()
-var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
+var Box.offline by Delegation<Boolean>(defaultValue = { true }, hook = ::onOfflineChange) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
+
+fun onOfflineChange(box: HasProperties, currentValue: Boolean, incomingValue: Boolean): Boolean {
+    // When a box transitions to offline, clean up all execution markers
+    if (!currentValue && incomingValue && box is Box) {
+        // Box is going offline - stop all running jobs and clear execution markers
+        box.runGeneration.keys.toList().forEach { strand ->
+            val generation = box.runGeneration[strand] ?: 0
+            send(Message("is-running").payload(IsRunning(box.id, false, generation, strand)))
+        }
+        box.jobs.forEach { it.cancel() }
+        box.jobs.clear()
+    }
+    return incomingValue
+}
 
 
 interface HasProperties {

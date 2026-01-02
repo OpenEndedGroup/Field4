@@ -452,6 +452,19 @@ suspend fun main() {
                     }
                 }
             }
+            "_tombstone" -> {
+                console.log(" got _tombstone message ", set)
+                if (found != null && set.number) {
+                    console.log(" removing tombstoned box ", found)
+                    // Deselect the box if it's selected
+                    if (selected.contains(found.unsafeCast<HTMLElement>())) {
+                        deselectBox(found.unsafeCast<HTMLElement>())
+                    }
+                    // Remove the box from the DOM
+                    found.parentElement?.removeChild(found)
+                    canvasGestures.rebuildConnectionGroup()
+                }
+            }
          }
         Handled.yes
     }
