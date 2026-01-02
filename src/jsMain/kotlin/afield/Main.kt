@@ -448,7 +448,9 @@ suspend fun main() {
                         console.log(" bringing ", found, " online ")
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
-                        // Clear all execution markers when box comes online (e.g., after Field restart)
+                        // Clear all execution markers when box comes online
+                        // runningList tracks active execution strands - clear it to remove stale state
+                        // from previous Field sessions when browser reconnects
                         found.unsafeCast<HTMLElement>().classList.remove("running")
                         val runningList = found.asDynamic().runningList
                         if (runningList != null && runningList.clear != null) {
