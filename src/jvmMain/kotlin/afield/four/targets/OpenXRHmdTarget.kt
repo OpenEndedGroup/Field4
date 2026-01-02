@@ -1771,7 +1771,7 @@ class OpenXRHmdTarget(
                 if (srcUnderlying != null) {
                     image_layout_transition(
                         cmd.vkCommandBuffer,
-                        srcUnderlying ?: srcImage,
+                        srcUnderlying,
                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                         VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                         VK_ACCESS_2_TRANSFER_READ_BIT,
