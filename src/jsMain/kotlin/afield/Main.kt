@@ -520,7 +520,7 @@ var styles = CssBuilder().apply {
     }
 
     ".selected" {
-        borderColor = important(rgb(72, 201, 255, 0.78))
+        borderColor = important(Color("rgba(var(--field-cyan-rgb), 0.78)"))
     }
 
     ".doubleClickToEdit" {

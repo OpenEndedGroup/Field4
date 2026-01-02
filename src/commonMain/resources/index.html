@@ -25,8 +25,9 @@
 
         /* Minimal cyan control skin */
         :root {
-            --field-cyan: #48c9ff;
-            --field-cyan-muted: rgba(72, 201, 255, 0.4);
+            --field-cyan-rgb: 72, 201, 255;
+            --field-cyan: rgb(var(--field-cyan-rgb));
+            --field-cyan-muted: rgba(var(--field-cyan-rgb), 0.4);
             --field-panel: rgba(0, 0, 0, 0.26);
             --field-text: #a9e6ff;
             --field-text-soft: #7fd4ff;
@@ -35,7 +36,7 @@
         .field-control {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             background: var(--field-panel);
-            border: 1px solid rgba(72, 201, 255, 0.12);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.12);
             border-radius: 10px;
             padding: 8px 10px;
             margin: 1px 0;
@@ -233,7 +234,7 @@
             fill: #0a1822;
             stroke: var(--field-cyan);
             stroke-width: 2;
-            filter: drop-shadow(0 0 6px rgba(72, 201, 255, 0.45));
+            filter: drop-shadow(0 0 6px rgba(var(--field-cyan-rgb), 0.45));
         }
 
         .field-subtext {
@@ -261,13 +262,13 @@
             appearance: none;
             -webkit-appearance: none;
             background: #000;
-            border: 1px solid rgba(72, 201, 255, 0.7);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.7);
             border-radius: 4px;
             cursor: pointer;
             position: relative;
             display: grid;
             place-items: center;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset, 0 0 6px rgba(72, 201, 255, 0.35);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset, 0 0 6px rgba(var(--field-cyan-rgb), 0.35);
         }
 
         .field-checkbox .checkbox-toggle::after {
@@ -285,7 +286,7 @@
         }
 
         .field-checkbox .checkbox-toggle:focus-visible {
-            outline: 1px solid rgba(72, 201, 255, 0.8);
+            outline: 1px solid rgba(var(--field-cyan-rgb), 0.8);
             outline-offset: 2px;
         }
 
@@ -298,7 +299,7 @@
 
         .field-text-input {
             background: #000;
-            border: 1px solid rgba(72, 201, 255, 0.6);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.6);
             border-radius: 6px;
             padding: 6px 8px;
             color: var(--field-cyan);
@@ -311,7 +312,7 @@
 
         .field-text-input:focus {
             border-color: var(--field-cyan);
-            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.6);
+            box-shadow: 0 0 0 1px rgba(var(--field-cyan-rgb), 0.6);
         }
 
         /* Color picker */
@@ -332,7 +333,7 @@
             width: 52px;
             height: 32px;
             /*border-radius: 8px;*/
-            /*border: 1px solid rgba(72, 201, 255, 0.35);*/
+            /*border: 1px solid rgba(var(--field-cyan-rgb), 0.35);*/
             overflow: hidden;
             /*box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;*/
             background: #050505;
@@ -348,7 +349,7 @@
             padding: 0;
             cursor: pointer;
             background: transparent;
-            outline: 1px solid rgba(72, 201, 255, 0.4);
+            outline: 1px solid rgba(var(--field-cyan-rgb), 0.4);
             /*outline-offset: -2px;*/
         }
 
@@ -600,7 +601,7 @@
         }
 
         .box.selected {
-            border-color: rgba(72, 201, 255, 0.9);
+            border-color: rgba(var(--field-cyan-rgb), 0.9);
         }
 
         .closeBox + .hoverable {
@@ -857,7 +858,7 @@
             background: rgba(0, 0, 0, 0.5);
             padding: 4px;
             border-radius: 5px;
-            color: rgba(255, 255, 255, 1);
+            color: var(--field-cyan);
             font-size: 70%;
             -webkit-user-select: none; /* Safari */
             -moz-user-select: none; /* Firefox */
@@ -1038,7 +1039,7 @@
         }
 
         .ss-bracket {
-            color: rgba(50, 200, 255, 1);
+            color: var(--field-cyan);
         }
 
         .tab {
@@ -1143,7 +1144,7 @@
 
 <div class="centered-container" id="cheatsheet" style="opacity: 0;">
     <div class="centered-container-div">
-        <span class="leftKey"></span> <span class="rightKey">use the url to open a document, e.g. <b>http://localhost:9091/index.html?file=helloWorld</b></span><br><br>
+        <span class="leftKey"></span> <span class="rightKey">use the url to open a document, e.g. <b>http://localhost:9092/index.html?file=helloWorld</b></span><br><br>
         <span class="leftKey"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span><br>
         <span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span><br><br>
         <span class="leftKey"><kbd>F1</kbd></span> <span class="rightKey">opens a searchable <b>command menu</b> for <i>everything else</i> (align, route, etc.)</span><br>
