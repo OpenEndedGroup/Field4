@@ -367,3 +367,16 @@ data class ChatMessagePosted(
     val slideNumber: Int,
     val message: ChatMessage
 )
+
+// Documentation iframe control messages
+@Serializable
+data class ShowDocsIframe(val url: String)
+
+@Serializable
+data class HideDocsIframe(val dummy: String = "")
+
+@Serializable
+data class SwitchToDocsIframe(val url: String)
+
+@Serializable
+data class SwitchToMonacoEditor(val dummy: String = "")

@@ -41,6 +41,11 @@ external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand
 
 external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
+external fun showDocsIframe(): dynamic
+external fun hideDocsIframe(): dynamic
+external fun setDocsIframeContent(url: String): dynamic
+external fun switchToMonaco(): dynamic
+external fun switchToDocsIframe(url: String?): dynamic
 external fun initMenuSupport(): dynamic
 
 
@@ -1170,6 +1175,30 @@ suspend fun main() {
         Handled.yes
     }
 
+    // Documentation iframe handlers
+    handlers.put("show-docs-iframe") { message, _ ->
+        val show = Json.decodeFromJsonElement<ShowDocsIframe>(message.payload!!)
+        setDocsIframeContent(show.url)
+        showDocsIframe()
+        Handled.yes
+    }
+
+    handlers.put("hide-docs-iframe") { message, _ ->
+        hideDocsIframe()
+        Handled.yes
+    }
+
+    handlers.put("switch-to-docs-iframe") { message, _ ->
+        val switch = Json.decodeFromJsonElement<SwitchToDocsIframe>(message.payload!!)
+        switchToDocsIframe(switch.url)
+        Handled.yes
+    }
+
+    handlers.put("switch-to-monaco-editor") { message, _ ->
+        switchToMonaco()
+        Handled.yes
+    }
+
     val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
     val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
     val hello = Message("hello").payload(Hello(filename, username))
@@ -1728,6 +1757,10 @@ suspend fun main() {
 }
 
 
+// Exported to allow documentation iframe API to stop boxes programmatically
+// Uses ExperimentalJsExport to make this Kotlin function directly callable from JavaScript
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun stopBox(uid: String) {
     console.log(" sending stop-box message")
     send(Message("stop-box").payload(Stop_box(uid = uid)))
