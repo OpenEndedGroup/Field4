@@ -17,6 +17,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private val watchKeys = ConcurrentHashMap<WatchKey, Path>()
     private val fileTimestamps = ConcurrentHashMap<String, Long>()
     private val internalSaveTimestamps = ConcurrentHashMap<String, Long>()
+    // Grace window to treat shortly-after writes as internal saves, avoiding misfired "external" reloads
+    private val internalSaveGraceMs = 1500L
     private var watchJob: Job? = null
     private var isRunning = false
     
@@ -175,8 +177,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         val lastKnownTime = fileTimestamps[absolutePath]
         val lastInternalSave = internalSaveTimestamps[absolutePath]
         
-        // Treat events with the same or older mtime than our last internal write as ours.
-        if (lastInternalSave != null && currentTime <= lastInternalSave) {
+        // Treat events within the grace window of our last internal write as ours to avoid
+        // late-firing events from previous saves being treated as external edits.
+        if (lastInternalSave != null && currentTime <= lastInternalSave + internalSaveGraceMs) {
             fileTimestamps[absolutePath] = currentTime
             return
         }

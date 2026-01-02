@@ -33,11 +33,14 @@ fun Box.simpleInteractiveExample() {
 
     val show = slideShow {
         step("Interactive Example") {
-            note("""
-                <h3>Simple Interactive Guide</h3>
-                <p>Current count: <strong>{{count}}</strong></p>
-                <p><a href="#custom:increment">Increment</a></p>
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Simple Interactive Guide (Markdown)
+                Current count: **{{count}}**
+
+                [Increment](#custom:increment)
+                """.trimIndent()
+            )
 
             linkCallback("increment") {
                 count++
@@ -430,6 +433,9 @@ fun Box.advancedSlideShowExample() {
  * This example shows:
  * 1. Custom link callbacks defined in code
  * 2. Template system that references box properties and variables
+ *
+ * All slides use the Markdown front end, so you can exercise advanced features
+ * without writing raw HTML.
  */
 fun Box.interactiveGuideExample() {
     // Set up some properties and variables that can be referenced in templates
@@ -443,39 +449,38 @@ fun Box.interactiveGuideExample() {
     this.properties["version"] = version
 
     val show = slideShow {
+        slideshowId("__test_0")
         step("Welcome to Interactive Guides") {
-            note("""
-                <h2>Interactive Guides with Callbacks</h2>
-                <p>This guide demonstrates the new interactive features:</p>
-                <ul>
-                  <li><strong>Custom Link Callbacks</strong>: Links can trigger Kotlin code</li>
-                  <li><strong>Template System</strong>: Display live data from your code</li>
-                </ul>
-                <p>Version: <strong>{{version}}</strong></p>
-                <p><a href="#slideshow:next">Let's explore! →</a></p>
-            """.trimIndent())
+            markdownNote(
+                """
+                ## Interactive Guides with Callbacks
+                Written entirely in Markdown (no custom HTML required).
 
-            selectBox(this@interactiveGuideExample)
+                - **Custom link callbacks** trigger Kotlin code
+                - **Template system** shows live data (version **{{version}}**)
+                - **Navigation shortcuts** via `[[next]]` and `[[back]]`
+
+                [[next:Let's explore →]]
+                """.trimIndent()
+            )
+
+            selectBox(hostBox)
         }
 
         step("Custom Link Callbacks") {
-            note("""
-                <h3>Click the Links Below</h3>
-                <p>These links execute Kotlin code when clicked:</p>
-                <div style="margin: 10px 0;">
-                  <a href="#custom:incrementCounter" style="display: inline-block; padding: 8px 16px; background: #4a5568; border-radius: 4px; text-decoration: none; margin: 4px;">
-                    Click Me!
-                  </a>
-                  <a href="#custom:resetCounter" style="display: inline-block; padding: 8px 16px; background: #742a2a; border-radius: 4px; text-decoration: none; margin: 4px;">
-                    Reset Counter
-                  </a>
-                </div>
-                <p>Times clicked: <strong>{{clickCount}}</strong></p>
-                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
-                  <a href="#slideshow:previous">← Back</a> | 
-                  <a href="#slideshow:next">Next →</a>
-                </p>
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Clickable callbacks using Markdown links
+                Use Markdown links with `#custom:name` to run Kotlin from the slide.
+
+                - [Increment](#custom:incrementCounter)
+                - [Reset](#custom:resetCounter)
+
+                Times clicked: **{{clickCount}}**
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
 
             // Register callbacks for the links
             linkCallback("incrementCounter") {
@@ -494,53 +499,54 @@ fun Box.interactiveGuideExample() {
                 lprintln("info,slideshow", "Counter reset")
             }
 
-            selectBox(this@interactiveGuideExample)
+            selectBox(hostBox)
         }
 
         step("Template System") {
-            note("""
-                <h3>Live Data Display</h3>
-                <p>Templates automatically pull data from your box properties and variables.</p>
-                <p>Use <code>\{\{propertyName\}\}</code> syntax to reference:</p>
-                <ul>
-                  <li>Box properties</li>
-                  <li>Kotlin variables in scope</li>
-                </ul>
-                <div style="background: #2d3748; padding: 12px; border-radius: 4px; margin: 10px 0;">
-                  <p style="margin: 4px 0;">Counter value: <strong>{{clickCount}}</strong></p>
-                  <p style="margin: 4px 0;">Version: <strong>{{version}}</strong></p>
-                  <p style="margin: 4px 0;">User choice: <strong>{{userChoice}}</strong></p>
-                </div>
-                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
-                  <a href="#slideshow:previous">← Back</a> | 
-                  <a href="#slideshow:next">Next →</a>
-                </p>
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Live Data Display
+                Templates pull values from box properties or variables in scope.
 
-            selectBox(this@interactiveGuideExample)
+                - Counter value: **{{clickCount}}**
+                - Version: **{{version}}**
+                - User choice: **{{userChoice}}**
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+
+            selectBox(hostBox)
+        }
+
+        step("Live Chat") {
+            markdownNote(
+                """
+                ### Per-slide live chat (Markdown)
+                Open the chat pane to ask questions while staying on this slide.
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+            withChat()
+            selectBox(hostBox)
         }
 
         step("Make a Choice") {
-            note("""
-                <h3>Interactive Choices</h3>
-                <p>Click one of the options below:</p>
-                <div style="margin: 15px 0;">
-                  <a href="#custom:choiceA" style="display: block; padding: 12px; margin: 8px 0; background: #2b6cb0; border-radius: 4px; text-decoration: none;">
-                    Option A: Performance Mode
-                  </a>
-                  <a href="#custom:choiceB" style="display: block; padding: 12px; margin: 8px 0; background: #2c7a7b; border-radius: 4px; text-decoration: none;">
-                    Option B: Quality Mode
-                  </a>
-                  <a href="#custom:choiceC" style="display: block; padding: 12px; margin: 8px 0; background: #744210; border-radius: 4px; text-decoration: none;">
-                    Option C: Balanced Mode
-                  </a>
-                </div>
-                <p>Your choice: <strong>{{userChoice}}</strong></p>
-                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
-                  <a href="#slideshow:previous">← Back</a> | 
-                  <a href="#slideshow:next">Next →</a>
-                </p>
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Interactive Choices
+                Pick one option; the callback updates `{{userChoice}}` via Markdown links.
+
+                - [Option A: Performance Mode](#custom:choiceA)
+                - [Option B: Quality Mode](#custom:choiceB)
+                - [Option C: Balanced Mode](#custom:choiceC)
+
+                Your choice: **{{userChoice}}**
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
 
             linkCallback("choiceA") {
                 userChoice = "Performance Mode"
@@ -563,34 +569,33 @@ fun Box.interactiveGuideExample() {
                 notify("Selected: Balanced Mode", "slideshow")
             }
 
-            selectBox(this@interactiveGuideExample)
+            selectBox(hostBox)
         }
 
         step("Advanced: Computed Properties") {
-            note("""
-                <h3>Computing Display Values</h3>
-                <p>You can compute values before displaying them:</p>
-                <div style="background: #2d3748; padding: 12px; border-radius: 4px; margin: 10px 0;">
-                  <p>Click count: {{clickCount}}</p>
-                  <p>Doubled: {{doubledCount}}</p>
-                  <p>Status: {{status}}</p>
-                </div>
-                <p style="font-size: 0.9em; color: #a0aec0; margin-top: 20px;">
-                  <a href="#slideshow:previous">← Back</a> | 
-                  <a href="#slideshow:stop">Finish</a>
-                </p>
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Computing Display Values
+                Values are prepared in `onEnter` and shown via Markdown templates.
+
+                - Click count: {{clickCount}}
+                - Doubled: {{doubledCount}}
+                - Status: **{{status}}**
+
+                [[back]] [[finish:Finish]]
+                """.trimIndent()
+            )
 
             onEnter {
                 // Compute derived values when entering this step
-                this@interactiveGuideExample.properties["doubledCount"] = clickCount * 2
-                this@interactiveGuideExample.properties["status"] =
+                hostBox.properties["doubledCount"] = clickCount * 2
+                hostBox.properties["status"] =
                     if (clickCount > 10) "Very Active!"
                     else if (clickCount > 5) "Active"
                     else "Getting Started"
             }
 
-            selectBox(this@interactiveGuideExample)
+            selectBox(hostBox)
         }
     }
 
@@ -598,5 +603,4 @@ fun Box.interactiveGuideExample() {
         show.start()
     }
 }
-
 

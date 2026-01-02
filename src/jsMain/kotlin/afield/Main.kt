@@ -18,7 +18,9 @@ import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.HTMLTextAreaElement
 import org.w3c.dom.asList
+import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
@@ -158,7 +160,7 @@ var currentChatSlideNumber: Int = -1
 fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
     currentChatSlideshowId = slideshowId
     currentChatSlideNumber = slideNumber
-    
+
     val chatContainer = document.createElement("div") as HTMLElement
     chatContainer.id = "chat-container"
     chatContainer.style.apply {
@@ -166,7 +168,7 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
         borderTop = "1px solid rgba(255, 255, 255, 0.1)"
         paddingTop = "10px"
     }
-    
+
     // Create disclosure header
     val chatHeader = document.createElement("div") as HTMLElement
     chatHeader.style.apply {
@@ -177,12 +179,12 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
         color = "#a0a0a0"
     }
     chatHeader.innerHTML = "▸ Discussion"
-    
+
     // Create chat content (initially hidden)
     val chatContent = document.createElement("div") as HTMLElement
     chatContent.id = "chat-content"
     chatContent.style.display = "none"
-    
+
     // Messages area
     val messagesArea = document.createElement("div") as HTMLElement
     messagesArea.id = "chat-messages"
@@ -195,51 +197,51 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
         borderRadius = "4px"
         fontSize = "12px"
     }
-    
+
     // Input area
     val inputArea = document.createElement("div") as HTMLElement
     inputArea.style.apply {
         display = "flex"
-        gap = "8px"
+        marginTop = "8px"
+        backgroundColor = "rgba(0, 0, 0, 0.3)"
+        border = "1px solid rgba(255, 255, 255, 0.08)"
+        borderRadius = "4px"
+        padding = "6px"
     }
-    
-    val messageInput = document.createElement("textarea") as HTMLElement
+
+    val messageInput = document.createElement("textarea") as HTMLTextAreaElement
     messageInput.id = "chat-input"
     messageInput.setAttribute("placeholder", "Add a comment...")
     messageInput.style.apply {
         flex = "1"
         minHeight = "60px"
         padding = "6px"
-        backgroundColor = "rgba(255, 255, 255, 0.1)"
+        backgroundColor = "rgba(0, 0, 0, 0.3)"
         color = "#e6e6e6"
-        border = "1px solid rgba(255, 255, 255, 0.2)"
+        border = "1px solid rgba(255, 255, 255, 0.08)"
         borderRadius = "4px"
         fontSize = "12px"
         fontFamily = "inherit"
         resize = "vertical"
+        outline = "1px solid #6fe6ff"
     }
-    
-    val sendButton = document.createElement("button") as HTMLElement
-    sendButton.innerHTML = "Send"
-    sendButton.style.apply {
-        padding = "6px 12px"
-        backgroundColor = "rgba(100, 150, 255, 0.7)"
-        color = "#fff"
-        border = "none"
-        borderRadius = "4px"
-        cursor = "pointer"
-        fontSize = "12px"
-        alignSelf = "flex-end"
-    }
-    
-    sendButton.onclick = {
-        val message = (messageInput.unsafeCast<dynamic>().value as? String)?.trim() ?: ""
+
+    fun sendCurrentMessage() {
+        val message = messageInput.value.trim()
         if (message.isNotBlank()) {
             postChatMessage(slideshowId, slideNumber, message)
-            messageInput.unsafeCast<dynamic>().value = ""
+            messageInput.value = ""
         }
     }
-    
+
+    messageInput.onkeydown = { event ->
+        val keyboardEvent = event as KeyboardEvent
+        if (keyboardEvent.key == "Enter" && !keyboardEvent.shiftKey) {
+            keyboardEvent.preventDefault()
+            sendCurrentMessage()
+        }
+    }
+
     // Toggle disclosure
     var isExpanded = false
     chatHeader.onclick = {
@@ -247,14 +249,13 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
         chatContent.style.display = if (isExpanded) "block" else "none"
         chatHeader.innerHTML = if (isExpanded) "▾ Discussion" else "▸ Discussion"
     }
-    
+
     inputArea.appendChild(messageInput)
-    inputArea.appendChild(sendButton)
     chatContent.appendChild(messagesArea)
     chatContent.appendChild(inputArea)
     chatContainer.appendChild(chatHeader)
     chatContainer.appendChild(chatContent)
-    
+
     return chatContainer
 }
 
@@ -270,7 +271,7 @@ fun postChatMessage(slideshowId: String, slideNumber: Int, message: String) {
 fun displayChatMessages(messages: List<ChatMessage>) {
     val messagesArea = document.getElementById("chat-messages") as? HTMLElement ?: return
     messagesArea.innerHTML = ""
-    
+
     if (messages.isEmpty()) {
         val emptyMsg = document.createElement("div") as HTMLElement
         emptyMsg.style.apply {
@@ -281,6 +282,37 @@ fun displayChatMessages(messages: List<ChatMessage>) {
         emptyMsg.innerHTML = "No messages yet"
         messagesArea.appendChild(emptyMsg)
     } else {
+        fun formatTimestamp(raw: String): String {
+            fun isValidDate(date: dynamic): Boolean = js("!isNaN(date.getTime())") as Boolean
+
+            val trimmed = raw.trim()
+            if (trimmed.isEmpty()) return ""
+
+            val candidates = mutableListOf<dynamic>()
+
+            trimmed.toDoubleOrNull()?.let { numeric ->
+                val millis = when {
+                    numeric > 1e12 -> numeric
+                    numeric > 1e9 -> numeric * 1000
+                    else -> numeric
+                }
+                candidates.add(eval("new Date($millis)"))
+            }
+
+            val normalized = trimmed
+                .replace(" ", "T")
+                .replace(Regex("(\\.\\d{3})\\d+")) { it.groupValues[1] }
+
+            candidates.add(eval("new Date('$normalized')"))
+
+            if (!normalized.endsWith("Z") && normalized.contains("T")) {
+                candidates.add(eval("new Date('$normalized' + 'Z')"))
+            }
+
+            val date = candidates.firstOrNull { isValidDate(it) } ?: return ""
+            return date.toLocaleTimeString("en-US", js("{hour: '2-digit', minute: '2-digit'}"))
+        }
+
         messages.forEach { msg ->
             val msgDiv = document.createElement("div") as HTMLElement
             msgDiv.style.apply {
@@ -288,23 +320,22 @@ fun displayChatMessages(messages: List<ChatMessage>) {
                 paddingBottom = "8px"
                 borderBottom = "1px solid rgba(255, 255, 255, 0.05)"
             }
-            
+
             val header = document.createElement("div") as HTMLElement
             header.style.apply {
                 fontSize = "11px"
                 color = "#999"
                 marginBottom = "4px"
             }
-            
-            val timestamp = try {
-                val date = js("new Date(msg.timestamp)")
-                date.toLocaleTimeString("en-US", js("{hour: '2-digit', minute: '2-digit'}"))
-            } catch (e: dynamic) {
-                ""
+
+            val timestamp = formatTimestamp(msg.timestamp)
+
+            header.innerHTML = if (timestamp.isNotEmpty()) {
+                "<strong>${msg.username}</strong> <span style='opacity: 0.6'>$timestamp</span>"
+            } else {
+                "<strong>${msg.username}</strong>"
             }
-            
-            header.innerHTML = "<strong>${msg.username}</strong> <span style='opacity: 0.6'>$timestamp</span>"
-            
+
             val content = document.createElement("div") as HTMLElement
             content.style.apply {
                 fontSize = "12px"
@@ -313,12 +344,12 @@ fun displayChatMessages(messages: List<ChatMessage>) {
                 wordWrap = "break-word"
             }
             content.textContent = msg.message
-            
+
             msgDiv.appendChild(header)
             msgDiv.appendChild(content)
             messagesArea.appendChild(msgDiv)
         }
-        
+
         // Scroll to bottom
         messagesArea.scrollTop = messagesArea.scrollHeight.toDouble()
     }
@@ -1029,21 +1060,21 @@ suspend fun main() {
 
         // Clear previous content
         overlay.innerHTML = ""
-        
+
         // Add main content
         val contentDiv = document.createElement("div") as HTMLElement
         contentDiv.innerHTML = note.html
         overlay.appendChild(contentDiv)
-        
+
         // Add chat UI if slideshow ID and slide number are present
         if (note.slideshowId.isNotBlank() && note.slideNumber >= 0) {
             val chatContainer = createChatUI(note.slideshowId, note.slideNumber)
             overlay.appendChild(chatContainer)
-            
+
             // Load existing chat messages
             loadChatMessages(note.slideshowId, note.slideNumber)
         }
-        
+
         overlay.style.display = "block"
 
         if (note.persistent) {

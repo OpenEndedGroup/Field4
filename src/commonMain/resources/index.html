@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>Field | 4</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/outputareas.css">
+    <link rel="stylesheet" href="/slideshow.css">
     <script src="/interact.min.js"></script>
     <script src="/plotly-2.24.1.min.js"></script>
     <script src="/anime.iife.min.js"></script>
 
 
     <style>
-        @import url("/iosevka.css");
-        @import url("/outputareas.css");
-        @import url("/slideshow.css");
-
         body {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             margin: 0;
@@ -144,9 +145,11 @@
             justify-content: center;
             padding: 6px 8px 12px 8px;
         }
+
         .vec2-shell .vec2-visual {
             flex: 0 0 auto;
         }
+
         .vec2-shell .vec2-tl,
         .vec2-shell .vec2-tr,
         .vec2-shell .vec2-angle,
@@ -158,12 +161,39 @@
             color: var(--field-text-soft);
             font-family: "Iosevka Web", monospace;
         }
-        .vec2-shell .vec2-tl { top: 4px; left: 6px; }
-        .vec2-shell .vec2-tr { top: 4px; right: 6px; }
-        .vec2-shell .vec2-angle { left: 8px; top: 50%; transform: translateY(-50%); }
-        .vec2-shell .vec2-mag { right: 8px; top: 50%; transform: translateY(-50%); }
-        .vec2-shell .vec2-x { left: 8px; bottom: 6px; }
-        .vec2-shell .vec2-y { right: 8px; bottom: 6px; }
+
+        .vec2-shell .vec2-tl {
+            top: 4px;
+            left: 6px;
+        }
+
+        .vec2-shell .vec2-tr {
+            top: 4px;
+            right: 6px;
+        }
+
+        .vec2-shell .vec2-angle {
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .vec2-shell .vec2-mag {
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .vec2-shell .vec2-x {
+            left: 8px;
+            bottom: 6px;
+        }
+
+        .vec2-shell .vec2-y {
+            right: 8px;
+            bottom: 6px;
+        }
+
         }
 
         .vec2-pane {
@@ -403,13 +433,12 @@
         }
 
 
-
         .execution_output {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
             font-size: 80%;
             padding: 5px;
             padding-left: 0px;
-            padding-top:0px;
+            padding-top: 0px;
         }
 
         .output_annotation {
@@ -436,32 +465,35 @@
         }
 
         ::-webkit-scrollbar-corner {
-            background: rgba(0,0,0,0);
+            background: rgba(0, 0, 0, 0);
         }
 
         .line-numbers {
             opacity: 0.5 !important;
             font-size: 70% !important;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */        }
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
+        }
 
         .sticky-line-number {
             opacity: 0.5 !important;
             font-size: 70% !important;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */        }
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
+        }
 
         .margin-view-overlays {
             opacity: 0.5 !important;
             font-size: 70% !important;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */        }
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
+        }
 
         [contenteditable] {
             outline: 0 solid transparent;
@@ -470,6 +502,7 @@
         .monaco-editor {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
+
         .monaco-editor-container {
             top: 10px;
             right: 10px;
@@ -509,19 +542,23 @@
         .suggest-widget .monaco-list {
             font-size: 80% !important;
         }
+
         .suggest-widget .monaco-list-row {
             font-size: 12px !important;
             height: 18px !important;
             line-height: 18px !important;
         }
+
         .suggest-widget .monaco-list-row .contents .main {
             line-height: 18px !important;
         }
+
         .suggest-widget .monaco-list-row .icon,
         .suggest-widget .monaco-list-row .readMore {
             width: 18px !important;
             height: 18px !important;
         }
+
         .suggest-details {
             font-size: 80% !important;
         }
@@ -529,6 +566,7 @@
         .monaco-findInput {
             margin-right: -6px !important;
         }
+
         .ibwrapper input {
             outline: none !important;
             margin-right: -10px !important;
@@ -565,16 +603,18 @@
             border-color: rgba(72, 201, 255, 0.9);
         }
 
-        .closeBox+.hoverable {
+        .closeBox + .hoverable {
             margin-left: 4.5px;
         }
 
         body::-webkit-scrollbar {
             width: 0.75rem;
         }
+
         *::-webkit-scrollbar-track {
             background-color: transparent;
         }
+
         *::-webkit-scrollbar-thumb {
             background-color: #000;
             border-radius: 0px;
@@ -734,9 +774,9 @@
 
         .notselectable {
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
         }
 
         .hoverable:hover {
@@ -764,12 +804,14 @@
             margin: 0;
         }
 
-        .fadeToBlack { background: rgba(0,0,0,0.5); }
+        .fadeToBlack {
+            background: rgba(0, 0, 0, 0.5);
+        }
 
         .markingHover {
             background-image: url("data:image/svg+xml,%3Csvg%20id%3D'stripes-svg'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'100%25'%20height%3D'100%25'%3E%3Cdefs%3E%3Cpattern%20id%3D'svg-stripes-pattern-5289'%20patternTransform%3D'rotate(45)'%20width%3D'100%25'%20height%3D'17'%20x%3D'0'%20y%3D'0'%20patternUnits%3D'userSpaceOnUse'%3E%3Canimate%20attributeName%3D'y'%20begin%3D'0s'%20dur%3D'100s'%20from%3D'0'%20to%3D'5000px'%20repeatCount%3D'indefinite'%20fill%3D'freeze'%3E%3C%2Fanimate%3E%3Cg%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'7'%20fill%3D'rgba(0%2C%200%2C%200%2C%201)'%3E%3C%2Frect%3E%3Crect%20x%3D'0'%20y%3D'7'%20width%3D'100%25'%20height%3D'10'%20fill%3D'rgba(150%2C%20255%2C%20208%2C%200.3)'%3E%3C%2Frect%3E%3C%2Fg%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'url(%23svg-stripes-pattern-5289)'%3E%3C%2Frect%3E%3C%2Fsvg%3E");
             /*background-color: rgba(40, 220, 110, 0.5);*/
-            color: rgba(255,255,255, 1);
+            color: rgba(255, 255, 255, 1);
 
             border: 2px solid rgba(0, 0, 0, 1);
             margin: -1px;
@@ -818,8 +860,8 @@
             color: rgba(255, 255, 255, 1);
             font-size: 70%;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none;
         }
 
@@ -828,16 +870,16 @@
         }
 
         .label-description {
-            opacity: 0.5  !important;
-            font-size: 80%  !important;
-            border-left: 1px solid white  !important;
+            opacity: 0.5 !important;
+            font-size: 80% !important;
+            border-left: 1px solid white !important;
             padding-left: 6px !important;
         }
 
         .centered-container {
             display: flex;
             justify-content: center; /* centers horizontally */
-            align-items: center;     /* centers vertically */
+            align-items: center; /* centers vertically */
             height: 100%;
             position: absolute;
             top: 0;
@@ -849,6 +891,7 @@
             user-select: none;
             pointer-events: none;
         }
+
         .centered-container-div {
             padding: 20px;
             background-color: #4444;
@@ -977,14 +1020,15 @@
         }
 
         .myInlineDecoration::before {
-            content:"⊙";
-            top:-20px;
-            position:absolute;
+            content: "⊙";
+            top: -20px;
+            position: absolute;
         }
 
         .ss-int {
             color: rgba(255, 200, 200, 1);
         }
+
         .ss-float {
             color: rgba(255, 255, 200, 1);
         }
@@ -1003,12 +1047,12 @@
             border-radius: 5px;
             height: 10px;
             background: rgba(255, 255, 255, 0.1);
-            margin-left:3px;
-            margin-right:3px;
+            margin-left: 3px;
+            margin-right: 3px;
         }
 
         .coverMarker {
-            font-size:0 !important;
+            font-size: 0 !important;
         }
 
         .mtk5.coverMarker:after {
@@ -1026,7 +1070,7 @@
         .offline {
             opacity: 0.4;
             filter: blur(3px);
-            transition: 0.2s filter, 0.2s opacity ;
+            transition: 0.2s filter, 0.2s opacity;
         }
 
         /*.mtk5.coverMarker:hover::after {*/
@@ -1063,7 +1107,7 @@
             line-height: 1.2;
             margin: 0;
             white-space: pre;
-            text-align: center;
+            /*text-align: center;*/
         }
 
     </style>
@@ -1071,29 +1115,29 @@
 <body>
 
 <div id="splash-screen">
-    <pre>  
-          _____                    _____                    _____                    _____            _____          
-         /\    \                  /\    \                  /\    \                  /\    \          /\    \         
-        /::\    \                /::\    \                /::\    \                /::\____\        /::\    \        
-       /::::\    \               \:::\    \              /::::\    \              /:::/    /       /::::\    \       
-      /::::::\    \               \:::\    \            /::::::\    \            /:::/    /       /::::::\    \      
-     /:::/\:::\    \               \:::\    \          /:::/\:::\    \          /:::/    /       /:::/\:::\    \     
-    /:::/__\:::\    \               \:::\    \        /:::/__\:::\    \        /:::/    /       /:::/  \:::\    \    
-   /::::\   \:::\    \              /::::\    \      /::::\   \:::\    \      /:::/    /       /:::/    \:::\    \   
-  /::::::\   \:::\    \    ____    /::::::\    \    /::::::\   \:::\    \    /:::/    /       /:::/    / \:::\    \  
- /:::/\:::\   \:::\    \  /\   \  /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/    /       /:::/    /   \:::\ ___\ 
+    <pre>
+          _____                    _____                    _____                    _____            _____
+         /\    \                  /\    \                  /\    \                  /\    \          /\    \
+        /::\    \                /::\    \                /::\    \                /::\____\        /::\    \
+       /::::\    \               \:::\    \              /::::\    \              /:::/    /       /::::\    \
+      /::::::\    \               \:::\    \            /::::::\    \            /:::/    /       /::::::\    \
+     /:::/\:::\    \               \:::\    \          /:::/\:::\    \          /:::/    /       /:::/\:::\    \
+    /:::/__\:::\    \               \:::\    \        /:::/__\:::\    \        /:::/    /       /:::/  \:::\    \
+   /::::\   \:::\    \              /::::\    \      /::::\   \:::\    \      /:::/    /       /:::/    \:::\    \
+  /::::::\   \:::\    \    ____    /::::::\    \    /::::::\   \:::\    \    /:::/    /       /:::/    / \:::\    \
+ /:::/\:::\   \:::\    \  /\   \  /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/    /       /:::/    /   \:::\ ___\
 /:::/  \:::\   \:::\____\/::\   \/:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/____/       /:::/____/     \:::|    |
 \::/    \:::\   \::/    /\:::\  /:::/    \::/    /\:::\   \:::\   \::/    /\:::\    \       \:::\    \     /:::|____|
- \/____/ \:::\   \/____/  \:::\/:::/    / \/____/  \:::\   \:::\   \/____/  \:::\    \       \:::\    \   /:::/    / 
-          \:::\    \       \::::::/    /            \:::\   \:::\    \       \:::\    \       \:::\    \ /:::/    /  
-           \:::\____\       \::::/____/              \:::\   \:::\____\       \:::\    \       \:::\    /:::/    /   
-            \::/    /        \:::\    \               \:::\   \::/    /        \:::\    \       \:::\  /:::/    /    
-             \/____/          \:::\    \               \:::\   \/____/          \:::\    \       \:::\/:::/    /     
-                               \:::\    \               \:::\    \               \:::\    \       \::::::/    /      
-                                \:::\____\               \:::\____\               \:::\____\       \::::/    /       
-                                 \::/    /                \::/    /                \::/    /        \::/____/        
-                                  \/____/                  \/____/                  \/____/          ~~              
-                                                                                                                     
+ \/____/ \:::\   \/____/  \:::\/:::/    / \/____/  \:::\   \:::\   \/____/  \:::\    \       \:::\    \   /:::/    /
+          \:::\    \       \::::::/    /            \:::\   \:::\    \       \:::\    \       \:::\    \ /:::/    /
+           \:::\____\       \::::/____/              \:::\   \:::\____\       \:::\    \       \:::\    /:::/    /
+            \::/    /        \:::\    \               \:::\   \::/    /        \:::\    \       \:::\  /:::/    /
+             \/____/          \:::\    \               \:::\   \/____/          \:::\    \       \:::\/:::/    /
+                               \:::\    \               \:::\    \               \:::\    \       \::::::/    /
+                                \:::\____\               \:::\____\               \:::\____\       \::::/    /
+                                 \::/    /                \::/    /                \::/    /        \::/____/
+                                  \/____/                  \/____/                  \/____/          ~~
+
 </pre>
 </div>
 
@@ -1106,23 +1150,29 @@
         <span class="leftKey"><kbd>⇧</kbd> <kbd>⇧</kbd></span> <span class="rightKey">double tap <b>opens box menu</b> (anywhere palette)</span><br><br>
         <span class="leftKey"><kbd>⌥</kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
         <span class="leftKey"><kbd>⌥</kbd> click</span> <span class="rightKey"><b>launches</b> a box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>↑</kbd></span> <span class="rightKey">also <b>launches</b> a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↑</kbd></span> <span
+            class="rightKey">also <b>launches</b> a box</span><br>
         <span class="leftKey"><kbd>⌥</kbd> <kbd>↓</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span><br>
         <span class="leftKey"><kbd>⌥</kbd> <kbd>↩</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
         <span class="leftKey"><kbd>⌥</kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
         <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
-        <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span class="rightKey">opens <b>autocomplete</b></span><br><br>
+        <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span
+            class="rightKey">opens <b>autocomplete</b></span><br><br>
         <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span><br><br>
         <span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
         <span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span><br><br>
-        <span class="leftKey"><kbd>⇧</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span class="rightKey"><b>save bookmark</b> 1-9</span><br>
-        <span class="leftKey"><kbd>⇧</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span class="rightKey"><b>restore bookmark</b> 1-9</span><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
+            class="rightKey"><b>save bookmark</b> 1-9</span><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
+            class="rightKey"><b>restore bookmark</b> 1-9</span><br>
     </div>
 </div>
 
 
-<canvas id="overlaycanvas" style="width:100vw; height:100vh; position: absolute; z-index: 20; backdrop-filter: blur(20px) brightness(0.0);; transition: backdrop-filter 0.5s;"></canvas>
-<svg id="overlaysvglayer" style="position: absolute; top:0; bottom:0; left:0; right:0; z-index: 0; pointer-events: none" height="100%" width="100%"></svg>
+<canvas id="overlaycanvas"
+        style="width:100vw; height:100vh; position: absolute; z-index: 20; backdrop-filter: blur(20px) brightness(0.0);; transition: backdrop-filter 0.5s;"></canvas>
+<svg id="overlaysvglayer" style="position: absolute; top:0; bottom:0; left:0; right:0; z-index: 0; pointer-events: none"
+     height="100%" width="100%"></svg>
 <div id="root"></div>
 
 <div class="monaco-editor-container"></div>
@@ -1153,13 +1203,83 @@
 
 <script type="module">
 
-        console.log(" welcome to field4")
-        document.addEventListener('keydown', function(event) {
-                if (event.keyCode === 112) {
-                        event.preventDefault();
-                }
-        })
+    console.log(" welcome to field4")
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode === 112) {
+            event.preventDefault();
+        }
+    });
 
+
+    (() => {
+        const pre = document.querySelector("#splash-screen pre");
+        if (!pre) return;
+
+        const text = pre.textContent ?? "";
+
+        // Inject tiny CSS (scoped to splash pre)
+        const style = document.createElement("style");
+        style.textContent = `
+    #splash-screen pre.f4drift .f4ch{
+      display:inline-block;
+      will-change:transform;
+      transform: translate3d(0,0,0);
+      transition: transform 1600ms cubic-bezier(.2,.8,.2,1);
+      transition-delay: var(--dly, 0ms);
+    }
+    #splash-screen pre.f4drift.f4go .f4ch{
+      transform: translate3d(var(--dx,0px), var(--dy,0px), 0);
+    }
+  `;
+        document.head.appendChild(style);
+
+        // Replace text with per-char spans (no manual markup needed)
+        pre.setAttribute("aria-label", text);
+        pre.textContent = "";
+        pre.classList.add("f4drift");
+
+        const frag = document.createDocumentFragment();
+        const chars = Array.from(text);
+
+        const maxPx = 200.25;   // subtle but visible; drop to ~1.2 if you want gentler
+        const maxDelay = 260; // slight spread
+        let printable = 0;
+        for (const ch of chars) if (ch !== "\n") printable++;
+
+        let i = 0;
+        for (const ch of chars) {
+            if (ch === "\n") {
+                frag.appendChild(document.createTextNode("\n"));
+                continue;
+            }
+
+            const span = document.createElement("span");
+            span.className = "f4ch";
+            span.setAttribute("aria-hidden", "true");
+            span.textContent = ch === " " ? " " : ch;
+
+            const dx = (Math.random() * 2 - 1) * maxPx;
+            const dy = (Math.random() * 2 - 1) * maxPx;
+            const dly = (i / Math.max(1, printable)) * maxDelay;
+
+            span.style.setProperty("--dx", `${dx.toFixed(3)}px`);
+            span.style.setProperty("--dy", `${dy.toFixed(3)}px`);
+            span.style.setProperty("--dly", `${dly.toFixed(1)}ms`);
+
+            frag.appendChild(span);
+            i++;
+        }
+
+        pre.appendChild(frag);
+
+        // Start drift *after* the DOM is painted so you can actually see it
+        requestAnimationFrame(() => {
+            pre.offsetHeight;
+            requestAnimationFrame(() => {
+                pre.classList.add("f4go");
+            })
+        })
+    })();
 
 </script>
 

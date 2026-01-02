@@ -7,6 +7,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -14,7 +15,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Chat server integration for guide/slideshow discussion functionality.
- * 
+ *
  * This module handles communication with the Flask chat server, providing
  * handlers for loading and posting chat messages to per-slide discussion threads.
  */
@@ -32,13 +33,13 @@ fun chat() {
     handlers["load-chat-messages"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<LoadChatMessages>(message.payload!!)
         lprintln("debug,chat", "Loading chat messages for ${request.slideshowId}/${request.slideNumber}")
-        
+
         GlobalScope.launch {
             try {
                 val response: HttpResponse = chatHttpClient.get("$chatServerUrl/chat/${request.slideshowId}/${request.slideNumber}")
                 val messagesJson = response.bodyAsText()
                 val messages = Json.decodeFromString<List<ChatMessage>>(messagesJson)
-                
+
                 reply(Message("chat-messages-loaded").payload(
                     ChatMessagesLoaded(
                         slideshowId = request.slideshowId,
@@ -58,14 +59,14 @@ fun chat() {
                 ))
             }
         }
-        
+
         Handled.yes
     })
 
     handlers["post-chat-message"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<PostChatMessage>(message.payload!!)
         lprintln("debug,chat", "Posting chat message: ${request.username}: ${request.message}")
-        
+
         GlobalScope.launch {
             try {
                 val response: HttpResponse = chatHttpClient.post("$chatServerUrl/chat/${request.slideshowId}/${request.slideNumber}") {
@@ -75,10 +76,10 @@ fun chat() {
                         "message" to request.message
                     ))
                 }
-                
+
                 val messageJson = response.bodyAsText()
                 val postedMessage = Json.decodeFromString<ChatMessage>(messageJson)
-                
+
                 // Broadcast to all connected clients in this session
                 _send(Message("chat-message-posted").payload(
                     ChatMessagePosted(
@@ -92,7 +93,7 @@ fun chat() {
                 e.printStackTrace()
             }
         }
-        
+
         Handled.yes
     })
 }
