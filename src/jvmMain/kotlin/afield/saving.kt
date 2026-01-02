@@ -261,7 +261,7 @@ class SavingContext {
         // Launch on background thread pool
         GlobalScope.launch(Dispatchers.IO) {
             try {
-                altered = false
+                var altered = false
                 val root = ensureDirectory(fn)
                 ensureRepository(fn)
 
