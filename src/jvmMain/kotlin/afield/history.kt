@@ -14,8 +14,18 @@ import java.time.Instant
  * - Ability to restore any previous version
  * - Tracking of version transitions
  * - Support for future forking/merging scenarios
+ * 
+ * To optimize performance, this manager maintains an in-memory cache of version metadata
+ * that is updated incrementally when saves occur, avoiding the need to reparse all
+ * backup files on every request.
  */
 object HistoryManager {
+    
+    /**
+     * In-memory cache of version lists per document.
+     * Key: document path, Value: list of versions
+     */
+    private val versionCache = mutableMapOf<String, MutableList<VersionInfo>>()
     
     /**
      * Data class representing a single version in document history
@@ -45,9 +55,72 @@ object HistoryManager {
     )
     
     /**
-     * List all backup versions for a document directory
+     * Called by saving.kt when a new version is saved.
+     * This updates the cache incrementally without reparsing all files.
+     * 
+     * @param documentPath The path to the document directory
+     * @param boxIds The set of box IDs in the new version
+     * @param timestamp The timestamp of the save (defaults to now)
+     */
+    fun onVersionSaved(documentPath: String, boxIds: Set<String>, timestamp: Long = System.currentTimeMillis()) {
+        val cached = versionCache[documentPath]
+        
+        if (cached == null) {
+            // First save for this document - initialize cache
+            val versions = scanVersionsFromDisk(documentPath)
+            versionCache[documentPath] = versions.toMutableList()
+        } else {
+            // Incremental update - add the new version
+            val currentMetadata = File(documentPath, "metadata.edn")
+            if (currentMetadata.exists()) {
+                // Check if we already have the current version or need to add it
+                val lastVersion = cached.lastOrNull()
+                if (lastVersion == null || lastVersion.file.name != "metadata.edn") {
+                    // Add new version
+                    val newVersion = VersionInfo(
+                        index = cached.size,
+                        file = currentMetadata,
+                        timestamp = timestamp,
+                        boxIds = boxIds,
+                        boxCount = boxIds.size
+                    )
+                    cached.add(newVersion)
+                } else {
+                    // Update existing current version
+                    cached[cached.size - 1] = VersionInfo(
+                        index = cached.size - 1,
+                        file = currentMetadata,
+                        timestamp = timestamp,
+                        boxIds = boxIds,
+                        boxCount = boxIds.size
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * List all backup versions for a document directory.
+     * Uses cached data if available, otherwise scans from disk.
      */
     fun listVersions(documentPath: String): List<VersionInfo> {
+        // Check cache first
+        val cached = versionCache[documentPath]
+        if (cached != null) {
+            return cached
+        }
+        
+        // Not in cache - scan from disk and populate cache
+        val versions = scanVersionsFromDisk(documentPath)
+        versionCache[documentPath] = versions.toMutableList()
+        return versions
+    }
+    
+    /**
+     * Scan versions from disk (used for initial load or cache miss).
+     * This is the expensive operation we want to minimize.
+     */
+    private fun scanVersionsFromDisk(documentPath: String): List<VersionInfo> {
         val docDir = File(documentPath)
         
         if (!docDir.exists()) {
@@ -329,17 +402,11 @@ object HistoryManager {
     }
     
     /**
-     * Record a version when a save happens. This should be called by the saving system
-     * to track new versions without reparsing all backup files.
-     * 
-     * @param documentPath The path to the document directory
-     * @param boxCount The number of boxes in this version
-     * @return The new version index
+     * Clear the version cache for a document.
+     * Call this when the document is closed or if you need to force a rescan.
      */
-    fun recordNewVersion(documentPath: String, boxCount: Int): Int {
-        val versions = listVersions(documentPath)
-        // The new version will be the current one (last in list)
-        return versions.size - 1
+    fun clearCache(documentPath: String) {
+        versionCache.remove(documentPath)
     }
 }
 
