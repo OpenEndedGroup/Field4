@@ -4,8 +4,8 @@ package afield
 
 import afield.logger.lprintln
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -258,8 +258,8 @@ class SavingContext {
      * This includes file writing, backups, and git operations.
      */
     private fun saveInBackground(snapshot: SaveSnapshot, fn: String, message: String?) {
-        // Launch on background thread pool
-        GlobalScope.launch(Dispatchers.IO) {
+        // Launch on background thread pool - using the project's standard miscPool
+        GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             try {
                 var altered = false
                 val root = ensureDirectory(fn)
