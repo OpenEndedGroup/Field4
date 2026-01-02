@@ -85,11 +85,40 @@ val (snappedX, snappedY) = boxSnappingSystem.applySnapping(
 4. **Position Adjustment**: Returns the snapped position to be sent to server
 5. **Server Round-Trip**: Server broadcasts position to all clients, maintaining sync
 
+## Visual Feedback
+
+When snapping is active, **subtle cyan guide lines** appear to show what alignments are being detected:
+
+- **Edge Alignment**: Vertical or horizontal lines showing which edges are aligned
+- **Spacing Measurements**: Lines with measurement ticks showing equal spacing between boxes
+- **Snap Points**: Small cyan circles marking key alignment points
+
+The visual guides automatically appear when you get close to a snap point and disappear when you move away or release the mouse.
+
+### Visual Guide Colors
+- **Line Color**: Subtle cyan (`rgba(72, 201, 255, 0.6)`)
+- **Line Style**: Dashed (4px dash, 3px gap)
+- **Markers**: Slightly more opaque cyan (`rgba(72, 201, 255, 0.8)`)
+
+## Resize Snapping
+
+In addition to drag-to-snap, the system now supports **resize snapping**:
+
+- **Edge Snapping**: When resizing, edges snap to other box edges
+- **All Four Edges**: Works with top, bottom, left, and right edges
+- **Visual Feedback**: Same cyan guides appear during resize operations
+- **Caps Lock Toggle**: Enable/disable with Caps Lock, just like drag snapping
+
+### Resize Snap Behavior
+- **Right Edge**: Snaps to right or left edges of other boxes
+- **Left Edge**: Snaps to left or right edges of other boxes  
+- **Bottom Edge**: Snaps to bottom or top edges of other boxes
+- **Top Edge**: Snaps to top or bottom edges of other boxes
+
 ## Future Enhancements
 
 Possible improvements for future versions:
 
-- Visual feedback showing snap guides/lines
 - Configurable snap threshold via preferences
 - Grid snapping option
 - Snap to canvas grid or guides
