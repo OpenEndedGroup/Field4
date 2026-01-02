@@ -16,6 +16,10 @@ import kotlinx.browser.document
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
+import org.w3c.dom.svg.SVGElement
+import org.w3c.dom.svg.SVGLineElement
+import org.w3c.dom.svg.SVGRectElement
+import org.w3c.dom.svg.SVGSVGElement
 import kotlin.math.abs
 
 /**
@@ -25,7 +29,9 @@ data class SnapTarget(
     val x: Double,
     val y: Double,
     val distance: Double,
-    val type: SnapType
+    val type: SnapType,
+    val referenceBox: HTMLElement? = null,  // The box being snapped to
+    val snapLine: SnapLine? = null  // Information about the visual snap line
 )
 
 enum class SnapType {
@@ -36,6 +42,17 @@ enum class SnapType {
     HORIZONTAL_SPACING,
     VERTICAL_SPACING
 }
+
+/**
+ * Data class for visual snap line information
+ */
+data class SnapLine(
+    val x1: Double,
+    val y1: Double,
+    val x2: Double,
+    val y2: Double,
+    val isVertical: Boolean
+)
 
 /**
  * Main snapping system class
@@ -49,6 +66,12 @@ class BoxSnappingSystem {
     
     // Track Caps Lock state
     private var capsLockEnabled = false
+    
+    // SVG group for snap guides
+    private var snapGuidesGroup: SVGElement? = null
+    
+    // Track active snaps for visual feedback
+    private var activeSnapTargets = mutableListOf<SnapTarget>()
     
     /**
      * Initialize the snapping system by setting up Caps Lock detection
@@ -102,6 +125,131 @@ class BoxSnappingSystem {
     fun isCapsLockEnabled(): Boolean = capsLockEnabled
     
     /**
+     * Get or create the SVG group for snap guides
+     */
+    private fun getSnapGuidesGroup(): SVGElement {
+        if (snapGuidesGroup == null) {
+            val svg = document.getElementById("overlaysvglayer") as? SVGSVGElement
+            if (svg != null) {
+                // Try to find existing group
+                var group = svg.querySelector("#snap-guides") as? SVGElement
+                if (group == null) {
+                    // Create new group
+                    group = document.createElementNS("http://www.w3.org/2000/svg", "g") as SVGElement
+                    group.setAttribute("id", "snap-guides")
+                    svg.appendChild(group)
+                }
+                snapGuidesGroup = group
+            }
+        }
+        return snapGuidesGroup ?: error("Could not create snap guides group")
+    }
+    
+    /**
+     * Draw visual snap guides for the active snap targets
+     */
+    private fun drawSnapGuides(targets: List<SnapTarget>, draggedBox: Rect) {
+        val group = getSnapGuidesGroup()
+        
+        // Clear previous guides
+        group.innerHTML = ""
+        
+        // Store active targets for reference
+        activeSnapTargets.clear()
+        activeSnapTargets.addAll(targets)
+        
+        targets.forEach { target ->
+            target.snapLine?.let { line ->
+                // Create line element
+                val lineElement = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement
+                lineElement.setAttribute("x1", line.x1.toString())
+                lineElement.setAttribute("y1", line.y1.toString())
+                lineElement.setAttribute("x2", line.x2.toString())
+                lineElement.setAttribute("y2", line.y2.toString())
+                lineElement.setAttribute("stroke", "rgba(72, 201, 255, 0.6)")  // Subtle cyan
+                lineElement.setAttribute("stroke-width", "1.5")
+                lineElement.setAttribute("stroke-dasharray", "4 3")
+                lineElement.setAttribute("pointer-events", "none")
+                group.appendChild(lineElement)
+                
+                // Add small markers at key points
+                when (target.type) {
+                    SnapType.HORIZONTAL_SPACING, SnapType.VERTICAL_SPACING -> {
+                        // For spacing, draw measurement markers
+                        addSpacingMarkers(group, line, target.type)
+                    }
+                    else -> {
+                        // For edge alignment, draw subtle markers at snap points
+                        addEdgeMarkers(group, line, line.isVertical)
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Add edge alignment markers
+     */
+    private fun addEdgeMarkers(group: SVGElement, line: SnapLine, isVertical: Boolean) {
+        // Small circle markers at the line endpoints
+        listOf(line.x1 to line.y1, line.x2 to line.y2).forEach { (x, y) ->
+            val circle = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+            circle.setAttribute("cx", x.toString())
+            circle.setAttribute("cy", y.toString())
+            circle.setAttribute("r", "3")
+            circle.setAttribute("fill", "rgba(72, 201, 255, 0.4)")
+            circle.setAttribute("stroke", "rgba(72, 201, 255, 0.8)")
+            circle.setAttribute("stroke-width", "1")
+            circle.setAttribute("pointer-events", "none")
+            group.appendChild(circle)
+        }
+    }
+    
+    /**
+     * Add spacing measurement markers
+     */
+    private fun addSpacingMarkers(group: SVGElement, line: SnapLine, type: SnapType) {
+        // Draw measurement ticks at endpoints
+        val tickSize = 5.0
+        
+        if (type == SnapType.HORIZONTAL_SPACING) {
+            // Vertical ticks for horizontal spacing
+            listOf(line.x1, line.x2).forEach { x ->
+                val tick = document.createElementNS("http://www.w3.org/2000/svg", "line")
+                tick.setAttribute("x1", x.toString())
+                tick.setAttribute("y1", (line.y1 - tickSize).toString())
+                tick.setAttribute("x2", x.toString())
+                tick.setAttribute("y2", (line.y1 + tickSize).toString())
+                tick.setAttribute("stroke", "rgba(72, 201, 255, 0.8)")
+                tick.setAttribute("stroke-width", "1.5")
+                tick.setAttribute("pointer-events", "none")
+                group.appendChild(tick)
+            }
+        } else if (type == SnapType.VERTICAL_SPACING) {
+            // Horizontal ticks for vertical spacing
+            listOf(line.y1, line.y2).forEach { y ->
+                val tick = document.createElementNS("http://www.w3.org/2000/svg", "line")
+                tick.setAttribute("x1", (line.x1 - tickSize).toString())
+                tick.setAttribute("y1", y.toString())
+                tick.setAttribute("x2", (line.x1 + tickSize).toString())
+                tick.setAttribute("y2", y.toString())
+                tick.setAttribute("stroke", "rgba(72, 201, 255, 0.8)")
+                tick.setAttribute("stroke-width", "1.5")
+                tick.setAttribute("pointer-events", "none")
+                group.appendChild(tick)
+            }
+        }
+    }
+    
+    /**
+     * Clear visual snap guides
+     */
+    fun clearSnapGuides() {
+        snapGuidesGroup?.let { it.innerHTML = "" }
+        activeSnapTargets.clear()
+    }
+    
+    /**
      * Apply snapping to a proposed position while dragging a box
      * 
      * @param draggedBox The box being dragged
@@ -119,6 +267,7 @@ class BoxSnappingSystem {
         proposedH: Double
     ): Pair<Double, Double> {
         if (!capsLockEnabled) {
+            clearSnapGuides()
             return proposedX to proposedY
         }
         
@@ -126,6 +275,7 @@ class BoxSnappingSystem {
         val allBoxes = getAllBoxes().filter { it != draggedBox }
         
         if (allBoxes.isEmpty()) {
+            clearSnapGuides()
             return proposedX to proposedY
         }
         
@@ -141,10 +291,13 @@ class BoxSnappingSystem {
         var snappedY = proposedY
         var snapped = false
         
+        val activeTargets = mutableListOf<SnapTarget>()
+        
         // Apply horizontal snap if within threshold
         if (bestHorizontalSnap != null && bestHorizontalSnap.distance <= SNAP_THRESHOLD) {
             snappedX = bestHorizontalSnap.x
             snapped = true
+            activeTargets.add(bestHorizontalSnap)
             console.log("Snapping horizontally: ${bestHorizontalSnap.type} (distance: ${bestHorizontalSnap.distance.toInt()}px)")
         }
         
@@ -152,14 +305,193 @@ class BoxSnappingSystem {
         if (bestVerticalSnap != null && bestVerticalSnap.distance <= SNAP_THRESHOLD) {
             snappedY = bestVerticalSnap.y
             snapped = true
+            activeTargets.add(bestVerticalSnap)
             console.log("Snapping vertically: ${bestVerticalSnap.type} (distance: ${bestVerticalSnap.distance.toInt()}px)")
         }
         
         if (snapped) {
             console.log("Caps Lock snapping: ($proposedX, $proposedY) → ($snappedX, $snappedY)")
+            // Draw visual guides for active snaps
+            drawSnapGuides(activeTargets, Rect(snappedX, snappedY, proposedW, proposedH))
+        } else {
+            clearSnapGuides()
         }
         
         return snappedX to snappedY
+    }
+    
+    /**
+     * Apply snapping to a proposed size/position while resizing a box
+     * 
+     * @param resizedBox The box being resized
+     * @param proposedX The proposed X position
+     * @param proposedY The proposed Y position
+     * @param proposedW The proposed width
+     * @param proposedH The proposed height
+     * @return Rect with snapped position and size
+     */
+    fun applySnappingForResize(
+        resizedBox: HTMLElement,
+        proposedX: Double,
+        proposedY: Double,
+        proposedW: Double,
+        proposedH: Double
+    ): Rect {
+        if (!capsLockEnabled) {
+            clearSnapGuides()
+            return Rect(proposedX, proposedY, proposedW, proposedH)
+        }
+        
+        // Get all other boxes
+        val allBoxes = getAllBoxes().filter { it != resizedBox }
+        
+        if (allBoxes.isEmpty()) {
+            clearSnapGuides()
+            return Rect(proposedX, proposedY, proposedW, proposedH)
+        }
+        
+        var snappedX = proposedX
+        var snappedY = proposedY
+        var snappedW = proposedW
+        var snappedH = proposedH
+        
+        val activeTargets = mutableListOf<SnapTarget>()
+        
+        // Check edges for snapping
+        val proposedLeft = proposedX
+        val proposedRight = proposedX + proposedW
+        val proposedTop = proposedY
+        val proposedBottom = proposedY + proposedH
+        
+        // Find potential snap points for each edge
+        allBoxes.forEach { box ->
+            val boxData = getBoxBounds(box)
+            val boxLeft = boxData.x
+            val boxRight = boxData.x + boxData.w
+            val boxTop = boxData.y
+            val boxBottom = boxData.y + boxData.h
+            
+            // Snap right edge
+            val rightToRightDist = abs(proposedRight - boxRight)
+            if (rightToRightDist < SNAP_THRESHOLD) {
+                val lineTop = minOf(proposedTop, boxTop)
+                val lineBottom = maxOf(proposedBottom, boxBottom)
+                val snapLine = SnapLine(boxRight, lineTop, boxRight, lineBottom, isVertical = true)
+                activeTargets.add(SnapTarget(
+                    proposedX, proposedY, rightToRightDist, 
+                    SnapType.RIGHT_EDGE, box, snapLine
+                ))
+                snappedW = boxRight - proposedX
+                console.log("Resize snap: right edge to right edge (${rightToRightDist.toInt()}px)")
+            }
+            
+            val rightToLeftDist = abs(proposedRight - boxLeft)
+            if (rightToLeftDist < SNAP_THRESHOLD) {
+                val lineTop = minOf(proposedTop, boxTop)
+                val lineBottom = maxOf(proposedBottom, boxBottom)
+                val snapLine = SnapLine(boxLeft, lineTop, boxLeft, lineBottom, isVertical = true)
+                activeTargets.add(SnapTarget(
+                    proposedX, proposedY, rightToLeftDist,
+                    SnapType.RIGHT_EDGE, box, snapLine
+                ))
+                snappedW = boxLeft - proposedX
+                console.log("Resize snap: right edge to left edge (${rightToLeftDist.toInt()}px)")
+            }
+            
+            // Snap left edge
+            val leftToLeftDist = abs(proposedLeft - boxLeft)
+            if (leftToLeftDist < SNAP_THRESHOLD) {
+                val lineTop = minOf(proposedTop, boxTop)
+                val lineBottom = maxOf(proposedBottom, boxBottom)
+                val snapLine = SnapLine(boxLeft, lineTop, boxLeft, lineBottom, isVertical = true)
+                activeTargets.add(SnapTarget(
+                    boxLeft, proposedY, leftToLeftDist,
+                    SnapType.LEFT_EDGE, box, snapLine
+                ))
+                snappedW = proposedW + (proposedX - boxLeft)
+                snappedX = boxLeft
+                console.log("Resize snap: left edge to left edge (${leftToLeftDist.toInt()}px)")
+            }
+            
+            val leftToRightDist = abs(proposedLeft - boxRight)
+            if (leftToRightDist < SNAP_THRESHOLD) {
+                val lineTop = minOf(proposedTop, boxTop)
+                val lineBottom = maxOf(proposedBottom, boxBottom)
+                val snapLine = SnapLine(boxRight, lineTop, boxRight, lineBottom, isVertical = true)
+                activeTargets.add(SnapTarget(
+                    boxRight, proposedY, leftToRightDist,
+                    SnapType.LEFT_EDGE, box, snapLine
+                ))
+                snappedW = proposedW + (proposedX - boxRight)
+                snappedX = boxRight
+                console.log("Resize snap: left edge to right edge (${leftToRightDist.toInt()}px)")
+            }
+            
+            // Snap bottom edge
+            val bottomToBottomDist = abs(proposedBottom - boxBottom)
+            if (bottomToBottomDist < SNAP_THRESHOLD) {
+                val lineLeft = minOf(proposedLeft, boxLeft)
+                val lineRight = maxOf(proposedRight, boxRight)
+                val snapLine = SnapLine(lineLeft, boxBottom, lineRight, boxBottom, isVertical = false)
+                activeTargets.add(SnapTarget(
+                    proposedX, proposedY, bottomToBottomDist,
+                    SnapType.BOTTOM_EDGE, box, snapLine
+                ))
+                snappedH = boxBottom - proposedY
+                console.log("Resize snap: bottom edge to bottom edge (${bottomToBottomDist.toInt()}px)")
+            }
+            
+            val bottomToTopDist = abs(proposedBottom - boxTop)
+            if (bottomToTopDist < SNAP_THRESHOLD) {
+                val lineLeft = minOf(proposedLeft, boxLeft)
+                val lineRight = maxOf(proposedRight, boxRight)
+                val snapLine = SnapLine(lineLeft, boxTop, lineRight, boxTop, isVertical = false)
+                activeTargets.add(SnapTarget(
+                    proposedX, proposedY, bottomToTopDist,
+                    SnapType.BOTTOM_EDGE, box, snapLine
+                ))
+                snappedH = boxTop - proposedY
+                console.log("Resize snap: bottom edge to top edge (${bottomToTopDist.toInt()}px)")
+            }
+            
+            // Snap top edge
+            val topToTopDist = abs(proposedTop - boxTop)
+            if (topToTopDist < SNAP_THRESHOLD) {
+                val lineLeft = minOf(proposedLeft, boxLeft)
+                val lineRight = maxOf(proposedRight, boxRight)
+                val snapLine = SnapLine(lineLeft, boxTop, lineRight, boxTop, isVertical = false)
+                activeTargets.add(SnapTarget(
+                    proposedX, boxTop, topToTopDist,
+                    SnapType.TOP_EDGE, box, snapLine
+                ))
+                snappedH = proposedH + (proposedY - boxTop)
+                snappedY = boxTop
+                console.log("Resize snap: top edge to top edge (${topToTopDist.toInt()}px)")
+            }
+            
+            val topToBottomDist = abs(proposedTop - boxBottom)
+            if (topToBottomDist < SNAP_THRESHOLD) {
+                val lineLeft = minOf(proposedLeft, boxLeft)
+                val lineRight = maxOf(proposedRight, boxRight)
+                val snapLine = SnapLine(lineLeft, boxBottom, lineRight, boxBottom, isVertical = false)
+                activeTargets.add(SnapTarget(
+                    proposedX, boxBottom, topToBottomDist,
+                    SnapType.TOP_EDGE, box, snapLine
+                ))
+                snappedH = proposedH + (proposedY - boxBottom)
+                snappedY = boxBottom
+                console.log("Resize snap: top edge to bottom edge (${topToBottomDist.toInt()}px)")
+            }
+        }
+        
+        if (activeTargets.isNotEmpty()) {
+            console.log("Caps Lock resize snapping: ($proposedX, $proposedY, $proposedW, $proposedH) → ($snappedX, $snappedY, $snappedW, $snappedH)")
+            drawSnapGuides(activeTargets, Rect(snappedX, snappedY, snappedW, snappedH))
+        } else {
+            clearSnapGuides()
+        }
+        
+        return Rect(snappedX, snappedY, snappedW, snappedH)
     }
     
     /**
@@ -177,39 +509,52 @@ class BoxSnappingSystem {
         val proposedLeft = proposedX
         val proposedRight = proposedX + proposedW
         val proposedCenterX = proposedX + proposedW / 2
+        val proposedTop = proposedY
+        val proposedBottom = proposedY + proposedH
         
         for (box in otherBoxes) {
             val boxData = getBoxBounds(box)
             val boxLeft = boxData.x
             val boxRight = boxData.x + boxData.w
             val boxCenterX = boxData.x + boxData.w / 2
+            val boxTop = boxData.y
+            val boxBottom = boxData.y + boxData.h
+            
+            // Calculate visual line extent (span across both boxes vertically)
+            val lineTop = minOf(proposedTop, boxTop)
+            val lineBottom = maxOf(proposedBottom, boxBottom)
             
             // Left edge alignment
             val leftToLeftDistance = abs(proposedLeft - boxLeft)
             if (leftToLeftDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(boxLeft, proposedY, leftToLeftDistance, SnapType.LEFT_EDGE))
+                val snapLine = SnapLine(boxLeft, lineTop, boxLeft, lineBottom, isVertical = true)
+                targets.add(SnapTarget(boxLeft, proposedY, leftToLeftDistance, SnapType.LEFT_EDGE, box, snapLine))
             }
             
             val leftToRightDistance = abs(proposedLeft - boxRight)
             if (leftToRightDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(boxRight, proposedY, leftToRightDistance, SnapType.LEFT_EDGE))
+                val snapLine = SnapLine(boxRight, lineTop, boxRight, lineBottom, isVertical = true)
+                targets.add(SnapTarget(boxRight, proposedY, leftToRightDistance, SnapType.LEFT_EDGE, box, snapLine))
             }
             
             // Right edge alignment
             val rightToRightDistance = abs(proposedRight - boxRight)
             if (rightToRightDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(boxRight - proposedW, proposedY, rightToRightDistance, SnapType.RIGHT_EDGE))
+                val snapLine = SnapLine(boxRight, lineTop, boxRight, lineBottom, isVertical = true)
+                targets.add(SnapTarget(boxRight - proposedW, proposedY, rightToRightDistance, SnapType.RIGHT_EDGE, box, snapLine))
             }
             
             val rightToLeftDistance = abs(proposedRight - boxLeft)
             if (rightToLeftDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(boxLeft - proposedW, proposedY, rightToLeftDistance, SnapType.RIGHT_EDGE))
+                val snapLine = SnapLine(boxLeft, lineTop, boxLeft, lineBottom, isVertical = true)
+                targets.add(SnapTarget(boxLeft - proposedW, proposedY, rightToLeftDistance, SnapType.RIGHT_EDGE, box, snapLine))
             }
             
             // Center alignment
             val centerDistance = abs(proposedCenterX - boxCenterX)
             if (centerDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(boxCenterX - proposedW / 2, proposedY, centerDistance, SnapType.LEFT_EDGE))
+                val snapLine = SnapLine(boxCenterX, lineTop, boxCenterX, lineBottom, isVertical = true)
+                targets.add(SnapTarget(boxCenterX - proposedW / 2, proposedY, centerDistance, SnapType.LEFT_EDGE, box, snapLine))
             }
         }
         
@@ -235,39 +580,52 @@ class BoxSnappingSystem {
         val proposedTop = proposedY
         val proposedBottom = proposedY + proposedH
         val proposedCenterY = proposedY + proposedH / 2
+        val proposedLeft = proposedX
+        val proposedRight = proposedX + proposedW
         
         for (box in otherBoxes) {
             val boxData = getBoxBounds(box)
             val boxTop = boxData.y
             val boxBottom = boxData.y + boxData.h
             val boxCenterY = boxData.y + boxData.h / 2
+            val boxLeft = boxData.x
+            val boxRight = boxData.x + boxData.w
+            
+            // Calculate visual line extent (span across both boxes horizontally)
+            val lineLeft = minOf(proposedLeft, boxLeft)
+            val lineRight = maxOf(proposedRight, boxRight)
             
             // Top edge alignment
             val topToTopDistance = abs(proposedTop - boxTop)
             if (topToTopDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(proposedX, boxTop, topToTopDistance, SnapType.TOP_EDGE))
+                val snapLine = SnapLine(lineLeft, boxTop, lineRight, boxTop, isVertical = false)
+                targets.add(SnapTarget(proposedX, boxTop, topToTopDistance, SnapType.TOP_EDGE, box, snapLine))
             }
             
             val topToBottomDistance = abs(proposedTop - boxBottom)
             if (topToBottomDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(proposedX, boxBottom, topToBottomDistance, SnapType.TOP_EDGE))
+                val snapLine = SnapLine(lineLeft, boxBottom, lineRight, boxBottom, isVertical = false)
+                targets.add(SnapTarget(proposedX, boxBottom, topToBottomDistance, SnapType.TOP_EDGE, box, snapLine))
             }
             
             // Bottom edge alignment
             val bottomToBottomDistance = abs(proposedBottom - boxBottom)
             if (bottomToBottomDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(proposedX, boxBottom - proposedH, bottomToBottomDistance, SnapType.BOTTOM_EDGE))
+                val snapLine = SnapLine(lineLeft, boxBottom, lineRight, boxBottom, isVertical = false)
+                targets.add(SnapTarget(proposedX, boxBottom - proposedH, bottomToBottomDistance, SnapType.BOTTOM_EDGE, box, snapLine))
             }
             
             val bottomToTopDistance = abs(proposedBottom - boxTop)
             if (bottomToTopDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(proposedX, boxTop - proposedH, bottomToTopDistance, SnapType.BOTTOM_EDGE))
+                val snapLine = SnapLine(lineLeft, boxTop, lineRight, boxTop, isVertical = false)
+                targets.add(SnapTarget(proposedX, boxTop - proposedH, bottomToTopDistance, SnapType.BOTTOM_EDGE, box, snapLine))
             }
             
             // Center alignment
             val centerDistance = abs(proposedCenterY - boxCenterY)
             if (centerDistance < SNAP_THRESHOLD * 2) {
-                targets.add(SnapTarget(proposedX, boxCenterY - proposedH / 2, centerDistance, SnapType.TOP_EDGE))
+                val snapLine = SnapLine(lineLeft, boxCenterY, lineRight, boxCenterY, isVertical = false)
+                targets.add(SnapTarget(proposedX, boxCenterY - proposedH / 2, centerDistance, SnapType.TOP_EDGE, box, snapLine))
             }
         }
         
@@ -299,6 +657,7 @@ class BoxSnappingSystem {
         for (i in 0 until sortedBoxes.size - 1) {
             val leftBox = sortedBoxes[i].first
             val rightBox = sortedBoxes[i + 1].first
+            val leftBoxElement = sortedBoxes[i].second
             
             // Check if proposed box is roughly between these two
             val leftBoxRight = leftBox.x + leftBox.w
@@ -314,7 +673,11 @@ class BoxSnappingSystem {
                     val distance = abs(proposedX - evenX)
                     
                     if (distance < SNAP_THRESHOLD * 3) {
-                        targets.add(SnapTarget(evenX, proposedY, distance, SnapType.HORIZONTAL_SPACING))
+                        // Draw spacing measurement line
+                        val centerY = (maxOf(leftBox.y, rightBox.y, proposedY) + 
+                                       minOf(leftBox.y + leftBox.h, rightBox.y + rightBox.h, proposedY + proposedH)) / 2
+                        val snapLine = SnapLine(leftBoxRight, centerY, rightBoxLeft, centerY, isVertical = false)
+                        targets.add(SnapTarget(evenX, proposedY, distance, SnapType.HORIZONTAL_SPACING, leftBoxElement, snapLine))
                     }
                 }
             }
@@ -344,6 +707,7 @@ class BoxSnappingSystem {
         for (i in 0 until sortedBoxes.size - 1) {
             val topBox = sortedBoxes[i].first
             val bottomBox = sortedBoxes[i + 1].first
+            val topBoxElement = sortedBoxes[i].second
             
             // Check if proposed box is roughly between these two
             val topBoxBottom = topBox.y + topBox.h
@@ -359,7 +723,11 @@ class BoxSnappingSystem {
                     val distance = abs(proposedY - evenY)
                     
                     if (distance < SNAP_THRESHOLD * 3) {
-                        targets.add(SnapTarget(proposedX, evenY, distance, SnapType.VERTICAL_SPACING))
+                        // Draw spacing measurement line
+                        val centerX = (maxOf(topBox.x, bottomBox.x, proposedX) + 
+                                       minOf(topBox.x + topBox.w, bottomBox.x + bottomBox.w, proposedX + proposedW)) / 2
+                        val snapLine = SnapLine(centerX, topBoxBottom, centerX, bottomBoxTop, isVertical = true)
+                        targets.add(SnapTarget(proposedX, evenY, distance, SnapType.VERTICAL_SPACING, topBoxElement, snapLine))
                     }
                 }
             }

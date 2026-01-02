@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field Documentation Example</title>
+    <style>
+        :root {
+            --field-cyan: rgb(72, 201, 255);
+            --field-bg: #1e1e1e;
+            --field-text: #e6e6e6;
+        }
+
+        body {
+            font-family: "Iosevka", "Fira Code", "Consolas", monospace;
+            background: var(--field-bg);
+            color: var(--field-text);
+            padding: 20px;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            color: var(--field-cyan);
+            margin-top: 1.5em;
+        }
+
+        h1 {
+            font-size: 1.8em;
+            border-bottom: 2px solid var(--field-cyan);
+            padding-bottom: 0.3em;
+        }
+
+        h2 {
+            font-size: 1.4em;
+        }
+
+        h3 {
+            font-size: 1.1em;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 3px solid var(--field-cyan);
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .button {
+            background: rgba(72, 201, 255, 0.2);
+            border: 1px solid var(--field-cyan);
+            color: var(--field-cyan);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9em;
+            margin: 4px;
+            transition: all 0.2s;
+        }
+
+        .button:hover {
+            background: rgba(72, 201, 255, 0.3);
+            box-shadow: 0 0 10px rgba(72, 201, 255, 0.5);
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        .demo-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            border: 1px solid rgba(72, 201, 255, 0.3);
+        }
+
+        .status {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 0.85em;
+        }
+
+        .status code {
+            color: #50fa7b;
+        }
+
+        a {
+            color: var(--field-cyan);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .back-to-editor {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        ul, ol {
+            margin: 0.5em 0;
+        }
+
+        li {
+            margin: 0.3em 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Field Documentation API</h1>
+    
+    <p>This is a sample documentation page demonstrating the Field iframe API. When loaded in Field's documentation iframe mode, this page can control Field through the <code>FieldAPI</code> object.</p>
+
+    <h2>📚 API Reference</h2>
+
+    <h3>Box Control</h3>
+    <ul>
+        <li><code>FieldAPI.executeBox(uid, code)</code> - Execute code in a specific box</li>
+        <li><code>FieldAPI.beginBoxes(uids)</code> - Launch/start boxes</li>
+        <li><code>FieldAPI.endBoxes(uids)</code> - Stop running boxes</li>
+    </ul>
+
+    <h3>Selection & Navigation</h3>
+    <ul>
+        <li><code>FieldAPI.selectBoxes(uids, add)</code> - Select boxes (add=true to add to selection)</li>
+        <li><code>FieldAPI.navigateToBox(uid, select)</code> - Scroll to and optionally select a box</li>
+        <li><code>FieldAPI.getSelection(callback)</code> - Get current selection info</li>
+    </ul>
+
+    <h3>Editor Control</h3>
+    <ul>
+        <li><code>FieldAPI.switchToProperty(property)</code> - Switch to editing a property (code, vertex, fragment, etc.)</li>
+        <li><code>FieldAPI.switchToEditor()</code> - Return to Monaco editor</li>
+    </ul>
+
+    <h3>Box Management</h3>
+    <ul>
+        <li><code>FieldAPI.createBox(options)</code> - Create a new box</li>
+        <li><code>FieldAPI.runCommand(command, args)</code> - Run a Field command</li>
+    </ul>
+
+    <h2>🧪 Interactive Demos</h2>
+
+    <div class="demo-section">
+        <h3>Selection Info</h3>
+        <p>Get information about the currently selected boxes:</p>
+        <button class="button" onclick="getSelectionInfo()">Get Selection</button>
+        <div id="selection-status" class="status">No selection queried yet</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>Create & Execute</h3>
+        <p>Create a new box (uses Field's native function) and execute sample code:</p>
+        <button class="button" onclick="createSampleBox()">Create Sample Box</button>
+        <button class="button" onclick="executeInSelected()">Execute in Selected</button>
+        <div id="create-status" class="status">Ready (Note: createBox API is in development, uses newBox() instead)</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>Property Switching</h3>
+        <p>Switch between different editable properties:</p>
+        <button class="button" onclick="switchProp('code')">Code (Kotlin)</button>
+        <button class="button" onclick="switchProp('vertex')">Vertex Shader</button>
+        <button class="button" onclick="switchProp('fragment')">Fragment Shader</button>
+        <div id="property-status" class="status">Current property will be shown here</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>Example: Simple Animation</h3>
+        <p>This example demonstrates creating a box with animation code:</p>
+        <button class="button" onclick="createAnimationExample()">Create Animation Box</button>
+        <pre><code>// Sample animation code
+var t = 0.0
+_.stage.repeat {
+    println("Frame: $t")
+    t += 0.016
+}</code></pre>
+    </div>
+
+    <h2>📖 Usage Example</h2>
+    <pre><code>// Check if API is available
+if (window.FieldAPI) {
+    // Get current selection
+    FieldAPI.getSelection((selection) => {
+        console.log('Selected boxes:', selection.boxes);
+        console.log('Current property:', selection.property);
+        
+        // Execute code in first selected box
+        if (selection.boxes.length > 0) {
+            const uid = selection.boxes[0].uid;
+            FieldAPI.executeBox(uid, 'println("Hello from docs!")');
+        }
+    });
+    
+    // Switch to fragment shader property
+    FieldAPI.switchToProperty('fragment');
+    
+    // Return to editor
+    FieldAPI.switchToEditor();
+}</code></pre>
+
+    <h2>🎨 About This Mode</h2>
+    <p>The documentation iframe mode allows you to:</p>
+    <ul>
+        <li>View documentation alongside your work</li>
+        <li>Interact with Field directly from documentation pages</li>
+        <li>Create interactive tutorials and guides</li>
+        <li>Build custom UIs for specific workflows</li>
+    </ul>
+
+    <button class="button back-to-editor" onclick="returnToEditor()">← Back to Editor</button>
+
+    <script>
+        // Check if we're in the iframe and API is available
+        const isInField = window.parent !== window && window.FieldAPI;
+        
+        if (!isInField) {
+            document.body.insertAdjacentHTML('afterbegin', 
+                '<div style="background: rgba(255, 0, 0, 0.2); padding: 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid red;">' +
+                '⚠️ <strong>Note:</strong> This page should be loaded in Field\'s documentation iframe mode. The interactive demos won\'t work in a regular browser.' +
+                '</div>'
+            );
+        }
+
+        function getSelectionInfo() {
+            if (!isInField) return;
+            
+            FieldAPI.getSelection((selection) => {
+                const statusEl = document.getElementById('selection-status');
+                if (selection.boxes.length === 0) {
+                    statusEl.innerHTML = '<code>No boxes selected</code>';
+                } else {
+                    let html = `<code>Selected ${selection.boxes.length} box(es):</code><br>`;
+                    selection.boxes.forEach((box, idx) => {
+                        html += `<code>${idx + 1}. "${box.name}" (${box.uid.substring(0, 8)}...)</code><br>`;
+                    });
+                    html += `<code>Current property: ${selection.property}</code>`;
+                    statusEl.innerHTML = html;
+                }
+            });
+        }
+
+        function createSampleBox() {
+            if (!isInField) return;
+            
+            // Use the native Field function since FieldAPI.createBox is in development
+            if (typeof window.newBox === 'function') {
+                window.newBox();
+                
+                // Set some properties on the newly created box
+                setTimeout(() => {
+                    FieldAPI.getSelection((selection) => {
+                        if (selection.boxes.length > 0) {
+                            // The newly created box should be selected
+                            document.getElementById('create-status').innerHTML = 
+                                '<code>✓ Box created (using native newBox)</code>';
+                        }
+                    });
+                }, 100);
+            } else {
+                document.getElementById('create-status').innerHTML = 
+                    '<code>⚠️ newBox() function not available</code>';
+            }
+        }
+
+        function executeInSelected() {
+            if (!isInField) return;
+            
+            FieldAPI.getSelection((selection) => {
+                if (selection.boxes.length === 0) {
+                    document.getElementById('create-status').innerHTML = 
+                        '<code>⚠️ No boxes selected</code>';
+                    return;
+                }
+                
+                const uid = selection.boxes[0].uid;
+                const code = 'println("Executed from documentation iframe!")';
+                FieldAPI.executeBox(uid, code);
+                
+                document.getElementById('create-status').innerHTML = 
+                    `<code>✓ Executed in "${selection.boxes[0].name}"</code>`;
+            });
+        }
+
+        function switchProp(property) {
+            if (!isInField) return;
+            
+            FieldAPI.switchToProperty(property);
+            document.getElementById('property-status').innerHTML = 
+                `<code>✓ Switched to property: ${property}</code>`;
+        }
+
+        function createAnimationExample() {
+            if (!isInField) return;
+            
+            // Create box using native function if available
+            if (typeof window.newBox === 'function') {
+                window.newBox();
+                
+                // The animation code that would be set (showing as example only)
+                const code = `var t = 0.0
+_.stage.repeat {
+    println("Frame: " + t)
+    t += 0.016
+}`;
+                
+                console.log('Animation example box created. Code to use:', code);
+                // Future: When FieldAPI.createBox is implemented, use:
+                // FieldAPI.createBox({ name: 'Animation Example', code: code });
+            } else {
+                console.warn('newBox() function not available');
+            }
+        }
+
+        function returnToEditor() {
+            if (!isInField) return;
+            FieldAPI.switchToEditor();
+        }
+
+        // Log API availability
+        console.log('Field API available:', !!window.FieldAPI);
+        if (window.FieldAPI) {
+            console.log('Available methods:', Object.keys(window.FieldAPI));
+        }
+    </script>
+</body>
+</html>

@@ -367,6 +367,66 @@ window.hideMonaco = hideMonaco
 window.showMonaco = showMonaco
 window.launchAll = monacoLaunchAll
 
+// Documentation iframe support
+let docsIframeAnimationGeneration = 0
+
+const showDocsIframe = () => {
+	docsIframeAnimationGeneration++
+	const container = document.querySelector('.docs-iframe-container')
+	if (container) {
+		container.style.visibility = "visible"
+		container.style.transition = "opacity 0.05s"
+		container.style.opacity = "1"
+	}
+}
+
+const hideDocsIframe = () => {
+	docsIframeAnimationGeneration++
+	let a = docsIframeAnimationGeneration
+	const container = document.querySelector('.docs-iframe-container')
+	if (container) {
+		container.style.transition = "opacity 0.5s"
+		container.style.opacity = "0"
+		setTimeout(() => {
+			if (docsIframeAnimationGeneration === a) {
+				container.style.visibility = "hidden"
+			}
+		}, 500)
+	}
+}
+
+const setDocsIframeContent = (url) => {
+	const iframe = document.getElementById('docs-iframe')
+	if (iframe) {
+		iframe.src = url
+	}
+}
+
+const getDocsIframeElement = () => {
+	return document.getElementById('docs-iframe')
+}
+
+// Switch between Monaco editor and documentation iframe
+const switchToMonaco = () => {
+	hideDocsIframe()
+	showMonaco()
+}
+
+const switchToDocsIframe = (url) => {
+	hideMonaco()
+	if (url) {
+		setDocsIframeContent(url)
+	}
+	showDocsIframe()
+}
+
+window.showDocsIframe = showDocsIframe
+window.hideDocsIframe = hideDocsIframe
+window.setDocsIframeContent = setDocsIframeContent
+window.getDocsIframeElement = getDocsIframeElement
+window.switchToMonaco = switchToMonaco
+window.switchToDocsIframe = switchToDocsIframe
+
 
 // fails to inline with js()
 window._saveAsTemplateHelper = function (selectedIds) {

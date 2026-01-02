@@ -12,9 +12,11 @@ import kotlinx.coroutines.launch
  * To use these, create boxes in Field and run the code in one of them.
  * The slideshow will guide users through the document.
  *
- * NEW FEATURES (as of this commit):
+ * NEW FEATURES:
  * - Custom link callbacks: Links can execute Kotlin code via #custom:callbackName
  * - Template system: Use {{propertyName}} to reference box properties/variables
+ * - Shared chat: Use withChat(id = "templateId") to share chat across template instances
+ * - Custom chat IDs: Create shared discussion spaces with custom IDs
  *
  * See interactiveGuideExample() for a comprehensive demonstration of these features.
  */
@@ -524,11 +526,33 @@ fun Box.interactiveGuideExample() {
                 """
                 ### Per-slide live chat (Markdown)
                 Open the chat pane to ask questions while staying on this slide.
+                
+                This chat is specific to this slideshow instance.
 
                 [[back]] [[next]]
                 """.trimIndent()
             )
             withChat()
+            selectBox(hostBox)
+        }
+        
+        step("Shared Chat Across Templates") {
+            markdownNote(
+                """
+                ### Shared chat across template instances
+                Use `withChat(id = "templateId")` to create a shared discussion space
+                across all boxes created from the same template.
+                
+                This is useful for:
+                - Collaborative learning materials
+                - Shared project discussions
+                - Multi-user experiences
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+            // This chat would be shared across all instances of this template
+            withChat(id = "templateId")
             selectBox(hostBox)
         }
 

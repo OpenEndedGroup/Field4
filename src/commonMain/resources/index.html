@@ -525,6 +525,30 @@
             /*filter: blur(10px) !important;*/
         }
 
+        .docs-iframe-container {
+            top: 10px;
+            right: 10px;
+            height: calc(100vh - 20px);
+            width: calc(40vw - 60px);
+            position: absolute;
+            border: 5px solid black;
+            border-radius: 5px;
+            background: #1e1e1e;
+            z-index: 19;
+            filter: blur(0px);
+            transition: border 0.2s, opacity 0.5s;
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        .docs-iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 5px;
+            background: #1e1e1e;
+        }
+
         .quick-input-list * {
             scrollbar-gutter: auto !important;
             scrollbar-width: thin !important;
@@ -1177,6 +1201,9 @@
 <div id="root"></div>
 
 <div class="monaco-editor-container"></div>
+<div class="docs-iframe-container">
+    <iframe id="docs-iframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+</div>
 
 
 <script src="provisional.js" type="module"></script>
@@ -1190,6 +1217,7 @@
 <script src="lineTracking.js"></script>
 <script src="markers.js"></script>
 <script src="bootstrapMonaco.js" type="module"></script>
+<script src="docsIframeApi.js"></script>
 <script src="notify.js"></script>
 <script src="diff3.js"></script>
 <link rel="stylesheet" href="/github-dark.min.css">
@@ -1225,7 +1253,7 @@
       display:inline-block;
       will-change:transform;
       transform: translate3d(0,0,0);
-      transition: transform 1600ms cubic-bezier(.2,.8,.2,1);
+      transition: transform 2600ms cubic-bezier(.2,.8,.2,1);
       transition-delay: var(--dly, 0ms);
     }
     #splash-screen pre.f4drift.f4go .f4ch{

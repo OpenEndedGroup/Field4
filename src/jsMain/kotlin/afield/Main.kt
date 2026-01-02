@@ -41,6 +41,11 @@ external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand
 
 external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
+external fun showDocsIframe(): dynamic
+external fun hideDocsIframe(): dynamic
+external fun setDocsIframeContent(url: String): dynamic
+external fun switchToMonaco(): dynamic
+external fun switchToDocsIframe(url: String?): dynamic
 external fun initMenuSupport(): dynamic
 
 
@@ -1170,6 +1175,30 @@ suspend fun main() {
         Handled.yes
     }
 
+    // Documentation iframe handlers
+    handlers.put("show-docs-iframe") { message, _ ->
+        val show = Json.decodeFromJsonElement<ShowDocsIframe>(message.payload!!)
+        setDocsIframeContent(show.url)
+        showDocsIframe()
+        Handled.yes
+    }
+
+    handlers.put("hide-docs-iframe") { message, _ ->
+        hideDocsIframe()
+        Handled.yes
+    }
+
+    handlers.put("switch-to-docs-iframe") { message, _ ->
+        val switch = Json.decodeFromJsonElement<SwitchToDocsIframe>(message.payload!!)
+        switchToDocsIframe(switch.url)
+        Handled.yes
+    }
+
+    handlers.put("switch-to-monaco-editor") { message, _ ->
+        switchToMonaco()
+        Handled.yes
+    }
+
     val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
     val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
     val hello = Message("hello").payload(Hello(filename, username))
@@ -1442,6 +1471,8 @@ suspend fun main() {
     interactable.on("dragend") { event ->
         console.log(" interact dragend ", event)
         provideMissingMouseup(event)
+        // Clear snap guides when drag ends
+        boxSnappingSystem.clearSnapGuides()
     }
 
     interactable.on("dragstart") { event ->
@@ -1573,11 +1604,20 @@ suspend fun main() {
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round-trip to server?
         // renable this for serverless
 
+        // Apply snapping if Caps Lock is enabled
+        val targetElement = target as HTMLElement
+        val snappedRect = boxSnappingSystem.applySnappingForResize(
+            targetElement,
+            x,
+            y,
+            w,
+            h
+        )
 
-        target.data_x = x
-        target.data_y = y
-        target.data_w = w
-        target.data_h = h
+        target.data_x = snappedRect.x
+        target.data_y = snappedRect.y
+        target.data_w = snappedRect.w
+        target.data_h = snappedRect.h
 
 //        target.style.width = w + "px"
 //        target.style.height = h + "px"
@@ -1617,6 +1657,10 @@ suspend fun main() {
                 if (event.target) resizeHandler(event)
             }
         }
+    }.on("resizeend") { event: dynamic ->
+        console.log(" RESIZE END ", event)
+        // Clear snap guides when resize ends
+        boxSnappingSystem.clearSnapGuides()
     }
 
     interact(".doubleClickToEdit").on("doubletap") { event ->
@@ -1713,6 +1757,10 @@ suspend fun main() {
 }
 
 
+// Exported to allow documentation iframe API to stop boxes programmatically
+// Uses ExperimentalJsExport to make this Kotlin function directly callable from JavaScript
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun stopBox(uid: String) {
     console.log(" sending stop-box message")
     send(Message("stop-box").payload(Stop_box(uid = uid)))
