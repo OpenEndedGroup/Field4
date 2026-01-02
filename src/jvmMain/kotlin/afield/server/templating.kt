@@ -25,7 +25,8 @@ data class RemoteTemplate(val name: String, val has_edn: Boolean)
 data class TemplateMetadata(
     val name: String,
     val lastModified: Long,
-    val boxDocumentation: String // Formatted documentation from box metadata
+    val boxDocumentation: String, // Formatted documentation from box metadata
+    val source: String = "template"
 )
 
 // Configuration for template servers - comma-separated list of URLs
@@ -95,7 +96,7 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
  * Accumulates metadata from all boxes, orders by increasing frame.y,
  * and creates a formatted documentation string.
  */
-private fun extractTemplateMetadata(templatePath: String, templateName: String): TemplateMetadata? {
+private fun extractTemplateMetadata(templatePath: String, templateName: String, source: String): TemplateMetadata? {
     try {
         val file = File(templatePath)
         if (!file.exists()) return null
@@ -103,12 +104,15 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
         val lastModified = file.lastModified()
         val ednContent = file.readText()
 
-        // Load boxes to extract metadata
         val directory = file.parentFile?.absolutePath ?: File(".").absolutePath
-        val boxes = SavingContext().loadFromEdnText(ednContent, directory) { it }
+        val savingContext = SavingContext()
+        val transfers = savingContext.readEdnTransfersFromString(ednContent)
 
-        // Sort boxes by frame.y (increasing)
-        val sortedBoxes = boxes.sortedBy { it.frame.y }
+        // Sort boxes by frame.y (increasing) without instantiating boxes
+        val sortedTransfers = transfers.sortedBy { transfer ->
+            val frame = savingContext.resolveStoredValue(transfer.properties["frame"], directory) as? Rect
+            frame?.y ?: 0.0
+        }
 
         // Sidecar-able properties (excluding "code")
         val sidecarProperties = listOf("vertex", "fragment", "compute", "task", "mesh")
@@ -116,15 +120,12 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
         // Build documentation from metadata properties
         val docBuilder = StringBuilder()
 
-        sortedBoxes.forEach { box ->
-            // Get metadata from the box
-            val metadata = box.metadata
-            if (metadata.isNotEmpty()) {
-                // Parse YAML metadata
+        sortedTransfers.forEach { transfer ->
+            val metadata = savingContext.resolveStoredValue(transfer.properties["metadata"], directory) as? String
+            if (!metadata.isNullOrEmpty()) {
                 try {
                     val parsed = parseMetadata(metadata)
 
-                    // Extract documentation fields if they exist
                     parsed["doc"]?.let { doc ->
                         if (doc.toString().isNotEmpty()) {
                             docBuilder.append(doc.toString().trim()).append("\n\n")
@@ -149,12 +150,15 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
         }
 
         // Add compressed box description
-        val boxDescriptions = sortedBoxes.mapNotNull { box ->
-            val boxName = box.name?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+        val rawDescriptions = sortedTransfers.mapNotNull { transfer ->
+            val boxName = savingContext.resolveStoredValue(transfer.properties["name"], directory)
+                ?.toString()
+                ?.takeIf { it.isNotEmpty() }
+                ?: return@mapNotNull null
 
             // Find which sidecar properties this box has
             val properties = sidecarProperties.filter { prop ->
-                val value = box.getPropertyRaw(prop)
+                val value = savingContext.resolveStoredValue(transfer.properties[prop], directory)
                 value is String && value.trim().isNotEmpty()
             }
 
@@ -163,6 +167,15 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
             } else {
                 "$boxName/{${properties.joinToString(",")}}"
             }
+        }
+
+        // Compress repeated names to reduce noise (e.g., "Untitled x5")
+        val boxDescriptions = LinkedHashMap<String, Int>().apply {
+            rawDescriptions.forEach { desc ->
+                this[desc] = (this[desc] ?: 0) + 1
+            }
+        }.map { (desc, count) ->
+            if (count > 1) "$desc x$count" else desc
         }
 
         if (boxDescriptions.isNotEmpty()) {
@@ -175,7 +188,8 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String):
         return TemplateMetadata(
             name = templateName,
             lastModified = lastModified,
-            boxDocumentation = docBuilder.toString().trim()
+            boxDocumentation = docBuilder.toString().trim(),
+            source = source
         )
     } catch (e: Exception) {
         lprintln("warning,template", "Failed to extract metadata for $templateName: ${e.message}")
@@ -226,10 +240,17 @@ fun templating() {
         // Include remote templates from all configured servers
         val remoteTemplates = remoteTemplatesCache.values.flatten()
 
+        val sourceByName = mutableMapOf<String, String>()
+        templates.forEach { sourceByName.putIfAbsent(it, "workspace") }
+        templatesHome.forEach { sourceByName.putIfAbsent(it, "workspace-template") }
+        templates2.forEach { sourceByName.putIfAbsent(it, "bundled-template") }
+        remoteTemplates.forEach { sourceByName.putIfAbsent(it, "remote-template") }
+
         val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
 
         // Extract metadata for each template
         val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
+            val source = sourceByName[templateName] ?: "template"
             // Try to find the template file in order of preference
             val paths = listOf(
                 "$home/$templateName.edn" to "$home",
@@ -243,7 +264,7 @@ fun templating() {
             for ((templateFile, directory) in paths) {
                 val file = File(templateFile)
                 if (file.exists()) {
-                    return@mapNotNull extractTemplateMetadata(templateFile, templateName)
+                    return@mapNotNull extractTemplateMetadata(templateFile, templateName, source)
                 }
             }
 
@@ -251,7 +272,8 @@ fun templating() {
             TemplateMetadata(
                 name = templateName,
                 lastModified = 0,
-                boxDocumentation = ""
+                boxDocumentation = "",
+                source = source
             )
         }
 
@@ -278,9 +300,9 @@ fun templating() {
         val loadedBoxes = exec.value.flatMap { templateName ->
             // Try local templates first
             if (templatesHome.contains(templateName)) {
-                SavingContext().cloneInto("$home/$templateName")
+                SavingContext().cloneInto(resolveTemplatePath("$home/templates", templateName))
             } else if (templatesApp.contains(templateName)) {
-                SavingContext().cloneInto("$app/templates/$templateName")
+                SavingContext().cloneInto(resolveTemplatePath("$app/templates", templateName))
             } else {
                 // Try remote templates
                 var boxes = emptySet<afield.Box>()

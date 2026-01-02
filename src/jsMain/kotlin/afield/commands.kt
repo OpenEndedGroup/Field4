@@ -297,7 +297,13 @@ fun insertFromWorkspace() {
             val metadata = metadataMap[templateName]
 
             // Format the description and detail
-            val description = "Template"
+            val description = when (metadata?.source) {
+                "workspace" -> "Workspace file"
+                "workspace-template" -> "Workspace template"
+                "bundled-template" -> "Bundled template"
+                "remote-template" -> "Remote template"
+                else -> "Template"
+            }
 
             val detail = if (metadata != null && metadata.boxDocumentation.isNotEmpty()) {
                 buildString {

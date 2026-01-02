@@ -31,6 +31,8 @@ require(["vs/editor/editor.main"], function (e, is) {
         });
         require(["vs/basic-languages/clojure/clojure"], function (e, is) {
         });
+        require(["vs/basic-languages/yaml/yaml"], function (e, is) {
+        });
         require(["bithero/glsl"], function (is) {
                 initMonaco()
                 require(["vs/platform/quickinput/common/quickInput"], function (is) {
@@ -224,6 +226,7 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("python", completionProvider)
         monaco.languages.registerCompletionItemProvider("clojure", completionProvider)
         monaco.languages.registerCompletionItemProvider("glsl", completionProvider)
+        monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 
         console.log(" monitoring selection ")

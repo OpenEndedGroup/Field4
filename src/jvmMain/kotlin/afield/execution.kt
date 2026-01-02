@@ -4,22 +4,12 @@ import afield.ai.Ai4GlslAutocomplete
 import afield.ai.glslSpecForProperty
 import afield.logger.lprintln
 import afield.macros.standardExecutionPractice
-import afield.stdlib.Action
-import afield.stdlib._currentlyExecutingFragment
-import afield.stdlib.actions
-import afield.stdlib.compute
-import afield.stdlib.fragment
-import afield.stdlib.i
-import afield.stdlib.mesh
-import afield.stdlib.task
-import afield.stdlib.times
-import afield.stdlib.vertex
+import afield.stdlib.*
 import kotlinx.coroutines.*
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
-import kotlin.collections.forEach
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
@@ -474,35 +464,35 @@ class KotlinExecution : BoxExecution {
                 Pair(currentPosition, currentPosition)
             }
         }
-        
+
         // Get the current line text to understand context
         val lines = allCode.split("\n")
         val currentLineIndex = line - 1
         if (currentLineIndex < 0 || currentLineIndex >= lines.size) {
             return Completion(boundsStart = position, boundsEnd = position, metadata = emptyList())
         }
-        
+
         val currentLine = lines[currentLineIndex]
         val beforeCursor = currentLine.substring(0, minOf(column, currentLine.length))
-        
+
         // Common YAML keys for Field metadata
         val commonKeys = listOf(
             "tags" to "List of tags for categorizing this box (used in templates and documentation)",
             "docOrder" to "Priority for documentation generation (lower numbers first)",
-            "docPreamble" to "Text added before every piece of documented code",
+            "doc" to "Text added to the documentation if this box ends up in a template",
             "boxPreamble" to "Text added before this specific box's code in documentation",
             "execBeforeDoc" to "Execute code before documenting (integer value)",
             "description" to "Description of this box"
         )
-        
+
         val completions = mutableListOf<Metadata>()
         var boundsStart = position
         var boundsEnd = position
-        
+
         // Check if we're completing a key (at start of line or after whitespace, before ':')
         val keyPattern = Regex("^\\s*([a-zA-Z0-9_\\-]*)$")
         val keyMatch = keyPattern.find(beforeCursor)
-        
+
         if (keyMatch != null) {
             // Complete YAML keys
             val prefix = keyMatch.groupValues.getOrNull(1) ?: ""
@@ -511,7 +501,7 @@ class KotlinExecution : BoxExecution {
                 boundsStart = bounds.first
                 boundsEnd = bounds.second
             }
-            
+
             commonKeys.forEach { (key, description) ->
                 if (key.startsWith(prefix, ignoreCase = true)) {
                     completions.add(
@@ -526,36 +516,36 @@ class KotlinExecution : BoxExecution {
                 }
             }
         }
-        
+
         // Check if we're completing a tag value
         // Pattern matches: "tags:" followed by optional list items, then the current item prefix
         val textBeforeCursor = allCode.substring(0, position)
-        
+
         // Match multi-line list format: tags:\n  - item\n  - [prefix]
         val tagsMultiLineMatch = Regex("tags:\\s*(?:\\n\\s*-\\s*[\\w\\-]+)*\\n\\s*-\\s*([a-zA-Z0-9_\\-]*)$", RegexOption.MULTILINE)
             .find(textBeforeCursor)
-        
+
         // Match single-line array format: tags: [item1, item2, [prefix]
         val tagsSingleLineMatch = Regex("tags:\\s*\\[(?:[^\\]]*,\\s*)?([a-zA-Z0-9_\\-]*)$")
             .find(beforeCursor)
-        
+
         if (tagsMultiLineMatch != null || tagsSingleLineMatch != null) {
-            val prefix = tagsMultiLineMatch?.groupValues?.getOrNull(1) 
-                ?: tagsSingleLineMatch?.groupValues?.getOrNull(1) 
+            val prefix = tagsMultiLineMatch?.groupValues?.getOrNull(1)
+                ?: tagsSingleLineMatch?.groupValues?.getOrNull(1)
                 ?: ""
-            
+
             // Only collect tags if we have a meaningful context
             if (tagsMultiLineMatch != null || tagsSingleLineMatch != null) {
                 // Complete tag values - collect existing tags from the workspace
                 val existingTags = collectTagsFromWorkspace(box)
-                
+
                 // Calculate bounds to replace the prefix
                 if (prefix.isNotEmpty()) {
                     val bounds = calculateBounds(lines, currentLineIndex, prefix, position)
                     boundsStart = bounds.first
                     boundsEnd = bounds.second
                 }
-            
+
             existingTags.forEach { tag ->
                 if (tag.startsWith(prefix, ignoreCase = true)) {
                     completions.add(
@@ -569,7 +559,7 @@ class KotlinExecution : BoxExecution {
                     )
                 }
             }
-            
+
             // Also suggest some common tags if no prefix or few matches
             if (completions.size < 3) {
                 val commonTags = listOf(
@@ -585,9 +575,9 @@ class KotlinExecution : BoxExecution {
                     "audio" to "Audio code",
                     "interaction" to "Interactive code"
                 )
-                
+
                 commonTags.forEach { (tag, description) ->
-                    if (tag.startsWith(prefix, ignoreCase = true) && 
+                    if (tag.startsWith(prefix, ignoreCase = true) &&
                         completions.none { it.text == tag }) {
                         completions.add(
                             Metadata(
@@ -603,18 +593,18 @@ class KotlinExecution : BoxExecution {
             }
           }
         }
-        
+
         return Completion(
             boundsStart = boundsStart,
             boundsEnd = boundsEnd,
             metadata = completions
         )
     }
-    
+
     private fun collectTagsFromWorkspace(box: Box): Set<String> {
         val tags = mutableSetOf<String>()
         val maxBoxesToScan = 100  // Limit scanning for performance
-        
+
         // Collect tags from all boxes in the current workspace
         try {
             val root = box.root
@@ -626,7 +616,7 @@ class KotlinExecution : BoxExecution {
                     childTags?.let { tags.addAll(it) }
                 }
             }
-            
+
             // Also try to collect from saved documents in the workspace directory
             val filename = thisSessionInfo.get().filename
             if (filename != null) {
@@ -642,7 +632,7 @@ class KotlinExecution : BoxExecution {
             // If we can't collect tags, just return what we have
             lprintln("warning,completion", "Failed to collect tags from workspace: ${e.javaClass.simpleName}")
         }
-        
+
         return tags
     }
 
@@ -814,7 +804,7 @@ class KotlinExecution : BoxExecution {
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
         // For Kotlin, construct a function call: symbolName()
         val functionCall = "${executeSymbol.symbol}()"
-        
+
         // Create an Execute object for executeFragment
         val exec = Execute(
             uid = executeSymbol.uid,
@@ -823,7 +813,7 @@ class KotlinExecution : BoxExecution {
             code = functionCall,
             singleLine = true
         )
-        
+
         // Execute as a fragment
         executeFragment(inside, exec, reply)
     }

@@ -329,7 +329,7 @@ function applySelection(box, property) {
         setTimeout(() => {
                 w.selectBox(box)
                 setSelectedProperty(property || w.selectedProperty || "code")
-        }, 200) 
+        }, 200)
 }
 window.applySelection = applySelection
 
@@ -496,11 +496,83 @@ const globalPickMenu_custom = (options) => {
                         qp.matchOnDescription = true
                         qp.matchOnDetail = true
                         qp.placeholder = "Select an option..."
-                        
+
+                        // Install side documentation pane (hidden until user presses ArrowRight)
+                        const widget = document.querySelector('.quick-input-widget')
+                        if (widget) widget.classList.add('qp-has-side-detail')
+
+                        const styleId = "quickpick-docs-style"
+                        if (!document.getElementById(styleId)) {
+                                const style = document.createElement("style")
+                                style.id = styleId
+                                style.textContent = `
+                                .quick-input-widget.qp-has-side-detail { position: relative; width: min(90vw, 1200px); }
+                                .quick-input-widget.qp-has-side-detail .quick-input-list { width: 100%; }
+                                .quickpick-detail-pane { position: absolute; top: 8px; right: -200px; width: 40%; max-width: 520px; min-width: 260px; max-height: 70vh; padding: 8px 10px; border-radius: 8px; background: rgba(30, 30, 30, 0.92); color: #f5f5f5; box-shadow: 0 8px 30px rgba(0,0,0,0.35); display: none; overflow: hidden; z-index: 5; }
+                                .quickpick-detail-pane.visible { display: flex; flex-direction: column; gap: 6px; }
+                                .quickpick-detail-pane .quickpick-detail-title { font-weight: 400; font-size: 12px; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.75; }
+                                .quickpick-detail-pane .quickpick-detail-body { white-space: pre-wrap; font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, 'Courier New', monospace); font-size: 11px; line-height: 1.4; overflow-y: auto; }
+                                .quickpick-detail-pane .quickpick-detail-hint { font-size: 10px; opacity: 0.7; }
+                                `
+                                document.head.appendChild(style)
+                        }
+
+                        let detailPane = widget?.querySelector(".quickpick-detail-pane")
+                        let detailBody
+                        if (!detailPane && widget) {
+                                detailPane = document.createElement("div")
+                                detailPane.className = "quickpick-detail-pane"
+                                const title = document.createElement("div")
+                                title.className = "quickpick-detail-title"
+                                title.textContent = "Documentation"
+                                detailBody = document.createElement("div")
+                                detailBody.className = "quickpick-detail-body"
+                                const hint = document.createElement("div")
+                                hint.className = "quickpick-detail-hint"
+                                hint.textContent = "Press → to show, ← to hide"
+                                detailPane.appendChild(title)
+                                detailPane.appendChild(detailBody)
+                                detailPane.appendChild(hint)
+                                widget.appendChild(detailPane)
+                        } else {
+                                detailBody = detailPane?.querySelector(".quickpick-detail-body")
+                        }
+
+                        const setDetail = (text) => {
+                                if (!detailBody) return
+                                detailBody.textContent = text && text.trim().length > 0 ? text : "No documentation available"
+                        }
+
+                        let detailOpen = false
+                        const updateDetailVisibility = () => {
+                                if (!detailPane) return
+                                if (detailOpen) detailPane.classList.add("visible"); else detailPane.classList.remove("visible")
+                        }
+
+                        const toggleDetail = (open) => {
+                                detailOpen = open
+                                updateDetailVisibility()
+                        }
+
+                        const keyHandler = (ev) => {
+                                if (ev.key === "ArrowRight") {
+                                        toggleDetail(true)
+                                } else if (ev.key === "ArrowLeft" && detailOpen) {
+                                        toggleDetail(false)
+                                } else {
+                                        return
+                                }
+                                ev.preventDefault()
+                                ev.stopPropagation()
+                        }
+                        if (widget && detailPane) {
+                                widget.addEventListener("keydown", keyHandler, true)
+                        }
+
                         // Store the original options with their run functions and convert to QuickPick items
                         const optionMeta = []
                         const items = []
-                        
+
                         options.forEach((opt) => {
                                 optionMeta.push(opt)
                                 items.push({
@@ -510,9 +582,20 @@ const globalPickMenu_custom = (options) => {
                                         alwaysShow: true
                                 })
                         })
-                        
+
                         qp.items = items
-                        
+                        if (optionMeta.length > 0) setDetail(optionMeta[0].detail || "")
+                        updateDetailVisibility()
+                        qp.onDidChangeActive(() => {
+                                const active = qp.activeItems && qp.activeItems[0]
+                                if (!active) return
+                                const idx = qp.items.indexOf(active)
+                                const meta = idx >= 0 ? optionMeta[idx] : null
+                                if (!meta) return
+                                setDetail(meta.detail || "")
+                                updateDetailVisibility()
+                        })
+
                         qp.onDidAccept(() => {
                                 if (!qp.selectedItems || qp.selectedItems.length === 0) return
                                 const idx = qp.items.indexOf(qp.selectedItems[0])
@@ -524,11 +607,16 @@ const globalPickMenu_custom = (options) => {
                                         meta.run()
                                 }
                         })
-                        
+
                         qp.onDidHide(() => {
+                                if (widget) {
+                                        widget.classList.remove('qp-has-side-detail')
+                                        widget.removeEventListener("keydown", keyHandler, true)
+                                        if (detailPane) widget.removeChild(detailPane)
+                                }
                                 qp.dispose()
                         })
-                        
+
                         qp.show()
                 })
         })

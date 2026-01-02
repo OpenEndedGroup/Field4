@@ -11,17 +11,17 @@ import kotlinx.coroutines.launch
  *
  * To use these, create boxes in Field and run the code in one of them.
  * The slideshow will guide users through the document.
- * 
+ *
  * NEW FEATURES (as of this commit):
  * - Custom link callbacks: Links can execute Kotlin code via #custom:callbackName
  * - Template system: Use {{propertyName}} to reference box properties/variables
- * 
+ *
  * See interactiveGuideExample() for a comprehensive demonstration of these features.
  */
 
 /**
  * Simple example demonstrating custom link callbacks and templates
- * 
+ *
  * This is a minimal example showing the core new features:
  * - Link callbacks that execute custom code
  * - Template system for live data display
@@ -30,7 +30,7 @@ fun Box.simpleInteractiveExample() {
     // Variable that will be displayed and modified
     var count = 0
     this.properties["count"] = count
-    
+
     val show = slideShow {
         step("Interactive Example") {
             note("""
@@ -38,18 +38,18 @@ fun Box.simpleInteractiveExample() {
                 <p>Current count: <strong>{{count}}</strong></p>
                 <p><a href="#custom:increment">Increment</a></p>
             """.trimIndent())
-            
+
             linkCallback("increment") {
                 count++
                 here.properties["count"] = count
                 // Refresh the step to show new count
                 show.goToStep(show.currentStepIndex)
             }
-            
+
             selectBox(this@simpleInteractiveExample)
         }
     }
-    
+
     GlobalScope.launch {
         show.start()
     }
@@ -436,12 +436,12 @@ fun Box.interactiveGuideExample() {
     var clickCount = 0
     var userChoice = "none"
     val version = "1.0.0"
-    
+
     // Store properties on the box for template access
     this.properties["clickCount"] = clickCount
     this.properties["userChoice"] = userChoice
     this.properties["version"] = version
-    
+
     val show = slideShow {
         step("Welcome to Interactive Guides") {
             note("""
@@ -454,10 +454,10 @@ fun Box.interactiveGuideExample() {
                 <p>Version: <strong>{{version}}</strong></p>
                 <p><a href="#slideshow:next">Let's explore! →</a></p>
             """.trimIndent())
-            
+
             selectBox(this@interactiveGuideExample)
         }
-        
+
         step("Custom Link Callbacks") {
             note("""
                 <h3>Click the Links Below</h3>
@@ -476,7 +476,7 @@ fun Box.interactiveGuideExample() {
                   <a href="#slideshow:next">Next →</a>
                 </p>
             """.trimIndent())
-            
+
             // Register callbacks for the links
             linkCallback("incrementCounter") {
                 clickCount++
@@ -485,7 +485,7 @@ fun Box.interactiveGuideExample() {
                 show.goToStep(show.currentStepIndex)
                 lprintln("info,slideshow", "Counter incremented to $clickCount")
             }
-            
+
             linkCallback("resetCounter") {
                 clickCount = 0
                 here.properties["clickCount"] = clickCount
@@ -493,15 +493,15 @@ fun Box.interactiveGuideExample() {
                 show.goToStep(show.currentStepIndex)
                 lprintln("info,slideshow", "Counter reset")
             }
-            
+
             selectBox(this@interactiveGuideExample)
         }
-        
+
         step("Template System") {
             note("""
                 <h3>Live Data Display</h3>
                 <p>Templates automatically pull data from your box properties and variables.</p>
-                <p>Use <code>{{'{{'}}propertyName{{'}}'}}</code> syntax to reference:</p>
+                <p>Use <code>\{\{propertyName\}\}</code> syntax to reference:</p>
                 <ul>
                   <li>Box properties</li>
                   <li>Kotlin variables in scope</li>
@@ -516,10 +516,10 @@ fun Box.interactiveGuideExample() {
                   <a href="#slideshow:next">Next →</a>
                 </p>
             """.trimIndent())
-            
+
             selectBox(this@interactiveGuideExample)
         }
-        
+
         step("Make a Choice") {
             note("""
                 <h3>Interactive Choices</h3>
@@ -541,31 +541,31 @@ fun Box.interactiveGuideExample() {
                   <a href="#slideshow:next">Next →</a>
                 </p>
             """.trimIndent())
-            
+
             linkCallback("choiceA") {
                 userChoice = "Performance Mode"
                 here.properties["userChoice"] = userChoice
                 show.goToStep(show.currentStepIndex)
                 notify("Selected: Performance Mode", "slideshow")
             }
-            
+
             linkCallback("choiceB") {
                 userChoice = "Quality Mode"
                 here.properties["userChoice"] = userChoice
                 show.goToStep(show.currentStepIndex)
                 notify("Selected: Quality Mode", "slideshow")
             }
-            
+
             linkCallback("choiceC") {
                 userChoice = "Balanced Mode"
                 here.properties["userChoice"] = userChoice
                 show.goToStep(show.currentStepIndex)
                 notify("Selected: Balanced Mode", "slideshow")
             }
-            
+
             selectBox(this@interactiveGuideExample)
         }
-        
+
         step("Advanced: Computed Properties") {
             note("""
                 <h3>Computing Display Values</h3>
@@ -580,20 +580,20 @@ fun Box.interactiveGuideExample() {
                   <a href="#slideshow:stop">Finish</a>
                 </p>
             """.trimIndent())
-            
+
             onEnter {
                 // Compute derived values when entering this step
                 this@interactiveGuideExample.properties["doubledCount"] = clickCount * 2
-                this@interactiveGuideExample.properties["status"] = 
-                    if (clickCount > 10) "Very Active!" 
-                    else if (clickCount > 5) "Active" 
+                this@interactiveGuideExample.properties["status"] =
+                    if (clickCount > 10) "Very Active!"
+                    else if (clickCount > 5) "Active"
                     else "Getting Started"
             }
-            
+
             selectBox(this@interactiveGuideExample)
         }
     }
-    
+
     GlobalScope.launch {
         show.start()
     }

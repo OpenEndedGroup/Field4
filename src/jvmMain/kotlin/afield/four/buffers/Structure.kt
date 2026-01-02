@@ -2,6 +2,7 @@ package afield.four.buffers
 
 import afield.four.device.CommandBuffer
 import afield.four.modules.Introspected
+import afield.stdlib.NeedsStartingValue
 import org.joml.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -12,6 +13,14 @@ interface HasUniform<T> : () -> T {
     fun evaluateUniform(): T
 
     override fun invoke() = evaluateUniform()
+}
+
+/**
+ * Marker for uniforms that progress over time and need to keep being written
+ * until they report completion.
+ */
+interface ProgressingUniform {
+    val isComplete: Boolean
 }
 
 interface WritesToBuffer {
@@ -60,6 +69,7 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
 
     operator fun set(property: String, value: Any) {
         dirty = true
+        (value as? NeedsStartingValue<*>)?.startAt(bindings[property] ?: values[property])
         if (!offsets.containsKey(property)) {
             println("Warning: property $property does not exist in structure $offsets")
         }
@@ -68,6 +78,8 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
     }
 
     fun bind(property: String, value: Function0<*>) {
+        dirty = true
+        (value as? NeedsStartingValue<*>)?.startAt(bindings[property] ?: values[property])
         bindings[property] = value
     }
 
@@ -122,17 +134,20 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
 
     fun writeToBuffer(f: ByteBuffer, cmd : CommandBuffer, autowireReferences: (String) -> () -> HasBuffer) {
         nullPointerChecks = pointers.filter { it.value }.toMutableMap()
+        var keepDirty = false
         allBinding?.let {
             it().writeTo(f, 0)
         }
         offsets.forEach { (name, offset) ->
             val live = bindings[name]
-            if (live != null) {
-                writeToBuffer(offset, live()!!, f, cmd, name = name)
-            } else {
-                values[name]?.let { v ->
-                    writeToBuffer(offset, v, f, cmd, name = name)
-                }
+            val raw = live?.invoke() ?: values[name]
+            raw?.let { v ->
+                val resolved = if (v is HasUniform<*>) {
+                    if (v is ProgressingUniform && !v.isComplete) keepDirty = true
+                    v.evaluateUniform()
+                } else v
+                if (resolved !=null)
+                    writeToBuffer(offset, resolved, f, cmd, name = name)
             }
         }
         if (nullPointerChecks.isNotEmpty()) {
@@ -144,7 +159,7 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
                 writeToBuffer(offsets[name]!!, buffer, f, cmd, name = name)
             }
         }
-        dirty = false
+        dirty = keepDirty
     }
 
     internal fun writeToBuffer(offset: Int, v: Any, f: ByteBuffer, cmd : CommandBuffer, name: String = "unnamed") {

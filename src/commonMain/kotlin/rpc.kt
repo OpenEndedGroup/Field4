@@ -213,7 +213,8 @@ class Directory(
 data class TemplateMetadata(
     val name: String,
     val lastModified: Long,
-    val boxDocumentation: String
+    val boxDocumentation: String,
+    val source: String = "template"
 )
 
 @Serializable
