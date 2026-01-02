@@ -63,12 +63,30 @@ class BoxSnappingSystem {
                 capsLockEnabled = !capsLockEnabled
             }
             // Also check getModifierState for more reliable detection
-            capsLockEnabled = e.getModifierState("CapsLock")
+            val newState = e.getModifierState("CapsLock")
+            if (newState != capsLockEnabled) {
+                capsLockEnabled = newState
+                // Notify user about snapping state change
+                if (capsLockEnabled) {
+                    console.log("Box snapping: ENABLED (Caps Lock ON)")
+                } else {
+                    console.log("Box snapping: DISABLED (Caps Lock OFF)")
+                }
+            }
         })
         
         document.addEventListener("keyup", { event ->
             val e = event as KeyboardEvent
-            capsLockEnabled = e.getModifierState("CapsLock")
+            val newState = e.getModifierState("CapsLock")
+            if (newState != capsLockEnabled) {
+                capsLockEnabled = newState
+                // Notify user about snapping state change
+                if (capsLockEnabled) {
+                    console.log("Box snapping: ENABLED (Caps Lock ON)")
+                } else {
+                    console.log("Box snapping: DISABLED (Caps Lock OFF)")
+                }
+            }
         })
         
         // Check on any mouse event as well
@@ -122,15 +140,24 @@ class BoxSnappingSystem {
         
         var snappedX = proposedX
         var snappedY = proposedY
+        var snapped = false
         
         // Apply horizontal snap if within threshold
         if (bestHorizontalSnap != null && bestHorizontalSnap.distance <= SNAP_THRESHOLD) {
             snappedX = bestHorizontalSnap.x
+            snapped = true
+            console.log("Snapping horizontally: ${bestHorizontalSnap.type} (distance: ${bestHorizontalSnap.distance.toInt()}px)")
         }
         
         // Apply vertical snap if within threshold
         if (bestVerticalSnap != null && bestVerticalSnap.distance <= SNAP_THRESHOLD) {
             snappedY = bestVerticalSnap.y
+            snapped = true
+            console.log("Snapping vertically: ${bestVerticalSnap.type} (distance: ${bestVerticalSnap.distance.toInt()}px)")
+        }
+        
+        if (snapped) {
+            console.log("Caps Lock snapping: ($proposedX, $proposedY) → ($snappedX, $snappedY)")
         }
         
         return snappedX to snappedY
