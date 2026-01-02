@@ -175,7 +175,7 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String, 
                 this[desc] = (this[desc] ?: 0) + 1
             }
         }.map { (desc, count) ->
-            if (count > 1) "$desc x$count" else desc
+            if (count > 1) "$desc × $count" else desc
         }
 
         if (boxDescriptions.isNotEmpty()) {

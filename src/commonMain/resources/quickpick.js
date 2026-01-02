@@ -508,11 +508,17 @@ const globalPickMenu_custom = (options) => {
                                 style.textContent = `
                                 .quick-input-widget.qp-has-side-detail { position: relative; width: min(90vw, 1200px); }
                                 .quick-input-widget.qp-has-side-detail .quick-input-list { width: 100%; }
-                                .quickpick-detail-pane { position: absolute; top: 8px; right: -200px; width: 40%; max-width: 520px; min-width: 260px; max-height: 70vh; padding: 8px 10px; border-radius: 8px; background: rgba(30, 30, 30, 0.92); color: #f5f5f5; box-shadow: 0 8px 30px rgba(0,0,0,0.35); display: none; overflow: hidden; z-index: 5; }
+                                .quickpick-detail-pane { position: absolute; top: 8px; right: 12px; width: 40%; max-width: 520px; min-width: 260px; max-height: 70vh; padding: 8px 10px; border-radius: 8px; background: rgba(30, 30, 30, 0.92); color: #f5f5f5; box-shadow: 0 8px 30px rgba(0,0,0,0.35); display: none; overflow: hidden; z-index: 5; }
                                 .quickpick-detail-pane.visible { display: flex; flex-direction: column; gap: 6px; }
                                 .quickpick-detail-pane .quickpick-detail-title { font-weight: 400; font-size: 12px; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.75; }
-                                .quickpick-detail-pane .quickpick-detail-body { white-space: pre-wrap; font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, 'Courier New', monospace); font-size: 11px; line-height: 1.4; overflow-y: auto; }
+                                .quickpick-detail-pane .quickpick-detail-body { white-space: normal; font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, 'Courier New', monospace); font-size: 11px; line-height: 1.4; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
                                 .quickpick-detail-pane .quickpick-detail-hint { font-size: 10px; opacity: 0.7; }
+                                .quickpick-detail-pane .qp-line { white-space: pre-wrap; }
+                                .quickpick-detail-pane .qp-boxes { line-height: 1.5; }
+                                .quickpick-detail-pane .qp-boxes-label { font-weight: 700; margin-right: 4px; }
+                                .quickpick-detail-pane .qp-box-name strong { font-weight: 700; }
+                                .quickpick-detail-pane .qp-box-props { font-style: italic; opacity: 0.75; font-size: 10px; margin-left: 2px; }
+                                .quickpick-detail-pane .qp-box-mult { font-weight: 600; opacity: 0.85; margin-left: 2px; }
                                 `
                                 document.head.appendChild(style)
                         }
@@ -538,9 +544,65 @@ const globalPickMenu_custom = (options) => {
                                 detailBody = detailPane?.querySelector(".quickpick-detail-body")
                         }
 
+                        const escapeHtml = (s = "") => s
+                                .replace(/&/g, "&amp;")
+                                .replace(/</g, "&lt;")
+                                .replace(/>/g, "&gt;")
+                                .replace(/\"/g, "&quot;")
+                                .replace(/'/g, "&#39;")
+
                         const setDetail = (text) => {
                                 if (!detailBody) return
-                                detailBody.textContent = text && text.trim().length > 0 ? text : "No documentation available"
+                                const lines = (text || "").split(/\r?\n/)
+                                const rendered = []
+                                let hasContent = false
+
+                                lines.forEach((line) => {
+                                        const trimmed = line.trim()
+                                        if (trimmed.length === 0) {
+                                                rendered.push(`<div class="qp-line">&nbsp;</div>`)
+                                                return
+                                        }
+
+                                        if (trimmed.startsWith("Boxes:")) {
+                                                hasContent = true
+                                                const rest = trimmed.substring(6).trim()
+                                                const items = rest.split(/\s*,\s*/).filter(Boolean)
+                                                const parts = items.map((item) => {
+                                                        let base = item
+                                                        let mult = ""
+                                                        const multMatch = item.match(/^(.*?)[\\s]*[×x][\\s]*(\\d+)$/)
+                                                        if (multMatch) {
+                                                                base = multMatch[1].trim()
+                                                                mult = multMatch[2]
+                                                        }
+
+                                                        let name = base
+                                                        let props = ""
+                                                        const splitIdx = base.indexOf("/{")
+                                                        if (splitIdx >= 0) {
+                                                                name = base.substring(0, splitIdx)
+                                                                props = base.substring(splitIdx)
+                                                        }
+
+                                                        const nameHtml = `<strong>${escapeHtml(name)}</strong>`
+                                                        const propsHtml = props ? `<span class="qp-box-props">${escapeHtml(props)}</span>` : ""
+                                                        const multHtml = mult ? `<span class="qp-box-mult"> × ${escapeHtml(mult)}</span>` : ""
+                                                        return `<span class="qp-box-name">${nameHtml}${propsHtml}${multHtml}</span>`
+                                                })
+                                                rendered.push(`<div class="qp-line qp-boxes"><span class="qp-boxes-label">Boxes:</span> ${parts.join(", ")}</div>`)
+                                        } else {
+                                                hasContent = hasContent || trimmed.length > 0
+                                                rendered.push(`<div class="qp-line">${escapeHtml(line)}</div>`)
+                                        }
+                                })
+
+                                if (!hasContent) {
+                                        detailBody.innerHTML = `<div class="qp-line">No documentation available</div>`
+                                } else {
+                                        detailBody.innerHTML = rendered.join("")
+                                        detailBody.scrollTop = 0
+                                }
                         }
 
                         let detailOpen = false
