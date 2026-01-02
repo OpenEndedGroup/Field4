@@ -85,7 +85,8 @@ object HistoryManager {
      */
     private fun extractBoxIds(file: File): Set<String> {
         return try {
-            val transfers = SavingContext().readEdnTransfers(file.parent)
+            val ednText = file.readText()
+            val transfers = SavingContext().readEdnTransfersFromString(ednText)
             transfers.map { it.id }.toSet()
         } catch (e: Exception) {
             lprintln("warning,history", "Failed to read box IDs from ${file.name}: ${e.message}")

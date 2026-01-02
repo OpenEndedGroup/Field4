@@ -296,19 +296,27 @@
         let versions = [];
         let transitions = [];
         let selectedVersion = null;
+        let sessionEstablished = false;
+
+        // Get document name from URL, fallback to 'default'
+        const urlParams = new URLSearchParams(window.location.search);
+        const filename = urlParams.get('file') || 'default';
+        const username = urlParams.get('user') || 'viewer';
 
         // WebSocket connection
         function connect() {
             ws = new WebSocket(WS_URL);
             
             ws.onopen = () => {
-                statusEl.textContent = 'Connected';
-                statusEl.classList.add('connected');
+                statusEl.textContent = 'Connecting...';
                 
-                // Request history data
+                // First establish session with hello message
                 send({
-                    name: 'list-history-versions',
-                    payload: {}
+                    name: 'hello',
+                    payload: {
+                        filename: filename,
+                        username: username
+                    }
                 });
             };
             
@@ -324,6 +332,7 @@
             ws.onclose = () => {
                 statusEl.textContent = 'Disconnected';
                 statusEl.classList.remove('connected');
+                sessionEstablished = false;
                 setTimeout(connect, 2000);
             };
             
@@ -340,6 +349,19 @@
 
         function handleMessage(message) {
             console.log('Received message:', message);
+            
+            // Check for hello acknowledgment or any successful response
+            if (!sessionEstablished && message.name !== 'history-versions-list') {
+                sessionEstablished = true;
+                statusEl.textContent = 'Connected';
+                statusEl.classList.add('connected');
+                
+                // Now request history data
+                send({
+                    name: 'list-history-versions',
+                    payload: {}
+                });
+            }
             
             if (message.name === 'history-versions-list') {
                 const payload = message.payload;
