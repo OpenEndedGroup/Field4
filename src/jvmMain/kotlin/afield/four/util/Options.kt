@@ -23,7 +23,7 @@ object Options {
     val useVulkanSDK = true
     val robustness = false
     val profiling = false
-    val enableVR = false && !isMac
+    val enableVR = true && !isMac
 
     fun doVulkanSDK() {
         if (useVulkanSDK && isMac) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
@@ -34,12 +34,26 @@ object Options {
 
     var defaultDepthFormat: Int = if (isWindows || isLinux) VK_FORMAT_D24_UNORM_S8_UINT else VK_FORMAT_D32_SFLOAT_S8_UINT
 
-    var validate = false
+    var validate = true
     var preferredDevice: String? = null
     var requestedImages = 3
     var vsync = true
     val fov: Double = 30.0
     val zNear: Double = 0.001
     val zFar: Double = 1000.0
+
+    var openXRClearColor: FloatArray = floatArrayOf(0f, 0f, 0f, 1f)
+
+    // When true, prints OpenXR input diagnostics (interaction profiles, bound sources).
+    var openXRDebugInput: Boolean = true
+
+    // When true, we wait for the GPU to finish rendering into the XR swapchain images before
+    // calling xrReleaseSwapchainImage(). This is the most conservative/correct approach but can
+    // introduce stutter by forcing a hard GPU sync.
+    //
+    // When false, we submit and release immediately (no explicit GPU wait). This is much faster
+    // and is commonly used in practice, but relies on runtime/driver behavior; test on your
+    // target runtimes.
+    var openXRWaitForGpuBeforeRelease: Boolean = false
 }
 

@@ -176,11 +176,21 @@ class RenderTarget(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
+                .flags(VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT)
                 .layerCount(1)
                 .pColorAttachments(colorAttachment)
                 .pDepthAttachment(depthAttachment.get(0))
 
+            // Upload dirty vertex/index buffers before beginning rendering (transfer ops are not allowed inside).
+            // This keeps Mesh/VertexBuffer updates low-noise and spec-correct.
+            modules.forEach { (_, mp) ->
+                mp.current.meshes.values.forEach { mesh ->
+                    mesh.prepareForDraw(command)
+                }
+            }
+
             // Begin/End dynamic rendering (KHR)
+            command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
             val fullRect = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
@@ -208,6 +218,7 @@ class RenderTarget(
             preRecordedInsideRendering = null
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
+            command.inRenderPassInstance = false
 
             // Transition swapchain image to PRESENT for presentation engine.
             // With sync2 you can use NONE for dst stage/access.

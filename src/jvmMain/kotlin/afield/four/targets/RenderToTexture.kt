@@ -46,6 +46,11 @@ data class RTTParameters(
     var colorStoreOp: Int = VK_ATTACHMENT_STORE_OP_STORE,
     var colorSampled: Boolean = true,               // controls usage & final transition
 
+    // Allow the produced color image to be used as a transfer source/destination.
+    // Useful for mirroring / copying into OpenXR swapchains.
+    var colorTransferSrc: Boolean = false,
+    var colorTransferDst: Boolean = false,
+
     // Automatic mip generation for color (when mipLevels > 1)
     var generateColorMipmaps: Boolean = true,
     var mipBlitFilter: Int = VK_FILTER_LINEAR,      // auto-downgraded to NEAREST if linear not supported
@@ -172,7 +177,7 @@ open class RenderToTexture(
                 tmpImageRefs[idx] = external.imageView.underlyingImage
                 tmpImageHandles[idx] = external.imageView.image
             } else {
-                val needsTransfer = wantsMips && colorFormatCanBlit[idx]
+                val needsMipTransfers = wantsMips && colorFormatCanBlit[idx]
                 val data = ImageData()
                     .width(width)
                     .height(height)
@@ -180,7 +185,8 @@ open class RenderToTexture(
                     .usage(
                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
                                 (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
-                                (if (needsTransfer) VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
+                                (if (this.parameters.colorTransferSrc || needsMipTransfers) VK_IMAGE_USAGE_TRANSFER_SRC_BIT else 0) or
+                                (if (this.parameters.colorTransferDst || needsMipTransfers) VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
                     )
                     .format(fmt)
                     .mipLevels(mipLevels)
@@ -428,11 +434,20 @@ open class RenderToTexture(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
+                .flags(VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT)
                 .layerCount(renderLayers)
                 .pColorAttachments(colorAttachmentInfo)
                 .pDepthAttachment(depthAttachmentInfo.get(0))
 
             // KHR dynamic rendering
+            // Upload dirty vertex/index buffers before beginning rendering.
+            modules.values.forEach { mp ->
+                mp.current.meshes.values.forEach { mesh ->
+                    mesh.prepareForDraw(command)
+                }
+            }
+
+            command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
             // Set viewport/scissor array (default to full size)
@@ -463,6 +478,7 @@ open class RenderToTexture(
             }
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
+            command.inRenderPassInstance = false
 
             // --- Automatic color mipmap recompute (if requested & supported) ---
             colorImageHandles.forEachIndexed { idx, img ->

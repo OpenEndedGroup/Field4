@@ -41,15 +41,24 @@ open class Queue(device: Device, queueFamilyIndex: Int, queueIndex: Int) {
                 submitInfo.waitSemaphoreCount(0)
             }
             val fenceHandle = fence?.vkFence ?: VK10.VK_NULL_HANDLE
-            vkCheck(
-                VK10.vkQueueSubmit(vkQueue, submitInfo, fenceHandle),
-                "Failed to submit command to queue"
-            )
+            synchronized(globalQueueLock) {
+                vkCheck(
+                    VK10.vkQueueSubmit(vkQueue, submitInfo, fenceHandle),
+                    "Failed to submit command to queue"
+                )
+            }
         }
     }
 
     fun waitIdle() {
-        VK10.vkQueueWaitIdle(vkQueue)
+        synchronized(globalQueueLock) {
+            VK10.vkQueueWaitIdle(vkQueue)
+        }
+    }
+
+    companion object {
+        // Vulkan queues require external synchronization; share a global lock for all Queue usages outside Renderer.
+        val globalQueueLock = Any()
     }
 
     class GraphicsQueue(device: Device, queueIndex: Int) :

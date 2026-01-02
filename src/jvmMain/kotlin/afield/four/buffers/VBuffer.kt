@@ -50,8 +50,15 @@ class VertexBuffer(
             if (transferWatermark != watermark) {
                 if (cmd == null)
                     transferNow()
-                else
-                    transfer(cmd)
+                else {
+                    if (cmd.inRenderPassInstance) {
+                        // vkCmdCopyBuffer is not allowed inside a render pass instance (including dynamic rendering).
+                        // Fall back to an immediate transfer on a separate command buffer to preserve correctness.
+                        transferNow()
+                    } else {
+                        transfer(cmd)
+                    }
+                }
             }
         }
         return this

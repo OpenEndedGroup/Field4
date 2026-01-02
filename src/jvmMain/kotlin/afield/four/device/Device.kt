@@ -4,16 +4,20 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import afield.logger.lprint
 import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil.memGetAddress
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_KHR
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK11
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
+import org.lwjgl.vulkan.VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
 
-class Device(val physicalDevice: PhysicalDevice) {
+class Device(val physicalDevice: PhysicalDevice, private val instance: Instance) {
     val vkDevice: VkDevice
     val supportsPushDescriptors: Boolean
     val pushDescriptorMax: Int
@@ -88,7 +92,9 @@ class Device(val physicalDevice: PhysicalDevice) {
                 addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
 
                 if (Options.enableVR) {
-                    addAll(Instance.getOpenXRRequiredDeviceExts(physicalDevice.vkPhysicalDevice.address()))
+                    val d = Instance.getOpenXRRequiredDeviceExts(physicalDevice.vkPhysicalDevice.address())
+                    lprint("info,openxr", "required device extensions are $d")
+                    addAll(d)
                     addIfSupported(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
                 }
 
@@ -221,6 +227,25 @@ class Device(val physicalDevice: PhysicalDevice) {
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, hostReset.address()); tail = hostReset.address()
             }
 
+            // Strip any VkPhysicalDeviceTimelineSemaphoreFeatures if a loader/runtime appended one; spec forbids
+            // having both VkPhysicalDeviceVulkan12Features and VkPhysicalDeviceTimelineSemaphoreFeatures.
+            fun stripTimelineFeature(headAddr: Long) {
+                var prevAddr = headAddr
+                var nextAddr = memGetAddress(prevAddr + VkBaseOutStructure.PNEXT)
+                while (nextAddr != 0L) {
+                    val nxt = VkBaseOutStructure.create(nextAddr)
+                    if (nxt.sType() == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES) {
+                        val after = memGetAddress(nextAddr + VkBaseOutStructure.PNEXT)
+                        memPutAddress(prevAddr + VkBaseOutStructure.PNEXT, after)
+                        break
+                    }
+                    prevAddr = nextAddr
+                    nextAddr = memGetAddress(prevAddr + VkBaseOutStructure.PNEXT)
+                }
+            }
+
+            stripTimelineFeature(features.address())
+
             // Enable all queue families.
             val qProps = physicalDevice.vkQueueFamilyProps
             val qInfos = VkDeviceQueueCreateInfo.calloc(qProps.capacity(), stack)
@@ -238,9 +263,13 @@ class Device(val physicalDevice: PhysicalDevice) {
                 .pQueueCreateInfos(qInfos)
                 .pNext(features.address())
 
-            val pDev = stack.mallocPointer(1)
-            vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, ci, null, pDev), "Failed to create device")
-            vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
+            if (Options.enableVR && Instance.hasOpenXRBootstrap()) {
+                vkDevice = Instance.createVkDeviceViaXR(ci, instance.vkInstance, physicalDevice.vkPhysicalDevice)
+            } else {
+                val pDev = stack.mallocPointer(1)
+                vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, ci, null, pDev), "Failed to create device")
+                vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
+            }
 
             // Query push-descriptor limits (0 if unsupported)
             pushDescriptorMax = if (hasPushDescriptor) {

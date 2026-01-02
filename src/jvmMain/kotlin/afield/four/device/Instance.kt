@@ -4,13 +4,16 @@ import afield.four.util.OS
 import afield.four.util.OSType
 import afield.four.util.Options
 import afield.four.util.vkCheck
+import afield.logger.lprint
 import afield.logger.lprintln
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.openxr.*
+import org.lwjgl.openxr.KHRVulkanEnable2.xrGetVulkanGraphicsRequirements2KHR
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK
 import org.lwjgl.vulkan.EXTDebugUtils
 import org.lwjgl.vulkan.EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT
 import org.lwjgl.vulkan.EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT
@@ -29,6 +32,9 @@ class Instance(validate: Boolean) {
     private var vkDebugHandle: Long = 0
 
     init {
+        if (Options.enableVR) {
+            prepareOpenXRBootstrap()
+        }
         MemoryStack.stackPush().use { stack ->
             // --- Application info
             val appShortName = stack.UTF8("VulkanBook")
@@ -133,9 +139,19 @@ class Instance(validate: Boolean) {
                 instanceInfo.flags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)
             }
 
-            val pInstance = stack.mallocPointer(1)
-            vkCheck(VK10.vkCreateInstance(instanceInfo, null, pInstance), "Error creating instance")
-            vkInstance = VkInstance(pInstance[0], instanceInfo)
+            if (Options.enableVR && xrBootstrap != null) {
+                lprint("openxr", "using xrBootstrap")
+                vkInstance = createVkInstanceViaXR(instanceInfo)
+            } else {
+                lprint("openxr", "not using xrBootstrap")
+                val pInstance = stack.mallocPointer(1)
+                vkCheck(VK10.vkCreateInstance(instanceInfo, null, pInstance), "Error creating instance")
+                vkInstance = VkInstance(pInstance[0], instanceInfo)
+            }
+
+            if (Options.enableVR) {
+                updateOpenXRBootstrapPhys(vkInstance)
+            }
 
             // --- Debug messenger (if validation on)
             vkDebugHandle = VK10.VK_NULL_HANDLE
@@ -203,6 +219,15 @@ class Instance(validate: Boolean) {
     companion object {
         private const val PORTABILITY_EXTENSION = "VK_KHR_portability_enumeration"
 
+        data class OpenXRBootstrap(
+            val xrInstance: XrInstance,
+            val systemId: Long,
+            var xrPhys: Long?,
+            val minApi: Int,
+            val maxApi: Int,
+            var consumed: Boolean = false
+        )
+
         var globalAsyncDebugHandler: ((String) -> Unit)? = null
 
         fun getOpenXRRequiredInstanceExts(): List<String> {
@@ -217,9 +242,229 @@ class Instance(validate: Boolean) {
             return xrCachedDeviceExts
         }
 
+        /** Create and cache an OpenXR instance/system before VkInstance/VkDevice creation (spec requires ordering). */
+        fun prepareOpenXRBootstrap() {
+            if (!Options.enableVR) return
+            if (xrBootstrap != null) return
+            MemoryStack.stackPush().use { stack ->
+                val appInfo = XrApplicationInfo.calloc(stack)
+                appInfo.applicationName(stack.UTF8("afield"))
+                appInfo.applicationVersion(1)
+                appInfo.engineName(stack.UTF8("afield"))
+                appInfo.engineVersion(1)
+                appInfo.apiVersion(XR10.XR_API_VERSION_1_0)
+
+                val extNames = stack.pointers(
+                    stack.UTF8(KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME),
+                    stack.UTF8(KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME)
+                )
+
+                val createInfo = XrInstanceCreateInfo.calloc(stack)
+                    .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
+                    .applicationInfo(appInfo)
+                    .enabledExtensionNames(extNames)
+
+                val pInstance = stack.mallocPointer(1)
+                val createdRes = XR10.xrCreateInstance(createInfo, pInstance)
+                if (createdRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrCreateInstance (bootstrap) returned ${createdRes}")
+                    return
+                }
+
+                val xrInstance = XrInstance(pInstance[0], createInfo)
+                try {
+                    val sysInfo = XrSystemGetInfo.calloc(stack)
+                        .type(XR10.XR_TYPE_SYSTEM_GET_INFO)
+                        .formFactor(XR10.XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY)
+                    val pSys = stack.mallocLong(1)
+                    val sysRes = XR10.xrGetSystem(xrInstance, sysInfo, pSys)
+                    if (sysRes != XR10.XR_SUCCESS) {
+                        lprint("error,openxr", "xrGetSystem (bootstrap) returned ${sysRes}")
+                        XR10.xrDestroyInstance(xrInstance)
+                        return
+                    }
+                    val systemId = pSys[0]
+
+                    val gfxReq = XrGraphicsRequirementsVulkan2KHR.calloc(stack)
+                        .type(KHRVulkanEnable2.XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR)
+                    xrGetVulkanGraphicsRequirements2KHR(xrInstance, systemId, gfxReq)
+
+                    val physInfo = XrVulkanGraphicsDeviceGetInfoKHR.calloc(stack)
+                    // Populate cached extension lists using this instance/system.
+                    xrCachedInstanceExts = queryExts(stack) { cap, buf ->
+                        org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, cap, buf)
+                    }
+                    xrCachedDeviceExts = queryExts(stack) { cap, buf ->
+                        org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, cap, buf)
+                    }
+
+                    xrInitialized = true
+                    xrBootstrap = OpenXRBootstrap(
+                        xrInstance = xrInstance,
+                        systemId = systemId,
+                        xrPhys = null,
+                        minApi = gfxReq.minApiVersionSupported().toInt(),
+                        maxApi = gfxReq.maxApiVersionSupported().toInt()
+                    )
+                    lprintln(
+                        "info,openxr",
+                        "XR bootstrap ready: minApi=${VK10.VK_API_VERSION_MAJOR(gfxReq.minApiVersionSupported().toInt())}.${VK10.VK_API_VERSION_MINOR(gfxReq.minApiVersionSupported().toInt())} maxApi=${VK10.VK_API_VERSION_MAJOR(gfxReq.maxApiVersionSupported().toInt())}.${VK10.VK_API_VERSION_MINOR(gfxReq.maxApiVersionSupported().toInt())}"
+                    )
+                } catch (t: Throwable) {
+                    XR10.xrDestroyInstance(xrInstance)
+                    throw t
+                }
+            }
+        }
+
+        /** After creating VkInstance via XR, query and cache the runtime-selected VkPhysicalDevice. */
+        fun updateOpenXRBootstrapPhys(vkInstance: VkInstance): Long? {
+            if (!Options.enableVR) return null
+            val b = xrBootstrap ?: return null
+            MemoryStack.stackPush().use { stack ->
+                val physInfo = XrVulkanGraphicsDeviceGetInfoKHR.calloc(stack)
+                    .type(KHRVulkanEnable2.XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR)
+                    .systemId(b.systemId)
+                    .vulkanInstance(vkInstance)
+                val pPhys = stack.mallocPointer(1)
+                val physRes = KHRVulkanEnable2.xrGetVulkanGraphicsDevice2KHR(b.xrInstance, physInfo, pPhys)
+                if (physRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrGetVulkanGraphicsDevice2KHR (phys update) returned ${physRes}")
+                    return null
+                }
+                b.xrPhys = pPhys[0]
+                return b.xrPhys
+            }
+        }
+
+        /** Create VkInstance through XR_KHR_vulkan_enable2 for VR path. */
+        fun createVkInstanceViaXR(ci: VkInstanceCreateInfo): VkInstance {
+            val b = xrBootstrap ?: throw IllegalStateException("XR bootstrap missing for xrCreateVulkanInstanceKHR")
+            MemoryStack.stackPush().use { stack ->
+                val pfnGetInstanceProcAddr = VK.getFunctionProvider().getFunctionAddress("vkGetInstanceProcAddr")
+                val xrCi = XrVulkanInstanceCreateInfoKHR.calloc(stack)
+                    .type(KHRVulkanEnable2.XR_TYPE_VULKAN_INSTANCE_CREATE_INFO_KHR)
+                    .systemId(b.systemId)
+                    .createFlags(0)
+                    .pfnGetInstanceProcAddr(pfnGetInstanceProcAddr)
+                    .vulkanCreateInfo(ci)
+                    .vulkanAllocator(null)
+
+                val pOut = stack.mallocPointer(1)
+                val pRes = stack.mallocInt(1)
+                val res = KHRVulkanEnable2.xrCreateVulkanInstanceKHR(b.xrInstance, xrCi, pOut, pRes)
+                if (res != XR10.XR_SUCCESS) {
+                    throw RuntimeException("xrCreateVulkanInstanceKHR failed: ${res} (vkResult=${pRes[0]})")
+                }
+                return VkInstance(pOut[0], ci)
+            }
+        }
+
+        /** Create VkDevice through XR_KHR_vulkan_enable2 for VR path. */
+        fun createVkDeviceViaXR(ci: VkDeviceCreateInfo, vkInstance: VkInstance, vkPhysicalDevice: VkPhysicalDevice): VkDevice {
+            val b = xrBootstrap ?: throw IllegalStateException("XR bootstrap missing for xrCreateVulkanDeviceKHR")
+            MemoryStack.stackPush().use { stack ->
+                val pfnGetInstanceProcAddr = VK.getFunctionProvider().getFunctionAddress("vkGetInstanceProcAddr")
+                val xrCi = XrVulkanDeviceCreateInfoKHR.calloc(stack)
+                    .type(KHRVulkanEnable2.XR_TYPE_VULKAN_DEVICE_CREATE_INFO_KHR)
+                    .systemId(b.systemId)
+                    .createFlags(0)
+                    .pfnGetInstanceProcAddr(pfnGetInstanceProcAddr)
+                    .vulkanPhysicalDevice(vkPhysicalDevice)
+                    .vulkanCreateInfo(ci)
+                    .vulkanAllocator(null)
+
+                val pOut = stack.mallocPointer(1)
+                val pRes = stack.mallocInt(1)
+                val res = KHRVulkanEnable2.xrCreateVulkanDeviceKHR(b.xrInstance, xrCi, pOut, pRes)
+                if (res != XR10.XR_SUCCESS) {
+                    throw RuntimeException("xrCreateVulkanDeviceKHR failed: ${res} (vkResult=${pRes[0]})")
+                }
+                return VkDevice(pOut[0], vkPhysicalDevice, ci)
+            }
+        }
+
+        /** Consume the bootstrap (ownership of xrInstance transfers to caller). */
+        fun consumeOpenXRBootstrap(): OpenXRBootstrap? {
+            val b = xrBootstrap ?: return null
+            xrBootstrap = null
+            b.consumed = true
+            return b
+        }
+
+        /** Peek the XR-selected physical device if bootstrap already prepared. */
+        fun peekOpenXRBootstrapPhys(): Long? = xrBootstrap?.xrPhys
+
+        fun cleanupOpenXRBootstrap() {
+            xrBootstrap?.let { XR10.xrDestroyInstance(it.xrInstance) }
+            xrBootstrap = null
+        }
+
+        fun hasOpenXRBootstrap(): Boolean = xrBootstrap != null
+
+        /** Query the runtime-selected VkPhysicalDevice for this system (via XR_KHR_vulkan_enable2). */
+        fun getOpenXRRuntimePhysicalDevice(vkInstance: VkInstance): Long? {
+            if (!Options.enableVR) return null
+            peekOpenXRBootstrapPhys()?.let { return it }
+            MemoryStack.stackPush().use { stack ->
+                val appInfo = XrApplicationInfo.calloc(stack)
+                appInfo.applicationName(stack.UTF8("afield"))
+                appInfo.applicationVersion(1)
+                appInfo.engineName(stack.UTF8("afield"))
+                appInfo.engineVersion(1)
+                appInfo.apiVersion(XR10.XR_API_VERSION_1_0)
+
+                val extNames = stack.pointers(
+                    stack.UTF8(KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME),
+                    stack.UTF8(KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME)
+                )
+
+                val createInfo = XrInstanceCreateInfo.calloc(stack)
+                    .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
+                    .applicationInfo(appInfo)
+                    .enabledExtensionNames(extNames)
+
+                val pInstance = stack.mallocPointer(1)
+                val createdRes = XR10.xrCreateInstance(createInfo, pInstance)
+                if (createdRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrCreateInstance (phys query) returned ${createdRes}")
+                    return null
+                }
+
+                val xrInstance = XrInstance(pInstance[0], createInfo)
+                try {
+                    val sysInfo = XrSystemGetInfo.calloc(stack)
+                        .type(XR10.XR_TYPE_SYSTEM_GET_INFO)
+                        .formFactor(XR10.XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY)
+                    val pSys = stack.mallocLong(1)
+                    val sysRes = XR10.xrGetSystem(xrInstance, sysInfo, pSys)
+                    if (sysRes != XR10.XR_SUCCESS) {
+                        lprint("error,openxr", "xrGetSystem (phys query) returned ${sysRes}")
+                        return null
+                    }
+                    val systemId = pSys[0]
+
+                    val physInfo = XrVulkanGraphicsDeviceGetInfoKHR.calloc(stack)
+                        .type(KHRVulkanEnable2.XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR)
+                        .systemId(systemId)
+                        .vulkanInstance(vkInstance)
+                    val pPhys = stack.mallocPointer(1)
+                    val physRes = KHRVulkanEnable2.xrGetVulkanGraphicsDevice2KHR(xrInstance, physInfo, pPhys)
+                    if (physRes != XR10.XR_SUCCESS) {
+                        lprint("error,openxr", "xrGetVulkanGraphicsDevice2KHR returned ${physRes}")
+                        return null
+                    }
+                    return pPhys[0]
+                } finally {
+                    XR10.xrDestroyInstance(xrInstance)
+                }
+            }
+        }
+
         private var xrCachedInstanceExts: List<String> = emptyList()
         private var xrCachedDeviceExts: List<String> = emptyList()
         private var xrInitialized = false
+        private var xrBootstrap: OpenXRBootstrap? = null
 
         private fun ensureOpenXRExtensions() {
             if (xrInitialized) return
@@ -231,9 +476,12 @@ class Instance(validate: Boolean) {
                 appInfo.applicationVersion(1)
                 appInfo.engineName(stack.UTF8("afield"))
                 appInfo.engineVersion(1)
-                appInfo.apiVersion(XR10.XR_CURRENT_API_VERSION)
+                appInfo.apiVersion(XR10.XR_API_VERSION_1_0)
 
-                val extNames = stack.pointers(stack.UTF8(org.lwjgl.openxr.KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME))
+                val extNames = stack.pointers(
+                    stack.UTF8(org.lwjgl.openxr.KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME),
+                    stack.UTF8(org.lwjgl.openxr.KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME)
+                )
 
                 val createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
@@ -241,8 +489,10 @@ class Instance(validate: Boolean) {
                     .enabledExtensionNames(extNames)
 
                 val pInstance = stack.mallocPointer(1)
-                val created = XR10.xrCreateInstance(createInfo, pInstance) == XR10.XR_SUCCESS
+                val createdError = XR10.xrCreateInstance(createInfo, pInstance)
+                val created = createdError == XR10.XR_SUCCESS
                 if (!created) {
+                    lprint("error,openxr", "xrCreateInstance returned ${createdError}")
                     xrCachedInstanceExts = emptyList()
                     xrCachedDeviceExts = emptyList()
                     return
@@ -262,6 +512,16 @@ class Instance(validate: Boolean) {
                     }
                     val systemId = pSys[0]
 
+                    // Per spec: must be called before creating VkDevice for this system.
+                    val gfxReq = XrGraphicsRequirementsVulkan2KHR.calloc(stack)
+                        .type(KHRVulkanEnable2.XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR)
+                    xrGetVulkanGraphicsRequirements2KHR(xrInstance, systemId, gfxReq)
+
+                    lprintln(
+                        "info,openxr",
+                        "XR gfx requirements: minApi=${VK10.VK_API_VERSION_MAJOR(gfxReq.minApiVersionSupported().toInt())}.${VK10.VK_API_VERSION_MINOR(gfxReq.minApiVersionSupported().toInt())} maxApi=${VK10.VK_API_VERSION_MAJOR(gfxReq.maxApiVersionSupported().toInt())}.${VK10.VK_API_VERSION_MINOR(gfxReq.maxApiVersionSupported().toInt())}"
+                    )
+
                     xrCachedInstanceExts = queryExts(stack) { cap, buf ->
                         org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, cap, buf)
                     }
@@ -279,12 +539,29 @@ class Instance(validate: Boolean) {
             call: (IntBuffer, ByteBuffer?) -> Int
         ): List<String> {
             val size = stack.mallocInt(1)
-            call(size, null)
+
+            // Start with a small buffer; if XR reports size insufficient, reallocate using the reported size.
+            var capacity = 256
+            var buf = stack.malloc(capacity)
+            size.put(0, capacity)
+
+            var res = call(size, buf)
+            if (res == XR10.XR_ERROR_SIZE_INSUFFICIENT) {
+                capacity = size[0]
+                if (capacity <= 0) return emptyList()
+                buf = stack.malloc(capacity)
+                size.put(0, capacity)
+                res = call(size, buf)
+            }
+
+            if (res != XR10.XR_SUCCESS) {
+                lprint("error,openxr", "xrGetVulkan*ExtensionsKHR returned ${res}")
+                return emptyList()
+            }
+
             val byteCount = size[0]
             if (byteCount <= 1) return emptyList()
-            val buf = stack.malloc(byteCount)
-            size.put(0, byteCount)
-            call(size, buf)
+
             val s = MemoryUtil.memUTF8(buf, byteCount - 1)
             return s.split(' ').filter { it.isNotBlank() }
         }

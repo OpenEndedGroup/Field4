@@ -296,10 +296,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
     }
 
 
-    fun draw(inside: Module, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
-        if (inside != this.inside.current)
-            lprintln("warning,graphics", "mesh was built in a different module ${inside}!=${this.inside.current}")
-
+    fun prepareForDraw(cmd: CommandBuffer) {
         if (builder.isOpen) {
             builder.closeAndApply()
         }
@@ -309,14 +306,20 @@ class Mesh(var renderer: Renderer = fromContext()) {
         if (notInitialized)
             lprintln("warning,graphics", "mesh has not been initialized yet. Call .resize(v,t) to build its buffers")
 
-        v.entries.forEach { (index, buffer) ->
-            buffer.clean(false, null)
-            // we could tweak this such that buffer.clean(something) is called before the render pass begins
-            // but inside the render pass, we can't use cmd here
-            // this is the case if the call to .update above mutates buffers
+        v.entries.forEach { (_, buffer) ->
+            buffer.clean(false, cmd)
         }
 
-        t?.clean(false, null)// see note above
+        t?.clean(false, cmd)
+    }
+
+    fun draw(inside: Module, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
+        if (inside != this.inside.current)
+            lprintln("warning,graphics", "mesh was built in a different module ${inside}!=${this.inside.current}")
+
+        // NOTE: This may be called inside dynamic rendering / a render pass instance.
+        // VertexBuffer.clean() will fall back to a separate transfer if needed.
+        prepareForDraw(cmd)
 
         MemoryStack.stackPush().use { stack ->
 

@@ -3,6 +3,7 @@ package afield.four.device
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
+import afield.four.util.Options
 import afield.four.util.vkCheck
 
 class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
@@ -93,6 +94,8 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
     companion object {
         fun createPhysicalDevice(instance: Instance, prefferredDeviceName: String?): PhysicalDevice {
             var selectedPhysicalDevice: PhysicalDevice? = null
+            val xrPreferredPhys = if (Options.enableVR) Instance.peekOpenXRBootstrapPhys()
+                ?: Instance.getOpenXRRuntimePhysicalDevice(instance.vkInstance) else null
             MemoryStack.stackPush().use { stack ->
                 // Get available devices
                 val pPhysicalDevices = getPhysicalDevices(instance, stack)
@@ -109,6 +112,11 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
 
                     val deviceName = physicalDevice.deviceName
                     if (physicalDevice.hasGraphicsQueueFamily() && physicalDevice.hasKHRSwapChainExtension()) {
+                        if (xrPreferredPhys != null && vkPhysicalDevice.address() == xrPreferredPhys) {
+                            selectedPhysicalDevice = physicalDevice
+                            println("INFO: Using XR-selected physical device ${deviceName}")
+                            break
+                        }
                         if (prefferredDeviceName != null && prefferredDeviceName == deviceName) {
                             selectedPhysicalDevice = physicalDevice
                             break
@@ -123,6 +131,10 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
                 // No preferred device or it does not meet requirements, just pick the first one
                 selectedPhysicalDevice =
                     if (selectedPhysicalDevice == null && !devices.isEmpty()) devices.removeAt(0) else selectedPhysicalDevice
+
+                if (selectedPhysicalDevice == null && xrPreferredPhys != null) {
+                    println("ERROR: OpenXR-selected physical device not available or lacks required graphics/swapchain support")
+                }
 
                 // Clean up non-selected devices
                 for (physicalDevice in devices) {
