@@ -1442,6 +1442,8 @@ suspend fun main() {
     interactable.on("dragend") { event ->
         console.log(" interact dragend ", event)
         provideMissingMouseup(event)
+        // Clear snap guides when drag ends
+        boxSnappingSystem.clearSnapGuides()
     }
 
     interactable.on("dragstart") { event ->
@@ -1573,11 +1575,20 @@ suspend fun main() {
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round-trip to server?
         // renable this for serverless
 
+        // Apply snapping if Caps Lock is enabled
+        val targetElement = target as HTMLElement
+        val snappedRect = boxSnappingSystem.applySnappingForResize(
+            targetElement,
+            x,
+            y,
+            w,
+            h
+        )
 
-        target.data_x = x
-        target.data_y = y
-        target.data_w = w
-        target.data_h = h
+        target.data_x = snappedRect.x
+        target.data_y = snappedRect.y
+        target.data_w = snappedRect.w
+        target.data_h = snappedRect.h
 
 //        target.style.width = w + "px"
 //        target.style.height = h + "px"
@@ -1617,6 +1628,10 @@ suspend fun main() {
                 if (event.target) resizeHandler(event)
             }
         }
+    }.on("resizeend") { event: dynamic ->
+        console.log(" RESIZE END ", event)
+        // Clear snap guides when resize ends
+        boxSnappingSystem.clearSnapGuides()
     }
 
     interact(".doubleClickToEdit").on("doubletap") { event ->
