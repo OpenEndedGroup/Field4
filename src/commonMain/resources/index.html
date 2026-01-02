@@ -1023,10 +1023,66 @@
         /*.d1 { background:red !important; border: 1px solid blue; }*/
         /*.d2 { background:blue !important; border: 1px solid red; }*/
 
+        /* Splash screen styles */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(20, 20, 20, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+        }
+
+        #splash-screen pre {
+            font-family: "Iosevka Web", monospace;
+            color: var(--field-cyan);
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            white-space: pre;
+            text-align: center;
+        }
+
     </style>
 </head>
 <body>
 
+<div id="splash-screen">
+    <pre>  
+          _____                    _____                    _____                    _____            _____          
+         /\    \                  /\    \                  /\    \                  /\    \          /\    \         
+        /::\    \                /::\    \                /::\    \                /::\____\        /::\    \        
+       /::::\    \               \:::\    \              /::::\    \              /:::/    /       /::::\    \       
+      /::::::\    \               \:::\    \            /::::::\    \            /:::/    /       /::::::\    \      
+     /:::/\:::\    \               \:::\    \          /:::/\:::\    \          /:::/    /       /:::/\:::\    \     
+    /:::/__\:::\    \               \:::\    \        /:::/__\:::\    \        /:::/    /       /:::/  \:::\    \    
+   /::::\   \:::\    \              /::::\    \      /::::\   \:::\    \      /:::/    /       /:::/    \:::\    \   
+  /::::::\   \:::\    \    ____    /::::::\    \    /::::::\   \:::\    \    /:::/    /       /:::/    / \:::\    \  
+ /:::/\:::\   \:::\    \  /\   \  /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/    /       /:::/    /   \:::\ ___\ 
+/:::/  \:::\   \:::\____\/::\   \/:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/____/       /:::/____/     \:::|    |
+\::/    \:::\   \::/    /\:::\  /:::/    \::/    /\:::\   \:::\   \::/    /\:::\    \       \:::\    \     /:::|____|
+ \/____/ \:::\   \/____/  \:::\/:::/    / \/____/  \:::\   \:::\   \/____/  \:::\    \       \:::\    \   /:::/    / 
+          \:::\    \       \::::::/    /            \:::\   \:::\    \       \:::\    \       \:::\    \ /:::/    /  
+           \:::\____\       \::::/____/              \:::\   \:::\____\       \:::\    \       \:::\    /:::/    /   
+            \::/    /        \:::\    \               \:::\   \::/    /        \:::\    \       \:::\  /:::/    /    
+             \/____/          \:::\    \               \:::\   \/____/          \:::\    \       \:::\/:::/    /     
+                               \:::\    \               \:::\    \               \:::\    \       \::::::/    /      
+                                \:::\____\               \:::\____\               \:::\____\       \::::/    /       
+                                 \::/    /                \::/    /                \::/    /        \::/____/        
+                                  \/____/                  \/____/                  \/____/          ~~              
+                                                                                                                     
+</pre>
+</div>
 
 <div class="centered-container" id="cheatsheet" style="opacity: 0;">
     <div class="centered-container-div">
