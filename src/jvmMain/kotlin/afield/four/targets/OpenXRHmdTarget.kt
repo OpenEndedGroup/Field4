@@ -1671,18 +1671,30 @@ class OpenXRHmdTarget(
                     .layerCount(1)
 
                 // Assume the source is in SHADER_READ_ONLY_OPTIMAL (RenderToTexture default).
-                image_layout_transition(
-                    cmd.vkCommandBuffer,
-                    srcUnderlying ?: srcImage,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_ACCESS_2_TRANSFER_READ_BIT,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    srcRange
-                )
-
+                if (srcUnderlying != null)
+                    image_layout_transition(
+                        cmd.vkCommandBuffer,
+                        srcUnderlying,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_ACCESS_2_TRANSFER_READ_BIT,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        srcRange
+                    )
+                else
+                    image_layout_transition(
+                        cmd.vkCommandBuffer,
+                        srcImage,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_ACCESS_2_TRANSFER_READ_BIT,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        srcRange
+                    )
                 for (eye in 0..1) {
                     val sc = swapchains[eye]
                     val imageIndex = acquiredIndices[eye]
