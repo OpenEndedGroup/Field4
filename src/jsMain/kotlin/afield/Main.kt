@@ -451,7 +451,7 @@ suspend fun main() {
                         // Clear all execution markers when box comes online (e.g., after Field restart)
                         found.unsafeCast<HTMLElement>().classList.remove("running")
                         val runningList = found.asDynamic().runningList
-                        if (runningList != null) {
+                        if (runningList != null && runningList.clear != null) {
                             runningList.clear()
                         }
                         canvasGestures.rebuildConnectionGroup()
