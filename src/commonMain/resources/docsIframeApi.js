@@ -194,8 +194,8 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                     // Stop boxes
                     data.uids.forEach(uid => {
                         // Use the stopBox function if available
-                        if (typeof stopBox === 'function') {
-                            stopBox(uid);
+                        if (typeof window.stopBox === 'function') {
+                            window.stopBox(uid);
                         }
                     });
                     break;
@@ -237,9 +237,12 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
 
                 case 'field-create-box':
                     // Create a new box - not yet implemented server-side
+                    const workaround = typeof window.newBox === 'function' 
+                        ? 'Use window.newBox() as a workaround.' 
+                        : 'No workaround available - newBox() function not found.';
                     console.warn(
                         'createBox API called but server-side implementation pending. ' +
-                        'Use window.newBox() as a workaround. Options requested: ' + 
+                        workaround + ' Options requested: ' + 
                         JSON.stringify(data.options)
                     );
                     // Future: Send message to server to create box

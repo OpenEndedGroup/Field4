@@ -264,18 +264,23 @@ if (window.FieldAPI) {
             if (!isInField) return;
             
             // Use the native Field function since FieldAPI.createBox is in development
-            window.newBox();
-            
-            // Set some properties on the newly created box
-            setTimeout(() => {
-                FieldAPI.getSelection((selection) => {
-                    if (selection.boxes.length > 0) {
-                        // The newly created box should be selected
-                        document.getElementById('create-status').innerHTML = 
-                            '<code>✓ Box created (using native newBox)</code>';
-                    }
-                });
-            }, 100);
+            if (typeof window.newBox === 'function') {
+                window.newBox();
+                
+                // Set some properties on the newly created box
+                setTimeout(() => {
+                    FieldAPI.getSelection((selection) => {
+                        if (selection.boxes.length > 0) {
+                            // The newly created box should be selected
+                            document.getElementById('create-status').innerHTML = 
+                                '<code>✓ Box created (using native newBox)</code>';
+                        }
+                    });
+                }, 100);
+            } else {
+                document.getElementById('create-status').innerHTML = 
+                    '<code>⚠️ newBox() function not available</code>';
+            }
         }
 
         function executeInSelected() {
@@ -308,19 +313,23 @@ if (window.FieldAPI) {
         function createAnimationExample() {
             if (!isInField) return;
             
-            // Create box using native function
-            window.newBox();
-            
-            // The animation code that would be set (showing as example only)
-            const code = `var t = 0.0
+            // Create box using native function if available
+            if (typeof window.newBox === 'function') {
+                window.newBox();
+                
+                // The animation code that would be set (showing as example only)
+                const code = `var t = 0.0
 _.stage.repeat {
     println("Frame: " + t)
     t += 0.016
 }`;
-            
-            console.log('Animation example box created. Code to use:', code);
-            // Future: When FieldAPI.createBox is implemented, use:
-            // FieldAPI.createBox({ name: 'Animation Example', code: code });
+                
+                console.log('Animation example box created. Code to use:', code);
+                // Future: When FieldAPI.createBox is implemented, use:
+                // FieldAPI.createBox({ name: 'Animation Example', code: code });
+            } else {
+                console.warn('newBox() function not available');
+            }
         }
 
         function returnToEditor() {
