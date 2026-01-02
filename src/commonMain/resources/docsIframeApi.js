@@ -237,8 +237,11 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
 
                 case 'field-create-box':
                     // Create a new box - not yet implemented server-side
-                    // For now, we'll log it and could potentially create via client-side if needed
-                    console.warn('createBox API called but server-side implementation pending:', data.options);
+                    console.warn(
+                        'createBox API called but server-side implementation pending. ' +
+                        'Use window.newBox() as a workaround. Options requested: ' + 
+                        JSON.stringify(data.options)
+                    );
                     // Future: Send message to server to create box
                     // if (window.send) {
                     //     window.send(Message("create-box").payload(data.options));
@@ -262,9 +265,9 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                         property: window.selectedProperty
                     };
                     
-                    const iframe = document.getElementById('docs-iframe');
-                    if (iframe && iframe.contentWindow) {
-                        iframe.contentWindow.postMessage({
+                    const iframeElement = document.getElementById('docs-iframe');
+                    if (iframeElement && iframeElement.contentWindow) {
+                        iframeElement.contentWindow.postMessage({
                             type: 'field-selection-response',
                             messageId: data.messageId,
                             selection: selection

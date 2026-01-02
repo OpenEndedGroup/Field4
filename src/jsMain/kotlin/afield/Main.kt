@@ -1742,6 +1742,8 @@ suspend fun main() {
 }
 
 
+// Exported to allow documentation iframe API to stop boxes programmatically
+// Uses ExperimentalJsExport to make this Kotlin function directly callable from JavaScript
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun stopBox(uid: String) {
