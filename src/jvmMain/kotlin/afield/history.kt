@@ -78,9 +78,12 @@ object HistoryManager {
             return emptyList()
         }
         
+        // Reuse SavingContext for all operations
+        val savingContext = SavingContext()
+        
         return allFiles.mapIndexed { index, file ->
             val timestamp = file.lastModified()
-            val boxIds = extractBoxIds(file)
+            val boxIds = extractBoxIds(file, savingContext)
             VersionInfo(
                 index = index,
                 file = file,
@@ -94,10 +97,10 @@ object HistoryManager {
     /**
      * Extract box IDs from a metadata.edn file without fully parsing it
      */
-    private fun extractBoxIds(file: File): Set<String> {
+    private fun extractBoxIds(file: File, savingContext: SavingContext): Set<String> {
         return try {
             val ednText = file.readText()
-            val transfers = SavingContext().readEdnTransfersFromString(ednText)
+            val transfers = savingContext.readEdnTransfersFromString(ednText)
             transfers.map { it.id }.toSet()
         } catch (e: Exception) {
             lprintln("warning,history", "Failed to read box IDs from ${file.name}: ${e.message}")
@@ -150,7 +153,7 @@ object HistoryManager {
                 if (existingBox != null) {
                     // Box exists - restore its properties and un-tombstone
                     copyProperties(targetBox, existingBox)
-                    existingBox.setPropertyRaw("_tombstone", null)
+                    existingBox.setPropertyRaw("_tombstone", false)  // Explicitly un-tombstone
                     existingBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
                 } else {
                     // Box doesn't exist - create a new box in the current session
@@ -178,19 +181,21 @@ object HistoryManager {
             recordTransition(documentPath, currentVersion.index, targetVersionIndex)
             
             // 4. Save the current state
+            val savingContext = SavingContext()
             val allBoxes = sessionInfo.boxes.values.toMutableSet()
             allBoxes.add(sessionInfo.root)
-            SavingContext().save(
+            savingContext.save(
                 documentPath, 
                 allBoxes, 
                 "Restored from version $targetVersionIndex"
             )
             
-            // 5. Update topology
-            sessionInfo.topologyGeneration++
-            doResync()
-            
-            notify("Restored to version $targetVersionIndex (${targetVersion.boxCount} boxes)", "history")
+            // 5. Update topology and notify in main thread
+            inMain {
+                sessionInfo.topologyGeneration++
+                doResync()
+                notify("Restored to version $targetVersionIndex (${targetVersion.boxCount} boxes)", "history")
+            }
             
             return true
         } catch (e: Exception) {

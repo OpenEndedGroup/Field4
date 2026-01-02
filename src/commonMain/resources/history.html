@@ -240,6 +240,49 @@
         .tooltip.show {
             display: block;
         }
+
+        /* Notification toast */
+        .notification {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(0, 0, 0, 0.9);
+            color: var(--fg);
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            display: none;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .notification.success {
+            border-color: var(--current);
+            background: rgba(128, 255, 128, 0.15);
+        }
+
+        .notification.error {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.15);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -283,6 +326,7 @@
     </div>
 
     <div class="tooltip" id="tooltip"></div>
+    <div class="notification" id="notification"></div>
 
     <script>
         const WS_URL = `ws://${document.location.host}/ws`;
@@ -291,6 +335,7 @@
         const timelineSvg = document.getElementById('timeline-svg');
         const infoPanelEl = document.getElementById('info-panel');
         const tooltipEl = document.getElementById('tooltip');
+        const notificationEl = document.getElementById('notification');
         
         let ws = null;
         let versions = [];
@@ -302,6 +347,15 @@
         const urlParams = new URLSearchParams(window.location.search);
         const filename = urlParams.get('file') || 'default';
         const username = urlParams.get('user') || 'viewer';
+
+        // Notification helper
+        function showNotification(message, type = 'info') {
+            notificationEl.textContent = message;
+            notificationEl.className = 'notification show ' + type;
+            setTimeout(() => {
+                notificationEl.classList.remove('show');
+            }, 5000);
+        }
 
         // WebSocket connection
         function connect() {
@@ -369,14 +423,15 @@
                 transitions = payload.transitions || [];
                 renderTimeline();
             } else if (message.name === 'restore-version-success') {
-                alert('Version restored successfully! Refresh the main document to see changes.');
+                showNotification('Version restored successfully! Refresh the main document to see changes.', 'success');
                 // Reload history to show the new state
                 send({
                     name: 'list-history-versions',
                     payload: {}
                 });
             } else if (message.name === 'restore-version-error') {
-                alert('Failed to restore version: ' + (message.payload.error || 'Unknown error'));
+                const error = message.payload.error || 'Unknown error';
+                showNotification('Failed to restore version: ' + error, 'error');
             }
         }
 
