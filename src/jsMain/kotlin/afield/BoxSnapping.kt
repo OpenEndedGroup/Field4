@@ -17,7 +17,6 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
 import kotlin.math.abs
-import kotlin.math.sign
 
 /**
  * Data class representing a potential snap target
