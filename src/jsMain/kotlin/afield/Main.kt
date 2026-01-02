@@ -621,8 +621,29 @@ suspend fun main() {
                         console.log(" bringing ", found, " online ")
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
+                        // Clear all execution markers when box comes online
+                        // runningList tracks active execution strands - clear it to remove stale state
+                        // from previous Field sessions when browser reconnects
+                        found.unsafeCast<HTMLElement>().classList.remove("running")
+                        val runningList = found.asDynamic().runningList
+                        if (runningList != null && runningList.clear != null) {
+                            runningList.clear()
+                        }
                         canvasGestures.rebuildConnectionGroup()
                     }
+                }
+            }
+            "_tombstone" -> {
+                console.log(" got _tombstone message ", set)
+                if (found != null && set.number) {
+                    console.log(" removing tombstoned box ", found)
+                    // Deselect the box if it's selected
+                    if (selected.contains(found.unsafeCast<HTMLElement>())) {
+                        deselectBox(found.unsafeCast<HTMLElement>())
+                    }
+                    // Remove the box from the DOM
+                    found.parentElement?.removeChild(found)
+                    canvasGestures.rebuildConnectionGroup()
                 }
             }
          }
