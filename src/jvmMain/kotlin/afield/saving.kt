@@ -1,8 +1,12 @@
-@file:OptIn(ExperimentalSerializationApi::class)
+@file:OptIn(ExperimentalSerializationApi::class, kotlinx.coroutines.DelicateCoroutinesApi::class)
 
 package afield
 
 import afield.logger.lprintln
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -198,46 +202,128 @@ class SavingContext {
         }
     }
 
+    /**
+     * Save boxes to disk, optimized to minimize main thread blocking.
+     * 
+     * This method works in two phases:
+     * 1. Snapshot phase (main thread): Quickly capture all box properties into memory structures
+     * 2. I/O phase (background thread): Write files, create backups, and perform git operations
+     * 
+     * This approach prevents frame hiccups in VR by moving heavy I/O operations off the main thread.
+     */
     fun save(fn: String, boxes: Set<Box>, message: String? = null) {
-        altered = false
-        val root = ensureDirectory(fn)
-        ensureRepository(fn)
+        // Phase 1: Snapshot in main thread - capture all data we need
+        val snapshot = snapshotBoxes(boxes, fn)
+        
+        // Phase 2: Perform I/O operations in background thread
+        saveInBackground(snapshot, fn, message)
+    }
+    
+    /**
+     * Phase 1: Snapshot all box properties in the main thread.
+     * This is a quick operation that just reads properties without any I/O.
+     */
+    private fun snapshotBoxes(boxes: Set<Box>, directory: String): SaveSnapshot {
+        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val boxSnapshots = boxes.map { box ->
+            val properties = LinkedHashMap<String, Any?>()
+            box.properties.forEach { (name, value) ->
+                if (!patterns.any { name.matches(it) }) return@forEach
+                if (value == null) return@forEach
 
-        val transfers = toTransfer(boxes, root)
-        val payloadBoxes = transfers.map { transfer ->
-            linkedMapOf<String, Any?>(
-                "id" to transfer.id,
-                "properties" to transfer.properties
-            )
+                // For separate properties, capture the content now
+                if (Box.ioSeparateProperties.containsKey(name)) {
+                    val extension = Box.ioSeparateProperties[name]!!
+                    val contents = value as? String ?: value.toString()
+                    properties[name] = FileInline(filenameFor(box.id, name, extension), contents)
+                } else {
+                    val normalized = normalizeValue(value)
+                    if (normalized != null) {
+                        properties[name] = normalized
+                    }
+                }
+            }
+            BoxTransferEdn(box.id, properties)
         }
-        val payload = linkedMapOf<String, Any?>(
-            "version" to 2,
-            "boxes" to payloadBoxes,
-            "persistentProperties" to Box.ioPersistentProperties.toList()
+        
+        return SaveSnapshot(
+            transfers = boxSnapshots,
+            persistentProperties = Box.ioPersistentProperties.toList(),
+            fileWatchManager = try { thisSessionInfo.get()?.fileWatchManager } catch (e: Exception) { null }
         )
-        val ednText = Edn.write(payload, ednCustom)
-        val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
-        altered = altered || cd
-
-        if (altered) {
-            commit(fn, message)
-            notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
-
-            // Mark all saved sidecar files as internal saves
+    }
+    
+    /**
+     * Phase 2: Perform all I/O operations in a background thread.
+     * This includes file writing, backups, and git operations.
+     */
+    private fun saveInBackground(snapshot: SaveSnapshot, fn: String, message: String?) {
+        // Launch on background thread pool - using the project's standard miscPool
+        GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             try {
-                thisSessionInfo.get()?.fileWatchManager?.let { watchManager ->
-                    File(root).listFiles()?.forEach { file ->
-                        if (file.isFile && file.name.contains("_") &&
-                            Box.ioSeparateProperties.values.contains(file.extension)) {
-                            watchManager.markInternalSave(file)
+                var altered = false
+                val root = ensureDirectory(fn)
+                ensureRepository(fn)
+
+                // Write all files based on the snapshot
+                snapshot.transfers.forEach { transfer ->
+                    transfer.properties.forEach { (name, value) ->
+                        if (value is FileInline) {
+                            val cd = checkDifference(File(root, value.path).path, value.inline)
+                            altered = altered || cd
+                        }
+                    }
+                }
+
+                // Build and write the EDN metadata
+                val payloadBoxes = snapshot.transfers.map { transfer ->
+                    linkedMapOf<String, Any?>(
+                        "id" to transfer.id,
+                        "properties" to transfer.properties
+                    )
+                }
+                val payload = linkedMapOf<String, Any?>(
+                    "version" to 2,
+                    "boxes" to payloadBoxes,
+                    "persistentProperties" to snapshot.persistentProperties
+                )
+                val ednText = Edn.write(payload, ednCustom)
+                val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
+                altered = altered || cd
+
+                if (altered) {
+                    // Git operations in background
+                    commit(fn, message)
+                    
+                    // Mark saved sidecar files - needs to be done in main thread
+                    inMain {
+                        notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
+                        
+                        snapshot.fileWatchManager?.let { watchManager ->
+                            File(root).listFiles()?.forEach { file ->
+                                if (file.isFile && file.name.contains("_") &&
+                                    Box.ioSeparateProperties.values.contains(file.extension)) {
+                                    watchManager.markInternalSave(file)
+                                }
+                            }
                         }
                     }
                 }
             } catch (e: Exception) {
-                // Silently ignore if session info is not available
+                lprintln("error,save", "Error during background save: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
+    
+    /**
+     * Data class to hold a snapshot of box data captured in the main thread.
+     */
+    private data class SaveSnapshot(
+        val transfers: List<BoxTransferEdn>,
+        val persistentProperties: List<String>,
+        val fileWatchManager: FileWatchManager?
+    )
 
     /**
      * Save boxes as a standalone template file (metadata.edn without subdirectory)
