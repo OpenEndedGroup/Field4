@@ -35,6 +35,18 @@ fun initializeClient() {
                 (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = ""
             }
         }
+        
+        // Hide splash screen on first connection
+        if (!isReconnect) {
+            val splashScreen = document.getElementById("splash-screen") as? HTMLElement
+            splashScreen?.let {
+                it.classList.add("hidden")
+                setTimeout(1000.toDuration(DurationUnit.MILLISECONDS)) {
+                    it.style.display = "none"
+                }
+            }
+        }
+        
         clientOpen = true
         onOpen.forEach {
             send(it)
