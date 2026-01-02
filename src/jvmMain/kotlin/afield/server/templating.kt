@@ -299,7 +299,7 @@ fun templating() {
 
         val loadedBoxes = exec.value.flatMap { templateName ->
             // Try local templates first
-            if (templatesHome.contains(templateName)) {
+            val boxes = if (templatesHome.contains(templateName)) {
                 SavingContext().cloneInto(resolveTemplatePath("$home/templates", templateName))
             } else if (templatesApp.contains(templateName)) {
                 SavingContext().cloneInto(resolveTemplatePath("$app/templates", templateName))
@@ -323,6 +323,13 @@ fun templating() {
                 }
                 boxes
             }
+            
+            // Set templateId on all loaded boxes
+            boxes.forEach { box ->
+                box.templateId = templateName
+            }
+            
+            boxes
         }
 
         // Calculate center of mass and translate boxes to mouse position if provided

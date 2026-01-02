@@ -111,6 +111,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     private var persistent: Boolean = false
     private var animated: Boolean = false
     private var withChat: Boolean = false
+    private var customChatId: String? = null
     private val annotations = mutableListOf<SlideAnnotation>()
     private var onEnter: (suspend () -> Unit)? = null
     private var onExit: (suspend () -> Unit)? = null
@@ -199,9 +200,14 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
      * Enable chat/discussion for this slide.
      * When enabled, a collapsible "Discussion" section appears below the slide content
      * where users can post messages and questions.
+     * 
+     * @param id Optional custom chat ID. If not provided, uses slideshow-specific ID.
+     *           Use "templateId" to share chat across all instances from the same template,
+     *           or provide any custom string to create a shared chat space.
      */
-    fun withChat() {
+    fun withChat(id: String? = null) {
         this.withChat = true
+        this.customChatId = id
     }
 
     /**
@@ -262,6 +268,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             persistent = persistent,
             animated = animated,
             withChat = withChat,
+            customChatId = customChatId,
             annotations = annotations.toList(),
             onEnter = onEnter,
             onExit = onExit,
@@ -292,6 +299,7 @@ data class SlideStep(
     val persistent: Boolean,
     val animated: Boolean,
     val withChat: Boolean,
+    val customChatId: String?,
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?,
@@ -408,6 +416,14 @@ class SlideShowInstance(
             // Process templates in the HTML before sending to browser
             val processedHtml = processTemplates(step.noteHtml)
             
+            // Determine chat ID to use
+            val chatId = when {
+                !step.withChat -> "" // No chat
+                step.customChatId == "templateId" -> hostBox.templateId ?: slideshowId // Use template ID if available
+                step.customChatId != null -> step.customChatId // Use custom ID
+                else -> slideshowId // Default to slideshow ID
+            }
+            
             _send(Message("show-slide-note").payload(
                 ShowSlideNote(
                     html = processedHtml,
@@ -415,7 +431,7 @@ class SlideShowInstance(
                     persistent = step.persistent,
                     animated = step.animated,
                     annotations = step.annotations,
-                    slideshowId = if (step.withChat) slideshowId else "",
+                    slideshowId = if (step.withChat) chatId else "",
                     slideNumber = if (step.withChat) index else -1
                 )
             ))
@@ -579,4 +595,47 @@ fun Box.showMarkdownNote(
  */
 fun hideNote() {
     _send(Message("hide-slide-note").payload(HideSlideNote()))
+}
+
+/**
+ * Add a shared chat interface to this box's output area.
+ * 
+ * @param id The chat ID to use. Special values:
+ *           - "templateId": Share chat across all boxes from the same template
+ *           - Any other string: Custom shared chat ID
+ *           If not provided, uses the box's own ID (non-shared).
+ * 
+ * Example usage:
+ * ```kotlin
+ * // Share chat across all instances from the same template
+ * withChat(id = "templateId")
+ * 
+ * // Create a custom shared chat
+ * withChat(id = "myProject-mainDiscussion")
+ * 
+ * // Box-specific chat (not shared)
+ * withChat()
+ * ```
+ */
+fun Box.withChat(id: String? = null) {
+    // Determine the chat ID to use
+    val chatId = when {
+        id == "templateId" -> this.templateId ?: this.id // Use template ID if available
+        id != null -> id // Use custom ID
+        else -> this.id // Default to box ID
+    }
+    
+    // Display chat in the "chat" channel
+    // The slideNumber is set to 0 as we're using this outside of slideshows
+    // The frontend will handle this appropriately
+    this.display("chat", """
+        <div class="shared-chat" data-chat-id="$chatId" data-slide-number="0">
+            <div class="chat-header">Discussion</div>
+            <div class="chat-messages" id="chat-messages-$chatId"></div>
+            <div class="chat-input-area">
+                <textarea id="chat-input-$chatId" placeholder="Add a comment..."></textarea>
+                <button onclick="window.postSharedChatMessage('$chatId', 0, document.getElementById('chat-input-$chatId').value)">Send</button>
+            </div>
+        </div>
+    """.trimIndent())
 }
