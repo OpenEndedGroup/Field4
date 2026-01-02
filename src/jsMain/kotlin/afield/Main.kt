@@ -1742,6 +1742,8 @@ suspend fun main() {
 }
 
 
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun stopBox(uid: String) {
     console.log(" sending stop-box message")
     send(Message("stop-box").payload(Stop_box(uid = uid)))

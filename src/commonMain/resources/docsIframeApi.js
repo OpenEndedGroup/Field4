@@ -193,12 +193,9 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                 case 'field-end-boxes':
                     // Stop boxes
                     data.uids.forEach(uid => {
-                        // Send stop message to server
-                        if (window.send) {
-                            window.send({
-                                name: 'stop-box',
-                                payload: { uid: uid }
-                            });
+                        // Use the stopBox function if available
+                        if (typeof stopBox === 'function') {
+                            stopBox(uid);
                         }
                     });
                     break;
