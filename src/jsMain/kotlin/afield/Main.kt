@@ -542,6 +542,9 @@ suspend fun main() {
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
 
+    // Initialize the box snapping system
+    boxSnappingSystem.initialize()
+
     initializeClient()
     registerDoubleTap()
 
@@ -1407,13 +1410,26 @@ suspend fun main() {
 
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
 
+        // Apply snapping if Caps Lock is enabled
+        val targetElement = target as HTMLElement
+        val width = event.rect.width - t * 2
+        val height = event.rect.height - t * 2
+        
+        val (snappedX, snappedY) = boxSnappingSystem.applySnapping(
+            targetElement,
+            odx,
+            ody,
+            width,
+            height
+        )
+
         val uid = target.uid
         send(
             Message("set-rect").payload(
                 Set_rect(
                     uid = uid,
                     property = "frame",
-                    Rect(odx.toDouble(), ody.toDouble(), event.rect.width - t * 2, event.rect.height - t * 2)
+                    Rect(snappedX, snappedY, width, height)
                 )
             )
         )
