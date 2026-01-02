@@ -125,10 +125,11 @@
             margin: 0.3em 0;
         }
     </style>
+    <script src="docsIframeApi.js"></script>
 </head>
 <body>
     <h1>🎯 Field Documentation API</h1>
-    
+
     <p>This is a sample documentation page demonstrating the Field iframe API. When loaded in Field's documentation iframe mode, this page can control Field through the <code>FieldAPI</code> object.</p>
 
     <h2>📚 API Reference</h2>
@@ -204,17 +205,17 @@ if (window.FieldAPI) {
     FieldAPI.getSelection((selection) => {
         console.log('Selected boxes:', selection.boxes);
         console.log('Current property:', selection.property);
-        
+
         // Execute code in first selected box
         if (selection.boxes.length > 0) {
             const uid = selection.boxes[0].uid;
             FieldAPI.executeBox(uid, 'println("Hello from docs!")');
         }
     });
-    
+
     // Switch to fragment shader property
     FieldAPI.switchToProperty('fragment');
-    
+
     // Return to editor
     FieldAPI.switchToEditor();
 }</code></pre>
@@ -228,14 +229,14 @@ if (window.FieldAPI) {
         <li>Build custom UIs for specific workflows</li>
     </ul>
 
-    <button class="button back-to-editor" onclick="returnToEditor()">← Back to Editor</button>
+<!--    <button class="button back-to-editor" onclick="returnToEditor()">← Back to Editor</button>-->
 
     <script>
         // Check if we're in the iframe and API is available
-        const isInField = window.parent !== window && window.FieldAPI;
-        
-        if (!isInField) {
-            document.body.insertAdjacentHTML('afterbegin', 
+        const hasFieldAPI = () => window.parent !== window && !!window.FieldAPI;
+
+        if (!hasFieldAPI()) {
+            document.body.insertAdjacentHTML('afterbegin',
                 '<div style="background: rgba(255, 0, 0, 0.2); padding: 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid red;">' +
                 '⚠️ <strong>Note:</strong> This page should be loaded in Field\'s documentation iframe mode. The interactive demos won\'t work in a regular browser.' +
                 '</div>'
@@ -243,8 +244,8 @@ if (window.FieldAPI) {
         }
 
         function getSelectionInfo() {
-            if (!isInField) return;
-            
+            if (!hasFieldAPI()) return;
+
             FieldAPI.getSelection((selection) => {
                 const statusEl = document.getElementById('selection-status');
                 if (selection.boxes.length === 0) {
@@ -261,87 +262,78 @@ if (window.FieldAPI) {
         }
 
         function createSampleBox() {
-            if (!isInField) return;
-            
-            // Use the native Field function since FieldAPI.createBox is in development
-            if (typeof window.newBox === 'function') {
-                window.newBox();
-                
-                // Set some properties on the newly created box
-                setTimeout(() => {
-                    FieldAPI.getSelection((selection) => {
-                        if (selection.boxes.length > 0) {
-                            // The newly created box should be selected
-                            document.getElementById('create-status').innerHTML = 
-                                '<code>✓ Box created (using native newBox)</code>';
-                        }
-                    });
-                }, 100);
-            } else {
-                document.getElementById('create-status').innerHTML = 
-                    '<code>⚠️ newBox() function not available</code>';
-            }
+            if (!hasFieldAPI()) return;
+
+            FieldAPI.runAction('new-box');
+
+            setTimeout(() => {
+                FieldAPI.getSelection((selection) => {
+                    if (selection.boxes.length > 0) {
+                        document.getElementById('create-status').innerHTML =
+                            '<code>✓ Box created (via actions)</code>';
+                    }
+                });
+            }, 100);
         }
 
         function executeInSelected() {
-            if (!isInField) return;
-            
+            if (!hasFieldAPI()) return;
+
             FieldAPI.getSelection((selection) => {
                 if (selection.boxes.length === 0) {
-                    document.getElementById('create-status').innerHTML = 
+                    document.getElementById('create-status').innerHTML =
                         '<code>⚠️ No boxes selected</code>';
                     return;
                 }
-                
+
                 const uid = selection.boxes[0].uid;
                 const code = 'println("Executed from documentation iframe!")';
                 FieldAPI.executeBox(uid, code);
-                
-                document.getElementById('create-status').innerHTML = 
+
+                document.getElementById('create-status').innerHTML =
                     `<code>✓ Executed in "${selection.boxes[0].name}"</code>`;
             });
         }
 
         function switchProp(property) {
-            if (!isInField) return;
-            
+            if (!hasFieldAPI()) return;
+
             FieldAPI.switchToProperty(property);
-            document.getElementById('property-status').innerHTML = 
+            FieldAPI.switchToEditor();
+            document.getElementById('property-status').innerHTML =
                 `<code>✓ Switched to property: ${property}</code>`;
         }
 
         function createAnimationExample() {
-            if (!isInField) return;
+            if (!hasFieldAPI()) return;
+
+            FieldAPI.runAction('new-box');
             
-            // Create box using native function if available
-            if (typeof window.newBox === 'function') {
-                window.newBox();
-                
-                // The animation code that would be set (showing as example only)
-                const code = `var t = 0.0
+            const code = `var t = 0.0
 _.stage.repeat {
     println("Frame: " + t)
     t += 0.016
 }`;
-                
-                console.log('Animation example box created. Code to use:', code);
-                // Future: When FieldAPI.createBox is implemented, use:
-                // FieldAPI.createBox({ name: 'Animation Example', code: code });
-            } else {
-                console.warn('newBox() function not available');
-            }
+
+            console.log('Animation example box created. Code to use:', code);
         }
 
         function returnToEditor() {
-            if (!isInField) return;
+            if (!hasFieldAPI()) return;
             FieldAPI.switchToEditor();
         }
 
         // Log API availability
-        console.log('Field API available:', !!window.FieldAPI);
-        if (window.FieldAPI) {
-            console.log('Available methods:', Object.keys(window.FieldAPI));
-        }
+        const logFieldApiAvailability = (attempt = 0) => {
+            const available = hasFieldAPI();
+            console.log('Field API available:', available);
+            if (!available && attempt < 5) {
+                setTimeout(() => logFieldApiAvailability(attempt + 1), 400);
+            } else if (available) {
+                console.log('Available methods:', Object.keys(window.FieldAPI));
+            }
+        };
+        logFieldApiAvailability();
     </script>
 </body>
 </html>

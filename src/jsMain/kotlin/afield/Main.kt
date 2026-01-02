@@ -18,6 +18,7 @@ import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.HTMLTextAreaElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.KeyboardEvent
@@ -107,6 +108,19 @@ fun serviceEvents() {
     }
 }
 
+private fun isEditorFocused(): Boolean {
+    val active = document.activeElement ?: return false
+    val className = active.asDynamic().className?.toString() ?: ""
+    val inMonacoTextArea = active.classList?.contains("monaco-mouse-cursor-text") == true
+    val closestMonaco = try {
+        active.asDynamic().closest?.call(active, ".monaco-editor") != null
+    } catch (e: dynamic) {
+        false
+    }
+    val textInput = active is HTMLTextAreaElement || active is HTMLInputElement
+    return inMonacoTextArea || closestMonaco || textInput || className.contains("monaco", ignoreCase = true)
+}
+
 var slideNoteAnchorUid: String? = null
 
 fun findBoxByUid(uid: String?): HTMLElement? {
@@ -159,40 +173,70 @@ fun positionSlideNoteOverlay(overlay: HTMLElement, anchorUid: String?) {
 }
 
 // Chat UI support
-var currentChatSlideshowId: String? = null
-var currentChatSlideNumber: Int = -1
+data class ChatWidget(
+    val widgetId: String,
+    val slideshowId: String,
+    val slideNumber: Int,
+    val container: HTMLElement,
+    val content: HTMLElement,
+    val messagesArea: HTMLElement,
+    val messageInput: HTMLTextAreaElement
+)
 
-fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
-    currentChatSlideshowId = slideshowId
-    currentChatSlideNumber = slideNumber
+private val chatWidgets = mutableMapOf<String, ChatWidget>()
+
+private fun cleanupChatWidgets() {
+    val iterator = chatWidgets.iterator()
+    while (iterator.hasNext()) {
+        val entry = iterator.next()
+        if (!entry.value.container.isConnected) {
+            iterator.remove()
+        }
+    }
+}
+
+private fun widgetsFor(slideshowId: String, slideNumber: Int): List<ChatWidget> =
+    chatWidgets.values.filter { it.slideshowId == slideshowId && it.slideNumber == slideNumber }
+
+fun loadChatMessages(slideshowId: String, slideNumber: Int) {
+    send("load-chat-messages", js("{slideshowId: slideshowId, slideNumber: slideNumber}"))
+}
+
+fun postChatMessage(slideshowId: String, slideNumber: Int, message: String) {
+    val username = URLSearchParams(document.location?.search).get("username") ?: "anonymous"
+    send("post-chat-message", js("{slideshowId: slideshowId, slideNumber: slideNumber, username: username, message: message}"))
+}
+
+private fun createChatWidget(
+    slideshowId: String,
+    slideNumber: Int,
+    expanded: Boolean = false,
+    showHeader: Boolean = true
+): ChatWidget {
+    cleanupChatWidgets()
+    val widgetId = "chat-${Uuid.random()}"
 
     val chatContainer = document.createElement("div") as HTMLElement
-    chatContainer.id = "chat-container"
+    chatContainer.id = "chat-container-$widgetId"
+    chatContainer.setAttribute("data-chat-widget-id", widgetId)
+    chatContainer.setAttribute("data-chat-slideshow", slideshowId)
+    chatContainer.setAttribute("data-chat-slide", slideNumber.toString())
     chatContainer.style.apply {
-        marginTop = "15px"
-        borderTop = "1px solid rgba(255, 255, 255, 0.1)"
-        paddingTop = "10px"
+        marginTop = if (showHeader) "15px" else "8px"
+        borderTop = if (showHeader) "1px solid rgba(255, 255, 255, 0.1)" else "none"
+        paddingTop = if (showHeader) "10px" else "0px"
     }
 
-    // Create disclosure header
-    val chatHeader = document.createElement("div") as HTMLElement
-    chatHeader.style.apply {
-        cursor = "pointer"
-        fontWeight = "bold"
-        fontSize = "12px"
-        marginBottom = "8px"
-        color = "#a0a0a0"
-    }
-    chatHeader.innerHTML = "▸ Discussion"
-
-    // Create chat content (initially hidden)
     val chatContent = document.createElement("div") as HTMLElement
-    chatContent.id = "chat-content"
-    chatContent.style.display = "none"
+    chatContent.id = "chat-content-$widgetId"
+    chatContent.style.display = if (showHeader) {
+        if (expanded) "block" else "none"
+    } else {
+        "block"
+    }
 
-    // Messages area
     val messagesArea = document.createElement("div") as HTMLElement
-    messagesArea.id = "chat-messages"
+    messagesArea.id = "chat-messages-$widgetId"
     messagesArea.style.apply {
         maxHeight = "200px"
         overflowY = "auto"
@@ -203,7 +247,6 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
         fontSize = "12px"
     }
 
-    // Input area
     val inputArea = document.createElement("div") as HTMLElement
     inputArea.style.apply {
         display = "flex"
@@ -215,8 +258,8 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
     }
 
     val messageInput = document.createElement("textarea") as HTMLTextAreaElement
-    messageInput.id = "chat-input"
-    messageInput.setAttribute("placeholder", "Add a comment...")
+    messageInput.id = "chat-input-$widgetId"
+    messageInput.setAttribute("placeholder", "Add a comment + return")
     messageInput.style.apply {
         flex = "1"
         minHeight = "60px"
@@ -247,34 +290,73 @@ fun createChatUI(slideshowId: String, slideNumber: Int): HTMLElement {
         }
     }
 
-    // Toggle disclosure
-    var isExpanded = false
-    chatHeader.onclick = {
-        isExpanded = !isExpanded
-        chatContent.style.display = if (isExpanded) "block" else "none"
-        chatHeader.innerHTML = if (isExpanded) "▾ Discussion" else "▸ Discussion"
+    if (showHeader) {
+        val chatHeader = document.createElement("div") as HTMLElement
+        chatHeader.style.apply {
+            cursor = "pointer"
+            fontWeight = "bold"
+            fontSize = "12px"
+            marginBottom = "8px"
+            color = "#a0a0a0"
+        }
+        chatHeader.innerHTML = if (expanded) "▾ Discussion" else "▸ Discussion"
+
+        var isExpanded = expanded
+        chatHeader.onclick = {
+            isExpanded = !isExpanded
+            chatContent.style.display = if (isExpanded) "block" else "none"
+            chatHeader.innerHTML = if (isExpanded) "▾ Discussion" else "▸ Discussion"
+        }
+
+        chatContainer.appendChild(chatHeader)
     }
 
     inputArea.appendChild(messageInput)
     chatContent.appendChild(messagesArea)
     chatContent.appendChild(inputArea)
-    chatContainer.appendChild(chatHeader)
     chatContainer.appendChild(chatContent)
 
-    return chatContainer
+    val widget = ChatWidget(
+        widgetId = widgetId,
+        slideshowId = slideshowId,
+        slideNumber = slideNumber,
+        container = chatContainer,
+        content = chatContent,
+        messagesArea = messagesArea,
+        messageInput = messageInput
+    )
+    chatWidgets[widgetId] = widget
+    loadChatMessages(slideshowId, slideNumber)
+    return widget
 }
 
-fun loadChatMessages(slideshowId: String, slideNumber: Int) {
-    send("load-chat-messages", js("{slideshowId: slideshowId, slideNumber: slideNumber}"))
+fun createChatUI(slideshowId: String, slideNumber: Int, expanded: Boolean = false, showHeader: Boolean = true): HTMLElement {
+    return createChatWidget(slideshowId, slideNumber, expanded, showHeader).container
 }
 
-fun postChatMessage(slideshowId: String, slideNumber: Int, message: String) {
-    val username = URLSearchParams(document.location?.search).get("username") ?: "anonymous"
-    send("post-chat-message", js("{slideshowId: slideshowId, slideNumber: slideNumber, username: username, message: message}"))
+@JsExport
+fun mountSharedChat(
+    containerId: String,
+    slideshowId: String,
+    slideNumber: Int = 0,
+    expanded: Boolean = false,
+    showHeader: Boolean = true
+) {
+    cleanupChatWidgets()
+    val host = document.getElementById(containerId) as? HTMLElement ?: return
+    val widget = createChatWidget(slideshowId, slideNumber, expanded, showHeader)
+    host.innerHTML = ""
+    host.appendChild(widget.container)
 }
 
-fun displayChatMessages(messages: List<ChatMessage>) {
-    val messagesArea = document.getElementById("chat-messages") as? HTMLElement ?: return
+@Suppress("unused")
+private val exposeChatMount = run {
+    window.asDynamic().mountSharedChat = ::mountSharedChat
+    true
+}
+
+fun displayChatMessages(target: HTMLElement, messages: List<ChatMessage>) {
+    val messagesArea = target
     messagesArea.innerHTML = ""
 
     if (messages.isEmpty()) {
@@ -331,6 +413,7 @@ fun displayChatMessages(messages: List<ChatMessage>) {
                 fontSize = "11px"
                 color = "#999"
                 marginBottom = "4px"
+                cssFloat = "right"
             }
 
             val timestamp = formatTimestamp(msg.timestamp)
@@ -1068,6 +1151,7 @@ suspend fun main() {
 
         // Clear previous content
         overlay.innerHTML = ""
+        cleanupChatWidgets()
 
         // Add main content
         val contentDiv = document.createElement("div") as HTMLElement
@@ -1078,9 +1162,6 @@ suspend fun main() {
         if (note.slideshowId.isNotBlank() && note.slideNumber >= 0) {
             val chatContainer = createChatUI(note.slideshowId, note.slideNumber)
             overlay.appendChild(chatContainer)
-
-            // Load existing chat messages
-            loadChatMessages(note.slideshowId, note.slideNumber)
         }
 
         overlay.style.display = "block"
@@ -1160,16 +1241,17 @@ suspend fun main() {
 
     handlers.put("chat-messages-loaded") { message, _ ->
         val loaded = Json.decodeFromJsonElement<ChatMessagesLoaded>(message.payload!!)
-        if (loaded.slideshowId == currentChatSlideshowId && loaded.slideNumber == currentChatSlideNumber) {
-            displayChatMessages(loaded.messages)
+        cleanupChatWidgets()
+        widgetsFor(loaded.slideshowId, loaded.slideNumber).forEach { widget ->
+            displayChatMessages(widget.messagesArea, loaded.messages)
         }
         Handled.yes
     }
 
     handlers.put("chat-message-posted") { message, _ ->
         val posted = Json.decodeFromJsonElement<ChatMessagePosted>(message.payload!!)
-        if (posted.slideshowId == currentChatSlideshowId && posted.slideNumber == currentChatSlideNumber) {
-            // Reload all messages to show the new one
+        cleanupChatWidgets()
+        if (widgetsFor(posted.slideshowId, posted.slideNumber).isNotEmpty()) {
             loadChatMessages(posted.slideshowId, posted.slideNumber)
         }
         Handled.yes
@@ -1394,14 +1476,35 @@ suspend fun main() {
 
     val moncaoResizing = interact(".monaco-editor-container")
 
+    fun ensureAbsolutePosition(el: HTMLElement) {
+        val dyn = el.asDynamic()
+        if (dyn.data_initialized == true) return
+        val rect = el.getBoundingClientRect()
+        val left = rect.left + window.scrollX
+        val top = rect.top + window.scrollY
+        el.style.left = "${left}px"
+        el.style.top = "${top}px"
+        el.style.right = "auto"
+        el.style.bottom = "auto"
+        el.style.position = "absolute"
+        el.style.transform = "translate(0px, 0px)"
+        dyn.data_x = left
+        dyn.data_y = top
+        dyn.data_w = rect.width
+        dyn.data_h = rect.height
+        dyn.data_initialized = true
+    }
+
     monacoResizeHandler = { event: dynamic ->
 
         val target: dynamic = event.target
+        ensureAbsolutePosition(target as HTMLElement)
         val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
         val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
 
-//        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
-
+        (target as HTMLElement).style.transform = "translate(0px, 0px)"
+        target.style.left = "${x}px"
+        target.style.top = "${y}px"
         target.style.width = event.rect.width + "px"
         target.style.height = event.rect.height + "px"
 
@@ -1409,12 +1512,73 @@ suspend fun main() {
         target.data_y = y
         target.data_w = event.rect.width
         target.data_h = event.rect.height
+
+        // Keep docs container in sync when Monaco is resized
+        val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
+        if (docsContainer != null) {
+            ensureAbsolutePosition(docsContainer)
+            docsContainer.style.transform = "translate(0px, 0px)"
+            docsContainer.style.left = target.style.left
+            docsContainer.style.top = target.style.top
+            docsContainer.style.width = target.style.width
+            docsContainer.style.height = target.style.height
+            docsContainer.asDynamic().data_x = target.data_x
+            docsContainer.asDynamic().data_y = target.data_y
+            docsContainer.asDynamic().data_w = target.data_w
+            docsContainer.asDynamic().data_h = target.data_h
+        }
     }
 
     moncaoResizing.resizable(
         json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
     ).on("resizemove") { event: dynamic ->
         monacoResizeHandler(event)
+    }
+
+    // Allow docs iframe container to be resized like Monaco, and propagate new size back to Monaco/editor
+    val docsResizing = interact(".docs-iframe-container")
+    docsResizing.resizable(
+        json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
+    ).on("resizemove") { event: dynamic ->
+        val target: dynamic = event.target
+        ensureAbsolutePosition(target as HTMLElement)
+        val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
+        val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
+
+        target.style.transform = "translate(0px, 0px)"
+        target.style.left = "${x}px"
+        target.style.top = "${y}px"
+        target.style.width = event.rect.width + "px"
+        target.style.height = event.rect.height + "px"
+
+        target.data_x = x
+        target.data_y = y
+        target.data_w = event.rect.width
+        target.data_h = event.rect.height
+
+        // Mirror size back to Monaco container
+        val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
+        if (monacoContainer != null) {
+            ensureAbsolutePosition(monacoContainer)
+            monacoContainer.style.transform = "translate(0px, 0px)"
+            monacoContainer.style.left = target.style.left
+            monacoContainer.style.top = target.style.top
+            monacoContainer.style.width = target.style.width
+            monacoContainer.style.height = target.style.height
+            monacoContainer.asDynamic().data_x = target.data_x
+            monacoContainer.asDynamic().data_y = target.data_y
+            monacoContainer.asDynamic().data_w = target.data_w
+            monacoContainer.asDynamic().data_h = target.data_h
+        }
+
+        // Notify Monaco editor about size change
+        val editor = window.asDynamic().globalEditor
+        if (editor != null && editor != undefined && editor.layout != undefined) {
+            val dims = js("{}")
+            dims.width = event.rect.width
+            dims.height = event.rect.height
+            editor.layout(dims)
+        }
     }
 
     val interactable = interact(".box")
@@ -1443,7 +1607,7 @@ suspend fun main() {
         val targetElement = target as HTMLElement
         val width = event.rect.width - t * 2
         val height = event.rect.height - t * 2
-        
+
         val (snappedX, snappedY) = boxSnappingSystem.applySnapping(
             targetElement,
             odx,

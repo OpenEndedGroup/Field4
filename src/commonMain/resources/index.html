@@ -549,6 +549,27 @@
             background: #1e1e1e;
         }
 
+        .docs-iframe-back {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 20;
+            background: rgba(var(--field-cyan-rgb), 0.2);
+            border: 1px solid var(--field-cyan);
+            color: var(--field-text);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .docs-iframe-back:hover {
+            background: rgba(var(--field-cyan-rgb), 0.3);
+            transform: translateY(-1px);
+        }
+
         .quick-input-list * {
             scrollbar-gutter: auto !important;
             scrollbar-width: thin !important;
@@ -1133,6 +1154,12 @@
             margin: 0;
             white-space: pre;
             /*text-align: center;*/
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+
+        #splash-screen pre.f4lit {
+            opacity: 1;
         }
 
     </style>
@@ -1140,7 +1167,7 @@
 <body>
 
 <div id="splash-screen">
-    <pre>
+    <pre class="f4drift">
           _____                    _____                    _____                    _____            _____
          /\    \                  /\    \                  /\    \                  /\    \          /\    \
         /::\    \                /::\    \                /::\    \                /::\____\        /::\    \
@@ -1184,6 +1211,7 @@
         <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span
             class="rightKey">opens <b>autocomplete</b></span><br><br>
         <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span><br><br>
+        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>/</kbd></span> <span class="rightKey"><b>toggle docs iframe</b> (docs & editor)</span><br><br>
         <span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
         <span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span><br><br>
         <span class="leftKey"><kbd>⇧</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
@@ -1202,6 +1230,7 @@
 
 <div class="monaco-editor-container"></div>
 <div class="docs-iframe-container">
+    <button class="docs-iframe-back" type="button" onclick="exitDocsIframe()">← Back to Editor</button>
     <iframe id="docs-iframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
 </div>
 
@@ -1301,12 +1330,13 @@
 
         pre.appendChild(frag);
 
-        // Start drift *after* the DOM is painted so you can actually see it
+        // Fade in the art, then kick off the drift/explode
         requestAnimationFrame(() => {
             pre.offsetHeight;
-            requestAnimationFrame(() => {
+            pre.classList.add("f4lit");
+            setTimeout(() => {
                 pre.classList.add("f4go");
-            })
+            }, 200);
         })
     })();
 

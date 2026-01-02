@@ -30,8 +30,11 @@ const initQuickPick = (is) => {
 let allActions = {
         base: []
 }
+// expose for other modules (docs iframe handler, etc.)
+window.allActions = allActions
 
 let lastActions = []
+window.lastActions = lastActions
 
 function updateActions() {
         let all = []

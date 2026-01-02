@@ -5,6 +5,7 @@ import afield.stdlib.Delegation
 import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
 import org.intellij.markdown.html.HtmlGenerator
 import org.intellij.markdown.parser.MarkdownParser
+import java.util.UUID
 
 /**
  * SlideShow - A DSL for creating guided tours through Field documents
@@ -624,18 +625,41 @@ fun Box.withChat(id: String? = null) {
         id != null -> id // Use custom ID
         else -> this.id // Default to box ID
     }
-    
-    // Display chat in the "chat" channel
-    // The slideNumber is set to 0 as we're using this outside of slideshows
-    // The frontend will handle this appropriately
+
+    val containerId = "shared-chat-${UUID.randomUUID()}"
+    fun escapeAttr(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+    }
+    val escapedChatId = escapeAttr(chatId)
+
+    // Display chat in the "chat" channel using the same UI as slideshow notes.
     this.display("chat", """
-        <div class="shared-chat" data-chat-id="$chatId" data-slide-number="0">
-            <div class="chat-header">Discussion</div>
-            <div class="chat-messages" id="chat-messages-$chatId"></div>
-            <div class="chat-input-area">
-                <textarea id="chat-input-$chatId" placeholder="Add a comment..."></textarea>
-                <button onclick="window.postSharedChatMessage('$chatId', 0, document.getElementById('chat-input-$chatId').value)">Send</button>
-            </div>
-        </div>
+        <div class="shared-chat-host" id="$containerId" data-chat-id="$escapedChatId" data-chat-slide="0"></div>
+        <script>
+        (function attachSharedChat(attempt) {
+            const hostId = "$containerId";
+            const host = document.getElementById(hostId);
+            const mount = (window.afield && window.afield.mountSharedChat) || window.mountSharedChat;
+            if (!host) {
+                console.warn("Shared chat host missing:", hostId);
+                return;
+            }
+            if (typeof mount !== "function") {
+                if (attempt < 5) {
+                    setTimeout(() => attachSharedChat(attempt + 1), 50);
+                } else {
+                    console.warn("Shared chat mount function is not ready");
+                }
+                return;
+            }
+            const chatId = host.dataset.chatId || "";
+            const slideNumber = Number(host.dataset.chatSlide || "0");
+            mount(hostId, chatId, Number.isNaN(slideNumber) ? 0 : slideNumber, false, false);
+        })(0);
+        </script>
     """.trimIndent())
 }

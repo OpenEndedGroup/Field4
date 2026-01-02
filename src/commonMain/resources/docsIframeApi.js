@@ -21,6 +21,19 @@ const FieldAPI = {
     },
 
     /**
+     * Run an action by id (from the Field actions palette)
+     * @param {string} actionId - The action id (e.g., 'new-box')
+     * @param {object} args - Optional argument payload
+     */
+    runAction(actionId, args = {}) {
+        window.parent.postMessage({
+            type: 'field-run-action',
+            actionId: actionId,
+            args: args
+        }, '*');
+    },
+
+    /**
      * Execute code in a box
      * @param {string} uid - Box UID (optional, uses selected if not provided)
      * @param {string} code - Code to execute (optional, uses box's code if not provided)
@@ -96,10 +109,8 @@ const FieldAPI = {
      * @param {object} options - Box creation options (name, frame, code, etc.)
      */
     createBox(options = {}) {
-        window.parent.postMessage({
-            type: 'field-create-box',
-            options: options
-        }, '*');
+        // Prefer to route through the actions palette
+        this.runAction('new-box', options);
     },
 
     /**
@@ -142,11 +153,48 @@ const FieldAPI = {
 if (window.parent !== window) {
     // We're in an iframe
     window.FieldAPI = FieldAPI;
+    const forwardCommandPaletteShortcut = (event) => {
+        const isCtrlOrCmdP = (event.ctrlKey || event.metaKey) && event.key && event.key.toLowerCase() === 'p';
+        if (event.key === 'F1' || isCtrlOrCmdP) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.parent.postMessage({ type: 'field-open-command-palette' }, '*');
+        }
+    };
+
+    window.addEventListener('keydown', forwardCommandPaletteShortcut, true);
+    window.dispatchEvent(new Event('field-api-ready'));
     console.log('Field Documentation API initialized');
 }
 
 // Message handler on the parent (Field) side
 if (typeof window.handleDocsIframeMessage === 'undefined') {
+    const collectActions = () => {
+        const result = [];
+        const actionsObj = window.allActions || {};
+        Object.keys(actionsObj).forEach(key => {
+            const value = actionsObj[key];
+            if (Array.isArray(value)) {
+                result.push(...value);
+            }
+        });
+        const last = window.lastActions;
+        if (Array.isArray(last)) {
+            result.push(...last);
+        }
+        return result;
+    };
+
+    const runActionById = (actionId, args) => {
+        const all = collectActions().filter(Boolean);
+        const action = all.find(a => a && a.id === actionId);
+        if (action && typeof action.run === 'function') {
+            action.run(args);
+            return true;
+        }
+        return false;
+    };
+
     window.handleDocsIframeMessage = function(event) {
         // Only process messages from our iframe
         const iframe = document.getElementById('docs-iframe');
@@ -162,6 +210,12 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                     // Execute a Field command
                     if (window.allActions && window.allActions[data.command]) {
                         window.allActions[data.command](data.args);
+                    }
+                    break;
+
+                case 'field-run-action':
+                    if (!runActionById(data.actionId, data.args)) {
+                        console.warn('Action not found for id', data.actionId);
                     }
                     break;
 
@@ -230,31 +284,36 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
 
                 case 'field-switch-to-editor':
                     // Switch back to Monaco editor
-                    if (window.switchToMonaco) {
+                    if (window.exitDocsIframe) {
+                        window.exitDocsIframe();
+                    } else if (window.switchToMonaco) {
                         window.switchToMonaco();
                     }
                     break;
 
+                case 'field-open-command-palette':
+                    if (typeof window.openQuickCommandPalette === 'function') {
+                        window.openQuickCommandPalette();
+                    } else if (typeof globalPickMenu === 'function') {
+                        globalPickMenu();
+                    }
+                    break;
+
                 case 'field-create-box':
-                    // Create a new box - not yet implemented server-side
-                    const workaround = typeof window.newBox === 'function' 
-                        ? 'Use window.newBox() as a workaround.' 
-                        : 'No workaround available - newBox() function not found.';
-                    console.warn(
-                        'createBox API called but server-side implementation pending. ' +
-                        workaround + ' Options requested: ' + 
-                        JSON.stringify(data.options)
-                    );
-                    // Future: Send message to server to create box
-                    // if (window.send) {
-                    //     window.send(Message("create-box").payload(data.options));
-                    // }
+                    if (!runActionById('new-box', data.options)) {
+                        if (typeof window.newBox === 'function') {
+                            window.newBox();
+                        } else {
+                            console.warn('createBox API called but no new-box action or newBox() found. Options requested:', data.options);
+                        }
+                    }
                     break;
 
                 case 'field-get-selection':
                     // Return current selection info
+                    const boxesSource = Array.isArray(window.selectedList) ? window.selectedList : Array.from(window.selected || []);
                     const selection = {
-                        boxes: Array.from(window.selected || []).map(box => ({
+                        boxes: boxesSource.map(box => ({
                             uid: box.uid,
                             name: box.name,
                             code: box.code,

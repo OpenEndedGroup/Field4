@@ -687,11 +687,8 @@ fun registerBuiltinCommands() {
             label:"Switch to Documentation Iframe",
             canvasKeybinding: (event) => false,
             run: () => {
-                // Prompt for URL
-                const url = prompt("Enter documentation URL:", "");
-                if (url) {
-                    window.switchToDocsIframe(url);
-                }
+                // Toggle into docs; default URL is handled by switchToDocsIframe/ensureDocsIframeHasContent
+                window.switchToDocsIframe(null);
             }
         },{
             id:'switch-to-monaco-editor',
