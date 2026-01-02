@@ -65,13 +65,23 @@ slideShow {
             <p>Try the Discussion section below!</p>
             <p><a href="#slideshow:next">Next →</a></p>
         """)
+        withChat()  // Enable chat for this slide
     }
     
     step("Second Slide") {
         note("""
             <h2>Another Slide</h2>
-            <p>Each slide has its own chat thread.</p>
+            <p>Each slide can optionally have chat.</p>
         """)
+        withChat()  // Enable chat here too
+    }
+    
+    step("No Chat") {
+        note("""
+            <h2>This slide has no chat</h2>
+            <p>Chat is opt-in per slide.</p>
+        """)
+        // No withChat() call, so no Discussion section appears
     }
 }
 
@@ -82,11 +92,12 @@ this.slideShow?.start()
 
 ## Step 5: Test the Chat
 
-1. Look for "▸ Discussion" below the slide content
+1. Look for "▸ Discussion" below the slide content (only on slides with `withChat()`)
 2. Click it to expand the chat
 3. Type a message: "Hello from Field4!"
 4. Click "Send"
 5. Your message should appear immediately
+6. Navigate to the third slide - notice there's no Discussion section (no `withChat()` call)
 
 ## Step 6: Test Multi-User Chat
 
@@ -160,7 +171,10 @@ For persistent chat across sessions:
 ```kotlin
 slideShow {
     slideshowId("my-lesson-v1")  // Custom ID
-    step("...") { ... }
+    step("...") { 
+        note("...")
+        withChat()  // Remember to enable chat per slide
+    }
 }
 ```
 
@@ -202,10 +216,11 @@ For classroom use:
 
 ## Tips
 
-1. **Each slide gets its own chat** - Students can discuss specific content
-2. **Messages persist** - Future students see past discussions
-3. **No authentication** - Low barrier to entry for students
-4. **Collapsible UI** - Doesn't clutter the learning experience
-5. **Real-time** - Messages appear immediately for all viewers
+1. **Chat is opt-in per slide** - Use `withChat()` to enable discussion on specific slides
+2. **Each slide gets its own chat** - Students can discuss specific content
+3. **Messages persist** - Future students see past discussions
+4. **No authentication** - Low barrier to entry for students
+5. **Collapsible UI** - Doesn't clutter the learning experience
+6. **Real-time** - Messages appear immediately for all viewers
 
 Happy teaching! 🎓

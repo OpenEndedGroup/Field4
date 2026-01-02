@@ -75,23 +75,33 @@ Default is `http://localhost:5002` if not set.
 
 ### Creating a Slideshow with Chat
 
-Chat is automatically available for all slideshows. Just create a slideshow as usual:
+Chat is **opt-in per slide**. Use `withChat()` to enable discussion on specific slides:
 
 ```kotlin
 slideShow {
     step("Introduction") {
         note("""
             <h2>Welcome!</h2>
-            <p>This is the first slide.</p>
+            <p>This slide has chat enabled.</p>
             <p><a href="#slideshow:next">Next →</a></p>
         """)
+        withChat()  // Enable chat for this slide
     }
     
     step("Explanation") {
         note("""
             <h2>Key Concept</h2>
-            <p>Learn about this important concept.</p>
+            <p>This slide has no chat (no withChat() call).</p>
         """)
+        // No withChat() - this slide won't have a Discussion section
+    }
+    
+    step("Questions") {
+        note("""
+            <h2>Q&A</h2>
+            <p>Ask questions in the Discussion below!</p>
+        """)
+        withChat()  // Enable chat here
     }
 }
 ```
@@ -99,10 +109,12 @@ slideShow {
 ### Accessing Chat
 
 1. Navigate to a slide in the guide
-2. Look for "▸ Discussion" below the slide content
+2. On slides with `withChat()`, look for "▸ Discussion" below the slide content
 3. Click to expand the chat UI
 4. Type messages in the text area
 5. Click "Send" to post
+
+**Note**: Only slides where you called `withChat()` will show the Discussion section.
 
 ### Setting Username
 
@@ -319,7 +331,7 @@ CHAT_SERVER_URL=http://localhost:5003 ./gradlew jvmRun
 ## Example: Complete Slideshow with Chat
 
 ```kotlin
-// Create a slideshow - chat is automatically available
+// Create a slideshow - chat is opt-in per slide
 slideShow {
     // Optional: Set custom slideshow ID for persistence
     slideshowId("my-tutorial-v1")
@@ -331,6 +343,7 @@ slideShow {
             <p>Use the Discussion section below to ask questions.</p>
             <p><a href="#slideshow:next">Next →</a></p>
         """)
+        withChat()  // Enable chat for this slide
     }
     
     step("Concept") {
@@ -339,6 +352,7 @@ slideShow {
             <p>This is an important concept to understand.</p>
             <p><a href="#slideshow:next">Next →</a> | <a href="#slideshow:previous">← Back</a></p>
         """)
+        withChat()  // Enable chat here too
         
         selectBoxByName("example-box")
     }
@@ -349,13 +363,22 @@ slideShow {
             <p>Now practice what you learned.</p>
             <p>Post your results in the discussion!</p>
         """)
+        withChat()  // Enable chat
+    }
+    
+    step("Summary") {
+        note("""
+            <h2>Summary</h2>
+            <p>Great work! Review the key points.</p>
+        """)
+        // No withChat() - this summary slide won't have chat
     }
 }
 ```
 
 Students can now:
 1. Navigate through the slides
-2. Expand the "Discussion" section
+2. On slides with `withChat()`, expand the "Discussion" section
 3. Post questions like "What does line 5 do?"
 4. Get answers from instructors or other students
-5. All messages persist for future viewers
+5. Messages persist for future viewers on those slides

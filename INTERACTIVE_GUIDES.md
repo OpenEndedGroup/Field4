@@ -7,24 +7,18 @@ This document describes the interactive features of Field's guide/slideshow syst
 Field's guide system now supports:
 1. **Custom Link Callbacks**: Links that execute Kotlin code when clicked
 2. **Template System**: Dynamic content that displays live data from your code
-3. **Per-Slide Chat**: Discussion threads for students to ask questions and provide feedback
+3. **Per-Slide Chat** (opt-in): Discussion threads for students to ask questions and provide feedback
 
 ## Per-Slide Chat System
 
-Each slide in your slideshow automatically includes a discussion section where viewers can:
+Each slide in your slideshow can optionally include a discussion section where viewers can:
 - Post questions and comments
 - Report bugs or issues
 - Discuss the content with other students
 
-### Features
-- **Persistent**: Messages are stored on the server and visible to all future viewers
-- **Real-time**: New messages appear immediately for all connected users
-- **Anonymous-friendly**: No authentication required; usernames are optional
-- **Collapsible**: Chat UI is hidden by default to avoid cluttering the guide
+### Enabling Chat
 
-### Using Chat
-
-Chat is automatically available on all slides. No special code is needed:
+Chat is **opt-in** per slide. Use `withChat()` in the slide builder to enable it:
 
 ```kotlin
 slideShow {
@@ -33,11 +27,29 @@ slideShow {
             <h2>Welcome!</h2>
             <p>Use the Discussion section below to ask questions.</p>
         """)
+        withChat()  // Enable chat for this slide
+    }
+    
+    step("No Chat") {
+        note("""
+            <h2>This slide has no chat</h2>
+            <p>Chat is opt-in, so this slide won't have a Discussion section.</p>
+        """)
+        // No withChat() call, so no chat UI appears
     }
 }
 ```
 
-Students simply:
+### Features
+- **Opt-in**: Only slides with `withChat()` show the discussion section
+- **Persistent**: Messages are stored on the server and visible to all future viewers
+- **Real-time**: New messages appear immediately for all connected users
+- **Anonymous-friendly**: No authentication required; usernames are optional
+- **Collapsible**: Chat UI is hidden by default to avoid cluttering the guide
+
+### Using Chat
+
+Once enabled with `withChat()`, students can:
 1. Click "▸ Discussion" to expand the chat
 2. Type their message
 3. Click "Send" to post
@@ -61,6 +73,7 @@ slideShow {
     
     step("Intro") {
         note("<h2>Welcome</h2>")
+        withChat()  // Enable chat
     }
 }
 ```
