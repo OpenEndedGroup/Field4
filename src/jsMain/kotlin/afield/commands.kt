@@ -682,6 +682,24 @@ fun registerBuiltinCommands() {
             run: () => {
                 import("./afield.mjs").then( (afield) => {afield.send("provisional-reject-all", {})})
             }
+        },{
+            id:'switch-to-docs-iframe',
+            label:"Switch to Documentation Iframe",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                // Prompt for URL
+                const url = prompt("Enter documentation URL:", "");
+                if (url) {
+                    window.switchToDocsIframe(url);
+                }
+            }
+        },{
+            id:'switch-to-monaco-editor',
+            label:"Switch to Monaco Editor",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.switchToMonaco();
+            }
         }]
     """.trimIndent()
     )
