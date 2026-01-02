@@ -380,3 +380,26 @@ data class SwitchToDocsIframe(val url: String)
 
 @Serializable
 data class SwitchToMonacoEditor(val dummy: String = "")
+
+// Document history messages
+@Serializable
+data class HistoryVersion(
+    val index: Int,
+    val filename: String,
+    val timestamp: Long,
+    val boxCount: Int,
+    val message: String = ""
+)
+
+@Serializable
+data class HistoryVersionsList(val versions: List<HistoryVersion>)
+
+@Serializable
+data class RestoreVersion(val versionIndex: Int)
+
+@Serializable
+data class VersionTransition(
+    val fromIndex: Int,
+    val toIndex: Int,
+    val timestamp: Long
+)

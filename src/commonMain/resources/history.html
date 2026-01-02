@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document History</title>
+    <style>
+        @import url("/iosevka.css");
+
+        :root {
+            --bg: #1e1e1e;
+            --fg: #ddd;
+            --fg-dim: #999;
+            --border: #444;
+            --accent: #4a9eff;
+            --accent-dim: rgba(74, 158, 255, 0.3);
+            --current: #80ff80;
+            --restored: #ff9944;
+            --transition: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Iosevka Web", system-ui, sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-size: 13px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--fg);
+        }
+
+        .status {
+            font-size: 11px;
+            color: var(--fg-dim);
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .status.connected {
+            color: var(--current);
+        }
+
+        main {
+            flex: 1;
+            overflow: auto;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #timeline-container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+        }
+
+        .version-node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .version-node:hover .version-circle {
+            stroke-width: 3;
+            r: 12;
+        }
+
+        .version-node:hover .version-label {
+            font-weight: 600;
+        }
+
+        .version-circle {
+            fill: var(--accent);
+            stroke: var(--accent-dim);
+            stroke-width: 2;
+            transition: all 0.2s ease;
+        }
+
+        .version-circle.current {
+            fill: var(--current);
+            stroke: var(--current);
+            stroke-width: 3;
+        }
+
+        .version-circle.restored {
+            fill: var(--restored);
+            stroke: var(--restored);
+        }
+
+        .version-label {
+            fill: var(--fg);
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .version-meta {
+            fill: var(--fg-dim);
+            font-size: 10px;
+            user-select: none;
+        }
+
+        .timeline-line {
+            stroke: var(--border);
+            stroke-width: 2;
+        }
+
+        .transition-line {
+            stroke: var(--transition);
+            stroke-width: 1.5;
+            stroke-dasharray: 4 4;
+            fill: none;
+        }
+
+        .transition-arrow {
+            fill: var(--transition);
+        }
+
+        .info-panel {
+            position: fixed;
+            right: 24px;
+            top: 80px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-panel.show {
+            display: block;
+        }
+
+        .info-panel h2 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+
+        .info-label {
+            color: var(--fg-dim);
+        }
+
+        .info-value {
+            color: var(--fg);
+            font-weight: 500;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 12px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: #5ab0ff;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--fg-dim);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.9);
+            color: var(--fg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            white-space: nowrap;
+            border: 1px solid var(--border);
+        }
+
+        .tooltip.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Document History</h1>
+        <div class="status" id="status">Disconnected</div>
+    </header>
+
+    <main>
+        <div id="timeline-container">
+            <div class="empty-state" id="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <p>Loading document history...</p>
+            </div>
+            <svg id="timeline-svg" style="display: none;"></svg>
+        </div>
+    </main>
+
+    <div class="info-panel" id="info-panel">
+        <h2>Version Details</h2>
+        <div class="info-row">
+            <span class="info-label">Version:</span>
+            <span class="info-value" id="info-version">#0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Timestamp:</span>
+            <span class="info-value" id="info-timestamp">—</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Box Count:</span>
+            <span class="info-value" id="info-boxes">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">File:</span>
+            <span class="info-value" id="info-filename">—</span>
+        </div>
+        <button id="restore-btn">Restore This Version</button>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const WS_URL = `ws://${document.location.host}/ws`;
+        const statusEl = document.getElementById('status');
+        const emptyStateEl = document.getElementById('empty-state');
+        const timelineSvg = document.getElementById('timeline-svg');
+        const infoPanelEl = document.getElementById('info-panel');
+        const tooltipEl = document.getElementById('tooltip');
+        
+        let ws = null;
+        let versions = [];
+        let transitions = [];
+        let selectedVersion = null;
+
+        // WebSocket connection
+        function connect() {
+            ws = new WebSocket(WS_URL);
+            
+            ws.onopen = () => {
+                statusEl.textContent = 'Connected';
+                statusEl.classList.add('connected');
+                
+                // Request history data
+                send({
+                    name: 'list-history-versions',
+                    payload: {}
+                });
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+            
+            ws.onclose = () => {
+                statusEl.textContent = 'Disconnected';
+                statusEl.classList.remove('connected');
+                setTimeout(connect, 2000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function send(message) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(message));
+            }
+        }
+
+        function handleMessage(message) {
+            console.log('Received message:', message);
+            
+            if (message.name === 'history-versions-list') {
+                const payload = message.payload;
+                versions = payload.versions || [];
+                transitions = payload.transitions || [];
+                renderTimeline();
+            } else if (message.name === 'restore-version-success') {
+                alert('Version restored successfully! Refresh the main document to see changes.');
+                // Reload history to show the new state
+                send({
+                    name: 'list-history-versions',
+                    payload: {}
+                });
+            } else if (message.name === 'restore-version-error') {
+                alert('Failed to restore version: ' + (message.payload.error || 'Unknown error'));
+            }
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        function formatRelativeTime(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days}d ago`;
+            if (hours > 0) return `${hours}h ago`;
+            if (minutes > 0) return `${minutes}m ago`;
+            return `${seconds}s ago`;
+        }
+
+        function renderTimeline() {
+            if (versions.length === 0) {
+                emptyStateEl.style.display = 'block';
+                emptyStateEl.querySelector('p').textContent = 'No version history available yet.';
+                timelineSvg.style.display = 'none';
+                return;
+            }
+
+            emptyStateEl.style.display = 'none';
+            timelineSvg.style.display = 'block';
+
+            const width = 1200;
+            const nodeRadius = 10;
+            const nodeSpacing = 120;
+            const leftMargin = 100;
+            const topMargin = 60;
+            const labelOffset = 80;
+            
+            const height = topMargin + (versions.length - 1) * nodeSpacing + 100;
+            
+            // Clear existing content
+            timelineSvg.innerHTML = '';
+            timelineSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+            const currentVersionIndex = versions.length - 1;
+            
+            // Draw main timeline line
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', leftMargin);
+            line.setAttribute('y1', topMargin);
+            line.setAttribute('x2', leftMargin);
+            line.setAttribute('y2', topMargin + (versions.length - 1) * nodeSpacing);
+            line.setAttribute('class', 'timeline-line');
+            timelineSvg.appendChild(line);
+
+            // Draw transition curves
+            transitions.forEach(trans => {
+                if (trans.fromIndex >= 0 && trans.toIndex >= 0 && 
+                    trans.fromIndex < versions.length && trans.toIndex < versions.length) {
+                    
+                    const fromY = topMargin + trans.fromIndex * nodeSpacing;
+                    const toY = topMargin + trans.toIndex * nodeSpacing;
+                    const curveOffset = 60;
+                    
+                    // Draw a curved line showing the transition
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const d = `M ${leftMargin} ${fromY} 
+                               C ${leftMargin + curveOffset} ${fromY}, 
+                                 ${leftMargin + curveOffset} ${toY}, 
+                                 ${leftMargin} ${toY}`;
+                    path.setAttribute('d', d);
+                    path.setAttribute('class', 'transition-line');
+                    timelineSvg.appendChild(path);
+                    
+                    // Add arrow at the end
+                    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    const arrowSize = 5;
+                    arrow.setAttribute('points', 
+                        `${leftMargin},${toY} 
+                         ${leftMargin + arrowSize},${toY - arrowSize} 
+                         ${leftMargin + arrowSize},${toY + arrowSize}`);
+                    arrow.setAttribute('class', 'transition-arrow');
+                    timelineSvg.appendChild(arrow);
+                }
+            });
+
+            // Draw version nodes
+            versions.forEach((version, index) => {
+                const y = topMargin + index * nodeSpacing;
+                
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('class', 'version-node');
+                group.setAttribute('data-index', index);
+                
+                // Circle
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', leftMargin);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', nodeRadius);
+                circle.setAttribute('class', 'version-circle' + 
+                    (index === currentVersionIndex ? ' current' : ''));
+                group.appendChild(circle);
+                
+                // Version label
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', leftMargin + labelOffset);
+                label.setAttribute('y', y - 8);
+                label.setAttribute('class', 'version-label');
+                label.textContent = `Version #${index}`;
+                if (version.message) {
+                    label.textContent += ` - ${version.message}`;
+                }
+                group.appendChild(label);
+                
+                // Metadata
+                const meta = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                meta.setAttribute('x', leftMargin + labelOffset);
+                meta.setAttribute('y', y + 8);
+                meta.setAttribute('class', 'version-meta');
+                meta.textContent = `${version.boxCount} boxes • ${formatRelativeTime(version.timestamp)}`;
+                group.appendChild(meta);
+                
+                // Click handler
+                group.addEventListener('click', () => selectVersion(index));
+                
+                // Hover handlers for tooltip
+                group.addEventListener('mouseenter', (e) => {
+                    tooltipEl.textContent = formatTimestamp(version.timestamp);
+                    tooltipEl.classList.add('show');
+                });
+                
+                group.addEventListener('mousemove', (e) => {
+                    tooltipEl.style.left = (e.clientX + 15) + 'px';
+                    tooltipEl.style.top = (e.clientY + 15) + 'px';
+                });
+                
+                group.addEventListener('mouseleave', () => {
+                    tooltipEl.classList.remove('show');
+                });
+                
+                timelineSvg.appendChild(group);
+            });
+        }
+
+        function selectVersion(index) {
+            if (index < 0 || index >= versions.length) return;
+            
+            selectedVersion = versions[index];
+            
+            // Update info panel
+            document.getElementById('info-version').textContent = `#${index}`;
+            document.getElementById('info-timestamp').textContent = formatTimestamp(selectedVersion.timestamp);
+            document.getElementById('info-boxes').textContent = selectedVersion.boxCount;
+            document.getElementById('info-filename').textContent = selectedVersion.filename;
+            
+            // Show/hide restore button
+            const restoreBtn = document.getElementById('restore-btn');
+            const isCurrentVersion = index === versions.length - 1;
+            restoreBtn.disabled = isCurrentVersion;
+            restoreBtn.textContent = isCurrentVersion ? 'Current Version' : 'Restore This Version';
+            
+            infoPanelEl.classList.add('show');
+            
+            // Highlight selected node
+            document.querySelectorAll('.version-node').forEach(node => {
+                const nodeIndex = parseInt(node.getAttribute('data-index'));
+                const circle = node.querySelector('.version-circle');
+                if (nodeIndex === index) {
+                    circle.setAttribute('stroke-width', '4');
+                } else if (nodeIndex === versions.length - 1) {
+                    circle.setAttribute('stroke-width', '3');
+                } else {
+                    circle.setAttribute('stroke-width', '2');
+                }
+            });
+        }
+
+        // Restore button handler
+        document.getElementById('restore-btn').addEventListener('click', () => {
+            if (!selectedVersion || document.getElementById('restore-btn').disabled) return;
+            
+            const index = versions.indexOf(selectedVersion);
+            if (confirm(`Are you sure you want to restore to Version #${index}?\n\n` +
+                       `This will:\n` +
+                       `- Restore ${selectedVersion.boxCount} boxes\n` +
+                       `- Tombstone boxes not in this version\n` +
+                       `- Create a new backup of the current state`)) {
+                
+                send({
+                    name: 'restore-history-version',
+                    payload: {
+                        versionIndex: index
+                    }
+                });
+            }
+        });
+
+        // Initialize
+        connect();
+    </script>
+</body>
+</html>
