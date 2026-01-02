@@ -1,12 +1,75 @@
-# Interactive Guides with Callbacks and Templates
+# Interactive Guides with Callbacks, Templates, and Chat
 
-This document describes the new interactive features added to Field's guide/slideshow system.
+This document describes the interactive features of Field's guide/slideshow system.
 
 ## Overview
 
 Field's guide system now supports:
 1. **Custom Link Callbacks**: Links that execute Kotlin code when clicked
 2. **Template System**: Dynamic content that displays live data from your code
+3. **Per-Slide Chat**: Discussion threads for students to ask questions and provide feedback
+
+## Per-Slide Chat System
+
+Each slide in your slideshow automatically includes a discussion section where viewers can:
+- Post questions and comments
+- Report bugs or issues
+- Discuss the content with other students
+
+### Features
+- **Persistent**: Messages are stored on the server and visible to all future viewers
+- **Real-time**: New messages appear immediately for all connected users
+- **Anonymous-friendly**: No authentication required; usernames are optional
+- **Collapsible**: Chat UI is hidden by default to avoid cluttering the guide
+
+### Using Chat
+
+Chat is automatically available on all slides. No special code is needed:
+
+```kotlin
+slideShow {
+    step("Introduction") {
+        note("""
+            <h2>Welcome!</h2>
+            <p>Use the Discussion section below to ask questions.</p>
+        """)
+    }
+}
+```
+
+Students simply:
+1. Click "▸ Discussion" to expand the chat
+2. Type their message
+3. Click "Send" to post
+
+### Setting a Username
+
+Add a `username` parameter to the URL:
+```
+http://localhost:9092/?file=myguide&username=student1
+```
+
+Without a username, messages are posted as "anonymous".
+
+### Custom Slideshow IDs
+
+For persistent chat across sessions, set a custom slideshow ID:
+
+```kotlin
+slideShow {
+    slideshowId("my-tutorial-v1")  // Messages persist for this specific ID
+    
+    step("Intro") {
+        note("<h2>Welcome</h2>")
+    }
+}
+```
+
+**See [GUIDE_CHAT_SYSTEM.md](docs/GUIDE_CHAT_SYSTEM.md) for complete chat documentation, including:**
+- Server setup and configuration
+- API reference
+- Data storage format
+- Troubleshooting
 
 ## Custom Link Callbacks
 

@@ -138,4 +138,18 @@ metadata_store/*
 # Telemetry data
 metadata_server_telemetry.json
 
+### Chat Server
+# Chat data storage
+chat_data/
+
+### Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+server/venv/
+server/__pycache__/
+*.egg-info/
+
 .DS_Store
