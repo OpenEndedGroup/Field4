@@ -166,8 +166,8 @@ fun checkIntroductionAndExecute(
     if (current.trim().isNotEmpty() && current != was) {
         runBlocking {
             println(" introduction has changed, executing all of it")
-            (inside as Box).ki.exec(
-                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside as Box)
+            inside.ki.exec(
+                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
             )
             println(" finished introduction ")
         }
