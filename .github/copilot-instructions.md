@@ -6,10 +6,10 @@ Field4 is a sophisticated live coding environment that combines high-performance
 
 ### Core Purpose
 - **Live Coding Environment**: Real-time code execution and visualization
-- **Multi-Language Support**: Kotlin (primary), Python, Clojure, and JavaScript
-- **High-Performance Graphics**: Vulkan-based graphics system for real-time rendering
+- **Multi-Language Support**: Kotlin (primary), Python, Remote JS, Clojure, and Vulkan GLSL
+- **High-Performance Graphics**: Vulkan-based graphics system with LWJGL for real-time rendering
 - **AI Integration**: Deep integration with AI tools for code completion and generation
-- **Visual Programming**: Box-based visual programming interface with Monaco editor
+- **Visual Programming**: Box-based visual programming interface with Monaco editor as the main code editor
 
 ## Technology Stack
 
@@ -23,8 +23,8 @@ Field4 is a sophisticated live coding environment that combines high-performance
 - **AI/ML**: OpenAI client, Playwright for browser automation
 
 ### Frontend (Browser)
-- **Language**: Kotlin/JS compiled to ES2015
-- **Editor**: Monaco Editor (from VS Code)
+- **Language**: Kotlin/JS compiled to ES2015, plus raw ESM JavaScript
+- **Editor**: Monaco Editor (from VS Code) - the main code editor for the environment
 - **UI**: Kotlinx-html-js, interact.js for drag/drop
 - **Communication**: WebSockets for real-time server communication
 - **Graphics**: Canvas and SVG for UI rendering
@@ -54,7 +54,7 @@ The core abstraction is a **Box** - a computational unit that can:
 - **graphics/**: Vulkan graphics system, drawing primitives
 - **python/**: Python (Jep) integration
 - **clojure/**: Clojure integration
-- **remotejs/**: JavaScript execution in browser
+- **remotejs/**: Remote JS execution in browser
 - **server/**: Server-side utilities (importing, routing, etc.)
 
 #### Frontend Components (src/jsMain/kotlin/afield/)
@@ -107,19 +107,22 @@ The core abstraction is a **Box** - a computational unit that can:
    - Use descriptive names that indicate purpose
 
 ### JavaScript/Frontend Style
-1. **External Declarations**: Use `external` for JS interop
+1. **Kotlin/JS Preference**: Prefer Kotlin over JavaScript when possible, but don't be afraid to drop down into raw ESM JavaScript for frontend-specific needs
+
+2. **External Declarations**: Use `external` for JS interop
    ```kotlin
    external fun monaco(): dynamic
    external val interact: dynamic
    ```
 
-2. **Dynamic Types**: Use `dynamic` sparingly, prefer typed interfaces when possible
+3. **Dynamic Types**: Use `dynamic` sparingly, prefer typed interfaces when possible
 
-3. **Message Passing**: Use strongly-typed message classes for WebSocket communication
+4. **Message Passing**: Use strongly-typed message classes for WebSocket communication
 
-### Python and Clojure Integration
-1. **Isolated Execution**: Each language has its own execution context
-2. **Bridge Pattern**: Use interface classes (PythonInterface, ClojureInterface) to bridge to JVM
+### Multi-Language Integration
+1. **Isolated Execution**: Each language (Python, Remote JS, Clojure, GLSL) has its own execution context
+2. **Bridge Pattern**: Use interface classes (PythonInterface, ClojureInterface, etc.) to bridge to JVM
+3. **Remote JS**: JavaScript code is executed in the browser, with results communicated back via WebSocket
 
 ## Development Workflow
 
@@ -174,8 +177,9 @@ src/
   - Allows fragment reuse without history checks
   - IDE-like completion support
 - **Python via Jep**: Embedded Python interpreter
+- **Remote JS**: Execute JavaScript in browser from server
 - **Clojure**: Native Clojure runtime
-- **Remote JavaScript**: Execute JS in browser from server
+- **Vulkan GLSL**: Shader language support for graphics programming
 
 ### File Management
 - **EDN Format**: Uses Extensible Data Notation for persistence
@@ -212,8 +216,9 @@ src/
 ### Code Completion
 - Uses custom Kotlin scripting IDE services
 - AI-powered completion via OpenAI
-- GLSL-specific completion for shaders
+- GLSL-specific completion for Vulkan shaders
 - Context-aware suggestions based on box hierarchy
+- Monaco editor integration for all supported languages
 
 ### AI Features
 - Chat interface for AI assistance
@@ -257,7 +262,7 @@ src/
 
 1. **Preserve the Live Coding Nature**: Changes should maintain real-time responsiveness
 2. **Don't Break the REPL**: Ensure code can be iteratively evaluated
-3. **Consider Multi-Language Impact**: Changes might affect Kotlin, Python, Clojure, or JS execution
+3. **Consider Multi-Language Impact**: Changes might affect Kotlin, Python, Remote JS, Clojure, or Vulkan GLSL execution
 4. **Test in Browser**: Always verify changes in the actual browser UI
 5. **Check WebSocket Messages**: Ensure client-server communication works correctly
 6. **Maintain Box Abstraction**: Keep the box-based model consistent
