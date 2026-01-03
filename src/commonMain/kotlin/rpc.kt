@@ -333,6 +333,22 @@ data class StringUpdate(val controlId: String, val value: String)
 @Serializable
 data class ColorUpdate(val controlId: String, val r: Double, val g: Double, val b: Double, val a: Double)
 
+// Layers system messages
+@Serializable
+data class SetVisibleLayers(val layers: List<String>, val animated: Boolean = false, val duration: Double = 300.0)
+
+@Serializable
+data class SetActiveLayer(val layer: String?, val animated: Boolean = false, val duration: Double = 500.0)
+
+@Serializable
+data class GetAllLayers(val dummy: Boolean = true)
+
+@Serializable
+data class AllLayersResult(val layers: List<String>)
+
+// Animated rect change
+@Serializable
+data class Set_animated_rect(val uid: String, val property: String, val value: Rect, val duration: Double = 500.0)
 // Chat messages for guide/slideshow system
 @Serializable
 data class PostChatMessage(

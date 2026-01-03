@@ -13,6 +13,10 @@ import fetchUpdateInfo
 import formatKotlinCode
 import io.ktor.util.collections.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import promoteStagingToLive
 import writeLocalVersion
 import kotlin.script.experimental.api.KotlinType
@@ -22,6 +26,8 @@ var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are off
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
+var Box.layers by Delegation<String>(defaultValue = { "default" })
+var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 
@@ -157,7 +163,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "metadata",
             "offline",
             "bookmarks",
-            "autorun"
+            "autorun",
+            "layers",
+            "layerFrames"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -190,6 +198,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "bookmarks",
             "slideShow",
             "autorun",
+            "layers",
+            "layerFrames"
         )
 
         var ioSeparateProperties = mutableMapOf(
@@ -320,6 +330,19 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 needsResync.add(this to name)
         }
     }
+    
+    /**
+     * Animates the frame change over the specified duration (in milliseconds)
+     */
+    fun setFrameAnimated(newFrame: Rect, duration: Double = 500.0) {
+        frame = newFrame
+        if (isInsideInitialized()) {
+            val animMessage = Message("set-animated-rect").payload(
+                Set_animated_rect(id, "frame", newFrame, duration)
+            )
+            inside.sessions.forEach { _send(it, animMessage) }
+        }
+    }
 }
 
 var actionTable = mutableMapOf<String, (List<Box>) -> Unit>()
@@ -404,6 +427,31 @@ fun doResync() {
                     }
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
                     is Boolean -> Message("set-boolean").payload(Set_boolean(box.id, name, value))
+                    is Map<*, *> -> {
+                        // Handle map serialization - specifically for layerFrames: Map<String, Rect>
+                        // Validate map contents before serialization
+                        if (name == "layerFrames") {
+                            try {
+                                // Validate all keys are strings and values are Rect
+                                val isValid = value.keys.all { it is String } && value.values.all { it is Rect }
+                                if (!isValid) {
+                                    lprintln("warning,boxes", "layerFrames property has invalid types - expected Map<String, Rect>")
+                                    null
+                                } else {
+                                    @Suppress("UNCHECKED_CAST")
+                                    val mapValue = value as Map<String, Rect>
+                                    val jsonString = Json.encodeToString(MapSerializer(String.serializer(), Rect.serializer()), mapValue)
+                                    Message("set-string").payload(Set_string(box.id, name, jsonString))
+                                }
+                            } catch (e: Exception) {
+                                lprintln("warning,boxes", "failed to serialize map for property $name: ${e.message}")
+                                null
+                            }
+                        } else {
+                            lprintln("warning,boxes", "unexpected map property $name - only layerFrames is supported")
+                            null
+                        }
+                    }
                     else -> {
                         lprintln("warning,boxes", "trying to resync something that can't be resync'd -- unknown value type $value ${value.javaClass}")
                         null

@@ -58,6 +58,10 @@ class SessionInformation(
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
 
+    // Layers system state
+    var visibleLayers: MutableSet<String> = mutableSetOf("default")
+    var activeLayer: String? = null
+
     val fileWatchManager: FileWatchManager by lazy {
         FileWatchManager(this).also { it.start() }
     }
@@ -65,6 +69,16 @@ class SessionInformation(
     fun cleanup() {
         fileWatchManager.stop()
     }
+}
+
+fun updateBoxVisibility(box: Box, sessionInfo: SessionInformation) {
+    val boxLayers = parseLayersList(box.layers)
+    val isVisible = boxLayers.any { layer -> sessionInfo.visibleLayers.contains(layer) }
+    box.visible = isVisible
+}
+
+fun parseLayersList(layersString: String): List<String> {
+    return layersString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 }
 
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
@@ -648,6 +662,95 @@ class Server {
                     lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
                 }
                 
+                Handled.yes
+            })
+
+            // Layers system handlers
+            handlers["set-visible-layers"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<SetVisibleLayers>(message.payload!!)
+                lprintln("debug,layers", "Setting visible layers: ${update.layers}, animated: ${update.animated}")
+                thisSessionInfo.get().visibleLayers.clear()
+                thisSessionInfo.get().visibleLayers.addAll(update.layers)
+                // Update visibility of all boxes based on their layers
+                thisSessionInfo.get().boxes.values.forEach { box ->
+                    updateBoxVisibility(box, thisSessionInfo.get())
+                }
+                
+                // If animated, send custom visibility change messages
+                if (update.animated) {
+                    thisSessionInfo.get().boxes.values.forEach { box ->
+                        val visibilityMessage = Message("set-visibility-animated").payload(
+                            mapOf(
+                                "uid" to box.id,
+                                "visible" to box.visible,
+                                "duration" to update.duration
+                            )
+                        )
+                        box.inside.sessions.forEach { _send(it, visibilityMessage) }
+                    }
+                } else {
+                    doResync()
+                }
+                Handled.yes
+            })
+
+            handlers["set-active-layer"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<SetActiveLayer>(message.payload!!)
+                lprintln("debug,layers", "Setting active layer: ${update.layer}, animated: ${update.animated}")
+                val oldActiveLayer = thisSessionInfo.get().activeLayer
+                
+                // When leaving an active layer, save current positions to that layer's frames
+                if (oldActiveLayer != null) {
+                    thisSessionInfo.get().boxes.values.forEach { box ->
+                        // Only save if box is visible in the old layer
+                        val boxLayers = parseLayersList(box.layers)
+                        if (boxLayers.contains(oldActiveLayer)) {
+                            box.layerFrames[oldActiveLayer] = box.frame
+                            lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
+                        }
+                    }
+                }
+                
+                thisSessionInfo.get().activeLayer = update.layer
+                
+                // Apply frame overrides for the new active layer
+                if (update.layer != null) {
+                    thisSessionInfo.get().boxes.values.forEach { box ->
+                        val layerFrame = box.layerFrames[update.layer]
+                        if (layerFrame != null) {
+                            box.frame = layerFrame
+                            lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
+                            
+                            // Send animated rect if animation is requested
+                            if (update.animated) {
+                                val animMessage = Message("set-animated-rect").payload(
+                                    Set_animated_rect(box.id, "frame", layerFrame, update.duration)
+                                )
+                                box.inside.sessions.forEach { _send(it, animMessage) }
+                            }
+                        }
+                    }
+                }
+                
+                // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
+                if (!update.animated) {
+                    doResync()
+                }
+                
+                Handled.yes
+            })
+
+            handlers["get-all-layers"] = mutableSetOf({ message, reply ->
+                val allLayers = mutableSetOf<String>()
+                thisSessionInfo.get().boxes.values.forEach { box ->
+                    val layers = parseLayersList(box.layers)
+                    allLayers.addAll(layers)
+                    allLayers.addAll(box.layerFrames.keys)
+                }
+                if (allLayers.isEmpty()) {
+                    allLayers.add("default")
+                }
+                reply(Message("get-all-layers").payload(AllLayersResult(allLayers.sorted())))
                 Handled.yes
             })
 
