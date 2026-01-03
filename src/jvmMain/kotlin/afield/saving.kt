@@ -292,6 +292,10 @@ class SavingContext {
                 altered = altered || cd
 
                 if (altered) {
+                    // Notify history manager about the new version
+                    val boxIds = snapshot.transfers.map { it.id }.toSet()
+                    HistoryManager.onVersionSaved(fn, boxIds)
+                    
                     // Git operations in background
                     commit(fn, message)
                     

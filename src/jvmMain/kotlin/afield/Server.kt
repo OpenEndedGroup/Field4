@@ -798,6 +798,14 @@ class Server {
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
                     }
+                    route("/history") {
+                        handle {
+                            val originalContent =
+                                File("./src/commonMain/resources/history.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
 
                     files("./build/js/packages/afield/kotlin")
                     files("./src/jsChatMain/resources/static/")
