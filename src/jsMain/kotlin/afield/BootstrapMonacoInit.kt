@@ -10,6 +10,7 @@ internal val monacoPropertyNames = arrayOf(
     "task",
     "mesh",
     "preamble",
+    "introduction",
     "metadata"
 )
 internal val monacoPropertyDescriptions = arrayOf(
@@ -20,6 +21,7 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Task Shader",
     "Mesh Shader",
     "Kotlin (preamble)",
+    "Kotlin (introduction)",
     "Metadata about this box"
 )
 internal val monacoPropertyLanguages = arrayOf(
@@ -29,6 +31,7 @@ internal val monacoPropertyLanguages = arrayOf(
     "glsl",
     "glsl",
     "glsl",
+    "kotlin",
     "kotlin",
     "yaml"
 )

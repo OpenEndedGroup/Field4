@@ -50,6 +50,7 @@ suspend fun standardExecutionPractice(
         }.joinToString("\n")
 
         checkPreambleAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+        checkIntroductionAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
         val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
         at = it
         result.add(ret)
@@ -150,6 +151,28 @@ fun checkPreambleAndExecute(
     val next = (extra + raw.split("\n").filter { it.trim().isNotEmpty() }.prefixAwareMap()).values.joinToString(separator = "\n")
     inside.setPropertyRaw("_preamble", next)
     inside.setPropertyRaw("preamble", next)
+}
+
+fun checkIntroductionAndExecute(
+    inside: Box,
+    onCompileError: (List<ScriptDiagnostic>) -> Unit,
+    onEvalError: (List<ScriptDiagnostic>) -> Unit,
+    onEvalException: (Throwable) -> Unit
+) {
+    val current = inside.getPropertyRaw("introduction", "") as String
+    val was = inside.getPropertyRaw("_introduction", null) as String?
+    
+    // Execute all of introduction if and only if any of it has changed
+    if (current.trim().isNotEmpty() && current != was) {
+        runBlocking {
+            println(" introduction has changed, executing all of it")
+            inside.ki.exec(
+                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+            )
+            println(" finished introduction ")
+        }
+        inside.setPropertyRaw("_introduction", current)
+    }
 }
 
 

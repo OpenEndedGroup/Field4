@@ -20,6 +20,7 @@ import kotlin.script.experimental.api.KotlinType
 var needsResync = ConcurrentSet<Pair<Box, String>>()
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
+var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
@@ -166,6 +167,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_language",
             "filename",
             "preamble",
+            "introduction",
             "fragment",
             "vertex",
             "task",
