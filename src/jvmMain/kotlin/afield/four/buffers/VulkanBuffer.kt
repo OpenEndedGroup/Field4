@@ -16,10 +16,8 @@ import org.lwjgl.util.vma.Vma.vmaDestroyBuffer
 import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.util.vma.VmaAllocationInfo
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-import org.lwjgl.vulkan.VK12.VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO
-import org.lwjgl.vulkan.VK12.vkGetBufferDeviceAddress
-import org.lwjgl.vulkan.VK13.*          // sync2 API + *_2_* flags
+import org.lwjgl.vulkan.VK12.*
+import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkBufferCreateInfo
 import org.lwjgl.vulkan.VkBufferDeviceAddressInfo
 import org.lwjgl.vulkan.VkBufferMemoryBarrier2
@@ -76,6 +74,7 @@ interface BufferWriteable {
 interface DynamicallyWriteable {
     fun write(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable
     fun append(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable
+    val cursor : Int
 }
 
 interface BufferReadable {
@@ -304,6 +303,8 @@ class VulkanBuffer(
 
     // dynamic write helpers
     var writePosition = 0
+
+    override val cursor: Int get() = writePosition
 
     override fun write(builder: DynamicBuffer.() -> Unit): VulkanBuffer {
         hint_write = true

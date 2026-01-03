@@ -53,6 +53,9 @@ class FrameBufferGroup(
         return this
     }
 
+    override val cursor : Int
+        get() = get(write=false).writePosition
+
 
     override fun append(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable {
         get(write=true).append(builder)
