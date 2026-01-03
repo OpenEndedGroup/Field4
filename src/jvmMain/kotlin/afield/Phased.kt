@@ -120,6 +120,26 @@ fun eachFrame(block: suspend Frames.() -> Unit): Frames {
     }
 }
 
+/**
+ * Run two Frame programs in parallel. Each child advances as the parent advances,
+ * and cancellation of the parent stops both children.
+ */
+operator fun Frames.plus(other: Frames): Frames = frames combined@{
+    coroutineScope {
+        val a = launch(start = CoroutineStart.UNDISPATCHED) { this@plus.body() }
+        val b = launch(start = CoroutineStart.UNDISPATCHED) { other.body() }
+
+        try {
+            while (a.isActive || b.isActive) {
+                if (!this@combined.frame()) break
+            }
+        } finally {
+            a.cancel()
+            b.cancel()
+        }
+    }
+}
+
 @OptIn(InternalCoroutinesApi::class)
 class Framer : CoroutineDispatcher() {
 
