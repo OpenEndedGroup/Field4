@@ -1,8 +1,9 @@
 package afield.four
 
 import afield.Named
-import afield.four.buffers.VulkanBuffer
+import afield.Rect
 import afield.four.device.*
+import afield.four.device.Queue
 import afield.four.device.Queue.GraphicsQueue
 import afield.four.device.Queue.PresentQueue
 import afield.four.modules.ComputeModulePointer
@@ -10,43 +11,23 @@ import afield.four.modules.MeshModulePointer
 import afield.four.modules.ModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
-import afield.four.texture.ImageView
-import afield.Rect
-import afield.four.util.MapOfSequences
 import afield.four.util.AutoDisposer
+import afield.four.util.MapOfSequences
 import afield.four.util.Options
 import afield.four.util.Window
-import afield.logger.lprintln
 import afield.logTime
 import afield.logTime_
+import afield.logger.lprintln
+import kotlinx.coroutines.*
 import org.joml.primitives.Rectanglef
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.KHRSurface
-import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
-import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
-import kotlin.coroutines.coroutineContext
-import org.lwjgl.vulkan.VK13.vkQueueSubmit2
-import java.util.concurrent.atomic.AtomicLong
-import java.util.ArrayDeque
+import java.lang.Runnable
+import java.util.*
 import java.util.concurrent.Executors
-import org.lwjgl.vulkan.VkCommandBuffer
-import org.lwjgl.vulkan.VkSubmitInfo2
-import org.lwjgl.vulkan.VkSemaphoreSubmitInfo
-import org.lwjgl.vulkan.VkCommandBufferSubmitInfo
-import org.lwjgl.vulkan.VkViewport
-import org.lwjgl.vulkan.VkRect2D
-import org.lwjgl.vulkan.VkExtent2D
-import org.lwjgl.vulkan.VkOffset2D
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.coroutineContext
 
 fun interface Target { fun render(command: CommandBuffer, index: Int) }
 
