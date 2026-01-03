@@ -331,6 +331,10 @@ const openQuickCommandPalette = () => {
         const monacoTextArea = document.querySelector("textarea.inputarea.monaco-mouse-cursor-text")
         const isEditorFocused = document.activeElement === monacoTextArea
 
+        if (isDocsIframeVisible()) {
+                hideDocsIframe()
+        }
+
         if (isEditorFocused && window.globalEditor) {
                 window.globalEditor.trigger("", "editor.action.quickCommand", null);
         } else {
@@ -378,6 +382,35 @@ const isDocsIframeVisible = () => {
         return style.visibility !== "hidden" && style.opacity !== "0"
 }
 
+const docsIframeKeydownHandler = (e) => {
+        const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p'
+        if (e.key !== "F1" && !isCtrlOrCmdP) return
+
+        e.preventDefault()
+        e.stopPropagation()
+        if (typeof hideDocsIframe === "function") hideDocsIframe()
+        openQuickCommandPalette()
+}
+
+const wireDocsIframeKeyForwarding = () => {
+        const iframe = document.getElementById('docs-iframe')
+        if (!iframe) return
+
+        const attach = () => {
+                try {
+                        const win = iframe.contentWindow
+                        if (!win) return
+                        win.removeEventListener('keydown', docsIframeKeydownHandler, true)
+                        win.addEventListener('keydown', docsIframeKeydownHandler, true)
+                } catch (err) {
+                        console.warn('Unable to attach key handler to docs iframe', err)
+                }
+        }
+
+        iframe.addEventListener('load', () => setTimeout(attach, 0))
+        attach()
+}
+
 window.addEventListener("keydown", (e) => {
         const isCtrlOrCmdSlash = (e.ctrlKey || e.metaKey) && (e.key === "/" || e.key === "÷")
         if (!isCtrlOrCmdSlash) return
@@ -419,6 +452,12 @@ window.launchAll = monacoLaunchAll
 let docsIframeAnimationGeneration = 0
 
 const defaultDocsIframeUrl = "http://localhost:9092/sample-docs.html"
+const historyBaseUrl = "http://localhost:9092/history"
+
+const historyUrlForFile = (filename) => {
+	const filePart = filename ? encodeURIComponent(filename) : "default"
+	return `${historyBaseUrl}?file=${filePart}`
+}
 
 const ensureDocsIframeHasContent = () => {
 	const iframe = document.getElementById('docs-iframe')
@@ -432,13 +471,14 @@ const ensureDocsIframeHasContent = () => {
 		iframe.src = defaultDocsIframeUrl
 	}
 	iframe.dataset.docsLoadedOnce = "true"
+	wireDocsIframeKeyForwarding()
 }
 
 const showDocsIframe = () => {
-	docsIframeAnimationGeneration++
-	const container = document.querySelector('.docs-iframe-container')
-	syncDocsIframeBoundsToMonaco()
-	ensureDocsIframeHasContent()
+        docsIframeAnimationGeneration++
+        const container = document.querySelector('.docs-iframe-container')
+        syncDocsIframeBoundsToMonaco()
+        ensureDocsIframeHasContent()
 	if (container) {
 		container.style.visibility = "visible"
 		container.style.transition = "opacity 0.05s"
@@ -449,11 +489,11 @@ const showDocsIframe = () => {
 const hideDocsIframe = () => {
 	docsIframeAnimationGeneration++
 	let a = docsIframeAnimationGeneration
-	const container = document.querySelector('.docs-iframe-container')
-	if (container) {
-		container.style.transition = "opacity 0.5s"
-		container.style.opacity = "0"
-		setTimeout(() => {
+        const container = document.querySelector('.docs-iframe-container')
+        if (container) {
+                container.style.transition = "opacity 0.5s"
+                container.style.opacity = "0"
+                setTimeout(() => {
 			if (docsIframeAnimationGeneration === a) {
 				container.style.visibility = "hidden"
 			}
@@ -504,12 +544,18 @@ const switchToDocsIframe = (url) => {
 	showDocsIframe()
 }
 
+const switchToHistoryForFile = (filename) => {
+	const url = historyUrlForFile(filename)
+	switchToDocsIframe(url)
+}
+
 window.showDocsIframe = showDocsIframe
 window.hideDocsIframe = hideDocsIframe
 window.setDocsIframeContent = setDocsIframeContent
 window.getDocsIframeElement = getDocsIframeElement
 window.switchToMonaco = switchToMonaco
 window.switchToDocsIframe = switchToDocsIframe
+window.switchToHistoryForFile = switchToHistoryForFile
 window.hideDocsIframeOnly = () => {
 	hideDocsIframe()
 }

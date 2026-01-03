@@ -691,6 +691,14 @@ fun registerBuiltinCommands() {
                 window.switchToDocsIframe(null);
             }
         },{
+            id:'show-document-history',
+            label:"Show Document History",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                const filename = window.currentDocumentFilename || "default";
+                window.switchToHistoryForFile(filename);
+            }
+        },{
             id:'switch-to-monaco-editor',
             label:"Switch to Monaco Editor",
             canvasKeybinding: (event) => false,

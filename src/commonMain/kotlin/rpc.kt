@@ -1,5 +1,6 @@
 package afield
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import kotlin.js.JsName
@@ -388,14 +389,9 @@ data class HistoryVersion(
     val filename: String,
     val timestamp: Long,
     val boxCount: Int,
-    val message: String = ""
+    val message: String = "",
+    val diffStats: HistoryDiffStats? = null
 )
-
-@Serializable
-data class HistoryVersionsList(val versions: List<HistoryVersion>)
-
-@Serializable
-data class RestoreVersion(val versionIndex: Int)
 
 @Serializable
 data class VersionTransition(
@@ -403,3 +399,35 @@ data class VersionTransition(
     val toIndex: Int,
     val timestamp: Long
 )
+
+@Serializable
+data class HistoryDiffStats(
+    @EncodeDefault
+    val boxesAdded: Int = 0,
+    @EncodeDefault
+    val boxesDeleted: Int = 0,
+    @EncodeDefault
+    val linesAddedFromNew: Int = 0,
+    @EncodeDefault
+    val linesRemovedFromDeleted: Int = 0,
+    @EncodeDefault
+    val linesAddedFromChanges: Int = 0,
+    @EncodeDefault
+    val linesRemovedFromChanges: Int = 0,
+    @EncodeDefault
+    val totalLinesAdded: Int = 0,
+    @EncodeDefault
+    val totalLinesRemoved: Int = 0
+)
+
+@Serializable
+data class HistoryVersionsList(
+    val versions: List<HistoryVersion>,
+    val transitions: List<VersionTransition> = emptyList()
+)
+
+@Serializable
+data class NameHistoryVersion(val versionIndex: Int, val name: String)
+
+@Serializable
+data class RestoreVersion(val versionIndex: Int)

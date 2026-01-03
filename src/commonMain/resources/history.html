@@ -12,11 +12,13 @@
             --fg: #ddd;
             --fg-dim: #999;
             --border: #444;
-            --accent: #4a9eff;
-            --accent-dim: rgba(74, 158, 255, 0.3);
+            --accent: var(--field-cyan, #25c0ff);
+            --accent-dim: rgba(37, 192, 255, 0.3);
             --current: #80ff80;
             --restored: #ff9944;
             --transition: rgba(255, 255, 255, 0.2);
+            --pos: #7ed87e;
+            --neg: #ff7a7a;
         }
 
         * {
@@ -29,7 +31,7 @@
         body {
             background: var(--bg);
             color: var(--fg);
-            font-size: 13px;
+            font-size: 10px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -37,7 +39,7 @@
         }
 
         header {
-            padding: 16px 24px;
+            padding: 8px 12px;
             border-bottom: 1px solid var(--border);
             background: rgba(0, 0, 0, 0.3);
             display: flex;
@@ -46,15 +48,16 @@
         }
 
         h1 {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 400;
             color: var(--fg);
+            font-family: "Iosevka Web", system-ui, sans-serif;
         }
 
         .status {
-            font-size: 11px;
+            font-size: 9px;
             color: var(--fg-dim);
-            padding: 4px 8px;
+            padding: 2px 5px;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.05);
         }
@@ -66,18 +69,18 @@
         main {
             flex: 1;
             overflow: auto;
-            padding: 24px;
+            padding: 10px 10px 10px 6px;
             display: flex;
-            justify-content: center;
+            justify-content: flex-start;
         }
 
         #timeline-container {
-            width: 100%;
-            max-width: 1200px;
+            width: 1200px;
+            min-width: 1200px;
         }
 
         svg {
-            width: 100%;
+            width: 1200px;
             height: auto;
         }
 
@@ -92,7 +95,7 @@
         }
 
         .version-node:hover .version-label {
-            font-weight: 600;
+            font-weight: 400;
         }
 
         .version-circle {
@@ -115,7 +118,7 @@
 
         .version-label {
             fill: var(--fg);
-            font-size: 12px;
+            font-size: 14px;
             user-select: none;
         }
 
@@ -123,6 +126,21 @@
             fill: var(--fg-dim);
             font-size: 10px;
             user-select: none;
+        }
+
+        .pos-text {
+            fill: var(--pos);
+        }
+
+        .neg-text {
+            fill: var(--neg);
+        }
+
+        .tag-inverted {
+            color: #000;
+            background: #fff;
+            padding: 2px 4px;
+            border-radius: 4px;
         }
 
         .timeline-line {
@@ -143,13 +161,13 @@
 
         .info-panel {
             position: fixed;
-            right: 24px;
-            top: 80px;
-            width: 320px;
+            right: 18px;
+            top: 70px;
+            width: 300px;
             background: rgba(0, 0, 0, 0.8);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: 6px;
+            padding: 12px;
             display: none;
             backdrop-filter: blur(10px);
         }
@@ -159,16 +177,16 @@
         }
 
         .info-panel h2 {
-            font-size: 14px;
-            margin-bottom: 12px;
+            font-size: 11px;
+            margin-bottom: 10px;
             color: var(--accent);
         }
 
         .info-row {
             display: flex;
             justify-content: space-between;
-            margin: 8px 0;
-            font-size: 12px;
+            margin: 6px 0;
+            font-size: 10px;
         }
 
         .info-label {
@@ -177,21 +195,22 @@
 
         .info-value {
             color: var(--fg);
-            font-weight: 500;
+            font-weight: 400;
         }
 
         button {
             background: var(--accent);
-            color: white;
+            color: #000;
             border: none;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            margin-top: 12px;
+            font-size: 10px;
+            font-weight: 400;
+            margin-top: 10px;
             width: 100%;
             transition: all 0.2s ease;
+            font-family: "Iosevka Web", system-ui, sans-serif;
         }
 
         button:hover {
@@ -211,7 +230,7 @@
 
         .empty-state {
             text-align: center;
-            padding: 48px 24px;
+            padding: 36px 18px;
             color: var(--fg-dim);
         }
 
@@ -280,6 +299,11 @@
             <span class="info-label">File:</span>
             <span class="info-value" id="info-filename">—</span>
         </div>
+        <div class="info-row">
+            <span class="info-label">Name:</span>
+            <input id="info-name-input" type="text" value="" placeholder="(unnamed)"
+                   style="background: transparent; color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; width: 170px; font-family: inherit; font-size: 10px;">
+        </div>
         <button id="restore-btn">Restore This Version</button>
     </div>
 
@@ -292,12 +316,28 @@
         const timelineSvg = document.getElementById('timeline-svg');
         const infoPanelEl = document.getElementById('info-panel');
         const tooltipEl = document.getElementById('tooltip');
-        
+
         let ws = null;
         let versions = [];
-        let transitions = [];
-        let selectedVersion = null;
-        let sessionEstablished = false;
+    let transitions = [];
+    let selectedVersion = null;
+    let sessionEstablished = false;
+    let namingInFlight = false;
+    let reloadScheduled = false;
+        const nameInput = document.getElementById('info-name-input');
+
+        function isZeroDiff(stats) {
+            const s = normalizeDiffStats(stats);
+            if (!s) return false;
+            return s.totalAdded === 0 &&
+                s.totalRemoved === 0 &&
+                s.fromNew === 0 &&
+                s.fromDeleted === 0 &&
+                s.fromChangesAdd === 0 &&
+                s.fromChangesDel === 0 &&
+                s.boxesAdded === 0 &&
+                s.boxesDeleted === 0;
+        }
 
         // Get document name from URL, fallback to 'default'
         const urlParams = new URLSearchParams(window.location.search);
@@ -307,10 +347,10 @@
         // WebSocket connection
         function connect() {
             ws = new WebSocket(WS_URL);
-            
+
             ws.onopen = () => {
                 statusEl.textContent = 'Connecting...';
-                
+
                 // First establish session with hello message
                 send({
                     name: 'hello',
@@ -320,7 +360,7 @@
                     }
                 });
             };
-            
+
             ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
@@ -329,14 +369,14 @@
                     console.error('Failed to parse message:', e);
                 }
             };
-            
+
             ws.onclose = () => {
                 statusEl.textContent = 'Disconnected';
                 statusEl.classList.remove('connected');
                 sessionEstablished = false;
                 setTimeout(connect, 2000);
             };
-            
+
             ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
             };
@@ -350,36 +390,69 @@
 
         function handleMessage(message) {
             console.log('Received message:', message);
-            
+
             // Check for hello acknowledgment or any successful response
             if (!sessionEstablished && message.name !== 'history-versions-list') {
                 sessionEstablished = true;
                 statusEl.textContent = 'Connected';
                 statusEl.classList.add('connected');
-                
+
                 // Now request history data
                 send({
                     name: 'list-history-versions',
                     payload: {}
                 });
             }
-            
+
             if (message.name === 'history-versions-list') {
                 const payload = message.payload;
                 versions = payload.versions || [];
                 transitions = payload.transitions || [];
                 renderTimeline();
             } else if (message.name === 'restore-version-success') {
-                notify('Version restored successfully! Refresh the main document to see changes.', 'history');
+                notify('Version restored. Resyncing the document…', 'history');
                 // Reload history to show the new state
                 send({
                     name: 'list-history-versions',
                     payload: {}
                 });
+                scheduleDocumentReload();
             } else if (message.name === 'restore-version-error') {
                 const error = message.payload.error || 'Unknown error';
                 notify('Failed to restore version: ' + error, 'error');
+            } else if (message.name === 'name-history-version-success') {
+                namingInFlight = false;
+                nameInput.disabled = false;
+                send({
+                    name: 'list-history-versions',
+                    payload: {}
+                });
+            } else if (message.name === 'name-history-version-error') {
+                namingInFlight = false;
+                nameInput.disabled = false;
+                const error = message.payload?.error || 'Unknown error';
+                notify('Failed to name version: ' + error, 'error');
             }
+        }
+
+        function scheduleDocumentReload() {
+            if (reloadScheduled) return;
+            reloadScheduled = true;
+            setTimeout(() => {
+                try {
+                    if (window.opener && !window.opener.closed) {
+                        window.opener.location.reload();
+                        return;
+                    }
+                    if (window.parent && window.parent !== window) {
+                        window.parent.location.reload();
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('Unable to reload parent window after restore:', e);
+                }
+                window.location.reload();
+            }, 300);
         }
 
         function formatTimestamp(timestamp) {
@@ -394,15 +467,82 @@
             const minutes = Math.floor(seconds / 60);
             const hours = Math.floor(minutes / 60);
             const days = Math.floor(hours / 24);
-            
+
             if (days > 0) return `${days}d ago`;
             if (hours > 0) return `${hours}h ago`;
             if (minutes > 0) return `${minutes}m ago`;
             return `${seconds}s ago`;
         }
 
+        function normalizeDiffStats(stats) {
+            if (!stats) return null;
+            return {
+                totalAdded: stats.totalLinesAdded ?? 0,
+                totalRemoved: stats.totalLinesRemoved ?? 0,
+                fromNew: stats.linesAddedFromNew ?? 0,
+                fromDeleted: stats.linesRemovedFromDeleted ?? 0,
+                fromChangesAdd: stats.linesAddedFromChanges ?? 0,
+                fromChangesDel: stats.linesRemovedFromChanges ?? 0,
+                boxesAdded: stats.boxesAdded ?? 0,
+                boxesDeleted: stats.boxesDeleted ?? 0
+            };
+        }
+
+        function renderDiffLine(textEl, stats) {
+            const normalized = normalizeDiffStats(stats);
+            if (!normalized) {
+                textEl.textContent = '—';
+                return;
+            }
+
+            const tspan = (text, cls) => {
+                const el = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                if (cls) el.setAttribute('class', cls);
+                el.textContent = text;
+                textEl.appendChild(el);
+            };
+            const tspanNum = (value, prefix, cls) => {
+                const useClass = value !== 0 ? cls : null;
+                tspan(`${prefix}${value}`, useClass);
+            };
+
+            const {
+                totalAdded,
+                totalRemoved,
+                fromNew,
+                fromDeleted,
+                fromChangesAdd,
+                fromChangesDel,
+                boxesAdded,
+                boxesDeleted
+            } = normalized;
+
+            tspanNum(totalAdded, '+', 'pos-text');
+            tspan(' / ');
+            tspanNum(totalRemoved, '-', 'neg-text');
+            tspan(' lines (');
+            tspan('new ');
+            tspanNum(fromNew, '+', 'pos-text');
+            tspan(', del ');
+            tspanNum(fromDeleted, '-', 'neg-text');
+            tspan(', Δ ');
+            tspanNum(fromChangesAdd, '+', 'pos-text');
+            tspan('/');
+            tspanNum(fromChangesDel, '-', 'neg-text');
+            tspan(', boxes ');
+            tspanNum(boxesAdded, '+', 'pos-text');
+            tspan('/');
+            tspanNum(boxesDeleted, '-', 'neg-text');
+            tspan(')');
+        }
+
         function renderTimeline() {
-            if (versions.length === 0) {
+            let visibleVersions = versions.filter(v => !isZeroDiff(v.diffStats));
+            if (visibleVersions.length === 0) {
+                visibleVersions = versions;
+            }
+
+            if (visibleVersions.length === 0) {
                 emptyStateEl.style.display = 'block';
                 emptyStateEl.querySelector('p').textContent = 'No version history available yet.';
                 timelineSvg.style.display = 'none';
@@ -413,36 +553,69 @@
             timelineSvg.style.display = 'block';
 
             const width = 1200;
-            const nodeRadius = 10;
-            const nodeSpacing = 120;
-            const leftMargin = 100;
-            const topMargin = 60;
+            const nodeRadius = 8;
+            const nodeSpacing = 70;
+            const leftMargin = 70;
+            const topMargin = 30;
             const labelOffset = 80;
-            
-            const height = topMargin + (versions.length - 1) * nodeSpacing + 100;
+
+            const height = topMargin + (visibleVersions.length - 1) * nodeSpacing + 100;
             
             // Clear existing content
             timelineSvg.innerHTML = '';
             timelineSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
             const currentVersionIndex = versions.length - 1;
-            
-            // Draw main timeline line
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', leftMargin);
-            line.setAttribute('y1', topMargin);
-            line.setAttribute('x2', leftMargin);
-            line.setAttribute('y2', topMargin + (versions.length - 1) * nodeSpacing);
-            line.setAttribute('class', 'timeline-line');
-            timelineSvg.appendChild(line);
+            const visibleIndexMap = new Map();
+            visibleVersions.forEach((v, idx) => visibleIndexMap.set(v.index ?? idx, idx));
+            const visibleCurrentIndex = visibleIndexMap.get(currentVersionIndex) ?? (visibleVersions.length - 1);
+            const visibleOrigIndices = visibleVersions.map(v => v.index ?? 0);
+
+            const mapToVisible = (origIdx) => {
+                const direct = visibleIndexMap.get(origIdx);
+                if (direct !== undefined) return direct;
+                // fallback: nearest visible index by original order
+                let nearest = 0;
+                let bestDelta = Number.MAX_SAFE_INTEGER;
+                visibleOrigIndices.forEach((orig, i) => {
+                    const delta = Math.abs(orig - origIdx);
+                    if (delta < bestDelta) {
+                        bestDelta = delta;
+                        nearest = i;
+                    }
+                });
+                return nearest;
+            };
+
+            // Draw main timeline segments (independent lines so we can cut specific spans)
+            for (let i = 0; i < visibleVersions.length - 1; i++) {
+                const seg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                seg.setAttribute('id', `segment-${i + 1}`); // segment leading into index i+1
+                seg.setAttribute('x1', leftMargin);
+                seg.setAttribute('y1', topMargin + i * nodeSpacing);
+                seg.setAttribute('x2', leftMargin);
+                seg.setAttribute('y2', topMargin + (i + 1) * nodeSpacing);
+                seg.setAttribute('class', 'timeline-line');
+                timelineSvg.appendChild(seg);
+            }
 
             // Draw transition curves
             transitions.forEach(trans => {
+                const fromIdx = mapToVisible(trans.fromIndex);
+                const toIdx = mapToVisible(trans.toIndex);
                 if (trans.fromIndex >= 0 && trans.toIndex >= 0 && 
                     trans.fromIndex < versions.length && trans.toIndex < versions.length) {
-                    
-                    const fromY = topMargin + trans.fromIndex * nodeSpacing;
-                    const toY = topMargin + trans.toIndex * nodeSpacing;
+
+                    // Cut straight line segments along the arc span
+                    const cutStraightLine = (idx) => {
+                        const original = document.getElementById(`segment-${idx}`);
+                        if (original) {
+                            timelineSvg.removeChild(original);
+                        }
+                    }
+
+                    const fromY = topMargin + fromIdx * nodeSpacing;
+                    const toY = topMargin + toIdx * nodeSpacing;
                     const curveOffset = 60;
                     
                     // Draw a curved line showing the transition
@@ -464,16 +637,23 @@
                          ${leftMargin + arrowSize},${toY + arrowSize}`);
                     arrow.setAttribute('class', 'transition-arrow');
                     timelineSvg.appendChild(arrow);
+
+                    // If this jump skips over linear history, cut the straight segment leading into the target
+                    if (Math.abs(toIdx - fromIdx) > 1) {
+                        // Cut the straight segment that would have connected into the target
+                        cutStraightLine(Math.max(fromIdx, toIdx));
+                    }
                 }
             });
 
             // Draw version nodes
-            versions.forEach((version, index) => {
-                const y = topMargin + index * nodeSpacing;
+            visibleVersions.forEach((version, displayIndex) => {
+                const originalIndex = version.index ?? displayIndex;
+                const y = topMargin + displayIndex * nodeSpacing;
                 
                 const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 group.setAttribute('class', 'version-node');
-                group.setAttribute('data-index', index);
+                group.setAttribute('data-index', originalIndex);
                 
                 // Circle
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -481,46 +661,46 @@
                 circle.setAttribute('cy', y);
                 circle.setAttribute('r', nodeRadius);
                 circle.setAttribute('class', 'version-circle' + 
-                    (index === currentVersionIndex ? ' current' : ''));
+                    (originalIndex === currentVersionIndex ? ' current' : ''));
                 group.appendChild(circle);
-                
-                // Version label
+
+                // Label and metadata on one line
                 const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 label.setAttribute('x', leftMargin + labelOffset);
-                label.setAttribute('y', y - 8);
+                label.setAttribute('y', y + 4);
                 label.setAttribute('class', 'version-label');
-                label.textContent = `Version #${index}`;
-                if (version.message) {
-                    label.textContent += ` - ${version.message}`;
-                }
+                const labelTitle = (version.message && version.message.trim())
+                    ? version.message.trim()
+                    : `Version #${originalIndex}`;
+                const parts = [labelTitle, '•', `${version.boxCount} boxes`, '•', formatRelativeTime(version.timestamp)];
+                label.textContent = parts.join(' ');
                 group.appendChild(label);
-                
-                // Metadata
-                const meta = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                meta.setAttribute('x', leftMargin + labelOffset);
-                meta.setAttribute('y', y + 8);
-                meta.setAttribute('class', 'version-meta');
-                meta.textContent = `${version.boxCount} boxes • ${formatRelativeTime(version.timestamp)}`;
-                group.appendChild(meta);
-                
+
+                const diffLine = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                diffLine.setAttribute('x', leftMargin + labelOffset);
+                diffLine.setAttribute('y', y + 26);
+                diffLine.setAttribute('class', 'version-meta');
+                renderDiffLine(diffLine, version.diffStats);
+                group.appendChild(diffLine);
+
                 // Click handler
-                group.addEventListener('click', () => selectVersion(index));
-                
+                group.addEventListener('click', () => selectVersion(originalIndex));
+
                 // Hover handlers for tooltip
                 group.addEventListener('mouseenter', (e) => {
                     tooltipEl.textContent = formatTimestamp(version.timestamp);
                     tooltipEl.classList.add('show');
                 });
-                
+
                 group.addEventListener('mousemove', (e) => {
                     tooltipEl.style.left = (e.clientX + 15) + 'px';
                     tooltipEl.style.top = (e.clientY + 15) + 'px';
                 });
-                
+
                 group.addEventListener('mouseleave', () => {
                     tooltipEl.classList.remove('show');
                 });
-                
+
                 timelineSvg.appendChild(group);
             });
         }
@@ -535,15 +715,16 @@
             document.getElementById('info-timestamp').textContent = formatTimestamp(selectedVersion.timestamp);
             document.getElementById('info-boxes').textContent = selectedVersion.boxCount;
             document.getElementById('info-filename').textContent = selectedVersion.filename;
-            
+            nameInput.value = selectedVersion.message || '';
+
             // Show/hide restore button
             const restoreBtn = document.getElementById('restore-btn');
             const isCurrentVersion = index === versions.length - 1;
             restoreBtn.disabled = isCurrentVersion;
             restoreBtn.textContent = isCurrentVersion ? 'Current Version' : 'Restore This Version';
-            
+
             infoPanelEl.classList.add('show');
-            
+
             // Highlight selected node
             document.querySelectorAll('.version-node').forEach(node => {
                 const nodeIndex = parseInt(node.getAttribute('data-index'));
@@ -561,21 +742,31 @@
         // Restore button handler
         document.getElementById('restore-btn').addEventListener('click', () => {
             if (!selectedVersion || document.getElementById('restore-btn').disabled) return;
-            
+
             const index = versions.indexOf(selectedVersion);
-            if (confirm(`Are you sure you want to restore to Version #${index}?\n\n` +
-                       `This will:\n` +
-                       `- Restore ${selectedVersion.boxCount} boxes\n` +
-                       `- Tombstone boxes not in this version\n` +
-                       `- Create a new backup of the current state`)) {
-                
-                send({
-                    name: 'restore-history-version',
-                    payload: {
-                        versionIndex: index
-                    }
-                });
-            }
+            send({
+                name: 'restore-history-version',
+                payload: {
+                    versionIndex: index
+                }
+            });
+        });
+
+        // Name input handler (on Enter)
+        nameInput.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (!selectedVersion || namingInFlight) return;
+            const index = versions.indexOf(selectedVersion);
+            const name = nameInput.value.trim();
+            namingInFlight = true;
+            nameInput.disabled = true;
+            send({
+                name: 'name-history-version',
+                payload: {
+                    versionIndex: index,
+                    name: name
+                }
+            });
         });
 
         // Initialize

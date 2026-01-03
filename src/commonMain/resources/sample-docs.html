@@ -231,6 +231,8 @@ if (window.FieldAPI) {
 
 <!--    <button class="button back-to-editor" onclick="returnToEditor()">← Back to Editor</button>-->
 
+    <a href="http://localhost:9092/history?file=nested">go</a>
+
     <script>
         // Check if we're in the iframe and API is available
         const hasFieldAPI = () => window.parent !== window && !!window.FieldAPI;
@@ -308,7 +310,7 @@ if (window.FieldAPI) {
             if (!hasFieldAPI()) return;
 
             FieldAPI.runAction('new-box');
-            
+
             const code = `var t = 0.0
 _.stage.repeat {
     println("Frame: " + t)

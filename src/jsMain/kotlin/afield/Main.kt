@@ -757,14 +757,27 @@ suspend fun main() {
             }
             "_tombstone" -> {
                 console.log(" got _tombstone message ", set)
-                if (found != null && set.number) {
-                    console.log(" removing tombstoned box ", found)
-                    // Deselect the box if it's selected
-                    if (selected.contains(found.unsafeCast<HTMLElement>())) {
-                        deselectBox(found.unsafeCast<HTMLElement>())
+                var target = found
+                if (target == null) {
+                    mainCanvas.append {
+                        target = createBox("untitled", frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
                     }
-                    // Remove the box from the DOM
-                    found.parentElement?.removeChild(found)
+                }
+                target?.let { boxEl ->
+                    if (set.number) {
+                        console.log(" hiding tombstoned box ", boxEl)
+                        (boxEl as HTMLElement).style.display = "none"
+                        (boxEl as HTMLElement).classList.add("tombstoned")
+                        boxEl.asDynamic().tombstoned = true
+                        if (selected.contains(boxEl)) {
+                            deselectBox(boxEl)
+                        }
+                    } else {
+                        console.log(" showing untombstoned box ", boxEl)
+                        boxEl.classList.remove("tombstoned")
+                        (boxEl as HTMLElement).style.display = "flex"
+                        boxEl.asDynamic().tombstoned = false
+                    }
                     canvasGestures.rebuildConnectionGroup()
                 }
             }
@@ -1283,6 +1296,7 @@ suspend fun main() {
 
     val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
     val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
+    window.asDynamic().currentDocumentFilename = filename
     val hello = Message("hello").payload(Hello(filename, username))
     onOpen.add(hello)
 
