@@ -75,11 +75,11 @@ object CPUSpan {
         val p90Ms: Double,
         val p99Ms: Double
     )
-    private val stats = linkedMapOf<String, Stat>()
-    private val lock = Any()
-    private val version = AtomicLong(0)
-    private val listeners = mutableListOf<(Long) -> Unit>()
-    fun time(label: String, block: () -> Unit) {
+    val stats = linkedMapOf<String, Stat>()
+    val lock = Any()
+    val version = AtomicLong(0)
+    val listeners = mutableListOf<(Long) -> Unit>()
+    inline fun time(label: String,  block: () -> Unit) {
         val t0 = System.nanoTime()
         block()
         val dt = System.nanoTime() - t0
@@ -90,7 +90,7 @@ object CPUSpan {
         notifyListeners(v)
     }
 
-    private fun notifyListeners(v: Long) {
+    fun notifyListeners(v: Long) {
         val targets = synchronized(lock) { listeners.toList() }
         targets.forEach { l -> runCatching { l(v) } }
     }
