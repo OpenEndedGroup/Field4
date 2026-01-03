@@ -1,5 +1,6 @@
 package afield
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import kotlin.js.JsName
@@ -99,7 +100,15 @@ data class ExecuteSymbol(
 )
 
 @Serializable
-data class AiAssist(val uid: String, val prompt: String, val extraPrompt: String, val startLine: Int, val property: String, val kind: String)
+data class AiAssist(
+    val uid: String,
+    val prompt: String,
+    val extraPrompt: String,
+    val startLine: Int,
+    val property: String,
+    val kind: String,
+    val images: List<String> = emptyList()
+)
 
 @Serializable
 data class Chat_input(val value: String, val phase: Int, val images: List<String> = emptyList())
@@ -196,8 +205,17 @@ data class Describe_actions(val uid: String, val value: List<Action_Desc>)
 class Directory(
     val command: String, 
     val value: List<String> = emptyList<String>(),
+    val metadata: JsonElement? = null,
     val mouseX: Double? = null,
     val mouseY: Double? = null
+)
+
+@Serializable
+data class TemplateMetadata(
+    val name: String,
+    val lastModified: Long,
+    val boxDocumentation: String,
+    val source: String = "template"
 )
 
 @Serializable
@@ -277,7 +295,9 @@ data class ShowSlideNote(
     val uid: String = "", 
     val persistent: Boolean = false,
     val animated: Boolean = false,
-    val annotations: List<SlideAnnotation> = emptyList()
+    val annotations: List<SlideAnnotation> = emptyList(),
+    val slideshowId: String = "",
+    val slideNumber: Int = -1
 )
 
 @Serializable
@@ -329,3 +349,101 @@ data class AllLayersResult(val layers: List<String>)
 // Animated rect change
 @Serializable
 data class Set_animated_rect(val uid: String, val property: String, val value: Rect, val duration: Double = 500.0)
+// Chat messages for guide/slideshow system
+@Serializable
+data class PostChatMessage(
+    val slideshowId: String,
+    val slideNumber: Int,
+    val username: String,
+    val message: String
+)
+
+@Serializable
+data class LoadChatMessages(
+    val slideshowId: String,
+    val slideNumber: Int
+)
+
+@Serializable
+data class ChatMessage(
+    val username: String,
+    val message: String,
+    val timestamp: String
+)
+
+@Serializable
+data class ChatMessagesLoaded(
+    val slideshowId: String,
+    val slideNumber: Int,
+    val messages: List<ChatMessage>
+)
+
+@Serializable
+data class ChatMessagePosted(
+    val slideshowId: String,
+    val slideNumber: Int,
+    val message: ChatMessage
+)
+
+// Documentation iframe control messages
+@Serializable
+data class ShowDocsIframe(val url: String)
+
+@Serializable
+data class HideDocsIframe(val dummy: String = "")
+
+@Serializable
+data class SwitchToDocsIframe(val url: String)
+
+@Serializable
+data class SwitchToMonacoEditor(val dummy: String = "")
+
+// Document history messages
+@Serializable
+data class HistoryVersion(
+    val index: Int,
+    val filename: String,
+    val timestamp: Long,
+    val boxCount: Int,
+    val message: String = "",
+    val diffStats: HistoryDiffStats? = null
+)
+
+@Serializable
+data class VersionTransition(
+    val fromIndex: Int,
+    val toIndex: Int,
+    val timestamp: Long
+)
+
+@Serializable
+data class HistoryDiffStats(
+    @EncodeDefault
+    val boxesAdded: Int = 0,
+    @EncodeDefault
+    val boxesDeleted: Int = 0,
+    @EncodeDefault
+    val linesAddedFromNew: Int = 0,
+    @EncodeDefault
+    val linesRemovedFromDeleted: Int = 0,
+    @EncodeDefault
+    val linesAddedFromChanges: Int = 0,
+    @EncodeDefault
+    val linesRemovedFromChanges: Int = 0,
+    @EncodeDefault
+    val totalLinesAdded: Int = 0,
+    @EncodeDefault
+    val totalLinesRemoved: Int = 0
+)
+
+@Serializable
+data class HistoryVersionsList(
+    val versions: List<HistoryVersion>,
+    val transitions: List<VersionTransition> = emptyList()
+)
+
+@Serializable
+data class NameHistoryVersion(val versionIndex: Int, val name: String)
+
+@Serializable
+data class RestoreVersion(val versionIndex: Int)

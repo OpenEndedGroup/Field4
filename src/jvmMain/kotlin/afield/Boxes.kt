@@ -24,9 +24,11 @@ import kotlin.script.experimental.api.KotlinType
 var needsResync = ConcurrentSet<Pair<Box, String>>()
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
+var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
+var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 
 interface HasProperties {
@@ -173,6 +175,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_language",
             "filename",
             "preamble",
+            "introduction",
             "fragment",
             "vertex",
             "task",
@@ -182,6 +185,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "compute",
             "customization",
             "source_id",
+            "templateId",
             "_tombstone",
             "isRemoteJSRoot",
             "isPythonRoot",
@@ -523,14 +527,14 @@ fun makeKI(box: Box): KotlinInterface {
         val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
         val si = thisSessionInfo.get()
         inMain {
-//        if (box.properties.containsKey("_tombstone")) return@inMain
-            if (box.properties.containsKey("_tombstone")) return@inMain
+//        if (box.properties["_tombstone"].isTrue()) return@inMain
+            if (box.properties["_tombstone"].isTrue()) return@inMain
 
             launch(Runloop.miscPool.asCoroutineDispatcher()) {
 
                 lblock("info,ki", "executing stdlib import") {
-//                    if (box.properties.containsKey("_tombstone")) return@launch
-                    if (box.properties.containsKey("_tombstone")) return@launch
+//                    if (box.properties["_tombstone"].isTrue()) return@launch
+                    if (box.properties["_tombstone"].isTrue()) return@launch
                     lprintln("info,ki", "$box executing imports")
                     ki.exec(
                         intro, implicits = listOf(box)
@@ -556,7 +560,7 @@ fun makeKI(box: Box): KotlinInterface {
 suspend fun makeKIHere(box: Box): KotlinInterface {
     val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
     val si = thisSessionInfo.get()
-    if (box.properties.containsKey("_tombstone")) return box.ki
+    if (box.properties["_tombstone"].isTrue()) return box.ki
 
     ki.exec(
         intro, implicits = listOf(box)

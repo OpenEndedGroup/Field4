@@ -185,6 +185,7 @@ fun main() {
 
                 // Handle paste events for images
                 onPaste = { event ->
+                    console.log(" -- paste event ? ", event)
                     val clipboardEvent = event as ClipboardEvent
                     val items = clipboardEvent.clipboardData?.items
                     if (items != null) {

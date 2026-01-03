@@ -88,6 +88,7 @@ class IdeChatHelpers(
         code: String,
         lang: LanguageSpec,
         userPrompt: String,
+        imageUrls: List<String> = emptyList(),
         attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
@@ -96,7 +97,10 @@ class IdeChatHelpers(
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): OpenAiIdeCodexBridge.SendResult {
-        info("chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
+        info(
+            "chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size} " +
+                "images=${imageUrls.size}"
+        )
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
@@ -121,6 +125,7 @@ class IdeChatHelpers(
             fileText = code,
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
+            imageDataUrls = imageUrls,
             onTextDelta = onTextDelta
         )
     }

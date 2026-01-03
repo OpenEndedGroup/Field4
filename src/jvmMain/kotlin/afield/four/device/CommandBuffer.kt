@@ -18,6 +18,10 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     var vkCommandBuffer: VkCommandBuffer
     private val primary: Boolean
 
+    // True while recording commands inside a render pass instance / dynamic rendering.
+    // This is used to avoid recording transfer ops (vkCmdCopyBuffer, etc.) in illegal contexts.
+    var inRenderPassInstance: Boolean = false
+
     data class DynamicRenderingInheritance(
         val colorFormats: IntArray = intArrayOf(),
         val depthFormat: Int = VK10.VK_FORMAT_UNDEFINED,

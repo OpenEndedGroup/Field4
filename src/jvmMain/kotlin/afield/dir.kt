@@ -2,7 +2,6 @@ package afield
 
 import afield.logger.lprintln
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -54,7 +53,7 @@ fun simpleDir(base: String): List<Entry> {
 
             if (hasEdn) {
                 val transfers = s.readEdnTransfers(dir.absolutePath)
-                    .filter { !it.properties.containsKey("_tombstone") }
+                    .filter { !it.properties["_tombstone"].isTrue() }
                 entry.numBoxes = transfers.size
 
                 transfers.forEach { transfer ->
@@ -80,7 +79,7 @@ fun simpleDir(base: String): List<Entry> {
             } else {
                 val metadataContent = metadataJsonFile.readText()
                 val transfers = SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
-                    .filter { !it.properties.contains("_tombstone") }
+                    .filter { !it.properties["_tombstone"].isTrue() }
                 entry.numBoxes = transfers.size
 
                 transfers.forEach { transfer ->

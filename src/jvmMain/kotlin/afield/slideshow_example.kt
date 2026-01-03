@@ -7,6 +7,60 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 /**
+ * Example slideshows demonstrating the slideshow DSL
+ *
+ * To use these, create boxes in Field and run the code in one of them.
+ * The slideshow will guide users through the document.
+ *
+ * NEW FEATURES:
+ * - Custom link callbacks: Links can execute Kotlin code via #custom:callbackName
+ * - Template system: Use {{propertyName}} to reference box properties/variables
+ * - Shared chat: Use withChat(id = "templateId") to share chat across template instances
+ * - Custom chat IDs: Create shared discussion spaces with custom IDs
+ *
+ * See interactiveGuideExample() for a comprehensive demonstration of these features.
+ */
+
+/**
+ * Simple example demonstrating custom link callbacks and templates
+ *
+ * This is a minimal example showing the core new features:
+ * - Link callbacks that execute custom code
+ * - Template system for live data display
+ */
+fun Box.simpleInteractiveExample() {
+    // Variable that will be displayed and modified
+    var count = 0
+    this.properties["count"] = count
+
+    val show = slideShow {
+        step("Interactive Example") {
+            markdownNote(
+                """
+                ### Simple Interactive Guide (Markdown)
+                Current count: **{{count}}**
+
+                [Increment](#custom:increment)
+                """.trimIndent()
+            )
+
+            linkCallback("increment") {
+                count++
+                here.properties["count"] = count
+                // Refresh the step to show new count
+                show.goToStep(show.currentStepIndex)
+            }
+
+            selectBox(this@simpleInteractiveExample)
+        }
+    }
+
+    GlobalScope.launch {
+        show.start()
+    }
+}
+
+/**
  * Example slideshow demonstrating the slideshow DSL
  *
  * To use this, create boxes in Field and run this code in one of them.
@@ -20,61 +74,38 @@ fun Box.exampleSlideShow() {
     val visualBox = this.children.iterator().next()
     this.autorun = true
 
-    val navStart = """
-        <div class="slide-nav">
-          <div class="slide-nav__links">
-            <a href="#slideshow:next">Start the tour →</a>
-          </div>
-          <a class="slide-nav__home" href="#slideshow:home" aria-label="Home">&#127968;</a>
-        </div>
-    """.trimIndent()
-
-    val navBackNext = """
-        <div class="slide-nav">
-          <div class="slide-nav__links">
-            <a href="#slideshow:previous">← Back</a>
-            <a href="#slideshow:next">Next →</a>
-          </div>
-          <a class="slide-nav__home" href="#slideshow:home" aria-label="Home">&#127968;</a>
-        </div>
-    """.trimIndent()
-
-    val navBackFinish = """
-        <div class="slide-nav">
-          <div class="slide-nav__links">
-            <a href="#slideshow:previous">← Back</a>
-            <a href="#slideshow:stop">Finish tour</a>
-          </div>
-          <a class="slide-nav__home" href="#slideshow:home" aria-label="Home">&#127968;</a>
-        </div>
-    """.trimIndent()
-
     // Create the slideshow
     val show = slideShow {
         step("Welcome to Field") {
-            note("""
-<h2>Welcome to Field!</h2>
-<p>This is an interactive guided tour of Field, a live coding environment.</p>
-<p>Field combines high-performance graphics with powerful scripting capabilities.</p>
-<p><strong>Click the links below to navigate:</strong></p>
-$navStart
-            """.trimIndent(), persistent = false)
+            markdownNote(
+                """
+                ## Welcome to Field!
+                This is an interactive guided tour of Field, a live coding environment.
+
+                Field combines high-performance graphics with powerful scripting capabilities.
+
+                **Click the links below to navigate:**
+
+                [[start:Start the tour →]] · [[home:🏠 Home]]
+                """.trimIndent(), animated = true)
 
             selectBox(welcomeBox, property = "code")
         }
 
         step("Understanding Boxes") {
-            note("""
-<h3>Boxes are the Core Abstraction</h3>
-<p>In Field, everything is a <strong>Box</strong>. Boxes can:</p>
-<ul>
-  <li>Contain code in multiple languages (Kotlin, Python, JavaScript, Clojure)</li>
-  <li>Have properties and metadata</li>
-  <li>Connect to other boxes to form execution graphs</li>
-  <li>Execute code and produce output</li>
-</ul>
-$navBackNext
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Boxes are the Core Abstraction
+                In Field, everything is a **Box**. Boxes can:
+
+                - Contain code in multiple languages (Kotlin, Python, JavaScript, Clojure)
+                - Have properties and metadata
+                - Connect to other boxes to form execution graphs
+                - Execute code and produce output
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
 
             // Example: Select box by name instead of by reference
             // selectBoxByName("My Code Box", property = "code", line = 1)
@@ -82,18 +113,22 @@ $navBackNext
         }
 
         step("Writing Code") {
-            note("""
-<h3>Live Coding</h3>
-<p>You can write code directly in boxes and see the results immediately.</p>
-<p>The code editor supports:</p>
-<ul>
-  <li>Syntax highlighting</li>
-  <li>Code completion</li>
-  <li>AI-powered assistance</li>
-</ul>
-<p>Try editing the code and pressing <kbd>Cmd+Enter</kbd> (Mac) or <kbd>Ctrl+Enter</kbd> (Windows/Linux) to execute!</p>
-$navBackNext
-            """.trimIndent())
+            markdownNote(
+                """
+                ### Live Coding
+                You can write code directly in boxes and see the results immediately.
+
+                The code editor supports:
+
+                - Syntax highlighting
+                - Code completion
+                - AI-powered assistance
+
+                Try editing the code and pressing `Cmd+Enter` (Mac) or `Ctrl+Enter` (Windows/Linux) to execute!
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
 
             selectBox(codeBox, property = "code", line = 5, highlight = 5)
 
@@ -104,35 +139,43 @@ $navBackNext
         }
 
         step("Visual Output") {
-            note("""
-<h3>Graphics and Visualization</h3>
-<p>Field excels at real-time graphics and visualization.</p>
-<p>You can create:</p>
-<ul>
-  <li>2D and 3D graphics</li>
-  <li>Shaders (GLSL)</li>
-  <li>Interactive visualizations</li>
-  <li>Data plots</li>
-</ul>
-$navBackNext
-            """.trimIndent(), anchorBox = visualBox)
+            markdownNote(
+                """
+                ### Graphics and Visualization
+                Field excels at real-time graphics and visualization.
+
+                You can create:
+
+                - 2D and 3D graphics
+                - Shaders (GLSL)
+                - Interactive visualizations
+                - Data plots
+
+                [[back]] [[next]]
+                """.trimIndent(),
+                anchorBox = visualBox
+            )
 
             selectBox(visualBox, property = "fragment")
         }
 
         step("Next Steps") {
-            note("""
-<h3>Keep Exploring!</h3>
-<p>You've completed the basic tour. Here are some things to try:</p>
-<ul>
-  <li>Create new boxes by double-clicking on the canvas</li>
-  <li>Connect boxes by dragging from one to another</li>
-  <li>Explore the example templates</li>
-  <li>Ask the AI assistant for help</li>
-</ul>
-<p><strong>Happy coding!</strong></p>
-$navBackFinish
-            """.trimIndent(), persistent = true)
+            markdownNote(
+                """
+                ### Keep Exploring!
+                You've completed the basic tour. Here are some things to try:
+
+                - Create new boxes by double-clicking on the canvas
+                - Connect boxes by dragging from one to another
+                - Explore the example templates
+                - Ask the AI assistant for help
+
+                **Happy coding!**
+
+                [[back]] [[finish:Finish tour]] [[home]]
+                """.trimIndent(),
+                persistent = true
+            )
 
             selectBox(welcomeBox, property = "code")
 
@@ -154,12 +197,26 @@ $navBackFinish
 fun Box.simpleSlideShowExample() {
     val show = slideShow {
         step("Step 1") {
-            note("<h3>First Step</h3><p>Welcome!</p><p><a href='#slideshow:next'>Next →</a></p>")
+            markdownNote(
+                """
+                ### First Step
+                Welcome!
+
+                [[next]]
+                """.trimIndent()
+            )
             selectBox(this@simpleSlideShowExample)
         }
 
         step("Step 2") {
-            note("<h3>Second Step</h3><p>Look at line 10!</p><p><a href='#slideshow:previous'>← Back</a></p>")
+            markdownNote(
+                """
+                ### Second Step
+                Look at line 10!
+
+                [[back]]
+                """.trimIndent()
+            )
             selectBox(this@simpleSlideShowExample, line = 10, highlight = 10)
         }
     }
@@ -171,7 +228,7 @@ fun Box.simpleSlideShowExample() {
 
 /**
  * Example showing how to use images in slideshow notes
- * 
+ *
  * To use this:
  * 1. Place an image (e.g., "example.png") in your project directory
  * 2. Create a box and run this code
@@ -180,46 +237,54 @@ fun Box.simpleSlideShowExample() {
 fun Box.slideShowWithImagesExample() {
     val show = slideShow {
         step("Welcome") {
-            note("""
-                <h2>Slideshow with Images</h2>
-                <p>This example demonstrates how to include images in your slideshows.</p>
-                <p>Images are served from your project directory (workspace).</p>
-                <br>
-                <p><a href="#slideshow:next">Continue →</a></p>
-            """)
+            markdownNote(
+                """
+                ## Slideshow with Images
+                This example demonstrates how to include images in your slideshows.
+
+                Images are served from your project directory (workspace).
+
+                [[next:Continue →]]
+                """.trimIndent()
+            )
             selectBox(this@slideShowWithImagesExample)
         }
-        
+
         step("Image Example") {
-            note("""
-                <h3>Including Images</h3>
-                <p>Place images in your project directory and reference them with <code>/project/</code>:</p>
-                <img src="/project/example.png" alt="Example image" 
-                     style="max-width: 100%; border: 2px solid #444; border-radius: 4px; margin: 10px 0;">
-                <p><em>Note: If the image doesn't appear, make sure "example.png" exists in your project directory.</em></p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
-            """)
+            markdownNote(
+                """
+                ### Including Images
+                Place images in your project directory and reference them with `/project/`:
+
+                ![Example image](/project/example.png)
+
+                _Note: If the image doesn't appear, make sure "example.png" exists in your project directory._
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
             selectBox(this@slideShowWithImagesExample)
         }
-        
+
         step("Subdirectories") {
-            note("""
-                <h3>Organizing Images</h3>
-                <p>You can organize images in subdirectories:</p>
-                <ul>
-                  <li><code>/project/images/diagram.png</code></li>
-                  <li><code>/project/screenshots/ui.jpg</code></li>
-                  <li><code>/project/docs/architecture.svg</code></li>
-                </ul>
-                <p>Always use forward slashes, even on Windows.</p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:stop">Finish</a></p>
-            """)
+            markdownNote(
+                """
+                ### Organizing Images
+                You can organize images in subdirectories:
+
+                - `/project/images/diagram.png`
+                - `/project/screenshots/ui.jpg`
+                - `/project/docs/architecture.svg`
+
+                Always use forward slashes, even on Windows.
+
+                [[back]] [[finish]]
+                """.trimIndent()
+            )
             selectBox(this@slideShowWithImagesExample)
         }
     }
-    
+
     GlobalScope.launch {
         show.start()
     }
@@ -262,30 +327,38 @@ fun Box.advancedSlideShowExample() {
     val hostBox = this
     val codeBox = this.children.firstOrNull() ?: this
     val secondBox = this.children.elementAtOrNull(1) ?: codeBox
-    
+
     val show = slideShow {
         step("Introduction with Animation") {
-            note("""
-                <h2>Welcome!</h2>
-                <p>This guide demonstrates advanced slideshow features.</p>
-                <p>Notice how this text animates in letter by letter!</p>
-                <p><a href="#slideshow:next">Continue →</a></p>
-            """.trimIndent(), animated = true)
-            
+            markdownNote(
+                """
+                ## Welcome!
+                This guide demonstrates advanced slideshow features.
+
+                Notice how this text animates in letter by letter!
+
+                [[next:Continue →]]
+                """.trimIndent(),
+                animated = true
+            )
+
             selectBox(hostBox)
         }
-        
+
         step("Drawing Attention with Annotations") {
-            note("""
-                <h3>Pointing Things Out</h3>
-                <p>You can draw lines from the guide to boxes!</p>
-                <p><span id="annotation-target">Look at the line connecting this guide to the box below.</span></p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
-            """.trimIndent())
-            
+            markdownNote(
+                """
+                ### Pointing Things Out
+                You can draw lines from the guide to boxes!
+
+                <span id="annotation-target">Look at the line connecting this guide to the box below.</span>
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+
             selectBox(codeBox)
-            
+
             // Draw an annotation line from the guide to the target box
             annotate(
                 id = "main-annotation",
@@ -294,18 +367,22 @@ fun Box.advancedSlideShowExample() {
                 strokeWidth = 2.5
             )
         }
-        
+
         step("Pointing to Specific Code Lines") {
-            note("""
-                <h3>Code-Level Annotations</h3>
-                <p>Lines can point to specific code locations!</p>
-                <p>The annotation below targets line 5 in the editor.</p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:next">Next →</a></p>
-            """.trimIndent(), animated = true)
-            
+            markdownNote(
+                """
+                ### Code-Level Annotations
+                Lines can point to specific code locations!
+
+                The annotation below targets line 5 in the editor.
+
+                [[back]] [[next]]
+                """.trimIndent(),
+                animated = true
+            )
+
             selectBox(codeBox, line = 5, highlight = 5)
-            
+
             // Draw annotation to a specific line
             annotateToLine(
                 id = "line-annotation",
@@ -317,18 +394,22 @@ fun Box.advancedSlideShowExample() {
                 dashed = true
             )
         }
-        
+
         step("Multiple Annotations") {
-            note("""
-                <h3>Complex Guides</h3>
-                <p>You can have multiple annotation lines at once.</p>
-                <p>This helps explain relationships between different parts of your document.</p>
-                <br>
-                <p><a href="#slideshow:previous">← Back</a> | <a href="#slideshow:stop">Finish</a></p>
-            """.trimIndent(), persistent = true)
-            
+            markdownNote(
+                """
+                ### Complex Guides
+                You can have multiple annotation lines at once.
+
+                This helps explain relationships between different parts of your document.
+
+                [[back]] [[finish]]
+                """.trimIndent(),
+                persistent = true
+            )
+
             selectBox(hostBox)
-            
+
             // Multiple annotations
             annotate(
                 id = "box1",
@@ -342,7 +423,206 @@ fun Box.advancedSlideShowExample() {
             )
         }
     }
-    
+
+    GlobalScope.launch {
+        show.start()
+    }
+}
+
+/**
+ * Example demonstrating interactive links with callbacks and template system
+ *
+ * This example shows:
+ * 1. Custom link callbacks defined in code
+ * 2. Template system that references box properties and variables
+ *
+ * All slides use the Markdown front end, so you can exercise advanced features
+ * without writing raw HTML.
+ */
+fun Box.interactiveGuideExample() {
+    // Set up some properties and variables that can be referenced in templates
+    var clickCount = 0
+    var userChoice = "none"
+    val version = "1.0.0"
+
+    // Store properties on the box for template access
+    this.properties["clickCount"] = clickCount
+    this.properties["userChoice"] = userChoice
+    this.properties["version"] = version
+
+    val show = slideShow {
+        slideshowId("__test_0")
+        step("Welcome to Interactive Guides") {
+            markdownNote(
+                """
+                ## Interactive Guides with Callbacks
+                Written entirely in Markdown (no custom HTML required).
+
+                - **Custom link callbacks** trigger Kotlin code
+                - **Template system** shows live data (version **{{version}}**)
+                - **Navigation shortcuts** via `[[next]]` and `[[back]]`
+
+                [[next:Let's explore →]]
+                """.trimIndent()
+            )
+
+            selectBox(hostBox)
+        }
+
+        step("Custom Link Callbacks") {
+            markdownNote(
+                """
+                ### Clickable callbacks using Markdown links
+                Use Markdown links with `#custom:name` to run Kotlin from the slide.
+
+                - [Increment](#custom:incrementCounter)
+                - [Reset](#custom:resetCounter)
+
+                Times clicked: **{{clickCount}}**
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+
+            // Register callbacks for the links
+            linkCallback("incrementCounter") {
+                clickCount++
+                here.properties["clickCount"] = clickCount
+                // Refresh the current step to show updated count
+                show.goToStep(show.currentStepIndex)
+                lprintln("info,slideshow", "Counter incremented to $clickCount")
+            }
+
+            linkCallback("resetCounter") {
+                clickCount = 0
+                here.properties["clickCount"] = clickCount
+                // Refresh the current step to show updated count
+                show.goToStep(show.currentStepIndex)
+                lprintln("info,slideshow", "Counter reset")
+            }
+
+            selectBox(hostBox)
+        }
+
+        step("Template System") {
+            markdownNote(
+                """
+                ### Live Data Display
+                Templates pull values from box properties or variables in scope.
+
+                - Counter value: **{{clickCount}}**
+                - Version: **{{version}}**
+                - User choice: **{{userChoice}}**
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+
+            selectBox(hostBox)
+        }
+
+        step("Live Chat") {
+            markdownNote(
+                """
+                ### Per-slide live chat (Markdown)
+                Open the chat pane to ask questions while staying on this slide.
+                
+                This chat is specific to this slideshow instance.
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+            withChat()
+            selectBox(hostBox)
+        }
+        
+        step("Shared Chat Across Templates") {
+            markdownNote(
+                """
+                ### Shared chat across template instances
+                Use `withChat(id = "templateId")` to create a shared discussion space
+                across all boxes created from the same template.
+                
+                This is useful for:
+                - Collaborative learning materials
+                - Shared project discussions
+                - Multi-user experiences
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+            // This chat would be shared across all instances of this template
+            withChat(id = "templateId")
+            selectBox(hostBox)
+        }
+
+        step("Make a Choice") {
+            markdownNote(
+                """
+                ### Interactive Choices
+                Pick one option; the callback updates `{{userChoice}}` via Markdown links.
+
+                - [Option A: Performance Mode](#custom:choiceA)
+                - [Option B: Quality Mode](#custom:choiceB)
+                - [Option C: Balanced Mode](#custom:choiceC)
+
+                Your choice: **{{userChoice}}**
+
+                [[back]] [[next]]
+                """.trimIndent()
+            )
+
+            linkCallback("choiceA") {
+                userChoice = "Performance Mode"
+                here.properties["userChoice"] = userChoice
+                show.goToStep(show.currentStepIndex)
+                notify("Selected: Performance Mode", "slideshow")
+            }
+
+            linkCallback("choiceB") {
+                userChoice = "Quality Mode"
+                here.properties["userChoice"] = userChoice
+                show.goToStep(show.currentStepIndex)
+                notify("Selected: Quality Mode", "slideshow")
+            }
+
+            linkCallback("choiceC") {
+                userChoice = "Balanced Mode"
+                here.properties["userChoice"] = userChoice
+                show.goToStep(show.currentStepIndex)
+                notify("Selected: Balanced Mode", "slideshow")
+            }
+
+            selectBox(hostBox)
+        }
+
+        step("Advanced: Computed Properties") {
+            markdownNote(
+                """
+                ### Computing Display Values
+                Values are prepared in `onEnter` and shown via Markdown templates.
+
+                - Click count: {{clickCount}}
+                - Doubled: {{doubledCount}}
+                - Status: **{{status}}**
+
+                [[back]] [[finish:Finish]]
+                """.trimIndent()
+            )
+
+            onEnter {
+                // Compute derived values when entering this step
+                hostBox.properties["doubledCount"] = clickCount * 2
+                hostBox.properties["status"] =
+                    if (clickCount > 10) "Very Active!"
+                    else if (clickCount > 5) "Active"
+                    else "Getting Started"
+            }
+
+            selectBox(hostBox)
+        }
+    }
+
     GlobalScope.launch {
         show.start()
     }

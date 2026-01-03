@@ -230,11 +230,6 @@ fun FloatBuffer.add(vararg x: Number): FloatBuffer {
     }
 }
 
-fun Box.a(b: Double = 50.0) {
-    print(b)
-}
-
-
 /**
  * ugh! this collides with IntBuffer.put(index, data)
  */

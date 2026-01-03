@@ -72,20 +72,20 @@ fun Box._gltfModelHereWithTexture(
     filename: String, p: Parameters.() -> Unit = {}
 ): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
     val renderer: Renderer = fromContext()
-        val loader = GltfSupport.loadGltfBasic(filename, GltfSupport.GltfLoadConfig(loadTextures = true))
-        val module = _moduleHere(parameters(renderer = renderer) {
-            p()
-            val was = textureResolver
-            textureResolver = { tex ->
-                if (tex.name == "uTextures") {
-                    val textures = loader.meshes[2].material.textures.map { slot -> slot.texture as HasImageView }
-                    val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
-                    fromViews(textures, sampler = TextureSampler(renderer = fromContext(), maxMip, true))
-                } else was(tex)
-            }
-        })
-        return module to listOf(loader)
-    }
+    val loader = GltfSupport.loadGltfBasic(filename, GltfSupport.GltfLoadConfig(loadTextures = true))
+    val module = _moduleHere(parameters(renderer = renderer) {
+        p()
+        val was = textureResolver
+        textureResolver = { tex ->
+            if (tex.name == "uTextures") {
+                val textures = loader.meshes[2].material.textures.map { slot -> slot.texture as HasImageView }
+                val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
+                fromViews(textures, sampler = TextureSampler(renderer = fromContext(), maxMip, true))
+            } else was(tex)
+        }
+    })
+    return module to listOf(loader)
+}
 
 @RunsAt(macroRegistration)
 fun registerGLTFLoader() {
@@ -217,9 +217,11 @@ object GltfSupport {
     private const val POST_FLAGS: Int =
         Assimp.aiProcess_Triangulate or Assimp.aiProcess_GenNormals or Assimp.aiProcess_JoinIdenticalVertices or Assimp.aiProcess_ImproveCacheLocality or Assimp.aiProcess_SortByPType
 
+    fun loadModel(path: String) = Assimp.aiImportFile(path, POST_FLAGS)
+        ?: error("Assimp import failed for '$path': ${Assimp.aiGetErrorString()}")
+
     fun loadGltfBasic(path: String, config: GltfLoadConfig = GltfLoadConfig()): GltfModel {
-        val scene = Assimp.aiImportFile(path, POST_FLAGS)
-            ?: error("Assimp import failed for '$path': ${Assimp.aiGetErrorString()}")
+        val scene = loadModel(path)
         val baseDir: Path? = try {
             Paths.get(path).parent
         } catch (_: Exception) {
@@ -446,7 +448,8 @@ object GltfSupport {
                     }
                     val tex = loadTextureFromPathOrEmbedded(scene, path.dataString(), baseDir, renderer)
                     if (tex != null) {
-                        slots[typeMapping[type]!!] = TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true)
+                        slots[typeMapping[type]!!] =
+                            TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true)
                     } else {
                     }
                 }

@@ -84,9 +84,13 @@ fun parseLayersList(layersString: String): List<String> {
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
     autorunTriggered = true
+    autorunBoxes(boxes.values, delayMs)
+}
+
+fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long = 500L) {
     GlobalScope.launch {
         delay(delayMs)
-        boxes.values.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
+        targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
             launch {
                 var attempts = 0
                 while (box.offline && attempts < 20) {
@@ -499,8 +503,13 @@ class Server {
                 }
 
                 val newBoxes = SavingContext().loadFromEdnText(req.edn, info.filename, filter)
+                
+                // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+                // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+                // Translating them would incorrectly add the offset twice since they move with their parent.
+                val nestedBoxes = newBoxes.flatMap { it.nested }.toSet()
                 newBoxes.forEach { b ->
-                    if (b.id != "root") {
+                    if (b.id != "root" && b !in nestedBoxes) {
                         b.frame = b.frame.copy(x = b.frame.x + 10.0, y = b.frame.y + 10.0)
                     }
                     b.resyncAll()
@@ -522,12 +531,20 @@ class Server {
                     val slideShow = slideShowBox.getPropertyRaw("slideShow") as? SlideShowInstance
                     if (slideShow != null) {
                         GlobalScope.launch {
-                            when (cmd.command) {
-                                "next" -> slideShow.next()
-                                "previous" -> slideShow.previous()
-                                "start" -> slideShow.start()
-                                "home" -> slideShow.home()
-                                "stop" -> slideShow.stop()
+                            when {
+                                cmd.command == "next" -> slideShow.next()
+                                cmd.command == "previous" -> slideShow.previous()
+                                cmd.command == "start" -> slideShow.start()
+                                cmd.command == "home" -> slideShow.home()
+                                cmd.command == "stop" -> slideShow.stop()
+                                cmd.command.startsWith("callback:") -> {
+                                    // Handle custom link callbacks
+                                    val callbackName = cmd.command.substring(9) // Remove "callback:" prefix
+                                    val executed = slideShow.executeCallback(callbackName)
+                                    if (!executed) {
+                                        lprintln("warning,slideshow", "No callback registered for: $callbackName")
+                                    }
+                                }
                                 else -> {
                                     // Try to parse as a step number
                                     val stepNum = cmd.command.toIntOrNull()
@@ -880,6 +897,14 @@ class Server {
                         handle {
                             val originalContent =
                                 File("./src/commonMain/resources/keyframe_editor.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/history") {
+                        handle {
+                            val originalContent =
+                                File("./src/commonMain/resources/history.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }

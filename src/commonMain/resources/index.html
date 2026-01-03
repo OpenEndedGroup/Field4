@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>Field | 4</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/outputareas.css">
+    <link rel="stylesheet" href="/slideshow.css">
     <script src="/interact.min.js"></script>
     <script src="/plotly-2.24.1.min.js"></script>
     <script src="/anime.iife.min.js"></script>
 
 
     <style>
-        @import url("/iosevka.css");
-        @import url("/outputareas.css");
-        @import url("/slideshow.css");
-
         body {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             margin: 0;
@@ -24,8 +25,9 @@
 
         /* Minimal cyan control skin */
         :root {
-            --field-cyan: #48c9ff;
-            --field-cyan-muted: rgba(72, 201, 255, 0.4);
+            --field-cyan-rgb: 72, 201, 255;
+            --field-cyan: rgb(var(--field-cyan-rgb));
+            --field-cyan-muted: rgba(var(--field-cyan-rgb), 0.4);
             --field-panel: rgba(0, 0, 0, 0.26);
             --field-text: #a9e6ff;
             --field-text-soft: #7fd4ff;
@@ -34,7 +36,7 @@
         .field-control {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             background: var(--field-panel);
-            border: 1px solid rgba(72, 201, 255, 0.12);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.12);
             border-radius: 10px;
             padding: 8px 10px;
             margin: 1px 0;
@@ -144,9 +146,11 @@
             justify-content: center;
             padding: 6px 8px 12px 8px;
         }
+
         .vec2-shell .vec2-visual {
             flex: 0 0 auto;
         }
+
         .vec2-shell .vec2-tl,
         .vec2-shell .vec2-tr,
         .vec2-shell .vec2-angle,
@@ -158,12 +162,39 @@
             color: var(--field-text-soft);
             font-family: "Iosevka Web", monospace;
         }
-        .vec2-shell .vec2-tl { top: 4px; left: 6px; }
-        .vec2-shell .vec2-tr { top: 4px; right: 6px; }
-        .vec2-shell .vec2-angle { left: 8px; top: 50%; transform: translateY(-50%); }
-        .vec2-shell .vec2-mag { right: 8px; top: 50%; transform: translateY(-50%); }
-        .vec2-shell .vec2-x { left: 8px; bottom: 6px; }
-        .vec2-shell .vec2-y { right: 8px; bottom: 6px; }
+
+        .vec2-shell .vec2-tl {
+            top: 4px;
+            left: 6px;
+        }
+
+        .vec2-shell .vec2-tr {
+            top: 4px;
+            right: 6px;
+        }
+
+        .vec2-shell .vec2-angle {
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .vec2-shell .vec2-mag {
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .vec2-shell .vec2-x {
+            left: 8px;
+            bottom: 6px;
+        }
+
+        .vec2-shell .vec2-y {
+            right: 8px;
+            bottom: 6px;
+        }
+
         }
 
         .vec2-pane {
@@ -203,7 +234,7 @@
             fill: #0a1822;
             stroke: var(--field-cyan);
             stroke-width: 2;
-            filter: drop-shadow(0 0 6px rgba(72, 201, 255, 0.45));
+            filter: drop-shadow(0 0 6px rgba(var(--field-cyan-rgb), 0.45));
         }
 
         .field-subtext {
@@ -231,13 +262,13 @@
             appearance: none;
             -webkit-appearance: none;
             background: #000;
-            border: 1px solid rgba(72, 201, 255, 0.7);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.7);
             border-radius: 4px;
             cursor: pointer;
             position: relative;
             display: grid;
             place-items: center;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset, 0 0 6px rgba(72, 201, 255, 0.35);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset, 0 0 6px rgba(var(--field-cyan-rgb), 0.35);
         }
 
         .field-checkbox .checkbox-toggle::after {
@@ -255,7 +286,7 @@
         }
 
         .field-checkbox .checkbox-toggle:focus-visible {
-            outline: 1px solid rgba(72, 201, 255, 0.8);
+            outline: 1px solid rgba(var(--field-cyan-rgb), 0.8);
             outline-offset: 2px;
         }
 
@@ -268,7 +299,7 @@
 
         .field-text-input {
             background: #000;
-            border: 1px solid rgba(72, 201, 255, 0.6);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.6);
             border-radius: 6px;
             padding: 6px 8px;
             color: var(--field-cyan);
@@ -281,7 +312,7 @@
 
         .field-text-input:focus {
             border-color: var(--field-cyan);
-            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.6);
+            box-shadow: 0 0 0 1px rgba(var(--field-cyan-rgb), 0.6);
         }
 
         /* Color picker */
@@ -302,7 +333,7 @@
             width: 52px;
             height: 32px;
             /*border-radius: 8px;*/
-            /*border: 1px solid rgba(72, 201, 255, 0.35);*/
+            /*border: 1px solid rgba(var(--field-cyan-rgb), 0.35);*/
             overflow: hidden;
             /*box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;*/
             background: #050505;
@@ -318,7 +349,7 @@
             padding: 0;
             cursor: pointer;
             background: transparent;
-            outline: 1px solid rgba(72, 201, 255, 0.4);
+            outline: 1px solid rgba(var(--field-cyan-rgb), 0.4);
             /*outline-offset: -2px;*/
         }
 
@@ -403,13 +434,12 @@
         }
 
 
-
         .execution_output {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
             font-size: 80%;
             padding: 5px;
             padding-left: 0px;
-            padding-top:0px;
+            padding-top: 0px;
         }
 
         .output_annotation {
@@ -436,32 +466,35 @@
         }
 
         ::-webkit-scrollbar-corner {
-            background: rgba(0,0,0,0);
+            background: rgba(0, 0, 0, 0);
         }
 
         .line-numbers {
             opacity: 0.5 !important;
             font-size: 70% !important;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */        }
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
+        }
 
         .sticky-line-number {
             opacity: 0.5 !important;
             font-size: 70% !important;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */        }
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
+        }
 
         .margin-view-overlays {
             opacity: 0.5 !important;
             font-size: 70% !important;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */        }
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
+        }
 
         [contenteditable] {
             outline: 0 solid transparent;
@@ -470,6 +503,7 @@
         .monaco-editor {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
+
         .monaco-editor-container {
             top: 10px;
             right: 10px;
@@ -491,6 +525,51 @@
             /*filter: blur(10px) !important;*/
         }
 
+        .docs-iframe-container {
+            top: 10px;
+            right: 10px;
+            height: calc(100vh - 20px);
+            width: calc(40vw - 60px);
+            position: absolute;
+            border: 5px solid black;
+            border-radius: 5px;
+            background: #1e1e1e;
+            z-index: 19;
+            filter: blur(0px);
+            transition: border 0.2s, opacity 0.5s;
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        .docs-iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 5px;
+            background: #1e1e1e;
+        }
+
+        .docs-iframe-back {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            z-index: 20;
+            background: rgba(var(--field-cyan-rgb), 0.2);
+            border: 1px solid var(--field-cyan);
+            color: var(--field-text);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .docs-iframe-back:hover {
+            background: rgba(var(--field-cyan-rgb), 0.3);
+            transform: translateY(-1px);
+        }
+
         .quick-input-list * {
             scrollbar-gutter: auto !important;
             scrollbar-width: thin !important;
@@ -509,19 +588,23 @@
         .suggest-widget .monaco-list {
             font-size: 80% !important;
         }
+
         .suggest-widget .monaco-list-row {
             font-size: 12px !important;
             height: 18px !important;
             line-height: 18px !important;
         }
+
         .suggest-widget .monaco-list-row .contents .main {
             line-height: 18px !important;
         }
+
         .suggest-widget .monaco-list-row .icon,
         .suggest-widget .monaco-list-row .readMore {
             width: 18px !important;
             height: 18px !important;
         }
+
         .suggest-details {
             font-size: 80% !important;
         }
@@ -529,6 +612,7 @@
         .monaco-findInput {
             margin-right: -6px !important;
         }
+
         .ibwrapper input {
             outline: none !important;
             margin-right: -10px !important;
@@ -562,19 +646,21 @@
         }
 
         .box.selected {
-            border-color: rgba(72, 201, 255, 0.9);
+            border-color: rgba(var(--field-cyan-rgb), 0.9);
         }
 
-        .closeBox+.hoverable {
+        .closeBox + .hoverable {
             margin-left: 4.5px;
         }
 
         body::-webkit-scrollbar {
             width: 0.75rem;
         }
+
         *::-webkit-scrollbar-track {
             background-color: transparent;
         }
+
         *::-webkit-scrollbar-thumb {
             background-color: #000;
             border-radius: 0px;
@@ -734,9 +820,9 @@
 
         .notselectable {
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
-            user-select: none;         /* Standard syntax */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard syntax */
         }
 
         .hoverable:hover {
@@ -764,12 +850,14 @@
             margin: 0;
         }
 
-        .fadeToBlack { background: rgba(0,0,0,0.5); }
+        .fadeToBlack {
+            background: rgba(0, 0, 0, 0.5);
+        }
 
         .markingHover {
             background-image: url("data:image/svg+xml,%3Csvg%20id%3D'stripes-svg'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'100%25'%20height%3D'100%25'%3E%3Cdefs%3E%3Cpattern%20id%3D'svg-stripes-pattern-5289'%20patternTransform%3D'rotate(45)'%20width%3D'100%25'%20height%3D'17'%20x%3D'0'%20y%3D'0'%20patternUnits%3D'userSpaceOnUse'%3E%3Canimate%20attributeName%3D'y'%20begin%3D'0s'%20dur%3D'100s'%20from%3D'0'%20to%3D'5000px'%20repeatCount%3D'indefinite'%20fill%3D'freeze'%3E%3C%2Fanimate%3E%3Cg%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'7'%20fill%3D'rgba(0%2C%200%2C%200%2C%201)'%3E%3C%2Frect%3E%3Crect%20x%3D'0'%20y%3D'7'%20width%3D'100%25'%20height%3D'10'%20fill%3D'rgba(150%2C%20255%2C%20208%2C%200.3)'%3E%3C%2Frect%3E%3C%2Fg%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'url(%23svg-stripes-pattern-5289)'%3E%3C%2Frect%3E%3C%2Fsvg%3E");
             /*background-color: rgba(40, 220, 110, 0.5);*/
-            color: rgba(255,255,255, 1);
+            color: rgba(255, 255, 255, 1);
 
             border: 2px solid rgba(0, 0, 0, 1);
             margin: -1px;
@@ -815,11 +903,11 @@
             background: rgba(0, 0, 0, 0.5);
             padding: 4px;
             border-radius: 5px;
-            color: rgba(255, 255, 255, 1);
+            color: var(--field-cyan);
             font-size: 70%;
             -webkit-user-select: none; /* Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* Internet Explorer/Edge */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none;
         }
 
@@ -828,16 +916,16 @@
         }
 
         .label-description {
-            opacity: 0.5  !important;
-            font-size: 80%  !important;
-            border-left: 1px solid white  !important;
+            opacity: 0.5 !important;
+            font-size: 80% !important;
+            border-left: 1px solid white !important;
             padding-left: 6px !important;
         }
 
         .centered-container {
             display: flex;
             justify-content: center; /* centers horizontally */
-            align-items: center;     /* centers vertically */
+            align-items: center; /* centers vertically */
             height: 100%;
             position: absolute;
             top: 0;
@@ -849,6 +937,7 @@
             user-select: none;
             pointer-events: none;
         }
+
         .centered-container-div {
             padding: 20px;
             background-color: #4444;
@@ -860,16 +949,29 @@
 
         .leftKey {
             display: inline-block;
-            width: 100px;
+            width: 140px;
             text-align: right;
             font-variant-caps: all-small-caps;
-            font-style: italic;
+            padding-right: 10px;
         }
 
         .rightKey {
-            opacity: 0.5;
+            opacity: 0.75;
             font-weight: 100;
-            font-size: 80%;
+            font-size: 85%;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            font-family: inherit;
+            font-size: 11px;
+            font-style: normal;
+            font-variant-caps: normal;
+            white-space: nowrap;
         }
 
         .hoverlay {
@@ -964,14 +1066,15 @@
         }
 
         .myInlineDecoration::before {
-            content:"⊙";
-            top:-20px;
-            position:absolute;
+            content: "⊙";
+            top: -20px;
+            position: absolute;
         }
 
         .ss-int {
             color: rgba(255, 200, 200, 1);
         }
+
         .ss-float {
             color: rgba(255, 255, 200, 1);
         }
@@ -981,7 +1084,7 @@
         }
 
         .ss-bracket {
-            color: rgba(50, 200, 255, 1);
+            color: var(--field-cyan);
         }
 
         .tab {
@@ -990,12 +1093,12 @@
             border-radius: 5px;
             height: 10px;
             background: rgba(255, 255, 255, 0.1);
-            margin-left:3px;
-            margin-right:3px;
+            margin-left: 3px;
+            margin-right: 3px;
         }
 
         .coverMarker {
-            font-size:0 !important;
+            font-size: 0 !important;
         }
 
         .mtk5.coverMarker:after {
@@ -1013,7 +1116,7 @@
         .offline {
             opacity: 0.4;
             filter: blur(3px);
-            transition: 0.2s filter, 0.2s opacity ;
+            transition: 0.2s filter, 0.2s opacity;
         }
 
         /*.mtk5.coverMarker:hover::after {*/
@@ -1023,36 +1126,113 @@
         /*.d1 { background:red !important; border: 1px solid blue; }*/
         /*.d2 { background:blue !important; border: 1px solid red; }*/
 
+        /* Splash screen styles */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(20, 20, 20, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+        }
+
+        #splash-screen pre {
+            font-family: "Iosevka Web", monospace;
+            color: var(--field-cyan);
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            white-space: pre;
+            /*text-align: center;*/
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+
+        #splash-screen pre.f4lit {
+            opacity: 1;
+        }
+
     </style>
 </head>
 <body>
 
+<div id="splash-screen">
+    <pre class="f4drift">
+          _____                    _____                    _____                    _____            _____
+         /\    \                  /\    \                  /\    \                  /\    \          /\    \
+        /::\    \                /::\    \                /::\    \                /::\____\        /::\    \
+       /::::\    \               \:::\    \              /::::\    \              /:::/    /       /::::\    \
+      /::::::\    \               \:::\    \            /::::::\    \            /:::/    /       /::::::\    \
+     /:::/\:::\    \               \:::\    \          /:::/\:::\    \          /:::/    /       /:::/\:::\    \
+    /:::/__\:::\    \               \:::\    \        /:::/__\:::\    \        /:::/    /       /:::/  \:::\    \
+   /::::\   \:::\    \              /::::\    \      /::::\   \:::\    \      /:::/    /       /:::/    \:::\    \
+  /::::::\   \:::\    \    ____    /::::::\    \    /::::::\   \:::\    \    /:::/    /       /:::/    / \:::\    \
+ /:::/\:::\   \:::\    \  /\   \  /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/    /       /:::/    /   \:::\ ___\
+/:::/  \:::\   \:::\____\/::\   \/:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/____/       /:::/____/     \:::|    |
+\::/    \:::\   \::/    /\:::\  /:::/    \::/    /\:::\   \:::\   \::/    /\:::\    \       \:::\    \     /:::|____|
+ \/____/ \:::\   \/____/  \:::\/:::/    / \/____/  \:::\   \:::\   \/____/  \:::\    \       \:::\    \   /:::/    /
+          \:::\    \       \::::::/    /            \:::\   \:::\    \       \:::\    \       \:::\    \ /:::/    /
+           \:::\____\       \::::/____/              \:::\   \:::\____\       \:::\    \       \:::\    /:::/    /
+            \::/    /        \:::\    \               \:::\   \::/    /        \:::\    \       \:::\  /:::/    /
+             \/____/          \:::\    \               \:::\   \/____/          \:::\    \       \:::\/:::/    /
+                               \:::\    \               \:::\    \               \:::\    \       \::::::/    /
+                                \:::\____\               \:::\____\               \:::\____\       \::::/    /
+                                 \::/    /                \::/    /                \::/    /        \::/____/
+                                  \/____/                  \/____/                  \/____/          ~~
+
+</pre>
+</div>
 
 <div class="centered-container" id="cheatsheet" style="opacity: 0;">
     <div class="centered-container-div">
-        <span class="leftKey"></span> <span class="rightKey">use the url to open a document, e.g. <b>http://localhost:9091/index.html?file=helloWorld</b></span><br><br>
-        <span class="leftKey">n</span> <span class="rightKey">creates a <b>new box</b></span><br>
+        <span class="leftKey"></span> <span class="rightKey">use the url to open a document, e.g. <b>http://localhost:9092/index.html?file=helloWorld</b></span><br><br>
+        <span class="leftKey"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span><br>
         <span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span><br><br>
-        <span class="leftKey">F1</span> <span class="rightKey">opens a searchable <b>command menu</b> for <i>everything else</i></span><br><br>
-        <span class="leftKey">alt-0</span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
-        <span class="leftKey">alt-click</span> <span class="rightKey"><b>launches</b> a box</span><br>
-        <span class="leftKey">alt-up</span> <span class="rightKey">also <b>launches</b> a box</span><br>
-        <span class="leftKey">alt-down</span> <span class="rightKey"><b>stops</b> a launched box</span><br>
-        <span class="leftKey">alt-return</span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
-        <span class="leftKey">alt-drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
-        <span class="leftKey">esc-esc</span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
-        <span class="leftKey">command-space</span> <span class="rightKey">opens <b>autocomplete</b></span><br><br>
-        <span class="leftKey">g</span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
-        <span class="leftKey">u</span> <span class="rightKey"><b>ungroups</b> boxes</span><br>
+        <span class="leftKey"><kbd>F1</kbd></span> <span class="rightKey">opens a searchable <b>command menu</b> for <i>everything else</i> (align, route, etc.)</span><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>⇧</kbd></span> <span class="rightKey">double tap <b>opens box menu</b> (anywhere palette)</span><br><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> click</span> <span class="rightKey"><b>launches</b> a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↑</kbd></span> <span
+            class="rightKey">also <b>launches</b> a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↓</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>↩</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
+        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
+        <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span
+            class="rightKey">opens <b>autocomplete</b></span><br><br>
+        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span><br><br>
+        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>/</kbd></span> <span class="rightKey"><b>toggle docs iframe</b> (docs & editor)</span><br><br>
+        <span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
+        <span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span><br><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
+            class="rightKey"><b>save bookmark</b> 1-9</span><br>
+        <span class="leftKey"><kbd>⇧</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
+            class="rightKey"><b>restore bookmark</b> 1-9</span><br>
     </div>
 </div>
 
 
-<canvas id="overlaycanvas" style="width:100vw; height:100vh; position: absolute; z-index: 20; backdrop-filter: blur(20px) brightness(0.0);; transition: backdrop-filter 0.5s;"></canvas>
-<svg id="overlaysvglayer" style="position: absolute; top:0; bottom:0; left:0; right:0; z-index: 0; pointer-events: none" height="100%" width="100%"></svg>
+<canvas id="overlaycanvas"
+        style="width:100vw; height:100vh; position: absolute; z-index: 20; backdrop-filter: blur(20px) brightness(0.0);; transition: backdrop-filter 0.5s;"></canvas>
+<svg id="overlaysvglayer" style="position: absolute; top:0; bottom:0; left:0; right:0; z-index: 0; pointer-events: none"
+     height="100%" width="100%"></svg>
 <div id="root"></div>
 
 <div class="monaco-editor-container"></div>
+<div class="docs-iframe-container">
+    <button class="docs-iframe-back" type="button" onclick="exitDocsIframe()">←</button>
+    <iframe id="docs-iframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+</div>
 
 
 <script src="provisional.js" type="module"></script>
@@ -1066,6 +1246,7 @@
 <script src="lineTracking.js"></script>
 <script src="markers.js"></script>
 <script src="bootstrapMonaco.js" type="module"></script>
+<script src="docsIframeApi.js"></script>
 <script src="notify.js"></script>
 <script src="diff3.js"></script>
 <link rel="stylesheet" href="/github-dark.min.css">
@@ -1080,13 +1261,84 @@
 
 <script type="module">
 
-        console.log(" welcome to field4")
-        document.addEventListener('keydown', function(event) {
-                if (event.keyCode === 112) {
-                        event.preventDefault();
-                }
-        })
+    console.log(" welcome to field4")
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode === 112) {
+            event.preventDefault();
+        }
+    });
 
+
+    (() => {
+        const pre = document.querySelector("#splash-screen pre");
+        if (!pre) return;
+
+        const text = pre.textContent ?? "";
+
+        // Inject tiny CSS (scoped to splash pre)
+        const style = document.createElement("style");
+        style.textContent = `
+    #splash-screen pre.f4drift .f4ch{
+      display:inline-block;
+      will-change:transform;
+      transform: translate3d(0,0,0);
+      transition: transform 2600ms cubic-bezier(.2,.8,.2,1);
+      transition-delay: var(--dly, 0ms);
+    }
+    #splash-screen pre.f4drift.f4go .f4ch{
+      transform: translate3d(var(--dx,0px), var(--dy,0px), 0);
+    }
+  `;
+        document.head.appendChild(style);
+
+        // Replace text with per-char spans (no manual markup needed)
+        pre.setAttribute("aria-label", text);
+        pre.textContent = "";
+        pre.classList.add("f4drift");
+
+        const frag = document.createDocumentFragment();
+        const chars = Array.from(text);
+
+        const maxPx = 200.25;   // subtle but visible; drop to ~1.2 if you want gentler
+        const maxDelay = 260; // slight spread
+        let printable = 0;
+        for (const ch of chars) if (ch !== "\n") printable++;
+
+        let i = 0;
+        for (const ch of chars) {
+            if (ch === "\n") {
+                frag.appendChild(document.createTextNode("\n"));
+                continue;
+            }
+
+            const span = document.createElement("span");
+            span.className = "f4ch";
+            span.setAttribute("aria-hidden", "true");
+            span.textContent = ch === " " ? " " : ch;
+
+            const dx = (Math.random() * 2 - 1) * maxPx;
+            const dy = (Math.random() * 2 - 1) * maxPx;
+            const dly = (i / Math.max(1, printable)) * maxDelay;
+
+            span.style.setProperty("--dx", `${dx.toFixed(3)}px`);
+            span.style.setProperty("--dy", `${dy.toFixed(3)}px`);
+            span.style.setProperty("--dly", `${dly.toFixed(1)}ms`);
+
+            frag.appendChild(span);
+            i++;
+        }
+
+        pre.appendChild(frag);
+
+        // Fade in the art, then kick off the drift/explode
+        requestAnimationFrame(() => {
+            pre.offsetHeight;
+            pre.classList.add("f4lit");
+            setTimeout(() => {
+                pre.classList.add("f4go");
+            }, 200);
+        })
+    })();
 
 </script>
 

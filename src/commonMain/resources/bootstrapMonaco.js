@@ -31,6 +31,8 @@ require(["vs/editor/editor.main"], function (e, is) {
         });
         require(["vs/basic-languages/clojure/clojure"], function (e, is) {
         });
+        require(["vs/basic-languages/yaml/yaml"], function (e, is) {
+        });
         require(["bithero/glsl"], function (is) {
                 initMonaco()
                 require(["vs/platform/quickinput/common/quickInput"], function (is) {
@@ -224,6 +226,7 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("python", completionProvider)
         monaco.languages.registerCompletionItemProvider("clojure", completionProvider)
         monaco.languages.registerCompletionItemProvider("glsl", completionProvider)
+        monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 
         console.log(" monitoring selection ")
@@ -324,26 +327,107 @@ const showPickMenu = () => {
         }
 }
 
+const openQuickCommandPalette = () => {
+        const monacoTextArea = document.querySelector("textarea.inputarea.monaco-mouse-cursor-text")
+        const isEditorFocused = document.activeElement === monacoTextArea
+
+        if (isDocsIframeVisible()) {
+                hideDocsIframe()
+        }
+
+        if (isEditorFocused && window.globalEditor) {
+                window.globalEditor.trigger("", "editor.action.quickCommand", null);
+        } else {
+                if (typeof updateActions === "function") {
+                        updateActions()
+                }
+                showPickMenu()
+        }
+}
+
+window.openQuickCommandPalette = openQuickCommandPalette
+
+const syncDocsIframeBoundsToMonaco = () => {
+        const monacoContainer = document.querySelector('.monaco-editor-container')
+        const docsContainer = document.querySelector('.docs-iframe-container')
+        if (!monacoContainer || !docsContainer) return
+
+        const rect = monacoContainer.getBoundingClientRect()
+        docsContainer.style.position = "absolute"
+        docsContainer.style.top = `${rect.top + window.scrollY}px`
+        docsContainer.style.left = `${rect.left + window.scrollX}px`
+        docsContainer.style.width = `${rect.width}px`
+        docsContainer.style.height = `${rect.height}px`
+        docsContainer.style.right = "auto"
+        docsContainer.style.bottom = "auto"
+}
+
+window.addEventListener("resize", syncDocsIframeBoundsToMonaco)
 
 window.addEventListener("keydown", (e) => {
             const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p';
             if (e.key === "F1" || isCtrlOrCmdP) {
 
-                    let isFocused = document.activeElement === document.querySelector("textarea.inputarea.monaco-mouse-cursor-text")
-                    if (isFocused) {
-                            globalEditor.trigger("", "editor.action.quickCommand", null);
-                            e.preventDefault();
-                            e.stopImmediatePropagation();
-
-                    } else {
-                            e.preventDefault();
-                            e.stopImmediatePropagation();
-                            updateActions()
-                            showPickMenu()
-                    }
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    openQuickCommandPalette()
             }
     }, {capture: true}  // run before the browser’s own handlers
 )
+
+const isDocsIframeVisible = () => {
+        const container = document.querySelector('.docs-iframe-container')
+        if (!container) return false
+        const style = window.getComputedStyle(container)
+        return style.visibility !== "hidden" && style.opacity !== "0"
+}
+
+const docsIframeKeydownHandler = (e) => {
+        const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p'
+        if (e.key !== "F1" && !isCtrlOrCmdP) return
+
+        e.preventDefault()
+        e.stopPropagation()
+        if (typeof hideDocsIframe === "function") hideDocsIframe()
+        openQuickCommandPalette()
+}
+
+const wireDocsIframeKeyForwarding = () => {
+        const iframe = document.getElementById('docs-iframe')
+        if (!iframe) return
+
+        const attach = () => {
+                try {
+                        const win = iframe.contentWindow
+                        if (!win) return
+                        win.removeEventListener('keydown', docsIframeKeydownHandler, true)
+                        win.addEventListener('keydown', docsIframeKeydownHandler, true)
+                } catch (err) {
+                        console.warn('Unable to attach key handler to docs iframe', err)
+                }
+        }
+
+        iframe.addEventListener('load', () => setTimeout(attach, 0))
+        attach()
+}
+
+window.addEventListener("keydown", (e) => {
+        const isCtrlOrCmdSlash = (e.ctrlKey || e.metaKey) && (e.key === "/" || e.key === "÷")
+        if (!isCtrlOrCmdSlash) return
+
+        e.preventDefault()
+        e.stopImmediatePropagation()
+
+        if (isDocsIframeVisible()) {
+                if (typeof window.exitDocsIframe === "function") {
+                        window.exitDocsIframe()
+                } else {
+                        hideDocsIframe()
+                }
+        } else {
+                window.switchToDocsIframe(null)
+        }
+}, {capture: true})
 
 window.showActionMenu = showActionMenu
 
@@ -363,6 +447,158 @@ window.handleOutput = monacoHandleOutput
 window.hideMonaco = hideMonaco
 window.showMonaco = showMonaco
 window.launchAll = monacoLaunchAll
+
+// Documentation iframe support
+let docsIframeAnimationGeneration = 0
+
+const defaultDocsIframeUrl = "http://localhost:9092/sample-docs.html"
+const historyBaseUrl = "http://localhost:9092/history"
+
+const historyUrlForFile = (filename) => {
+	const filePart = filename ? encodeURIComponent(filename) : "default"
+	return `${historyBaseUrl}?file=${filePart}`
+}
+
+const ensureDocsIframeHasContent = () => {
+	const iframe = document.getElementById('docs-iframe')
+	if (!iframe) return
+	const dataset = iframe.dataset || {}
+	if (dataset.docsLoadedOnce === "true") return
+
+	const currentSrc = iframe.getAttribute("src") || ""
+	const isBlank = !currentSrc || currentSrc === "about:blank" || currentSrc === window.location.href
+	if (isBlank) {
+		iframe.src = defaultDocsIframeUrl
+	}
+	iframe.dataset.docsLoadedOnce = "true"
+	wireDocsIframeKeyForwarding()
+}
+
+const showDocsIframe = () => {
+        docsIframeAnimationGeneration++
+        const container = document.querySelector('.docs-iframe-container')
+        syncDocsIframeBoundsToMonaco()
+        ensureDocsIframeHasContent()
+	if (container) {
+		container.style.visibility = "visible"
+		container.style.transition = "opacity 0.05s"
+		container.style.opacity = "1"
+	}
+}
+
+const hideDocsIframe = () => {
+	docsIframeAnimationGeneration++
+	let a = docsIframeAnimationGeneration
+        const container = document.querySelector('.docs-iframe-container')
+        if (container) {
+                container.style.transition = "opacity 0.5s"
+                container.style.opacity = "0"
+                setTimeout(() => {
+			if (docsIframeAnimationGeneration === a) {
+				container.style.visibility = "hidden"
+			}
+		}, 500)
+	}
+}
+
+const setDocsIframeContent = (url) => {
+	const iframe = document.getElementById('docs-iframe')
+	if (iframe) {
+		const alreadyLoaded = iframe.dataset.docsLoadedOnce === "true"
+		const currentSrc = iframe.getAttribute("src") || ""
+		const shouldChange = !alreadyLoaded || (url && url !== currentSrc)
+		if (shouldChange && url) {
+			iframe.src = url
+		}
+		if (url || !alreadyLoaded) {
+			iframe.dataset.docsLoadedOnce = "true"
+		}
+	}
+}
+
+const getDocsIframeElement = () => {
+	return document.getElementById('docs-iframe')
+}
+
+// Switch between Monaco editor and documentation iframe
+const switchToMonaco = () => {
+	hideDocsIframe()
+	showMonaco()
+	try {
+		if (window.globalEditor && typeof window.globalEditor.focus === "function") {
+			window.globalEditor.focus()
+		} else {
+			const textarea = document.querySelector("textarea.inputarea.monaco-mouse-cursor-text")
+			if (textarea) textarea.focus()
+		}
+	} catch (e) {
+		console.warn("Unable to focus Monaco after switching", e)
+	}
+}
+
+const switchToDocsIframe = (url) => {
+	hideMonaco()
+	if (url) {
+		setDocsIframeContent(url)
+	}
+	showDocsIframe()
+}
+
+const switchToHistoryForFile = (filename) => {
+	const url = historyUrlForFile(filename)
+	switchToDocsIframe(url)
+}
+
+window.showDocsIframe = showDocsIframe
+window.hideDocsIframe = hideDocsIframe
+window.setDocsIframeContent = setDocsIframeContent
+window.getDocsIframeElement = getDocsIframeElement
+window.switchToMonaco = switchToMonaco
+window.switchToDocsIframe = switchToDocsIframe
+window.switchToHistoryForFile = switchToHistoryForFile
+window.hideDocsIframeOnly = () => {
+	hideDocsIframe()
+}
+window.exitDocsIframe = () => {
+	hideDocsIframe()
+	const selection = window.selectedList
+	if (selection && selection.length === 1) {
+		showMonaco()
+	}
+}
+
+const docsIframeApiUrl = new URL("docsIframeApi.js", window.location.href).toString()
+
+const injectDocsApiIntoIframe = (iframe) => {
+	if (!iframe) return
+
+	try {
+		const targetWindow = iframe.contentWindow
+		const doc = targetWindow && targetWindow.document
+		if (!targetWindow || !doc) return
+		if (targetWindow.FieldAPI) return
+		if (doc.querySelector('script[data-field-api-injected="true"]')) return
+
+		const script = doc.createElement("script")
+		script.src = docsIframeApiUrl
+		script.defer = true
+		script.dataset.fieldApiInjected = "true"
+		;(doc.head || doc.body || doc.documentElement).appendChild(script)
+	} catch (error) {
+		console.warn("Unable to inject docs iframe API", error)
+	}
+}
+
+const wireDocsIframe = () => {
+	const iframe = getDocsIframeElement()
+	if (!iframe || iframe.dataset.fieldApiWired) return
+	iframe.dataset.fieldApiWired = "true"
+	iframe.addEventListener("load", () => {
+		injectDocsApiIntoIframe(iframe)
+	})
+}
+
+wireDocsIframe()
 
 
 // fails to inline with js()

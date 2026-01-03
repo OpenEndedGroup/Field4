@@ -27,9 +27,10 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
     currentFrameKeys += key
 
+    val color = if (selected.contains(a_box) || selected.contains(b_box)) SELECTED_CONNECTION_COLOR else UNSELECTED_CONNECTION_COLOR
     val dubins = dubinsShortestPath(screenToStandard(startScreen), screenToStandard(endScreen), radius)
     if (dubins == null) {
-        drawFallbackBezier(a, b, svg, opacity)
+        drawFallbackBezier(a, b, svg, opacity, color)
         return
     }
 
@@ -50,15 +51,18 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
         drawPoints.drop(1).forEach { pose ->
             lineTo(pose.x, pose.y)
         }
-        stroke = "rgba(128,128,128,${opacity})"
+        stroke = color
         strokeWidth = 1
         fill = "none"
+        this.path.setAttribute("opacity", opacity.toString())
         appendTo(svg)
     }
 
-    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, opacity)
+    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, opacity, color)
 }
 
+private const val SELECTED_CONNECTION_COLOR = "var(--field-cyan)"
+private const val UNSELECTED_CONNECTION_COLOR = "rgba(255,255,255,0.5)"
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
 var dubinsMinRadius = 190.0 // ends up being length / 3
 
@@ -74,14 +78,15 @@ private var needsFilterFrame = false
 private var filterFrameScheduled = false
 private val currentFrameKeys = mutableSetOf<String>()
 
-private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double) {
+private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double, color: String) {
     val sc = min(50.0, a.point.distance(b.point) / 3)
     path {
         d =
             "M${a.point.x} ${a.point.y} C${a.point.x + a.normal.x * sc} ${a.point.y + a.normal.y * sc} ${b.point.x + b.normal.x * sc} ${b.point.y + b.normal.y * sc} ${b.point.x} ${b.point.y}"
-        stroke = "rgba(128,128,128,${opacity})"
+        stroke = color
         strokeWidth = 1
         fill = "none"
+        this.path.setAttribute("opacity", opacity.toString())
         appendTo(svg)
     }
 
@@ -95,7 +100,8 @@ private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGEleme
         b.point.y + b.normal.y * sc,
         b.point.x,
         b.point.y,
-        opacity
+        opacity,
+        color
     )
 }
 
@@ -409,10 +415,10 @@ fun sampleDubinsPath(path: DubinsPath, start: DubinsPose, step: Double = 2.0): L
     return poses
 }
 
-private fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
-private fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
+fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
+fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
 
-private fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
+fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
     if (points.isEmpty()) return emptyList()
     if (points.size == 1) return listOf(DubinsPose(points.first().x, points.first().y, 0.0))
 
@@ -439,7 +445,7 @@ private fun posesFromPolyline(points: List<Point>): List<DubinsPose> {
     }
 }
 
-private fun interpolateHeading(a: Double, b: Double, t: Double): Double {
+fun interpolateHeading(a: Double, b: Double, t: Double): Double {
     var delta = mod2pi(b - a)
     if (delta > PI) delta -= 2 * PI
     return a + delta * t
@@ -905,7 +911,7 @@ fun connectCenters(rect1: DOMRect, rect2: DOMRect): Pair<ClippedResult, ClippedR
 
 
 fun addArrowHeadToCubicSpline(
-    svg: SVGElement, x0: Double, y0: Double, cx0: Double, cy0: Double, cx1: Double, cy1: Double, x1: Double, y1: Double, opacity: Double = 1.0
+    svg: SVGElement, x0: Double, y0: Double, cx0: Double, cy0: Double, cx1: Double, cy1: Double, x1: Double, y1: Double, opacity: Double = 1.0, color: String? = null
 ) {
     // Parameter at which to place the arrow head.
 //    val t = 40/(sqrt((x0-x1)*(x0-x1)+(y0-y1)*(y0-y1)) + sqrt((cx0-cx1)*(cx0-cx1)+(cy0-cy1)*(cy0-cy1)))
@@ -942,14 +948,15 @@ fun addArrowHeadToCubicSpline(
         lineTo(px, py)
         lineTo(ax2, ay2)
         close()
-        stroke = "black"
+        stroke = color ?: SELECTED_CONNECTION_COLOR
         strokeWidth = 2.0+(1-opacity)*2.0
-        fill = "rgba(255,255,255,$opacity)"
+        fill = color ?: "rgba(255,255,255,$opacity)"
+        this.path.setAttribute("opacity", opacity.toString())
         appendTo(svg)
     }
 }
 
-fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double = 1.0) {
+fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double = 1.0, color: String? = null) {
     val arrowLength = 12.0
     val arrowAngle = PI / 6
 
@@ -966,9 +973,10 @@ fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double =
         lineTo(tip.x, tip.y)
         lineTo(ax2, ay2)
         close()
-        stroke = "black"
+        stroke = color ?: SELECTED_CONNECTION_COLOR
         strokeWidth = 2.0 + (1 - opacity) * 2.0
-        fill = "rgba(255,255,255,$opacity)"
+        fill = color ?: "rgba(255,255,255,$opacity)"
+        this.path.setAttribute("opacity", opacity.toString())
         appendTo(svg)
     }
 }

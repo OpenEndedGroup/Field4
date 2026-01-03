@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shiki Magic Move — Kotlin (warm + max-height frame)</title>
+
+    <link
+            rel="stylesheet"
+            href="https://unpkg.com/shiki-magic-move@1.2.1/dist/style.css"
+    />
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            padding: 16px;
+            display: grid;
+            gap: 12px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        button {
+            width: fit-content;
+        }
+
+        /* Frame owns border radius + clipping + (optional) height stabilization */
+        #codeFrame {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Inner <pre> does token animation + scrolling */
+        pre.shiki-magic-move-container {
+            margin: 0;
+            padding: 16px;
+            overflow: auto;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre; /* keep height purely line-count based */
+            scrollbar-gutter: stable both-edges;
+        }
+    </style>
+</head>
+
+<body>
+<button id="toggle" disabled>Animate</button>
+
+<div id="codeFrame">
+    <pre id="code" class="shiki-magic-move-container"></pre>
+</div>
+
+<script type="module">
+    import { createHighlighter } from "https://esm.sh/shiki@3.20.0";
+    import {
+        codeToKeyedTokens,
+        createMagicMoveMachine,
+    } from "https://esm.sh/shiki-magic-move@1.2.1/core";
+    import { MagicMoveRenderer } from "https://esm.sh/shiki-magic-move@1.2.1/renderer";
+
+    const kotlinA = `fun greet(name: String) {
+  println("Hello, $name")
+}
+
+fun main() {
+  greet("World")
+}`;
+    const kotlinB = `data class Person(val name: String)
+
+fun greet(person: Person) {
+  println("Hello, " + person.name)
+}
+
+fun main() {
+  val p = Person("World")
+  greet(p)
+}`;
+
+    const pre = document.querySelector("#code");
+    const frame = document.querySelector("#codeFrame");
+    const btn = document.querySelector("#toggle");
+
+    const options = {
+        duration: 850,
+        stagger: 6,
+        lineNumbers: false,
+    };
+
+    // How fast the frame "settles" DOWN to final height after the token animation.
+    // (Set to 0 if you want it to just snap at the end.)
+    const FRAME_SETTLE_MS = 120;
+
+    const nextPaint = () =>
+        new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+        );
+
+    const waitForMagicMoveCss = async () => {
+        const link = [...document.querySelectorAll('link[rel="stylesheet"]')].find(
+            (l) => l.href.includes("shiki-magic-move") && !l.disabled
+        );
+        if (!link) return;
+        if (link.sheet) return;
+        await new Promise((res) => link.addEventListener("load", res, { once: true }));
+    };
+
+    const waitForFonts = async () => {
+        if (!document.fonts) return;
+        try {
+            await document.fonts.ready;
+        } catch {
+            // ignore
+        }
+    };
+
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const highlighter = await createHighlighter({
+        themes: ["github-dark"],
+        langs: ["kotlin"],
+    });
+
+    const machine = createMagicMoveMachine(
+        (code) =>
+            codeToKeyedTokens(highlighter, code, {
+                lang: "kotlin",
+                theme: "github-dark",
+            }),
+        options
+    );
+
+    const renderer = new MagicMoveRenderer(pre);
+    Object.assign(renderer.options, options);
+
+    // --- offscreen measurer to get the *final* layout height before animating ---
+    const measureFrame = document.createElement("div");
+    measureFrame.style.position = "fixed";
+    measureFrame.style.left = "-99999px";
+    measureFrame.style.top = "0";
+    measureFrame.style.visibility = "hidden";
+    measureFrame.style.pointerEvents = "none";
+    measureFrame.style.overflow = "hidden";
+    measureFrame.style.borderRadius = "12px";
+
+    const measurePre = document.createElement("pre");
+    measurePre.className = pre.className;
+    measureFrame.appendChild(measurePre);
+    document.body.appendChild(measureFrame);
+
+    const measureRenderer = new MagicMoveRenderer(measurePre);
+    Object.assign(measureRenderer.options, options);
+    measureRenderer.options.duration = 0;
+    measureRenderer.options.stagger = 0;
+
+    async function measureHeightFor(tokens) {
+        // Match the visible frame width so scrollbars/line-number gutters (if enabled) are consistent.
+        measureFrame.style.width = `${frame.getBoundingClientRect().width}px`;
+
+        measureRenderer.replace(tokens);
+        await nextPaint();
+
+        // Use the *frame* height (pre's height, including padding).
+        return Math.ceil(measureFrame.getBoundingClientRect().height);
+    }
+
+    async function transitionTo(nextCode) {
+        const { current, previous } = machine.commit(nextCode);
+
+        // Measure final height *before* animating anything.
+        const fromH = Math.ceil(frame.getBoundingClientRect().height);
+        const toH = await measureHeightFor(current);
+
+        // Freeze to the max height for the whole token animation.
+        const maxH = Math.max(fromH, toH);
+
+        frame.style.height = `${maxH}px`;
+        frame.style.overflow = "hidden";
+
+        // Make the <pre> fill the frozen frame so its background doesn't "boing".
+        pre.style.height = "100%";
+        pre.style.boxSizing = "border-box";
+
+        if (previous) renderer.replace(previous);
+
+        // baseline paint before starting the transition classes
+        await nextPaint();
+
+        // token animation
+        await renderer.render(current);
+
+        // After tokens finish, quickly settle DOWN to final height (or snap).
+        const settleMs = reduceMotion || renderer.options.duration === 0 ? 0 : FRAME_SETTLE_MS;
+
+        if (toH < maxH) {
+            if (settleMs > 0) {
+                const anim = frame.animate(
+                    [{ height: `${maxH}px` }, { height: `${toH}px` }],
+                    {
+                        duration: settleMs,
+                        easing: "cubic-bezier(0.2, 0, 0, 1)",
+                        fill: "both",
+                    }
+                );
+                await anim.finished;
+            } else {
+                frame.style.height = `${toH}px`;
+            }
+        } else {
+            // If growing (maxH == toH), we're already at the right height.
+            frame.style.height = `${toH}px`;
+        }
+
+        // Release back to natural layout after one paint.
+        await nextPaint();
+        frame.style.height = "";
+        frame.style.overflow = "";
+        pre.style.height = "";
+        pre.style.boxSizing = "";
+    }
+
+    // ---- FIRST-RUN WARMUP PATCH ----
+    btn.disabled = true;
+
+    await Promise.all([waitForMagicMoveCss(), waitForFonts()]);
+
+    // Initial render (visible) so the theme/styles exist in the DOM
+    let showingB = false;
+    renderer.replace(machine.commit(kotlinA).current);
+    await nextPaint();
+
+    // Warm up transitions invisibly at 0ms (B then back to A)
+    const saved = {
+        duration: renderer.options.duration,
+        stagger: renderer.options.stagger,
+    };
+
+    // Keep geometry measurable but don't show it while warming.
+    frame.style.opacity = "0";
+
+    renderer.options.duration = 0;
+    renderer.options.stagger = 0;
+
+    await transitionTo(kotlinB);
+    await transitionTo(kotlinA);
+
+    renderer.options.duration = saved.duration;
+    renderer.options.stagger = saved.stagger;
+
+    frame.style.opacity = "1";
+
+    btn.disabled = false;
+    // ---- END WARMUP PATCH ----
+
+    let busy = false;
+
+    btn.addEventListener("click", async () => {
+        if (busy) return;
+        busy = true;
+
+        const next = showingB ? kotlinA : kotlinB;
+        showingB = !showingB;
+
+        await transitionTo(next);
+
+        busy = false;
+    });
+</script>
+</body>
+</html>

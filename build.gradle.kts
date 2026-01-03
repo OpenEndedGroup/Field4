@@ -92,6 +92,7 @@ kotlin {
                 )
 
                 args += "-Dorg.lwjgl.system.stackSize=256"
+                args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
 
                 applicationDefaultJvmArgs.set(args)
             }

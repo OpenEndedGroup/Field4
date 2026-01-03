@@ -9,6 +9,7 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
 import web.url.URL
+import kotlin.js.Date
 
 var lastMouse = 0.0 to 0.0
 
@@ -259,7 +260,7 @@ fun insertFromWorkspace() {
     // Capture mouse position when the menu is opened
     val mouseX = lastMouse.first
     val mouseY = lastMouse.second
-    
+
     sendWithReply(Message("request-templates").payload(Directory(command = "list")), "templates") { message, payload ->
 
         println(" request templates got $message $payload")
@@ -268,16 +269,74 @@ fun insertFromWorkspace() {
 
         val options = eval("[]")
 
-        directory.value.forEach {
+        // Parse template metadata if available
+        val metadataList = try {
+            directory.metadata?.let {
+                Json.decodeFromJsonElement<List<TemplateMetadata>>(it)
+            } ?: emptyList()
+        } catch (e: Exception) {
+            console.log("Failed to parse template metadata: ${e.message}", e)
+            emptyList()
+        }
+
+        val metadataMap = metadataList.associateBy { it.name }
+
+        // Helper function to escape strings for JavaScript
+        fun escapeJs(str: String): String {
+            return str.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+                .replace("\u2028", "\\u2028")  // Unicode line separator
+                .replace("\u2029", "\\u2029")  // Unicode paragraph separator
+        }
+
+        directory.value.forEach { templateName ->
+            val metadata = metadataMap[templateName]
+
+            // Format the description and detail
+            val description = when (metadata?.source) {
+                "workspace" -> "Workspace file"
+                "workspace-template" -> "Workspace template"
+                "bundled-template" -> "Bundled template"
+                "remote-template" -> "Remote template"
+                else -> "Template"
+            }
+
+            val detail = if (metadata != null && metadata.boxDocumentation.isNotEmpty()) {
+                buildString {
+                    // Add last modified date if available
+                    if (metadata.lastModified > 0) {
+                        // lastModified is already in milliseconds
+                        val date = Date(metadata.lastModified)
+                        append("Modified: ${date.toLocaleDateString()}\n\n")
+                    }
+
+                    // Add box documentation
+                    append(metadata.boxDocumentation)
+                }
+            } else {
+                "No documentation available"
+            }
+
+            val escapedTemplateName = escapeJs(templateName)
+            val escapedDescription = escapeJs(description)
+            val escapedDetail = escapeJs(detail)
+
             val e = """
             ({
-                id:'insert-$it', label:'$it', 
+                id:'insert-$escapedTemplateName', 
+                label:'$escapedTemplateName', 
+                description: '$escapedDescription',
+                detail: '$escapedDetail',
                 canvasKeybinding: (event) => false, 
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
                             command:"insert",
-                            value:["$it"],
+                            value:["$escapedTemplateName"],
                             mouseX: $mouseX,
                             mouseY: $mouseY
                         })
@@ -622,6 +681,29 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => false,
             run: () => {
                 import("./afield.mjs").then( (afield) => {afield.send("provisional-reject-all", {})})
+            }
+        },{
+            id:'switch-to-docs-iframe',
+            label:"Switch to Documentation Iframe",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                // Toggle into docs; default URL is handled by switchToDocsIframe/ensureDocsIframeHasContent
+                window.switchToDocsIframe(null);
+            }
+        },{
+            id:'show-document-history',
+            label:"Show Document History",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                const filename = window.currentDocumentFilename || "default";
+                window.switchToHistoryForFile(filename);
+            }
+        },{
+            id:'switch-to-monaco-editor',
+            label:"Switch to Monaco Editor",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.switchToMonaco();
             }
         }]
     """.trimIndent()

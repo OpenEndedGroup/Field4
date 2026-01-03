@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
@@ -19,6 +20,14 @@ import kotlin.uuid.Uuid
 
 @Serializable
 data class RemoteTemplate(val name: String, val has_edn: Boolean)
+
+@Serializable
+data class TemplateMetadata(
+    val name: String,
+    val lastModified: Long,
+    val boxDocumentation: String, // Formatted documentation from box metadata
+    val source: String = "template"
+)
 
 // Configuration for template servers - comma-separated list of URLs
 val templateServers: List<String> by lazy {
@@ -83,6 +92,112 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
 }
 
 /**
+ * Extract documentation from template boxes.
+ * Accumulates metadata from all boxes, orders by increasing frame.y,
+ * and creates a formatted documentation string.
+ */
+private fun extractTemplateMetadata(templatePath: String, templateName: String, source: String): TemplateMetadata? {
+    try {
+        val file = File(templatePath)
+        if (!file.exists()) return null
+
+        val lastModified = file.lastModified()
+        val ednContent = file.readText()
+
+        val directory = file.parentFile?.absolutePath ?: File(".").absolutePath
+        val savingContext = SavingContext()
+        val transfers = savingContext.readEdnTransfersFromString(ednContent)
+
+        // Sort boxes by frame.y (increasing) without instantiating boxes
+        val sortedTransfers = transfers.sortedBy { transfer ->
+            val frame = savingContext.resolveStoredValue(transfer.properties["frame"], directory) as? Rect
+            frame?.y ?: 0.0
+        }
+
+        // Sidecar-able properties (excluding "code")
+        val sidecarProperties = listOf("vertex", "fragment", "compute", "task", "mesh")
+
+        // Build documentation from metadata properties
+        val docBuilder = StringBuilder()
+
+        sortedTransfers.forEach { transfer ->
+            val metadata = savingContext.resolveStoredValue(transfer.properties["metadata"], directory) as? String
+            if (!metadata.isNullOrEmpty()) {
+                try {
+                    val parsed = parseMetadata(metadata)
+
+                    parsed["doc"]?.let { doc ->
+                        if (doc.toString().isNotEmpty()) {
+                            docBuilder.append(doc.toString().trim()).append("\n\n")
+                        }
+                    }
+
+                    parsed["docPreamble"]?.let { preamble ->
+                        if (preamble.toString().isNotEmpty()) {
+                            docBuilder.append(preamble.toString().trim()).append("\n\n")
+                        }
+                    }
+
+                    parsed["boxPreamble"]?.let { boxPreamble ->
+                        if (boxPreamble.toString().isNotEmpty()) {
+                            docBuilder.append(boxPreamble.toString().trim()).append("\n\n")
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ignore metadata parsing errors
+                }
+            }
+        }
+
+        // Add compressed box description
+        val rawDescriptions = sortedTransfers.mapNotNull { transfer ->
+            val boxName = savingContext.resolveStoredValue(transfer.properties["name"], directory)
+                ?.toString()
+                ?.takeIf { it.isNotEmpty() }
+                ?: return@mapNotNull null
+
+            // Find which sidecar properties this box has
+            val properties = sidecarProperties.filter { prop ->
+                val value = savingContext.resolveStoredValue(transfer.properties[prop], directory)
+                value is String && value.trim().isNotEmpty()
+            }
+
+            if (properties.isEmpty()) {
+                boxName
+            } else {
+                "$boxName/{${properties.joinToString(",")}}"
+            }
+        }
+
+        // Compress repeated names to reduce noise (e.g., "Untitled x5")
+        val boxDescriptions = LinkedHashMap<String, Int>().apply {
+            rawDescriptions.forEach { desc ->
+                this[desc] = (this[desc] ?: 0) + 1
+            }
+        }.map { (desc, count) ->
+            if (count > 1) "$desc × $count" else desc
+        }
+
+        if (boxDescriptions.isNotEmpty()) {
+            if (docBuilder.isNotEmpty()) {
+                docBuilder.appendLine()
+            }
+            docBuilder.append("Boxes: ${boxDescriptions.joinToString(", ")}")
+        }
+
+        return TemplateMetadata(
+            name = templateName,
+            lastModified = lastModified,
+            boxDocumentation = docBuilder.toString().trim(),
+            source = source
+        )
+    } catch (e: Exception) {
+        lprintln("warning,template", "Failed to extract metadata for $templateName: ${e.message}")
+        return null
+    }
+}
+
+/**
  * Initialize template server querying in the background
  */
 private fun initializeTemplateServers() {
@@ -120,11 +235,55 @@ fun templating() {
 
         val templates2 = SavingContext().listTemplates(app + "/templates/")
         val templates = SavingContext().listTemplates(home)
+        val templatesHome = SavingContext().listTemplates("$home/templates")
 
         // Include remote templates from all configured servers
         val remoteTemplates = remoteTemplatesCache.values.flatten()
 
-        reply(Message("list").payload(Directory(command = "list", value = templates + templates2 + remoteTemplates)))
+        val sourceByName = mutableMapOf<String, String>()
+        templates.forEach { sourceByName.putIfAbsent(it, "workspace") }
+        templatesHome.forEach { sourceByName.putIfAbsent(it, "workspace-template") }
+        templates2.forEach { sourceByName.putIfAbsent(it, "bundled-template") }
+        remoteTemplates.forEach { sourceByName.putIfAbsent(it, "remote-template") }
+
+        val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
+
+        // Extract metadata for each template
+        val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
+            val source = sourceByName[templateName] ?: "template"
+            // Try to find the template file in order of preference
+            val paths = listOf(
+                "$home/$templateName.edn" to "$home",
+                "$home/$templateName/metadata.edn" to "$home/$templateName",
+                "$home/templates/$templateName.edn" to "$home/templates",
+                "$home/templates/$templateName/metadata.edn" to "$home/templates/$templateName",
+                "$app/templates/$templateName.edn" to "$app/templates",
+                "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
+            )
+
+            for ((templateFile, directory) in paths) {
+                val file = File(templateFile)
+                if (file.exists()) {
+                    return@mapNotNull extractTemplateMetadata(templateFile, templateName, source)
+                }
+            }
+
+            // For remote templates, we don't have metadata yet
+            TemplateMetadata(
+                name = templateName,
+                lastModified = 0,
+                boxDocumentation = "",
+                source = source
+            )
+        }
+
+        reply(Message("list").payload(
+            Directory(
+                command = "list",
+                value = allTemplateNames,
+                metadata = Json.encodeToJsonElement(templateMetadataList)
+            )
+        ))
 
         Handled.yes
     })
@@ -140,10 +299,10 @@ fun templating() {
 
         val loadedBoxes = exec.value.flatMap { templateName ->
             // Try local templates first
-            if (templatesHome.contains(templateName)) {
-                SavingContext().cloneInto("$home/$templateName")
+            val boxes = if (templatesHome.contains(templateName)) {
+                SavingContext().cloneInto(resolveTemplatePath("$home/templates", templateName))
             } else if (templatesApp.contains(templateName)) {
-                SavingContext().cloneInto("$app/templates/$templateName")
+                SavingContext().cloneInto(resolveTemplatePath("$app/templates", templateName))
             } else {
                 // Try remote templates
                 var boxes = emptySet<afield.Box>()
@@ -164,36 +323,52 @@ fun templating() {
                 }
                 boxes
             }
+            
+            // Set templateId on all loaded boxes
+            boxes.forEach { box ->
+                box.templateId = templateName
+            }
+            
+            boxes
         }
-        
+
         // Calculate center of mass and translate boxes to mouse position if provided
         if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
-            // Calculate center of mass (average of all box centers)
-            val centers = loadedBoxes.map { box ->
-                val frame = box.frame
-                Pair(frame.cx, frame.cy)
+            // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+            // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+            // Translating them would incorrectly add the offset twice since they move with their parent.
+            val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
+            val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
+
+            if (topLevelBoxes.isNotEmpty()) {
+                // Calculate center of mass (average of all top-level box centers)
+                val centers = topLevelBoxes.map { box ->
+                    val frame = box.frame
+                    Pair(frame.cx, frame.cy)
+                }
+
+                val centerX = centers.map { it.first }.average()
+                val centerY = centers.map { it.second }.average()
+
+                // Calculate translation needed to move center of mass to mouse position
+                val deltaX = exec.mouseX - centerX
+                val deltaY = exec.mouseY - centerY
+
+                // Apply translation only to top-level boxes
+                topLevelBoxes.forEach { box ->
+                    val frame = box.frame
+                    box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+                }
+
+                lprintln("Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
             }
-            
-            val centerX = centers.map { it.first }.average()
-            val centerY = centers.map { it.second }.average()
-            
-            // Calculate translation needed to move center of mass to mouse position
-            val deltaX = exec.mouseX - centerX
-            val deltaY = exec.mouseY - centerY
-            
-            // Apply translation to all boxes
-            loadedBoxes.forEach { box ->
-                val frame = box.frame
-                box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
-            }
-            
-            lprintln("Translated ${loadedBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
         }
-        
+
         loadedBoxes.forEach {
             it.resyncAll()
         }
         si.topologyGeneration++
+        si.autorunBoxes(loadedBoxes)
 
         Handled.yes
     })

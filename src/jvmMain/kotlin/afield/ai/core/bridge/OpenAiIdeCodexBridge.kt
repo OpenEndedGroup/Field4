@@ -104,6 +104,7 @@ class OpenAiIdeCodexBridge(
         vectorStoreIds: List<String> = emptyList(),
         maxOutputTokens: Long = 20480,
         maxToolRounds: Int = 8,
+        imageDataUrls: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): SendResult {
         val t0 = System.nanoTime()
@@ -126,6 +127,9 @@ class OpenAiIdeCodexBridge(
                 appendLine("previousResponseId=${state.previousResponseId ?: "<none>"}")
                 appendLine("fileKey=${state.fileKey}")
                 appendLine("inputChars=${inputText.length}")
+                if (imageDataUrls.isNotEmpty()) {
+                    appendLine("images=${imageDataUrls.size}")
+                }
                 if (vectorStoreIds.isNotEmpty()) {
                     appendLine("vectorStoreIds=${vectorStoreIds.joinToString(",")}")
                 }
@@ -136,13 +140,35 @@ class OpenAiIdeCodexBridge(
 
         info(
             "convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} " +
-                "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size}"
+                "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size} images=${imageDataUrls.size}"
         )
 
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
-            .input(inputText)
             .maxOutputTokens(maxOutputTokens)
+        if (imageDataUrls.isEmpty()) {
+            paramsBuilder.input(inputText)
+        } else {
+            val message = ResponseInputItem.Message.builder()
+                .role(ResponseInputItem.Message.Role.USER)
+                .addInputTextContent(inputText)
+                .apply {
+                    imageDataUrls.forEach { url ->
+                        try {
+                            addContent(
+                                ResponseInputImage.builder()
+                                    .imageUrl(url)
+                                    .detail(ResponseInputImage.Detail.HIGH)
+                                    .build()
+                            )
+                        } catch (_: Exception) {
+                            // Ignore malformed image strings but keep the rest flowing.
+                        }
+                    }
+                }
+                .build()
+            paramsBuilder.input(ResponseCreateParams.Input.ofResponse(listOf(ResponseInputItem.ofMessage(message))))
+        }
         if (state.previousResponseId == null) {
             paramsBuilder.conversation(state.conversationId)
         } else {

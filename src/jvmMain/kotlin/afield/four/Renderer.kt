@@ -1,8 +1,9 @@
 package afield.four
 
 import afield.Named
-import afield.four.buffers.VulkanBuffer
+import afield.Rect
 import afield.four.device.*
+import afield.four.device.Queue
 import afield.four.device.Queue.GraphicsQueue
 import afield.four.device.Queue.PresentQueue
 import afield.four.modules.ComputeModulePointer
@@ -10,41 +11,23 @@ import afield.four.modules.MeshModulePointer
 import afield.four.modules.ModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
-import afield.four.texture.ImageView
-import afield.Rect
-import afield.four.util.MapOfSequences
 import afield.four.util.AutoDisposer
+import afield.four.util.MapOfSequences
 import afield.four.util.Options
 import afield.four.util.Window
-import afield.logger.lprintln
 import afield.logTime
 import afield.logTime_
+import afield.logger.lprintln
+import kotlinx.coroutines.*
 import org.joml.primitives.Rectanglef
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.KHRSurface
-import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
-import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
-import kotlin.coroutines.coroutineContext
-import org.lwjgl.vulkan.VK13.vkQueueSubmit2
+import java.lang.Runnable
+import java.util.*
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
-import java.util.ArrayDeque
-import org.lwjgl.vulkan.VkCommandBuffer
-import org.lwjgl.vulkan.VkSubmitInfo2
-import org.lwjgl.vulkan.VkSemaphoreSubmitInfo
-import org.lwjgl.vulkan.VkCommandBufferSubmitInfo
-import org.lwjgl.vulkan.VkViewport
-import org.lwjgl.vulkan.VkRect2D
-import org.lwjgl.vulkan.VkExtent2D
-import org.lwjgl.vulkan.VkOffset2D
+import kotlin.coroutines.coroutineContext
 
 fun interface Target { fun render(command: CommandBuffer, index: Int) }
 
@@ -73,11 +56,11 @@ object CPUSpan {
         val p90Ms: Double,
         val p99Ms: Double
     )
-    private val stats = linkedMapOf<String, Stat>()
-    private val lock = Any()
-    private val version = AtomicLong(0)
-    private val listeners = mutableListOf<(Long) -> Unit>()
-    fun time(label: String, block: () -> Unit) {
+    val stats = linkedMapOf<String, Stat>()
+    val lock = Any()
+    val version = AtomicLong(0)
+    val listeners = mutableListOf<(Long) -> Unit>()
+    inline fun time(label: String,  block: () -> Unit) {
         val t0 = System.nanoTime()
         block()
         val dt = System.nanoTime() - t0
@@ -88,7 +71,7 @@ object CPUSpan {
         notifyListeners(v)
     }
 
-    private fun notifyListeners(v: Long) {
+    fun notifyListeners(v: Long) {
         val targets = synchronized(lock) { listeners.toList() }
         targets.forEach { l -> runCatching { l(v) } }
     }
@@ -205,6 +188,16 @@ class Renderer(
         get() = defaultContext.renderTarget
         set(value) { defaultContext.renderTarget = value }
 
+    // Dedicated single-thread for all vkQueue* and xrBeginFrame/xrEndFrame calls.
+    private val queueThreadRef = java.util.concurrent.atomic.AtomicReference<Thread?>()
+    private val queueExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "vk-queue-thread").apply {
+            isDaemon = true
+            queueThreadRef.set(this)
+        }
+    }
+    private val queueDispatcher = queueExecutor.asCoroutineDispatcher()
+
     private val windowContexts = mutableListOf<WindowContext>()
     private val defaultContext get() = windowContexts.first()
     fun windowContext(index: Int = 0): WindowContext = windowContexts[index]
@@ -213,9 +206,33 @@ class Renderer(
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
 
+    // Vulkan queues require external synchronization. Use this lock to serialize all queue operations
+    // (submit/present) across any threads that might enter the renderer.
+    // Use the same lock as Queue to serialize all vkQueue* calls across the app.
+    private val queueLock = Queue.globalQueueLock
+
+    /** Run a block on the dedicated queue thread; if already on it, run inline. */
+    fun <T> runOnQueueThread(block: () -> T): T {
+        val qt = queueThreadRef.get()
+        return if (Thread.currentThread() === qt) {
+            block()
+        } else {
+            queueExecutor.submit<T> { block() }.get()
+        }
+    }
+
+    /** Suspend-friendly variant to hop to the queue thread. */
+    suspend fun <T> onQueueThread(block: () -> T): T {
+        val qt = queueThreadRef.get()
+        return if (Thread.currentThread() === qt) block() else kotlinx.coroutines.withContext(queueDispatcher) { block() }
+    }
+
     var renderStart = MapOfSequences<String>()
     var renderEnd = MapOfSequences<String>()
     var currentCommandBuffer: CommandBuffer? = null
+
+    /** Optional OpenXR HMD target rendered once per frame (after window presents). */
+    var openXRHmdTarget: afield.four.targets.OpenXRHmdTarget? = null
 
     data class FrameMarkers(
         var tsFrameBegin: Int = -1,
@@ -250,13 +267,21 @@ class Renderer(
     }
 
     init {
+        if (Options.enableVR) {
+            // Prepare OpenXR instance/system and fetch graphics requirements before VkDevice creation.
+            Instance.prepareOpenXRBootstrap()
+        }
         instance = Instance(Options.validate)
         physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
-        device = Device(physicalDevice)
+        device = Device(physicalDevice, instance)
         instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)
         graphQueue = GraphicsQueue(device, 0)
         val primarySurface = Surface(physicalDevice, window.windowHandle)
-        presentQueue = PresentQueue(device, primarySurface, 0)
+        // Prefer a different queue index for present to avoid contending with the graphics queue (which XR/runtime may also touch).
+        val gfxFamily = graphQueue.queueFamilyIndex
+        val gfxQueueCount = physicalDevice.vkQueueFamilyProps[gfxFamily].queueCount()
+        val presentQueueIndex = if (gfxQueueCount > 1) 1 else 0
+        presentQueue = PresentQueue(device, primarySurface, presentQueueIndex)
         commandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         computeCommandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         pipelineCache = PipelineCache(device)
@@ -280,6 +305,13 @@ class Renderer(
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
+        if (Options.enableVR) {
+            Instance.cleanupOpenXRBootstrap()
+        }
+
+        openXRHmdTarget?.cleanup()
+        openXRHmdTarget = null
+
         windowContexts.forEach { ctx ->
             ctx.profilerState?.profiler?.destroy()
             ctx.commandBuffers.forEach { it.cleanup() }
@@ -335,10 +367,14 @@ class Renderer(
 
             try {
                 CPUSpan.time("acquire[$ctxIndex]") {
-                    if (w.isResized || (ctx.swapChain.acquireNextImage().also { imageIndex = it }) < 0) {
-                        w.resetResized()
-                        resize(ctx)
-                        imageIndex = ctx.swapChain.acquireNextImage()
+                    imageIndex = runOnQueueThread {
+                        var idx = ctx.swapChain.acquireNextImage()
+                        if (w.isResized || idx < 0) {
+                            w.resetResized()
+                            resize(ctx)
+                            idx = ctx.swapChain.acquireNextImage()
+                        }
+                        idx
                     }
                 }
 
@@ -383,7 +419,9 @@ class Renderer(
                 }
 
                 CPUSpan.time("present[$ctxIndex]") {
-                    if (ctx.swapChain.presentImage(presentQueue, imageIndex)) w.isResized = true
+                    runOnQueueThread {
+                        if (ctx.swapChain.presentImage(presentQueue, imageIndex)) w.isResized = true
+                    }
                 }
 
                 ctx.profilerState?.pending?.addLast(Pending(imageIndex))
@@ -391,6 +429,9 @@ class Renderer(
                 lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
             }
         }
+
+        // Render to OpenXR HMD once per frame.
+        openXRHmdTarget?.renderFrame()
 
         // Deferred cleanup queue (use max frames-in-flight across all contexts)
         cleanupStack.add(frameCounter to cleanup)
@@ -520,6 +561,10 @@ class Renderer(
         frameId: Long
     ) {
         CPUSpan.time("record_gfx[$ctxIndex]") {
+            // Ensure the per-image graphics fence from any previous use is complete before re-recording
+            ctx.fences[imageIndex].fenceWait()
+            ctx.fences[imageIndex].reset()
+
             val swapChainExtent = ctx.swapChain.swapChainExtent
             val width = swapChainExtent.width()
             val height = swapChainExtent.height()
@@ -656,48 +701,51 @@ class Renderer(
         queue: Queue,
         computeSemaphore: Semaphore
     ) {
-        MemoryStack.stackPush().use { stack ->
-            val idx = context.swapChain.currentFrame
-            currentFence.reset()
-            val sync = context.swapChain.syncSemaphoresList[idx]
+        runOnQueueThread {
+            MemoryStack.stackPush().use { stack ->
+                val idx = context.swapChain.currentFrame
+                val sync = context.swapChain.syncSemaphoresList[idx]
 
-            // Command buffer info
-            val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
-                .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO)
-            cbInfo[0]
-                .commandBuffer(commandBuffer.vkCommandBuffer)
-                .deviceMask(0)
+                // Command buffer info
+                val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO)
+                cbInfo[0]
+                    .commandBuffer(commandBuffer.vkCommandBuffer)
+                    .deviceMask(0)
 
-            // Wait semaphores: image-acquired + compute-finished
-            val waits = VkSemaphoreSubmitInfo.calloc(2, stack)
-            waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                .semaphore(sync.imgAcquisitionSemaphore.vkSemaphore)
-                .value(sync.imgAcquisitionSemaphore.currentValue())
-                .stageMask(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
-                .deviceIndex(0)
-            waits[1].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                .semaphore(computeSemaphore.vkSemaphore)
-                .value(computeSemaphore.currentValue())
-                // conservative: ensure graphics won't start any stage before compute finished
-                .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
-                .deviceIndex(0)
+                // Wait semaphores: image-acquired + compute-finished
+                val waits = VkSemaphoreSubmitInfo.calloc(2, stack)
+                waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                    .semaphore(sync.imgAcquisitionSemaphore.vkSemaphore)
+                    .value(sync.imgAcquisitionSemaphore.currentValue())
+                    .stageMask(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
+                    .deviceIndex(0)
+                waits[1].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                    .semaphore(computeSemaphore.vkSemaphore)
+                    .value(computeSemaphore.currentValue())
+                    // conservative: ensure graphics won't start any stage before compute finished
+                    .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
+                    .deviceIndex(0)
 
-            // Signal semaphore: render complete
-            val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
-            signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                .semaphore(sync.renderCompleteSemaphore.vkSemaphore)
-                .value(sync.renderCompleteSemaphore.nextSignalValue())
-                .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
-                .deviceIndex(0)
+                // Signal semaphore: render complete
+                val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
+                signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                    .semaphore(sync.renderCompleteSemaphore.vkSemaphore)
+                    .value(sync.renderCompleteSemaphore.nextSignalValue())
+                    .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
+                    .deviceIndex(0)
 
-            val submit2 = VkSubmitInfo2.calloc(1, stack)
-                .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO_2)
-            submit2[0]
-                .pWaitSemaphoreInfos(waits)
-                .pSignalSemaphoreInfos(signals)
-                .pCommandBufferInfos(cbInfo)
+                val submit2 = VkSubmitInfo2.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO_2)
+                submit2[0]
+                    .pWaitSemaphoreInfos(waits)
+                    .pSignalSemaphoreInfos(signals)
+                    .pCommandBufferInfos(cbInfo)
 
-            vkQueueSubmit2(queue.vkQueue, submit2, currentFence.vkFence)
+                synchronized(queueLock) {
+                    vkQueueSubmit2(queue.vkQueue, submit2, currentFence.vkFence)
+                }
+            }
         }
     }
 
@@ -709,30 +757,32 @@ class Renderer(
         signalSemaphore: Semaphore,
         queue: Queue
     ) {
-        MemoryStack.stackPush().use { stack ->
-            currentComputeFence.reset()
+        runOnQueueThread {
+            MemoryStack.stackPush().use { stack ->
+                val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO)
+                cbInfo[0]
+                    .commandBuffer(commandBuffer.vkCommandBuffer)
+                    .deviceMask(0)
 
-            val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
-                .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO)
-            cbInfo[0]
-                .commandBuffer(commandBuffer.vkCommandBuffer)
-                .deviceMask(0)
+                // No waits; just signal on completion of the compute work
+                val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
+                signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                    .semaphore(signalSemaphore.vkSemaphore)
+                    .value(signalSemaphore.nextSignalValue())
+                    .stageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                    .deviceIndex(0)
 
-            // No waits; just signal on completion of the compute work
-            val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
-            signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                .semaphore(signalSemaphore.vkSemaphore)
-                .value(signalSemaphore.nextSignalValue())
-                .stageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
-                .deviceIndex(0)
+                val submit2 = VkSubmitInfo2.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO_2)
+                submit2[0]
+                    .pCommandBufferInfos(cbInfo)
+                    .pSignalSemaphoreInfos(signals)
 
-            val submit2 = VkSubmitInfo2.calloc(1, stack)
-                .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO_2)
-            submit2[0]
-                .pCommandBufferInfos(cbInfo)
-                .pSignalSemaphoreInfos(signals)
-
-            vkQueueSubmit2(queue.vkQueue, submit2, currentComputeFence.vkFence)
+                synchronized(queueLock) {
+                    vkQueueSubmit2(queue.vkQueue, submit2, currentComputeFence.vkFence)
+                }
+            }
         }
     }
 

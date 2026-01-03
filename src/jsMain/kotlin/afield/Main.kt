@@ -18,9 +18,10 @@ import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.w3c.dom.HTMLElement
-import org.w3c.dom.MutationObserver
-import org.w3c.dom.MutationObserverInit
+import org.w3c.dom.HTMLInputElement
+import org.w3c.dom.HTMLTextAreaElement
 import org.w3c.dom.asList
+import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
@@ -41,6 +42,11 @@ external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand
 
 external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
+external fun showDocsIframe(): dynamic
+external fun hideDocsIframe(): dynamic
+external fun setDocsIframeContent(url: String): dynamic
+external fun switchToMonaco(): dynamic
+external fun switchToDocsIframe(url: String?): dynamic
 external fun initMenuSupport(): dynamic
 
 
@@ -68,9 +74,6 @@ lateinit var moveHandler: (dynamic) -> Unit
 lateinit var resizeHandler: (dynamic) -> Unit
 lateinit var monacoResizeHandler: (dynamic) -> Unit
 var mainTranslation = listOf(0.0, 0.0)
-lateinit var annotationSVGLayer: SVGSVGElement
-private var editorVisibilityObserver: MutationObserver? = null
-private var editorPropertyObserver: MutationObserver? = null
 
 @JsExport
 @JsName("launchNumber")
@@ -96,7 +99,7 @@ var events = HashMap<String, () -> Boolean>()
 var visibleLayers = mutableSetOf("default")
 var activeLayer: String? = null
 
-private fun selectionContextChanged() {
+fun selectionContextChanged() {
     if (currentAnnotations.isNotEmpty()) {
         redrawSlideAnnotations()
         scheduleSlideAnnotationRedraw(10)
@@ -109,6 +112,19 @@ fun serviceEvents() {
     }
 }
 
+private fun isEditorFocused(): Boolean {
+    val active = document.activeElement ?: return false
+    val className = active.asDynamic().className?.toString() ?: ""
+    val inMonacoTextArea = active.classList?.contains("monaco-mouse-cursor-text") == true
+    val closestMonaco = try {
+        active.asDynamic().closest?.call(active, ".monaco-editor") != null
+    } catch (e: dynamic) {
+        false
+    }
+    val textInput = active is HTMLTextAreaElement || active is HTMLInputElement
+    return inMonacoTextArea || closestMonaco || textInput || className.contains("monaco", ignoreCase = true)
+}
+
 var slideNoteAnchorUid: String? = null
 
 fun findBoxByUid(uid: String?): HTMLElement? {
@@ -117,7 +133,7 @@ fun findBoxByUid(uid: String?): HTMLElement? {
     return boxes.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
 }
 
-private fun positionSlideNoteOverlay(overlay: HTMLElement, anchorUid: String?) {
+fun positionSlideNoteOverlay(overlay: HTMLElement, anchorUid: String?) {
     val anchorBox = findBoxByUid(anchorUid) ?: selected.firstOrNull()
 
     overlay.setAttribute("data-anchor-uid", anchorUid ?: "")
@@ -160,7 +176,278 @@ private fun positionSlideNoteOverlay(overlay: HTMLElement, anchorUid: String?) {
     }
 }
 
-private fun repositionSlideNoteOverlayIfVisible() {
+// Chat UI support
+data class ChatWidget(
+    val widgetId: String,
+    val slideshowId: String,
+    val slideNumber: Int,
+    val container: HTMLElement,
+    val content: HTMLElement,
+    val messagesArea: HTMLElement,
+    val messageInput: HTMLTextAreaElement
+)
+
+private val chatWidgets = mutableMapOf<String, ChatWidget>()
+
+private fun cleanupChatWidgets() {
+    val iterator = chatWidgets.iterator()
+    while (iterator.hasNext()) {
+        val entry = iterator.next()
+        if (!entry.value.container.isConnected) {
+            iterator.remove()
+        }
+    }
+}
+
+private fun widgetsFor(slideshowId: String, slideNumber: Int): List<ChatWidget> =
+    chatWidgets.values.filter { it.slideshowId == slideshowId && it.slideNumber == slideNumber }
+
+fun loadChatMessages(slideshowId: String, slideNumber: Int) {
+    send("load-chat-messages", js("{slideshowId: slideshowId, slideNumber: slideNumber}"))
+}
+
+fun postChatMessage(slideshowId: String, slideNumber: Int, message: String) {
+    val username = URLSearchParams(document.location?.search).get("username") ?: "anonymous"
+    send("post-chat-message", js("{slideshowId: slideshowId, slideNumber: slideNumber, username: username, message: message}"))
+}
+
+private fun createChatWidget(
+    slideshowId: String,
+    slideNumber: Int,
+    expanded: Boolean = false,
+    showHeader: Boolean = true
+): ChatWidget {
+    cleanupChatWidgets()
+    val widgetId = "chat-${Uuid.random()}"
+
+    val chatContainer = document.createElement("div") as HTMLElement
+    chatContainer.id = "chat-container-$widgetId"
+    chatContainer.setAttribute("data-chat-widget-id", widgetId)
+    chatContainer.setAttribute("data-chat-slideshow", slideshowId)
+    chatContainer.setAttribute("data-chat-slide", slideNumber.toString())
+    chatContainer.style.apply {
+        marginTop = if (showHeader) "15px" else "8px"
+        borderTop = if (showHeader) "1px solid rgba(255, 255, 255, 0.1)" else "none"
+        paddingTop = if (showHeader) "10px" else "0px"
+    }
+
+    val chatContent = document.createElement("div") as HTMLElement
+    chatContent.id = "chat-content-$widgetId"
+    chatContent.style.display = if (showHeader) {
+        if (expanded) "block" else "none"
+    } else {
+        "block"
+    }
+
+    val messagesArea = document.createElement("div") as HTMLElement
+    messagesArea.id = "chat-messages-$widgetId"
+    messagesArea.style.apply {
+        maxHeight = "200px"
+        overflowY = "auto"
+        marginBottom = "10px"
+        padding = "8px"
+        backgroundColor = "rgba(0, 0, 0, 0.3)"
+        borderRadius = "4px"
+        fontSize = "12px"
+    }
+
+    val inputArea = document.createElement("div") as HTMLElement
+    inputArea.style.apply {
+        display = "flex"
+        marginTop = "8px"
+        backgroundColor = "rgba(0, 0, 0, 0.3)"
+        border = "1px solid rgba(255, 255, 255, 0.08)"
+        borderRadius = "4px"
+        padding = "6px"
+    }
+
+    val messageInput = document.createElement("textarea") as HTMLTextAreaElement
+    messageInput.id = "chat-input-$widgetId"
+    messageInput.setAttribute("placeholder", "Add a comment + return")
+    messageInput.style.apply {
+        flex = "1"
+        minHeight = "60px"
+        padding = "6px"
+        backgroundColor = "rgba(0, 0, 0, 0.3)"
+        color = "#e6e6e6"
+        border = "1px solid rgba(255, 255, 255, 0.08)"
+        borderRadius = "4px"
+        fontSize = "12px"
+        fontFamily = "inherit"
+        resize = "vertical"
+        outline = "1px solid #6fe6ff"
+    }
+
+    fun sendCurrentMessage() {
+        val message = messageInput.value.trim()
+        if (message.isNotBlank()) {
+            postChatMessage(slideshowId, slideNumber, message)
+            messageInput.value = ""
+        }
+    }
+
+    messageInput.onkeydown = { event ->
+        val keyboardEvent = event as KeyboardEvent
+        if (keyboardEvent.key == "Enter" && !keyboardEvent.shiftKey) {
+            keyboardEvent.preventDefault()
+            sendCurrentMessage()
+        }
+    }
+
+    if (showHeader) {
+        val chatHeader = document.createElement("div") as HTMLElement
+        chatHeader.style.apply {
+            cursor = "pointer"
+            fontWeight = "bold"
+            fontSize = "12px"
+            marginBottom = "8px"
+            color = "#a0a0a0"
+        }
+        chatHeader.innerHTML = if (expanded) "▾ Discussion" else "▸ Discussion"
+
+        var isExpanded = expanded
+        chatHeader.onclick = {
+            isExpanded = !isExpanded
+            chatContent.style.display = if (isExpanded) "block" else "none"
+            chatHeader.innerHTML = if (isExpanded) "▾ Discussion" else "▸ Discussion"
+        }
+
+        chatContainer.appendChild(chatHeader)
+    }
+
+    inputArea.appendChild(messageInput)
+    chatContent.appendChild(messagesArea)
+    chatContent.appendChild(inputArea)
+    chatContainer.appendChild(chatContent)
+
+    val widget = ChatWidget(
+        widgetId = widgetId,
+        slideshowId = slideshowId,
+        slideNumber = slideNumber,
+        container = chatContainer,
+        content = chatContent,
+        messagesArea = messagesArea,
+        messageInput = messageInput
+    )
+    chatWidgets[widgetId] = widget
+    loadChatMessages(slideshowId, slideNumber)
+    return widget
+}
+
+fun createChatUI(slideshowId: String, slideNumber: Int, expanded: Boolean = false, showHeader: Boolean = true): HTMLElement {
+    return createChatWidget(slideshowId, slideNumber, expanded, showHeader).container
+}
+
+@JsExport
+fun mountSharedChat(
+    containerId: String,
+    slideshowId: String,
+    slideNumber: Int = 0,
+    expanded: Boolean = false,
+    showHeader: Boolean = true
+) {
+    cleanupChatWidgets()
+    val host = document.getElementById(containerId) as? HTMLElement ?: return
+    val widget = createChatWidget(slideshowId, slideNumber, expanded, showHeader)
+    host.innerHTML = ""
+    host.appendChild(widget.container)
+}
+
+@Suppress("unused")
+private val exposeChatMount = run {
+    window.asDynamic().mountSharedChat = ::mountSharedChat
+    true
+}
+
+fun displayChatMessages(target: HTMLElement, messages: List<ChatMessage>) {
+    val messagesArea = target
+    messagesArea.innerHTML = ""
+
+    if (messages.isEmpty()) {
+        val emptyMsg = document.createElement("div") as HTMLElement
+        emptyMsg.style.apply {
+            color = "#888"
+            fontStyle = "italic"
+            fontSize = "11px"
+        }
+        emptyMsg.innerHTML = "No messages yet"
+        messagesArea.appendChild(emptyMsg)
+    } else {
+        fun formatTimestamp(raw: String): String {
+            fun isValidDate(date: dynamic): Boolean = js("!isNaN(date.getTime())") as Boolean
+
+            val trimmed = raw.trim()
+            if (trimmed.isEmpty()) return ""
+
+            val candidates = mutableListOf<dynamic>()
+
+            trimmed.toDoubleOrNull()?.let { numeric ->
+                val millis = when {
+                    numeric > 1e12 -> numeric
+                    numeric > 1e9 -> numeric * 1000
+                    else -> numeric
+                }
+                candidates.add(eval("new Date($millis)"))
+            }
+
+            val normalized = trimmed
+                .replace(" ", "T")
+                .replace(Regex("(\\.\\d{3})\\d+")) { it.groupValues[1] }
+
+            candidates.add(eval("new Date('$normalized')"))
+
+            if (!normalized.endsWith("Z") && normalized.contains("T")) {
+                candidates.add(eval("new Date('$normalized' + 'Z')"))
+            }
+
+            val date = candidates.firstOrNull { isValidDate(it) } ?: return ""
+            return date.toLocaleTimeString("en-US", js("{hour: '2-digit', minute: '2-digit'}"))
+        }
+
+        messages.forEach { msg ->
+            val msgDiv = document.createElement("div") as HTMLElement
+            msgDiv.style.apply {
+                marginBottom = "8px"
+                paddingBottom = "8px"
+                borderBottom = "1px solid rgba(255, 255, 255, 0.05)"
+            }
+
+            val header = document.createElement("div") as HTMLElement
+            header.style.apply {
+                fontSize = "11px"
+                color = "#999"
+                marginBottom = "4px"
+                cssFloat = "right"
+            }
+
+            val timestamp = formatTimestamp(msg.timestamp)
+
+            header.innerHTML = if (timestamp.isNotEmpty()) {
+                "<strong>${msg.username}</strong> <span style='opacity: 0.6'>$timestamp</span>"
+            } else {
+                "<strong>${msg.username}</strong>"
+            }
+
+            val content = document.createElement("div") as HTMLElement
+            content.style.apply {
+                fontSize = "12px"
+                color = "#e6e6e6"
+                whiteSpace = "pre-wrap"
+                wordWrap = "break-word"
+            }
+            content.textContent = msg.message
+
+            msgDiv.appendChild(header)
+            msgDiv.appendChild(content)
+            messagesArea.appendChild(msgDiv)
+        }
+
+        // Scroll to bottom
+        messagesArea.scrollTop = messagesArea.scrollHeight.toDouble()
+    }
+}
+
+fun repositionSlideNoteOverlayIfVisible() {
     val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return
     if (overlay.style.display != "none") {
         positionSlideNoteOverlay(overlay, slideNoteAnchorUid)
@@ -173,364 +460,10 @@ private fun repositionSlideNoteOverlayIfVisible() {
 }
 
 /**
- * Animates slide note text letter by letter with pauses on punctuation
- */
-private fun animateSlideNoteText(overlay: HTMLElement, html: String) {
-    // For animation, we'll create a wrapper that progressively reveals content
-    overlay.innerHTML = ""
-    val contentDiv = document.createElement("div") as HTMLElement
-    overlay.appendChild(contentDiv)
-
-    // Build DOM structure and capture the original text nodes
-    contentDiv.innerHTML = html
-    val textNodes = collectTextNodes(contentDiv)
-    val originalTexts = textNodes.map { it.textContent ?: "" }
-    val fullText = originalTexts.joinToString("")
-
-    // Nothing to animate if there's no text
-    if (fullText.isEmpty()) return
-
-    // Hide all text initially; we'll progressively restore characters
-    textNodes.forEach { it.textContent = "" }
-
-    var charIndex = 0
-    val delay = 15.0 // milliseconds per character
-
-    fun animateNextChar() {
-        if (charIndex >= fullText.length) return
-
-        // Reveal characters up to the current index across all nodes
-        var remaining = charIndex
-        textNodes.zip(originalTexts).forEach { (node, original) ->
-            val len = original.length
-            when {
-                remaining >= len -> {
-                    if (node.textContent != original) node.textContent = original
-                    remaining -= len
-                }
-                remaining >= 0 -> {
-                    node.textContent = original.substring(0, remaining + 1)
-                    remaining = -1
-                }
-                else -> node.textContent = ""
-            }
-        }
-
-        val char = fullText[charIndex]
-        charIndex++
-
-        // Extra pause for periods, commas, and other punctuation
-        val pauseExtra = when (char) {
-            '.', '!', '?' -> 300.0
-            ',', ';', ':' -> 150.0
-            else -> 0.0
-        }
-
-        // If we have active annotations, keep redrawing so the line start tracks the growing note width
-        if (currentAnnotations.isNotEmpty()) {
-            scheduleSlideAnnotationRedraw(10)
-        }
-
-        setTimeout({
-            animateNextChar()
-        }, (delay + pauseExtra).toInt())
-    }
-
-    animateNextChar()
-}
-
-/**
- * Collects all text nodes from a DOM tree for animation
- */
-private fun collectTextNodes(element: org.w3c.dom.Node): List<org.w3c.dom.Node> {
-    val result = mutableListOf<org.w3c.dom.Node>()
-
-    fun traverse(node: org.w3c.dom.Node) {
-        if (node.nodeType == 3.toShort()) { // TEXT_NODE
-            result.add(node)
-        } else {
-            val children = node.childNodes
-            for (i in 0 until children.length) {
-                children.item(i)?.let { traverse(it) }
-            }
-        }
-    }
-
-    traverse(element)
-    return result
-}
-
-private fun ensureAnnotationLayer(): SVGSVGElement {
-    if (::annotationSVGLayer.isInitialized && annotationSVGLayer.parentNode != null) return annotationSVGLayer
-
-    val existing = document.getElementById("slide-annotation-layer") as? SVGSVGElement
-    if (existing != null) {
-        annotationSVGLayer = existing
-        return existing
-    }
-
-    val svg = document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement
-    svg.id = "slide-annotation-layer"
-    svg.setAttribute("width", "100%")
-    svg.setAttribute("height", "100%")
-    svg.style.apply {
-        position = "absolute"
-        top = "0"
-        left = "0"
-        right = "0"
-        bottom = "0"
-        zIndex = "10002"
-    }
-    svg.style.asDynamic().pointerEvents = "none"
-    document.body!!.appendChild(svg)
-    annotationSVGLayer = svg
-    return svg
-}
-
-private fun ensureEditorVisibilityObserver() {
-    if (editorVisibilityObserver != null) return
-    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
-
-    val observer = MutationObserver { _, _ ->
-        if (currentAnnotations.isNotEmpty()) {
-            scheduleSlideAnnotationRedraw(5)
-        }
-    }
-    observer.observe(
-        container,
-        MutationObserverInit(
-            attributes = true,
-            attributeFilter = arrayOf("style", "class"),
-            attributeOldValue = false,
-            childList = false,
-            subtree = false
-        )
-    )
-    editorVisibilityObserver = observer
-}
-
-private fun ensureEditorPropertyObserver() {
-    if (editorPropertyObserver != null) return
-    val overlay = (window.asDynamic().globalEditor?.unsafeCast<dynamic>()?._domElement as? HTMLElement)
-        ?.querySelector(".hoverlay") as? HTMLElement ?: return
-
-    val observer = MutationObserver { _, _ ->
-        selectionContextChanged()
-    }
-    observer.observe(
-        overlay,
-        MutationObserverInit(
-            childList = true,
-            characterData = true,
-            subtree = true
-        )
-    )
-    editorPropertyObserver = observer
-}
-
-private fun slideAnnotationGroup(): SVGElement {
-    val svg = ensureAnnotationLayer()
-    val name = "slideAnnotations"
-    val existing = svg.querySelector("[data-name=\"$name\"]")
-    if (existing != null) return existing as SVGElement
-    val g = document.createElementNS("http://www.w3.org/2000/svg", "g") as SVGElement
-    g.setAttribute("data-name", name)
-    svg.appendChild(g)
-    return g
-}
-
-private fun syncAnnotationViewBoxToTranslation() {
-    val svg = ensureAnnotationLayer()
-    val rect = svg.getBoundingClientRect()
-    svg.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} ${rect.width} ${rect.height}")
-}
-
-private var annotationRedrawFramesRemaining = 0
-private var annotationRedrawScheduled = false
-
-private fun scheduleSlideAnnotationRedraw(frames: Int = 0) {
-    if (frames > annotationRedrawFramesRemaining) {
-        annotationRedrawFramesRemaining = frames
-    }
-    if (annotationRedrawScheduled) return
-
-    annotationRedrawScheduled = true
-    fun tick() {
-        redrawSlideAnnotations()
-        if (annotationRedrawFramesRemaining > 0) {
-            annotationRedrawFramesRemaining--
-            window.requestAnimationFrame { tick() }
-        } else {
-            annotationRedrawScheduled = false
-        }
-    }
-    window.requestAnimationFrame { tick() }
-}
-
-/**
  * Creates HTML with text truncated to a certain length (DEPRECATED - kept for reference)
  */
 private fun createTruncatedHTML(html: String, targetText: String): String {
     return html
-}
-
-/**
- * Draws annotation lines from the slide note to targets
- */
-private var currentAnnotations: List<SlideAnnotation> = emptyList()
-private var currentNoteOverlay: HTMLElement? = null
-
-private fun drawSlideAnnotations(annotations: List<SlideAnnotation>, noteOverlay: HTMLElement) {
-    currentAnnotations = annotations
-    currentNoteOverlay = noteOverlay
-    ensureEditorVisibilityObserver()
-    ensureEditorPropertyObserver()
-    redrawSlideAnnotations()
-    if (annotations.isNotEmpty()) {
-        scheduleSlideAnnotationRedraw(100)
-    }
-}
-
-private fun redrawSlideAnnotations() {
-    val annotations = currentAnnotations
-    val noteOverlay = currentNoteOverlay
-
-    if (annotations.isEmpty() || noteOverlay == null) {
-        clearSlideAnnotations()
-        return
-    }
-
-    // Keep selectedProperty in sync with the global window state in case external UI changed it
-    window.asDynamic().selectedProperty?.toString()?.let { prop ->
-        if (prop != selectedProperty) {
-            selectedProperty = prop
-        }
-    }
-
-    syncAnnotationViewBoxToTranslation()
-
-    val svg = slideAnnotationGroup()
-    svg.innerHTML = ""
-
-    val noteRect = noteOverlay.getBoundingClientRect()
-    val ox = mainTranslation[0]
-    val oy = mainTranslation[1]
-
-    annotations.forEach { annotation ->
-        val targetBox = findBoxByUid(annotation.targetUid)
-        if (targetBox != null) {
-            val targetRect = targetBox.getBoundingClientRect()
-
-            val targetingEditorLine = annotation.targetLine != null && annotation.targetProperty != null
-            if (targetingEditorLine) {
-                val propertyMatches = selectedProperty == annotation.targetProperty ||
-                        (window.asDynamic().selectedProperty?.toString() == annotation.targetProperty)
-                val boxMatches = selected.contains(targetBox) || targetBox.asDynamic().selected == true
-                if (!propertyMatches || !boxMatches) {
-                    return@forEach
-                }
-            }
-
-            // Start point: right side of note overlay, vertically centered
-            val startX = noteRect.right - ox
-            val startY = noteRect.top + noteRect.height / 2 - oy
-
-            // End point: depends on whether we're targeting a specific line or the whole box
-            val (endX, endY) = if (annotation.targetLine != null && annotation.targetProperty != null) {
-                // Prefer anchoring to the Monaco editor line when available
-                val w = window.asDynamic()
-                val editor = w.globalEditor
-                val monaco = w.globalMonaco
-                val editorDom = try { editor?.getDomNode() } catch (e: dynamic) { null }
-
-                if (editor != null && editorDom != null) {
-                    val editorRect = (editorDom as HTMLElement).getBoundingClientRect()
-                    val editorHost = editorDom as HTMLElement
-                    val editorVisible = editorRect.width > 0 && editorRect.height > 0 && editorHost.offsetParent != null
-                    if (!editorVisible) return@forEach
-                    val topForLine = (try { editor.getTopForLineNumber(annotation.targetLine) } catch (e: dynamic) { null }) as? Number
-                    val scrollTop = (try { editor.getScrollTop() } catch (e: dynamic) { null }) as? Number ?: 0.0
-                    val lineHeight = if (monaco != null) {
-                        val opt = try { monaco.editor.EditorOption?.lineHeight } catch (e: dynamic) { null }
-                        if (opt != null) (try { editor.getOption(opt) } catch (e: dynamic) { null }) as? Number else null
-                    } else null
-
-                    val y = if (topForLine != null) {
-                        editorRect.top + (topForLine.toDouble() - scrollTop.toDouble()) + (lineHeight?.toDouble() ?: 16.0) / 2.0 - oy
-                    } else {
-                        editorRect.top + editorRect.height * 0.3 - oy
-                    }
-
-                    Pair(
-                        editorRect.left - ox,
-                        y
-                    )
-                } else {
-                    // Fallback: aim toward the box (legacy behavior)
-                    Pair(
-                        targetRect.left - ox,
-                        targetRect.top + (targetRect.height * 0.3) - oy
-                    )
-                }
-            } else {
-                // Target the left-center of the box
-                Pair(
-                    targetRect.left - ox,
-                    targetRect.top + targetRect.height / 2 - oy
-                )
-            }
-
-            // Draw the line with a cubic Bezier curve for smooth appearance
-            val dx = endX - startX
-            val controlOffset = kotlin.math.abs(dx) * 0.3
-
-            path {
-                moveTo(startX, startY)
-                cubicTo(
-                    startX + controlOffset, startY,
-                    endX - controlOffset, endY,
-                    endX, endY
-                )
-                stroke = annotation.color
-                strokeWidth = annotation.strokeWidth
-                fill = "none"
-                if (annotation.dashed) {
-                    path.setAttribute("stroke-dasharray", "5,5")
-                }
-                appendTo(svg as org.w3c.dom.svg.SVGElement)
-            }
-
-            // Add a small circle at the end point
-            circle {
-                cx = endX
-                cy = endY
-                r = 4
-                fill = annotation.color
-                appendTo(svg as org.w3c.dom.svg.SVGElement)
-            }
-
-            // Add a small circle at the start point
-            circle {
-                cx = startX
-                cy = startY
-                r = 3
-                fill = annotation.color
-                stroke = annotation.color
-                strokeWidth = 1
-                appendTo(svg as org.w3c.dom.svg.SVGElement)
-            }
-        }
-    }
-}
-
-/**
- * Clears all slide annotation lines
- */
-private fun clearSlideAnnotations() {
-    currentAnnotations = emptyList()
-    currentNoteOverlay = null
-    val svg = slideAnnotationGroup()
-    svg.innerHTML = ""
 }
 
 
@@ -736,7 +669,7 @@ var styles = CssBuilder().apply {
     }
 
     ".selected" {
-        borderColor = important(rgb(72, 201, 255, 0.78))
+        borderColor = important(Color("rgba(var(--field-cyan-rgb), 0.78)"))
     }
 
     ".doubleClickToEdit" {
@@ -757,6 +690,9 @@ suspend fun main() {
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
+
+    // Initialize the box snapping system
+    boxSnappingSystem.initialize()
 
     initializeClient()
     registerDoubleTap()
@@ -946,8 +882,42 @@ suspend fun main() {
                         console.log(" bringing ", found, " online ")
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
+                        // Clear all execution markers when box comes online
+                        // runningList tracks active execution strands - clear it to remove stale state
+                        // from previous Field sessions when browser reconnects
+                        found.unsafeCast<HTMLElement>().classList.remove("running")
+                        val runningList = found.asDynamic().runningList
+                        if (runningList != null && runningList.clear != null) {
+                            runningList.clear()
+                        }
                         canvasGestures.rebuildConnectionGroup()
                     }
+                }
+            }
+            "_tombstone" -> {
+                console.log(" got _tombstone message ", set)
+                var target = found
+                if (target == null) {
+                    mainCanvas.append {
+                        target = createBox("untitled", frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
+                    }
+                }
+                target?.let { boxEl ->
+                    if (set.number) {
+                        console.log(" hiding tombstoned box ", boxEl)
+                        (boxEl as HTMLElement).style.display = "none"
+                        (boxEl as HTMLElement).classList.add("tombstoned")
+                        boxEl.asDynamic().tombstoned = true
+                        if (selected.contains(boxEl)) {
+                            deselectBox(boxEl)
+                        }
+                    } else {
+                        console.log(" showing untombstoned box ", boxEl)
+                        boxEl.classList.remove("tombstoned")
+                        (boxEl as HTMLElement).style.display = "flex"
+                        boxEl.asDynamic().tombstoned = false
+                    }
+                    canvasGestures.rebuildConnectionGroup()
                 }
             }
          }
@@ -1028,15 +998,27 @@ suspend fun main() {
         val newSet = nestedIds.toSet()
         val toRemove = previous - newSet
 
-        val nestedRoot = ensureNestedOutputArea(parent)
-
-        toRemove.forEach { childId ->
-            val child = document.body!!.getElementsByClassName("box").asList()
-                .firstOrNull { it.unsafeCast<dynamic>().uid == childId } as? HTMLElement
-            if (child != null && child != parent) {
-                mainCanvas.appendChild(child)
+        fun removeChildrenFromNested(childIds: Set<String>) {
+            childIds.forEach { childId ->
+                val child = document.body!!.getElementsByClassName("box").asList()
+                    .firstOrNull { it.unsafeCast<dynamic>().uid == childId } as? HTMLElement
+                if (child != null && child != parent) {
+                    mainCanvas.appendChild(child)
+                }
             }
         }
+
+        // Only create nested output area if there are actually nested boxes
+        if (newSet.isEmpty()) {
+            // If there were previously nested boxes, remove them back to main canvas
+            removeChildrenFromNested(toRemove)
+            parent.unsafeCast<dynamic>().box_nested = emptyArray<String>()
+            return
+        }
+
+        val nestedRoot = ensureNestedOutputArea(parent)
+
+        removeChildrenFromNested(toRemove)
 
         nestedIds.forEach { childId ->
             val child = defaultCreate(childId)
@@ -1167,6 +1149,10 @@ suspend fun main() {
 
             "preamble" -> {
                 found.unsafeCast<dynamic>().preamble = set.value
+            }
+
+            "introduction" -> {
+                found.unsafeCast<dynamic>().introduction = set.value
             }
 
             "vertex" -> {
@@ -1335,19 +1321,42 @@ suspend fun main() {
             document.body!!.appendChild(overlay)
         }
 
-        // Set content with optional animation
-        if (note.animated) {
-            animateSlideNoteText(overlay, note.html)
-        } else {
-            overlay.innerHTML = note.html
+        // Clear previous content
+        overlay.innerHTML = ""
+        cleanupChatWidgets()
+
+        // Add main content
+        val contentDiv = document.createElement("div") as HTMLElement
+        contentDiv.innerHTML = note.html
+        overlay.appendChild(contentDiv)
+
+        // Add chat UI if slideshow ID and slide number are present
+        if (note.slideshowId.isNotBlank() && note.slideNumber >= 0) {
+            val chatContainer = createChatUI(note.slideshowId, note.slideNumber)
+            overlay.appendChild(chatContainer)
         }
+
         overlay.style.display = "block"
 
-        overlay.querySelector(".close-btn")?.let { overlay.removeChild(it) }
         if (note.persistent) {
             val closeBtn = document.createElement("button") as HTMLElement
             closeBtn.classList.add("close-btn")
             closeBtn.innerHTML = "×"
+            closeBtn.style.apply {
+                position = "absolute"
+                top = "8px"
+                right = "8px"
+                background = "rgba(255, 255, 255, 0.2)"
+                border = "none"
+                borderRadius = "4px"
+                color = "#fff"
+                fontSize = "20px"
+                width = "24px"
+                height = "24px"
+                cursor = "pointer"
+                lineHeight = "20px"
+                textAlign = "center"
+            }
             closeBtn.onclick = {
                 overlay.style.display = "none"
                 clearSlideAnnotations()
@@ -1364,10 +1373,19 @@ suspend fun main() {
             a.onclick = { event ->
                 event.preventDefault()
                 val href = a.getAttribute("href")
-                if (href != null && href.startsWith("#slideshow:")) {
-                    val command = href.substring(11) // Remove "#slideshow:" prefix
-                    // Send command to server to control slideshow
-                    send("slideshow-command", js("{command: command}"))
+                if (href != null) {
+                    when {
+                        href.startsWith("#slideshow:") -> {
+                            val command = href.substring(11) // Remove "#slideshow:" prefix
+                            // Send command to server to control slideshow
+                            send("slideshow-command", js("{command: command}"))
+                        }
+                        href.startsWith("#custom:") -> {
+                            val callbackName = href.substring(8) // Remove "#custom:" prefix
+                            // Send callback command to server
+                            send("slideshow-command", js("{command: 'callback:' + callbackName}"))
+                        }
+                    }
                 }
                 null
             }
@@ -1393,8 +1411,51 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("chat-messages-loaded") { message, _ ->
+        val loaded = Json.decodeFromJsonElement<ChatMessagesLoaded>(message.payload!!)
+        cleanupChatWidgets()
+        widgetsFor(loaded.slideshowId, loaded.slideNumber).forEach { widget ->
+            displayChatMessages(widget.messagesArea, loaded.messages)
+        }
+        Handled.yes
+    }
+
+    handlers.put("chat-message-posted") { message, _ ->
+        val posted = Json.decodeFromJsonElement<ChatMessagePosted>(message.payload!!)
+        cleanupChatWidgets()
+        if (widgetsFor(posted.slideshowId, posted.slideNumber).isNotEmpty()) {
+            loadChatMessages(posted.slideshowId, posted.slideNumber)
+        }
+        Handled.yes
+    }
+
+    // Documentation iframe handlers
+    handlers.put("show-docs-iframe") { message, _ ->
+        val show = Json.decodeFromJsonElement<ShowDocsIframe>(message.payload!!)
+        setDocsIframeContent(show.url)
+        showDocsIframe()
+        Handled.yes
+    }
+
+    handlers.put("hide-docs-iframe") { message, _ ->
+        hideDocsIframe()
+        Handled.yes
+    }
+
+    handlers.put("switch-to-docs-iframe") { message, _ ->
+        val switch = Json.decodeFromJsonElement<SwitchToDocsIframe>(message.payload!!)
+        switchToDocsIframe(switch.url)
+        Handled.yes
+    }
+
+    handlers.put("switch-to-monaco-editor") { message, _ ->
+        switchToMonaco()
+        Handled.yes
+    }
+
     val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
     val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
+    window.asDynamic().currentDocumentFilename = filename
     val hello = Message("hello").payload(Hello(filename, username))
     onOpen.add(hello)
 
@@ -1588,14 +1649,35 @@ suspend fun main() {
 
     val moncaoResizing = interact(".monaco-editor-container")
 
+    fun ensureAbsolutePosition(el: HTMLElement) {
+        val dyn = el.asDynamic()
+        if (dyn.data_initialized == true) return
+        val rect = el.getBoundingClientRect()
+        val left = rect.left + window.scrollX
+        val top = rect.top + window.scrollY
+        el.style.left = "${left}px"
+        el.style.top = "${top}px"
+        el.style.right = "auto"
+        el.style.bottom = "auto"
+        el.style.position = "absolute"
+        el.style.transform = "translate(0px, 0px)"
+        dyn.data_x = left
+        dyn.data_y = top
+        dyn.data_w = rect.width
+        dyn.data_h = rect.height
+        dyn.data_initialized = true
+    }
+
     monacoResizeHandler = { event: dynamic ->
 
         val target: dynamic = event.target
+        ensureAbsolutePosition(target as HTMLElement)
         val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
         val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
 
-//        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
-
+        (target as HTMLElement).style.transform = "translate(0px, 0px)"
+        target.style.left = "${x}px"
+        target.style.top = "${y}px"
         target.style.width = event.rect.width + "px"
         target.style.height = event.rect.height + "px"
 
@@ -1603,12 +1685,73 @@ suspend fun main() {
         target.data_y = y
         target.data_w = event.rect.width
         target.data_h = event.rect.height
+
+        // Keep docs container in sync when Monaco is resized
+        val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
+        if (docsContainer != null) {
+            ensureAbsolutePosition(docsContainer)
+            docsContainer.style.transform = "translate(0px, 0px)"
+            docsContainer.style.left = target.style.left
+            docsContainer.style.top = target.style.top
+            docsContainer.style.width = target.style.width
+            docsContainer.style.height = target.style.height
+            docsContainer.asDynamic().data_x = target.data_x
+            docsContainer.asDynamic().data_y = target.data_y
+            docsContainer.asDynamic().data_w = target.data_w
+            docsContainer.asDynamic().data_h = target.data_h
+        }
     }
 
     moncaoResizing.resizable(
         json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
     ).on("resizemove") { event: dynamic ->
         monacoResizeHandler(event)
+    }
+
+    // Allow docs iframe container to be resized like Monaco, and propagate new size back to Monaco/editor
+    val docsResizing = interact(".docs-iframe-container")
+    docsResizing.resizable(
+        json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
+    ).on("resizemove") { event: dynamic ->
+        val target: dynamic = event.target
+        ensureAbsolutePosition(target as HTMLElement)
+        val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
+        val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
+
+        target.style.transform = "translate(0px, 0px)"
+        target.style.left = "${x}px"
+        target.style.top = "${y}px"
+        target.style.width = event.rect.width + "px"
+        target.style.height = event.rect.height + "px"
+
+        target.data_x = x
+        target.data_y = y
+        target.data_w = event.rect.width
+        target.data_h = event.rect.height
+
+        // Mirror size back to Monaco container
+        val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
+        if (monacoContainer != null) {
+            ensureAbsolutePosition(monacoContainer)
+            monacoContainer.style.transform = "translate(0px, 0px)"
+            monacoContainer.style.left = target.style.left
+            monacoContainer.style.top = target.style.top
+            monacoContainer.style.width = target.style.width
+            monacoContainer.style.height = target.style.height
+            monacoContainer.asDynamic().data_x = target.data_x
+            monacoContainer.asDynamic().data_y = target.data_y
+            monacoContainer.asDynamic().data_w = target.data_w
+            monacoContainer.asDynamic().data_h = target.data_h
+        }
+
+        // Notify Monaco editor about size change
+        val editor = window.asDynamic().globalEditor
+        if (editor != null && editor != undefined && editor.layout != undefined) {
+            val dims = js("{}")
+            dims.width = event.rect.width
+            dims.height = event.rect.height
+            editor.layout(dims)
+        }
     }
 
     val interactable = interact(".box")
@@ -1633,13 +1776,26 @@ suspend fun main() {
 
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
 
+        // Apply snapping if Caps Lock is enabled
+        val targetElement = target as HTMLElement
+        val width = event.rect.width - t * 2
+        val height = event.rect.height - t * 2
+
+        val (snappedX, snappedY) = boxSnappingSystem.applySnapping(
+            targetElement,
+            odx,
+            ody,
+            width,
+            height
+        )
+
         val uid = target.uid
         send(
             Message("set-rect").payload(
                 Set_rect(
                     uid = uid,
                     property = "frame",
-                    Rect(odx.toDouble(), ody.toDouble(), event.rect.width - t * 2, event.rect.height - t * 2)
+                    Rect(snappedX, snappedY, width, height)
                 )
             )
         )
@@ -1652,6 +1808,8 @@ suspend fun main() {
     interactable.on("dragend") { event ->
         console.log(" interact dragend ", event)
         provideMissingMouseup(event)
+        // Clear snap guides when drag ends
+        boxSnappingSystem.clearSnapGuides()
     }
 
     interactable.on("dragstart") { event ->
@@ -1783,11 +1941,20 @@ suspend fun main() {
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round-trip to server?
         // renable this for serverless
 
+        // Apply snapping if Caps Lock is enabled
+        val targetElement = target as HTMLElement
+        val snappedRect = boxSnappingSystem.applySnappingForResize(
+            targetElement,
+            x,
+            y,
+            w,
+            h
+        )
 
-        target.data_x = x
-        target.data_y = y
-        target.data_w = w
-        target.data_h = h
+        target.data_x = snappedRect.x
+        target.data_y = snappedRect.y
+        target.data_w = snappedRect.w
+        target.data_h = snappedRect.h
 
 //        target.style.width = w + "px"
 //        target.style.height = h + "px"
@@ -1827,6 +1994,10 @@ suspend fun main() {
                 if (event.target) resizeHandler(event)
             }
         }
+    }.on("resizeend") { event: dynamic ->
+        console.log(" RESIZE END ", event)
+        // Clear snap guides when resize ends
+        boxSnappingSystem.clearSnapGuides()
     }
 
     interact(".doubleClickToEdit").on("doubletap") { event ->
@@ -1923,6 +2094,10 @@ suspend fun main() {
 }
 
 
+// Exported to allow documentation iframe API to stop boxes programmatically
+// Uses ExperimentalJsExport to make this Kotlin function directly callable from JavaScript
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun stopBox(uid: String) {
     console.log(" sending stop-box message")
     send(Message("stop-box").payload(Stop_box(uid = uid)))

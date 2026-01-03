@@ -1,8 +1,9 @@
 package afield.ai
 
-import afield.Box_transfer
 import afield.BoxTransferEdn
+import afield.Box_transfer
 import afield.SavingContext
+import afield.stdlib.isTrue
 import java.io.File
 import java.net.URI
 import java.nio.file.Path
@@ -48,12 +49,12 @@ class AfieldVirtualFileSystem(
             val docName = docDir.name
             if (metadataEdn.exists()) {
                 val transfers = ctx.readEdnTransfers(docDir.absolutePath)
-                    .filter { !it.properties.containsKey("_tombstone") }
+                    .filter { !it.properties["_tombstone"].isTrue() }
                 addRefsFromEdn(refs, docName, transfers)
             } else {
                 val transfers = SavingContext.format
                     .decodeFromString<Set<Box_transfer>>(metadataJson.readText())
-                    .filter { !it.properties.containsKey("_tombstone") }
+                    .filter { !it.properties["_tombstone"].isTrue() }
                 addRefsFromJson(refs, docName, transfers)
             }
         }
@@ -73,7 +74,7 @@ class AfieldVirtualFileSystem(
         if (metadataEdn.exists()) {
             val transfers = ctx.readEdnTransfers(docDir.absolutePath)
             val transfer = transfers.firstOrNull { it.id == ref.uid } ?: return null
-            if (transfer.properties.containsKey("_tombstone")) return null
+            if (transfer.properties["_tombstone"].isTrue()) return null
             val value = transfer.properties[ref.property] ?: return null
             val resolved = ctx.resolveStoredValue(value, docDir.absolutePath) ?: return null
             val text = resolved as? String ?: return null
@@ -84,7 +85,7 @@ class AfieldVirtualFileSystem(
             val transfers = SavingContext.format
                 .decodeFromString<Set<Box_transfer>>(metadataJson.readText())
             val transfer = transfers.firstOrNull { it.id == ref.uid } ?: return null
-            if (transfer.properties.containsKey("_tombstone")) return null
+            if (transfer.properties["_tombstone"].isTrue()) return null
             val value = transfer.properties[ref.property] ?: return null
             val resolved = ctx.fromTypedPair(value, docDir.absolutePath, createBoxes = false) ?: return null
             val text = resolved as? String ?: return null

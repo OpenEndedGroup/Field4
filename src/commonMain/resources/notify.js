@@ -123,7 +123,12 @@ var notify = (text, cat = "") => {
                 updateNotifyTimeAgo(newDiv);
                 ensureNotifyTimeAgoTimer();
                 newDiv.style.opacity = 1;
+                newDiv.style.color = "var(--field-cyan)";
                 restackBubbles();
+                setTimeout(function () {
+                        newDiv.style.opacity = "0.5";
+                        newDiv.style.color = "rgba(255, 255, 255, 1)";
+                }, 1000);
                 return;
         }
 
@@ -133,6 +138,7 @@ var notify = (text, cat = "") => {
         newDiv.style.left = "5px";
         newDiv.classList = "bubble";
         newDiv.style.bottom = "5px";
+        newDiv.style.color = "var(--field-cyan)";
         newDiv.innerHTML = htmlText;
         updateNotifyTimeAgo(newDiv);
         ensureNotifyTimeAgoTimer();
@@ -169,5 +175,6 @@ var notify = (text, cat = "") => {
         }, 20);
         setTimeout(function () {
                 newDiv.style.opacity = "0.5";
+                newDiv.style.color = "rgba(255, 255, 255, 1)";
         }, 1000);
 };
