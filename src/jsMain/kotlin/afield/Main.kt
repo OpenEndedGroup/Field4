@@ -1012,6 +1012,10 @@ suspend fun main() {
                 found.unsafeCast<dynamic>().preamble = set.value
             }
 
+            "introduction" -> {
+                found.unsafeCast<dynamic>().introduction = set.value
+            }
+
             "vertex" -> {
                 found.unsafeCast<dynamic>().vertex = set.value
             }
