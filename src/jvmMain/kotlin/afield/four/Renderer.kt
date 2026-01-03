@@ -60,7 +60,7 @@ object CPUSpan {
     val lock = Any()
     val version = AtomicLong(0)
     val listeners = mutableListOf<(Long) -> Unit>()
-    inline fun time(label: String,  block: () -> Unit) {
+    inline fun time(label: String, block: () -> Unit) {
         val t0 = System.nanoTime()
         block()
         val dt = System.nanoTime() - t0
