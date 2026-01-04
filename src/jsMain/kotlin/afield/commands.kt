@@ -536,14 +536,14 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
 
         val targetLabel = when {
             escapedTargets.isEmpty() -> ""
-            escapedTargets.size <= 3 -> escapedTargets.mapIndexed { idx, name -> "${idx + 2}:$name" }.joinToString(", ")
-            else -> escapedTargets.take(2).mapIndexed { idx, name -> "${idx + 2}:$name" }
-                .joinToString(", ") + ", +${escapedTargets.size - 2} more"
+            escapedTargets.size <= 3 -> escapedTargets.joinToString(", ")
+            else -> escapedTargets.take(2).joinToString(", ") + ", +${escapedTargets.size - 2} more"
         }
 
         val connectLabel = if (targetLabel.isNotEmpty()) "Connect 1:$escapedSource to $targetLabel" else "Connect $escapedSource"
         val disconnectLabel =
             if (targetLabel.isNotEmpty()) "Disconnect 1:$escapedSource from $targetLabel" else "Disconnect $escapedSource"
+        val nestLabel = if (targetLabel.isNotEmpty()) "Nest $targetLabel into $escapedSource" else "Nest into $escapedSource"
 
         run {
             val e = """
@@ -559,6 +559,22 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         """.trimIndent()
             val a = eval(e)
             console.log(" eval 2 sel to ", a)
+            all.push(a)
+        }
+        run {
+            val e = """
+            ({
+                id:'nest-into', label:'$nestLabel', 
+                canvasKeybinding: (event) => false, 
+                run: () => { 
+                    import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
+                                uid_action: '-nest-into',
+                                uid_currentSelection: getSelectedIds()
+                        })})}
+            })
+        """.trimIndent()
+            val a = eval(e)
+            console.log(" eval nest into ", a)
             all.push(a)
         }
         run {
@@ -592,6 +608,23 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         """.trimIndent()
         val a = eval(e)
         all.push(a)
+    }
+    if (boxes.isNotEmpty()) {
+        run {
+            val e = """
+            ({
+                id:'un-nest', label:'Un-nest selection', 
+                canvasKeybinding: (event) => false, 
+                run: () => { 
+                    import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
+                                uid_action: '-un-nest',
+                                uid_currentSelection: getSelectedIds()
+                        })})}
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
     }
     console.log(" refreshed commands, got", all)
     allActions.fromSelection = all

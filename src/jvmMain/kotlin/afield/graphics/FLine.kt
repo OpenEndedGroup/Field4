@@ -12,11 +12,15 @@ import org.joml.times
 import kotlin.math.abs
 import kotlin.math.min
 
+var _flineSequenceNumber = 0L
+
 class FLine : HasProperties {
 
     var nodes = arrayListOf<Node>()
     val properties = mutableMapOf<String, Any?>()
 
+    var rev = ++_flineSequenceNumber
+    val uid = ++_flineSequenceNumber
 
     sealed class Node(val n: Int) : HasProperties {
         val storage = mutableListOf<Vec3>()
@@ -101,6 +105,7 @@ class FLine : HasProperties {
      */
     fun moveTo(x: Number, y: Number, z: Number = 0): Node {
         nodes.add(MoveTo().set(Vec3(x.toFloat(), y.toFloat(), z.toFloat())))
+        rev++
         return nodes.last()
     }
 
@@ -125,6 +130,7 @@ class FLine : HasProperties {
             breakNext = false
             return moveTo(x, y, z)
         }
+        rev++
         nodes.add(LineTo().set(Vec3(x.toFloat(), y.toFloat(), z.toFloat())))
         return nodes.last()
     }
@@ -156,6 +162,7 @@ class FLine : HasProperties {
             breakNext = false
             return moveTo(x, y, z)
         }
+        rev++
         nodes.add(
             CubicTo().set(
                 Vec3(x.toFloat(), y.toFloat(), z.toFloat()),
@@ -210,6 +217,7 @@ class FLine : HasProperties {
             breakNext = false
             return moveTo(x, y, 0.0)
         }
+        rev++
         nodes.add(
             CubicTo().set(
                 vec(x, y, 0.0),
@@ -262,6 +270,7 @@ class FLine : HasProperties {
 
 
     fun copyTo(other: Node) {
+        rev++
         nodes.add(other.copy())
     }
 
@@ -308,6 +317,7 @@ class FLine : HasProperties {
     }
 
     override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+        rev++
         properties.put(name, value)
     }
 

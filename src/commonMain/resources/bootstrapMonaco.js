@@ -245,14 +245,21 @@ const setBoxRunning = (uid, isRunning, watermark, strand) => {
         let first = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
         let name = `${watermark}--${strand}`
         if (first) {
+                // Track the highest watermark per strand to ignore stale stop signals
+                first.latestWatermark = first.latestWatermark ?? new Map()
+                const lastWatermark = first.latestWatermark.get(strand) ?? -Infinity
+
                 // console.log(" is running ", first, first.runningList, watermark, isRunning)
                 if (isRunning) {
                         first.classList.add("running");
                         first.runningList = first.runningList ?? new Set()
                         first.runningList.add(name)
+                        if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
                         setStatusForExecutionMarker(strand, true)
 
                 } else {
+                        // Ignore stop messages that are older than the latest start we saw
+                        if (watermark < lastWatermark) return
                         first.runningList = first.runningList ?? new Set()
 
                         setStatusForExecutionMarker(strand, false)

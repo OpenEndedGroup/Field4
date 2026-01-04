@@ -5,6 +5,24 @@ var originatingMouseDown = null
 
 var masterMousedownCallbackTable = {}
 
+const forceClearMarkingMenu = () => {
+        try {
+                document.querySelectorAll(".markingButton, .markingButtonBackground").forEach(el => {
+                        if (el.parentElement) el.parentElement.removeChild(el);
+                });
+        } catch (e) {
+                console.log("error cleaning marking menu", e);
+        }
+        if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.style.pointerEvents = "none";
+                canvas.classList.remove("fadeToBlack");
+        }
+        contextMenuFinish = null;
+        mainFinish = null;
+        live = false;
+};
+
 function initMenuSupport() {
         canvas = document.getElementById("overlaycanvas");
         ctx = canvas.getContext("2d");
@@ -100,7 +118,19 @@ function initMenuSupport() {
                 });
 
                 window.addEventListener("mouseup", (event) => {
-                        console.log(" master mouseup event ", event)
+                        console.log(" master mouseup event ", event, live)
+                        if (live) {
+                                const best = closestOption(event.x, event.y);
+                                if (best && best.finish) {
+                                        best.finish(event);
+                                } else {
+                                        missingMouseupHandler(event);
+                                }
+                        } else {
+                                missingMouseupHandler(event);
+                        }
+                        // Force-clear UI even if finish callbacks fail or live is stale
+                        forceClearMarkingMenu()
                 })
         };
         resizeCanvas();
@@ -177,9 +207,11 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                 canvas.classList.remove("fadeToBlack")
                 contextMenuFinish = null;
                 mainFinish = null;
+                live = false;
                 if (!foundOver) {
                         if (cancelCallback) cancelCallback()
                 }
+                forceClearMarkingMenu()
         };
         mainFinish = finish;
 
@@ -195,6 +227,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                         mainFinish = null
                         was()
                         live = false
+                        forceClearMarkingMenu()
                 }
         }
 

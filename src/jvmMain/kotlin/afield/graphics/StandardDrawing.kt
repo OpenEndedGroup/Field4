@@ -5,9 +5,33 @@ import afield.stdlib.f
 import afield.stdlib.pointSize
 import afield.stdlib.vec
 
+class FLineMap : LinkedHashMap<String, FLine>() {
+
+    val rev: Long
+        get() {
+            var hash: Long = 1L
+            values.forEach { hash = 31 * hash + it.rev }
+            return hash
+        }
+
+    operator fun plusAssign(f: FLine) {
+        plusAssign("fline_${f.uid}" to f)
+    }
+
+    operator fun plusAssign(f: Pair<String, FLine>) {
+        this[f.first] = f.second
+    }
+}
+
+
 
 fun pointsOut(
-    m: List<FLine>, vertexData: DynamicallyWriteable, pointSizeData: DynamicallyWriteable
+    m: FLineMap, vertexData: DynamicallyWriteable,
+    colorData: DynamicallyWriteable
+) = pointsOut(m.values, vertexData, colorData)
+
+fun pointsOut(
+    m: Collection<FLine>, vertexData: DynamicallyWriteable, pointSizeData: DynamicallyWriteable
 ): Int {
 
     var num = 0
@@ -28,7 +52,14 @@ fun pointsOut(
 }
 
 fun trianglesOut(
-    m: List<FLine>, vertexData: DynamicallyWriteable, colorData: DynamicallyWriteable, samplesPerCubic: Int = 100
+    m: FLineMap, vertexData: DynamicallyWriteable,
+    colorData: DynamicallyWriteable,
+    samplesPerCubic: Int = 100
+) = trianglesOut(m.values, vertexData, colorData, samplesPerCubic)
+
+
+fun trianglesOut(
+    m: Collection<FLine>, vertexData: DynamicallyWriteable, colorData: DynamicallyWriteable, samplesPerCubic: Int = 100
 ): Int {
 
     var a = 0
@@ -72,7 +103,13 @@ fun linesOut(
 ) = linesOut(listOf(m), vertexData, colorData, samplesPerCubic)
 
 fun linesOut(
-    m: List<FLine>,
+    m: FLineMap, vertexData: DynamicallyWriteable? = null,
+    colorData: DynamicallyWriteable? = null,
+    samplesPerCubic: Int = 100
+) = linesOut(m.values, vertexData, colorData, samplesPerCubic)
+
+fun linesOut(
+    m: Collection<FLine>,
     vertexData: DynamicallyWriteable? = null,
     colorData: DynamicallyWriteable? = null,
     samplesPerCubic: Int = 100

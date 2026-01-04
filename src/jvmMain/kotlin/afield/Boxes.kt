@@ -13,10 +13,9 @@ import fetchUpdateInfo
 import formatKotlinCode
 import io.ktor.util.collections.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import promoteStagingToLive
 import writeLocalVersion
 import kotlin.script.experimental.api.KotlinType
@@ -246,6 +245,32 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 notify("Disconnected ${a.name} from ${names.trim(' ', ',')}")
             }
 
+            actionTable["-nest-into"] = nest@{ boxes ->
+                if (boxes.size < 2) {
+                    notify("Select a parent followed by box(es) to nest")
+                    return@nest
+                }
+                val parent = boxes.first()
+                val children = boxes.drop(1)
+                children.forEach { child ->
+                    child.nestInto(parent)
+                }
+                notify("Nested ${children.size} into ${parent.name}")
+            }
+
+            actionTable["-un-nest"] = { boxes ->
+                val targets = boxes.filter { it.nestedIn != null }
+                targets.forEach {child ->
+//                    child.nestedIn?.let {
+//                        val parentWas = it
+//                        parentWas.nested.remove(child)
+//                    }
+                    child.nestInto(null)
+                }
+                val count = targets.size
+                notify("Un-nested $count box${if (count == 1) "" else "es"}")
+            }
+
             actionTable["-format-kotlin"] = { boxes ->
                 boxes.forEach {
                     it.code = formatKotlinCode(it.code)
@@ -330,7 +355,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 needsResync.add(this to name)
         }
     }
-    
+
     /**
      * Animates the frame change over the specified duration (in milliseconds)
      */

@@ -97,15 +97,20 @@ fun Box.nestInto(parent: Box?) {
             val oldOffsetX = oldParent.frame.x
             val oldOffsetY = oldParent.frame.y + oldParent.frame.h
             frame = frame.copy(x = frame.x + oldOffsetX, y = frame.y + oldOffsetY)
+            oldParent.nested.remove(this)
+            needsResync.add(oldParent to "nested")
         }
 
         if (parent != null) {
             val newOffsetX = parent.frame.x
             val newOffsetY = parent.frame.y + parent.frame.h
             frame = frame.copy(x = frame.x - newOffsetX, y = frame.y - newOffsetY)
+            parent.nested.add(this)
+            needsResync.add(parent to "nested")
         }
 
         nestedIn = parent
+        needsResync.add(this to "nestedIn")
     }
 }
 
@@ -119,7 +124,7 @@ fun Box.nestInto(parent: Box?) {
 fun collectAllNestedBoxes(boxes: Set<Box>): Set<Box> {
     val result = mutableSetOf<Box>()
     val queue = ArrayDeque(boxes)
-    
+
     while (queue.isNotEmpty()) {
         val box = queue.removeFirst()
         if (result.add(box)) {
@@ -128,7 +133,7 @@ fun collectAllNestedBoxes(boxes: Set<Box>): Set<Box> {
             queue.addAll(box.nested)
         }
     }
-    
+
     return result
 }
 
@@ -144,7 +149,7 @@ fun formatBoxCountMessage(selectedCount: Int, totalCount: Int, actionVerb: Strin
     val nestedCount = totalCount - selectedCount
     val boxWord = if (selectedCount == 1) "box" else "boxes"
     val prefix = if (actionVerb.isNotEmpty()) "$actionVerb " else ""
-    
+
     return if (nestedCount > 0) {
         "$prefix$selectedCount $boxWord + $nestedCount nested".trim()
     } else {

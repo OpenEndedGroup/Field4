@@ -215,6 +215,8 @@ class KotlinExecution : BoxExecution {
                 compileError.forEach {
                     lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
                     if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
+                        var message = it.message
+                        message = improveMessage(box, message)
                         first = false
                         if (it.location != null) {
                             reply?.invoke(
@@ -222,7 +224,7 @@ class KotlinExecution : BoxExecution {
                                     Output(
                                         line = it.location!!.start.line,
                                         kind = "error",
-                                        html = it.message,
+                                        html = message,
                                         frame = Runloop.runLoop.frame.toInt()
                                     )
                                 )
@@ -233,7 +235,7 @@ class KotlinExecution : BoxExecution {
                                     Output(
                                         line = ln + dur,
                                         kind = "error",
-                                        html = it.message,
+                                        html = message,
                                         frame = Runloop.runLoop.frame.toInt()
                                     )
                                 )
@@ -824,4 +826,80 @@ class KotlinExecution : BoxExecution {
 private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
     this[name] = computeIfAbsent(name) { 0 } + 1
     return this[name]!!
+}
+
+fun improveMessage(b : Box, errorMessage : String) : String {
+    val unresolved = Regex("Unresolved reference: ([^\\s]+)")
+    val match = unresolved.find(errorMessage) ?: return errorMessage
+
+    val missing = match.groupValues[1].trim('\'', '`', '"', '.', ';')
+    if (missing.isBlank()) return errorMessage
+
+    val candidates = collectDefinedNames(b)
+    val suggestions = suggestCloseNames(missing, candidates)
+
+    if (suggestions.isEmpty()) return errorMessage
+
+    val alternatives = suggestions.joinToString(", ") { "`$it`" }
+    return "$errorMessage. Did you mean $alternatives?"
+}
+
+private fun collectDefinedNames(box: Box): Set<String> {
+    val visited = mutableSetOf<Box>()
+    val names = LinkedHashSet<String>()
+
+    fun visit(b: Box) {
+        if (!visited.add(b)) return
+        names.addAll(b.properties.keys)
+        names.addAll(b.ki.context.vars.keys)
+        b.parents.forEach { visit(it) }
+    }
+
+    visit(box)
+    return names
+}
+
+private fun suggestCloseNames(missing: String, candidates: Set<String>, limit: Int = 3): List<String> {
+    val maxDistance = when {
+        missing.length <= 4 -> 1
+        missing.length <= 8 -> 2
+        else -> 3
+    }
+
+    return candidates
+        .filter { it.isNotBlank() && it != missing }
+        .map { candidate ->
+            val distance = levenshteinDistance(missing, candidate)
+            candidate to distance
+        }
+        .filter { it.second <= maxDistance }
+        .sortedWith(compareBy<Pair<String, Int>> { it.second }.thenBy { it.first.length })
+        .take(limit)
+        .map { it.first }
+}
+
+private fun levenshteinDistance(a: String, b: String): Int {
+    if (a == b) return 0
+    if (a.isEmpty()) return b.length
+    if (b.isEmpty()) return a.length
+
+    var previous = IntArray(b.length + 1) { it }
+    var current = IntArray(b.length + 1)
+
+    for (i in a.indices) {
+        current[0] = i + 1
+        for (j in b.indices) {
+            val cost = if (a[i] == b[j]) 0 else 1
+            current[j + 1] = minOf(
+                previous[j + 1] + 1,
+                current[j] + 1,
+                previous[j] + cost
+            )
+        }
+        val temp = previous
+        previous = current
+        current = temp
+    }
+
+    return previous[b.length]
 }

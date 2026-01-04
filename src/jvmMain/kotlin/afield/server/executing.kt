@@ -1,18 +1,8 @@
 package afield.server
 
-import afield.Execute
-import afield.ExecuteSymbol
-import afield.Handled
-import afield.Message
-import afield.RunsAt
+import afield.*
 import afield.Server.Companion.stop
-import afield.Stop_box
-import afield.box
-import afield.handlers
-import afield.inMain
-import afield.installHandlers
 import afield.logger.lprintln
-import afield.makeKIHere
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
@@ -53,11 +43,12 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
 
-            // experimental
 
             inMain {
                 box.ki = makeKIHere(box)
+                // experimental
                 box.properties["_preamble"] = "" // remove record of previous preamble line execs
+                box.properties["_introduction"] = "" // ditto for introduction
                 box.ke.executeAll(box, exec, reply)
             }
 

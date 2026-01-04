@@ -24,8 +24,13 @@ class Delegation<T>(
 
         var a = f.getPropertyRaw(property.name)
         if (a == null && defaultValue != null) {
-            a = defaultValue() as Any
-            f.setPropertyRaw(property.name, a)
+            val def = defaultValue()
+            if (def != null) {
+                f.setPropertyRaw(property.name, def as Any)
+                a = def
+            } else {
+                return def as T
+            }
         }
 
         val v = (a as T)
