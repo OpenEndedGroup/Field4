@@ -164,7 +164,7 @@ if (window.parent !== window) {
 
     window.addEventListener('keydown', forwardCommandPaletteShortcut, true);
     window.dispatchEvent(new Event('field-api-ready'));
-    console.log('Field Documentation API initialized');
+    console.info('Field Documentation API initialized');
 }
 
 // Message handler on the parent (Field) side

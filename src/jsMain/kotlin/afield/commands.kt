@@ -110,9 +110,9 @@ fun copySelectedBoxesToClipboard() {
             if (fileType != null) {
                 val clipboardItem = js("new ClipboardItem(clipboardData)")
                 clipboard.write(js("Array").of(clipboardItem)).then({
-                    console.log("Copied to clipboard as text and file type $fileType")
+                    console.info("[clipboard] copied as text and $fileType")
                 }, { error: dynamic ->
-                    console.log("Clipboard write failed, falling back to text-only:", error)
+                    console.info("[clipboard] write failed, using text-only fallback", error)
                     clipboard.writeText(result.edn)
                 })
             } else {
@@ -120,7 +120,7 @@ fun copySelectedBoxesToClipboard() {
                 clipboard.writeText(result.edn)
             }
         } catch (e: Exception) {
-            console.log("Modern clipboard API failed, using text-only fallback:", e)
+            console.info("[clipboard] modern clipboard API failed, using text-only fallback", e)
             clipboard.writeText(result.edn)
         }
 
@@ -179,10 +179,10 @@ fun pasteBoxesFromClipboard() {
                             processPasteText(text)
                         }
                     }, { err: dynamic ->
-                        console.log("Failed to read EDN blob:", err)
+                        console.info("[clipboard] failed to read EDN blob", err)
                     })
                 }, { err: dynamic ->
-                    console.log("Failed to get EDN type:", err)
+                    console.info("[clipboard] failed to get EDN type", err)
                 })
                 processed = true
             }
@@ -194,10 +194,10 @@ fun pasteBoxesFromClipboard() {
                             processPasteText(text)
                         }
                     }, { err: dynamic ->
-                        console.log("Failed to read text blob:", err)
+                        console.info("[clipboard] failed to read text blob", err)
                     })
                 }, { err: dynamic ->
-                    console.log("Failed to get text type:", err)
+                    console.info("[clipboard] failed to get text type", err)
                 })
                 processed = true
             }
@@ -210,18 +210,18 @@ fun pasteBoxesFromClipboard() {
                     processPasteText(text)
                 }
             }, { err: dynamic ->
-                console.log("clipboard read failed", err)
+                console.info("[clipboard] read failed", err)
             })
         }
     }, { err: dynamic ->
-        console.log("Failed to read clipboard items, falling back to text:", err)
+        console.info("[clipboard] failed to read items, falling back to text", err)
         // Fallback to text-only API
         clipboard.readText().then({ text: String ->
             if (text.isNotBlank()) {
                 processPasteText(text)
             }
         }, { err: dynamic ->
-            console.log("clipboard read failed", err)
+            console.info("[clipboard] read failed", err)
         })
     })
 }
@@ -275,7 +275,7 @@ fun insertFromWorkspace() {
                 Json.decodeFromJsonElement<List<TemplateMetadata>>(it)
             } ?: emptyList()
         } catch (e: Exception) {
-            console.log("Failed to parse template metadata: ${e.message}", e)
+            console.info("[templates] failed to parse template metadata: ${e.message}", e)
             emptyList()
         }
 
@@ -348,7 +348,6 @@ fun insertFromWorkspace() {
         }
 
         if (directory.value.size > 0) {
-            console.log(" opening options ")
             showPickMenu_custom(options)
         }
 
@@ -443,13 +442,23 @@ fun parseKeybindingSpec(spec: String): String? {
 fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<Action_Desc>>) {
     val all = eval("[]")
     val selId = selected.map { it.unsafeCast<dynamic>().uid as String }.map { "'$it'" }.joinToString(",")
-    console.log(" selected list is ", selId.toString(), selection.toList())
+
+    fun escapeJsString(value: String): String {
+        return value
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "")
+    }
 
     selection.flatMap { it }.associateBy { it.id }.toMap().entries.forEach {
         val fullDesc = it.value.description
         val pipeIndex = fullDesc.indexOf('|')
-        val label = if (pipeIndex >= 0) fullDesc.substring(0, pipeIndex).trim() else fullDesc
+        val rawLabel = if (pipeIndex >= 0) fullDesc.substring(0, pipeIndex).trim() else fullDesc
+        val label = escapeJsString(rawLabel)
         val kbSpec = if (pipeIndex >= 0) fullDesc.substring(pipeIndex + 1) else ""
+        val detail = (it.value.detail ?: "").ifBlank { "" }
+        val detailEscaped = escapeJsString(detail)
 
         val kbExpr = parseKeybindingSpec(kbSpec.trim())
         val kbLine = if (kbExpr != null) "keybindings: [$kbExpr]," else "keybindings: [],"
@@ -457,13 +466,13 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         val e = """
             ({
                 id:'${it.key}', label:'$label', 
+                detail:'$detailEscaped',
                 $kbLine
                 canvasKeybinding: (event) => false, 
                 run: () => { 
                     clearErrors(globalEditor)                
                     
                     import("./afield.mjs").then( (afield) => {
-                     console.log(" computing selId ", selected, getSelectedIds())
                         afield.send("perform-action", {
                                 uid_action: '${it.key}',
                                 uid_currentSelection: getSelectedIds()
@@ -472,18 +481,16 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
                     })}
             })
         """.trimIndent()
-        console.log(" about to eval ", e)
         val a = eval(e)
         all.push(a)
     }
-
-    console.log(" refreshCommandsFromSelection - sel is ", selection.size, selection)
 
     if (boxes.size >= 1) {
         run {
             val e = """
             ({
                 id:'fmt-kotlin', label:'Format Kotlin', 
+                detail:'Fix the formatting of your code',
                 canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -499,7 +506,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'-copy', label:'Copy box(es)', 
+                id:'-copy', label:'Duplicate box(es)', 
+                detail:'Duplicate the currently selected boxes',
                 canvasKeybinding: (event) => (event.key=='D'||event.key=='d') && event.shiftKey && (event.ctrlKey || event.metaKey) && !event.altKey, 
                 keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D],
                 run: () => { 
@@ -517,6 +525,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             val e = """
             ({
                 id:'export-selection-edn', label:'Export selection (.edn)', 
+                detail:'Downloads the selected boxes as a self contained .edn file',
                 canvasKeybinding: (event) => false,
                 run: () => { 
                     exportSelectedBoxesToDownload()
@@ -540,15 +549,16 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             else -> escapedTargets.take(2).joinToString(", ") + ", +${escapedTargets.size - 2} more"
         }
 
-        val connectLabel = if (targetLabel.isNotEmpty()) "Connect 1:$escapedSource to $targetLabel" else "Connect $escapedSource"
+        val connectLabel = if (targetLabel.isNotEmpty()) "Connect '$escapedSource' to '$targetLabel'" else "Connect '$escapedSource'"
         val disconnectLabel =
-            if (targetLabel.isNotEmpty()) "Disconnect 1:$escapedSource from $targetLabel" else "Disconnect $escapedSource"
-        val nestLabel = if (targetLabel.isNotEmpty()) "Nest $targetLabel into $escapedSource" else "Nest into $escapedSource"
+            if (targetLabel.isNotEmpty()) "Disconnect '$escapedSource' from '$targetLabel'" else "Disconnect '$escapedSource'"
+        val nestLabel = if (targetLabel.isNotEmpty()) "Nest '$targetLabel' into '$escapedSource'" else "Nest into '$escapedSource'"
 
         run {
             val e = """
             ({
                 id:'connect', label:'$connectLabel', 
+                detail:'Shared selected variables from one box to another',
                 canvasKeybinding: (event) => event.key=='g' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -558,13 +568,13 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             })
         """.trimIndent()
             val a = eval(e)
-            console.log(" eval 2 sel to ", a)
             all.push(a)
         }
         run {
             val e = """
             ({
                 id:'nest-into', label:'$nestLabel', 
+                detail:'Hide one box 'inside' the nest of another box',
                 canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -574,13 +584,13 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             })
         """.trimIndent()
             val a = eval(e)
-            console.log(" eval nest into ", a)
             all.push(a)
         }
         run {
             val e = """
             ({
                 id:'disconnect', label:'$disconnectLabel', 
+                detail:'Stop sharing variables between these two boxes',
                 canvasKeybinding: (event) => event.key=='u' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -590,14 +600,14 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             })
         """.trimIndent()
             val a = eval(e)
-            console.log(" eval 2 sel to ", a)
             all.push(a)
         }
     }
     run {
         val e = """
             ({
-                id:'-update-check', label:'Check for updates', 
+                id:'-update-check', label:'Check for updates & download', 
+                detail:'Check the shared server for updates to Field and download them',
                 canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -614,6 +624,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             val e = """
             ({
                 id:'un-nest', label:'Un-nest selection', 
+                detail:'Bring a nested box out of it\'s nest',
                 canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -622,11 +633,11 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
                         })})}
             })
         """.trimIndent()
+            console.log(e)
             val a = eval(e)
             all.push(a)
         }
     }
-    console.log(" refreshed commands, got", all)
     allActions.fromSelection = all
     updateActions()
 }
@@ -637,6 +648,8 @@ fun registerBuiltinCommands() {
         [{
             id:'new-box',
             label:"New Box",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyCode.KEY_N] : [],
+            detail:"Make a new box under the mouse",
             canvasKeybinding: (event) => {
                 let a = event.key=='n' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
                 return a
@@ -646,7 +659,9 @@ fun registerBuiltinCommands() {
             }
         },{
             id:'delete-box',
-            label:"Delete Box",
+            label:"Delete Box(es)",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Backspace] : [],
+            detail:"Delete the selected boxes",
             canvasKeybinding: (event) => (event.keyCode==8 || event.keyCode==46) && (event.ctrlKey || event.metaKey),
             run: () => {
                 deleteSelectedBoxes()
@@ -654,6 +669,8 @@ fun registerBuiltinCommands() {
         },{
             id:'copy-selection',
             label:"Copy Selection",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_C] : [],
+            detail:"Copy selected boxes (and all their code & properties)",
             canvasKeybinding: (event) => (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
@@ -662,6 +679,8 @@ fun registerBuiltinCommands() {
         },{
             id:'paste-selection',
             label:"Paste Selection",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_V] : [],
+            detail:"Paste as new boxes",
             canvasKeybinding: (event) => (event.key=='v') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
@@ -670,6 +689,7 @@ fun registerBuiltinCommands() {
         },{
             id:'export-document-edn',
             label:"Export document (.edn)",
+            detail:"Download a self-contained .edn file of the whole document",
             canvasKeybinding: (event) => false,
             run: () => {
                 exportDocumentToDownload()
@@ -677,12 +697,15 @@ fun registerBuiltinCommands() {
         },{
             id:'move-forward',
             label:"Move selected boxes forward",
+            detail:"Bring to front",
             run: () => {
                     moveSelectedBoxesForward()
             }
         },{
             id:'insert-from-workspace',
-            label:"Insert document from workspace",
+            label:"Insert template",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_T] : [],
+            detail:"Search for boxes that you might want to add to this document",
             canvasKeybinding: (event) => (event.key=='t') && (event.ctrlKey || event.metaKey),
             run: () => {
                 insertFromWorkspace()
@@ -690,6 +713,8 @@ fun registerBuiltinCommands() {
         },{
             id:'edit-hashtag',
             label:"Edit hashtag",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_H] : [],
+            detail:"Edit the metadata associated with this document",
             canvasKeybinding: (event) => (event.key=='h') && (event.ctrlKey || event.metaKey),
             run: () => {
                 editHashtag()
@@ -697,6 +722,7 @@ fun registerBuiltinCommands() {
         },{
             id:'save-as-template',
             label:"Save selection as template",
+            detail:"Make the selected boxes a new template in your workspace for sharing later",
             canvasKeybinding: (event) => false,
             run: () => {
                 saveAsTemplate()
@@ -704,6 +730,7 @@ fun registerBuiltinCommands() {
         },{
             id:'provisional-accept-all',
             label:"Accept All Provisional (Everywhere)",
+            detail:"If AI has proposed changes to your code (shown in orange) accept them all",
             canvasKeybinding: (event) => false,
             run: () => {
                 import("./afield.mjs").then( (afield) => {afield.send("provisional-accept-all", {})})
@@ -711,6 +738,7 @@ fun registerBuiltinCommands() {
         },{
             id:'provisional-reject-all',
             label:"Reject All Provisional (Everywhere)",
+            detail:"If AI has proposed changes to your code (shown in orange) reject them all",
             canvasKeybinding: (event) => false,
             run: () => {
                 import("./afield.mjs").then( (afield) => {afield.send("provisional-reject-all", {})})
@@ -718,6 +746,7 @@ fun registerBuiltinCommands() {
         },{
             id:'switch-to-docs-iframe',
             label:"Switch to Documentation Iframe",
+            detail:"Switch to the documentation mode",
             canvasKeybinding: (event) => false,
             run: () => {
                 // Toggle into docs; default URL is handled by switchToDocsIframe/ensureDocsIframeHasContent
@@ -726,6 +755,7 @@ fun registerBuiltinCommands() {
         },{
             id:'show-document-history',
             label:"Show Document History",
+            detail:"Switch to the history view mode",
             canvasKeybinding: (event) => false,
             run: () => {
                 const filename = window.currentDocumentFilename || "default";
@@ -734,6 +764,7 @@ fun registerBuiltinCommands() {
         },{
             id:'switch-to-monaco-editor',
             label:"Switch to Monaco Editor",
+            detail:"Switch back to editing code",
             canvasKeybinding: (event) => false,
             run: () => {
                 window.switchToMonaco();

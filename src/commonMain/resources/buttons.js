@@ -1,6 +1,11 @@
 
 let canvas, ctx
 
+const DEBUG_MARKING = false;
+const markLog = (...args) => {
+        if (DEBUG_MARKING) console.info(...args);
+};
+
 var originatingMouseDown = null
 
 var masterMousedownCallbackTable = {}
@@ -11,7 +16,7 @@ const forceClearMarkingMenu = () => {
                         if (el.parentElement) el.parentElement.removeChild(el);
                 });
         } catch (e) {
-                console.log("error cleaning marking menu", e);
+                console.warn("error cleaning marking menu", e);
         }
         if (ctx && canvas) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -52,7 +57,7 @@ function initMenuSupport() {
                         }
                 });
                 canvas.addEventListener("mouseup", (event) => {
-                        console.log(" canvas got a mouseup")
+                        markLog("canvas mouseup")
                 });
 
                 canvas.addEventListener("mousemove", (event) => {
@@ -63,7 +68,7 @@ function initMenuSupport() {
                 window.addEventListener("mousemove", (event) => {
                         if (live) {
                                 let is = closestOption(event.x, event.y)
-                                console.log(" window move -- compute closest ", event.x,  event.y, is)
+                                markLog("window move -- compute closest ", event.x,  event.y, is)
                                 if (is)
                                 {
                                         for(var d of liveDivs) {
@@ -75,7 +80,7 @@ function initMenuSupport() {
                                 }
                         }
                         else {
-                                console.log(" window mousemove, but not live ")
+                                markLog("window mousemove, but not live ")
                         }
                 });
 
@@ -91,7 +96,7 @@ function initMenuSupport() {
 
 
                 window.addEventListener("mousedown", (event) => {
-                        console.log(" master mousedown event ", event)
+                        markLog("master mousedown event ", event)
                         originatingMouseDown = event
 
                         import("./afield.mjs").then( (afield) => {
@@ -118,7 +123,7 @@ function initMenuSupport() {
                 });
 
                 window.addEventListener("mouseup", (event) => {
-                        console.log(" master mouseup event ", event, live)
+                        markLog("master mouseup event ", event, live)
                         if (live) {
                                 const best = closestOption(event.x, event.y);
                                 if (best && best.finish) {
@@ -175,7 +180,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                 live = false
                 divs.forEach((d) => {
                         if (d.mouseIsOver) {
-                                console.log(" found element with mouse over, calling finish on it")
+                                markLog("found element with mouse over, calling finish on it")
                                 mainFinish = null
                                 if (d.finish) {
                                         was = d.finish
@@ -242,7 +247,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
             originy,
             rr,
             (event) => {
-                    console.log(" -- main finish on center")
+                    markLog(" -- main finish on center")
                     if (mainFinish) mainFinish(null);
                     cancelCallback()
                     live = false
@@ -404,11 +409,11 @@ const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = []) => {
 
         if (text.indexOf("<") == -1) {
                 newDiv.addEventListener("mouseup", () => {
-                        console.log(" got a mouse up ")
+                        markLog("got a mouse up")
                         newDiv.finish()
                 });
                 newDiv.subDiv.addEventListener("mouseup", () => {
-                        console.log(" got a mouse up ")
+                        markLog("got a mouse up")
                         newDiv.finish()
                 });
         }
@@ -427,7 +432,7 @@ const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = []) => {
         );
         var [x1, y1] = standOffLine(x1, y1, r, x2, y2);
 
-        console.log(x1, y1, x2, y2);
+        markLog("arrow segment", x1, y1, x2, y2);
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);

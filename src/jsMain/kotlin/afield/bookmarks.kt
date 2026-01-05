@@ -7,6 +7,11 @@ import kotlinx.serialization.json.Json
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 
+private const val DEBUG_BOOKMARKS = false
+private fun bookmarkDebug(message: String) {
+    if (DEBUG_BOOKMARKS) console.info(message)
+}
+
 /**
  * Bookmark System - Frontend Implementation
  * Manages 9 bookmarks (1-9) with keyboard shortcuts:
@@ -117,7 +122,7 @@ fun captureNestingState(): Map<String, NestingInfo> {
             }
         }
     } catch (e: dynamic) {
-        console.log("Error capturing nesting state:", e)
+        console.warn("Error capturing nesting state:", e)
     }
 
     return state
@@ -152,7 +157,7 @@ fun restoreScrollPosition(position: ScrollPosition) {
         mainCanvas.style.transform = "translate(${position.x}px, ${position.y}px)"
         canvasGestures.rebuildConnectionGroup()
     } catch (e: dynamic) {
-        console.log("Error restoring scroll position:", e)
+        console.warn("Error restoring scroll position:", e)
     }
 }
 
@@ -174,7 +179,7 @@ fun restoreSelectedBox(boxId: String) {
             box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
         }
     } catch (e: dynamic) {
-        console.log("Error restoring selected box:", e)
+        console.warn("Error restoring selected box:", e)
     }
 }
 
@@ -194,7 +199,7 @@ fun restoreEditedProperty(boxId: String, property: String) {
             } catch (_: dynamic) {}
         }
     } catch (e: dynamic) {
-        console.log("Error restoring edited property:", e)
+        console.warn("Error restoring edited property:", e)
     }
 }
 
@@ -215,7 +220,7 @@ fun restoreCursorPosition(line: Int, column: Int) {
             }
         }
     } catch (e: dynamic) {
-        console.log("Error restoring cursor position:", e)
+        console.warn("Error restoring cursor position:", e)
     }
 }
 
@@ -234,7 +239,7 @@ fun restoreNestingState(state: Map<String, NestingInfo>) {
             }
         }
     } catch (e: dynamic) {
-        console.log("Error restoring nesting state:", e)
+        console.warn("Error restoring nesting state:", e)
     }
 }
 
@@ -243,28 +248,22 @@ fun restoreNestingState(state: Map<String, NestingInfo>) {
  */
 fun restoreBookmark(bookmark: Bookmark) {
     try {
-        console.log(" restoring bookmark ", bookmark.name, " at ", bookmark.timestamp, "")
-        console.log(bookmark)
+        bookmarkDebug("restoring bookmark ${bookmark.name} at ${bookmark.timestamp}")
+        bookmarkDebug(bookmark.toString())
 
         // Restore scroll position
-        bookmark.scrollPosition?.let {
-            console.log(" restoring scroll position ", it)
-            restoreScrollPosition(it)
-        }
+        bookmark.scrollPosition?.let { restoreScrollPosition(it) }
 
         // Restore nesting state first (before selecting boxes)
-        bookmark.nestingState?.let {
-            console.log(" restoring nesting state ", it)
-            restoreNestingState(it)
-        }
+        bookmark.nestingState?.let { restoreNestingState(it) }
 
         // Restore selected box and edited property
         bookmark.selectedBox?.let { boxId ->
             if (bookmark.editedProperty != null) {
-                console.log(" restoring property ", bookmark.editedProperty, " in box ", boxId)
+                bookmarkDebug("restoring property ${bookmark.editedProperty} in box $boxId")
                 restoreEditedProperty(boxId, bookmark.editedProperty)
             } else {
-                console.log(" restoring selection in box ", boxId)
+                bookmarkDebug("restoring selection in box $boxId")
                 restoreSelectedBox(boxId)
             }
         }
@@ -273,14 +272,14 @@ fun restoreBookmark(bookmark: Bookmark) {
         if (bookmark.cursorLine != null && bookmark.cursorColumn != null) {
             // Wait longer than Monaco's own view-state restore to avoid flicker back
             window.setTimeout({
-                console.log(" restoring line / col", bookmark.cursorLine, bookmark.cursorColumn)
+                bookmarkDebug("restoring line/col ${bookmark.cursorLine}:${bookmark.cursorColumn}")
                 restoreCursorPosition(bookmark.cursorLine, bookmark.cursorColumn)
             }, 500)
         }
 
         notify("Restored ${bookmark.name}", "bookmarks")
     } catch (e: dynamic) {
-        console.log("Error restoring bookmark:", e)
+        console.warn("Error restoring bookmark:", e)
         notify("Error restoring bookmark", "error")
     }
 }
@@ -299,7 +298,7 @@ fun loadBookmarks(): BookmarkData {
             BookmarkData(version = 1, bookmarks = emptyList())
         }
     } catch (e: dynamic) {
-        console.log("Error loading bookmarks:", e)
+        console.warn("Error loading bookmarks:", e)
         BookmarkData(version = 1, bookmarks = emptyList())
     }
 }
@@ -325,7 +324,7 @@ fun saveBookmarks(bookmarkData: BookmarkData) {
             )
         )
     } catch (e: dynamic) {
-        console.log("Error saving bookmarks:", e)
+        console.warn("Error saving bookmarks:", e)
         notify("Error saving bookmarks", "error")
     }
 }
@@ -351,7 +350,7 @@ fun saveBookmarkSlot(bookmarkNumber: Int) {
         saveBookmarks(BookmarkData(version = 1, bookmarks = updatedBookmarks))
         notify("Saved Bookmark $bookmarkNumber", "bookmarks")
     } catch (e: dynamic) {
-        console.log("Error saving bookmark slot:", e)
+        console.warn("Error saving bookmark slot:", e)
         notify("Error saving bookmark", "error")
     }
 }
@@ -377,7 +376,7 @@ fun restoreBookmarkSlot(bookmarkNumber: Int) {
             notify("Bookmark $bookmarkNumber not set", "bookmarks")
         }
     } catch (e: dynamic) {
-        console.log("Error restoring bookmark slot:", e)
+        console.warn("Error restoring bookmark slot:", e)
         notify("Error restoring bookmark", "error")
     }
 }
@@ -466,5 +465,5 @@ fun initializeBookmarkSystem() {
     // Register actions
     registerBookmarkActions()
 
-    console.log("Bookmark system initialized")
+    console.info("[bookmarks] initialized")
 }

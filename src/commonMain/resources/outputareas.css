@@ -106,14 +106,25 @@
 
 /* Content */
 .disclosure-content {
-    overflow: auto;
+    overflow: hidden;
     display: none;
     padding: 4px 4px;
     font-size: 10px;
     background: rgba(0, 0, 0, 0.15);
-    resize: both;
+    resize: none;
     box-sizing: border-box;
     width: auto;
+}
+
+.nested-canvas {
+    position: relative;
+    overflow: visible;
+    min-width: 100%;
+    min-height: 100%;
+    width: 100000px;
+    height: 100000px;
+    transform-origin: 0 0;
+    pointer-events: auto;
 }
 
 .disclosure-content iframe {

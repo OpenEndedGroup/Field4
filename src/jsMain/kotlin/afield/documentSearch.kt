@@ -389,7 +389,7 @@ private fun openMatch(match: SearchMatch, allowEditorFocus: Boolean) {
         try {
             switchToProperty(uid, match.property)
         } catch (e: dynamic) {
-            console.log("switchToProperty failed", e)
+            console.info("[search] switchToProperty failed", e)
         }
     } else {
         showMonaco()
@@ -410,7 +410,7 @@ private fun openMatch(match: SearchMatch, allowEditorFocus: Boolean) {
                 if (allowEditorFocus) editor.focus()
             }
         } catch (e: dynamic) {
-            console.log("Failed to highlight match in editor", e)
+            console.info("[search] failed to highlight match", e)
         }
     }, 120)
 }
@@ -432,7 +432,7 @@ private fun openNestedParents(box: HTMLElement) {
                 inter.open("nested")
             }
         } catch (e: dynamic) {
-            console.log("Failed to open nested disclosure", e)
+            console.info("[search] failed to open nested disclosure", e)
         }
     }
     outputArea.style.visibility = "visible"

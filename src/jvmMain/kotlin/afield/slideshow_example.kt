@@ -295,25 +295,25 @@ fun Box.slideShowWithImagesExample() {
  */
 fun Box.installSlideShowControls() {
     // Add actions to control the slideshow
-    this.actions["▶ Start Slideshow"] = action {
+    this.actions["▶ Start Slideshow"] = action(desc="▶ Start Slideshow", detail = "Start the slideshow associated with this box") {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.start()
         }
     }
 
-    this.actions["→ Next Step"] = action {
+    this.actions["→ Next Step"] = action(desc="→ Next Step", detail = "Advance slide show forwards") {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.next()
         }
     }
 
-    this.actions["← Previous Step"] = action {
+    this.actions["← Previous Step"] = action(desc="← Previous Step", detail = "Go back one slide") {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.previous()
         }
     }
 
-    this.actions["■ Stop Slideshow"] = action {
+    this.actions["■ Stop Slideshow"] = action("■ Stop Slideshow", detail = "Hide the slideshow") {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.stop()
         }
@@ -535,7 +535,7 @@ fun Box.interactiveGuideExample() {
             withChat()
             selectBox(hostBox)
         }
-        
+
         step("Shared Chat Across Templates") {
             markdownNote(
                 """

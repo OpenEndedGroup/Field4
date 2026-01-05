@@ -530,6 +530,8 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
         val svg = getNamedSVGGroup("connections")
         svg.innerHTML = ""
+        val hints = getNamedSVGGroup("offscreen-hints")
+        hints.innerHTML = ""
 
         // example of new box accessable drawing
 //        val circleLayer = getNamedSVGGroup("circleLayer")
@@ -554,18 +556,60 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         var ox = mainTranslation[0] * 1.0
         var oy = mainTranslation[1] * 1.0
 
+        fun clamp(v: Double, lo: Double, hi: Double) = max(lo, min(hi, v))
+
+        fun addHintLine(x1: Double, y1: Double, x2: Double, y2: Double) {
+            val line = document.createElementNS(svgNamespace, "line") as SVGElement
+            line.setAttribute("x1", x1.toString())
+            line.setAttribute("y1", y1.toString())
+            line.setAttribute("x2", x2.toString())
+            line.setAttribute("y2", y2.toString())
+            line.setAttribute("stroke", "rgba(255,255,255,0.35)")
+            line.setAttribute("stroke-width", "4")
+            line.setAttribute("stroke-linecap", "round")
+            hints.appendChild(line)
+        }
+
         fun traverse(connectionName: String, find: (HTMLElement) -> List<String>?) {
             boxes().forEach { from ->
                 val c = find(from)
-                val r1 = from.getBoundingClientRect()
+                val screenRect = from.getBoundingClientRect()
 
                 if (from.style.visibility === "hidden") return@forEach
 
                 var o0 = 1.0
                 if (from.asDynamic().offline ) o0 = 0.25
 
-                r1.x -= ox
-                r1.y -= oy
+                val r1 = DOMRect(screenRect.x - ox, screenRect.y - oy, screenRect.width, screenRect.height)
+
+                val offLeft = screenRect.x + screenRect.width < 0
+                val offRight = screenRect.x > vbw
+                val offTop = screenRect.y + screenRect.height < 0
+                val offBottom = screenRect.y > vbh
+
+                if (offLeft || offRight || offTop || offBottom) {
+                    val margin = 4.0
+                    val edgeXScreen = if (offLeft) margin else vbw - margin
+                    val edgeYScreen = if (offTop) margin else vbh - margin
+                    val edgeX = edgeXScreen - ox
+                    val edgeY = edgeYScreen - oy
+                    when {
+                        (offLeft || offRight) && (offTop || offBottom) -> {
+                            // Corner case: keep using a short line segment
+                            addHintLine(edgeX, edgeY, edgeX, edgeY)
+                        }
+                        offLeft || offRight -> {
+                            val y1 = clamp(screenRect.y, 0.0, vbh) - oy
+                            val y2 = clamp(screenRect.y + screenRect.height, 0.0, vbh) - oy
+                            addHintLine(edgeX, y1, edgeX, y2)
+                        }
+                        offTop || offBottom -> {
+                            val x1 = clamp(screenRect.x, 0.0, vbw) - ox
+                            val x2 = clamp(screenRect.x + screenRect.width, 0.0, vbw) - ox
+                            addHintLine(x1, edgeY, x2, edgeY)
+                        }
+                    }
+                }
 
                 from.unsafeCast<dynamic>()
                 c?.let {

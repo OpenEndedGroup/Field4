@@ -1,4 +1,8 @@
 let globalIS = null
+const DEBUG_QUICKPICK = false;
+const qpLog = (...args) => {
+        if (DEBUG_QUICKPICK) console.info(...args);
+};
 
 const initQuickPick = (is) => {
         globalIS = is.IQuickInputService
@@ -8,19 +12,19 @@ const initQuickPick = (is) => {
 
         window.addEventListener("keydown", (e) => {
                 if (document.activeElement == document.body) {
-                        console.log(e.key)
+                        qpLog(e.key)
                         if (e.key == "?")
                                 showCheatsheet()
 
                         let k = e.key
                         let found = lastActions.find(x => {
-                                console.log(" testing ", x)
+                                qpLog(" testing ", x)
                                 let a = x.canvasKeybinding && x.canvasKeybinding(e)
-                                console.log(" got ", a)
+                                qpLog(" got ", a)
                                 return a
                         })
                         if (found) {
-                                console.log(" running ")
+                                qpLog(" running ")
                                 found.run()
                         }
                 }
@@ -37,6 +41,7 @@ let lastActions = []
 window.lastActions = lastActions
 
 function updateActions() {
+        ensureBuiltinKeybindings();
         let all = []
         Object.keys(allActions).forEach(key => {
                 all.push(...allActions[key])
@@ -72,6 +77,24 @@ function setActions(actions) {
 }
 window.updateActions = updateActions
 window.setActions = setActions
+
+// Ensure builtin actions get monaco keybindings once monaco is available
+function ensureBuiltinKeybindings() {
+        if (typeof monaco === "undefined") return
+        if (!allActions || !allActions.builtin) return
+        const map = {
+                "new-box": [monaco.KeyCode.KEY_N],
+                "delete-box": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Backspace],
+                "copy-selection": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_C],
+                "paste-selection": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_V],
+                "insert-from-workspace": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_T],
+                "edit-hashtag": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_H],
+        }
+        allActions.builtin.forEach(a => {
+                const kb = map[a.id]
+                if (kb) a.keybindings = kb
+        })
+}
 
 // --- Anywhere palette support ---
 const anywhereProviders = []
@@ -111,7 +134,7 @@ function triggerQuickInput(run) {
         try {
                 run()
         } finally {
-                // console.log("quick input fallback", e)
+                // qpLog("quick input fallback", e)
                 if (textarea) try { textarea.blur() } catch (_) {}
                 const findInput = document.querySelector(".monaco-findInput .input")
                 if (findInput) try { findInput.focus() } catch (_) {}
@@ -135,7 +158,7 @@ function loadUsage() {
                 const raw = localStorage.getItem(usageKey)
                 if (raw) anywhereUsage = JSON.parse(raw)
         } catch (e) {
-                console.log("failed to load anywhere usage", e)
+                console.warn("failed to load anywhere usage", e)
         }
 }
 
@@ -143,7 +166,7 @@ function saveUsage() {
         try {
                 localStorage.setItem(usageKey, JSON.stringify(anywhereUsage))
         } catch (e) {
-                console.log("failed to save anywhere usage", e)
+                console.warn("failed to save anywhere usage", e)
         }
 }
 
@@ -157,7 +180,7 @@ function bumpUsage(key) {
 }
 
 function registerAnywhereProvider(id, fetcher) {
-        console.log("[anywhere] register provider", id)
+        qpLog("[anywhere] register provider", id)
         anywhereProviders.push({ id, fetcher })
 }
 window.registerAnywhereProvider = registerAnywhereProvider
@@ -215,7 +238,7 @@ function bootstrapAnywhereProviders() {
                                 run: () => selectBoxByUid(uid)
                         })
                 })
-                console.log("[anywhere] box provider enumeration", { boxes: boxes.length, results: results.length })
+                qpLog("[anywhere] box provider enumeration", { boxes: boxes.length, results: results.length })
                 return results
         })
 
@@ -260,7 +283,7 @@ function bootstrapAnywhereProviders() {
                                 })
                         })
                 })
-                console.log("[anywhere] box-prop enumeration", { boxes: boxes.length, props: propertyNames.length, results: results.length, query: q })
+                qpLog("[anywhere] box-prop enumeration", { boxes: boxes.length, props: propertyNames.length, results: results.length, query: q })
                 return results
         })
 }
@@ -347,7 +370,7 @@ function rerank(results) {
                 return { ...r, score: base + freq + recency, usageKey: key }
         }).sort((a, b) => b.score - a.score)
         if (scored.length > ANYWHERE_RESULT_LIMIT) {
-            console.log(`[anywhere] limiting results ${scored.length} -> ${ANYWHERE_RESULT_LIMIT}`)
+            qpLog(`[anywhere] limiting results ${scored.length} -> ${ANYWHERE_RESULT_LIMIT}`)
         }
         return scored.slice(0, ANYWHERE_RESULT_LIMIT)
 }
@@ -356,7 +379,7 @@ function openAnywherePalette() {
         triggerQuickInput(() => {
                 const ed = ensureEditor()
                 if (!ed) {
-                        console.log("No editor available for quick input")
+                        console.warn("No editor available for quick input")
                         return
                 }
                 const cmd = getQuickInputCommand(ed)
@@ -373,7 +396,7 @@ function openAnywherePalette() {
 
                         const updateItems = async (value) => {
                                 const query = (value || "").trim()
-                                console.log("[anywhere] query", query, "providers", anywhereProviders.length)
+                                qpLog("[anywhere] query", query, "providers", anywhereProviders.length)
                                 qp.busy = true
                                 try {
                                         const pending = []
@@ -381,7 +404,7 @@ function openAnywherePalette() {
                                                 try {
                                                         const res = p.fetcher(query)
                                                         pending.push(Promise.resolve(res).then((items) => {
-                                                                console.log("[anywhere] provider result", p.id, items && items.length)
+                                                                qpLog("[anywhere] provider result", p.id, items && items.length)
                                                                 return items.map((it, idx) => ({
                                                                         provider: p.id,
                                                                         id: it.id || `${p.id}-${idx}-${it.label}`,
@@ -395,11 +418,11 @@ function openAnywherePalette() {
                                                                 }))
                                                         }))
                                                 } catch (e) {
-                                                        console.log("provider threw", p.id, e)
+                                                        console.warn("provider threw", p.id, e)
                                                 }
                                         })
                                         const results = (await Promise.all(pending)).flat()
-                                        console.log("[anywhere] combined results", results.length)
+                                        qpLog("[anywhere] combined results", results.length)
                                         currentResults = rerank(results)
                                         const truncated = results.length > currentResults.length
 
@@ -668,7 +691,7 @@ const globalPickMenu_custom = (options) => {
                                 if (!meta) return
                                 qp.hide()
                                 if (typeof meta.run === "function") {
-                                        console.log("selection has happened, ", meta)
+                                        qpLog("selection has happened, ", meta)
                                         meta.run()
                                 }
                         })
@@ -695,7 +718,7 @@ const globalPickMenu = () => {
 
                 ed.trigger("", cmd, (quickInput) => {
                         quickInput.pick(lastActions).then((selected) => {
-                                console.log("selection has happened, ", selected)
+                                qpLog("selection has happened, ", selected)
                                 selected.run()
                         })
                 })

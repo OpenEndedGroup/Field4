@@ -431,12 +431,16 @@ fun doResync() {
                 val actionList = box.gather<MutableMap<String, Action>>("actions").entries.map { it.key to it.value }
                 lprintln("debug,boxes", "actions for ${box.id}: are ${actionList.map { it.first }} ${actionList.map { it.second.desc }}}")
 
-                message = Message("describe-action").payload(Describe_actions(box.id, actionList.map { (name, action) ->
-                    actionTable[name] = { sel ->
-                        action.target(sel)
-                    }
-                    Action_Desc(name, action.desc)
-                }))
+                message = Message("describe-action").payload(
+                    Describe_actions(
+                        box.id,
+                        actionList.map { (name, action) ->
+                            actionTable[name] = { sel ->
+                                action.target(sel)
+                            }
+                            Action_Desc(name, action.desc, action.detail)
+                        })
+                )
             }
 
             else -> {

@@ -52,7 +52,7 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
     val contain = outputArea.querySelector(".disclosure-group")
     val di = js("window.disclosureInterface")
     if (di == null) {
-        console.log("disclosureInterface not ready yet; skipping output area for channel ${set.channel}")
+        console.info("[output] disclosureInterface not ready yet; skipping channel ${set.channel}")
         return
     }
     val inter = di(contain!!)
@@ -72,23 +72,20 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
         insertHTMLWithScripts(contentRoot, set.value)
     }
 
-
 }
 
 fun handleCustomizationRequest(box: HTMLElement, code: Set_string) {
-    console.log(" evaluating function trap")
+    console.info("[customize] executing customization code for ${code.property}")
     val f = eval(
         """
         new Function("customize", `${code.value}`)
     """.trimIndent()
     ).unsafeCast<dynamic>()
-    console.log(" calling function trap", f)
     f.call(box)
-    console.log(" completed ")
 }
 
 @OptIn(DelicateCoroutinesApi::class)
 fun handleEvalRequest(box: HTMLElement, code: String) {
-    console.log(" evaluating function trap", code)
+    console.info("[customize] evaluating module code")
     insertHTMLWithScripts(box, "<script type='module'>$code</script>", isModule = true)
 }

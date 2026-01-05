@@ -738,6 +738,78 @@
             position: absolute !important;
         }
 
+        .spatial-nav-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 25;
+        }
+
+        .spatial-nav-lines {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .spatial-nav-line {
+            stroke: rgba(235, 150, 70, 0.9);
+            stroke-width: 1.0;
+        }
+
+        .spatial-nav-highlight {
+            position: absolute;
+            border: 2px dashed rgba(235, 150, 70, 0.85);
+            border-radius: 10px;
+            background: rgba(235, 150, 70, 0.04);
+        }
+
+        .spatial-nav-highlight.anchor {
+            border-style: solid;
+        }
+
+        .spatial-nav-badge {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            background: rgba(235, 150, 70, 0.95);
+            color: #111;
+            font-family: "Iosevka Web", monospace;
+            font-weight: 700;
+            font-size: 18px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #0b0b0b;
+            pointer-events: none;
+            letter-spacing: 0.2px;
+            z-index: 1;
+        }
+
+        .spatial-nav-bookmark-badge {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            background: rgba(235, 150, 70, 0.95);
+            color: #111;
+            font-family: "Iosevka Web", monospace;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 2px solid #0b0b0b;
+            pointer-events: none;
+            letter-spacing: 0.2px;
+            z-index: 1;
+            white-space: nowrap;
+        }
+
         .running {
             background-image: url("data:image/svg+xml,%3Csvg%20id%3D'stripes-svg'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'100%25'%20height%3D'100%25'%3E%3Cdefs%3E%3Cpattern%20id%3D'svg-stripes-pattern-5289'%20patternTransform%3D'rotate(45)'%20width%3D'100%25'%20height%3D'17'%20x%3D'0'%20y%3D'0'%20patternUnits%3D'userSpaceOnUse'%3E%3Canimate%20attributeName%3D'y'%20begin%3D'0s'%20dur%3D'100s'%20from%3D'0'%20to%3D'5000px'%20repeatCount%3D'indefinite'%20fill%3D'freeze'%3E%3C%2Fanimate%3E%3Cg%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'7'%20fill%3D'rgba(0%2C%200%2C%200%2C%201)'%3E%3C%2Frect%3E%3Crect%20x%3D'0'%20y%3D'7'%20width%3D'100%25'%20height%3D'10'%20fill%3D'rgba(150%2C%20255%2C%20208%2C%200.3)'%3E%3C%2Frect%3E%3C%2Fg%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'url(%23svg-stripes-pattern-5289)'%3E%3C%2Frect%3E%3C%2Fsvg%3E");
         }
@@ -1240,6 +1312,7 @@
 
 <script type="text/javascript" src="./min/vs/loader.js"></script>
 <script src="quickpick.js"></script>
+<script src="keycast.js"></script>
 <script src="outputs.js" type="module"></script>
 <script src="buttons.js"></script>
 <script src="numbers.js"></script>
@@ -1261,7 +1334,7 @@
 
 <script type="module">
 
-    console.log(" welcome to field4")
+    console.info("welcome to field4")
     document.addEventListener('keydown', function (event) {
         if (event.keyCode === 112) {
             event.preventDefault();

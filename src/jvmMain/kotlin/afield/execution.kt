@@ -15,7 +15,7 @@ import kotlin.script.experimental.api.ScriptDiagnostic
 
 @RunsAt(newRoot)
 fun installKEActions(root : Box) {
-    root.actions["reset"] = Action("Reset Kotlin Environment for Box") {
+    root.actions["reset"] = Action("Reset Kotlin Environment for Box", detail="This drops all variables and declarations live in the current box and starts again") {
         it.forEach {
             it.ki = makeKI(it)
         }

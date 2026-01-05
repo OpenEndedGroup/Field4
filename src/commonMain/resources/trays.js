@@ -10,7 +10,7 @@
         const trayState = Object.create(null); // side -> { el, visible, size, title }
 
         function installStyles() {
-                console.log(" installing tray styles")
+                console.info("installing tray styles")
                 if (document.getElementById('field-tray-style')) return;
 
                 const style = document.createElement('style');

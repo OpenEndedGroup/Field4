@@ -14,7 +14,6 @@ fun registerDoubleTap() {
         val now = Date.now()
         val k = ke.key
         if (k == lastKey && now - lastKeyAt < 300 && lastKeyWasReleased) {
-            console.log(" double tap ", k)
             doubleTap[k]?.invoke()
             // Reset all state after successful double-tap
             lastKey = ""

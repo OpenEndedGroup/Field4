@@ -6,6 +6,10 @@ let revisions = new Map();
 let allDeltas = [];
 let currentRevision = null;
 let paused = false
+const DEBUG_LINE_TRACKING = false;
+const lineLog = (...args) => {
+        if (DEBUG_LINE_TRACKING) console.info(...args);
+};
 
 function markRevision(inside, name) {
         inside.revisions = inside.revisions ?? new Map()
@@ -29,7 +33,7 @@ function unpauseLineTracking() {
 
 function beginLineTracking(globalEditor) {
         globalEditor.getModel().onDidChangeContent(function(e) {
-                console.log(" editor did change content ", e, paused)
+                lineLog("editor did change content", e, paused)
 
                 if (currentSelectedCode.length!=1) return
                 if (paused) return
@@ -49,7 +53,7 @@ function beginLineTracking(globalEditor) {
                         }
                         const removed = change.range.endLineNumber - change.range.startLineNumber;
                         const inserted = change.text.split('\n').length - 1;
-                        console.log(" removed "+removed+" inserted "+inserted+" starting at "+change.range.startLineNumber)
+                        lineLog("removed "+removed+" inserted "+inserted+" starting at "+change.range.startLineNumber)
                         const delta = {
                                 revisionVersion: currentRevision.versionId,  // checkpoint marker
                                 deltaVersion: changeVersion,

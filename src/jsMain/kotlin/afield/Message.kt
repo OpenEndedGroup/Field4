@@ -20,7 +20,7 @@ var clientOpen = false
 var reopen_backoff = 100L
 
 fun reopen() {
-    console.log(" attempting reopen ")
+    console.info("[ws] attempting reconnect")
     notify("Attempting reconnect...", "connectivity")
     client = WebSocket("ws://" + document.location?.host + "/ws")
     initializeClient()
@@ -30,7 +30,7 @@ var isReconnect = false
 
 fun initializeClient() {
     client.onopen = {
-        console.log(" on open !")
+        console.info("[ws] open")
         if (window.unsafeCast<dynamic>().notify!=null) {
             notify("Connected — loading document", "connectivity")
             if (isReconnect) {
@@ -56,7 +56,7 @@ fun initializeClient() {
     }
     client.onclose = {
         notify("Disconnected (try reloading this window)", "connectivity")
-        console.log("socket has closed ", it)
+        console.info("[ws] closed", it)
         clientOpen = false
         reopen_backoff = (1.1*reopen_backoff).toLong()
         setTimeout(reopen_backoff.toDuration(DurationUnit.MILLISECONDS), ::reopen)
@@ -70,7 +70,7 @@ fun initializeClient() {
     }
     client.onerror = {
         notify("Disconnected (error)", "connectivity")
-        console.log("socket has error ", it)
+        console.info("[ws] error", it)
         clientOpen = false
         reopen_backoff *= 2
         setTimeout(reopen_backoff.toDuration(DurationUnit.MILLISECONDS), ::reopen)

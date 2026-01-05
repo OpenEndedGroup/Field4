@@ -72,7 +72,7 @@ fun install() {
                     box.vertex = v
                     box.fragment = f
                 }
-                box.actions += "moduleHere_reload" to Action("Reload (RemoteJS) Shader") {
+                box.actions += "moduleHere_reload" to Action("Reload (RemoteJS) Shader", detail="Tells remote browsers to reload the shader associated with this box") {
                     executeRemoteJS(
                         """
                         __reloadShader('${on}', `${box.vertex}`, `${box.fragment}`)

@@ -3,6 +3,7 @@
 package afield
 
 import CanvasGestures
+import clipRay
 import doubleTap
 import handleCustomizationRequest
 import handleEvalRequest
@@ -17,10 +18,7 @@ import kotlinx.html.*
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import org.w3c.dom.HTMLElement
-import org.w3c.dom.HTMLInputElement
-import org.w3c.dom.HTMLTextAreaElement
-import org.w3c.dom.asList
+import org.w3c.dom.*
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
@@ -30,6 +28,7 @@ import registerDoubleTap
 import web.cssom.important
 import web.timers.setTimeout
 import kotlin.js.json
+import kotlin.math.abs
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -95,9 +94,25 @@ var onSelectedChange = mutableMapOf<String, () -> Boolean>()
 
 var events = HashMap<String, () -> Boolean>()
 
+private enum class CardinalDirection(val label: String) {
+    NORTH("↑"),
+    SOUTH("↓"),
+    EAST("→"),
+    WEST("←")
+}
+
+private var spatialNavActive = false
+private var spatialNavKey: String? = null
+private var spatialNavAnchor: HTMLElement? = null
+private var spatialNavTargets = mutableMapOf<CardinalDirection, HTMLElement>()
+private var metaPressed = false
+private var ctrlPressed = false
+
 // Prevent duplicate Alt-click launches (e.g., nested boxes receiving duplicate events)
 var lastAltDownUid: String? = null
 var lastAltDownStamp = 0.0
+var lastShiftDownUid: String? = null
+var lastShiftDownStamp = 0.0
 
 // Layers system state
 var visibleLayers = mutableSetOf("default")
@@ -108,12 +123,99 @@ fun selectionContextChanged() {
         redrawSlideAnnotations()
         scheduleSlideAnnotationRedraw(10)
     }
+    if (spatialNavActive) {
+        refreshSpatialNavTargets()
+    }
 }
 
 fun serviceEvents() {
     events.entries.retainAll { (k, v) ->
         v()
     }
+}
+
+private fun attachPanToNestedArea(container: HTMLElement) {
+    if (container.asDynamic().panHandlersAttached == true) return
+    container.asDynamic().panHandlersAttached = true
+    container.style.asDynamic().overflow = "hidden"
+    container.style.asDynamic().touchAction = "none"
+    container.style.asDynamic().width = "100000px"
+    container.style.asDynamic().height = "100000px"
+
+    var panActive = false
+    var startX = 0.0
+    var startY = 0.0
+    var baseX = 0.0
+    var baseY = 0.0
+
+    fun applyTranslation(x: Double, y: Double) {
+        container.style.transform = "translate(${x}px, ${y}px)"
+        container.asDynamic().data_x = x
+        container.asDynamic().data_y = y
+        canvasGestures.rebuildConnectionGroup()
+    }
+
+    // Initialize stored offsets if missing
+    val initX = (container.asDynamic().data_x as? Double) ?: 0.0
+    val initY = (container.asDynamic().data_y as? Double) ?: 0.0
+    applyTranslation(initX, initY)
+
+    val wheelHandler: (dynamic) -> dynamic = { event: dynamic ->
+        event.preventDefault()
+        event.stopPropagation()
+
+        val currentX = (container.asDynamic().data_x as? Double) ?: 0.0
+        val currentY = (container.asDynamic().data_y as? Double) ?: 0.0
+        val dx = -(event.deltaX as? Double ?: 0.0)
+        val dy = -(event.deltaY as? Double ?: 0.0)
+        applyTranslation(currentX + dx, currentY + dy)
+        null
+    }
+    container.onwheel = wheelHandler
+    (container.parentElement as? HTMLElement)?.onwheel = wheelHandler
+
+    container.onmousedown = onmousedown@{ event ->
+        val buttons = event.buttons.toInt()
+        val isMiddleButton = buttons == 4 || event.button.toInt() == 1
+        if (!isMiddleButton) {
+            return@onmousedown null
+        }
+        panActive = true
+        startX = event.clientX.toDouble()
+        startY = event.clientY.toDouble()
+        baseX = (container.asDynamic().data_x as? Double) ?: 0.0
+        baseY = (container.asDynamic().data_y as? Double) ?: 0.0
+        try {
+            event.asDynamic().target?.setPointerCapture?.invoke(event.asDynamic().pointerId)
+        } catch (_: dynamic) {
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        null
+    }
+
+    container.onmousemove = onmousemove@{ event ->
+        if (!panActive) return@onmousemove null
+        val dx = event.clientX - startX
+        val dy = event.clientY - startY
+        applyTranslation(baseX + dx, baseY + dy)
+        event.preventDefault()
+        event.stopPropagation()
+        null
+    }
+
+    val endPan: (dynamic) -> Unit = let@{ event: dynamic ->
+        if (!panActive) return@let
+        panActive = false
+        event?.preventDefault()
+        event?.stopPropagation()
+        null
+    }
+
+    container.onmouseup = endPan
+    container.onmouseleave = endPan
+    container.onpointerup = endPan
+    container.onpointercancel = endPan
 }
 
 private fun isEditorFocused(): Boolean {
@@ -615,6 +717,342 @@ private fun updateSelectionBadges() {
     }
 }
 
+private const val spatialNavPadding = 12.0
+private const val spatialNavDoubleTapThresholdMs = 360.0
+
+private fun isSpatialNavCandidate(box: HTMLElement?): Boolean {
+    if (box == null) return false
+    if (!box.isConnected) return false
+    if (box.classList.contains("tombstoned")) return false
+    if (!isBoxVisible(box)) return false
+    val rect = box.getBoundingClientRect()
+    return rect.width > 0.0 && rect.height > 0.0
+}
+
+private fun rectCenter(rect: DOMRect): Pair<Double, Double> =
+    Pair(rect.left + rect.width / 2.0, rect.top + rect.height / 2.0)
+
+private fun inflateRect(rect: DOMRect, pad: Double): DOMRect {
+    val left = rect.left - pad
+    val top = rect.top - pad
+    val width = rect.width + pad * 2.0
+    val height = rect.height + pad * 2.0
+    return js("new DOMRect(left, top, width, height)") as DOMRect
+}
+
+private fun bookmarkSlotsByBox(): Map<String, List<Int>> {
+    return try {
+        loadBookmarks().bookmarks.mapNotNull { bookmark ->
+            val uid = bookmark.selectedBox ?: return@mapNotNull null
+            val num = bookmark.id.removePrefix("bookmark_").toIntOrNull() ?: return@mapNotNull null
+            uid to num
+        }.groupBy({ it.first }, { it.second })
+    } catch (_: dynamic) {
+        emptyMap()
+    }
+}
+
+private fun findDirectionalSpatialTargets(anchor: HTMLElement): Map<CardinalDirection, HTMLElement> {
+    val anchorRect = anchor.getBoundingClientRect()
+    val (ax, ay) = rectCenter(anchorRect)
+    val boxes = document.body?.getElementsByClassName("box")?.asList().orEmpty()
+        .mapNotNull { it as? HTMLElement }
+        .filter { it != anchor && isSpatialNavCandidate(it) }
+
+    val best = mutableMapOf<CardinalDirection, Pair<HTMLElement, Double>>()
+
+    boxes.forEach { candidate ->
+        val rect = candidate.getBoundingClientRect()
+        val (cx, cy) = rectCenter(rect)
+        val dx = cx - ax
+        val dy = cy - ay
+        if (abs(dx) < 1e-3 && abs(dy) < 1e-3) return@forEach
+
+        val direction = if (abs(dx) > abs(dy)) {
+            if (dx > 0) CardinalDirection.EAST else CardinalDirection.WEST
+        } else {
+            if (dy > 0) CardinalDirection.SOUTH else CardinalDirection.NORTH
+        }
+
+        val primary = if (direction == CardinalDirection.EAST || direction == CardinalDirection.WEST) abs(dx) else abs(dy)
+        val secondary = if (direction == CardinalDirection.EAST || direction == CardinalDirection.WEST) abs(dy) else abs(dx)
+        val score = primary + secondary * 0.2
+
+        val existing = best[direction]
+        if (existing == null || score < existing.second) {
+            best[direction] = candidate to score
+        }
+    }
+
+    return best.mapValues { it.value.first }
+}
+
+private fun ensureSpatialNavOverlay(): HTMLElement {
+    val existing = document.getElementById("spatial-nav-overlay") as? HTMLElement
+    if (existing != null) return existing
+    val overlay = document.createElement("div") as HTMLElement
+    overlay.id = "spatial-nav-overlay"
+    overlay.classList.add("spatial-nav-overlay")
+    document.body?.appendChild(overlay)
+    return overlay
+}
+
+private fun clearSpatialNavOverlay() {
+    val existing = document.getElementById("spatial-nav-overlay") as? HTMLElement
+    existing?.parentElement?.removeChild(existing)
+}
+
+private fun renderSpatialNavOverlay(anchor: HTMLElement) {
+    if (!spatialNavActive) {
+        clearSpatialNavOverlay()
+        return
+    }
+
+    val overlay = ensureSpatialNavOverlay()
+    overlay.innerHTML = ""
+
+    val svg = document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement
+    svg.setAttribute("class", "spatial-nav-lines")
+    svg.setAttribute("width", "100%")
+    svg.setAttribute("height", "100%")
+    overlay.appendChild(svg)
+
+    val anchorRect = anchor.getBoundingClientRect()
+    val bookmarkMap = bookmarkSlotsByBox()
+
+    fun appendHighlight(rect: DOMRect, isAnchor: Boolean) {
+        val highlight = document.createElement("div") as HTMLElement
+        highlight.classList.add("spatial-nav-highlight")
+        if (isAnchor) highlight.classList.add("anchor")
+        highlight.style.left = "${rect.left}px"
+        highlight.style.top = "${rect.top}px"
+        highlight.style.width = "${rect.width}px"
+        highlight.style.height = "${rect.height}px"
+        overlay.appendChild(highlight)
+    }
+
+    fun appendBadge(rect: DOMRect, direction: CardinalDirection) {
+        val badge = document.createElement("div") as HTMLElement
+        badge.classList.add("spatial-nav-badge")
+        badge.textContent = direction.label
+        val (left, top) = when (direction) {
+            CardinalDirection.NORTH -> Pair(rect.left + rect.width / 2.0, rect.top - 16.0)
+            CardinalDirection.SOUTH -> Pair(rect.left + rect.width / 2.0, rect.bottom + 16.0)
+            CardinalDirection.EAST -> Pair(rect.right + 16.0, rect.top + rect.height / 2.0)
+            CardinalDirection.WEST -> Pair(rect.left - 16.0, rect.top + rect.height / 2.0)
+        }
+        badge.style.left = "${left}px"
+        badge.style.top = "${top}px"
+        overlay.appendChild(badge)
+    }
+
+    fun appendBookmarkBadges(rect: DOMRect, labels: List<Int>, anchorLeft: Double? = null, anchorTop: Double? = null) {
+        labels.forEachIndexed { index, num ->
+            val badge = document.createElement("div") as HTMLElement
+            badge.classList.add("spatial-nav-bookmark-badge")
+            badge.textContent = "F$num"
+            val defaultLeft: Double
+            val defaultTop: Double
+            if (anchorLeft != null && anchorTop != null) {
+                defaultLeft = anchorLeft + index * 36.0
+                defaultTop = anchorTop
+            } else {
+                // Spread along top edge, centered
+                val spread = (index - (labels.size - 1) / 2.0) * 36.0
+                defaultLeft = rect.left + rect.width / 2.0 + spread
+                defaultTop = rect.top
+            }
+            badge.style.left = "${defaultLeft}px"
+            badge.style.top = "${defaultTop}px"
+            overlay.appendChild(badge)
+        }
+    }
+
+    val anchorHighlight = inflateRect(anchorRect, spatialNavPadding)
+    appendHighlight(anchorHighlight, true)
+    val (ax, ay) = rectCenter(anchorHighlight)
+
+    spatialNavTargets.forEach { (direction, target) ->
+        if (!isSpatialNavCandidate(target)) return@forEach
+        val rect = target.getBoundingClientRect()
+        val targetHighlight = inflateRect(rect, spatialNavPadding)
+        appendHighlight(targetHighlight, false)
+        appendBadge(targetHighlight, direction)
+        bookmarkMap[target.asDynamic().uid as? String ?: ""]?.let { slots ->
+            val (arrowLeft, arrowTop) = when (direction) {
+                CardinalDirection.NORTH -> Pair(targetHighlight.left + targetHighlight.width / 2.0, targetHighlight.top)
+                CardinalDirection.SOUTH -> Pair(targetHighlight.left + targetHighlight.width / 2.0, targetHighlight.bottom)
+                CardinalDirection.EAST -> Pair(targetHighlight.right, targetHighlight.top + targetHighlight.height / 2.0)
+                CardinalDirection.WEST -> Pair(targetHighlight.left, targetHighlight.top + targetHighlight.height / 2.0)
+            }
+            appendBookmarkBadges(targetHighlight, slots, arrowLeft, arrowTop)
+        }
+        val (tx, ty) = rectCenter(targetHighlight)
+        val dx = tx - ax
+        val dy = ty - ay
+        val start = clipRay(anchorHighlight, dx, dy).point
+        val end = clipRay(targetHighlight, -dx, -dy).point
+        val line = document.createElementNS(svg.namespaceURI, "line") as SVGElement
+        line.setAttribute("x1", start.x.toString())
+        line.setAttribute("y1", start.y.toString())
+        line.setAttribute("x2", end.x.toString())
+        line.setAttribute("y2", end.y.toString())
+        line.setAttribute("class", "spatial-nav-line")
+        svg.appendChild(line)
+    }
+
+    val targetedUids = spatialNavTargets.values.mapNotNull { it.asDynamic().uid as? String }.toSet()
+    bookmarkMap.forEach { (uid, slots) ->
+        if (targetedUids.contains(uid)) return@forEach
+        val box = findBoxByUid(uid) ?: return@forEach
+        if (!isSpatialNavCandidate(box)) return@forEach
+        val rect = inflateRect(box.getBoundingClientRect(), spatialNavPadding)
+        appendBookmarkBadges(rect, slots)
+    }
+}
+
+private fun refreshSpatialNavTargets() {
+    if (!spatialNavActive) return
+    val anchor = selected.lastOrNull()?.takeIf { isSpatialNavCandidate(it) }
+        ?: spatialNavAnchor?.takeIf { isSpatialNavCandidate(it) }
+    if (anchor == null) {
+        deactivateSpatialNavMode()
+        return
+    }
+    spatialNavAnchor = anchor
+    spatialNavTargets.clear()
+    spatialNavTargets.putAll(findDirectionalSpatialTargets(anchor))
+    renderSpatialNavOverlay(anchor)
+}
+
+private fun activateSpatialNav(triggerKey: String) {
+    if (spatialNavActive && spatialNavKey == triggerKey) {
+        refreshSpatialNavTargets()
+        return
+    }
+    val anchor = selected.lastOrNull() ?: return
+    spatialNavActive = true
+    spatialNavKey = triggerKey
+    spatialNavAnchor = anchor
+    refreshSpatialNavTargets()
+}
+
+private fun deactivateSpatialNavMode() {
+    spatialNavActive = false
+    spatialNavKey = null
+    spatialNavAnchor = null
+    spatialNavTargets.clear()
+    clearSpatialNavOverlay()
+    try {
+        switchToMonaco()
+    } catch (_: dynamic) {
+    }
+    try {
+        val editor = window.asDynamic().globalEditor
+        if (editor != null && editor.focus != undefined) {
+            editor.focus()
+        }
+    } catch (_: dynamic) {
+    }
+}
+
+private fun installSpatialNavigationShortcut() {
+    var lastMetaDown = 0.0
+    var lastCtrlDown = 0.0
+
+    fun trackTrigger(key: String, event: KeyboardEvent) {
+        val now = window.performance.now()
+        val alreadyPressed = if (key == "Meta") metaPressed else ctrlPressed
+        val lastDown = if (key == "Meta") lastMetaDown else lastCtrlDown
+        if (!alreadyPressed && now - lastDown < spatialNavDoubleTapThresholdMs) {
+            event.preventDefault()
+            activateSpatialNav(key)
+        }
+
+        if (key == "Meta") {
+            metaPressed = true
+            lastMetaDown = now
+        } else {
+            ctrlPressed = true
+            lastCtrlDown = now
+        }
+    }
+
+    window.addEventListener("keydown", { raw ->
+        val event = raw as KeyboardEvent
+        when (event.key) {
+            "Meta" -> if (!event.repeat) trackTrigger("Meta", event)
+            "Control" -> if (!event.repeat) trackTrigger("Control", event)
+        }
+
+        if (spatialNavActive && spatialNavKey != null) {
+            val triggerHeld = when (spatialNavKey) {
+                "Meta" -> metaPressed || event.metaKey
+                "Control" -> ctrlPressed || event.ctrlKey
+                else -> false
+            }
+            if (!triggerHeld) {
+                deactivateSpatialNavMode()
+                return@addEventListener
+            }
+            when (event.key) {
+                "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight" -> {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    val dir = when (event.key) {
+                        "ArrowUp" -> CardinalDirection.NORTH
+                        "ArrowDown" -> CardinalDirection.SOUTH
+                        "ArrowLeft" -> CardinalDirection.WEST
+                        else -> CardinalDirection.EAST
+                    }
+                    val target = spatialNavTargets[dir]
+                    if (target != null) {
+                        selected.toList().forEach { deselectBox(it) }
+                        selectBox(target)
+                        spatialNavAnchor = target
+                        refreshSpatialNavTargets()
+                    } else {
+                        spatialNavAnchor?.let { renderSpatialNavOverlay(it) }
+                    }
+                }
+
+                "Escape" -> {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    deactivateSpatialNavMode()
+                }
+            }
+        }
+    }, true)
+
+    window.addEventListener("keyup", { raw ->
+        val event = raw as KeyboardEvent
+        when (event.key) {
+            "Meta" -> {
+                metaPressed = false
+                if (spatialNavActive && spatialNavKey == "Meta") {
+                    deactivateSpatialNavMode()
+                }
+            }
+
+            "Control" -> {
+                ctrlPressed = false
+                if (spatialNavActive && spatialNavKey == "Control") {
+                    deactivateSpatialNavMode()
+                }
+            }
+        }
+    }, true)
+
+    window.addEventListener("blur", {
+        metaPressed = false
+        ctrlPressed = false
+        if (spatialNavActive) {
+            deactivateSpatialNavMode()
+        }
+    })
+}
+
 
 fun deselectBox(it: HTMLElement) {
     it.classList.remove("selected")
@@ -724,6 +1162,7 @@ suspend fun main() {
 
     initializeClient()
     registerDoubleTap()
+    installSpatialNavigationShortcut()
 
     doubleTap["Escape"] = {
         removeNewestOutput()
@@ -734,9 +1173,9 @@ suspend fun main() {
         val w = window.unsafeCast<dynamic>()
         val fn = w.openAnywherePalette
         if (fn != undefined && fn != null) {
-            try { fn() } catch (e: Exception) { console.log("openAnywherePalette failed", e) }
+            try { fn() } catch (e: Exception) { console.info("[palette] openAnywherePalette failed", e) }
         } else {
-            console.log("openAnywherePalette not available")
+            console.info("[palette] openAnywherePalette not available")
         }
         null
     }
@@ -747,7 +1186,6 @@ suspend fun main() {
         val boxes = document.body!!.getElementsByClassName("box").asList()
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == le.uid }
 
-        console.log(" -- local eval ", found)
         found?.let {
             try {
                 handleEvalRequest(found as HTMLElement, le.prompt)
@@ -765,15 +1203,12 @@ suspend fun main() {
         val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
         if (set.property !== "frame") return@put Handled.no
 
-        console.log(" set rect ", set, set.value)
-
         val u = set.uid
 
         val boxes = document.body!!.getElementsByClassName("box").asList()
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == u }
 
         if (found === null) {
-            console.log(" created box on demand ")
             mainCanvas.append {
                 createBox("", frame = set.value, uid = u, sendInitialSync = false)
             }
@@ -898,16 +1333,13 @@ suspend fun main() {
                 }
             }
             "offline" -> {
-                console.log(" got offline message ", set)
                 if (found !=null) {
                     if (set.number) {
-                        console.log(" bringing ", found, " offline ")
                         found.unsafeCast<HTMLElement>().classList.add("offline")
                         found.asDynamic().offline = true
                         canvasGestures.rebuildConnectionGroup()
                     }
                     else {
-                        console.log(" bringing ", found, " online ")
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
                         // Clear all execution markers when box comes online
@@ -923,7 +1355,6 @@ suspend fun main() {
                 }
             }
             "_tombstone" -> {
-                console.log(" got _tombstone message ", set)
                 var target = found
                 if (target == null) {
                     mainCanvas.append {
@@ -932,7 +1363,6 @@ suspend fun main() {
                 }
                 target?.let { boxEl ->
                     if (set.number) {
-                        console.log(" hiding tombstoned box ", boxEl)
                         (boxEl as HTMLElement).style.display = "none"
                         (boxEl as HTMLElement).classList.add("tombstoned")
                         boxEl.asDynamic().tombstoned = true
@@ -940,7 +1370,6 @@ suspend fun main() {
                             deselectBox(boxEl)
                         }
                     } else {
-                        console.log(" showing untombstoned box ", boxEl)
                         boxEl.classList.remove("tombstoned")
                         (boxEl as HTMLElement).style.display = "flex"
                         boxEl.asDynamic().tombstoned = false
@@ -968,7 +1397,6 @@ suspend fun main() {
 
         if (found != null) {
             found.unsafeCast<dynamic>().injectedActions = set.value
-            console.log(" injected actions are ${set.value}")
             refreshCommandsFromSelection(
                 selected.toList(),
                 selected.mapNotNull { it.unsafeCast<dynamic>().injectedActions as List<Action_Desc>? }
@@ -1007,7 +1435,7 @@ suspend fun main() {
         val contain = outputArea.querySelector(".disclosure-group")
         val di = js("window.disclosureInterface")
         if (di == null) {
-            console.log("disclosureInterface not ready yet; skipping nested output area init")
+            console.info("[nested] disclosureInterface not ready yet; skipping nested output area init")
             return outputArea
         }
         val inter = di(contain!!)
@@ -1016,9 +1444,22 @@ suspend fun main() {
             "nested",
             ""
         ) as HTMLElement
+        nestedRoot.style.asDynamic().overflow = "hidden"
+        nestedRoot.style.position = "relative"
+        nestedRoot.style.width = "100%"
+        nestedRoot.style.height = "100%"
+
+        // Insert or reuse a dedicated nested canvas inside the disclosure content
+        val canvas = nestedRoot.querySelector(".nested-canvas") as? HTMLElement ?: run {
+            val nc = document.createElement("div") as HTMLElement
+            nc.classList.add("nested-canvas")
+            nestedRoot.appendChild(nc)
+            nc
+        }
+        attachPanToNestedArea(canvas)
         outputArea.style.visibility = "visible"
         outputArea.style.height = "auto"
-        return nestedRoot
+        return canvas
     }
 
     fun handleNestedTopology(parent: HTMLElement, nestedIds: List<String>) {
@@ -1120,7 +1561,6 @@ suspend fun main() {
 
         when (set.property) {
             "name" -> {
-                console.log(" got set-string name request for ${u} with ${set.value}")
                 if (found === null) {
                     mainCanvas.append {
                         createBox(set.value, frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
@@ -1143,7 +1583,6 @@ suspend fun main() {
 
             "code_decorationState" -> {
                 found.unsafeCast<dynamic>().decorSpec = set.value
-                console.log(set.value)
                 val sv = JSON.parse<dynamic>(set.value)
                 setDecorationsForEditor(u, "code",found.unsafeCast<HTMLElement>(), sv)
             }
@@ -1247,7 +1686,7 @@ suspend fun main() {
                                         (inter.open as (String) -> Unit).invoke("nested")
                                     }
                                 } catch (e: Exception) {
-                                    console.log("Failed to open nested disclosure", e)
+                                    console.info("[nav] failed to open nested disclosure", e)
                                 }
                             }
 
@@ -1267,7 +1706,7 @@ suspend fun main() {
                 try {
                     box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
                 } catch (e: Exception) {
-                    console.log("Failed to scroll to box", e)
+                    console.info("[nav] failed to scroll to box", e)
                 }
             }, 50)
 
@@ -1288,7 +1727,7 @@ suspend fun main() {
                 try {
                     w.switchToProperty(sel.uid, sel.property)
                 } catch (e: Exception) {
-                    console.log("switchToProperty failed", e)
+                    console.info("[nav] switchToProperty failed", e)
                 }
             }
 
@@ -1312,7 +1751,7 @@ suspend fun main() {
                                 }
                             }
                         } catch (e: Exception) {
-                            console.log("Failed to scroll to line", e)
+                            console.info("[nav] failed to scroll to line", e)
                         }
                     }
                 }, 100)
@@ -1488,7 +1927,6 @@ suspend fun main() {
     onOpen.add(hello)
 
     val body = document.body ?: error("No body")
-    console.log(" well, this is fun 1")
     body.append {
         style {
             unsafe {
@@ -1496,7 +1934,6 @@ suspend fun main() {
             }
         }
     }
-    console.log(" well, this is fun 2")
     val mainViewport = body.append {
         div {
             style = CssBuilder().apply {
@@ -1509,7 +1946,6 @@ suspend fun main() {
         }
     }.first()
 
-    console.log(" well, this is fun 3")
     mainCanvas = mainViewport.append {
         div {
             style = CssBuilder().apply {
@@ -1528,11 +1964,9 @@ suspend fun main() {
     ensureAnnotationLayer()
 
     mainViewport.oncontextmenu = {
-        console.log(" (suppressed right click) ")
         it.preventDefault()
     }
 
-    console.log(" well, this is fun 4")
     mainViewport.onclick = { event ->
         // now handled in gestures.kt
 //        if (event.target == mainViewport) {
@@ -1545,7 +1979,6 @@ suspend fun main() {
     mainViewport.onmousedown = { event ->
         if (event.buttons.toInt()==4) {}
         else {
-            console.log("-onmousedown d", event.target == mainViewport, event)
             if (event.target == mainViewport) {
                 canvasGestures.down(event)
             } else {
@@ -1580,13 +2013,15 @@ suspend fun main() {
 
             canvasGestures.rebuildConnectionGroup()
             repositionSlideNoteOverlayIfVisible()
+            if (spatialNavActive) {
+                refreshSpatialNavTargets()
+            }
         }
         else
             canvasGestures.move(event)
     }
 
 
-    console.log(" well, this is fun 4")
     mainViewport.onwheel = onwheel@{ event ->
 
         // todo, should read "has outputArea_content as parent"
@@ -1617,6 +2052,9 @@ suspend fun main() {
 
             canvasGestures.rebuildConnectionGroup()
             repositionSlideNoteOverlayIfVisible()
+            if (spatialNavActive) {
+                refreshSpatialNavTargets()
+            }
         }
 
         null
@@ -1643,7 +2081,7 @@ suspend fun main() {
                 val reader = js("new FileReader()")
                 reader.onload = { loadEvent: dynamic ->
                     val ednText = loadEvent.target.result as String
-                    console.log("Importing metadata.edn file: ${file.name}")
+                    console.info("[import] metadata.edn file: ${file.name}")
                     send(Message("import-metadata-edn").payload(ImportMetadata(ednText)))
                     notify("Importing ${file.name}...", "import")
                 }
@@ -1790,13 +2228,10 @@ suspend fun main() {
         val x: Number = (target.data_x ?: 0.0) + event.dx
         val y: Number = (target.data_y ?: 0.0) + event.dy
 
-        console.log("two ways ", x, y, originatingMouseDown, event)
-
         val tdx = (event.clientX - originatingMouseDown.clientX) as Number
         val tdy = (event.clientY - originatingMouseDown.clientY) as Number
         val odx = (target.originalFramePosition as List<Number>)[0].toDouble() + tdx.toDouble()
         val ody = (target.originalFramePosition as List<Number>)[1].toDouble() + tdy.toDouble()
-        console.log("two ways => ", odx, ody)
 
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round trip to server
 //        target.data_x = x
@@ -1829,12 +2264,9 @@ suspend fun main() {
         )
     }
 
-    interactable.on("up") { event ->
-        console.log(" interact up ", event)
-    }
+    interactable.on("up") { _ -> }
 
     interactable.on("dragend") { event ->
-        console.log(" interact dragend ", event)
         provideMissingMouseup(event)
         // Clear snap guides when drag ends
         boxSnappingSystem.clearSnapGuides()
@@ -1858,13 +2290,10 @@ suspend fun main() {
             val uid = target.uid as? String ?: return@on
             val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
             if (uid == lastAltDownUid && kotlin.math.abs(stamp - lastAltDownStamp) < 30.0) {
-                console.log(" -- ALT DOWN deduped for ", uid)
                 return@on
             }
             lastAltDownUid = uid
             lastAltDownStamp = stamp
-
-            console.log(" -- ALT DOWN ON ", target, target.uid)
 
             // Allow nested boxes to be launched even when they are inside an output area
             if (insideOutputArea && target?.classList?.contains("box") != true) {
@@ -1920,10 +2349,21 @@ suspend fun main() {
                 it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)
             }
 
-            if (event.metaKey) {}
-            else if (event.shiftKey) {
-                if (selected.contains(event.target)) deselectBox(target)
-                else selectBox(target)
+            if (event.metaKey) {
+                // no-op
+            } else if (event.shiftKey) {
+                val boxEl = target as? HTMLElement
+                if (boxEl != null) {
+                    val uid = boxEl.unsafeCast<dynamic>().uid as? String
+                    val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
+                    if (uid != null && uid == lastShiftDownUid && kotlin.math.abs(stamp - lastShiftDownStamp) < 50.0) {
+                        return@on
+                    }
+                    lastShiftDownUid = uid
+                    lastShiftDownStamp = stamp
+
+                    if (selected.contains(boxEl)) deselectBox(boxEl) else selectBox(boxEl)
+                }
             } else {
                 selected.copy().forEach {
                     deselectBox(it)
@@ -1934,8 +2374,6 @@ suspend fun main() {
     }
 
     interactable.draggable(json("onmove" to { event: dynamic ->
-        console.log(" originating mousedown is ", originatingMouseDown.altKey)
-
         if (event.altKey) {
         } else if (originatingMouseDown.altKey) {
         } else {
@@ -1958,7 +2396,6 @@ suspend fun main() {
 
         val target: dynamic = event.target
 
-        console.log(" inside resize handler ", event.deltaRect, event.delta, target)
         var x: Double = (target.data_x ?: 0.0) + event.deltaRect.left
         var y: Double = (target.data_y ?: 0.0) + event.deltaRect.top
 
@@ -2002,7 +2439,6 @@ suspend fun main() {
 //        target.style.width = w + "px"
 //        target.style.height = h + "px"
 
-        console.log(" -> ${Rect(target.data_x, target.data_y, target.data_w, target.data_h)}")
         val uid = target.uid
         send(
             Message("set-rect").payload(
@@ -2021,8 +2457,6 @@ suspend fun main() {
         )
     ).on("resizemove") { event: dynamic ->
 
-        console.log(" RESIZING, original target", event)
-
         val originalTarget = event._interaction.downEvent.target
         val isBox = originalTarget?.unsafeCast<HTMLElement>()?.classList?.contains("box") ?: false
         if (!isBox) {
@@ -2038,13 +2472,11 @@ suspend fun main() {
             }
         }
     }.on("resizeend") { event: dynamic ->
-        console.log(" RESIZE END ", event)
         // Clear snap guides when resize ends
         boxSnappingSystem.clearSnapGuides()
     }
 
     interact(".doubleClickToEdit").on("doubletap") { event ->
-        console.log(" hello ? anybody? ", event)
         val t = event.target.unsafeCast<HTMLElement>()
         val box = t.parentElement!!.parentElement
 
@@ -2054,7 +2486,6 @@ suspend fun main() {
             fun fireChange() {
                 box.unsafeCast<dynamic>().name = t.textContent
                 val uid = box.unsafeCast<dynamic>().uid as String
-                console.log(" sending set-string for name ${t.textContent} because the contenteditable has changed")
                 send(
                     Message("set-string").payload(
                         Set_string(
@@ -2122,17 +2553,20 @@ suspend fun main() {
 
     send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(0.0,0.0, window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
-    console.log(" printing client ?? ")
-    console.log(client)
-
     registerMouseBug()
 
     window.addEventListener("resize", {
         canvasGestures.rebuildConnectionGroup()
         repositionSlideNoteOverlayIfVisible()
+        if (spatialNavActive) {
+            refreshSpatialNavTargets()
+        }
     })
     window.addEventListener("scroll", {
         repositionSlideNoteOverlayIfVisible()
+        if (spatialNavActive) {
+            refreshSpatialNavTargets()
+        }
     })
 }
 
@@ -2142,7 +2576,6 @@ suspend fun main() {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun stopBox(uid: String) {
-    console.log(" sending stop-box message")
     send(Message("stop-box").payload(Stop_box(uid = uid)))
 
 }
@@ -2214,7 +2647,6 @@ fun TagConsumer<HTMLElement>.createBox(
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement
 
     if (sendInitialSync) {
-        console.log(" sending initial sync for box ${name}")
         send(
             Message("set-string").payload(
                 Set_string(

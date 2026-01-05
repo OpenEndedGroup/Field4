@@ -330,7 +330,7 @@ fun Box.macro_moduleHereWithDefaultShaders(
     fragment: String = defaultFragmentShader,
     resolvesToCall: String = "_moduleHere"
 ): Insert? {
-    this.actions += "moduleHere_reload" to Action("Reload Shader|alt r") {
+    this.actions += "moduleHere_reload" to Action("Reload Shader|alt r", "Reloads the graphics shader in this box") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
                 val here = this@macro_moduleHereWithDefaultShaders
@@ -512,7 +512,7 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_computeModuleHere(args: List<String>): Insert {
 
-    this.actions += "computeModuleHere_reload" to Action("Reload Compute Shader|alt r") {
+    this.actions += "computeModuleHere_reload" to Action("Reload Compute Shader|alt r", "reloads the compute shader in this box") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
                 it.forEach { reloadComputeShader(it) }
@@ -595,7 +595,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_meshModuleHere(args: List<String>): Insert {
 
-    this.actions += "meshModuleHere_reload" to Action("Reload Mesh Shader|alt r") {
+    this.actions += "meshModuleHere_reload" to Action("Reload Mesh Shader|alt r", "reloads the mesh shader in this box") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
                 it.forEach { reloadMeshShader(it) }

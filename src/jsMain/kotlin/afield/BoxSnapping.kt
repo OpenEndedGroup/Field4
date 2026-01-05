@@ -22,6 +22,11 @@ import org.w3c.dom.svg.SVGRectElement
 import org.w3c.dom.svg.SVGSVGElement
 import kotlin.math.abs
 
+private const val DEBUG_SNAPPING = false
+private fun snapLog(message: String) {
+    if (DEBUG_SNAPPING) console.info(message)
+}
+
 /**
  * Data class representing a potential snap target
  */
@@ -90,9 +95,9 @@ class BoxSnappingSystem {
                 capsLockEnabled = newState
                 // Notify user about snapping state change
                 if (capsLockEnabled) {
-                    console.log("Box snapping: ENABLED (Caps Lock ON)")
+                    snapLog("Box snapping: ENABLED (Caps Lock ON)")
                 } else {
-                    console.log("Box snapping: DISABLED (Caps Lock OFF)")
+                    snapLog("Box snapping: DISABLED (Caps Lock OFF)")
                 }
             }
         })
@@ -104,9 +109,9 @@ class BoxSnappingSystem {
                 capsLockEnabled = newState
                 // Notify user about snapping state change
                 if (capsLockEnabled) {
-                    console.log("Box snapping: ENABLED (Caps Lock ON)")
+                    snapLog("Box snapping: ENABLED (Caps Lock ON)")
                 } else {
-                    console.log("Box snapping: DISABLED (Caps Lock OFF)")
+                    snapLog("Box snapping: DISABLED (Caps Lock OFF)")
                 }
             }
         })
@@ -298,7 +303,7 @@ class BoxSnappingSystem {
             snappedX = bestHorizontalSnap.x
             snapped = true
             activeTargets.add(bestHorizontalSnap)
-            console.log("Snapping horizontally: ${bestHorizontalSnap.type} (distance: ${bestHorizontalSnap.distance.toInt()}px)")
+            snapLog("Snapping horizontally: ${bestHorizontalSnap.type} (distance: ${bestHorizontalSnap.distance.toInt()}px)")
         }
         
         // Apply vertical snap if within threshold
@@ -306,11 +311,11 @@ class BoxSnappingSystem {
             snappedY = bestVerticalSnap.y
             snapped = true
             activeTargets.add(bestVerticalSnap)
-            console.log("Snapping vertically: ${bestVerticalSnap.type} (distance: ${bestVerticalSnap.distance.toInt()}px)")
+            snapLog("Snapping vertically: ${bestVerticalSnap.type} (distance: ${bestVerticalSnap.distance.toInt()}px)")
         }
         
         if (snapped) {
-            console.log("Caps Lock snapping: ($proposedX, $proposedY) → ($snappedX, $snappedY)")
+            snapLog("Caps Lock snapping: ($proposedX, $proposedY) → ($snappedX, $snappedY)")
             // Draw visual guides for active snaps
             drawSnapGuides(activeTargets, Rect(snappedX, snappedY, proposedW, proposedH))
         } else {
@@ -382,7 +387,7 @@ class BoxSnappingSystem {
                     SnapType.RIGHT_EDGE, box, snapLine
                 ))
                 snappedW = boxRight - proposedX
-                console.log("Resize snap: right edge to right edge (${rightToRightDist.toInt()}px)")
+                snapLog("Resize snap: right edge to right edge (${rightToRightDist.toInt()}px)")
             }
             
             val rightToLeftDist = abs(proposedRight - boxLeft)
@@ -395,7 +400,7 @@ class BoxSnappingSystem {
                     SnapType.RIGHT_EDGE, box, snapLine
                 ))
                 snappedW = boxLeft - proposedX
-                console.log("Resize snap: right edge to left edge (${rightToLeftDist.toInt()}px)")
+                snapLog("Resize snap: right edge to left edge (${rightToLeftDist.toInt()}px)")
             }
             
             // Snap left edge
@@ -410,7 +415,7 @@ class BoxSnappingSystem {
                 ))
                 snappedW = proposedW + (proposedX - boxLeft)
                 snappedX = boxLeft
-                console.log("Resize snap: left edge to left edge (${leftToLeftDist.toInt()}px)")
+                snapLog("Resize snap: left edge to left edge (${leftToLeftDist.toInt()}px)")
             }
             
             val leftToRightDist = abs(proposedLeft - boxRight)
@@ -424,7 +429,7 @@ class BoxSnappingSystem {
                 ))
                 snappedW = proposedW + (proposedX - boxRight)
                 snappedX = boxRight
-                console.log("Resize snap: left edge to right edge (${leftToRightDist.toInt()}px)")
+                snapLog("Resize snap: left edge to right edge (${leftToRightDist.toInt()}px)")
             }
             
             // Snap bottom edge
@@ -438,7 +443,7 @@ class BoxSnappingSystem {
                     SnapType.BOTTOM_EDGE, box, snapLine
                 ))
                 snappedH = boxBottom - proposedY
-                console.log("Resize snap: bottom edge to bottom edge (${bottomToBottomDist.toInt()}px)")
+                snapLog("Resize snap: bottom edge to bottom edge (${bottomToBottomDist.toInt()}px)")
             }
             
             val bottomToTopDist = abs(proposedBottom - boxTop)
@@ -451,7 +456,7 @@ class BoxSnappingSystem {
                     SnapType.BOTTOM_EDGE, box, snapLine
                 ))
                 snappedH = boxTop - proposedY
-                console.log("Resize snap: bottom edge to top edge (${bottomToTopDist.toInt()}px)")
+                snapLog("Resize snap: bottom edge to top edge (${bottomToTopDist.toInt()}px)")
             }
             
             // Snap top edge
@@ -466,7 +471,7 @@ class BoxSnappingSystem {
                 ))
                 snappedH = proposedH + (proposedY - boxTop)
                 snappedY = boxTop
-                console.log("Resize snap: top edge to top edge (${topToTopDist.toInt()}px)")
+                snapLog("Resize snap: top edge to top edge (${topToTopDist.toInt()}px)")
             }
             
             val topToBottomDist = abs(proposedTop - boxBottom)
@@ -480,12 +485,12 @@ class BoxSnappingSystem {
                 ))
                 snappedH = proposedH + (proposedY - boxBottom)
                 snappedY = boxBottom
-                console.log("Resize snap: top edge to bottom edge (${topToBottomDist.toInt()}px)")
+                snapLog("Resize snap: top edge to bottom edge (${topToBottomDist.toInt()}px)")
             }
         }
         
         if (activeTargets.isNotEmpty()) {
-            console.log("Caps Lock resize snapping: ($proposedX, $proposedY, $proposedW, $proposedH) → ($snappedX, $snappedY, $snappedW, $snappedH)")
+            snapLog("Caps Lock resize snapping: ($proposedX, $proposedY, $proposedW, $proposedH) → ($snappedX, $snappedY, $snappedW, $snappedH)")
             drawSnapGuides(activeTargets, Rect(snappedX, snappedY, snappedW, snappedH))
         } else {
             clearSnapGuides()

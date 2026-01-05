@@ -46,11 +46,15 @@ window.currentEditorGeneration = window.currentEditorGeneration || 0
 window.lastErrorIs = window.lastErrorIs || []
 window.currentSelectedCode = window.currentSelectedCode || []
 window.currentSelectedProperty = window.currentSelectedProperty || "code"
+const DEBUG_MONACO = false;
+const monacoLog = (...args) => {
+        if (DEBUG_MONACO) console.info(...args);
+};
 
 const kindForIcon = monacoKindForIcon
 
 const initMonaco = () => {
-        console.log(" initializing monaco ")
+        console.info("initializing monaco")
         let ed = monacoInit(monaco) || monaco.editor.getEditors()[0]
 
         monacoRegisterActions(ed, monaco)
@@ -80,7 +84,7 @@ const initMonaco = () => {
                                 allCode: model.getValue(), at: [position.lineNumber, position.column], word: word,
                         };
 
-                        console.log(" complete me! ", completionInfo, range, ed.getModel().getOffsetAt(completionInfo))
+                        monacoLog("complete me", completionInfo, range, ed.getModel().getOffsetAt(completionInfo))
 
                         const currentGen = window.currentEditorGeneration
 
@@ -100,8 +104,8 @@ const initMonaco = () => {
                                         if (window.currentEditorGeneration !== currentGen) return true
                                         var range
 
-                                        console.log(" original location ", completionInfo.at[1], completionInfo.at[0])
-                                        console.log(" now location ", payload.columnsStart, payload.lineStart)
+                                        monacoLog("original location", completionInfo.at[1], completionInfo.at[0])
+                                        monacoLog("now location", payload.columnsStart, payload.lineStart)
 
                                         if (payload.useLineColumns) {
                                                 range = {
@@ -159,7 +163,7 @@ const initMonaco = () => {
                                                 })
                                         }
 
-                                        console.log(" resolving. Answer is ", answer)
+                                        monacoLog("resolving. Answer is ", answer)
                                         resolve(answer)
 
                                         return true
@@ -229,7 +233,7 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 
-        console.log(" monitoring selection ")
+        monacoLog("monitoring selection")
         monacoStartSelectionMonitor()
 
         globalEditor.getModel().onDidChangeContent((event) => {
@@ -268,7 +272,7 @@ const setBoxRunning = (uid, isRunning, watermark, strand) => {
 
                         } else {
                                 // TODO
-                                console.log(" tried to remove a watermark that wasn't there, just going to can the running list altogether")
+                                monacoLog("tried to remove a watermark that wasn't there; clearing running list")
                                 first.runningList.clear()
                         }
                         setTimeout(() => {
@@ -277,7 +281,7 @@ const setBoxRunning = (uid, isRunning, watermark, strand) => {
                 }
                 // console.log(" outOfrunning ", first, first.runningList, watermark, isRunning)
         } else {
-                console.log("warning: tried to set running status on something that doesn't exist?", uid)
+                console.warn("warning: tried to set running status on something that doesn't exist?", uid)
         }
 }
 window.setBoxRunning = setBoxRunning

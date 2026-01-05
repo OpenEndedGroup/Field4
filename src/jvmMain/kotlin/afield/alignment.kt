@@ -1098,7 +1098,7 @@ private fun Double.roundToInt(): Int = round(this).toInt()
 
 @RunsAt(newRoot)
 fun installAlignment(root: Box) {
-    root.actions["align"] = Action("Align boxes") { boxes ->
+    root.actions["align"] = Action("Align boxes", "Automatically align selected boxes outlines vertically or horizontally") { boxes ->
         val before = boxes.map { it.frame }
         val after = alignAndDistribute(
             before,
@@ -1108,7 +1108,7 @@ fun installAlignment(root: Box) {
         boxes.zip(stabilized).forEach { (b, r) -> b.frame = r }
     }
 
-    root.actions["snap_tidy"] = Action("Snap + tidy (local)") { boxes ->
+    root.actions["snap_tidy"] = Action("Snap + tidy boxes", "Automatically tidy up the arrangement of selected boxes") { boxes ->
         val before = boxes.map { it.frame }
         val out = snapAndTidyLocal(
             rects = before,
@@ -1121,7 +1121,7 @@ fun installAlignment(root: Box) {
         boxes.zip(out).forEach { (b, r) -> b.frame = r }
     }
 
-    root.actions["route"] = Action("Route (position-guided)") { boxes ->
+    root.actions["route"] = Action("Route (position-guided)", detail = "Intelligently organize a selection of boxes by how they are connected together") { boxes ->
         val before = boxes.map { it.frame }
 
         val boxId: Map<Box, String> = boxes.mapIndexed { i, b -> b to i.toString() }.toMap()

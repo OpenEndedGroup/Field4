@@ -196,7 +196,7 @@ data class Notify(val text: String, val category: String)
 data class Set_topology(val uid: String, val kind: String, val value: List<String>)
 
 @Serializable
-data class Action_Desc(val id: String, val description: String)
+data class Action_Desc(val id: String, val description: String, val detail: String = "")
 
 @Serializable
 data class Describe_actions(val uid: String, val value: List<Action_Desc>)
