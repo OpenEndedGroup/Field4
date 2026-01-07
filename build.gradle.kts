@@ -43,6 +43,7 @@ val javacppVersion = "1.5.11"
 plugins {
     kotlin("multiplatform") version "2.2.10"
     kotlin("plugin.serialization") version "2.2.10"
+    id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
 }
 
@@ -73,6 +74,7 @@ repositories {
     maven(url = "https://repo.clojars.org/")
 
 }
+
 
 
 kotlin {
@@ -111,18 +113,6 @@ kotlin {
         binaries.executable()
     }
 
-
-    js("jsChat") {
-        browser {
-            distribution {
-                outputDirectory.set(projectDir.resolve("build/output_chat"))
-            }
-            webpackTask {
-                mainOutputFileName = "afield_chat.js"
-            }
-        }
-        binaries.executable()
-    }
 
 
     tasks.withType<KotlinJsCompile>().configureEach {
@@ -345,19 +335,7 @@ kotlin {
         }
 
 
-        val jsChatMain by getting {
-            dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-html-js:0.11.0")
-                implementation("io.ktor:ktor-client-js:$ktorVersion")
-                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-                implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-                implementation("io.ktor:ktor-client-websockets:$ktorVersion")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-styled-next:1.2.4-pre.779")
-                implementation(kotlin("stdlib-js"))
-                implementation(kotlin("stdlib"))
-            }
-            applyDefaultHierarchyTemplate()
-        }
+
     }
 
 }
@@ -380,34 +358,7 @@ tasks.named<Jar>("jvmJar").configure {
     into("static")
 }
 
-//tasks.named<KotlinWebpack>("jsChatBrowserDevelopmentWebpack").configure {
-//    dependsOn(tasks.named("jsChatProductionExecutableCompileSync"))
-//}
-//tasks.named<KotlinWebpack>("jsChatBrowserProductionWebpack").configure {
-//    dependsOn(tasks.named("jsChatDevelopmentExecutableCompileSync"))
-//}
-//
-//tasks.named<KotlinWebpack>("jsBrowserDevelopmentWebpack").configure {
-//    dependsOn(tasks.named("jsProductionExecutableCompileSync"))
-//}
-//tasks.named<KotlinWebpack>("jsBrowserProductionWebpack").configure {
-//    dependsOn(tasks.named("jsDevelopmentExecutableCompileSync"))
-//}
 
-
-tasks.named<Jar>("jvmJar").configure {
-    val taskName = if (project.hasProperty("isProduction")
-        || project.gradle.startParameter.taskNames.contains("installDist")
-    ) {
-        "jsChatBrowserProductionWebpack"
-    } else {
-        "jsChatBrowserDevelopmentWebpack"
-    }
-    val webpackTask = tasks.named<KotlinWebpack>(taskName)
-    dependsOn(webpackTask)
-    from(webpackTask.map { it.mainOutputFile.get().asFile }) // bring output file along into the JAR
-    into("static")
-}
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -486,3 +437,25 @@ tasks.named("jvmDistZip") {
 }
 
 
+
+dokka {
+    dokkaPublications.html {
+        dokkaSourceSets.configureEach {
+            perPackageOption {
+                matchingRegex.set(".*")
+                suppress.set(true)
+            }
+
+            perPackageOption {
+                matchingRegex.set("""afield\.four(\..*)?""")
+                suppress.set(false)
+            }
+            perPackageOption {
+                matchingRegex.set("""afield\.stdlib(\..*)?""")
+                suppress.set(false)
+            }
+
+            skipEmptyPackages.set(true)
+        }
+    }
+}
