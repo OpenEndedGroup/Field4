@@ -1210,7 +1210,7 @@
             align-items: center;
             justify-content: center;
             z-index: 10000;
-            transition: opacity 1s ease-in-out;
+            transition: opacity 4s;
             pointer-events: none;
         }
 
@@ -1343,8 +1343,9 @@
 
 
     (() => {
+        const splash = document.querySelector("#splash-screen");
         const pre = document.querySelector("#splash-screen pre");
-        if (!pre) return;
+        if (!splash || !pre) return;
 
         const text = pre.textContent ?? "";
 
@@ -1354,63 +1355,80 @@
     #splash-screen pre.f4drift .f4ch{
       display:inline-block;
       will-change:transform;
-      transform: translate3d(0,0,0);
-      transition: transform 2600ms cubic-bezier(.2,.8,.2,1);
+            transform: translate3d(var(--dx,0px), var(--dy,0px), 0);
+    transition: transform 1400ms cubic-bezier(.2,.8,.2,1);
       transition-delay: var(--dly, 0ms);
     }
     #splash-screen pre.f4drift.f4go .f4ch{
-      transform: translate3d(var(--dx,0px), var(--dy,0px), 0);
+            transform: translate3d(0,0,0);
     }
   `;
         document.head.appendChild(style);
 
-        // Replace text with per-char spans (no manual markup needed)
-        pre.setAttribute("aria-label", text);
-        pre.textContent = "";
-        pre.classList.add("f4drift");
+        const build = () => {
+            // Reset state in case this runs after a prior view
+            splash.classList.remove("hidden");
+            pre.classList.remove("f4lit", "f4go");
+            pre.textContent = "";
 
-        const frag = document.createDocumentFragment();
-        const chars = Array.from(text);
+            // Replace text with per-char spans (no manual markup needed)
+            pre.setAttribute("aria-label", text);
+            pre.classList.add("f4drift");
 
-        const maxPx = 200.25;   // subtle but visible; drop to ~1.2 if you want gentler
-        const maxDelay = 260; // slight spread
-        let printable = 0;
-        for (const ch of chars) if (ch !== "\n") printable++;
+            const frag = document.createDocumentFragment();
+            const chars = Array.from(text);
 
-        let i = 0;
-        for (const ch of chars) {
-            if (ch === "\n") {
-                frag.appendChild(document.createTextNode("\n"));
-                continue;
+            const maxPx = 200.25;   // subtle but visible; drop to ~1.2 if you want gentler
+            const maxDelay = 120; // quicker spread
+            let printable = 0;
+            for (const ch of chars) if (ch !== "\n") printable++;
+
+            let i = 0;
+            for (const ch of chars) {
+                if (ch === "\n") {
+                    frag.appendChild(document.createTextNode("\n"));
+                    continue;
+                }
+
+                const span = document.createElement("span");
+                span.className = "f4ch";
+                span.setAttribute("aria-hidden", "true");
+                span.textContent = ch === " " ? " " : ch;
+
+                const dx = (Math.random() * 2 - 1) * maxPx;
+                const dy = (Math.random() * 2 - 1) * maxPx;
+                const dly = (i / Math.max(1, printable)) * maxDelay;
+
+                span.style.setProperty("--dx", `${dx.toFixed(3)}px`);
+                span.style.setProperty("--dy", `${dy.toFixed(3)}px`);
+                span.style.setProperty("--dly", `${dly.toFixed(1)}ms`);
+
+                frag.appendChild(span);
+                i++;
             }
 
-            const span = document.createElement("span");
-            span.className = "f4ch";
-            span.setAttribute("aria-hidden", "true");
-            span.textContent = ch === " " ? " " : ch;
+            pre.appendChild(frag);
 
-            const dx = (Math.random() * 2 - 1) * maxPx;
-            const dy = (Math.random() * 2 - 1) * maxPx;
-            const dly = (i / Math.max(1, printable)) * maxDelay;
+            // Fade in the art, then kick off the drift/explode, then fade UI in sync
+            const explodeDelay = 200;
+            const convergeDuration = 1400;
+            const fadeOutDelay = explodeDelay + maxDelay + convergeDuration + 120; // buffer after converge
 
-            span.style.setProperty("--dx", `${dx.toFixed(3)}px`);
-            span.style.setProperty("--dy", `${dy.toFixed(3)}px`);
-            span.style.setProperty("--dly", `${dly.toFixed(1)}ms`);
+            requestAnimationFrame(() => {
+                pre.offsetHeight;
+                pre.classList.add("f4lit");
+                setTimeout(() => {
+                    pre.classList.add("f4go");
+                    setTimeout(() => splash.classList.add("hidden"), fadeOutDelay);
+                }, explodeDelay);
+            });
+        };
 
-            frag.appendChild(span);
-            i++;
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(build);
+        } else {
+            build();
         }
-
-        pre.appendChild(frag);
-
-        // Fade in the art, then kick off the drift/explode
-        requestAnimationFrame(() => {
-            pre.offsetHeight;
-            pre.classList.add("f4lit");
-            setTimeout(() => {
-                pre.classList.add("f4go");
-            }, 200);
-        })
     })();
 
 </script>

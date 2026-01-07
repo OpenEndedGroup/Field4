@@ -1,6 +1,9 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package afield
 
 import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import kotlin.js.JsName
@@ -203,7 +206,7 @@ data class Describe_actions(val uid: String, val value: List<Action_Desc>)
 
 @Serializable
 class Directory(
-    val command: String, 
+    val command: String,
     val value: List<String> = emptyList<String>(),
     val metadata: JsonElement? = null,
     val mouseX: Double? = null,
@@ -291,8 +294,8 @@ data class SelectAndEditBox(val uid: String, val property: String = "code", val 
 
 @Serializable
 data class ShowSlideNote(
-    val html: String, 
-    val uid: String = "", 
+    val html: String,
+    val uid: String = "",
     val persistent: Boolean = false,
     val animated: Boolean = false,
     val annotations: List<SlideAnnotation> = emptyList(),

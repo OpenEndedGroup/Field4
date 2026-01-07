@@ -615,6 +615,7 @@ class Server {
                 info.topologyGeneration++
                 doResync()
                 notify("Pasted ${newBoxes.size} box${if (newBoxes.size == 1) "" else "es"} (+10,+10)", "paste")
+                info.autorunBoxes(newBoxes)
                 reply(Message("paste-boxes").payload(PasteBoxesResult(newBoxes.map { it.id })))
                 Handled.yes
             })

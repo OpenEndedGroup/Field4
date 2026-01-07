@@ -587,7 +587,10 @@ fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: D
     visibleLayers.clear()
     visibleLayers.addAll(layers)
     send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList(), animated, duration)))
-    if (!animated) {
+    if (animated) {
+        updateAllBoxVisibility(animated = true, duration = duration)
+        setTimeout({ canvasGestures.rebuildConnectionGroup() }, duration.toInt() + 30)
+    } else {
         updateAllBoxVisibility()
         canvasGestures.rebuildConnectionGroup()
     }
@@ -632,10 +635,56 @@ fun isBoxVisible(box: HTMLElement): Boolean {
     return layers.any { layer -> visibleLayers.contains(layer) }
 }
 
-fun updateAllBoxVisibility() {
+private fun applyFadeVisibility(element: HTMLElement, show: Boolean, duration: Double) {
+    element.style.transition = "opacity ${duration}ms ease"
+    if (show) {
+        if (element.classList.contains("box")) {
+            element.style.display = "flex"
+        } else {
+            element.style.removeProperty("display")
+        }
+        element.style.visibility = "visible"
+        element.style.asDynamic().pointerEvents = "auto"
+        if (element.style.opacity.isBlank()) element.style.opacity = "0"
+        window.requestAnimationFrame {
+            element.style.opacity = "1"
+        }
+    } else {
+        element.style.opacity = "0"
+        element.style.asDynamic().pointerEvents = "none"
+        setTimeout({
+            element.style.visibility = "hidden"
+            element.style.display = "none"
+        }, duration.toInt())
+    }
+}
+
+fun updateAllBoxVisibility(animated: Boolean = false, duration: Double = 250.0) {
     select(".box").forEach { box ->
         val visible = isBoxVisible(box)
-        box.style.visibility = if (visible) "visible" else "hidden"
+        val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
+
+        if (animated) {
+            applyFadeVisibility(box, visible, duration)
+            if (outputArea != null) {
+                applyFadeVisibility(outputArea, visible, duration)
+            }
+        } else {
+            box.style.visibility = if (visible) "visible" else "hidden"
+            box.style.opacity = if (visible) "1" else "0"
+            box.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
+            if (visible) box.style.display = "flex" else box.style.display = "none"
+            if (outputArea != null) {
+                outputArea.style.visibility = if (visible) "visible" else "hidden"
+                outputArea.style.opacity = if (visible) "1" else "0"
+                outputArea.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
+                if (visible) {
+                    outputArea.style.removeProperty("display")
+                } else {
+                    outputArea.style.display = "none"
+                }
+            }
+        }
     }
 }
 

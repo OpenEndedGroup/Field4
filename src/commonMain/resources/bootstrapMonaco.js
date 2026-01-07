@@ -53,6 +53,14 @@ const monacoLog = (...args) => {
 
 const kindForIcon = monacoKindForIcon
 
+const isSuggestWidgetVisible = () => {
+        const widget = document.querySelector('.editor-widget.suggest-widget');
+        if (!widget) return false;
+        const style = window.getComputedStyle(widget);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        return widget.classList.contains('visible') || widget.classList.contains('show');
+}
+
 const initMonaco = () => {
         console.info("initializing monaco")
         let ed = monacoInit(monaco) || monaco.editor.getEditors()[0]
@@ -188,15 +196,17 @@ const initMonaco = () => {
                                         window.kotlinAiCompletion.merged = (window.kotlinAiCompletion.base || []).concat(aiSuggestions)
                                         if (aiSuggestions.length > 0) {
                                                 window.kotlinAiCompletion.useCacheOnce = true
-                                                try {
-                                                        if (globalEditor && globalEditor.trigger) {
-                                                                // Close then re-open to force Monaco to refresh items with cached AI suggestions.
-                                                                globalEditor.trigger("afield-ai", "hideSuggestWidget", {})
-                                                                setTimeout(() => {
-                                                                        globalEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
-                                                                }, 0)
+                                                if (isSuggestWidgetVisible()) {
+                                                        try {
+                                                                if (globalEditor && globalEditor.trigger) {
+                                                                        // Close then re-open to refresh items only if user still has the picker open.
+                                                                        globalEditor.trigger("afield-ai", "hideSuggestWidget", {})
+                                                                        setTimeout(() => {
+                                                                                globalEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
+                                                                        }, 0)
+                                                                }
+                                                        } catch (_) {
                                                         }
-                                                } catch (_) {
                                                 }
                                         }
                                         return true

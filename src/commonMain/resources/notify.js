@@ -38,6 +38,19 @@ function ensureNotifyTimeAgoTimer() {
         }, 1000);
 }
 
+function stopNotifySpinnersForCategory(cat, exceptNode) {
+        if (!cat) return;
+        const bubbles = Array.from(document.getElementsByClassName("bubble"));
+        for (const bubble of bubbles) {
+                if (bubble === exceptNode) continue;
+                if (bubble.cat !== cat) continue;
+                const spinners = bubble.querySelectorAll(".notify-spinner");
+                spinners.forEach((spinner) => {
+                        spinner.style.animation = "none";
+                });
+        }
+}
+
 var notify = (text, cat = "") => {
         if (!document.getElementById("notify-spinner-style")) {
                 const style = document.createElement("style");
@@ -124,6 +137,7 @@ var notify = (text, cat = "") => {
                 ensureNotifyTimeAgoTimer();
                 newDiv.style.opacity = 1;
                 newDiv.style.color = "var(--field-cyan)";
+                stopNotifySpinnersForCategory(cat, newDiv);
                 restackBubbles();
                 setTimeout(function () {
                         newDiv.style.opacity = "0.5";
@@ -144,6 +158,7 @@ var notify = (text, cat = "") => {
         ensureNotifyTimeAgoTimer();
         newDiv.style.border = "1px solid black";
         document.body.appendChild(newDiv);
+        stopNotifySpinnersForCategory(cat, newDiv);
 
         const rect = newDiv.getBoundingClientRect();
 

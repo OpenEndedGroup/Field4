@@ -364,8 +364,8 @@ fun templating() {
             }
         }
 
-        loadedBoxes.forEach {
-            it.resyncAll()
+        loadedBoxes.forEach { box ->
+            box.resyncAll()
         }
         si.topologyGeneration++
         si.autorunBoxes(loadedBoxes)

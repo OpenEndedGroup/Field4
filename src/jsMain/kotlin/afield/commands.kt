@@ -536,29 +536,30 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             all.push(a)
         }
     }
+    fun jsStringLiteral(value: String): String = JSON.stringify(value) ?: "\"\""
+
     if (boxes.size >= 2) {
         val sourceName = (boxes.first().unsafeCast<dynamic>().name as? String)?.trim().orEmpty()
         val targetNames = boxes.drop(1).map { (it.unsafeCast<dynamic>().name as? String)?.trim().orEmpty() }
-        val escape = { name: String -> name.replace("'", "\\'") }
-        val escapedSource = escape(sourceName.ifBlank { "box 1" })
-        val escapedTargets = targetNames.map { escape(it.ifBlank { "..." }) }
+        val safeSource = sourceName.ifBlank { "box 1" }
+        val safeTargets = targetNames.map { it.ifBlank { "..." } }
 
         val targetLabel = when {
-            escapedTargets.isEmpty() -> ""
-            escapedTargets.size <= 3 -> escapedTargets.joinToString(", ")
-            else -> escapedTargets.take(2).joinToString(", ") + ", +${escapedTargets.size - 2} more"
+            safeTargets.isEmpty() -> ""
+            safeTargets.size <= 3 -> safeTargets.joinToString(", ")
+            else -> safeTargets.take(2).joinToString(", ") + ", +${safeTargets.size - 2} more"
         }
 
-        val connectLabel = if (targetLabel.isNotEmpty()) "Connect '$escapedSource' to '$targetLabel'" else "Connect '$escapedSource'"
+        val connectLabel = if (targetLabel.isNotEmpty()) "Connect '$safeSource' to '$targetLabel'" else "Connect '$safeSource'"
         val disconnectLabel =
-            if (targetLabel.isNotEmpty()) "Disconnect '$escapedSource' from '$targetLabel'" else "Disconnect '$escapedSource'"
-        val nestLabel = if (targetLabel.isNotEmpty()) "Nest '$targetLabel' into '$escapedSource'" else "Nest into '$escapedSource'"
+            if (targetLabel.isNotEmpty()) "Disconnect '$safeSource' from '$targetLabel'" else "Disconnect '$safeSource'"
+        val nestLabel = if (targetLabel.isNotEmpty()) "Nest '$targetLabel' into '$safeSource'" else "Nest into '$safeSource'"
 
         run {
             val e = """
             ({
-                id:'connect', label:'$connectLabel', 
-                detail:'Shared selected variables from one box to another',
+                id:'connect', label:${jsStringLiteral(connectLabel)}, 
+                detail:${jsStringLiteral("Shared selected variables from one box to another")},
                 canvasKeybinding: (event) => event.key=='g' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -573,8 +574,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'nest-into', label:'$nestLabel', 
-                detail:'Hide one box 'inside' the nest of another box',
+                id:'nest-into', label:${jsStringLiteral(nestLabel)}, 
+                detail:${jsStringLiteral("Hide one box 'inside' the nest of another box")},
                 canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -589,8 +590,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'disconnect', label:'$disconnectLabel', 
-                detail:'Stop sharing variables between these two boxes',
+                id:'disconnect', label:${jsStringLiteral(disconnectLabel)}, 
+                detail:${jsStringLiteral("Stop sharing variables between these two boxes")},
                 canvasKeybinding: (event) => event.key=='u' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -599,6 +600,38 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
                         })})}
             })
         """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+    }
+
+    if (activeLayer != null) {
+        val layerLabel = activeLayer!!
+        val countLabel = if (boxes.size == 1) "1 box" else "${boxes.size} boxes"
+        val moveLabel = "Move $countLabel to active layer \"$layerLabel\""
+        run {
+            val e = """
+                ({
+                    id:'move-to-active-layer', label:${jsStringLiteral(moveLabel)},
+                    detail:${jsStringLiteral("Assign selected box"+(if (boxes.size>1) "es" else "")+" to the current active layer")},
+                    canvasKeybinding: (event) => false,
+                    run: () => {
+                        const layer = ${jsStringLiteral(layerLabel)};
+                        if (!layer) return;
+                        import("./afield.mjs").then((afield) => {
+                            const ids = (typeof getSelectedIds === 'function') ? getSelectedIds() : [];
+                            ids.forEach((id) => {
+                                afield.send("set-string", { uid: id, property: "layers", value: layer });
+                                const el = document.querySelector('.box[uid="' + id + '"]');
+                                if (Entities.el) { Entities.el.box_layers = layer; }
+                            });
+                            if (typeof updateAllBoxVisibility === 'function') {
+                                updateAllBoxVisibility(true, 300);
+                            }
+                        });
+                    }
+                })
+            """.trimIndent()
             val a = eval(e)
             all.push(a)
         }
