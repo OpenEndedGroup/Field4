@@ -2,6 +2,233 @@ package afield
 
 import kotlinx.browser.document
 
+private fun encodeCommandUri(value: String): String = js("encodeURIComponent")(value) as String
+
+private fun decodeCommandUri(value: String): String = try {
+    js("decodeURIComponent")(value) as String
+} catch (_: dynamic) {
+    value
+}
+
+private fun runCommandById(editor: dynamic, id: String): Boolean {
+    fun tryRun(action: dynamic): Boolean {
+        if (action == null || action == undefined) return false
+        return try {
+            val runnable = action.run
+            if (runnable != null) {
+                runnable()
+                true
+            } else {
+                false
+            }
+        } catch (_: dynamic) {
+            false
+        }
+    }
+
+    // 1) Try editor actions
+    try {
+        val action = editor.getAction(id)
+        if (tryRun(action)) return true
+    } catch (_: dynamic) {
+    }
+
+    // 2) Try lastActions / allActions (Field commands)
+    val window = js("window")
+    val lastActions = window.lastActions
+    val lastLen = (lastActions?.length as? Number)?.toInt() ?: 0
+    for (i in 0 until lastLen) {
+        val a = lastActions[i]
+        if ((a?.id as? String) == id && tryRun(a)) return true
+    }
+    val allActions = window.allActions
+    if (allActions != null && allActions != undefined) {
+        try {
+            val keys = js("Object.keys")(allActions) as Array<String>
+            keys.forEach { key ->
+                val actions = allActions[key]
+                val len = (actions?.length as? Number)?.toInt() ?: 0
+                for (i in 0 until len) {
+                    val a = actions[i]
+                    if ((a?.id as? String) == id && tryRun(a)) return true
+                }
+            }
+        } catch (_: dynamic) {
+        }
+    }
+
+    // 3) Only dispatch Monaco commands when they look like Monaco ids
+    if (id.startsWith("editor.") || id.startsWith("workbench.")) {
+        try {
+            editor.trigger("command-link", id, null)
+            return true
+        } catch (_: dynamic) {
+        }
+
+        val monaco = window.globalMonaco
+        if (monaco != null && monaco != undefined) {
+            try {
+                val maybePromise = monaco.commands.executeCommand(id)
+                val isPromise = js("maybePromise && typeof maybePromise.then === 'function'") as Boolean
+                if (isPromise) {
+                    maybePromise.catch { _: dynamic -> }
+                }
+                return true
+            } catch (_: dynamic) {
+            }
+        }
+    }
+
+    return false
+}
+
+private fun collectCommandLookup(editor: dynamic): Map<String, String> {
+    val lookup = mutableMapOf<String, String>()
+    val window = js("window")
+
+    fun addCommand(id: String?, label: String?) {
+        val cleanedId = id?.trim()
+        val cleanedLabel = label?.trim()
+        if (!cleanedId.isNullOrBlank()) {
+            lookup.computeIfAbsent(cleanedId.lowercase()) {cleanedId}
+        }
+        if (!cleanedLabel.isNullOrBlank()) {
+            lookup.computeIfAbsent(cleanedLabel.lowercase()){ cleanedId ?: cleanedLabel}
+        }
+    }
+
+    val allActions = window.allActions
+    if (allActions != null && allActions != undefined) {
+        try {
+            val keys = js("Object.keys")(allActions) as Array<String>
+            keys.forEach { key ->
+                val actions = allActions[key]
+                val len = (actions?.length as? Number)?.toInt() ?: 0
+                for (i in 0 until len) {
+                    val action = actions[i]
+                    addCommand(action?.id as? String, action?.label as? String)
+                }
+            }
+        } catch (_: dynamic) {
+        }
+    }
+
+    val lastActions = window.lastActions
+    val lastLen = (lastActions?.length as? Number)?.toInt() ?: 0
+    for (i in 0 until lastLen) {
+        val action = lastActions[i]
+        addCommand(action?.id as? String, action?.label as? String)
+    }
+
+    val editorActions = editor?._actions
+    if (editorActions != null && editorActions != undefined) {
+        try {
+            val keys = js("Object.keys")(editorActions) as Array<String>
+            keys.forEach { key ->
+                val action = editorActions[key]
+                addCommand(key, action?.label as? String)
+            }
+        } catch (_: dynamic) {
+        }
+    }
+
+    return lookup
+}
+
+private fun monacoInstallCommandLinkDetector(editor: dynamic, monaco: dynamic) {
+    val installed = (editor.commandLinkDetectorInstalled as? Boolean) == true
+    if (installed) return
+    editor.commandLinkDetectorInstalled = true
+
+    val window = js("window")
+    val opener = js("{}")
+    opener.id = "afield-command-link-opener"
+    opener.open = open@{ uri: dynamic, _: dynamic ->
+        val raw = when {
+            js("typeof uri === 'string'") as Boolean -> uri as String
+            (js("uri && uri.scheme === 'command'") as Boolean) -> {
+                val pathPart = try {
+                    uri.path as? String
+                } catch (_: dynamic) {
+                    null
+                }
+                "command:" + (pathPart ?: "")
+            }
+            else -> uri?.toString() as? String ?: ""
+        }
+        if (!raw.startsWith("command:")) return@open false
+        val encoded = raw.removePrefix("command:").trimStart('/')
+        val commandId = decodeCommandUri(encoded)
+        if (commandId.isBlank()) return@open false
+        return@open runCommandById(editor, commandId)
+    }
+    monaco.editor.registerLinkOpener(opener)
+
+    val registered = mutableListOf<dynamic>()
+    val languageIds = mutableSetOf<String>()
+    try {
+        val langs = monaco.languages.getLanguages()
+        val len = (langs?.length as? Number)?.toInt() ?: 0
+        for (i in 0 until len) {
+            val id = langs[i]?.id as? String
+            if (!id.isNullOrBlank()) languageIds.add(id)
+        }
+    } catch (_: dynamic) {
+    }
+    if (languageIds.isEmpty()) {
+        languageIds.addAll(listOf("kotlin", "glsl", "yaml", "plaintext"))
+    }
+
+    val regex = Regex("\"([^\"]+)\"")
+    languageIds.forEach { langId ->
+        val provider = js("{}")
+        provider.provideLinks = fun(model: dynamic, _: dynamic): dynamic {
+            val lookup = collectCommandLookup(editor)
+            if (lookup.isEmpty()) return null else {
+
+                val lines = try {
+                    model.getLinesContent()
+                } catch (_: dynamic) {
+                    null
+                }
+                if (lines != null) {
+                    val totalLines = (lines.length as? Number)?.toInt() ?: 0
+                    val links = mutableListOf<dynamic>()
+                    for (lineIndex in 0 until totalLines) {
+                        val line = lines[lineIndex] as? String ?: continue
+                        for (match in regex.findAll(line)) {
+                            val candidate = match.groupValues.getOrNull(1)?.trim() ?: ""
+                            if (candidate.isEmpty()) continue
+                            val targetId = lookup[candidate.lowercase()] ?: continue
+
+                            val startColumn = match.range.first + 2
+                            val endColumn = startColumn + candidate.length
+                            val link = js("{}")
+                            val range = js("{}")
+                            range.startLineNumber = lineIndex + 1
+                            range.startColumn = startColumn
+                            range.endLineNumber = lineIndex + 1
+                            range.endColumn = endColumn
+                            link.range = range
+                            link.url = "command:${encodeCommandUri(targetId)}"
+                            link.tooltip = "Run \"$candidate\""
+                            links.add(link)
+                        }
+                    }
+
+                    val result = js("{}")
+                    result.links = links.toTypedArray()
+                    result.dispose = {}
+                    return result
+                } else return null
+            }
+        }
+        val disposable = monaco.languages.registerLinkProvider(langId, provider)
+        registered.add(disposable)
+    }
+    window.commandLinkProviderDisposables = registered.toTypedArray()
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoRunAiAssist(editor: dynamic) {
@@ -302,6 +529,8 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         }
         addAction(action)
     }
+
+    monacoInstallCommandLinkDetector(editor, monaco)
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -607,21 +836,21 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
         // Check if Alt key is pressed and it's a double click
         val altKey = e.event.altKey as? Boolean ?: false
         val detail = e.event.detail as? Int ?: 0
-        
+
         if (altKey && detail == 2) {
             val position = e.target.position
             if (position != null) {
                 val model = editor.getModel()
                 val lineNumber = (position.lineNumber as Number).toInt()
                 val column = (position.column as Number).toInt()
-                
+
                 // Get the word at the position
                 val wordAtPosition = model.getWordAtPosition(position)
                 if (wordAtPosition != null) {
                     val word = wordAtPosition.word as String
                     val startColumn = (wordAtPosition.startColumn as Number).toInt()
                     val endColumn = (wordAtPosition.endColumn as Number).toInt()
-                    
+
                     // Handle true/false toggle
                     when (word) {
                         "true" -> {
@@ -631,13 +860,13 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
                             range.endLineNumber = lineNumber
                             range.startColumn = startColumn
                             range.endColumn = endColumn
-                            
+
                             val edit = js("{}")
                             edit.range = range
                             edit.text = "false"
                             edit.forceMoveMarkers = true
                             editor.executeEdits("toggle-boolean", arrayOf(edit))
-                            
+
                             // Execute fragment
                             monacoRunExecuteFragment(editor)
                         }
@@ -648,13 +877,13 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
                             range.endLineNumber = lineNumber
                             range.startColumn = startColumn
                             range.endColumn = endColumn
-                            
+
                             val edit = js("{}")
                             edit.range = range
                             edit.text = "true"
                             edit.forceMoveMarkers = true
                             editor.executeEdits("toggle-boolean", arrayOf(edit))
-                            
+
                             // Execute fragment
                             monacoRunExecuteFragment(editor)
                         }
@@ -674,12 +903,12 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
 fun monacoRunExecuteSymbol(editor: dynamic, symbol: String, lineNumber: Int) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    
+
     val payload = js("{}")
     payload.uid = uid
     payload.symbol = symbol
     payload.line = lineNumber
-    
+
     val handler = w.handleOutput
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
         handler(response, message, uid)

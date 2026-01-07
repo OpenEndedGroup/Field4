@@ -4,11 +4,15 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import org.joml.Vector2f
 import org.joml.Vector4f
+import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 /**
  * printing inside a for loop just gives the last output?
@@ -47,6 +51,144 @@ class DefaultOutput : HasOutput {
     override fun error(message: Any?, property: String, line: Int) {
         errorProxy(message, property, line)
     }
+}
+
+private fun escapeHtml(text: String): String {
+    return buildString(text.length) {
+        text.forEach {
+            when (it) {
+                '<' -> append("&lt;")
+                '>' -> append("&gt;")
+                '&' -> append("&amp;")
+                '"' -> append("&quot;")
+                else -> append(it)
+            }
+        }
+    }
+}
+
+private sealed interface ProcessStreamEvent {
+    data class Line(val text: String, val isError: Boolean) : ProcessStreamEvent
+    data class Exit(val code: Int) : ProcessStreamEvent
+}
+
+/**
+ * Launches an external process and streams stdout/stderr into an output area.
+ * The returned Frames ends when the process exits; ending the Frames will kill the process.
+ */
+fun Box.streamProcess(
+    name: String,
+    command: List<String>,
+    channel: String = name,
+    workingDirectory: File? = null,
+    env: Map<String, String> = emptyMap()
+): Frames {
+    val box = this
+    val label = name.ifBlank { command.joinToString(" ") }
+    val outputChannel = channel.ifBlank { label.ifBlank { "process" } }
+    var process: Process? = null
+
+    val runner = frames {
+        if (command.isEmpty()) {
+            box.display(
+                outputChannel,
+                """<pre class="process-line error" style="margin:0;font-family:monospace;">[$label] no command provided</pre>"""
+            )
+            return@frames
+        }
+
+        val pb = ProcessBuilder(command)
+        workingDirectory?.let { pb.directory(it) }
+        env.forEach { (k, v) -> pb.environment()[k] = v }
+
+        process = try {
+            pb.start()
+        } catch (t: Throwable) {
+            box.display(
+                outputChannel,
+                """<pre class="process-line error" style="margin:0;font-family:monospace;">[$label] failed to start: ${escapeHtml(t.message ?: t.toString())}</pre>"""
+            )
+            return@frames
+        }
+
+        val commandSummary = command.joinToString(" ") { escapeHtml(it) }
+        val pidSuffix = process?.pid()?.let { " (pid $it)" } ?: ""
+        box.display(
+            outputChannel,
+            """<pre class="process-line start" style="margin:0;font-family:monospace;">[$label] started$pidSuffix: $commandSummary</pre>"""
+        )
+
+        coroutineScope {
+            val events = Channel<ProcessStreamEvent>(Channel.UNLIMITED)
+
+            fun sendEvent(event: ProcessStreamEvent) {
+                events.trySend(event)
+            }
+
+            launch(Dispatchers.IO) {
+                process?.inputStream?.bufferedReader()?.useLines { lines ->
+                    lines.forEach { sendEvent(ProcessStreamEvent.Line(it, false)) }
+                }
+            }
+            launch(Dispatchers.IO) {
+                process?.errorStream?.bufferedReader()?.useLines { lines ->
+                    lines.forEach { sendEvent(ProcessStreamEvent.Line(it, true)) }
+                }
+            }
+            launch(Dispatchers.IO) {
+                val code = process?.waitFor() ?: -1
+                sendEvent(ProcessStreamEvent.Exit(code))
+                events.close()
+            }
+
+            while (frame()) {
+                val eventResult = withTimeoutOrNull(50) { events.receiveCatching() } ?: continue
+                if (eventResult.isClosed) break
+                val event = eventResult.getOrNull() ?: continue
+
+                when (event) {
+                    is ProcessStreamEvent.Line -> {
+                        val kind = if (event.isError) "stderr" else "stdout"
+                        val text = escapeHtml(event.text)
+                        box.display(
+                            outputChannel,
+                            """<pre class="process-line $kind" style="margin:0;font-family:monospace;">[$label $kind] $text</pre>"""
+                        )
+                    }
+
+                    is ProcessStreamEvent.Exit -> {
+                        val kind = if (event.code == 0) "done" else "error"
+                        box.display(
+                            outputChannel,
+                            """<pre class="process-line $kind" style="margin:0;font-family:monospace;">[$label] exited with code ${event.code}</pre>"""
+                        )
+                        break
+                    }
+                }
+            }
+
+            events.close()
+            coroutineContext.cancelChildren()
+        }
+    }
+
+    runner.atEnd = suspend {
+        process?.let { proc ->
+            if (proc.isAlive) {
+                proc.destroy()
+                if (!proc.waitFor(250, TimeUnit.MILLISECONDS)) {
+                    proc.destroyForcibly()
+                    proc.waitFor(250, TimeUnit.MILLISECONDS)
+                }
+                box.display(
+                    outputChannel,
+                    """<pre class="process-line stop" style="margin:0;font-family:monospace;">[$label] terminated</pre>"""
+                )
+            }
+        }
+    }
+
+    return runner
 }
 
 

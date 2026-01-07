@@ -520,7 +520,7 @@ class KotlinInterface(
         data class CompletionTokenBounds(val start: Int, val end: Int)
 
 
-        private fun getTokenBounds(buf: String, cursor: Int): CompletionTokenBounds {
+        fun getTokenBounds(buf: String, cursor: Int): CompletionTokenBounds {
             require(cursor <= buf.length) { "Position $cursor does not exist in code snippet <$buf>" }
 
             val startSubstring = buf.substring(0, cursor)

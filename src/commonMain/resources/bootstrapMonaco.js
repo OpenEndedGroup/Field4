@@ -87,84 +87,134 @@ const initMonaco = () => {
                         monacoLog("complete me", completionInfo, range, ed.getModel().getOffsetAt(completionInfo))
 
                         const currentGen = window.currentEditorGeneration
+                        const sessionKey = `${model.uri.toString()}::${window.currentSelectedProperty}::${position.lineNumber}:${position.column}`
+
+                        if (!window.kotlinAiCompletion) window.kotlinAiCompletion = null
+                        if (window.kotlinAiCompletion && window.kotlinAiCompletion.key === sessionKey && window.kotlinAiCompletion.useCacheOnce) {
+                                const cached = window.kotlinAiCompletion
+                                cached.useCacheOnce = false
+                                return {suggestions: cached.merged || cached.base || [], incomplete: false}
+                        }
+
+                        const basePayload = {
+                                uid: window.currentSelectedCode[0].uid,
+                                line: completionInfo.at[0],
+                                allCode: completionInfo.allCode,
+                                column: completionInfo.at[1],
+                                position: ed.getModel().getOffsetAt({
+                                        column: completionInfo.at[1], lineNumber: completionInfo.at[0]
+                                }),
+                                property: window.currentSelectedProperty
+                        }
+
+                        const rangeForPayload = (payload) => {
+                                if (payload.useLineColumns) {
+                                        return {
+                                                startLineNumber: payload.lineStart,
+                                                endLineNumber: payload.lineStart,
+                                                startColumn: payload.columnsStart + 1,
+                                                endColumn: payload.columnsStart + 1,
+                                        }
+                                }
+                                var start = ed.getModel().getPositionAt(payload.boundsStart)
+                                var end = ed.getModel().getPositionAt(payload.boundsEnd)
+                                return {
+                                        startLineNumber: start.lineNumber,
+                                        endLineNumber: end.lineNumber,
+                                        startColumn: start.column,
+                                        endColumn: end.column
+                                }
+                        }
+
+                        const buildSuggestions = (payload, opts = {}) => {
+                                let idx = opts.offset || 0
+                                const rangeObj = rangeForPayload(payload)
+                                return payload.metadata.map(m => {
+                                        let command = null
+                                        if (m.prefix) {
+                                                command = {
+                                                        id: acceptCommandId,
+                                                        title: '__completionAccepted_prefix',
+                                                        arguments: [m.prefix],
+                                                }
+                                        }
+
+                                        const sortPrefix = opts.ai ? "0000" : "1000"
+                                        const sortText = sortPrefix + (idx++).toString(36).padStart(6, "0")
+
+                                        return {
+                                                label: m.displayText,
+                                                insertText: m.text,
+                                                range: rangeObj,
+                                                kind: kindForIcon(m.icon),
+                                                detail: m.tail,
+                                                sortText: sortText,
+                                                preselect: !!opts.ai,
+                                                documentation: {
+                                                        value: m.documentation,
+                                                        isTrusted: true,
+                                                        supportThemeIcons: true,
+                                                        supportHtml: true,
+                                                },
+                                                data: {
+                                                        source: languageId,
+                                                        displayText: m.displayText,
+                                                        insertText: m.text,
+                                                        detail: m.tail,
+                                                        aiDocPending: false,
+                                                        aiDocResolved: !!opts.ai,
+                                                        ai: !!opts.ai
+                                                },
+                                                command: command
+                                        }
+                                })
+                        }
+
+                        window.kotlinAiCompletion = {
+                                key: sessionKey,
+                                gen: currentGen,
+                                base: [],
+                                ai: [],
+                                merged: [],
+                                useCacheOnce: false
+                        }
+
+                        if (languageId === "kotlin") {
+                                sendWithReply("complete-kotlin-ai", basePayload, "complete-kotlin-ai", (message, payload) => {
+                                        if (window.currentEditorGeneration !== currentGen) return true
+                                        if (!window.kotlinAiCompletion || window.kotlinAiCompletion.key !== sessionKey) return true
+                                        const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true})
+                                        window.kotlinAiCompletion.ai = aiSuggestions
+                                        window.kotlinAiCompletion.merged = (window.kotlinAiCompletion.base || []).concat(aiSuggestions)
+                                        if (aiSuggestions.length > 0) {
+                                                window.kotlinAiCompletion.useCacheOnce = true
+                                                try {
+                                                        if (globalEditor && globalEditor.trigger) {
+                                                                // Close then re-open to force Monaco to refresh items with cached AI suggestions.
+                                                                globalEditor.trigger("afield-ai", "hideSuggestWidget", {})
+                                                                setTimeout(() => {
+                                                                        globalEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
+                                                                }, 0)
+                                                        }
+                                                } catch (_) {
+                                                }
+                                        }
+                                        return true
+                                })
+                        }
 
                         var ret = new Promise(resolve => {
-
-                                sendWithReply("complete", {
-                                        uid: window.currentSelectedCode[0].uid,
-                                        line: completionInfo.at[0],
-                                        allCode: completionInfo.allCode,
-                                        column: completionInfo.at[1],
-                                        position: ed.getModel().getOffsetAt({
-                                                column: completionInfo.at[1], lineNumber: completionInfo.at[0]
-                                        }),
-                                        property: window.currentSelectedProperty
-                                }, "complete-me", (message, payload) => {
+                                sendWithReply("complete", basePayload, "complete-me", (message, payload) => {
 
                                         if (window.currentEditorGeneration !== currentGen) return true
-                                        var range
 
-                                        monacoLog("original location", completionInfo.at[1], completionInfo.at[0])
-                                        monacoLog("now location", payload.columnsStart, payload.lineStart)
+                                        const baseSuggestions = buildSuggestions(payload, {offset: 0})
+                                        window.kotlinAiCompletion.base = baseSuggestions
+                                        const aiExisting = window.kotlinAiCompletion.ai || []
+                                        window.kotlinAiCompletion.merged = aiExisting.length > 0 ? baseSuggestions.concat(aiExisting) : baseSuggestions
 
-                                        if (payload.useLineColumns) {
-                                                range = {
-                                                        startLineNumber: payload.lineStart,
-                                                        endLineNumber: payload.lineStart,
-                                                        startColumn: payload.columnsStart + 1,
-                                                        endColumn: payload.columnsStart + 1,
-                                                }
-                                        } else {
-                                                var start = ed.getModel().getPositionAt(payload.boundsStart)
-                                                var end = ed.getModel().getPositionAt(payload.boundsEnd)
-                                                range = {
-                                                        startLineNumber: start.lineNumber,
-                                                        endLineNumber: end.lineNumber,
-                                                        startColumn: start.column,
-                                                        endColumn: end.column
-                                                }
-                                        }
-
-                                        let index = 0
-                                        const answer = {
-                                                suggestions: payload.metadata.map(m => {
-
-                                                        let command = null
-                                                        if (m.prefix) {
-                                                                command = {
-                                                                        id: acceptCommandId,
-                                                                        title: '__completionAccepted_prefix',
-                                                                        arguments: [m.prefix],
-                                                                }
-                                                        }
-                                                        return {
-                                                                label: m.displayText,
-                                                                insertText: m.text,
-                                                                range: range,
-                                                                kind: kindForIcon(m.icon),
-                                                                detail: m.tail,
-                                                                sortText: (index++).toString(36).padStart(10, "0"),
-                                                                documentation: {
-                                                                        value: m.documentation,
-                                                                        isTrusted: true,
-                                                                        supportThemeIcons: true,
-                                                                        supportHtml: true,
-                                                                },
-                                                                data: {
-                                                                        source: languageId,
-                                                                        displayText: m.displayText,
-                                                                        insertText: m.text,
-                                                                        detail: m.tail,
-                                                                        aiDocPending: false,
-                                                                        aiDocResolved: false
-                                                                },
-                                                                command: command
-                                                        }
-                                                })
-                                        }
-
-                                        monacoLog("resolving. Answer is ", answer)
-                                        resolve(answer)
+                                        monacoLog("resolving. Answer is ", {suggestions: baseSuggestions})
+                                        resolve({suggestions: baseSuggestions})
 
                                         return true
                                 })

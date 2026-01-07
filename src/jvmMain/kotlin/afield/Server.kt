@@ -3,7 +3,10 @@
 package afield
 
 import afield.ai.Ai4CompletionDoc
+import afield.ai.core.completion.Ai4KotlinAutocomplete
 import afield.four.util.Options
+import afield.logger.lblock
+import afield.logger.lprint
 import afield.logger.lprintln
 import afield.stdlib.begin
 import com.aallam.openai.api.BetaOpenAI
@@ -109,6 +112,7 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
+private val aiKotlinNotifyThrottle = ConcurrentHashMap<String, Long>()
 
 var min_frame_delay = 1L
 
@@ -426,6 +430,100 @@ class Server {
                 Handled.yes
             })
 
+            handlers["complete-kotlin-ai"] = mutableSetOf({ message, reply ->
+                val exec = Json.decodeFromJsonElement<CompletionRequest>(message.payload!!)
+                val box = box(exec.uid)
+                lprintln(
+                    "info,ai_completions",
+                    "kotlin-ai request uid=${exec.uid} prop=${exec.property} line=${exec.line} col=${exec.column} pos=${exec.position} len=${exec.allCode.length}"
+                )
+                val throttleKey = "${exec.uid}:${exec.property}"
+                val now = System.currentTimeMillis()
+                val last = aiKotlinNotifyThrottle[throttleKey] ?: 0L
+                if (now - last > 1500) {
+                    aiKotlinNotifyThrottle[throttleKey] = now
+                    notify("Kotlin AI completion… <<spinner>>", "ai_completions")
+                }
+                val bounds = runCatching {
+                    KotlinInterface.getTokenBounds(exec.allCode, exec.position)
+                }.getOrElse { KotlinInterface.Companion.CompletionTokenBounds(exec.position, exec.position) }
+
+                if (box.ke !is KotlinExecution) {
+                    lprintln("info,ai_completions", "kotlin-ai skip: box is not KotlinExecution (uid=${exec.uid})")
+                    reply(
+                        Message("complete-kotlin-ai").payload(
+                            Completion(
+                                boundsStart = bounds.start,
+                                boundsEnd = bounds.end,
+                                metadata = emptyList()
+                            )
+                        )
+                    )
+                    return@mutableSetOf Handled.yes
+                }
+
+                val docName = File(thisSessionInfo.get().filename).name
+                val fileKey = "afield://$docName/${exec.uid}/${exec.property}"
+
+                GlobalScope.launch(Dispatchers.IO) {
+                    val t0 = System.nanoTime()
+                    val candidates = runCatching {
+                        Ai4KotlinAutocomplete.complete(
+                            fileKey = fileKey,
+                            code = exec.allCode,
+                            line = exec.line,
+                            column = exec.column,
+                            position = exec.position
+                        )
+                    }.onFailure {
+                        lprintln("warning,ai_completions", "kotlin-ai failed uid=${exec.uid}: ${it.javaClass.simpleName}: ${it.message}")
+                    }.getOrElse { emptyList() }
+                    val ms = (System.nanoTime() - t0) / 1_000_000
+                    lblock(
+                        "info, ai_completions", "responses are"
+
+                    ) {
+                        lprint("info, ai_completions", "kotlin-ai response uid=${exec.uid} prop=${exec.property} candidates=${candidates.size} in ${ms}ms")
+                        candidates.forEach {
+                            lprint("info, ai_completions", "${it.text} ${it.documentation}")
+                        }
+                    }
+
+                    val metadata = candidates.take(3).mapIndexed { idx, candidate ->
+                        val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
+                        val doc = buildString {
+                            val notes = candidate.documentation.ifBlank { "GPT-5.1-codex-mini" }
+                            append(notes.trim())
+                            if (candidate.text.isNotBlank()) {
+                                append("\n\n```kotlin\n")
+                                append(candidate.text.trimEnd())
+                                append("\n```")
+                            }
+                        }.trimEnd()
+
+                        Metadata(
+                            icon = "keyword",
+                            tail = "AI ${idx + 1}",
+                            text = candidate.text,
+                            displayText = if (display.isNotEmpty()) display else "AI completion ${idx + 1}",
+                            documentation = doc
+                        )
+                    }
+
+                    reply(
+                        Message("complete-kotlin-ai").payload(
+                            Completion(
+                                boundsStart = bounds.start,
+                                boundsEnd = bounds.end,
+                                metadata = metadata
+                            )
+                        )
+                    )
+                }
+
+                Handled.yes
+            })
+
             handlers["resolve-completion"] = mutableSetOf({ message, reply ->
                 val exec = Json.decodeFromJsonElement<CompletionResolveRequest>(message.payload!!)
                 val docName = File(thisSessionInfo.get().filename).name
@@ -503,7 +601,7 @@ class Server {
                 }
 
                 val newBoxes = SavingContext().loadFromEdnText(req.edn, info.filename, filter)
-                
+
                 // Only translate top-level boxes, not nested children. Nested boxes have frames that are
                 // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
                 // Translating them would incorrectly add the offset twice since they move with their parent.
@@ -562,7 +660,7 @@ class Server {
             handlers["slider-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<SliderUpdate>(message.payload!!)
                 lprintln("debug,slider", "Received slider update: ${update.sliderId} = ${update.value}")
-                
+
                 // Get the callback for this slider and invoke it
                 val callback = getSliderCallback(update.sliderId)
                 if (callback != null) {
@@ -577,14 +675,14 @@ class Server {
                 } else {
                     lprintln("warning,slider", "No callback registered for slider: ${update.sliderId}")
                 }
-                
+
                 Handled.yes
             })
 
             handlers["vec2-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<Vec2Update>(message.payload!!)
                 lprintln("debug,controls", "Received vec2 update: ${update.controlId} = (${update.x}, ${update.y})")
-                
+
                 val callback = getVec2Callback(update.controlId)
                 if (callback != null) {
                     GlobalScope.launch {
@@ -598,14 +696,14 @@ class Server {
                 } else {
                     lprintln("warning,controls", "No callback registered for vec2: ${update.controlId}")
                 }
-                
+
                 Handled.yes
             })
 
             handlers["checkbox-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<CheckboxUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received checkbox update: ${update.controlId} = ${update.value}")
-                
+
                 val callback = getCheckboxCallback(update.controlId)
                 if (callback != null) {
                     GlobalScope.launch {
@@ -619,14 +717,14 @@ class Server {
                 } else {
                     lprintln("warning,controls", "No callback registered for checkbox: ${update.controlId}")
                 }
-                
+
                 Handled.yes
             })
 
             handlers["string-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")
-                
+
                 val callback = getStringCallback(update.controlId)
                 if (callback != null) {
                     GlobalScope.launch {
@@ -640,14 +738,14 @@ class Server {
                 } else {
                     lprintln("warning,controls", "No callback registered for string: ${update.controlId}")
                 }
-                
+
                 Handled.yes
             })
 
             handlers["color-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<ColorUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})")
-                
+
                 val callback = getColorCallback(update.controlId)
                 if (callback != null) {
                     GlobalScope.launch {
@@ -661,7 +759,7 @@ class Server {
                 } else {
                     lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
                 }
-                
+
                 Handled.yes
             })
 
@@ -675,7 +773,7 @@ class Server {
                 thisSessionInfo.get().boxes.values.forEach { box ->
                     updateBoxVisibility(box, thisSessionInfo.get())
                 }
-                
+
                 // If animated, send custom visibility change messages
                 if (update.animated) {
                     thisSessionInfo.get().boxes.values.forEach { box ->
@@ -698,7 +796,7 @@ class Server {
                 val update = Json.decodeFromJsonElement<SetActiveLayer>(message.payload!!)
                 lprintln("debug,layers", "Setting active layer: ${update.layer}, animated: ${update.animated}")
                 val oldActiveLayer = thisSessionInfo.get().activeLayer
-                
+
                 // When leaving an active layer, save current positions to that layer's frames
                 if (oldActiveLayer != null) {
                     thisSessionInfo.get().boxes.values.forEach { box ->
@@ -710,9 +808,9 @@ class Server {
                         }
                     }
                 }
-                
+
                 thisSessionInfo.get().activeLayer = update.layer
-                
+
                 // Apply frame overrides for the new active layer
                 if (update.layer != null) {
                     thisSessionInfo.get().boxes.values.forEach { box ->
@@ -720,7 +818,7 @@ class Server {
                         if (layerFrame != null) {
                             box.frame = layerFrame
                             lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
-                            
+
                             // Send animated rect if animation is requested
                             if (update.animated) {
                                 val animMessage = Message("set-animated-rect").payload(
@@ -731,12 +829,12 @@ class Server {
                         }
                     }
                 }
-                
+
                 // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
                 if (!update.animated) {
                     doResync()
                 }
-                
+
                 Handled.yes
             })
 
@@ -1007,7 +1105,7 @@ class Server {
 
                 val initialURL = "http://localhost:${port}/index.html?file=${lastFn}"
                 lprintln("info,server", asciiWelcome)
-                lprintln("info,server", "welcome to Field, alpha021")
+                lprintln("info,server", "welcome to Field, alpha022")
                 lprintln("info,server", initialURL)
                 lprintln("info,server", "---")
 
