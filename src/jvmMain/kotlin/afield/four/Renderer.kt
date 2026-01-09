@@ -598,7 +598,7 @@ class Renderer(
                 }
             }
 
-            val enableSecondaryModules = true;//!Options.isMac
+            val enableSecondaryModules = !Options.isMac
             val moduleBuffers: List<CommandBuffer> =
                 if (enableSecondaryModules && moduleElements.isNotEmpty()) {
                     val collected = arrayOfNulls<CommandBuffer>(moduleElements.size)

@@ -1,24 +1,19 @@
 package afield.four.targets
 
-import org.joml.primitives.Rectanglef
 import afield.Rect
+import afield.four.Renderer
+import afield.four.Target
+import afield.four.device.CommandBuffer
+import afield.four.modules.*
+import afield.four.texture.image_layout_transition
+import org.joml.primitives.Rectanglef
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-import org.lwjgl.vulkan.KHRDynamicRendering
 import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR
 import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_INFO_KHR
+import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
-import afield.four.Target
-import afield.four.Renderer
-import afield.four.device.CommandBuffer
-import afield.four.modules.MeshModule
-import afield.four.modules.MeshModulePointer
-import afield.four.modules.Module
-import afield.four.modules.ModulePointer
-import afield.four.modules.pointer
-import afield.four.texture.image_layout_transition
-import org.lwjgl.system.MemoryStack
 
 class RenderTarget(
     val renderer: Renderer,
@@ -176,7 +171,7 @@ class RenderTarget(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
-                .flags(VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT)
+                .flags(0)
                 .layerCount(1)
                 .pColorAttachments(colorAttachment)
                 .pDepthAttachment(depthAttachment.get(0))

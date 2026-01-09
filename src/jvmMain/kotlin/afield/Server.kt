@@ -93,13 +93,17 @@ fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
 fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long = 500L) {
     GlobalScope.launch {
         delay(delayMs)
+        
+        // Wait for all boxes to be online before starting autorun
+        val allBoxes = boxes.values.filter { it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }
+        var attempts = 0
+        while (allBoxes.any { it.offline } && attempts < 100) {
+            delay(100)
+            attempts++
+        }
+        
         targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
             launch {
-                var attempts = 0
-                while (box.offline && attempts < 20) {
-                    delay(100)
-                    attempts++
-                }
                 try {
                     box.begin()
                 } catch (t: Throwable) {
