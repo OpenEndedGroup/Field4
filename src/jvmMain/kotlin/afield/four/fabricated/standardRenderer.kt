@@ -1,7 +1,11 @@
 package afield.four.fabricated
 
+import afield.Rect
 import afield.four.Renderer
+import afield.four.buffers.FrameBufferGroup
+import afield.four.buffers.defaultBuffer
 import afield.four.modules.*
+import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
 import afield.four.texture.TextureSampler
 import afield.stdlib.fromViews
@@ -16,8 +20,8 @@ import org.lwjgl.vulkan.VK10.*
 object StandardRenderer {
 
 	data class Config(
-		val renderWidth: Int = 1280,
-		val renderHeight: Int = 720,
+		val renderWidth: Int = 1920,
+		val renderHeight: Int = 1080,
 		val shadowWidth: Int = 1024,
 		val shadowHeight: Int = 1024,
 		val hdrFormat: Int = VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -47,10 +51,77 @@ object StandardRenderer {
 			val s = build(shadowModule)
 			shadowModule.current.meshes[name] = s
 		}
+
+		/**
+		 * Add the off-screen passes to a renderer’s main RenderTarget so they run before the swapchain
+		 * render. This simply wires the passes into preTargets in the right order.
+		 */
+		fun attachTo(renderer: Renderer): RenderTarget {
+			val rt = renderer.renderList
+			rt.preTargets["std-gbuffer"] = gBuffer
+			rt.preTargets["std-shadow"] = shadowMap
+			rt.preTargets["std-ao"] = ao
+			rt.preTargets["std-lighting"] = lighting
+			return rt
+		}
+
+		/** Present the lighting RTT to the swapchain with optional grading and viewport. */
+		fun present(
+			renderer: Renderer = fromContext(),
+			target: RenderTarget = renderer.renderList,
+			name: String = "std-present",
+			viewport: Rect? = null,
+			configure: RenderToTexture.ColorGrade.() -> Unit = {}
+		): ModulePointer =
+			lighting.blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = configure)
+
+
+		data class PullingMeshPair(val gBuffer: PullingMesh, val shadow: PullingMesh)
+
+		/**
+		 * Register a pair of vertex-pulling meshes into g-buffer and shadow modules, sharing the same
+		 * position/normal buffers so you can stream geometry once per frame.
+		 */
+		fun registerPullingMesh(
+			name: String = "pulling",
+			maxVertices: Int,
+			renderer: Renderer = fromContext()
+		): PullingMeshPair {
+			val g = gBufferModule.makePullingMesh(name, maxVertices, renderer)
+			val s = shadowModule.makePullingMesh(name, maxVertices, renderer, positionBuffer = g.position, normalBuffer = g.normal)
+			return PullingMeshPair(g, s)
+		}
+
+		/** Simple test hook: builds a torus into shared pulling buffers and registers it. */
+		fun registerTestTorus(
+			name: String = "test-torus",
+			slices: Int = 32,
+			stacks: Int = 32,
+			tubeRadius: Float = 0.25f,
+			majorRadius: Float = 1f,
+			renderer: Renderer = fromContext()
+		): PullingMeshPair {
+			// par_shapes torus: triangles ≈ slices * stacks * 2
+			val triCount = slices * stacks * 2
+			val maxVerts = triCount * 3
+			val pulling = registerPullingMesh(name, maxVerts, renderer)
+
+			StandardShapes.torus(
+				positions = pulling.gBuffer.position,
+				normals = pulling.gBuffer.normal,
+				slices = slices,
+				stacks = stacks,
+				tubeRadius = tubeRadius,
+				majorRadius = majorRadius,
+				config = StandardShapes.WriteConfig(append = false)
+			)
+
+			return pulling
+		}
 	}
 
-	fun build(renderer: Renderer, config: Config = Config()): Bundle {
-		val gBuffer = RenderToTexture(renderer) {
+	fun build(renderer: Renderer = fromContext(), config: Config = Config()): Bundle {
+		val gBuffer = RenderToTexture {
 			width = config.renderWidth
 			height = config.renderHeight
 			colorAttachments = 3
@@ -61,7 +132,7 @@ object StandardRenderer {
 			clearColor = vec(0f, 0f, 0f, 1f)
 		}
 
-		val shadow = RenderToTexture(renderer) {
+		val shadow = RenderToTexture {
 			width = config.shadowWidth
 			height = config.shadowHeight
 			colorAttachments = 1 // simple depth-only pass with a throwaway color attachment
@@ -72,7 +143,7 @@ object StandardRenderer {
 			clearColor = vec(1f, 1f, 1f, 1f)
 		}
 
-		val ao = RenderToTexture(renderer) {
+		val ao = RenderToTexture {
 			width = config.renderWidth
 			height = config.renderHeight
 			colorAttachments = 1
@@ -82,7 +153,7 @@ object StandardRenderer {
 			clearColor = vec(1f, 1f, 1f, 1f)
 		}
 
-		val lighting = RenderToTexture(renderer) {
+		val lighting = RenderToTexture {
 			width = config.renderWidth
 			height = config.renderHeight
 			colorAttachments = 1
@@ -92,7 +163,7 @@ object StandardRenderer {
 			clearColor = vec(0f, 0f, 0f, 1f)
 		}
 
-		val gBufferModule = Module(parameters(renderer) {
+		val gBufferModule = Module(parameters {
 			name = "prefab-gbuffer"
 			gBuffer.apply()
 			vertex = gBufferVertex
@@ -100,7 +171,7 @@ object StandardRenderer {
 		}).pointer()
 		gBuffer += "gbuffer" to gBufferModule
 
-		val shadowModule = Module(parameters(renderer) {
+		val shadowModule = Module(parameters {
 			name = "prefab-shadow"
 			shadow.apply()
 			vertex = shadowVertex
@@ -114,7 +185,7 @@ object StandardRenderer {
 		val shadowSampler = TextureSampler(renderer, shadow.parameters.mipLevels, false)
 		val aoSampler = TextureSampler(renderer, ao.parameters.mipLevels, false)
 
-		val aoModule = Module(parameters(renderer) {
+		val aoModule = Module(parameters {
 			name = "prefab-ao"
 			ao.apply()
 			vertex = fullscreenVertex
@@ -132,7 +203,7 @@ object StandardRenderer {
 		ao += "ao" to aoModule
 		aoModule.ensureFullscreenTriangle("aoQuad")
 
-		val lightingModule = Module(parameters(renderer) {
+		val lightingModule = Module(parameters {
 			name = "prefab-lighting"
 			lighting.apply()
 			vertex = fullscreenVertex
@@ -167,17 +238,60 @@ object StandardRenderer {
 		return mesh
 	}
 
+	/**
+	 * Build a mesh wired for vertex-pulling: creates per-frame position/normal buffers and writes
+	 * their GPU addresses into the mesh push constants. Buffers are host-visible + addressable so
+	 * you can stream data each frame using `DynamicallyWriteable` semantics.
+	 */
+	data class PullingMesh(
+		val mesh: Mesh,
+		val position: FrameBufferGroup,
+		val normal: FrameBufferGroup
+	)
+
+	fun ModulePointer.makePullingMesh(
+		name: String = "pulling-mesh",
+		maxVertices: Int = 10,
+		renderer: Renderer = current.parameters.renderer,
+		positionBuffer: FrameBufferGroup? = null,
+		normalBuffer: FrameBufferGroup? = null
+	): PullingMesh {
+		val mesh = Mesh(renderer, this)
+		mesh.resize(0, 0, this) // no vertex inputs; we pull from SSBOs
+
+		val position = positionBuffer ?: defaultBuffer(name="positionBuffer") {
+			perFrame = true
+			size = maxVertices.vec4s
+		}.buffer
+
+		val normal = normalBuffer ?: defaultBuffer(name="normalBuffer") {
+			perFrame = true
+			size = maxVertices.vec4s
+		}.buffer
+
+		mesh.push.bind("positionBuffer") { position }
+		mesh.push.bind("normalBuffer") { normal }
+
+		current.meshes[name] = mesh
+		return PullingMesh(mesh, position, normal)
+	}
+
+
 	// --- Shader text ---
 
-	// Vertex attributes expected by the g-buffer + shadow passes:
-	//  layout(location=0) vec3 position
-	//  layout(location=1) vec3 normal
-	//  layout(location=2) vec2 uv
+	// Vertex pulling version (positions + normals) using GL_EXT_buffer_reference.
 	private const val gBufferVertex = """
 		#version 450
-		layout(location = 0) in vec3 inPosition;
-		layout(location = 1) in vec3 inNormal;
-		layout(location = 2) in vec2 inUv;
+		#extension GL_EXT_buffer_reference : require
+		#extension GL_EXT_scalar_block_layout : require
+
+		layout(std430, buffer_reference) readonly buffer VertexPositions {
+			vec4 positions[];
+		};
+
+		layout(std430, buffer_reference) readonly buffer VertexNormals {
+			vec4 normals[];
+		};
 
 		layout(set = 0, binding = 0) uniform Camera {
 			mat4 view;
@@ -186,6 +300,8 @@ object StandardRenderer {
 		} uCamera;
 
 		layout(push_constant) uniform ModelData {
+			VertexPositions positionBuffer;
+			VertexNormals normalBuffer;
 			mat4 model;
 			vec4 baseColor;
 			float metallic;
@@ -198,10 +314,13 @@ object StandardRenderer {
 		layout(location = 2) out vec2 vUv;
 
 		void main() {
-			vec4 worldPos = push.model * vec4(inPosition, 1.0);
+			vec3 pos = push.positionBuffer.positions[gl_VertexIndex].xyz;
+			vec3 nrm = push.normalBuffer.normals[gl_VertexIndex].xyz;
+
+			vec4 worldPos = push.model * vec4(pos, 1.0);
 			vWorldPos = worldPos.xyz;
-			vNormal = normalize(mat3(push.model) * inNormal);
-			vUv = inUv;
+			vNormal = normalize(mat3(push.model) * nrm);
+			vUv = vec2(0.0);
 			gl_Position = uCamera.proj * uCamera.view * worldPos;
 		}
 	"""
@@ -211,12 +330,6 @@ object StandardRenderer {
 		layout(location = 0) in vec3 vWorldPos;
 		layout(location = 1) in vec3 vNormal;
 		layout(location = 2) in vec2 vUv;
-
-		layout(set = 0, binding = 0) uniform Camera {
-			mat4 view;
-			mat4 proj;
-			vec3 cameraPos;
-		} uCamera;
 
 		layout(location = 0) out vec4 outAlbedoRoughness;
 		layout(location = 1) out vec4 outNormalMetallic;
@@ -240,8 +353,15 @@ object StandardRenderer {
 
 	private const val shadowVertex = """
 		#version 450
-		layout(location = 0) in vec3 inPosition;
+		#extension GL_EXT_buffer_reference : require
+		#extension GL_EXT_scalar_block_layout : require
+
+		layout(std430, buffer_reference) readonly buffer VertexPositions {
+			vec4 positions[];
+		};
+
 		layout(push_constant) uniform ModelData {
+			VertexPositions positionBuffer;
 			mat4 model;
 			vec4 baseColor;
 			float metallic;
@@ -258,7 +378,8 @@ object StandardRenderer {
 		} uLight;
 
 		void main() {
-			gl_Position = uLight.lightViewProj * push.model * vec4(inPosition, 1.0);
+			vec3 pos = push.positionBuffer.positions[gl_VertexIndex].xyz;
+			gl_Position = uLight.lightViewProj * push.model * vec4(pos, 1.0);
 		}
 	"""
 
@@ -332,7 +453,7 @@ object StandardRenderer {
 		layout(set = 0, binding = 3) uniform sampler2D shadowMap;
 		layout(set = 0, binding = 4) uniform sampler2D aoTex;
 
-		layout(set = 0, binding = 1) uniform LightData {
+		layout(set = 0, binding = 5) uniform LightData {
 			mat4 lightViewProj;
 			vec3 lightDir;
 			float shadowBias;
