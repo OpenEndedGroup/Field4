@@ -539,69 +539,6 @@ class KotlinInterface(
             val bounds = getTokenBounds(code, cursor)
             return CompletionResult.Success(filteredCompletions.map { it.text }, bounds, filteredCompletions, code, cursor)
         }
-
-
-        @JvmStatic
-        fun main3(a: Array<String>) {
-
-            val a1 = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
-            var a2 = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
-            lprintln("info,kotlin", "###   " + a1.execAndWait("val x = mutableListOf(1,2,3)"))
-            lprintln("info,kotlin", "###   " + a1.execAndWait("x"))
-            runBlocking {
-
-                val cc = a1.complete("x.", 2)
-
-                lprintln("info,kotlin", "###   " + cc)
-            }
-
-        }
-
-        @JvmStatic
-        fun main(a: Array<String>) {
-
-            val a1 = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
-            lprintln(
-                "info,kotlin",
-                "###   " + a1.parseAndRewrite(
-                    """
-                val x = mutableListOf(1,2,3)
-                fun banana() : Int {
-                    return 5 
-                }
-                val y = banana()
-                """.trimIndent(), emptyList()
-                )
-            )
-
-        }
-
-        @JvmStatic
-        fun main2(a: Array<String>) {
-            lprintln("info,kotlin", "hello world")
-            val a = KotlinInterface(mapOf("BANANA" to Int::class), mapOf("BANANA" to 10))
-            for (i in 0 until 2) {
-                runBlocking {
-                    val r = a.exec("var x = ${i} + BANANA \n lprintln(\"from code \"+x)")
-                    lprintln("info,kotlin", "R1 = $r")
-                    val r2 = a.exec("var x = ${i} + BANANA2 \n lprintln(\"from code \"+x)", onCompileError = {
-
-                        lprintln("error,kotlin", "R2(onCompileError) = $it")
-                    })
-                    lprintln("info,kotlin", "R2 = $r2")
-
-                    val r3 = a.exec("var x = ${i} + BANANA \n lprintln(\"from code \"+x/(1-1))", onEvalException = {
-                        it.printStackTrace()
-                    })
-                    lprintln("info,kotlin", "R3 = $r3")
-
-                    val r4 = a.exec("var x = ${i} + BANANA \n x")
-                    lprintln("info,kotlin", "R4 = $r4")
-
-                }
-
-            }
-        }
     }
 
     class KotlinContext(

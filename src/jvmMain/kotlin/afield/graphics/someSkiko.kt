@@ -1,15 +1,82 @@
 package afield.graphics
 
 import afield.Box
+import afield.graphics.examples.FLineGeometryExamples
 import afield.stdlib.*
 import org.jetbrains.skia.*
 import org.jetbrains.skia.svg.SVGCanvas
 import java.io.ByteArrayOutputStream
+import kotlin.math.min
 
-fun Box.lines(vararg m: FLine, channel: String = "lines", w: Double = 1000.0, h: Double = 1000.0) {
-    display(channel, drawToSVG(m.toList(), w, h))
+fun Box.lines(
+    vararg m: FLine,
+    channel: String = "lines",
+    w: Double = 1000.0,
+    h: Double = 1000.0,
+    fitToSize: Boolean = false
+) {
+    val fit = computeFitTransform(m.asList(), w, h, fitToSize)
+    val scaled = m.map { it.applyFit(fit) }
+    display(channel, drawToSVG(scaled, w, h))
 }
 
+/**
+ * Render multiple channels of FLines at once.
+ * Each map entry key is used as the display channel, and the value is the list of lines to draw.
+ */
+fun Box.lines(
+    linesByChannel: Map<String, List<FLine>>,
+    w: Double = 1000.0,
+    h: Double = 1000.0,
+    fitToSize: Boolean = false
+) {
+    val allLines = linesByChannel.values.flatten()
+    val fit = computeFitTransform(allLines, w, h, fitToSize)
+    linesByChannel.forEach { (channel, lines) ->
+        val scaled = lines.map { it.applyFit(fit) }
+        display(channel, drawToSVG(scaled, w, h))
+    }
+}
+
+
+// Convenience display helpers for example maps
+fun Box.l(
+    m: Map<String, List<FLine>>,
+    w: Double = 200.0,
+    h: Double = 200.0,
+    fitToSize: Boolean = true
+) = lines(m, w = w, h = h, fitToSize = fitToSize)
+
+private fun Map<String, List<FLine>>.namespaced(prefix: String): Map<String, List<FLine>> =
+    this.mapKeys { (k, _) -> "$prefix/$k" }
+
+/**
+ * Showcase: render all FLineGeometryExamples with sensible defaults.
+ */
+fun Box.showFLineGeometryExamples(w: Double = 200.0, h: Double = 200.0, fitToSize: Boolean = true) {
+    val examples = listOf(
+        "spiralCurvature" to FLineGeometryExamples.spiralCurvatureExample(),
+        "offsetShape" to FLineGeometryExamples.offsetShapeExample(),
+        "booleanOps" to FLineGeometryExamples.booleanOperationsExample(),
+        "smoothSimplify" to FLineGeometryExamples.smoothAndSimplifyExample(),
+        "tangentNormal" to FLineGeometryExamples.tangentNormalExample(),
+        "morphing" to FLineGeometryExamples.morphingExample(),
+        "pattern" to FLineGeometryExamples.patternExample(),
+        "transformations3D" to FLineGeometryExamples.transformations3DExample(),
+        "convexHull" to FLineGeometryExamples.convexHullExample(),
+        "adaptiveSampling" to FLineGeometryExamples.adaptiveSamplingExample(),
+        "comprehensiveDemo" to FLineGeometryExamples.comprehensiveDemo(),
+        "arcs" to FLineGeometryExamples.arcExample(),
+        "noise" to FLineGeometryExamples.noiseComparisonExample(),
+        "curveCombination" to FLineGeometryExamples.curveCombinationExample(),
+        "parameterization" to FLineGeometryExamples.parameterizationExample(),
+        "complexComposition" to FLineGeometryExamples.complexCompositionExample()
+    )
+
+    examples.forEach { (name, m) ->
+        l(m.namespaced(name), w = w, h = h, fitToSize = fitToSize)
+    }
+}
 
 fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
     val ba = ByteArrayOutputStream()
@@ -34,6 +101,37 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
     val hack = "xmlns=\"http://www.w3.org/2000/svg\""
     return ba.toString().replace(hack, " style='overflow:visible' " + hack)
 
+}
+
+private data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float)
+
+private fun computeFitTransform(lines: Collection<FLine>, w: Double, h: Double, enabled: Boolean): FitTransform? {
+    if (!enabled) return null
+    if (lines.isEmpty()) return null
+    if (w <= 0.0 || h <= 0.0) return null
+
+    val bounds = lines.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
+    if (bounds.w <= 0f || bounds.h <= 0f) return null
+
+    val scale = min((w / bounds.w).toFloat(), (h / bounds.h).toFloat())
+    val offsetX = -bounds.x
+    val offsetY = -bounds.y
+
+    return FitTransform(scale, offsetX.toFloat(), offsetY.toFloat())
+}
+
+private fun FLine.applyFit(transform: FitTransform?): FLine {
+    if (transform == null) return this
+    val s = transform.scale
+    val sx = transform.offsetX
+    val sy = transform.offsetY
+    val scaled = this.transform { p ->
+        vec((p.x + sx) * s, (p.y + sy) * s, p.z)
+    }
+    return scaled.apply {
+        thickness = thickness?.times(s)
+        pointSize = pointSize?.times(s)
+    }
 }
 
 fun outputTo(f: FLine, s: Canvas) {

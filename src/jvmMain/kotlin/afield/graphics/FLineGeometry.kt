@@ -1,9 +1,6 @@
 package afield.graphics
 
-import afield.stdlib.Vec2
-import afield.stdlib.Vec3
-import afield.stdlib.times
-import afield.stdlib.vec
+import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
 import org.joml.Quaternionf
@@ -1951,4 +1948,565 @@ fun parameterFromLambda(func: (t: Float, pos: Vec3) -> Float): ParameterFunction
     return object : ParameterFunction {
         override fun evaluate(t: Float, position: Vec3) = func(t, position)
     }
+}
+
+// ==================== ADVANCED / EXPERIMENTAL CURVES ====================
+
+/**
+ * Blend two sampled point sets with an optional parameterized dry/wet control.
+ * Values outside 0..1 are allowed for intentional overshoot.
+ */
+private fun mixSamples(
+    base: List<Vec3>,
+    processed: List<Vec3>,
+    dryWet: Float,
+    modulator: ParameterFunction? = null
+): List<Vec3> {
+    val count = min(base.size, processed.size)
+    val blended = ArrayList<Vec3>(count)
+    for (i in 0 until count) {
+        val t = if (count <= 1) 0f else i.toFloat() / (count - 1)
+        val wet = modulator?.evaluate(t, processed[i]) ?: dryWet
+        val dry = 1f - wet
+        blended.add(Vec3(base[i]).mul(dry).add(Vec3(processed[i]).mul(wet)))
+    }
+    return blended
+}
+
+private fun List<Vec3>.toFLine(): FLine {
+    val f = FLine()
+    if (this.isNotEmpty()) {
+        f.moveTo(this[0])
+        for (i in 1 until this.size) {
+            f.lineTo(this[i])
+        }
+    }
+    return f
+}
+
+private fun normalizedArcLengthParams(points: List<Vec3>): DoubleArray {
+    val n = points.size
+    val params = DoubleArray(n)
+    if (n == 0) return params
+    var total = 0.0
+    for (i in 1 until n) {
+        total += points[i].distance(points[i - 1]).toDouble()
+        params[i] = total
+    }
+    if (total > 0.0) {
+        for (i in params.indices) params[i] /= total
+    }
+    return params
+}
+
+private fun alphaFromCutoff(fcHz: Double, dt: Double): Double {
+    val dtc = dt.coerceAtLeast(1e-6)
+    val tau = 1.0 / (2.0 * PI * fcHz.coerceAtLeast(1e-6))
+    return 1.0 / (1.0 + tau / dtc)
+}
+
+private fun normalizeAngle(angle: Float): Float {
+    var a = angle
+    val twoPi = (2f * PI.toFloat())
+    while (a > PI) a -= twoPi
+    while (a < -PI) a += twoPi
+    return a
+}
+
+// ---------- Higher-order B-splines ----------
+
+/**
+ * Evaluate a uniform open B-spline of arbitrary degree using Cox-de Boor.
+ */
+fun bsplineFrom(
+    controlPoints: List<Vec3>,
+    degree: Int = 3,
+    samples: Int = 200,
+    closed: Boolean = false
+): FLine {
+    if (controlPoints.size < degree + 1) return FLine()
+
+    val cp = if (closed) {
+        val wrap = controlPoints.take(degree)
+        controlPoints + wrap
+    } else controlPoints
+
+    val n = cp.size - 1
+    val p = degree
+    val knotCount = n + p + 2
+    val knots = FloatArray(knotCount)
+
+    for (i in 0..p) knots[i] = 0f
+    val interior = n - p
+    for (j in 1..interior) {
+        knots[p + j] = j.toFloat() / (interior + 1).toFloat()
+    }
+    for (i in (p + interior + 1) until knotCount) knots[i] = 1f
+
+    fun basis(u: Float): FloatArray {
+        val N = FloatArray(n + 1)
+        val temp = FloatArray(n + 1)
+        for (i in 0..n) {
+            val inRange = (knots[i] <= u && u < knots[i + 1]) || (u == 1f && i == n)
+            N[i] = if (inRange) 1f else 0f
+        }
+        for (k in 2..p + 1) {
+            for (i in 0..n) {
+                val denom1 = knots[i + k - 1] - knots[i]
+                val denom2 = knots[i + k] - knots[i + 1]
+                val term1 = if (denom1 > 1e-6f) (u - knots[i]) / denom1 * N[i] else 0f
+                val term2 = if (denom2 > 1e-6f) (knots[i + k] - u) / denom2 * N.getOrElse(i + 1) { 0f } else 0f
+                temp[i] = term1 + term2
+            }
+            System.arraycopy(temp, 0, N, 0, n + 1)
+        }
+        return N
+    }
+
+    val pts = ArrayList<Vec3>(samples)
+    for (s in 0 until samples) {
+        val u = if (samples == 1) 0f else s.toFloat() / (samples - 1)
+        val N = basis(u.coerceIn(0f, 1f))
+        val pnt = Vec3()
+        for (i in 0..n) {
+            pnt.add(Vec3(cp[i]).mul(N[i]))
+        }
+        pts.add(pnt)
+    }
+
+    return pts.toFLine()
+}
+
+/**
+ * Reinterpret an existing curve through a higher-order B-spline fit.
+ * @param degree spline degree (3=cubic, 4=quartic, 5=quintic)
+ * @param controlSampleCount how many samples from the original to treat as control points
+ * @param dryWet mix factor against the original samples (can exceed 1 for exaggeration)
+ */
+fun FLine.byBSplineSmoothed(
+    degree: Int = 4,
+    controlSampleCount: Int = 24,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null,
+    closed: Boolean = false
+): FLine {
+    val cps = this.sampleByNumber(controlSampleCount)
+    if (cps.isEmpty()) return this.copy()
+    val spline = bsplineFrom(cps, degree, samples, closed)
+    val blended = mixSamples(this.sampleByNumber(samples), spline.sampleByNumber(samples), dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+// ---------- Euler spiral interpolation ----------
+
+private fun eulerSpiralCore(
+    start: Vec3,
+    startHeading: Float,
+    end: Vec3,
+    endHeading: Float,
+    samples: Int,
+    iterations: Int
+): List<Vec3> {
+    val targetVec = Vec3(end).sub(start)
+    val targetDist = targetVec.length().coerceAtLeast(1e-6f)
+    val deltaHeading = normalizeAngle(endHeading - startHeading)
+    var length = targetDist
+
+    fun integrate(L: Float): List<Vec3> {
+        val pts = ArrayList<Vec3>(samples)
+        val ds = L / (samples - 1).toFloat()
+        val curvatureRate = 2f * deltaHeading / (L * L).coerceAtLeast(1e-6f)
+        var heading = startHeading
+        var pos = Vec3(start)
+        pts.add(Vec3(pos))
+        var sAcc = 0f
+        for (i in 1 until samples) {
+            val curvature = curvatureRate * sAcc
+            heading += curvature * ds
+            pos = vec(
+                pos.x + cos(heading) * ds,
+                pos.y + sin(heading) * ds,
+                start.z + (end.z - start.z) * (i.toFloat() / (samples - 1))
+            )
+            pts.add(pos)
+            sAcc += ds
+        }
+        return pts
+    }
+
+    var pts = integrate(length)
+    repeat(iterations) {
+        val predictedDist = Vec3(pts.last()).sub(start).length().coerceAtLeast(1e-6f)
+        val scale = targetDist / predictedDist
+        length *= scale
+        pts = integrate(length)
+    }
+
+    val residual = Vec3(end).sub(pts.last())
+    return pts.mapIndexed { i, p ->
+        val t = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1)
+        Vec3(p).add(Vec3(residual).mul(t))
+    }
+}
+
+/**
+ * Generate a clothoid (Euler spiral) bridging two poses in 2D, blending toward the exact end point.
+ * @param start starting point
+ * @param startHeading heading at start in radians
+ * @param end end point
+ * @param endHeading heading at end in radians
+ * @param dryWet mix against a straight interpolation between start and end
+ */
+fun eulerSpiralBetween(
+    start: Vec3,
+    startHeading: Float,
+    end: Vec3,
+    endHeading: Float,
+    samples: Int = 200,
+    iterations: Int = 6,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    if (samples < 2) {
+        val f = FLine()
+        f.moveTo(start)
+        f.lineTo(end)
+        return f
+    }
+    val spiral = eulerSpiralCore(start, startHeading, end, endHeading, samples, iterations)
+    val straight = (0 until samples).map { i ->
+        val t = i.toFloat() / (samples - 1)
+        vec(
+            start.x + (end.x - start.x) * t,
+            start.y + (end.y - start.y) * t,
+            start.z + (end.z - start.z) * t
+        )
+    }
+    val blended = mixSamples(straight, spiral, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+/**
+ * Build an Euler spiral from the end of this curve toward an end point.
+ * If no explicit heading is supplied, the tangent of the last segment is used.
+ */
+fun FLine.byEulerSpiralTo(
+    endPoint: Vec3,
+    endHeading: Float? = null,
+    samples: Int = 200,
+    iterations: Int = 6,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    val start = if (nodes.isNotEmpty()) nodes.last().to else vec(0f, 0f, 0f)
+    val startHeading = if (nodes.size >= 2) {
+        val prev = nodes[nodes.size - 2].to
+        atan2(start.y - prev.y, start.x - prev.x)
+    } else 0f
+    val targetHeading = endHeading ?: atan2(endPoint.y - start.y, endPoint.x - start.x)
+    return eulerSpiralBetween(start, startHeading, endPoint, targetHeading, samples, iterations, dryWet, wetModulator)
+}
+
+// ---------- Curvature-driven evolution ----------
+
+/**
+ * Iterate mean-curvature flow on a sampled polyline.
+ * @param step how far to move toward the discrete Laplacian each iteration
+ * @param iterations number of passes to apply
+ * @param anchorEnds keep the first/last points fixed while evolving
+ */
+fun FLine.byCurvatureFlow(
+    step: Float = 0.25f,
+    iterations: Int = 5,
+    samples: Int = 200,
+    anchorEnds: Boolean = true,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    val base = this.sampleByNumber(samples).toMutableList()
+    if (base.size < 3) return this.copy()
+
+    var pts = base
+    repeat(iterations) {
+        val updated = MutableList(pts.size) { Vec3() }
+        for (i in pts.indices) {
+            updated[i] = if (anchorEnds && (i == 0 || i == pts.lastIndex)) {
+                pts[i]
+            } else {
+                val prev = pts[i - 1]
+                val next = pts[i + 1]
+                val lap = Vec3(prev).add(next).mul(0.5f).sub(pts[i])
+                Vec3(pts[i]).add(Vec3(lap).mul(step))
+            }
+        }
+        pts = updated
+    }
+
+    val blended = mixSamples(base, pts, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+// ---------- Gaussian Process interpolation ----------
+
+private fun cholesky(matrix: Array<DoubleArray>): Array<DoubleArray>? {
+    val n = matrix.size
+    val L = Array(n) { DoubleArray(n) }
+    for (i in 0 until n) {
+        for (j in 0..i) {
+            var sum = matrix[i][j]
+            for (k in 0 until j) sum -= L[i][k] * L[j][k]
+            if (i == j) {
+                if (sum <= 0.0 || sum.isNaN()) return null
+                L[i][j] = sqrt(sum)
+            } else {
+                L[i][j] = sum / L[j][j]
+            }
+        }
+    }
+    return L
+}
+
+private fun solveWithCholesky(L: Array<DoubleArray>, b: DoubleArray): DoubleArray {
+    val n = L.size
+    val y = DoubleArray(n)
+    for (i in 0 until n) {
+        var sum = b[i]
+        for (k in 0 until i) sum -= L[i][k] * y[k]
+        y[i] = sum / L[i][i]
+    }
+    val x = DoubleArray(n)
+    for (i in n - 1 downTo 0) {
+        var sum = y[i]
+        for (k in i + 1 until n) sum -= L[k][i] * x[k]
+        x[i] = sum / L[i][i]
+    }
+    return x
+}
+
+private fun solveLower(L: Array<DoubleArray>, b: DoubleArray): DoubleArray {
+    val n = L.size
+    val y = DoubleArray(n)
+    for (i in 0 until n) {
+        var sum = b[i]
+        for (k in 0 until i) sum -= L[i][k] * y[k]
+        y[i] = sum / L[i][i]
+    }
+    return y
+}
+
+/**
+ * RBF-kernel Gaussian Process interpolation along arc length, applied independently to XYZ.
+ * @param trainingSamples how many points to use from the source curve as observations
+ * @param samples how many points to output
+ * @param lengthScale kernel length scale (in normalized arc-length units)
+ * @param variance kernel variance
+ * @param noise observation noise added to the diagonal
+ * @param drawSamples if true, draw a single sample from the posterior instead of using the mean
+ */
+fun FLine.byGaussianProcessInterpolating(
+    trainingSamples: Int = 48,
+    samples: Int = 200,
+    lengthScale: Float = 0.15f,
+    variance: Float = 1f,
+    noise: Float = 1e-3f,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null,
+    drawSamples: Boolean = false,
+    seed: Long? = null
+): FLine {
+    val obs = this.sampleByNumber(trainingSamples)
+    if (obs.isEmpty()) return this.copy()
+
+    val tObs = normalizedArcLengthParams(obs)
+    val n = obs.size
+    val ls2 = (lengthScale.toDouble()).pow(2.0).coerceAtLeast(1e-8)
+    val varScale = variance.toDouble()
+    val noiseVar = noise.toDouble().pow(2.0)
+
+    fun k(a: Double, b: Double): Double {
+        val d2 = (a - b) * (a - b)
+        return varScale * kotlin.math.exp(-0.5 * d2 / ls2)
+    }
+
+    val K = Array(n) { DoubleArray(n) }
+    for (i in 0 until n) {
+        for (j in 0 until n) {
+            K[i][j] = k(tObs[i], tObs[j])
+        }
+        K[i][i] += noiseVar
+    }
+
+    val jittered = K.map { it.copyOf() }.toTypedArray()
+    for (i in 0 until n) jittered[i][i] += 1e-8
+    val L = cholesky(jittered) ?: return this.copy()
+
+    val alphaX = solveWithCholesky(L, DoubleArray(n) { obs[it].x.toDouble() })
+    val alphaY = solveWithCholesky(L, DoubleArray(n) { obs[it].y.toDouble() })
+    val alphaZ = solveWithCholesky(L, DoubleArray(n) { obs[it].z.toDouble() })
+
+    val rng = if (drawSamples) java.util.Random(seed ?: System.nanoTime()) else null
+
+    val query = ArrayList<Vec3>(samples)
+    for (i in 0 until samples) {
+        val t = if (samples == 1) 0.0 else i.toDouble() / (samples - 1)
+        val kStar = DoubleArray(n) { idx -> k(t, tObs[idx]) }
+        val meanX = kStar.indices.sumOf { idx -> kStar[idx] * alphaX[idx] }
+        val meanY = kStar.indices.sumOf { idx -> kStar[idx] * alphaY[idx] }
+        val meanZ = kStar.indices.sumOf { idx -> kStar[idx] * alphaZ[idx] }
+
+        var varStar = varScale
+        val v = solveLower(L, kStar)
+        for (vComp in v) varStar -= vComp * vComp
+        val std = sqrt(varStar.coerceAtLeast(0.0))
+        val jitter = if (drawSamples && rng != null) std * rng.nextGaussian() else 0.0
+
+        query.add(vec(meanX.toFloat() + jitter.toFloat(), meanY.toFloat() + jitter.toFloat(), meanZ.toFloat() + jitter.toFloat()))
+    }
+
+    val blended = mixSamples(this.sampleByNumber(samples), query, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+// ---------- Filtered geometry (EMA, One Euro, alpha-beta / 1$) ----------
+
+/**
+ * Simple exponential moving average over sampled points.
+ */
+fun FLine.byEmaFiltering(
+    alpha: Float = 0.18f,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    val points = this.sampleByNumber(samples)
+    if (points.isEmpty()) return this.copy()
+    val filtered = MutableList(points.size) { Vec3() }
+    var ema = Vec3(points.first())
+    filtered[0] = Vec3(ema)
+    for (i in 1 until points.size) {
+        val raw = points[i]
+        ema = vec(
+            ema.x + (raw.x - ema.x) * alpha,
+            ema.y + (raw.y - ema.y) * alpha,
+            ema.z + (raw.z - ema.z) * alpha
+        )
+        filtered[i] = ema
+    }
+    val blended = mixSamples(points, filtered, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+/**
+ * One-Euro filter on 3D positions with a fixed dt inferred from an FPS hint.
+ */
+fun FLine.byOneEuroFiltering(
+    minCutoffHz: Float = 1.5f,
+    beta: Float = 0.03f,
+    dCutoffHz: Float = 1f,
+    fpsHint: Float = 60f,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    val points = this.sampleByNumber(samples)
+    if (points.isEmpty()) return this.copy()
+    val dt = (1f / fpsHint.coerceAtLeast(1e-3f)).toDouble()
+    var dxHat = vec(0f, 0f, 0f)
+    var xHat = Vec3(points.first())
+    val filtered = mutableListOf<Vec3>()
+    filtered.add(Vec3(xHat))
+
+    for (i in 1 until points.size) {
+        val raw = points[i]
+        val dx = Vec3(raw).sub(points[i - 1]).mul((1f / dt.toFloat()))
+        val ad = alphaFromCutoff(dCutoffHz.toDouble(), dt).toFloat()
+        dxHat = vec(
+            dxHat.x + ad * (dx.x - dxHat.x),
+            dxHat.y + ad * (dx.y - dxHat.y),
+            dxHat.z + ad * (dx.z - dxHat.z)
+        )
+        val speed = dxHat.length()
+        val fc = (minCutoffHz + beta * speed).toDouble()
+        val a = alphaFromCutoff(fc, dt).toFloat()
+        xHat = vec(
+            xHat.x + a * (raw.x - xHat.x),
+            xHat.y + a * (raw.y - xHat.y),
+            xHat.z + a * (raw.z - xHat.z)
+        )
+        filtered.add(Vec3(xHat))
+    }
+
+    val blended = mixSamples(points, filtered, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+/**
+ * Lightweight constant-velocity alpha-beta filter applied to a curve.
+ */
+fun FLine.byAlphaBetaFiltering(
+    alpha: Float = 0.25f,
+    beta: Float = 0.08f,
+    fpsHint: Float = 90f,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    val points = this.sampleByNumber(samples)
+    if (points.isEmpty()) return this.copy()
+    val dt = (1f / fpsHint.coerceAtLeast(1e-3f))
+    var x = Vec3(points.first())
+    var v = vec(0f, 0f, 0f)
+    val filtered = mutableListOf<Vec3>()
+    filtered.add(Vec3(x))
+    for (i in 1 until points.size) {
+        val pred = x().add(Vec3(v).mul(dt))
+        val residual = Vec3(points[i]).sub(pred)
+        x = Vec3(pred).add(Vec3(residual).mul(alpha))
+        v = Vec3(v).add(Vec3(residual).mul(beta / dt))
+        filtered.add(Vec3(x))
+    }
+    val blended = mixSamples(points, filtered, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+/**
+ * One-Dollar style normalization/resampling (rotation + scale + re-sample).
+ * Useful as a "filter" to regularize noisy gesture paths.
+ */
+fun FLine.byOneDollarFiltering(
+    targetSamples: Int = 64,
+    targetSize: Float = 200f,
+    rotateToZero: Boolean = true,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine {
+    val points = this.sampleByNumber(targetSamples)
+    if (points.isEmpty()) return this.copy()
+
+    val centroid = points.fold(Vec3()) { acc, p -> acc.add(p) }.div(points.size.toFloat())
+    var normed = points.map { Vec3(it).sub(centroid) }
+
+    if (rotateToZero && normed.size > 1) {
+        val first = normed.first()
+        val angle = atan2(first.y, first.x)
+        val c = cos(-angle)
+        val s = sin(-angle)
+        normed = normed.map {
+            vec(
+                it.x * c - it.y * s,
+                it.x * s + it.y * c,
+                it.z
+            )
+        }
+    }
+
+    val bboxX = normed.minOf { it.x } to normed.maxOf { it.x }
+    val bboxY = normed.minOf { it.y } to normed.maxOf { it.y }
+    val scaleDenom = max(bboxX.second - bboxX.first, bboxY.second - bboxY.first).coerceAtLeast(1e-4f)
+    val scale = targetSize / scaleDenom
+    normed = normed.map { vec(it.x * scale, it.y * scale, it.z) }
+
+    val blended = mixSamples(this.sampleByNumber(normed.size), normed, dryWet, wetModulator)
+    return blended.toFLine()
 }
