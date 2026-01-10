@@ -224,6 +224,7 @@ class Server {
                         while (System.currentTimeMillis() - now < 1000 * 5) {
                             delay(500)
                             doResync()
+                            syncExecutionStatus()
                         }
 
                         documents.forEach { _, info ->
