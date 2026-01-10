@@ -2,28 +2,30 @@ package afield.four.util
 
 import afield.four.Renderer
 import afield.four.Target
+import afield.four.buffers.BufferParameters
 import afield.four.buffers.VulkanBuffer
+import afield.four.buffers.buffer
 import afield.four.device.CommandBuffer
 import afield.four.device.Fence
 import afield.four.modules.*
-import afield.four.texture.HasImageView
 import afield.four.targets.RenderTarget
+import afield.four.texture.HasImageView
+import afield.four.texture.HasImageViewArray
+import afield.four.texture.TextureSampler
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.*
-import java.nio.FloatBuffer
+import org.lwjgl.vulkan.VK10
 import kotlin.math.ceil
-import kotlin.math.max
 
 /**
  * ImageReducer - A utility class for reducing an image to min, average, and max values using compute shaders.
- * 
+ *
  * This class takes a HasImageView and uses a two-pass reduction strategy:
  * 1. First pass: Each workgroup processes a tile of the image and computes local min/avg/max
  * 2. Second pass: Reduces all local results to final min/avg/max values
- * 
+ *
  * The workgroup sizes are automatically calculated for good performance.
  * Results can be read back asynchronously.
- * 
+ *
  * Usage:
  * ```
  * val reducer = ImageReducer(renderer, imageView)
@@ -33,7 +35,7 @@ import kotlin.math.max
  * ```
  */
 class ImageReducer(
-    val renderer: Renderer,
+    val renderer: Renderer = fromContext(),
     private val imageView: HasImageView
 ) {
     companion object {
@@ -41,25 +43,37 @@ class ImageReducer(
         private const val WORKGROUP_SIZE = 16
         private const val LOCAL_SIZE_X = WORKGROUP_SIZE
         private const val LOCAL_SIZE_Y = WORKGROUP_SIZE
-        
+
         // Number of values per result (min, avg, max for RGBA = 12 floats)
         private const val VALUES_PER_RESULT = 12
     }
-    
+
+
+
     // Buffers for intermediate and final results
+    private var intermediateBufferParameters: BufferParameters? = null
     private var intermediateBuffer: VulkanBuffer? = null
+    private var resultBufferParameters: BufferParameters? = null
     private var resultBuffer: VulkanBuffer? = null
-    
+
     // Compute modules for the two-pass reduction
     private var firstPassModule: ComputeModulePointer? = null
     private var secondPassModule: ComputeModulePointer? = null
-    
+
     // Cached dimensions
     private var cachedWidth: Int = 0
     private var cachedHeight: Int = 0
     private var workgroupCountX: Int = 0
     private var workgroupCountY: Int = 0
-    
+
+    // Sampling resources when the source image is only sampled
+    private var textureSampler: TextureSampler? = null
+    private val textureProvider by lazy {
+        object : HasImageViewArray {
+            override val imageViewArray = listOf(imageView)
+        }
+    }
+
     /**
      * Data class to hold the reduction results
      */
@@ -71,7 +85,7 @@ class ImageReducer(
         override fun toString(): String {
             return "ReductionResult(min=[${min.joinToString()}], avg=[${avg.joinToString()}], max=[${max.joinToString()}])"
         }
-        
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (javaClass != other?.javaClass) return false
@@ -81,7 +95,7 @@ class ImageReducer(
             if (!max.contentEquals(other.max)) return false
             return true
         }
-        
+
         override fun hashCode(): Int {
             var result = min.contentHashCode()
             result = 31 * result + avg.contentHashCode()
@@ -89,7 +103,7 @@ class ImageReducer(
             return result
         }
     }
-    
+
     /**
      * Initialize or update the compute shaders and buffers based on image dimensions
      */
@@ -97,79 +111,95 @@ class ImageReducer(
         // Get image dimensions from the underlying image
         val underlyingImage = imageView.imageView.underlyingImage
         require(underlyingImage != null) { "ImageView must have an underlying Image" }
-        
+
+        // We currently bind the source image as a sampled texture so we do not mutate its layout.
+        // Require sampled usage up-front to avoid invalid descriptors.
+        val supportsSampled = underlyingImage.imageData.usage and VK10.VK_IMAGE_USAGE_SAMPLED_BIT != 0
+        require(supportsSampled) {
+            "ImageReducer requires the source image to include VK_IMAGE_USAGE_SAMPLED_BIT (usage=${underlyingImage.imageData.usage})"
+        }
+
         val width = underlyingImage.imageData.width
         val height = underlyingImage.imageData.height
-        
+
         // Check if we need to reinitialize
-        if (width == cachedWidth && height == cachedHeight && 
+        if (width == cachedWidth && height == cachedHeight &&
             firstPassModule != null && secondPassModule != null) {
             return
         }
-        
+
         cachedWidth = width
         cachedHeight = height
-        
+
         // Calculate workgroup counts
         workgroupCountX = ceil(width.toFloat() / LOCAL_SIZE_X).toInt()
         workgroupCountY = ceil(height.toFloat() / LOCAL_SIZE_Y).toInt()
         val totalWorkgroups = workgroupCountX * workgroupCountY
-        
+
         // Create intermediate buffer (one result per workgroup)
         val intermediateSize = totalWorkgroups * VALUES_PER_RESULT * 4L // 4 bytes per float
         intermediateBuffer?.cleanup()
-        intermediateBuffer = VulkanBuffer(
-            renderer,
-            intermediateSize,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        )
-        
+
+        intermediateBufferParameters = buffer {
+            size = intermediateSize
+            storage()
+            hosted()
+            perFrame = false
+        }
+
+        intermediateBuffer = intermediateBufferParameters?.toBuffer(renderer)?.buffers[0]
+
         // Create result buffer (final min, avg, max)
         val resultSize = VALUES_PER_RESULT * 4L // 4 bytes per float
         resultBuffer?.cleanup()
-        resultBuffer = VulkanBuffer(
-            renderer,
-            resultSize,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        )
-        
-        // Create first pass shader
+        resultBufferParameters = buffer {
+            size = resultSize
+            storage()
+            perFrame = false
+            hosted()
+        }
+        resultBuffer = resultBufferParameters?.toBuffer(renderer)?.buffers[0]
+
+        // Ensure we have a sampler for sampled binding mode
+        if (textureSampler == null) {
+            textureSampler = TextureSampler(renderer, imageView.imageView.imageViewData.mipLevels, true)
+        }
+
+        // Create first pass shader (sampled texture path)
         val firstPassShader = """
             #version 450
-            
+
             layout(local_size_x = $LOCAL_SIZE_X, local_size_y = $LOCAL_SIZE_Y, local_size_z = 1) in;
-            
-            layout(set = 0, binding = 0, rgba8) uniform readonly image2D inputImage;
-            
+
+            layout(set = 0, binding = 0) uniform sampler2D inputImage;
+
             layout(set = 0, binding = 1) buffer IntermediateResults {
                 float values[];
             } intermediate;
-            
+
             layout(push_constant) uniform PushConstants {
                 int imageDimensionsX;
                 int imageDimensionsY;
                 int workgroupCountX;
             } pc;
-            
+
             // Shared memory for workgroup-local reduction
             shared vec4 localMin[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
             shared vec4 localAvg[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
             shared vec4 localMax[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
-            
+
             void main() {
                 ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
                 uint localIndex = gl_LocalInvocationID.y * $LOCAL_SIZE_X + gl_LocalInvocationID.x;
-                
+
                 // Load pixel or use neutral values if out of bounds
                 vec4 pixel = vec4(0.0);
                 bool validPixel = false;
                 if (pixelCoord.x < pc.imageDimensionsX && pixelCoord.y < pc.imageDimensionsY) {
-                    pixel = imageLoad(inputImage, pixelCoord);
+                    pixel = texelFetch(inputImage, pixelCoord, 0);
                     validPixel = true;
                 }
-                
+
                 // Initialize local memory
                 if (validPixel) {
                     localMin[localIndex] = pixel;
@@ -180,9 +210,9 @@ class ImageReducer(
                     localAvg[localIndex] = vec4(0.0);
                     localMax[localIndex] = vec4(-1e10); // Very small value for max
                 }
-                
+
                 barrier();
-                
+
                 // Parallel reduction in shared memory
                 for (uint stride = ($LOCAL_SIZE_X * $LOCAL_SIZE_Y) / 2; stride > 0; stride >>= 1) {
                     if (localIndex < stride) {
@@ -192,25 +222,25 @@ class ImageReducer(
                     }
                     barrier();
                 }
-                
+
                 // Write results to intermediate buffer
                 // Layout: [min.rgba, avg.rgba, max.rgba] per workgroup
                 if (localIndex == 0) {
                     uint workgroupIndex = gl_WorkGroupID.y * pc.workgroupCountX + gl_WorkGroupID.x;
                     uint baseOffset = workgroupIndex * 12;
-                    
+
                     // Write min
                     intermediate.values[baseOffset + 0] = localMin[0].r;
                     intermediate.values[baseOffset + 1] = localMin[0].g;
                     intermediate.values[baseOffset + 2] = localMin[0].b;
                     intermediate.values[baseOffset + 3] = localMin[0].a;
-                    
+
                     // Write avg
                     intermediate.values[baseOffset + 4] = localAvg[0].r;
                     intermediate.values[baseOffset + 5] = localAvg[0].g;
                     intermediate.values[baseOffset + 6] = localAvg[0].b;
                     intermediate.values[baseOffset + 7] = localAvg[0].a;
-                    
+
                     // Write max
                     intermediate.values[baseOffset + 8] = localMax[0].r;
                     intermediate.values[baseOffset + 9] = localMax[0].g;
@@ -219,25 +249,29 @@ class ImageReducer(
                 }
             }
         """.trimIndent()
-        
+
+        val sampler = textureSampler ?: TextureSampler(renderer, imageView.imageView.imageViewData.mipLevels, true).also {
+            textureSampler = it
+        }
+
         firstPassModule = ComputeModule(Parameters(
             renderer,
             compute = firstPassShader,
             name = "ImageReducer_FirstPass",
             ssboResolver = { buffer ->
                 when (buffer.name) {
-                    "intermediate" -> intermediateBuffer
+                    "IntermediateResults" -> intermediateBufferParameters
                     else -> null
                 }
             },
-            imageResolver = { img ->
-                when (img.name) {
-                    "inputImage" -> imageView.imageView
+            textureResolver = { texture ->
+                when (texture.name) {
+                    "inputImage" -> textureProvider to sampler
                     else -> null
                 }
             }
         )).pointer()
-        
+
         // Create second pass shader
         val secondPassShader = """
             #version 450
@@ -326,93 +360,93 @@ class ImageReducer(
                 }
             }
         """.trimIndent()
-        
+
         secondPassModule = ComputeModule(Parameters(
             renderer,
             compute = secondPassShader,
             name = "ImageReducer_SecondPass",
             ssboResolver = { buffer ->
                 when (buffer.name) {
-                    "intermediate" -> intermediateBuffer
-                    "results" -> resultBuffer
+                    "IntermediateResults" -> intermediateBufferParameters
+                    "FinalResults" -> resultBufferParameters
                     else -> null
                 }
             }
         )).pointer()
     }
-    
+
     /**
      * Execute the reduction on the GPU.
      * Must be called within a command buffer recording.
      */
     fun reduce(commandBuffer: CommandBuffer) {
         ensureInitialized()
-        
+
         val firstPass = firstPassModule ?: throw IllegalStateException("First pass module not initialized")
         val secondPass = secondPassModule ?: throw IllegalStateException("Second pass module not initialized")
-        
+
         // Create compute meshes
         val firstPassMesh = ComputeMesh(renderer, firstPass)
         firstPassMesh.x = workgroupCountX
         firstPassMesh.y = workgroupCountY
         firstPassMesh.z = 1
-        
+
         // Initialize push constants structure from module
         firstPassMesh.initializePushConstantsFromModule(firstPass)
-        
+
         // Set push constants for first pass
         firstPassMesh.push.set("imageDimensionsX", cachedWidth)
         firstPassMesh.push.set("imageDimensionsY", cachedHeight)
         firstPassMesh.push.set("workgroupCountX", workgroupCountX)
-        
+
         // Execute first pass (bind pipeline and dispatch through the module's render)
         firstPass += "reduce" to firstPassMesh
         firstPass.current.render(commandBuffer, org.joml.primitives.Rectanglef())
-        
+
         // Memory barrier between passes
         computeMemoryBarrier(commandBuffer, intermediateBuffer)
-        
+
         // Execute second pass
         val secondPassMesh = ComputeMesh(renderer, secondPass)
         secondPassMesh.x = 1
         secondPassMesh.y = 1
         secondPassMesh.z = 1
-        
+
         // Initialize push constants structure from module
         secondPassMesh.initializePushConstantsFromModule(secondPass)
-        
+
         val totalWorkgroups = workgroupCountX * workgroupCountY
         val totalPixels = cachedWidth * cachedHeight
         secondPassMesh.push.set("totalWorkgroups", totalWorkgroups)
         secondPassMesh.push.set("totalPixels", totalPixels)
-        
+
         secondPass += "reduce" to secondPassMesh
         secondPass.current.render(commandBuffer, org.joml.primitives.Rectanglef())
-        
+
         // Memory barrier for host read
         hostReadBarrier(commandBuffer, resultBuffer)
     }
-    
+
     /**
      * Read back the results from the GPU.
      * This should be called after GPU execution has completed (e.g., after fence wait).
      */
     fun readResults(): ReductionResult {
         val buffer = resultBuffer ?: throw IllegalStateException("Result buffer not initialized")
-        
+
         val min = FloatArray(4)
         val avg = FloatArray(4)
         val max = FloatArray(4)
-        
-        buffer.mapAndRead { floatBuffer: FloatBuffer ->
-            floatBuffer.get(min)
-            floatBuffer.get(avg)
-            floatBuffer.get(max)
+
+        buffer.mapAndRead {
+            get(min)
+            get(avg)
+            get(max)
         }
-        
+
         return ReductionResult(min, avg, max)
     }
-    
+
     /**
      * Clean up GPU resources
      */
@@ -421,18 +455,20 @@ class ImageReducer(
         resultBuffer?.cleanup()
         firstPassModule?.current?.cleanup()
         secondPassModule?.current?.cleanup()
-        
+        textureSampler?.cleanup()
+
         intermediateBuffer = null
         resultBuffer = null
         firstPassModule = null
         secondPassModule = null
+        textureSampler = null
     }
-    
+
     /**
      * Execute the reduction once and return the results synchronously.
      * This is a convenience method that creates a command buffer, executes the reduction,
      * waits for completion, and returns the results.
-     * 
+     *
      * Usage:
      * ```
      * val reducer = ImageReducer(renderer, imageView)
@@ -443,12 +479,12 @@ class ImageReducer(
     fun reduceNow(): ReductionResult {
         val cmd = CommandBuffer(renderer.commandPool, true, true)
         val fence = Fence(renderer.device, true)
-        
+
         try {
             cmd.beginRecording()
             reduce(cmd)
             cmd.endRecording()
-            
+
             fence.reset()
             MemoryStack.stackPush().use { stack ->
                 renderer.graphQueue.submit(
@@ -460,28 +496,28 @@ class ImageReducer(
                 )
             }
             fence.fenceWait()
-            
+
             return readResults()
         } finally {
             fence.cleanup()
             cmd.cleanup()
         }
     }
-    
+
     /**
      * Install this reducer into a RenderTarget's others map for per-frame execution.
      * The reduction will be executed every frame as part of the render target's rendering.
      * Results can be read back asynchronously after the frame completes.
-     * 
+     *
      * Usage:
      * ```
      * val reducer = ImageReducer(renderer, imageView)
      * reducer.installInto(renderTarget, "imageStats")
-     * 
+     *
      * // In your render loop, after frame completion:
      * val results = reducer.readResults()
      * ```
-     * 
+     *
      * @param target The RenderTarget to install into
      * @param name The name to use in the target's others map
      */
@@ -490,12 +526,12 @@ class ImageReducer(
             reduce(command)
         }
     }
-    
+
     /**
      * Install this reducer into a RenderTarget with a callback that receives the results.
      * The callback is invoked after each frame's reduction completes.
      * Note: The callback is invoked synchronously during rendering, so keep it fast.
-     * 
+     *
      * Usage:
      * ```
      * val reducer = ImageReducer(renderer, imageView)
@@ -503,7 +539,7 @@ class ImageReducer(
      *     println("Frame stats - Min: ${result.min[0]}, Avg: ${result.avg[0]}, Max: ${result.max[0]}")
      * }
      * ```
-     * 
+     *
      * @param target The RenderTarget to install into
      * @param name The name to use in the target's others map
      * @param onResults Callback invoked with the reduction results after each frame
@@ -514,7 +550,7 @@ class ImageReducer(
             // Add barrier to ensure results are available before reading
             hostReadBarrier(command, resultBuffer)
         }
-        
+
         // Note: Reading results immediately after reduce in the same command buffer
         // requires careful synchronization. For best results, read on the next frame
         // or use a fence to wait for completion.

@@ -201,7 +201,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp)
                         ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Uniform(it.name, it, source = bp, buf.buffer, kind)
+                    uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
                 }
             }
 
