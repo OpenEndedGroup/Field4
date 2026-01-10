@@ -3,34 +3,40 @@ package afield.four.targets
 import afield.Rect
 import afield.four.CPUSpan
 import afield.four.Renderer
+import afield.four.Target
 import afield.four.device.Attachment
 import afield.four.device.CommandBuffer
 import afield.four.device.Fence
 import afield.four.device.GpuProfiler
 import afield.four.device.Instance
 import afield.four.device.ProfilingOptions
-import afield.four.modules.*
+import afield.four.modules.MeshModule
+import afield.four.modules.MeshModulePointer
+import afield.four.modules.Module
+import afield.four.modules.ModulePointer
+import afield.four.modules.fromContext
+import afield.four.modules.pointer
 import afield.four.texture.HasImageView
 import afield.four.texture.image_layout_transition
 import afield.four.util.Options
 import afield.logger.lprintln
-import afield.stdlib.Quat
-import afield.stdlib.Vec3
-import afield.stdlib.vec
+import afield.stdlib.*
+import afield.stdlib.remAssign
 import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.joml.primitives.Rectanglef
 import org.lwjgl.openxr.*
+import org.lwjgl.openxr.KHRVulkanEnable
+import org.lwjgl.openxr.KHRVulkanEnable2
 import org.lwjgl.openxr.XR10.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.KHRDynamicRendering
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 import org.joml.*
 import org.lwjgl.vulkan.*
-import java.util.ArrayDeque
 import kotlin.math.tan
 
 private data class XrEyeSwapchain(
@@ -79,7 +85,7 @@ private data class XrEyeSwapchain(
  * This consumes the OpenXR bootstrap created in [afield.four.device.Instance] when [Options.enableVR] is true.
  */
 class OpenXRHmdTarget(
-    private val renderer: Renderer
+    val renderer: Renderer = fromContext()
 ) {
 
     @Volatile
@@ -155,8 +161,10 @@ class OpenXRHmdTarget(
     data class ControllerState(
         var active: Boolean = false,
         var poseValid: Boolean = false,
-        var position: Vec3 = vec(0.0, 0.0, 0.0),
-        var orientation: Quat = Quat(0.0, 0.0, 0.0, 1.0),
+
+        var position : Vec3 = Vec3(),
+        var rotation : Quat = Quat(),
+
         // Generic select (bound per-profile; for Index we bind trigger/click)
         var selectPressed: Boolean = false,
 
@@ -222,8 +230,8 @@ class OpenXRHmdTarget(
         val src = if (hand == Hand.LEFT) leftController else rightController
         out.active = src.active
         out.poseValid = src.poseValid
-        out.position = src.position
-        out.orientation = src.orientation
+        out.position %= src.position
+        out.rotation %= src.rotation
         out.selectPressed = src.selectPressed
         out.triggerValue = src.triggerValue
         out.triggerPressed = src.triggerPressed
@@ -274,13 +282,12 @@ class OpenXRHmdTarget(
         val s = if (hand == Hand.LEFT) leftController else rightController
         return out.identity()
             .translate(s.position.x, s.position.y, s.position.z)
-            .rotate(Quaternionf(s.orientation.x, s.orientation.y, s.orientation.z, s.orientation.w))
+            .rotate(Quaternionf(s.rotation.x, s.rotation.y, s.rotation.z, s.rotation.w))
     }
 
     // public module lists (mirrors RenderTarget)
     var modules = mutableMapOf<String, ModulePointer>()
     var meshModules = mutableMapOf<String, MeshModulePointer>()
-
     // Clear color for the HMD swapchain (RGBA). Defaults to Options.openXRClearColor.
     var clearColor: FloatArray = Options.openXRClearColor.clone()
 
@@ -873,14 +880,11 @@ class OpenXRHmdTarget(
             // Paths for hands + profile
             leftHandPath = stringToPath(xrInstanceLocal, stack, "/user/hand/left")
             rightHandPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right")
-            val profileSimpleController =
-                stringToPath(xrInstanceLocal, stack, "/interaction_profiles/khr/simple_controller")
-            val profileOculusTouch =
-                stringToPath(xrInstanceLocal, stack, "/interaction_profiles/oculus/touch_controller")
+            val profileSimpleController = stringToPath(xrInstanceLocal, stack, "/interaction_profiles/khr/simple_controller")
+            val profileOculusTouch = stringToPath(xrInstanceLocal, stack, "/interaction_profiles/oculus/touch_controller")
             val profileValveIndex = stringToPath(xrInstanceLocal, stack, "/interaction_profiles/valve/index_controller")
             val profileHTCVive = stringToPath(xrInstanceLocal, stack, "/interaction_profiles/htc/vive_controller")
-            val profileMicrosoftMotion =
-                stringToPath(xrInstanceLocal, stack, "/interaction_profiles/microsoft/motion_controller")
+            val profileMicrosoftMotion = stringToPath(xrInstanceLocal, stack, "/interaction_profiles/microsoft/motion_controller")
 
             // Action set
             val actionSetInfo = XrActionSetCreateInfo.calloc(stack)
@@ -975,10 +979,8 @@ class OpenXRHmdTarget(
             val trackpadClickAction = createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "trackpad_click", "Trackpad Click")
 
             val thumbstickAction = createAction(XR_ACTION_TYPE_VECTOR2F_INPUT, "thumbstick", "Thumbstick")
-            val thumbstickTouchAction =
-                createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_touch", "Thumbstick Touch")
-            val thumbstickClickAction =
-                createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_click", "Thumbstick Click")
+            val thumbstickTouchAction = createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_touch", "Thumbstick Touch")
+            val thumbstickClickAction = createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_click", "Thumbstick Click")
 
             val aAction = createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "a_click", "A")
             val bAction = createAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "b_click", "B")
@@ -1068,11 +1070,9 @@ class OpenXRHmdTarget(
             val leftThumbstickPath = stringToPath(xrInstanceLocal, stack, "/user/hand/left/input/thumbstick")
             val rightThumbstickPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/thumbstick")
             val leftThumbstickClickPath = stringToPath(xrInstanceLocal, stack, "/user/hand/left/input/thumbstick/click")
-            val rightThumbstickClickPath =
-                stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/thumbstick/click")
+            val rightThumbstickClickPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/thumbstick/click")
             val leftThumbstickTouchPath = stringToPath(xrInstanceLocal, stack, "/user/hand/left/input/thumbstick/touch")
-            val rightThumbstickTouchPath =
-                stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/thumbstick/touch")
+            val rightThumbstickTouchPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/thumbstick/touch")
 
             val rightAPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/a/click")
             val rightBPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/b/click")
@@ -1702,8 +1702,14 @@ class OpenXRHmdTarget(
 
             val p = loc.pose().`position$`()
             val q = loc.pose().orientation()
-            out.position.x = p.x(); out.position.y = p.y(); out.position.z = p.z()
-            out.orientation.x = q.x(); out.orientation.y = q.y(); out.orientation.z = q.z(); out.orientation.w = q.w()
+            out.position.x = p.x()
+            out.position.y = p.y()
+            out.position.z = p.z()
+
+            out.rotation.x = q.x()
+            out.rotation.y = q.y()
+            out.rotation.z = q.z()
+            out.rotation.w = q.w()
         }
     }
 
@@ -1835,8 +1841,7 @@ class OpenXRHmdTarget(
                         .baseArrayLayer(0)
                         .layerCount(1)
 
-                    val dstOldLayout =
-                        if (sc.colorSeen[imageIndex]) VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL else VK_IMAGE_LAYOUT_UNDEFINED
+                    val dstOldLayout = if (sc.colorSeen[imageIndex]) VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL else VK_IMAGE_LAYOUT_UNDEFINED
                     val (dstSrcStage, dstSrcAccess) = if (sc.colorSeen[imageIndex]) {
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
                     } else {
@@ -1978,8 +1983,7 @@ class OpenXRHmdTarget(
                         .baseArrayLayer(0)
                         .layerCount(1)
 
-                    val depthOldLayout =
-                        if (sc.depthSeen[imageIndex]) VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL else VK_IMAGE_LAYOUT_UNDEFINED
+                    val depthOldLayout = if (sc.depthSeen[imageIndex]) VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL else VK_IMAGE_LAYOUT_UNDEFINED
                     image_layout_transition(
                         cmd.vkCommandBuffer,
                         depthAtt.image,

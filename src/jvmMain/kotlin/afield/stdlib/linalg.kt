@@ -14,9 +14,9 @@ fun Vec4.closest(a: Iterable<Vec4>) = a.minByOrNull { this.distance(it) }!!
 fun Vec2.closest(a: Iterable<Vec2>) = a.minByOrNull { this.distance(it) }!!
 
 
-operator fun Vec2.rem(other: Vec2) = this.set(other)
-operator fun Vec3.rem(other: Vec3) = this.set(other)
-operator fun Vec4.rem(other: Vec4) = this.set(other)
+//operator fun Vec2.rem(other: Vec2) = this.set(other)
+//operator fun Vec3.rem(other: Vec3) = this.set(other)
+//operator fun Vec4.rem(other: Vec4) = this.set(other)
 
 val Vector2dc.v3: Vector3d
     get() = Vector3d(this.x(), this.y(), 0.0)
