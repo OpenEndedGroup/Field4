@@ -28,7 +28,9 @@ The reduction is performed in two compute shader passes:
 
 ## Usage
 
-### Basic Usage
+### Quick Start - One-Shot Execution
+
+The simplest way to use ImageReducer is with the `reduceNow()` method:
 
 ```kotlin
 import afield.four.Renderer
@@ -39,7 +41,43 @@ import afield.four.texture.HasImageView
 val imageView: HasImageView = ... // your image
 val renderer: Renderer = ... // your renderer
 
-// Create the reducer
+// Create the reducer and execute once
+val reducer = ImageReducer(renderer, imageView)
+val results = reducer.reduceNow()
+
+println("Min: ${results.min.contentToString()}")
+println("Avg: ${results.avg.contentToString()}")
+println("Max: ${results.max.contentToString()}")
+
+reducer.cleanup()
+```
+
+### Per-Frame Execution - Install into RenderTarget
+
+For continuous per-frame statistics, install the reducer into a RenderTarget:
+
+```kotlin
+import afield.four.targets.RenderTarget
+
+val reducer = ImageReducer(renderer, imageView)
+val renderTarget = RenderTarget(renderer)
+
+// Install into the render target
+reducer.installInto(renderTarget, "imageStats")
+
+// In your render loop:
+renderer.render()  // Reduction happens automatically
+val results = reducer.readResults()  // Read results after frame
+```
+
+### Advanced - Manual Command Buffer Control
+
+For fine-grained control over execution timing:
+
+```kotlin
+import afield.four.device.CommandBuffer
+import afield.four.device.Fence
+
 val reducer = ImageReducer(renderer, imageView)
 
 // Execute reduction in a command buffer
@@ -56,11 +94,10 @@ fence.fenceWait()
 
 // Read results
 val results = reducer.readResults()
-println("Min: ${results.min.contentToString()}")
-println("Avg: ${results.avg.contentToString()}")
-println("Max: ${results.max.contentToString()}")
 
 // Cleanup
+fence.cleanup()
+cmd.cleanup()
 reducer.cleanup()
 ```
 
@@ -116,6 +153,20 @@ class ImageReducer(
 ```
 
 #### Methods
+
+##### `reduceNow(): ReductionResult`
+**Convenience method for one-shot execution.**
+- Creates command buffer, executes reduction, waits for completion
+- Returns results synchronously
+- Handles all synchronization automatically
+- Use when you need results immediately
+
+##### `installInto(target: RenderTarget, name: String = "imageReducer")`
+**Install into a RenderTarget for per-frame execution.**
+- Adds reduction to the render target's `others` map
+- Executes automatically every frame
+- Results can be read asynchronously with `readResults()`
+- Use for continuous monitoring
 
 ##### `reduce(commandBuffer: CommandBuffer)`
 Executes the reduction compute shaders on the GPU.

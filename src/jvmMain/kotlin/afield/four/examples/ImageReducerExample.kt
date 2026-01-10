@@ -1,67 +1,70 @@
 package afield.four.examples
 
 import afield.four.Renderer
-import afield.four.device.CommandBuffer
-import afield.four.device.Fence
+import afield.four.targets.RenderTarget
 import afield.four.texture.LoadedTexture
 import afield.four.util.ImageReducer
 import afield.four.util.Window
-import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10
 
 /**
  * Example demonstrating the usage of ImageReducer utility class.
  * 
- * This example loads a texture and uses the ImageReducer to compute
- * min, average, and max values across the image using compute shaders.
+ * Shows both the "just do it once" case and the "do it every frame" case.
  */
 class ImageReducerExample {
     val window = Window("ImageReducer Example")
     val renderer = Renderer(window)
     
-    fun run() {
-        // Load a test texture
-        // Note: Replace with actual path to test image
+    /**
+     * Example 1: "Just do it once" - synchronous one-shot execution
+     */
+    fun runOnce() {
+        println("\n=== Example 1: One-shot execution ===")
+        
         val texture = LoadedTexture.stubTexture(renderer)
         texture.transferNow()
         
-        // Create the image reducer
+        // Create the reducer and execute once
         val reducer = ImageReducer(renderer, texture)
-        
-        // Create a command buffer
-        val cmd = CommandBuffer(renderer.commandPool, true, true)
-        cmd.beginRecording()
-        
-        // Execute the reduction
-        reducer.reduce(cmd)
-        
-        cmd.endRecording()
-        
-        // Submit the command buffer and wait for completion
-        val fence = Fence(renderer.device, true)
-        fence.reset()
-        MemoryStack.stackPush().use { stack ->
-            renderer.graphQueue.submit(
-                stack.pointers(cmd.vkCommandBuffer),
-                null,
-                null,
-                null,
-                fence
-            )
-        }
-        fence.fenceWait()
-        
-        // Read back the results
-        val results = reducer.readResults()
+        val results = reducer.reduceNow()
         
         println("Image Reduction Results:")
         println("  Min: [${results.min.joinToString(", ")}]")
         println("  Avg: [${results.avg.joinToString(", ")}]")
         println("  Max: [${results.max.joinToString(", ")}]")
         
-        // Cleanup
-        fence.cleanup()
-        cmd.cleanup()
+        reducer.cleanup()
+        texture.cleanup()
+    }
+    
+    /**
+     * Example 2: "Do it every frame" - install into RenderTarget.others
+     */
+    fun runPerFrame() {
+        println("\n=== Example 2: Per-frame execution ===")
+        
+        val texture = LoadedTexture.stubTexture(renderer)
+        texture.transferNow()
+        
+        val renderTarget = RenderTarget(renderer)
+        renderer.renderList = renderTarget
+        
+        // Create reducer and install into render target
+        val reducer = ImageReducer(renderer, texture)
+        reducer.installInto(renderTarget, "imageStats")
+        
+        // Simulate a few frames
+        for (frame in 0 until 5) {
+            window.pollEvents()
+            renderer.render()
+            
+            // Read results after frame completes
+            val results = reducer.readResults()
+            println("Frame $frame - Avg R: ${results.avg[0]}, G: ${results.avg[1]}, B: ${results.avg[2]}")
+            
+            if (window.shouldClose()) break
+        }
+        
         reducer.cleanup()
         texture.cleanup()
     }
@@ -71,7 +74,11 @@ class ImageReducerExample {
         fun main(args: Array<String>) {
             val example = ImageReducerExample()
             try {
-                example.run()
+                // Run the one-shot example
+                example.runOnce()
+                
+                // Run the per-frame example
+                example.runPerFrame()
             } catch (e: Exception) {
                 println("Error running ImageReducer example: ${e.message}")
                 e.printStackTrace()

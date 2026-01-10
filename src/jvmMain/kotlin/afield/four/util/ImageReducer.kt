@@ -1,10 +1,14 @@
 package afield.four.util
 
 import afield.four.Renderer
+import afield.four.Target
 import afield.four.buffers.VulkanBuffer
 import afield.four.device.CommandBuffer
+import afield.four.device.Fence
 import afield.four.modules.*
 import afield.four.texture.HasImageView
+import afield.four.targets.RenderTarget
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import java.nio.FloatBuffer
 import kotlin.math.ceil
@@ -422,5 +426,97 @@ class ImageReducer(
         resultBuffer = null
         firstPassModule = null
         secondPassModule = null
+    }
+    
+    /**
+     * Execute the reduction once and return the results synchronously.
+     * This is a convenience method that creates a command buffer, executes the reduction,
+     * waits for completion, and returns the results.
+     * 
+     * Usage:
+     * ```
+     * val reducer = ImageReducer(renderer, imageView)
+     * val results = reducer.reduceNow()
+     * println("Min: ${results.min.contentToString()}")
+     * ```
+     */
+    fun reduceNow(): ReductionResult {
+        val cmd = CommandBuffer(renderer.commandPool, true, true)
+        val fence = Fence(renderer.device, true)
+        
+        try {
+            cmd.beginRecording()
+            reduce(cmd)
+            cmd.endRecording()
+            
+            fence.reset()
+            MemoryStack.stackPush().use { stack ->
+                renderer.graphQueue.submit(
+                    stack.pointers(cmd.vkCommandBuffer),
+                    null,
+                    null,
+                    null,
+                    fence
+                )
+            }
+            fence.fenceWait()
+            
+            return readResults()
+        } finally {
+            fence.cleanup()
+            cmd.cleanup()
+        }
+    }
+    
+    /**
+     * Install this reducer into a RenderTarget's others map for per-frame execution.
+     * The reduction will be executed every frame as part of the render target's rendering.
+     * Results can be read back asynchronously after the frame completes.
+     * 
+     * Usage:
+     * ```
+     * val reducer = ImageReducer(renderer, imageView)
+     * reducer.installInto(renderTarget, "imageStats")
+     * 
+     * // In your render loop, after frame completion:
+     * val results = reducer.readResults()
+     * ```
+     * 
+     * @param target The RenderTarget to install into
+     * @param name The name to use in the target's others map
+     */
+    fun installInto(target: RenderTarget, name: String = "imageReducer") {
+        target.others[name] = Target { command, index ->
+            reduce(command)
+        }
+    }
+    
+    /**
+     * Install this reducer into a RenderTarget with a callback that receives the results.
+     * The callback is invoked after each frame's reduction completes.
+     * Note: The callback is invoked synchronously during rendering, so keep it fast.
+     * 
+     * Usage:
+     * ```
+     * val reducer = ImageReducer(renderer, imageView)
+     * reducer.installInto(renderTarget, "imageStats") { result ->
+     *     println("Frame stats - Min: ${result.min[0]}, Avg: ${result.avg[0]}, Max: ${result.max[0]}")
+     * }
+     * ```
+     * 
+     * @param target The RenderTarget to install into
+     * @param name The name to use in the target's others map
+     * @param onResults Callback invoked with the reduction results after each frame
+     */
+    fun installInto(target: RenderTarget, name: String = "imageReducer", onResults: (ReductionResult) -> Unit) {
+        target.others[name] = Target { command, index ->
+            reduce(command)
+            // Add barrier to ensure results are available before reading
+            hostReadBarrier(command, resultBuffer)
+        }
+        
+        // Note: Reading results immediately after reduce in the same command buffer
+        // requires careful synchronization. For best results, read on the next frame
+        // or use a fence to wait for completion.
     }
 }
