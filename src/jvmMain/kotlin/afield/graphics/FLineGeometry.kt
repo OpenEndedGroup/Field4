@@ -1102,4 +1102,785 @@ object FLineGeometry {
         
         return result
     }
+
+    // ==================== ARCS AND HIGHER-ORDER CURVES ====================
+
+    /**
+     * Append a circular arc to an FLine in 3D.
+     * @param line the FLine to append to (will be modified and returned)
+     * @param center center point of the arc
+     * @param radius radius of the arc
+     * @param startAngle start angle in radians
+     * @param endAngle end angle in radians
+     * @param normal plane normal (defines the plane containing the arc)
+     * @param segments number of line segments to approximate the arc
+     */
+    fun appendArc3D(
+        line: FLine,
+        center: Vec3,
+        radius: Float,
+        startAngle: Float,
+        endAngle: Float,
+        normal: Vec3 = vec(0f, 0f, 1f),
+        segments: Int = 32
+    ): FLine {
+        // Create orthonormal basis for the arc plane
+        val n = Vec3(normal).normalize()
+        
+        // Find arbitrary perpendicular vector
+        val arbitrary = if (abs(n.x) < 0.9f) vec(1f, 0f, 0f) else vec(0f, 1f, 0f)
+        val u = Vec3(arbitrary).cross(n).normalize()
+        val v = Vec3(n).cross(u).normalize()
+        
+        // Generate arc points
+        val angleStep = (endAngle - startAngle) / segments
+        for (i in 0..segments) {
+            val angle = startAngle + i * angleStep
+            val x = radius * cos(angle)
+            val y = radius * sin(angle)
+            
+            // Transform to 3D using basis vectors
+            val point = Vec3(center)
+                .add(u.mul(x, Vec3()))
+                .add(v.mul(y, Vec3()))
+            
+            if (i == 0 && line.nodes.isEmpty()) {
+                line.moveTo(point)
+            } else {
+                line.lineTo(point)
+            }
+        }
+        
+        return line
+    }
+
+    /**
+     * Create a circular arc through three points in 3D.
+     * Returns an FLine containing the arc.
+     * @param p1 first point
+     * @param p2 second point (arc passes through this)
+     * @param p3 third point
+     * @param segments number of segments to approximate the arc
+     */
+    fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
+        // Find the center and radius of the circle through three points
+        // First, find the plane normal
+        val v1 = Vec3(p2).sub(p1)
+        val v2 = Vec3(p3).sub(p1)
+        val normal = Vec3(v1).cross(v2).normalize()
+        
+        // Find the circumcenter in 3D
+        val a = v1.lengthSquared()
+        val b = v2.lengthSquared()
+        val c = Vec3(v1).cross(v2).lengthSquared()
+        
+        if (c < 1e-6f) {
+            // Points are collinear, return a line
+            val line = FLine()
+            line.moveTo(p1)
+            line.lineTo(p2)
+            line.lineTo(p3)
+            return line
+        }
+        
+        val s = a * (b - v1.dot(v2)) / (2 * c)
+        val t = b * (a - v1.dot(v2)) / (2 * c)
+        
+        val center = Vec3(p1)
+            .add(Vec3(v1).mul(s))
+            .add(Vec3(v2).mul(t))
+        
+        val radius = Vec3(p1).sub(center).length()
+        
+        // Calculate angles for the arc
+        val toP1 = Vec3(p1).sub(center)
+        val toP2 = Vec3(p2).sub(center)
+        val toP3 = Vec3(p3).sub(center)
+        
+        // Create orthonormal basis
+        val u = Vec3(toP1).normalize()
+        val v = Vec3(normal).cross(u).normalize()
+        
+        // Calculate angles in the plane
+        fun getAngle(vec: Vec3): Float {
+            val projected = Vec3(vec).sub(center)
+            val x = projected.dot(u)
+            val y = projected.dot(v)
+            return atan2(y, x)
+        }
+        
+        val angle1 = getAngle(p1)
+        val angle2 = getAngle(p2)
+        val angle3 = getAngle(p3)
+        
+        // Determine arc direction and range
+        var startAngle = angle1
+        var endAngle = angle3
+        
+        // Check if we need to go the long way
+        val mid = (angle1 + angle3) / 2
+        if (abs(angle2 - mid) > PI.toFloat() / 2) {
+            endAngle += 2 * PI.toFloat()
+        }
+        
+        // Generate the arc
+        val result = FLine()
+        appendArc3D(result, center, radius, startAngle, endAngle, normal, segments)
+        return result
+    }
+
+    /**
+     * Append a quadratic Bezier curve to an FLine.
+     * Converts to cubic Bezier internally.
+     */
+    fun appendQuadratic(line: FLine, controlPoint: Vec3, endPoint: Vec3): FLine {
+        if (line.nodes.isEmpty()) {
+            line.moveTo(endPoint)
+            return line
+        }
+        
+        val start = line.nodes.last().to
+        
+        // Convert quadratic to cubic
+        // C1 = start + 2/3 * (control - start)
+        // C2 = end + 2/3 * (control - end)
+        val c1 = Vec3(start).add(Vec3(controlPoint).sub(start).mul(2f / 3f))
+        val c2 = Vec3(endPoint).add(Vec3(controlPoint).sub(endPoint).mul(2f / 3f))
+        
+        line.cubicTo(c1, c2, endPoint)
+        return line
+    }
+
+    /**
+     * Append a circular arc by specifying tangent at start and end.
+     * Uses the arc that best fits the tangent constraints.
+     */
+    fun appendArcByTangent(
+        line: FLine,
+        endPoint: Vec3,
+        startTangent: Vec3,
+        endTangent: Vec3,
+        segments: Int = 32
+    ): FLine {
+        if (line.nodes.isEmpty()) {
+            line.moveTo(endPoint)
+            return line
+        }
+        
+        val start = line.nodes.last().to
+        
+        // Find center as intersection of perpendiculars to tangents
+        val startPerp = Vec3(startTangent).normalize()
+        val endPerp = Vec3(endTangent).normalize()
+        
+        // Use midpoint and tangents to estimate center
+        val mid = Vec3(start).add(endPoint).mul(0.5f)
+        val toMid = Vec3(mid).sub(start)
+        
+        // Estimate radius from distance and tangent
+        val distance = Vec3(endPoint).sub(start).length()
+        val radius = distance * 0.5f / sin(atan2(toMid.cross(startPerp, Vec3()).length(), toMid.dot(startPerp)))
+        
+        // Calculate center
+        val perpToStart = Vec3(startPerp).cross(toMid).normalize()
+        val center = Vec3(start).add(perpToStart.mul(radius))
+        
+        // Generate arc
+        val normal = Vec3(startPerp).cross(endPerp).normalize()
+        val startAngle = atan2(
+            Vec3(start).sub(center).dot(perpToStart),
+            Vec3(start).sub(center).dot(startPerp)
+        )
+        val endAngle = atan2(
+            Vec3(endPoint).sub(center).dot(perpToStart),
+            Vec3(endPoint).sub(center).dot(startPerp)
+        )
+        
+        appendArc3D(line, center, radius, startAngle, endAngle, normal, segments)
+        return line
+    }
+
+    // ==================== NOISE UTILITIES ====================
+
+    /**
+     * Apply Gaussian noise to a curve.
+     * @param line the curve to noise
+     * @param amplitude noise amplitude
+     * @param seed random seed for reproducibility
+     * @param samples number of points to sample and reconstruct
+     */
+    fun noiseGaussian(line: FLine, amplitude: Float, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine {
+        val random = java.util.Random(seed)
+        val points = line.sampleByNumber(samples)
+        
+        val result = FLine()
+        points.forEachIndexed { i, point ->
+            // Generate Gaussian noise (Box-Muller transform)
+            val u1 = random.nextFloat()
+            val u2 = random.nextFloat()
+            val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
+            val theta = 2.0 * PI * u2
+            
+            val noiseX = r * cos(theta).toFloat() * amplitude
+            val noiseY = r * sin(theta).toFloat() * amplitude
+            val noiseZ = (random.nextGaussian().toFloat()) * amplitude
+            
+            val noisedPoint = vec(
+                point.x + noiseX,
+                point.y + noiseY,
+                point.z + noiseZ
+            )
+            
+            if (i == 0) {
+                result.moveTo(noisedPoint)
+            } else {
+                result.lineTo(noisedPoint)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Apply direction-sensitive (oriented) Gaussian noise to a curve.
+     * Noise is applied primarily along the normal direction.
+     * @param line the curve to noise
+     * @param normalAmplitude noise amplitude in normal direction
+     * @param tangentAmplitude noise amplitude in tangent direction
+     * @param seed random seed for reproducibility
+     * @param samples number of points to sample
+     */
+    fun noiseOrientedGaussian(
+        line: FLine,
+        normalAmplitude: Float,
+        tangentAmplitude: Float = 0f,
+        seed: Long = System.currentTimeMillis(),
+        samples: Int = 100
+    ): FLine {
+        val random = java.util.Random(seed)
+        val cursor = line.cursor(0.01f)
+        val result = FLine()
+        
+        for (i in 0 until samples) {
+            val t = i.toFloat() / (samples - 1) * (line.nodes.size - 1)
+            cursor.setT(t)
+            
+            val pos = cursor.position()
+            val tangent = cursor.tangent()
+            val normal = cursor.normal2()
+            
+            // Generate Gaussian noise
+            val u1 = random.nextFloat()
+            val u2 = random.nextFloat()
+            val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
+            val theta = 2.0 * PI * u2
+            
+            val normalNoise = r * cos(theta).toFloat() * normalAmplitude
+            val tangentNoise = r * sin(theta).toFloat() * tangentAmplitude
+            
+            val noisedPoint = if (normal != null && tangent != null) {
+                val normalVec = Vec3(normal.x, normal.y, 0f).normalize()
+                val tangentVec = Vec3(tangent).normalize()
+                
+                Vec3(pos)
+                    .add(normalVec.mul(normalNoise, Vec3()))
+                    .add(tangentVec.mul(tangentNoise, Vec3()))
+            } else {
+                Vec3(pos)
+            }
+            
+            if (i == 0) {
+                result.moveTo(noisedPoint)
+            } else {
+                result.lineTo(noisedPoint)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Apply Perlin noise to a curve.
+     * @param line the curve to noise
+     * @param amplitude noise amplitude
+     * @param frequency noise frequency (higher = more variation)
+     * @param octaves number of noise octaves (more = more detail)
+     * @param seed random seed for reproducibility
+     * @param samples number of points to sample
+     */
+    fun noisePerlin(
+        line: FLine,
+        amplitude: Float,
+        frequency: Float = 1f,
+        octaves: Int = 4,
+        seed: Long = System.currentTimeMillis(),
+        samples: Int = 100
+    ): FLine {
+        val perlin = PerlinNoise(seed)
+        val cursor = line.cursor(0.01f)
+        val result = FLine()
+        
+        for (i in 0 until samples) {
+            val t = i.toFloat() / (samples - 1) * (line.nodes.size - 1)
+            cursor.setT(t)
+            
+            val pos = cursor.position()
+            val normal = cursor.normal2()
+            
+            // Generate Perlin noise at this position
+            val noiseX = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.1f, octaves)
+            val noiseY = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.2f, octaves)
+            val noiseZ = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.3f, octaves)
+            
+            val noisedPoint = if (normal != null) {
+                // Apply noise primarily in normal direction
+                val normalVec = Vec3(normal.x, normal.y, 0f).normalize()
+                Vec3(pos).add(normalVec.mul(noiseX * amplitude, Vec3()))
+            } else {
+                vec(
+                    pos.x + noiseX * amplitude,
+                    pos.y + noiseY * amplitude,
+                    pos.z + noiseZ * amplitude
+                )
+            }
+            
+            if (i == 0) {
+                result.moveTo(noisedPoint)
+            } else {
+                result.lineTo(noisedPoint)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Simple Perlin noise implementation for internal use.
+     */
+    private class PerlinNoise(seed: Long) {
+        private val random = java.util.Random(seed)
+        private val permutation = IntArray(256) { it }.apply { shuffle(random) }
+        private val p = IntArray(512) { permutation[it % 256] }
+        
+        fun noise(x: Float, y: Float, z: Float): Float {
+            val xi = floor(x).toInt() and 255
+            val yi = floor(y).toInt() and 255
+            val zi = floor(z).toInt() and 255
+            
+            val xf = x - floor(x)
+            val yf = y - floor(y)
+            val zf = z - floor(z)
+            
+            val u = fade(xf)
+            val v = fade(yf)
+            val w = fade(zf)
+            
+            val aaa = p[p[p[xi] + yi] + zi]
+            val aba = p[p[p[xi] + yi + 1] + zi]
+            val aab = p[p[p[xi] + yi] + zi + 1]
+            val abb = p[p[p[xi] + yi + 1] + zi + 1]
+            val baa = p[p[p[xi + 1] + yi] + zi]
+            val bba = p[p[p[xi + 1] + yi + 1] + zi]
+            val bab = p[p[p[xi + 1] + yi] + zi + 1]
+            val bbb = p[p[p[xi + 1] + yi + 1] + zi + 1]
+            
+            var x1 = lerp(grad(aaa, xf, yf, zf), grad(baa, xf - 1, yf, zf), u)
+            var x2 = lerp(grad(aba, xf, yf - 1, zf), grad(bba, xf - 1, yf - 1, zf), u)
+            val y1 = lerp(x1, x2, v)
+            
+            x1 = lerp(grad(aab, xf, yf, zf - 1), grad(bab, xf - 1, yf, zf - 1), u)
+            x2 = lerp(grad(abb, xf, yf - 1, zf - 1), grad(bbb, xf - 1, yf - 1, zf - 1), u)
+            val y2 = lerp(x1, x2, v)
+            
+            return lerp(y1, y2, w)
+        }
+        
+        fun octaveNoise(x: Float, y: Float, z: Float, octaves: Int): Float {
+            var total = 0f
+            var frequency = 1f
+            var amplitude = 1f
+            var maxValue = 0f
+            
+            for (i in 0 until octaves) {
+                total += noise(x * frequency, y * frequency, z * frequency) * amplitude
+                maxValue += amplitude
+                amplitude *= 0.5f
+                frequency *= 2f
+            }
+            
+            return total / maxValue
+        }
+        
+        private fun fade(t: Float) = t * t * t * (t * (t * 6 - 15) + 10)
+        
+        private fun lerp(a: Float, b: Float, t: Float) = a + t * (b - a)
+        
+        private fun grad(hash: Int, x: Float, y: Float, z: Float): Float {
+            return when (hash and 15) {
+                0 -> x + y
+                1 -> -x + y
+                2 -> x - y
+                3 -> -x - y
+                4 -> x + z
+                5 -> -x + z
+                6 -> x - z
+                7 -> -x - z
+                8 -> y + z
+                9 -> -y + z
+                10 -> y - z
+                11 -> -y - z
+                12 -> y + x
+                13 -> -y + z
+                14 -> y - x
+                else -> -y - z
+            }
+        }
+    }
+
+    // ==================== CURVE COMBINATION UTILITIES ====================
+
+    /**
+     * Add two curves point-wise.
+     * Samples both curves and adds corresponding points.
+     */
+    fun add(line1: FLine, line2: FLine, samples: Int = 100): FLine {
+        val points1 = line1.sampleByNumber(samples)
+        val points2 = line2.sampleByNumber(samples)
+        
+        val result = FLine()
+        for (i in points1.indices) {
+            val p1 = points1[i]
+            val p2 = if (i < points2.size) points2[i] else points2.last()
+            val sum = Vec3(p1).add(p2)
+            
+            if (i == 0) {
+                result.moveTo(sum)
+            } else {
+                result.lineTo(sum)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Subtract one curve from another point-wise.
+     */
+    fun subtract(line1: FLine, line2: FLine, samples: Int = 100): FLine {
+        val points1 = line1.sampleByNumber(samples)
+        val points2 = line2.sampleByNumber(samples)
+        
+        val result = FLine()
+        for (i in points1.indices) {
+            val p1 = points1[i]
+            val p2 = if (i < points2.size) points2[i] else points2.last()
+            val diff = Vec3(p1).sub(p2)
+            
+            if (i == 0) {
+                result.moveTo(diff)
+            } else {
+                result.lineTo(diff)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Project one curve onto another.
+     * For each point on line1, finds the closest point on line2.
+     */
+    fun projectOnto(line1: FLine, line2: FLine, samples: Int = 100): FLine {
+        val points1 = line1.sampleByNumber(samples)
+        
+        val result = FLine()
+        points1.forEachIndexed { i, point ->
+            val (closest, _) = closestPoint(line2, point)
+            
+            if (i == 0) {
+                result.moveTo(closest)
+            } else {
+                result.lineTo(closest)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Invert a curve through a point (geometric inversion).
+     * Each point is inverted through a circle centered at 'center' with given 'radius'.
+     */
+    fun invert(line: FLine, center: Vec2 = vec(0f, 0f), radius: Float = 100f, samples: Int = 100): FLine {
+        val points = line.sampleByNumber(samples)
+        val radiusSq = radius * radius
+        
+        val result = FLine()
+        points.forEachIndexed { i, point ->
+            val dx = point.x - center.x
+            val dy = point.y - center.y
+            val distSq = dx * dx + dy * dy
+            
+            if (distSq < 1e-6f) {
+                // Point at center, map to infinity (skip)
+                return@forEachIndexed
+            }
+            
+            val factor = radiusSq / distSq
+            val inverted = vec(
+                center.x + dx * factor,
+                center.y + dy * factor,
+                point.z
+            )
+            
+            if (i == 0 || result.nodes.isEmpty()) {
+                result.moveTo(inverted)
+            } else {
+                result.lineTo(inverted)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Multiply two curves point-wise (component-wise multiplication of coordinates).
+     */
+    fun multiply(line1: FLine, line2: FLine, samples: Int = 100): FLine {
+        val points1 = line1.sampleByNumber(samples)
+        val points2 = line2.sampleByNumber(samples)
+        
+        val result = FLine()
+        for (i in points1.indices) {
+            val p1 = points1[i]
+            val p2 = if (i < points2.size) points2[i] else points2.last()
+            val product = vec(p1.x * p2.x, p1.y * p2.y, p1.z * p2.z)
+            
+            if (i == 0) {
+                result.moveTo(product)
+            } else {
+                result.lineTo(product)
+            }
+        }
+        
+        return result
+    }
+
+    // ==================== PARAMETERIZATION UTILITIES ====================
+
+    /**
+     * Interface for parameter functions that can vary along a curve.
+     * This allows any numeric parameter to be a function of position along the curve.
+     */
+    interface ParameterFunction {
+        fun evaluate(t: Float, position: Vec3): Float
+    }
+
+    /**
+     * Constant parameter (doesn't vary).
+     */
+    class ConstantParameter(val value: Float) : ParameterFunction {
+        override fun evaluate(t: Float, position: Vec3) = value
+    }
+
+    /**
+     * Linear interpolation from start to end value.
+     */
+    class LinearParameter(val start: Float, val end: Float) : ParameterFunction {
+        override fun evaluate(t: Float, position: Vec3) = start + (end - start) * t
+    }
+
+    /**
+     * Parameter driven by another curve's Y coordinate.
+     */
+    class CurveParameter(val curve: FLine, val scale: Float = 1f, val offset: Float = 0f) : ParameterFunction {
+        private val cursor = curve.cursor()
+        
+        override fun evaluate(t: Float, position: Vec3): Float {
+            cursor.setT(t * (curve.nodes.size - 1))
+            return cursor.position().y * scale + offset
+        }
+    }
+
+    /**
+     * Parameter driven by distance from a point.
+     */
+    class DistanceParameter(
+        val point: Vec3,
+        val minValue: Float,
+        val maxValue: Float,
+        val maxDistance: Float
+    ) : ParameterFunction {
+        override fun evaluate(t: Float, position: Vec3): Float {
+            val dist = position.distance(point)
+            val normalized = (dist / maxDistance).coerceIn(0f, 1f)
+            return minValue + (maxValue - minValue) * normalized
+        }
+    }
+
+    /**
+     * Parameter driven by curvature.
+     */
+    class CurvatureParameter(
+        val line: FLine,
+        val minValue: Float,
+        val maxValue: Float,
+        val maxCurvature: Float = 1f
+    ) : ParameterFunction {
+        private val cursor = line.cursor()
+        
+        override fun evaluate(t: Float, position: Vec3): Float {
+            cursor.setT(t * (line.nodes.size - 1))
+            val tangent = cursor.tangent()
+            val acceleration = cursor.acceleration()
+            
+            if (tangent != null && acceleration != null) {
+                val cross = tangent.cross(acceleration, Vec3())
+                val curvature = cross.length() / tangent.length().pow(3)
+                val normalized = (curvature / maxCurvature).coerceIn(0f, 1f)
+                return minValue + (maxValue - minValue) * normalized
+            }
+            
+            return minValue
+        }
+    }
+
+    /**
+     * Sine wave parameter.
+     */
+    class SineParameter(
+        val amplitude: Float,
+        val frequency: Float,
+        val phase: Float = 0f,
+        val offset: Float = 0f
+    ) : ParameterFunction {
+        override fun evaluate(t: Float, position: Vec3) =
+            offset + amplitude * sin(t * frequency * 2 * PI.toFloat() + phase)
+    }
+
+    /**
+     * Apply a parameterized offset to a curve.
+     * The offset distance varies along the curve according to the parameter function.
+     */
+    fun offsetParameterized(
+        line: FLine,
+        distanceFunc: ParameterFunction,
+        samples: Int = 100
+    ): FLine {
+        val result = FLine()
+        val cursor = line.cursor(0.01f)
+        
+        for (i in 0 until samples) {
+            val t = i.toFloat() / (samples - 1)
+            cursor.setT(t * (line.nodes.size - 1))
+            
+            val pos = cursor.position()
+            val normal = cursor.normal2()
+            val distance = distanceFunc.evaluate(t, pos)
+            
+            if (normal != null) {
+                val offsetPos = vec(
+                    pos.x + normal.x * distance,
+                    pos.y + normal.y * distance,
+                    pos.z
+                )
+                
+                if (i == 0) {
+                    result.moveTo(offsetPos)
+                } else {
+                    result.lineTo(offsetPos)
+                }
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Apply parameterized noise to a curve.
+     * The noise amplitude varies according to the parameter function.
+     */
+    fun noiseParameterized(
+        line: FLine,
+        amplitudeFunc: ParameterFunction,
+        seed: Long = System.currentTimeMillis(),
+        samples: Int = 100
+    ): FLine {
+        val random = java.util.Random(seed)
+        val cursor = line.cursor(0.01f)
+        val result = FLine()
+        
+        for (i in 0 until samples) {
+            val t = i.toFloat() / (samples - 1)
+            cursor.setT(t * (line.nodes.size - 1))
+            
+            val pos = cursor.position()
+            val normal = cursor.normal2()
+            val amplitude = amplitudeFunc.evaluate(t, pos)
+            
+            // Generate Gaussian noise
+            val u1 = random.nextFloat()
+            val u2 = random.nextFloat()
+            val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
+            val theta = 2.0 * PI * u2
+            
+            val noise = r * cos(theta).toFloat() * amplitude
+            
+            val noisedPoint = if (normal != null) {
+                val normalVec = Vec3(normal.x, normal.y, 0f)
+                Vec3(pos).add(normalVec.mul(noise, Vec3()))
+            } else {
+                Vec3(pos)
+            }
+            
+            if (i == 0) {
+                result.moveTo(noisedPoint)
+            } else {
+                result.lineTo(noisedPoint)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Apply parameterized scaling to a curve around a center point.
+     */
+    fun scaleParameterized(
+        line: FLine,
+        scaleFunc: ParameterFunction,
+        center: Vec2 = vec(0f, 0f),
+        samples: Int = 100
+    ): FLine {
+        val points = line.sampleByNumber(samples)
+        val result = FLine()
+        
+        points.forEachIndexed { i, point ->
+            val t = i.toFloat() / (samples - 1)
+            val scale = scaleFunc.evaluate(t, point)
+            
+            val scaled = vec(
+                center.x + (point.x - center.x) * scale,
+                center.y + (point.y - center.y) * scale,
+                point.z
+            )
+            
+            if (i == 0) {
+                result.moveTo(scaled)
+            } else {
+                result.lineTo(scaled)
+            }
+        }
+        
+        return result
+    }
+
+    /**
+     * Create a parameter function from a simple lambda.
+     */
+    fun parameterFromLambda(func: (t: Float, pos: Vec3) -> Float): ParameterFunction {
+        return object : ParameterFunction {
+            override fun evaluate(t: Float, position: Vec3) = func(t, position)
+        }
+    }
 }
