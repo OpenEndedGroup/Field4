@@ -144,7 +144,8 @@ class ImageReducer(
             } intermediate;
             
             layout(push_constant) uniform PushConstants {
-                ivec2 imageDimensions;
+                int imageDimensionsX;
+                int imageDimensionsY;
                 int workgroupCountX;
             } pc;
             
@@ -160,7 +161,7 @@ class ImageReducer(
                 // Load pixel or use neutral values if out of bounds
                 vec4 pixel = vec4(0.0);
                 bool validPixel = false;
-                if (pixelCoord.x < pc.imageDimensions.x && pixelCoord.y < pc.imageDimensions.y) {
+                if (pixelCoord.x < pc.imageDimensionsX && pixelCoord.y < pc.imageDimensionsY) {
                     pixel = imageLoad(inputImage, pixelCoord);
                     validPixel = true;
                 }
@@ -356,7 +357,8 @@ class ImageReducer(
         firstPassMesh.initializePushConstantsFromModule(firstPass)
         
         // Set push constants for first pass
-        firstPassMesh.push.set("imageDimensions", intArrayOf(cachedWidth, cachedHeight))
+        firstPassMesh.push.set("imageDimensionsX", cachedWidth)
+        firstPassMesh.push.set("imageDimensionsY", cachedHeight)
         firstPassMesh.push.set("workgroupCountX", workgroupCountX)
         
         // Execute first pass (bind pipeline and dispatch through the module's render)
