@@ -572,6 +572,224 @@ object FLineGeometryExamples {
         
         return final
     }
+
+    /**
+     * Comprehensive smoke test that exercises all examples and every function in FLineGeometry
+     * at least once to check for sanity and exceptions.
+     * 
+     * This function is designed to catch runtime errors, incorrect parameter usage, and
+     * basic functionality issues across the entire FLineGeometry API.
+     * 
+     * @return true if all tests pass without exceptions
+     */
+    fun comprehensiveSmokeTest(): Boolean {
+        try {
+            println("Starting comprehensive FLineGeometry smoke test...")
+            
+            // ===== Call all existing examples =====
+            println("  Testing all examples...")
+            spiralCurvatureExample()
+            offsetShapeExample()
+            booleanOperationsExample()
+            smoothAndSimplifyExample()
+            tangentNormalExample()
+            morphingExample()
+            patternExample()
+            transformations3DExample()
+            convexHullExample()
+            adaptiveSamplingExample()
+            demoAllFeatures()
+            arcExample()
+            noiseComparisonExample()
+            curveCombinationExample()
+            parameterizationExample()
+            complexCompositionExample()
+            println("    ✓ All examples passed")
+            
+            // ===== Create test lines for function testing =====
+            val testLine = FLine().apply {
+                moveTo(0f, 0f)
+                for (i in 1..20) {
+                    lineTo(i.toFloat() * 5f, kotlin.math.sin(i / 3f) * 10f)
+                }
+            }
+            
+            val testCircle = createCircle(vec(50f, 50f), 30f, 32)
+            val testSquare = FLine().apply {
+                moveTo(0f, 0f)
+                lineTo(50f, 0f)
+                lineTo(50f, 50f)
+                lineTo(0f, 50f)
+                lineTo(0f, 0f)
+            }
+            
+            // ===== 2D Transformations =====
+            println("  Testing 2D transformations...")
+            testLine.byRotating2D(PI.toFloat() / 4, vec(50f, 50f))
+            testLine.byScaling2D(1.5f, vec(50f, 50f))
+            testLine.byScaling2D(2f, 0.5f, vec(50f, 50f))
+            testLine.byReflecting2D(vec(0f, 0f), vec(100f, 100f))
+            testLine.byShearing2D(0.3f, 0.2f)
+            println("    ✓ 2D transformations passed")
+            
+            // ===== 3D Transformations =====
+            println("  Testing 3D transformations...")
+            testLine.byRotating3D(PI.toFloat() / 4, vec(0f, 0f, 1f), vec(0f, 0f, 0f))
+            testLine.byPerspectiveProjecting(vec(0f, 0f, 100f), vec(0f, 0f, 0f), vec(0f, 0f, 1f))
+            testLine.byOrthographicProjecting(vec(0f, 0f, 0f), vec(0f, 0f, 1f))
+            println("    ✓ 3D transformations passed")
+            
+            // ===== Curve Operations =====
+            println("  Testing curve operations...")
+            testLine.byOffsetting(5f, 50)
+            testLine.byCreatingParallelCurves(5f, 50)
+            testLine.byGaussianSmoothing(2f, 100)
+            testLine.bySimplifying(2f)
+            println("    ✓ Curve operations passed")
+            
+            // ===== Intersections =====
+            println("  Testing intersections...")
+            testLine.findSelfIntersections(1f)
+            testLine.findIntersectionsWith(testCircle, 1f)
+            println("    ✓ Intersections passed")
+            
+            // ===== Curvature Analysis =====
+            println("  Testing curvature analysis...")
+            testLine.curvatureAnalysis(50)
+            testLine.byCurvatureAdaptiveSampling(10, 100)
+            testLine.findHighCurvaturePoints(0.1f, 50)
+            println("    ✓ Curvature analysis passed")
+            
+            // ===== Decomposition =====
+            println("  Testing decomposition...")
+            testCircle.byConvexHull2D()
+            testLine.bySplittingAtInflections()
+            println("    ✓ Decomposition passed")
+            
+            // ===== Tangent and Normal Operations =====
+            println("  Testing tangent and normal operations...")
+            testLine.byCreatingTangentLines(10, 5f)
+            testLine.byCreatingNormalLines(10, 5f)
+            testLine.byCreatingOsculatingCircles(10, 16)
+            println("    ✓ Tangent and normal operations passed")
+            
+            // ===== Boolean Operations =====
+            println("  Testing boolean operations...")
+            val circle1 = createCircle(vec(0f, 0f), 30f, 32)
+            val circle2 = createCircle(vec(20f, 0f), 30f, 32)
+            circle1.byUnionWith(circle2)
+            circle1.byDifferenceWith(circle2)
+            circle1.byIntersectionWith(circle2)
+            circle1.byExclusiveOrWith(circle2)
+            println("    ✓ Boolean operations passed")
+            
+            // ===== Geometric Queries =====
+            println("  Testing geometric queries...")
+            testLine.closestPoint(vec(50f, 50f, 0f))
+            testSquare.windingNumber(vec(25f, 25f))
+            testSquare.contains(vec(25f, 25f))
+            testSquare.signedArea2D()
+            testSquare.centroid2D()
+            println("    ✓ Geometric queries passed")
+            
+            // ===== Path Operations =====
+            println("  Testing path operations...")
+            testLine.byReversing()
+            concatenate(testLine, testCircle, testSquare)
+            testLine.byBlendingWith(testCircle, 0.5f)
+            testLine.byExtracting(0.2f, 0.8f)
+            println("    ✓ Path operations passed")
+            
+            // ===== Advanced Curve Fitting =====
+            println("  Testing advanced curve fitting...")
+            testCircle.fitCircle(20)
+            testLine.bySubdividing(2)
+            testLine.byArcLengthParameterizing(5f)
+            println("    ✓ Advanced curve fitting passed")
+            
+            // ===== Pattern Generation =====
+            println("  Testing pattern generation...")
+            testLine.byDashing(10f, 5f)
+            testLine.byWaving(5f, 2f, 100)
+            testLine.byZigzagging(5f, 20)
+            println("    ✓ Pattern generation passed")
+            
+            // ===== Arcs and Higher-Order Curves =====
+            println("  Testing arcs and higher-order curves...")
+            val arcLine = FLine()
+            arcLine.byAppendingArc3D(vec(0f, 0f, 0f), 30f, 0f, PI.toFloat(), vec(0f, 0f, 1f), 32)
+            arcThrough3Points(vec(0f, 0f, 0f), vec(50f, 50f, 0f), vec(100f, 0f, 0f), 32)
+            val quadLine = FLine().apply { moveTo(0f, 0f) }
+            quadLine.byAppendingQuadratic(vec(50f, 100f, 0f), vec(100f, 0f, 0f))
+            val tangentLine = FLine().apply { moveTo(0f, 0f) }
+            tangentLine.byAppendingArcByTangent(vec(100f, 0f, 0f), vec(1f, 1f, 0f), vec(1f, -1f, 0f), 32)
+            println("    ✓ Arcs and higher-order curves passed")
+            
+            // ===== Noise Utilities =====
+            println("  Testing noise utilities...")
+            testLine.byGaussianNoising(3f, 12345L, 50)
+            testLine.byOrientedGaussianNoising(5f, 2f, 12345L, 50)
+            testLine.byPerlinNoising(5f, 1f, 3, 12345L, 50)
+            println("    ✓ Noise utilities passed")
+            
+            // ===== Curve Combination =====
+            println("  Testing curve combination...")
+            val curve1 = FLine().apply {
+                moveTo(0f, 0f)
+                for (i in 1..50) lineTo(i.toFloat(), kotlin.math.sin(i / 5f) * 10f)
+            }
+            val curve2 = FLine().apply {
+                moveTo(0f, 0f)
+                for (i in 1..50) lineTo(i.toFloat(), kotlin.math.cos(i / 4f) * 8f)
+            }
+            curve1.byAddingWith(curve2, 50)
+            curve1.bySubtractingWith(curve2, 50)
+            curve1.byMultiplyingWith(curve2, 50)
+            curve1.byProjectingOnto(curve2, 50)
+            testCircle.byInverting(vec(50f, 50f), 40f, 50)
+            println("    ✓ Curve combination passed")
+            
+            // ===== Parameterization System =====
+            println("  Testing parameterization system...")
+            val constantParam = ConstantParameter(10f)
+            val linearParam = LinearParameter(5f, 20f)
+            val controlCurve = FLine().apply {
+                moveTo(0f, 5f)
+                lineTo(50f, 15f)
+                lineTo(100f, 5f)
+            }
+            val curveParam = CurveParameter(controlCurve, 1f, 0f)
+            val distParam = DistanceParameter(vec(50f, 50f, 0f), 5f, 20f, 100f)
+            val curvParam = CurvatureParameter(testLine, 2f, 10f, 0.5f)
+            val sineParam = SineParameter(5f, 2f, 0f, 10f)
+            val lambdaParam = parameterFromLambda { t, pos -> 5f + t * 10f }
+            
+            // Test parameterized operations
+            testLine.byOffsettingParameterized(linearParam, 50)
+            testLine.byNoisingParameterized(sineParam, 12345L, 50)
+            testLine.byScalingParameterized(curvParam, vec(50f, 50f), 50)
+            println("    ✓ Parameterization system passed")
+            
+            // ===== Test all parameter types evaluate correctly =====
+            println("  Testing parameter evaluation...")
+            constantParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            linearParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            curveParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            distParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            curvParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            sineParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            lambdaParam.evaluate(0.5f, vec(10f, 10f, 0f))
+            println("    ✓ Parameter evaluation passed")
+            
+            println("✅ Comprehensive smoke test PASSED - all functions executed without exceptions")
+            return true
+            
+        } catch (e: Exception) {
+            println("❌ Smoke test FAILED with exception: ${e.message}")
+            e.printStackTrace()
+            return false
+        }
+    }
 }
 
 
