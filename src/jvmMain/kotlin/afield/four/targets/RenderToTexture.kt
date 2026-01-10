@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.Rect
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
@@ -7,27 +8,20 @@ import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
-import afield.four.texture.HasImageView
-import afield.four.texture.HasImageViewArray
-import afield.four.texture.Image
+import afield.four.texture.*
 import afield.four.texture.Image.ImageData
-import afield.four.texture.ImageView
-import afield.four.texture.image_layout_transition
 import afield.four.texture.ImageView.ImageViewData
 import afield.four.util.Options
 import afield.stdlib.Vec4
 import afield.stdlib.f
 import afield.stdlib.vec
-import afield.Rect
-import afield.four.modules.Parameters
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK13.*
-import org.lwjgl.vulkan.KHRDynamicRendering
 import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR
 import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_INFO_KHR
+import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK13.*
 
 data class RTTParameters(
     var width: Int = 1024,
@@ -251,6 +245,96 @@ open class RenderToTexture(
 
     protected open fun afterRender(index: Int) {}
 
+    data class ColorGrade(
+        var exposure: Vec4 = vec(1f, 1f, 1f, 1f),
+        var gamma: Vec4 = vec(1f, 1f, 1f, 1f),
+        var offset: Vec4 = vec(0f, 0f, 0f, 0f)
+    )
+
+    /**
+     * Simple on-screen blit of a color attachment from this RTT. Generates a fullscreen triangle
+     * mesh internally (no vertex inputs) and wires a small grading push-constant block.
+     */
+    fun blitToScreen(
+        renderer: Renderer = this.renderer,
+        target: RenderTarget = renderer.renderList,
+        attachment: Int = 0,
+        name: String = "rtt-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer {
+        require(attachment in imageViewArray.indices) {
+            "attachment $attachment is out of range for RenderToTexture with ${imageViewArray.size} color attachments"
+        }
+
+        val grade = ColorGrade().apply(configure)
+        val sampler = afield.four.texture.TextureSampler(renderer, imageViewArray[attachment].imageView.imageViewData.mipLevels, true)
+
+        val module = Module(afield.four.modules.parameters(renderer) {
+            this.name = name
+            color = 1
+            depth = 1
+            depthFormat = Options.defaultDepthFormat
+            depthTest = false
+            this.viewport = viewport
+            vertex = blitVertexShader
+            fragment = blitFragmentShader
+            textureResolver = { tex ->
+                if (tex.name == "sourceTex") afield.stdlib.fromViews(listOf(imageViewArray[attachment]), tex.name, sampler) else null
+            }
+        }).pointer()
+
+        // Fullscreen triangle mesh (no attributes)
+        val mesh = afield.four.modules.Mesh(renderer, module)
+        mesh.resize(3, 0, module)
+        mesh.push["exposure"] = grade.exposure
+        mesh.push["gamma"] = grade.gamma
+        mesh.push["offset"] = grade.offset
+        val src = sourceRect ?: Rect(0.0, 0.0, 1.0, 1.0)
+        mesh.push["srcRect"] = vec(src.x.f, src.y.f, src.w.f, src.h.f)
+        module.current.meshes[name] = mesh
+
+        target += name to module
+        return module
+    }
+
+    companion object {
+        private val blitVertexShader = """
+            #version 460
+            layout(location = 0) out vec2 fragUV;
+            
+            void main() {
+                // Fullscreen triangle: vertices 0,1,2 -> (-1,-1), (3,-1), (-1,3)
+                vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+                gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+                fragUV = pos;
+            }
+        """.trimIndent()
+
+        private val blitFragmentShader = """
+            #version 460
+            layout(location = 0) in vec2 fragUV;
+            layout(location = 0) out vec4 outColor;
+            
+            layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+            
+            layout(push_constant) uniform Push {
+                vec4 exposure;
+                vec4 gamma;
+                vec4 offset;
+                vec4 srcRect; // xy = offset, zw = size in UV space
+            } push;
+            
+            void main() {
+                vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
+                vec4 color = texture(sourceTex, uv);
+                color.rgb = pow(color.rgb * push.exposure.rgb + push.offset.rgb, push.gamma.rgb);
+                outColor = color;
+            }
+        """.trimIndent()
+    }
+
     override fun render(command: CommandBuffer, index: Int) {
         beforeRender(index)
         MemoryStack.stackPush().use { stack ->
@@ -434,7 +518,7 @@ open class RenderToTexture(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
-                .flags(VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT)
+                .flags(if (!Options.isMac) VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT else 0)
                 .layerCount(renderLayers)
                 .pColorAttachments(colorAttachmentInfo)
                 .pDepthAttachment(depthAttachmentInfo.get(0))

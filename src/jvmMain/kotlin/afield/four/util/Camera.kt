@@ -13,7 +13,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 import kotlin.math.abs
 
-class Camera(renderer: Renderer = fromContext()) {
+class Camera(val renderer: Renderer = fromContext()) {
     var at = vec(0, 0, -10)
     var up = vec(0, 1, 0)
     var target = vec(0, 0, 0)
@@ -52,6 +52,11 @@ class Camera(renderer: Renderer = fromContext()) {
         }
 
     var p = SuperProjection(renderer = renderer, autoMatchDistance = { distanceToTarget().d})
+
+    /** Manually set projection aspect ratio (width/height). */
+    fun setAspect(aspect: Float) {
+        p.setAspect(aspect)
+    }
 
     /**
      * Model-view matrix uniform wrapper.

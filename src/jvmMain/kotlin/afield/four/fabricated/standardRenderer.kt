@@ -1,6 +1,5 @@
 package afield.four.fabricated
 
-import afield.Rect
 import afield.four.Renderer
 import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.defaultBuffer
@@ -65,15 +64,15 @@ object StandardRenderer {
 			return rt
 		}
 
-		/** Present the lighting RTT to the swapchain with optional grading and viewport. */
-		fun present(
-			renderer: Renderer = fromContext(),
-			target: RenderTarget = renderer.renderList,
-			name: String = "std-present",
-			viewport: Rect? = null,
-			configure: RenderToTexture.ColorGrade.() -> Unit = {}
-		): ModulePointer =
-			lighting.blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = configure)
+//		/** Present the lighting RTT to the swapchain with optional grading and viewport. */
+//		fun present(
+//			renderer: Renderer = fromContext(),
+//			target: RenderTarget = renderer.renderList,
+//			name: String = "std-present",
+//			viewport: Rect? = null,
+//			configure: RenderToTexture.ColorGrade.() -> Unit = {}
+//		): ModulePointer =
+//			lighting.blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = configure)
 
 
 		data class PullingMeshPair(val gBuffer: PullingMesh, val shadow: PullingMesh)

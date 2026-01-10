@@ -115,6 +115,13 @@ class SuperProjection : HasUniform<Matrix4f> {
         return this
     }
 
+    fun setAspect(aspect: Float): SuperProjection {
+        this.aspect = aspect
+        val m = buildLieInterpolatedProjection()
+        projectionMatrix.set(m)
+        return this
+    }
+
     override fun evaluateUniform(): Matrix4f {
         auto()
         return projectionMatrix
