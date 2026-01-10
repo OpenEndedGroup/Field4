@@ -507,16 +507,16 @@ fun syncExecutionStatus() {
         sessionInfo.boxes.values.forEach { box ->
             if (box.properties.get("_tombstone").isTrue()) return@forEach
             
-            // Check each strand in runGeneration to see if it's actively running
-            box.runGeneration.forEach { (strand, generation) ->
-                // A box is running on this strand if:
-                // 1. The generation is >= 0 (has been started)
-                // 2. Has active jobs
-                val isRunning = generation >= 0 && box.jobs.any { !it.isCancelled && it.isActive }
-                
-                if (isRunning) {
-                    val message = Message("is-running").payload(IsRunning(box.id, true, generation, strand))
-                    sessionInfo.sessions.forEach { _send(it, message) }
+            // Check if the box has any active jobs
+            val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
+            
+            if (hasActiveJobs) {
+                // Send is-running messages for each strand that has been used
+                box.runGeneration.forEach { (strand, generation) ->
+                    if (generation >= 0) {
+                        val message = Message("is-running").payload(IsRunning(box.id, true, generation, strand))
+                        sessionInfo.sessions.forEach { _send(it, message) }
+                    }
                 }
             }
         }
