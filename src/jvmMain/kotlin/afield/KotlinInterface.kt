@@ -535,7 +535,7 @@ class KotlinInterface(
         fun getResult(
             code: String, cursor: Int, completions: List<SourceCodeCompletionVariant>
         ): CompletionResult.Success {
-            val filteredCompletions = completions.filter { !it.text.contains("clojure", ignoreCase = true) }
+            val filteredCompletions = completions.filter { !it.text.contains("clojure", ignoreCase = true) }.filter { !it.text.contains("$", ignoreCase = true) }
             val bounds = getTokenBounds(code, cursor)
             return CompletionResult.Success(filteredCompletions.map { it.text }, bounds, filteredCompletions, code, cursor)
         }
