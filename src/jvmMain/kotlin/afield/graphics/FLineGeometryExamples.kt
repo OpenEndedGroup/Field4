@@ -1,7 +1,6 @@
 package afield.graphics.examples
 
-import afield.graphics.FLine
-import afield.graphics.FLineGeometry
+import afield.graphics.*
 import afield.stdlib.*
 import kotlin.math.PI
 
@@ -26,7 +25,7 @@ object FLineGeometryExamples {
         }
         
         // Analyze curvature
-        val curvatures = FLineGeometry.curvatureAnalysis(spiral, samples = 100)
+        val curvatures = spiral.curvatureAnalysis( samples = 100)
         
         return Pair(spiral, curvatures)
     }
@@ -50,8 +49,8 @@ object FLineGeometryExamples {
         star.lineTo(outerRadius, 0f)
         
         // Create inner and outer offset versions
-        val inner = FLineGeometry.offset(star, distance = -5f, samples = 50)
-        val outer = FLineGeometry.offset(star, distance = 5f, samples = 50)
+        val inner = star.byOffsetting( distance = -5f, samples = 50)
+        val outer = star.byOffsetting( distance = 5f, samples = 50)
         
         return Triple(star, inner, outer)
     }
@@ -67,10 +66,10 @@ object FLineGeometryExamples {
         return mapOf(
             "circle1" to circle1,
             "circle2" to circle2,
-            "union" to FLineGeometry.union(circle1, circle2),
-            "intersection" to FLineGeometry.intersection(circle1, circle2),
-            "difference" to FLineGeometry.difference(circle1, circle2),
-            "xor" to FLineGeometry.exclusiveOr(circle1, circle2)
+            "union" to circle1.byUnionWith(circle2),
+            "intersection" to circle1.byIntersectionWith(circle2),
+            "difference" to circle1.byDifferenceWith(circle2),
+            "xor" to circle1.byExclusiveOrWith(circle2)
         )
     }
 
@@ -89,10 +88,10 @@ object FLineGeometryExamples {
         }
         
         // Smooth it
-        val smoothed = FLineGeometry.gaussianSmooth(noisy, sigma = 3f, samples = 100)
+        val smoothed = noisy.byGaussianSmoothing( sigma = 3f, samples = 100)
         
         // Simplify it
-        val simplified = FLineGeometry.simplify(smoothed, epsilon = 2f)
+        val simplified = smoothed.bySimplifying( epsilon = 2f)
         
         return Triple(noisy, smoothed, simplified)
     }
@@ -112,8 +111,8 @@ object FLineGeometryExamples {
         }
         
         // Generate tangent and normal lines
-        val tangents = FLineGeometry.tangentLines(curve, samples = 15, length = 10f)
-        val normals = FLineGeometry.normalLines(curve, samples = 15, length = 10f)
+        val tangents = curve.byCreatingTangentLines( samples = 15, length = 10f)
+        val normals = curve.byCreatingNormalLines( samples = 15, length = 10f)
         
         return Triple(curve, tangents, normals)
     }
@@ -137,7 +136,7 @@ object FLineGeometryExamples {
         val morphs = mutableListOf<FLine>()
         for (i in 0..steps) {
             val t = i / steps.toFloat()
-            morphs.add(FLineGeometry.blend(square, circle, t))
+            morphs.add(square.byBlendingWith(circle, t))
         }
         
         return morphs
@@ -159,9 +158,9 @@ object FLineGeometryExamples {
         // Generate patterns
         return mapOf(
             "original" to baseLine,
-            "wave" to FLineGeometry.wave(baseLine, amplitude = 5f, frequency = 3f, samples = 200),
-            "zigzag" to FLineGeometry.zigzag(baseLine, amplitude = 5f, segments = 30),
-            "dashed" to FLineGeometry.dash(baseLine, dashLength = 5f, gapLength = 3f)
+            "wave" to baseLine.byWaving( amplitude = 5f, frequency = 3f, samples = 200),
+            "zigzag" to baseLine.byZigzagging( amplitude = 5f, segments = 30),
+            "dashed" to baseLine.byDashing( dashLength = 5f, gapLength = 3f)
         )
     }
 
@@ -185,14 +184,14 @@ object FLineGeometryExamples {
         // Apply various transformations
         return mapOf(
             "original" to helix,
-            "rotated" to FLineGeometry.rotate3D(helix, 
+            "rotated" to helix.byRotating3D( 
                 angle = PI.toFloat() / 4, 
                 axis = vec(1f, 0f, 0f)),
-            "perspective" to FLineGeometry.perspectiveProject(helix,
+            "perspective" to helix.byPerspectiveProjecting(
                 cameraPos = vec(0f, 0f, 100f),
                 planePoint = vec(0f, 0f, 0f),
                 planeNormal = vec(0f, 0f, 1f)),
-            "orthographic" to FLineGeometry.orthographicProject(helix,
+            "orthographic" to helix.byOrthographicProjecting(
                 planePoint = vec(0f, 0f, 0f),
                 planeNormal = vec(0f, 1f, 1f))
         )
@@ -213,7 +212,7 @@ object FLineGeometryExamples {
         }
         
         // Compute convex hull
-        val hull = FLineGeometry.convexHull2D(pointCloud)
+        val hull = pointCloud.byConvexHull2D()
         
         return Pair(pointCloud, hull)
     }
@@ -236,7 +235,7 @@ object FLineGeometryExamples {
         }
         
         // Create adaptive sampling (more samples where curvature is high)
-        val adaptive = FLineGeometry.curvatureAdaptiveSample(curve, 
+        val adaptive = curve.byCurvatureAdaptiveSampling( 
             minSamples = 20, 
             maxSamples = 200)
         
@@ -277,13 +276,13 @@ object FLineGeometryExamples {
         results["square"] = square
         
         // 2. Transform it
-        results["rotated"] = FLineGeometry.rotate2D(square, PI.toFloat() / 6)
-        results["scaled"] = FLineGeometry.scale2D(square, 1.5f)
-        results["sheared"] = FLineGeometry.shear2D(square, 0.3f, 0.1f)
+        results["rotated"] = square.byRotating2D( PI.toFloat() / 6)
+        results["scaled"] = square.byScaling2D( 1.5f)
+        results["sheared"] = square.byShearing2D( 0.3f, 0.1f)
         
         // 3. Create offset versions
-        results["offset_inner"] = FLineGeometry.offset(square, -5f)
-        results["offset_outer"] = FLineGeometry.offset(square, 5f)
+        results["offset_inner"] = square.byOffsetting( -5f)
+        results["offset_outer"] = square.byOffsetting( 5f)
         
         // 4. Create a wavy curve and analyze it
         val wave = FLine().apply {
@@ -295,19 +294,19 @@ object FLineGeometryExamples {
             }
         }
         results["wave"] = wave
-        results["wave_curvatures"] = FLineGeometry.curvatureAnalysis(wave, samples = 50)
-        results["wave_simplified"] = FLineGeometry.simplify(wave, epsilon = 2f)
+        results["wave_curvatures"] = wave.curvatureAnalysis( samples = 50)
+        results["wave_simplified"] = wave.bySimplifying( epsilon = 2f)
         
         // 5. Boolean operations
         val circle1 = createCircle(vec(25f, 25f), 30f, 64)
         val circle2 = createCircle(vec(40f, 25f), 30f, 64)
-        results["union"] = FLineGeometry.union(circle1, circle2)
-        results["intersection"] = FLineGeometry.intersection(circle1, circle2)
+        results["union"] = circle1.byUnionWith(circle2)
+        results["intersection"] = circle1.byIntersectionWith(circle2)
         
         // 6. Geometric queries
-        results["centroid"] = FLineGeometry.centroid2D(square)
-        results["area"] = FLineGeometry.signedArea2D(square)
-        results["contains_point"] = FLineGeometry.contains(square, vec(25f, 25f))
+        results["centroid"] = square.centroid2D()
+        results["area"] = square.signedArea2D()
+        results["contains_point"] = square.contains( vec(25f, 25f))
         
         return results
     }
@@ -319,7 +318,7 @@ object FLineGeometryExamples {
         val results = mutableMapOf<String, FLine>()
         
         // Create an arc through three points
-        val arc1 = FLineGeometry.arcThrough3Points(
+        val arc1 = arcThrough3Points(
             p1 = vec(0f, 0f, 0f),
             p2 = vec(50f, 50f, 0f),
             p3 = vec(100f, 0f, 0f),
@@ -329,7 +328,7 @@ object FLineGeometryExamples {
         
         // Create a circular arc in 3D
         val arc2 = FLine()
-        FLineGeometry.appendArc3D(
+        byAppendingArc3D(
             arc2,
             center = vec(50f, 50f, 0f),
             radius = 30f,
@@ -346,7 +345,7 @@ object FLineGeometryExamples {
             val radius = 10f + i * 3f
             val startAngle = i * PI.toFloat() / 2
             val endAngle = (i + 1) * PI.toFloat() / 2
-            FLineGeometry.appendArc3D(
+            byAppendingArc3D(
                 spiral,
                 center = vec(0f, 0f, 0f),
                 radius = radius,
@@ -376,14 +375,14 @@ object FLineGeometryExamples {
         results["original"] = baseLine
         
         // Apply different noise types
-        results["gaussian_noise"] = FLineGeometry.noiseGaussian(
+        results["gaussian_noise"] = byGaussianNoising(
             baseLine,
             amplitude = 5f,
             seed = 12345L,
             samples = 100
         )
         
-        results["oriented_gaussian"] = FLineGeometry.noiseOrientedGaussian(
+        results["oriented_gaussian"] = byOrientedGaussianNoising(
             baseLine,
             normalAmplitude = 10f,
             tangentAmplitude = 2f,
@@ -391,7 +390,7 @@ object FLineGeometryExamples {
             samples = 100
         )
         
-        results["perlin_noise"] = FLineGeometry.noisePerlin(
+        results["perlin_noise"] = byPerlinNoising(
             baseLine,
             amplitude = 8f,
             frequency = 0.5f,
@@ -425,15 +424,15 @@ object FLineGeometryExamples {
         results["curve2"] = curve2
         
         // Combine them in different ways
-        results["add"] = FLineGeometry.add(curve1, curve2)
-        results["subtract"] = FLineGeometry.subtract(curve1, curve2)
-        results["multiply"] = FLineGeometry.multiply(curve1, curve2)
-        results["project"] = FLineGeometry.projectOnto(curve1, curve2)
+        results["add"] = curve1.byAddingWith(curve2)
+        results["subtract"] = curve1.bySubtractingWith(curve2)
+        results["multiply"] = curve1.byMultiplyingWith(curve2)
+        results["project"] = curve1.byProjectingOnto(curve2)
         
         // Geometric inversion
         val circle = createCircle(vec(50f, 25f), 30f, 64)
         results["circle"] = circle
-        results["inverted_circle"] = FLineGeometry.invert(
+        results["inverted_circle"] = byInverting(
             circle,
             center = vec(50f, 25f),
             radius = 40f
@@ -459,16 +458,16 @@ object FLineGeometryExamples {
         results["original"] = base
         
         // Apply offset with linear parameter (increases from 2 to 15)
-        results["offset_linear"] = FLineGeometry.offsetParameterized(
+        results["offset_linear"] = byOffsettingParameterized(
             base,
-            FLineGeometry.LinearParameter(start = 2f, end = 15f),
+            LinearParameter(start = 2f, end = 15f),
             samples = 100
         )
         
         // Apply offset with sine wave parameter
-        results["offset_sine"] = FLineGeometry.offsetParameterized(
+        results["offset_sine"] = byOffsettingParameterized(
             base,
-            FLineGeometry.SineParameter(
+            SineParameter(
                 amplitude = 8f,
                 frequency = 3f,
                 offset = 5f
@@ -477,9 +476,9 @@ object FLineGeometryExamples {
         )
         
         // Apply offset based on curvature
-        results["offset_curvature"] = FLineGeometry.offsetParameterized(
+        results["offset_curvature"] = byOffsettingParameterized(
             base,
-            FLineGeometry.CurvatureParameter(
+            CurvatureParameter(
                 line = base,
                 minValue = 2f,
                 maxValue = 20f,
@@ -489,17 +488,17 @@ object FLineGeometryExamples {
         )
         
         // Apply noise with varying amplitude
-        results["noise_linear"] = FLineGeometry.noiseParameterized(
+        results["noise_linear"] = byNoisingParameterized(
             base,
-            FLineGeometry.LinearParameter(start = 10f, end = 1f),
+            LinearParameter(start = 10f, end = 1f),
             seed = 12345L,
             samples = 100
         )
         
         // Apply scaling based on distance from a point
-        results["scale_distance"] = FLineGeometry.scaleParameterized(
+        results["scale_distance"] = byScalingParameterized(
             base,
-            FLineGeometry.DistanceParameter(
+            DistanceParameter(
                 point = vec(50f, 50f, 0f),
                 minValue = 0.5f,
                 maxValue = 2f,
@@ -516,9 +515,9 @@ object FLineGeometryExamples {
         controlCurve.lineTo(100f, 2f)
         results["control_curve"] = controlCurve
         
-        results["offset_curve_driven"] = FLineGeometry.offsetParameterized(
+        results["offset_curve_driven"] = byOffsettingParameterized(
             base,
-            FLineGeometry.CurveParameter(
+            CurveParameter(
                 curve = controlCurve,
                 scale = 1f,
                 offset = 0f
@@ -539,7 +538,7 @@ object FLineGeometryExamples {
             val radius = 10f + i * 5f
             val startAngle = i * PI.toFloat() / 2
             val endAngle = (i + 1) * PI.toFloat() / 2
-            FLineGeometry.appendArc3D(
+            byAppendingArc3D(
                 spiral,
                 center = vec(100f, 100f, 0f),
                 radius = radius,
@@ -551,7 +550,7 @@ object FLineGeometryExamples {
         }
         
         // Apply Perlin noise to make it organic
-        val noisy = FLineGeometry.noisePerlin(
+        val noisy = byPerlinNoising(
             spiral,
             amplitude = 3f,
             frequency = 1f,
@@ -559,13 +558,13 @@ object FLineGeometryExamples {
         )
         
         // Apply parameterized offset that increases with curve parameter
-        val offset = FLineGeometry.offsetParameterized(
+        val offset = byOffsettingParameterized(
             noisy,
-            FLineGeometry.LinearParameter(start = 2f, end = 8f)
+            LinearParameter(start = 2f, end = 8f)
         )
         
         // Add some oriented Gaussian noise
-        val final = FLineGeometry.noiseOrientedGaussian(
+        val final = byOrientedGaussianNoising(
             offset,
             normalAmplitude = 1.5f,
             tangentAmplitude = 0.5f
@@ -574,3 +573,5 @@ object FLineGeometryExamples {
         return final
     }
 }
+
+
