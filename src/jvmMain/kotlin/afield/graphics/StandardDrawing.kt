@@ -1,5 +1,6 @@
 package afield.graphics
 
+import afield.Named
 import afield.four.buffers.DynamicallyWriteable
 import afield.stdlib.f
 import afield.stdlib.pointSize
@@ -20,6 +21,10 @@ class FLineMap : LinkedHashMap<String, FLine>() {
 
     operator fun plusAssign(f: Pair<String, FLine>) {
         this[f.first] = f.second
+    }
+
+    operator fun plusAssign(f: Named<FLine>) {
+        this[f.name] = f.value
     }
 }
 

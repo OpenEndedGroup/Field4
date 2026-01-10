@@ -1,10 +1,13 @@
 package afield.graphics
 
-import afield.stdlib.*
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
+import afield.stdlib.times
+import afield.stdlib.vec
 import field.graphics.FLinesAndJavaShapes
-import field.graphics.FLinesAndJavaShapes.CubicSegment2
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
-import org.joml.*
+import org.joml.Quaternionf
+import org.joml.plus
 import java.awt.geom.Area
 import kotlin.math.*
 
@@ -12,7 +15,7 @@ import kotlin.math.*
  * Comprehensive computational geometry utilities for FLine operations implemented as extension functions.
  * Provides transformations, projections, intersections, decompositions, curvature analyses,
  * tangents, osculating planes, offsets, and a rich set of 2D and 3D geometric algorithms.
- * 
+ *
  * Functions that return new FLine instances use a "by" prefix to indicate non-mutating operations:
  * - `byWaving()` instead of `wave()`
  * - `byOffsetting()` instead of `offset()`
@@ -74,7 +77,7 @@ fun FLine.byReflecting2D(linePoint1: Vec2, linePoint2: Vec2): FLine {
     val dx = linePoint2.x - linePoint1.x
     val dy = linePoint2.y - linePoint1.y
     val lenSq = dx * dx + dy * dy
-    
+
     return this.transform { p ->
         val px = p.x - linePoint1.x
         val py = p.y - linePoint1.y
@@ -135,7 +138,7 @@ fun FLine.byPerspectiveProjecting(
 ): FLine {
     val normal = Vec3(planeNormal).normalize()
     val d = -normal.dot(planePoint)
-    
+
     return this.transform { p ->
         val ray = Vec3(p).sub(cameraPos)
         val t = -(normal.dot(cameraPos) + d) / normal.dot(ray)
@@ -156,7 +159,7 @@ fun FLine.byOrthographicProjecting(
     planeNormal: Vec3 = vec(0f, 0f, 1f)
 ): FLine {
     val normal = Vec3(planeNormal).normalize()
-    
+
     return this.transform { p ->
         val v = Vec3(p).sub(planePoint)
         val dist = v.dot(normal)
@@ -176,21 +179,21 @@ fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine {
     val result = FLine()
     val cursor = this.cursor(0.01f)
     var first = true
-    
+
     for (i in 0..samples * (this.nodes.size - 1)) {
         val t = i.toFloat() / (samples * (this.nodes.size - 1))
         cursor.setT(t * (this.nodes.size - 1))
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
-        
+
         if (normal != null) {
             val offsetPos = vec(
                 pos.x + normal.x * distance,
                 pos.y + normal.y * distance,
                 pos.z
             )
-            
+
             if (first) {
                 result.moveTo(offsetPos)
                 first = false
@@ -199,7 +202,11 @@ fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine {
             }
         }
     }
-    
+
+    if (this.nodes.last() is FLine.Close) {
+        result.close()
+    }
+
     return result
 }
 
@@ -209,8 +216,8 @@ fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine {
  */
 fun FLine.byCreatingParallelCurves(distance: Float, samples: Int = 50): Pair<FLine, FLine> {
     return Pair(
-        offset(line, -distance, samples),
-        offset(line, distance, samples)
+        byOffsetting(-distance, samples),
+        byOffsetting(distance, samples)
     )
 }
 
@@ -225,21 +232,21 @@ fun FLine.byGaussianSmoothing(sigma: Float, samples: Int = 100): FLine {
     val points = this.sampleByNumber(samples)
     val smoothed = mutableListOf<Vec3>()
     val radius = (3 * sigma).toInt().coerceAtLeast(1)
-    
+
     for (i in points.indices) {
         var sum = Vec3()
         var weightSum = 0f
-        
+
         for (j in maxOf(0, i - radius)..minOf(points.size - 1, i + radius)) {
             val dist = abs(i - j).toFloat()
             val weight = exp(-(dist * dist) / (2 * sigma * sigma))
             sum.add(Vec3(points[j]).mul(weight))
             weightSum += weight
         }
-        
+
         smoothed.add(sum.div(weightSum))
     }
-    
+
     val result = FLine()
     if (smoothed.isNotEmpty()) {
         result.moveTo(smoothed[0])
@@ -247,7 +254,7 @@ fun FLine.byGaussianSmoothing(sigma: Float, samples: Int = 100): FLine {
             result.lineTo(smoothed[i])
         }
     }
-    
+
     return result
 }
 
@@ -260,11 +267,11 @@ fun FLine.bySimplifying(epsilon: Float): FLine {
     this.nodes.forEach { node ->
         points.add(Vec3(node.to))
     }
-    
+
     if (points.size < 3) return this.copy()
-    
+
     val keep = rdpSimplify(points, epsilon)
-    
+
     val result = FLine()
     if (keep.isNotEmpty()) {
         result.moveTo(keep[0])
@@ -272,16 +279,16 @@ fun FLine.bySimplifying(epsilon: Float): FLine {
             result.lineTo(keep[i])
         }
     }
-    
+
     return result
 }
 
 private fun rdpSimplify(points: List<Vec3>, epsilon: Float): List<Vec3> {
     if (points.size < 3) return points
-    
+
     var maxDist = 0f
     var maxIndex = 0
-    
+
     for (i in 1 until points.size - 1) {
         val dist = perpendicularDistance(points[i], points[0], points[points.size - 1])
         if (dist > maxDist) {
@@ -289,7 +296,7 @@ private fun rdpSimplify(points: List<Vec3>, epsilon: Float): List<Vec3> {
             maxIndex = i
         }
     }
-    
+
     return if (maxDist > epsilon) {
         val left = rdpSimplify(points.subList(0, maxIndex + 1), epsilon)
         val right = rdpSimplify(points.subList(maxIndex, points.size), epsilon)
@@ -304,20 +311,20 @@ private fun perpendicularDistance(point: Vec3, lineStart: Vec3, lineEnd: Vec3): 
     val dy = lineEnd.y - lineStart.y
     val dz = lineEnd.z - lineStart.z
     val lenSq = dx * dx + dy * dy + dz * dz
-    
+
     if (lenSq == 0f) return point.distance(lineStart)
-    
-    val t = ((point.x - lineStart.x) * dx + 
-             (point.y - lineStart.y) * dy + 
+
+    val t = ((point.x - lineStart.x) * dx +
+             (point.y - lineStart.y) * dy +
              (point.z - lineStart.z) * dz) / lenSq
-    
+
     val tClamped = t.coerceIn(0f, 1f)
     val projection = Vec3(
         lineStart.x + tClamped * dx,
         lineStart.y + tClamped * dy,
         lineStart.z + tClamped * dz
     )
-    
+
     return point.distance(projection)
 }
 
@@ -330,16 +337,16 @@ private fun perpendicularDistance(point: Vec3, lineStart: Vec3, lineEnd: Vec3): 
  */
 fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3> {
     val intersections = mutableListOf<Vec3>()
-    
+
     for (i in 1 until this.nodes.size) {
         for (j in i + 2 until this.nodes.size) {
             val ni = this.nodes[i]
             val nj = this.nodes[j]
-            
+
             if (ni is FLine.CubicTo && nj is FLine.CubicTo) {
                 val ci = CubicSegment3(this.nodes[i - 1].to, ni.c1, ni.c2, ni.to)
                 val cj = CubicSegment3(this.nodes[j - 1].to, nj.c1, nj.c2, nj.to)
-                
+
                 val found = ci.intersection(cj, tolerance)
                 found.forEach { pair ->
                     intersections.add(Vec3(pair.first.a).add(pair.first.d).mul(0.5f))
@@ -347,7 +354,7 @@ fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3> {
             }
         }
     }
-    
+
     return intersections
 }
 
@@ -368,22 +375,77 @@ fun FLine.findIntersectionsWith(other: FLine, tolerance: Float = 1f): List<Vec3>
 fun FLine.curvatureAnalysis(samples: Int = 100): List<Pair<Vec3, Float>> {
     val result = mutableListOf<Pair<Vec3, Float>>()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val tangent = cursor.tangent()
         val acceleration = cursor.acceleration()
-        
-        if (tangent != null && acceleration != null) {
-            val cross = tangent.cross(acceleration, Vec3())
-            val curvature = cross.length() / tangent.length().pow(3)
-            result.add(Pair(pos, curvature))
+
+        if (tangent != null) {
+            if (acceleration != null && acceleration.lengthSquared() > 1e-12) {
+                // Smooth curvature
+                val cross = tangent.cross(acceleration, Vec3())
+                val tanLen = tangent.length()
+                val curvature = if (tanLen > 1e-6) cross.length() / tanLen.pow(3) else 0f
+                result.add(Pair(pos, curvature))
+            } else {
+                // Discrete curvature for polylines
+                if (i < samples - 1) {
+                    val nextT = (i + 1).toFloat() / (samples - 1) * (this.nodes.size - 1)
+                    cursor.setT(nextT)
+                    val nextPos = cursor.position()
+                    val nextTangent = cursor.tangent()
+                    cursor.setT(t)
+                    if (nextTangent != null && tangent.lengthSquared() > 1e-12 && nextTangent.lengthSquared() > 1e-12) {
+                        val dir1 = Vec3(tangent).normalize()
+                        val dir2 = Vec3(nextTangent).normalize()
+                        val dot = dir1.dot(dir2)
+                        val cosAngle = dot.coerceIn(-1f, 1f)
+                        val angle = acos(cosAngle)
+                        val dist = pos.distance(nextPos)
+                        val curvature = if (dist > 1e-6) angle / dist else 0f
+                        result.add(Pair(pos, curvature))
+                    } else {
+                        result.add(Pair(pos, 0f))
+                    }
+                } else {
+                    // Last point, copy from previous
+                    val curvature = if (result.isNotEmpty()) result.last().second else 0f
+                    result.add(Pair(pos, curvature))
+                }
+            }
         }
     }
-    
+
+    // Fill in NaN curvatures from adjacent samples
+    for (i in result.indices) {
+        if (result[i].second.isNaN()) {
+            var replacement = Float.NaN
+            // Find next non-NaN
+            for (j in i + 1 until result.size) {
+                if (!result[j].second.isNaN()) {
+                    replacement = result[j].second
+                    break
+                }
+            }
+            if (replacement.isNaN() && i > 0) {
+                // Find previous
+                for (j in i - 1 downTo 0) {
+                    if (!result[j].second.isNaN()) {
+                        replacement = result[j].second
+                        break
+                    }
+                }
+            }
+            if (!replacement.isNaN()) {
+                result[i] = Pair(result[i].first, replacement)
+            }
+        }
+    }
+
     return result
 }
 
@@ -394,20 +456,20 @@ fun FLine.curvatureAnalysis(samples: Int = 100): List<Pair<Vec3, Float>> {
  * @param maxSamples maximum number of samples
  */
 fun FLine.byCurvatureAdaptiveSampling(minSamples: Int = 20, maxSamples: Int = 200): FLine {
-    val curvatures = curvatureAnalysis(line, minSamples)
+    val curvatures = curvatureAnalysis( minSamples)
     val totalCurvature = curvatures.sumOf { it.second.toDouble() }.toFloat()
-    
+
     if (totalCurvature == 0f) {
         return this.copy()
     }
-    
+
     val result = FLine()
     result.moveTo(curvatures.first().first)
-    
+
     for (i in 1 until curvatures.size) {
         val curvature = curvatures[i].second
         val localSamples = (curvature / totalCurvature * maxSamples).toInt().coerceAtLeast(1)
-        
+
         for (j in 0..localSamples) {
             val t = (i - 1 + j.toFloat() / localSamples) / (curvatures.size - 1) * (this.nodes.size - 1)
             val cursor = this.cursor()
@@ -415,7 +477,7 @@ fun FLine.byCurvatureAdaptiveSampling(minSamples: Int = 20, maxSamples: Int = 20
             result.lineTo(cursor.position())
         }
     }
-    
+
     return result
 }
 
@@ -425,7 +487,7 @@ fun FLine.byCurvatureAdaptiveSampling(minSamples: Int = 20, maxSamples: Int = 20
  * @return list of high-curvature points
  */
 fun FLine.findHighCurvaturePoints(threshold: Float = 0.1f, samples: Int = 100): List<Vec3> {
-    val curvatures = curvatureAnalysis(line, samples)
+    val curvatures = curvatureAnalysis( samples)
     return curvatures.filter { it.second > threshold }.map { it.first }
 }
 
@@ -437,9 +499,9 @@ fun FLine.findHighCurvaturePoints(threshold: Float = 0.1f, samples: Int = 100): 
  */
 fun FLine.byConvexHull2D(): FLine {
     val points = this.nodes.map { Vec2(it.to.x, it.to.y) }.toMutableList()
-    
+
     if (points.size < 3) return this.copy()
-    
+
     // Find the point with lowest y-coordinate (and leftmost if tie)
     val start = points.minByOrNull { it.y + it.x * 0.0001f }!!
     points.sortBy { p ->
@@ -447,9 +509,9 @@ fun FLine.byConvexHull2D(): FLine {
         val dy = p.y - start.y
         atan2(dy, dx)
     }
-    
+
     val hull = mutableListOf<Vec2>()
-    
+
     for (p in points) {
         while (hull.size >= 2) {
             val cross = crossProduct(hull[hull.size - 2], hull[hull.size - 1], p)
@@ -461,7 +523,7 @@ fun FLine.byConvexHull2D(): FLine {
         }
         hull.add(p)
     }
-    
+
     val result = FLine()
     if (hull.isNotEmpty()) {
         result.moveTo(hull[0].x, hull[0].y)
@@ -470,7 +532,7 @@ fun FLine.byConvexHull2D(): FLine {
         }
         result.lineTo(hull[0].x, hull[0].y) // Close the hull
     }
-    
+
     return result
 }
 
@@ -484,9 +546,9 @@ private fun crossProduct(o: Vec2, a: Vec2, b: Vec2): Float {
 fun FLine.bySplittingAtInflections(): List<FLine> {
     val cursor = this.cursor()
     val inflections = cursor.inflectionPointsXY()
-    
-    if (inflections.isEmpty()) return listOf(line.copy())
-    
+
+    if (inflections.isEmpty()) return listOf(copy())
+
     return cursor.splitT(inflections)
 }
 
@@ -500,26 +562,26 @@ fun FLine.bySplittingAtInflections(): List<FLine> {
 fun FLine.byCreatingTangentLines(samples: Int = 20, length: Float = 10f): List<FLine> {
     val tangents = mutableListOf<FLine>()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val tangent = cursor.tangent()
-        
+
         if (tangent != null) {
             val normalized = Vec3(tangent).normalize()
             val start = Vec3(pos).sub(normalized.mul(length * 0.5f, Vec3()))
             val end = Vec3(pos).add(normalized.mul(length * 0.5f, Vec3()))
-            
+
             val line = FLine()
             line.moveTo(start)
             line.lineTo(end)
             tangents.add(line)
         }
     }
-    
+
     return tangents
 }
 
@@ -529,14 +591,14 @@ fun FLine.byCreatingTangentLines(samples: Int = 20, length: Float = 10f): List<F
 fun FLine.byCreatingNormalLines(samples: Int = 20, length: Float = 10f): List<FLine> {
     val normals = mutableListOf<FLine>()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
-        
+
         if (normal != null) {
             val normalized = Vec2(normal).normalize()
             val start = vec(
@@ -549,14 +611,14 @@ fun FLine.byCreatingNormalLines(samples: Int = 20, length: Float = 10f): List<FL
                 pos.y + normalized.y * length * 0.5f,
                 pos.z
             )
-            
+
             val line = FLine()
             line.moveTo(start)
             line.lineTo(end)
             normals.add(line)
         }
     }
-    
+
     return normals
 }
 
@@ -567,34 +629,40 @@ fun FLine.byCreatingNormalLines(samples: Int = 20, length: Float = 10f): List<FL
 fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 32): List<FLine> {
     val circles = mutableListOf<FLine>()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val radiusVec = cursor.radiusOfCurvature()
-        
+
         if (radiusVec != null && radiusVec.isFinite) {
             val pos = cursor.position()
             val radius = radiusVec.length()
             val center = Vec3(pos).add(radiusVec)
-            
-            val circle = FLine()
-            for (j in 0..circleSegments) {
-                val angle = j.toFloat() / circleSegments * 2 * PI.toFloat()
-                val x = center.x + radius * cos(angle)
-                val y = center.y + radius * sin(angle)
-                
-                if (j == 0) {
-                    circle.moveTo(x, y, pos.z)
-                } else {
-                    circle.lineTo(x, y, pos.z)
+            val T = cursor.tangent()
+
+            if (T != null) {
+                val N = Vec3(radiusVec).div(radius)  // unit normal
+                val B = T.cross(N, Vec3()).normalize()  // unit binormal
+
+                val circle = FLine()
+                for (j in 0..circleSegments) {
+                    val angle = j.toFloat() / circleSegments * 2 * PI.toFloat()
+                    val offset = cos(angle) * N + sin(angle) * B
+                    val point = center + radius * offset
+
+                    if (j == 0) {
+                        circle.moveTo(point)
+                    } else {
+                        circle.lineTo(point)
+                    }
                 }
+                circles.add(circle)
             }
-            circles.add(circle)
         }
     }
-    
+
     return circles
 }
 
@@ -655,7 +723,7 @@ fun FLine.byExclusiveOrWith(other: FLine): FLine {
  * @return Pair of (closest point, t parameter)
  */
 fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float> {
-    val t = FLinesAndJavaShapes.closestT(line, point)
+    val t = FLinesAndJavaShapes.closestT(this, point)
     val cursor = this.cursor()
     cursor.setT(t)
     return Pair(cursor.position(), t)
@@ -669,10 +737,10 @@ fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float> {
 fun FLine.windingNumber(point: Vec2): Int {
     var winding = 0
     var prevPoint: Vec2? = null
-    
+
     this.nodes.forEach { node ->
         val currentPoint = Vec2(node.to.x, node.to.y)
-        
+
         if (prevPoint != null) {
             if (prevPoint!!.y <= point.y) {
                 if (currentPoint.y > point.y) {
@@ -688,10 +756,10 @@ fun FLine.windingNumber(point: Vec2): Int {
                 }
             }
         }
-        
+
         prevPoint = currentPoint
     }
-    
+
     return winding
 }
 
@@ -703,7 +771,7 @@ private fun isLeft(p0: Vec2, p1: Vec2, p2: Vec2): Float {
  * Test if a point is inside a closed curve.
  */
 fun FLine.contains(point: Vec2): Boolean {
-    return windingNumber(line, point) != 0
+    return windingNumber(point) != 0
 }
 
 /**
@@ -714,26 +782,26 @@ fun FLine.signedArea2D(): Float {
     var area = 0f
     var prevPoint: Vec2? = null
     var firstPoint: Vec2? = null
-    
+
     this.nodes.forEach { node ->
         val currentPoint = Vec2(node.to.x, node.to.y)
-        
+
         if (firstPoint == null) {
             firstPoint = currentPoint
         }
-        
+
         if (prevPoint != null) {
             area += (prevPoint!!.x * currentPoint.y - currentPoint.x * prevPoint!!.y)
         }
-        
+
         prevPoint = currentPoint
     }
-    
+
     // Close the curve
     if (firstPoint != null && prevPoint != null) {
         area += (prevPoint!!.x * firstPoint!!.y - firstPoint!!.x * prevPoint!!.y)
     }
-    
+
     return area * 0.5f
 }
 
@@ -741,7 +809,7 @@ fun FLine.signedArea2D(): Float {
  * Calculate the centroid of a 2D closed curve.
  */
 fun FLine.centroid2D(): Vec2 {
-    val area = signedArea2D(line)
+    val area = signedArea2D()
     if (abs(area) < 1e-6f) {
         // Degenerate case: return average of points
         var sum = Vec2()
@@ -752,35 +820,35 @@ fun FLine.centroid2D(): Vec2 {
         }
         return if (count > 0) sum.div(count.toFloat()) else Vec2()
     }
-    
+
     var cx = 0f
     var cy = 0f
     var prevPoint: Vec2? = null
     var firstPoint: Vec2? = null
-    
+
     this.nodes.forEach { node ->
         val currentPoint = Vec2(node.to.x, node.to.y)
-        
+
         if (firstPoint == null) {
             firstPoint = currentPoint
         }
-        
+
         if (prevPoint != null) {
             val cross = prevPoint!!.x * currentPoint.y - currentPoint.x * prevPoint!!.y
             cx += (prevPoint!!.x + currentPoint.x) * cross
             cy += (prevPoint!!.y + currentPoint.y) * cross
         }
-        
+
         prevPoint = currentPoint
     }
-    
+
     // Close the curve
     if (firstPoint != null && prevPoint != null) {
         val cross = prevPoint!!.x * firstPoint!!.y - firstPoint!!.x * prevPoint!!.y
         cx += (prevPoint!!.x + firstPoint!!.x) * cross
         cy += (prevPoint!!.y + firstPoint!!.y) * cross
     }
-    
+
     val factor = 1f / (6f * area)
     return vec(cx * factor, cy * factor)
 }
@@ -792,17 +860,17 @@ fun FLine.centroid2D(): Vec2 {
  */
 fun FLine.byReversing(): FLine {
     val result = FLine()
-    
+
     if (this.nodes.isEmpty()) return result
-    
+
     // Start at the end
     result.moveTo(this.nodes.last().to)
-    
+
     // Traverse backwards
     for (i in this.nodes.size - 1 downTo 1) {
         val node = this.nodes[i]
         val prevNode = this.nodes[i - 1]
-        
+
         when (node) {
             is FLine.LineTo -> {
                 result.lineTo(prevNode.to)
@@ -814,9 +882,12 @@ fun FLine.byReversing(): FLine {
             is FLine.MoveTo -> {
                 result.moveTo(prevNode.to)
             }
+            is FLine.Close -> {
+                result.close()
+            }
         }
     }
-    
+
     return result
 }
 
@@ -825,13 +896,13 @@ fun FLine.byReversing(): FLine {
  */
 fun concatenate(vararg lines: FLine): FLine {
     val result = FLine()
-    
+
     lines.forEach { line ->
-        this.nodes.forEach { node ->
+        result.nodes.forEach { node ->
             result.nodes.add(node.copy())
         }
     }
-    
+
     return result
 }
 
@@ -843,21 +914,21 @@ fun FLine.byBlendingWith(other: FLine, t: Float): FLine {
     val samples = maxOf(this.nodes.size, other.nodes.size)
     val points1 = this.sampleByNumber(samples)
     val points2 = other.sampleByNumber(samples)
-    
+
     val result = FLine()
-    
+
     for (i in points1.indices) {
         val p1 = points1[i]
         val p2 = if (i < points2.size) points2[i] else points2.last()
         val blended = Vec3(p1).lerp(p2, t)
-        
+
         if (i == 0) {
             result.moveTo(blended)
         } else {
             result.lineTo(blended)
         }
     }
-    
+
     return result
 }
 
@@ -868,14 +939,14 @@ fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine {
     val cursor = this.cursor()
     cursor.setT(tStart)
     val split1 = cursor.split()
-    
+
     if (split1.second == null) return FLine()
-    
+
     val remaining = split1.second!!
     val cursor2 = remaining.cursor()
     cursor2.setT(tEnd - tStart)
     val split2 = cursor2.split()
-    
+
     return split2.first ?: FLine()
 }
 
@@ -888,7 +959,7 @@ fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine {
  */
 fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float> {
     val points = this.sampleByNumber(samples).map { Vec2(it.x, it.y) }
-    
+
     // Use least squares circle fitting
     var sumX = 0f
     var sumY = 0f
@@ -899,7 +970,7 @@ fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float> {
     var sumYYY = 0f
     var sumXXY = 0f
     var sumXYY = 0f
-    
+
     points.forEach { p ->
         sumX += p.x
         sumY += p.y
@@ -911,24 +982,24 @@ fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float> {
         sumXXY += p.x * p.x * p.y
         sumXYY += p.x * p.y * p.y
     }
-    
+
     val n = points.size.toFloat()
     val a = 2 * (sumX * sumX - n * sumXX)
     val b = 2 * (sumX * sumY - n * sumXY)
     val c = 2 * (sumY * sumY - n * sumYY)
     val d = sumXX * sumX - n * sumXXX + sumX * sumYY - n * sumXYY
     val e = sumXX * sumY - n * sumYYY + sumYY * sumY - n * sumXXY
-    
+
     val denominator = a * c - b * b
     val cx = if (abs(denominator) > 1e-6f) (d * c - b * e) / denominator else sumX / n
     val cy = if (abs(denominator) > 1e-6f) (a * e - b * d) / denominator else sumY / n
-    
+
     // Calculate radius as average distance to center
     val radius = points.map { sqrt((it.x - cx).pow(2) + (it.y - cy).pow(2)) }.average().toFloat()
-    
+
     // Calculate error
     val error = points.map { abs(sqrt((it.x - cx).pow(2) + (it.y - cy).pow(2)) - radius) }.average().toFloat()
-    
+
     return Triple(vec(cx, cy), radius, error)
 }
 
@@ -937,12 +1008,12 @@ fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float> {
  * This creates a smoother approximation with more control points.
  */
 fun FLine.bySubdividing(levels: Int = 1): FLine {
-    var result = line.copy()
-    
+    var result = copy()
+
     repeat(levels) {
         val newResult = FLine()
         var first = true
-        
+
         result.nodes.forEachIndexed { i, node ->
             if (i == 0 || node is FLine.MoveTo) {
                 newResult.moveTo(node.to)
@@ -954,25 +1025,25 @@ fun FLine.bySubdividing(levels: Int = 1): FLine {
                 newResult.lineTo(node.to)
             } else if (node is FLine.CubicTo) {
                 val prev = result.nodes[i - 1].to
-                
+
                 // De Casteljau subdivision at t=0.5
                 val q0 = Vec3(prev).lerp(node.c1, 0.5f)
                 val q1 = Vec3(node.c1).lerp(node.c2, 0.5f)
                 val q2 = Vec3(node.c2).lerp(node.to, 0.5f)
-                
+
                 val r0 = Vec3(q0).lerp(q1, 0.5f)
                 val r1 = Vec3(q1).lerp(q2, 0.5f)
-                
+
                 val mid = Vec3(r0).lerp(r1, 0.5f)
-                
+
                 newResult.cubicTo(q0, r0, mid)
                 newResult.cubicTo(r1, q2, node.to)
             }
         }
-        
+
         result = newResult
     }
-    
+
     return result
 }
 
@@ -984,7 +1055,7 @@ fun FLine.byArcLengthParameterizing(spacing: Float): FLine {
     return this.copy {
         val samples = sampleByDistance(spacing)
         nodes.clear()
-        
+
         if (samples.isNotEmpty()) {
             moveTo(samples[0])
             for (i in 1 until samples.size) {
@@ -1003,15 +1074,15 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
     val result = mutableListOf<FLine>()
     val cursor = this.cursor()
     val totalLength = cursor.lengthD()
-    
+
     var distance = 0f
     var inDash = true
     var currentSegment: FLine? = null
-    
+
     while (distance < totalLength) {
         cursor.setD(distance)
         val pos = cursor.position()
-        
+
         if (inDash) {
             if (currentSegment == null) {
                 currentSegment = FLine()
@@ -1019,7 +1090,7 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
             } else {
                 currentSegment.lineTo(pos)
             }
-            
+
             distance += dashLength
             if (distance >= totalLength) {
                 cursor.setD(totalLength)
@@ -1033,7 +1104,7 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
             inDash = true
         }
     }
-    
+
     return result
 }
 
@@ -1046,14 +1117,14 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
 fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLine {
     val result = FLine()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
-        
+
         if (normal != null) {
             val offset = amplitude * sin(t * frequency * 2 * PI.toFloat())
             val wavePos = vec(
@@ -1061,7 +1132,7 @@ fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLin
                 pos.y + normal.y * offset,
                 pos.z
             )
-            
+
             if (i == 0) {
                 result.moveTo(wavePos)
             } else {
@@ -1069,7 +1140,7 @@ fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLin
             }
         }
     }
-    
+
     return result
 }
 
@@ -1079,14 +1150,14 @@ fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLin
 fun FLine.byZigzagging(amplitude: Float, segments: Int = 20): FLine {
     val result = FLine()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0..segments) {
         val t = i.toFloat() / segments * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
-        
+
         if (normal != null) {
             val offset = amplitude * if (i % 2 == 0) 1f else -1f
             val zigPos = vec(
@@ -1094,7 +1165,7 @@ fun FLine.byZigzagging(amplitude: Float, segments: Int = 20): FLine {
                 pos.y + normal.y * offset,
                 pos.z
             )
-            
+
             if (i == 0) {
                 result.moveTo(zigPos)
             } else {
@@ -1102,7 +1173,7 @@ fun FLine.byZigzagging(amplitude: Float, segments: Int = 20): FLine {
             }
         }
     }
-    
+
     return result
 }
 
@@ -1128,31 +1199,31 @@ fun FLine.byAppendingArc3D(
 ): FLine {
     // Create orthonormal basis for the arc plane
     val n = Vec3(normal).normalize()
-    
+
     // Find arbitrary perpendicular vector
     val arbitrary = if (abs(n.x) < 0.9f) vec(1f, 0f, 0f) else vec(0f, 1f, 0f)
     val u = Vec3(arbitrary).cross(n).normalize()
     val v = Vec3(n).cross(u).normalize()
-    
+
     // Generate arc points
     val angleStep = (endAngle - startAngle) / segments
     for (i in 0..segments) {
         val angle = startAngle + i * angleStep
         val x = radius * cos(angle)
         val y = radius * sin(angle)
-        
+
         // Transform to 3D using basis vectors
         val point = Vec3(center)
             .add(u.mul(x, Vec3()))
             .add(v.mul(y, Vec3()))
-        
+
         if (i == 0 && this.nodes.isEmpty()) {
             this.moveTo(point)
         } else {
             this.lineTo(point)
         }
     }
-    
+
     return this
 }
 
@@ -1170,12 +1241,12 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
     val v1 = Vec3(p2).sub(p1)
     val v2 = Vec3(p3).sub(p1)
     val normal = Vec3(v1).cross(v2).normalize()
-    
+
     // Find the circumcenter in 3D
     val a = v1.lengthSquared()
     val b = v2.lengthSquared()
     val c = Vec3(v1).cross(v2).lengthSquared()
-    
+
     if (c < 1e-6f) {
         // Points are collinear, return a line
         val line = FLine()
@@ -1184,25 +1255,25 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
         line.lineTo(p3)
         return line
     }
-    
+
     val s = a * (b - v1.dot(v2)) / (2 * c)
     val t = b * (a - v1.dot(v2)) / (2 * c)
-    
+
     val center = Vec3(p1)
         .add(Vec3(v1).mul(s))
         .add(Vec3(v2).mul(t))
-    
+
     val radius = Vec3(p1).sub(center).length()
-    
+
     // Calculate angles for the arc
     val toP1 = Vec3(p1).sub(center)
     val toP2 = Vec3(p2).sub(center)
     val toP3 = Vec3(p3).sub(center)
-    
+
     // Create orthonormal basis
     val u = Vec3(toP1).normalize()
     val v = Vec3(normal).cross(u).normalize()
-    
+
     // Calculate angles in the plane
     fun getAngle(vec: Vec3): Float {
         val projected = Vec3(vec).sub(center)
@@ -1210,21 +1281,21 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
         val y = projected.dot(v)
         return atan2(y, x)
     }
-    
+
     val angle1 = getAngle(p1)
     val angle2 = getAngle(p2)
     val angle3 = getAngle(p3)
-    
+
     // Determine arc direction and range
     var startAngle = angle1
     var endAngle = angle3
-    
+
     // Check if we need to go the long way
     val mid = (angle1 + angle3) / 2
     if (abs(angle2 - mid) > PI.toFloat() / 2) {
         endAngle += 2 * PI.toFloat()
     }
-    
+
     // Generate the arc
     val result = FLine()
     result.byAppendingArc3D(center, radius, startAngle, endAngle, normal, segments)
@@ -1241,15 +1312,15 @@ fun FLine.byAppendingQuadratic(controlPoint: Vec3, endPoint: Vec3): FLine {
         this.moveTo(endPoint)
         return this
     }
-    
+
     val start = this.nodes.last().to
-    
+
     // Convert quadratic to cubic
     // C1 = start + 2/3 * (control - start)
     // C2 = end + 2/3 * (control - end)
     val c1 = Vec3(start).add(Vec3(controlPoint).sub(start).mul(2f / 3f))
     val c2 = Vec3(endPoint).add(Vec3(controlPoint).sub(endPoint).mul(2f / 3f))
-    
+
     this.cubicTo(c1, c2, endPoint)
     return this
 }
@@ -1269,25 +1340,25 @@ fun FLine.byAppendingArcByTangent(
         this.moveTo(endPoint)
         return this
     }
-    
+
     val start = this.nodes.last().to
-    
+
     // Find center as intersection of perpendiculars to tangents
     val startPerp = Vec3(startTangent).normalize()
     val endPerp = Vec3(endTangent).normalize()
-    
+
     // Use midpoint and tangents to estimate center
     val mid = Vec3(start).add(endPoint).mul(0.5f)
     val toMid = Vec3(mid).sub(start)
-    
+
     // Estimate radius from distance and tangent
     val distance = Vec3(endPoint).sub(start).length()
     val radius = distance * 0.5f / sin(atan2(toMid.cross(startPerp, Vec3()).length(), toMid.dot(startPerp)))
-    
+
     // Calculate center
     val perpToStart = Vec3(startPerp).cross(toMid).normalize()
     val center = Vec3(start).add(perpToStart.mul(radius))
-    
+
     // Generate arc
     val normal = Vec3(startPerp).cross(endPerp).normalize()
     val startAngle = atan2(
@@ -1298,7 +1369,7 @@ fun FLine.byAppendingArcByTangent(
         Vec3(endPoint).sub(center).dot(perpToStart),
         Vec3(endPoint).sub(center).dot(startPerp)
     )
-    
+
     this.byAppendingArc3D(center, radius, startAngle, endAngle, normal, segments)
     return this
 }
@@ -1315,7 +1386,7 @@ fun FLine.byAppendingArcByTangent(
 fun FLine.byGaussianNoising(amplitude: Float, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine {
     val random = java.util.Random(seed)
     val points = this.sampleByNumber(samples)
-    
+
     val result = FLine()
     points.forEachIndexed { i, point ->
         // Generate Gaussian noise (Box-Muller transform)
@@ -1323,24 +1394,24 @@ fun FLine.byGaussianNoising(amplitude: Float, seed: Long = System.currentTimeMil
         val u2 = random.nextFloat()
         val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
         val theta = 2.0 * PI * u2
-        
+
         val noiseX = r * cos(theta).toFloat() * amplitude
         val noiseY = r * sin(theta).toFloat() * amplitude
         val noiseZ = (random.nextGaussian().toFloat()) * amplitude
-        
+
         val noisedPoint = vec(
             point.x + noiseX,
             point.y + noiseY,
             point.z + noiseZ
         )
-        
+
         if (i == 0) {
             result.moveTo(noisedPoint)
         } else {
             result.lineTo(noisedPoint)
         }
     }
-    
+
     return result
 }
 
@@ -1362,42 +1433,42 @@ fun FLine.byOrientedGaussianNoising(
     val random = java.util.Random(seed)
     val cursor = this.cursor(0.01f)
     val result = FLine()
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val tangent = cursor.tangent()
         val normal = cursor.normal2()
-        
+
         // Generate Gaussian noise
         val u1 = random.nextFloat()
         val u2 = random.nextFloat()
         val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
         val theta = 2.0 * PI * u2
-        
+
         val normalNoise = r * cos(theta).toFloat() * normalAmplitude
         val tangentNoise = r * sin(theta).toFloat() * tangentAmplitude
-        
+
         val noisedPoint = if (normal != null && tangent != null) {
             val normalVec = Vec3(normal.x, normal.y, 0f).normalize()
             val tangentVec = Vec3(tangent).normalize()
-            
+
             Vec3(pos)
                 .add(normalVec.mul(normalNoise, Vec3()))
                 .add(tangentVec.mul(tangentNoise, Vec3()))
         } else {
             Vec3(pos)
         }
-        
+
         if (i == 0) {
             result.moveTo(noisedPoint)
         } else {
             result.lineTo(noisedPoint)
         }
     }
-    
+
     return result
 }
 
@@ -1420,19 +1491,19 @@ fun FLine.byPerlinNoising(
     val perlin = PerlinNoise(seed)
     val cursor = this.cursor(0.01f)
     val result = FLine()
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1) * (this.nodes.size - 1)
         cursor.setT(t)
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
-        
+
         // Generate Perlin noise at this position
         val noiseX = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.1f, octaves)
         val noiseY = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.2f, octaves)
         val noiseZ = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.3f, octaves)
-        
+
         val noisedPoint = if (normal != null) {
             // Apply noise primarily in normal direction
             val normalVec = Vec3(normal.x, normal.y, 0f).normalize()
@@ -1444,14 +1515,14 @@ fun FLine.byPerlinNoising(
                 pos.z + noiseZ * amplitude
             )
         }
-        
+
         if (i == 0) {
             result.moveTo(noisedPoint)
         } else {
             result.lineTo(noisedPoint)
         }
     }
-    
+
     return result
 }
 
@@ -1459,23 +1530,23 @@ fun FLine.byPerlinNoising(
  * Simple Perlin noise implementation for internal use.
  */
 private class PerlinNoise(seed: Long) {
-    private val random = java.util.Random(seed)
+    private val random = kotlin.random.Random(seed)
     private val permutation = IntArray(256) { it }.apply { shuffle(random) }
     private val p = IntArray(512) { permutation[it % 256] }
-    
+
     fun noise(x: Float, y: Float, z: Float): Float {
         val xi = floor(x).toInt() and 255
         val yi = floor(y).toInt() and 255
         val zi = floor(z).toInt() and 255
-        
+
         val xf = x - floor(x)
         val yf = y - floor(y)
         val zf = z - floor(z)
-        
+
         val u = fade(xf)
         val v = fade(yf)
         val w = fade(zf)
-        
+
         val aaa = p[p[p[xi] + yi] + zi]
         val aba = p[p[p[xi] + yi + 1] + zi]
         val aab = p[p[p[xi] + yi] + zi + 1]
@@ -1484,38 +1555,38 @@ private class PerlinNoise(seed: Long) {
         val bba = p[p[p[xi + 1] + yi + 1] + zi]
         val bab = p[p[p[xi + 1] + yi] + zi + 1]
         val bbb = p[p[p[xi + 1] + yi + 1] + zi + 1]
-        
+
         var x1 = lerp(grad(aaa, xf, yf, zf), grad(baa, xf - 1, yf, zf), u)
         var x2 = lerp(grad(aba, xf, yf - 1, zf), grad(bba, xf - 1, yf - 1, zf), u)
         val y1 = lerp(x1, x2, v)
-        
+
         x1 = lerp(grad(aab, xf, yf, zf - 1), grad(bab, xf - 1, yf, zf - 1), u)
         x2 = lerp(grad(abb, xf, yf - 1, zf - 1), grad(bbb, xf - 1, yf - 1, zf - 1), u)
         val y2 = lerp(x1, x2, v)
-        
+
         return lerp(y1, y2, w)
     }
-    
+
     fun octaveNoise(x: Float, y: Float, z: Float, octaves: Int): Float {
         var total = 0f
         var frequency = 1f
         var amplitude = 1f
         var maxValue = 0f
-        
+
         for (i in 0 until octaves) {
             total += noise(x * frequency, y * frequency, z * frequency) * amplitude
             maxValue += amplitude
             amplitude *= 0.5f
             frequency *= 2f
         }
-        
+
         return total / maxValue
     }
-    
+
     private fun fade(t: Float) = t * t * t * (t * (t * 6 - 15) + 10)
-    
+
     private fun lerp(a: Float, b: Float, t: Float) = a + t * (b - a)
-    
+
     private fun grad(hash: Int, x: Float, y: Float, z: Float): Float {
         return when (hash and 15) {
             0 -> x + y
@@ -1547,20 +1618,20 @@ private class PerlinNoise(seed: Long) {
 fun FLine.byAddingWith(other: FLine, samples: Int = 100): FLine {
     val points1 = this.sampleByNumber(samples)
     val points2 = other.sampleByNumber(samples)
-    
+
     val result = FLine()
     for (i in points1.indices) {
         val p1 = points1[i]
         val p2 = if (i < points2.size) points2[i] else points2.last()
         val sum = Vec3(p1).add(p2)
-        
+
         if (i == 0) {
             result.moveTo(sum)
         } else {
             result.lineTo(sum)
         }
     }
-    
+
     return result
 }
 
@@ -1570,20 +1641,20 @@ fun FLine.byAddingWith(other: FLine, samples: Int = 100): FLine {
 fun FLine.bySubtractingWith(other: FLine, samples: Int = 100): FLine {
     val points1 = this.sampleByNumber(samples)
     val points2 = other.sampleByNumber(samples)
-    
+
     val result = FLine()
     for (i in points1.indices) {
         val p1 = points1[i]
         val p2 = if (i < points2.size) points2[i] else points2.last()
         val diff = Vec3(p1).sub(p2)
-        
+
         if (i == 0) {
             result.moveTo(diff)
         } else {
             result.lineTo(diff)
         }
     }
-    
+
     return result
 }
 
@@ -1593,18 +1664,18 @@ fun FLine.bySubtractingWith(other: FLine, samples: Int = 100): FLine {
  */
 fun FLine.byProjectingOnto(other: FLine, samples: Int = 100): FLine {
     val points1 = this.sampleByNumber(samples)
-    
+
     val result = FLine()
     points1.forEachIndexed { i, point ->
         val (closest, _) = other.closestPoint( point)
-        
+
         if (i == 0) {
             result.moveTo(closest)
         } else {
             result.lineTo(closest)
         }
     }
-    
+
     return result
 }
 
@@ -1615,32 +1686,32 @@ fun FLine.byProjectingOnto(other: FLine, samples: Int = 100): FLine {
 fun FLine.byInverting(center: Vec2 = vec(0f, 0f), radius: Float = 100f, samples: Int = 100): FLine {
     val points = this.sampleByNumber(samples)
     val radiusSq = radius * radius
-    
+
     val result = FLine()
     points.forEachIndexed { i, point ->
         val dx = point.x - center.x
         val dy = point.y - center.y
         val distSq = dx * dx + dy * dy
-        
+
         if (distSq < 1e-6f) {
             // Point at center, map to infinity (skip)
             return@forEachIndexed
         }
-        
+
         val factor = radiusSq / distSq
         val inverted = vec(
             center.x + dx * factor,
             center.y + dy * factor,
             point.z
         )
-        
+
         if (i == 0 || result.nodes.isEmpty()) {
             result.moveTo(inverted)
         } else {
             result.lineTo(inverted)
         }
     }
-    
+
     return result
 }
 
@@ -1650,20 +1721,20 @@ fun FLine.byInverting(center: Vec2 = vec(0f, 0f), radius: Float = 100f, samples:
 fun FLine.byMultiplyingWith(other: FLine, samples: Int = 100): FLine {
     val points1 = this.sampleByNumber(samples)
     val points2 = other.sampleByNumber(samples)
-    
+
     val result = FLine()
     for (i in points1.indices) {
         val p1 = points1[i]
         val p2 = if (i < points2.size) points2[i] else points2.last()
         val product = vec(p1.x * p2.x, p1.y * p2.y, p1.z * p2.z)
-        
+
         if (i == 0) {
             result.moveTo(product)
         } else {
             result.lineTo(product)
         }
     }
-    
+
     return result
 }
 
@@ -1696,7 +1767,7 @@ class LinearParameter(val start: Float, val end: Float) : ParameterFunction {
  */
 class CurveParameter(val curve: FLine, val scale: Float = 1f, val offset: Float = 0f) : ParameterFunction {
     private val cursor = curve.cursor()
-    
+
     override fun evaluate(t: Float, position: Vec3): Float {
         cursor.setT(t * (curve.nodes.size - 1))
         return cursor.position().y * scale + offset
@@ -1728,20 +1799,20 @@ class CurvatureParameter(
     val maxValue: Float,
     val maxCurvature: Float = 1f
 ) : ParameterFunction {
-    private val cursor = this.cursor()
-    
+    private val cursor = line.cursor()
+
     override fun evaluate(t: Float, position: Vec3): Float {
-        cursor.setT(t * (this.nodes.size - 1))
+        cursor.setT(t * (line.nodes.size - 1))
         val tangent = cursor.tangent()
         val acceleration = cursor.acceleration()
-        
+
         if (tangent != null && acceleration != null) {
             val cross = tangent.cross(acceleration, Vec3())
             val curvature = cross.length() / tangent.length().pow(3)
             val normalized = (curvature / maxCurvature).coerceIn(0f, 1f)
             return minValue + (maxValue - minValue) * normalized
         }
-        
+
         return minValue
     }
 }
@@ -1769,22 +1840,22 @@ fun FLine.byOffsettingParameterized(
 ): FLine {
     val result = FLine()
     val cursor = this.cursor(0.01f)
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1)
         cursor.setT(t * (this.nodes.size - 1))
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
         val distance = distanceFunc.evaluate(t, pos)
-        
+
         if (normal != null) {
             val offsetPos = vec(
                 pos.x + normal.x * distance,
                 pos.y + normal.y * distance,
                 pos.z
             )
-            
+
             if (i == 0) {
                 result.moveTo(offsetPos)
             } else {
@@ -1792,7 +1863,7 @@ fun FLine.byOffsettingParameterized(
             }
         }
     }
-    
+
     return result
 }
 
@@ -1808,37 +1879,37 @@ fun FLine.byNoisingParameterized(
     val random = java.util.Random(seed)
     val cursor = this.cursor(0.01f)
     val result = FLine()
-    
+
     for (i in 0 until samples) {
         val t = i.toFloat() / (samples - 1)
         cursor.setT(t * (this.nodes.size - 1))
-        
+
         val pos = cursor.position()
         val normal = cursor.normal2()
         val amplitude = amplitudeFunc.evaluate(t, pos)
-        
+
         // Generate Gaussian noise
         val u1 = random.nextFloat()
         val u2 = random.nextFloat()
         val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
         val theta = 2.0 * PI * u2
-        
+
         val noise = r * cos(theta).toFloat() * amplitude
-        
+
         val noisedPoint = if (normal != null) {
             val normalVec = Vec3(normal.x, normal.y, 0f)
             Vec3(pos).add(normalVec.mul(noise, Vec3()))
         } else {
             Vec3(pos)
         }
-        
+
         if (i == 0) {
             result.moveTo(noisedPoint)
         } else {
             result.lineTo(noisedPoint)
         }
     }
-    
+
     return result
 }
 
@@ -1852,24 +1923,24 @@ fun FLine.byScalingParameterized(
 ): FLine {
     val points = this.sampleByNumber(samples)
     val result = FLine()
-    
+
     points.forEachIndexed { i, point ->
         val t = i.toFloat() / (samples - 1)
         val scale = scaleFunc.evaluate(t, point)
-        
+
         val scaled = vec(
             center.x + (point.x - center.x) * scale,
             center.y + (point.y - center.y) * scale,
             point.z
         )
-        
+
         if (i == 0) {
             result.moveTo(scaled)
         } else {
             result.lineTo(scaled)
         }
     }
-    
+
     return result
 }
 

@@ -14,6 +14,9 @@ import afield.four.texture.HasImageView
 import afield.four.texture.image_layout_transition
 import afield.four.util.Options
 import afield.logger.lprintln
+import afield.stdlib.Quat
+import afield.stdlib.Vec3
+import afield.stdlib.vec
 import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -25,6 +28,7 @@ import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
+import org.joml.*
 import org.lwjgl.vulkan.*
 import java.util.ArrayDeque
 import kotlin.math.tan
@@ -151,13 +155,8 @@ class OpenXRHmdTarget(
     data class ControllerState(
         var active: Boolean = false,
         var poseValid: Boolean = false,
-        var px: Float = 0f,
-        var py: Float = 0f,
-        var pz: Float = 0f,
-        var qx: Float = 0f,
-        var qy: Float = 0f,
-        var qz: Float = 0f,
-        var qw: Float = 1f,
+        var position: Vec3 = vec(0.0, 0.0, 0.0),
+        var orientation: Quat = Quat(0.0, 0.0, 0.0, 1.0),
         // Generic select (bound per-profile; for Index we bind trigger/click)
         var selectPressed: Boolean = false,
 
@@ -223,8 +222,8 @@ class OpenXRHmdTarget(
         val src = if (hand == Hand.LEFT) leftController else rightController
         out.active = src.active
         out.poseValid = src.poseValid
-        out.px = src.px; out.py = src.py; out.pz = src.pz
-        out.qx = src.qx; out.qy = src.qy; out.qz = src.qz; out.qw = src.qw
+        out.position = src.position
+        out.orientation = src.orientation
         out.selectPressed = src.selectPressed
         out.triggerValue = src.triggerValue
         out.triggerPressed = src.triggerPressed
@@ -274,8 +273,8 @@ class OpenXRHmdTarget(
     fun controllerGripPoseMatrix(hand: Hand, out: Matrix4f = Matrix4f()): Matrix4f {
         val s = if (hand == Hand.LEFT) leftController else rightController
         return out.identity()
-            .translate(s.px, s.py, s.pz)
-            .rotate(Quaternionf(s.qx, s.qy, s.qz, s.qw))
+            .translate(s.position.x, s.position.y, s.position.z)
+            .rotate(Quaternionf(s.orientation.x, s.orientation.y, s.orientation.z, s.orientation.w))
     }
 
     // public module lists (mirrors RenderTarget)
@@ -1703,8 +1702,8 @@ class OpenXRHmdTarget(
 
             val p = loc.pose().`position$`()
             val q = loc.pose().orientation()
-            out.px = p.x(); out.py = p.y(); out.pz = p.z()
-            out.qx = q.x(); out.qy = q.y(); out.qz = q.z(); out.qw = q.w()
+            out.position.x = p.x(); out.position.y = p.y(); out.position.z = p.z()
+            out.orientation.x = q.x(); out.orientation.y = q.y(); out.orientation.z = q.z(); out.orientation.w = q.w()
         }
     }
 

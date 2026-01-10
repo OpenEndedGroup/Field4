@@ -506,10 +506,10 @@ fun syncExecutionStatus() {
     documents.values.forEach { sessionInfo ->
         sessionInfo.boxes.values.forEach { box ->
             if (box.properties.get("_tombstone").isTrue()) return@forEach
-            
+
             // Check if the box has any active jobs
             val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
-            
+
             if (hasActiveJobs) {
                 // Send is-running messages for each strand that has been used
                 box.runGeneration.forEach { (strand, generation) ->
@@ -566,6 +566,7 @@ import afield.four.*
 import afield.four.modules.*
 import afield.four.targets.*
 import afield.four.buffers.*
+import afield.graphics.*
 import org.joml.*
 import kotlinx.coroutines.yield
 """

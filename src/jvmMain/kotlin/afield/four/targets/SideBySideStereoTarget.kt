@@ -9,17 +9,19 @@ import afield.four.targets.OpenXRHmdTarget.Hand
 import afield.four.texture.HasImageView
 import afield.four.texture.image_layout_transition
 import afield.four.util.Camera
+import afield.four.util.DownResult
+import afield.four.util.MouseEvent
+import afield.four.util.MouseEvents
+import afield.stdlib.times
 import afield.stdlib.vec
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import org.joml.plus
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkImageCopy
 import org.lwjgl.vulkan.VkImageSubresourceRange
-import afield.four.util.MouseEvents
-import afield.four.util.MouseEvent
-import afield.four.util.DownResult
 
 /**
  * Side-by-side stereo helper that renders two eye passes into a single RTT (left half / right half).
@@ -80,7 +82,7 @@ class SideBySideStereoTarget(
         private set
 
     // Simple mock controller fallback when OpenXR is absent.
-    private val mockController = ControllerState(active = true, poseValid = true, px = 0f, py = 0f, pz = 0f)
+    private val mockController = ControllerState(active = true, poseValid = true, position = vec(0.0, 0.0, 0.0))
 
     init {
         // Render eyes before the main swapchain if desired.
@@ -146,8 +148,8 @@ class SideBySideStereoTarget(
         val src = mockController
         out.active = src.active
         out.poseValid = src.poseValid
-        out.px = src.px; out.py = src.py; out.pz = src.pz
-        out.qx = src.qx; out.qy = src.qy; out.qz = src.qz; out.qw = src.qw
+        out.position = src.position
+        out.orientation = src.orientation
         out.selectPressed = src.selectPressed
         out.triggerValue = src.triggerValue; out.triggerPressed = src.triggerPressed
         out.squeezeValue = src.squeezeValue; out.squeezePressed = src.squeezePressed
@@ -164,17 +166,13 @@ class SideBySideStereoTarget(
         val cam = stereoCamera.base
         val origin = cam.at
         val forward = cam.forward
-        mockController.px = origin.x + forward.x * distanceMeters
-        mockController.py = origin.y + forward.y * distanceMeters
-        mockController.pz = origin.z + forward.z * distanceMeters
+        mockController.position = origin + forward * distanceMeters
     }
 
     /** Position the mock controller along an arbitrary ray (origin + direction * distance). */
     fun updateMockControllerFromRay(origin: Vector3f, direction: Vector3f, distanceMeters: Float = 1f) {
         val nx = direction.normalize(Vector3f())
-        mockController.px = origin.x + nx.x * distanceMeters
-        mockController.py = origin.y + nx.y * distanceMeters
-        mockController.pz = origin.z + nx.z * distanceMeters
+        mockController.position = origin + nx * distanceMeters
     }
 
     /** Attach mouse handlers to drive the mock controller. Re-registering replaces previous handlers. */
@@ -207,14 +205,18 @@ class SideBySideStereoTarget(
 
         val cam = stereoCamera.base
         val origin = cam.at
+
+        val halfFovRad = ((cam.p.fov * kotlin.math.PI / 180.0) * 0.5).toFloat()
+        val tanHalfFov = kotlin.math.tan(halfFovRad)
+        val aspect = cam.p.aspect.takeIf { it > 0f } ?: (w / h)
+
+        val scale = 2f // widen rays to match on-screen scale
         val dir = Vector3f(cam.forward)
-            .fma(ndcX, cam.right)
-            .fma(ndcY, cam.up)
+            .fma(-ndcX * aspect * tanHalfFov * scale, cam.right)
+            .fma(ndcY * tanHalfFov * scale, cam.up)
             .normalize()
 
-        mockController.px = origin.x + dir.x * distanceMeters
-        mockController.py = origin.y + dir.y * distanceMeters
-        mockController.pz = origin.z + dir.z * distanceMeters
+        mockController.position = origin + dir * distanceMeters
         mockController.poseValid = true
     }
 

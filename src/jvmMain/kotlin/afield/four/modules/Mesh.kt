@@ -313,6 +313,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
         t?.clean(false, cmd)
     }
 
+    private var tick = 0
     fun draw(inside: Module, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
         if (inside != this.inside.current)
             lprintln("warning,graphics", "mesh was built in a different module ${inside}!=${this.inside.current}")
@@ -385,7 +386,6 @@ class Mesh(var renderer: Renderer = fromContext()) {
                     pushConstantBuffer
                 )
             } else {
-//                println("this mesh doesn't have push constants")
             }
 
             val tt = t
@@ -401,13 +401,14 @@ class Mesh(var renderer: Renderer = fromContext()) {
                         0
                     )
                 } else {
+                    if (tick++%100==0)
                     lprintln("warning,graphics", "mesh has no triangles in it, but still has a triangle buffer? skipping drawIndexed call")
                 }
             } else {
                 if (numVert > 0) {
                     vkCmdDraw(cmd.vkCommandBuffer, numVert, instanceCount, 0, 0)
-//                    println(" mesh is not indexed (this is ... new?)")
                 } else {
+                    if (tick++%100==0)
                     lprintln("warning,graphics", "mesh has no verts in it, skipping draw call")
                 }
             }

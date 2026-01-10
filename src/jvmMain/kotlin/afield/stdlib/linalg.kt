@@ -127,6 +127,10 @@ infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
 
 operator fun Vector3fc.times(s: Number): Vector3f = mul(s.toFloat(), Vector3f())
 
+operator fun Number.times(s: Vector3fc): Vector3f = s.mul(this.toFloat(), Vector3f())
+operator fun Number.times(s: Vector2fc): Vector2f = s.mul(this.toFloat(), Vector2f())
+operator fun Number.times(s: Vector4fc): Vector4f = s.mul(this.toFloat(), Vector4f())
+
 fun Vector3dc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
 fun Vector2dc.isNaN() = this.x().isNaN() || this.y().isNaN()
 

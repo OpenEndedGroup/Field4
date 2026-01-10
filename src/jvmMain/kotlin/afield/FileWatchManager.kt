@@ -18,7 +18,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private val fileTimestamps = ConcurrentHashMap<String, Long>()
     private val internalSaveTimestamps = ConcurrentHashMap<String, Long>()
     // Grace window to treat shortly-after writes as internal saves, avoiding misfired "external" reloads
-    private val internalSaveGraceMs = 5000L
+    private val internalSaveGraceMs = 15000L
     private var watchJob: Job? = null
     private var isRunning = false
 

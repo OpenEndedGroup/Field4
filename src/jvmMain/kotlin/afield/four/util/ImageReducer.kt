@@ -66,6 +66,9 @@ class ImageReducer(
     private var workgroupCountX: Int = 0
     private var workgroupCountY: Int = 0
 
+    // Track per-swapchain-image readiness so we can fire callbacks one frame later (after the fence signals).
+    private var pendingCallbacksPerImage: BooleanArray? = null
+
     // Sampling resources when the source image is only sampled
     private var textureSampler: TextureSampler? = null
     private val textureProvider by lazy {
@@ -275,58 +278,66 @@ class ImageReducer(
         // Create second pass shader
         val secondPassShader = """
             #version 450
-            
+
             layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
-            
+
             layout(set = 0, binding = 0) buffer IntermediateResults {
                 float values[];
             } intermediate;
-            
+
             layout(set = 0, binding = 1) buffer FinalResults {
                 float values[];
             } results;
-            
+
             layout(push_constant) uniform PushConstants {
                 int totalWorkgroups;
                 int totalPixels;
             } pc;
-            
+
             shared vec4 localMin[256];
             shared vec4 localAvg[256];
             shared vec4 localMax[256];
-            
+
             void main() {
                 uint localIndex = gl_LocalInvocationID.x;
-                
-                // Load intermediate results or use neutral values
-                if (localIndex < pc.totalWorkgroups) {
-                    uint baseOffset = localIndex * 12;
-                    localMin[localIndex] = vec4(
+
+                // Accumulate across all workgroups in strides of 256 so we don't drop workgroups > local_size_x.
+                vec4 minVal = vec4(1e10);
+                vec4 avgVal = vec4(0.0);
+                vec4 maxVal = vec4(-1e10);
+
+                for (uint idx = localIndex; idx < uint(pc.totalWorkgroups); idx += 256) {
+                    uint baseOffset = idx * 12;
+                    vec4 minIn = vec4(
                         intermediate.values[baseOffset + 0],
                         intermediate.values[baseOffset + 1],
                         intermediate.values[baseOffset + 2],
                         intermediate.values[baseOffset + 3]
                     );
-                    localAvg[localIndex] = vec4(
+                    vec4 avgIn = vec4(
                         intermediate.values[baseOffset + 4],
                         intermediate.values[baseOffset + 5],
                         intermediate.values[baseOffset + 6],
                         intermediate.values[baseOffset + 7]
                     );
-                    localMax[localIndex] = vec4(
+                    vec4 maxIn = vec4(
                         intermediate.values[baseOffset + 8],
                         intermediate.values[baseOffset + 9],
                         intermediate.values[baseOffset + 10],
                         intermediate.values[baseOffset + 11]
                     );
-                } else {
-                    localMin[localIndex] = vec4(1e10);
-                    localAvg[localIndex] = vec4(0.0);
-                    localMax[localIndex] = vec4(-1e10);
+
+                    minVal = min(minVal, minIn);
+                    avgVal += avgIn;
+                    maxVal = max(maxVal, maxIn);
                 }
-                
+
+                localMin[localIndex] = minVal;
+                localAvg[localIndex] = avgVal;
+                localMax[localIndex] = maxVal;
+
                 barrier();
-                
+
                 // Parallel reduction in shared memory
                 for (uint stride = 128; stride > 0; stride >>= 1) {
                     if (localIndex < stride) {
@@ -336,23 +347,23 @@ class ImageReducer(
                     }
                     barrier();
                 }
-                
+
                 // Write final results
                 if (localIndex == 0) {
                     vec4 finalMin = localMin[0];
                     vec4 finalAvg = localAvg[0] / float(pc.totalPixels);
                     vec4 finalMax = localMax[0];
-                    
+
                     results.values[0] = finalMin.r;
                     results.values[1] = finalMin.g;
                     results.values[2] = finalMin.b;
                     results.values[3] = finalMin.a;
-                    
+
                     results.values[4] = finalAvg.r;
                     results.values[5] = finalAvg.g;
                     results.values[6] = finalAvg.b;
                     results.values[7] = finalAvg.a;
-                    
+
                     results.values[8] = finalMax.r;
                     results.values[9] = finalMax.g;
                     results.values[10] = finalMax.b;
@@ -462,6 +473,7 @@ class ImageReducer(
         firstPassModule = null
         secondPassModule = null
         textureSampler = null
+        pendingCallbacksPerImage = null
     }
 
     /**
@@ -545,14 +557,24 @@ class ImageReducer(
      * @param onResults Callback invoked with the reduction results after each frame
      */
     fun installInto(target: RenderTarget, name: String = "imageReducer", onResults: (ReductionResult) -> Unit) {
+        if (pendingCallbacksPerImage == null) {
+            pendingCallbacksPerImage = BooleanArray(renderer.numImages)
+        }
+        val pending = pendingCallbacksPerImage!!
+
         target.others[name] = Target { command, index ->
+            // The fence for this swapchain image is waited at the start of its next reuse,
+            // so when we are invoked for the same index again the previous reduction is complete.
+            if (index in pending.indices && pending[index] && resultBuffer != null) {
+                onResults(readResults())
+                pending[index] = false
+            }
+
             reduce(command)
             // Add barrier to ensure results are available before reading
             hostReadBarrier(command, resultBuffer)
-        }
 
-        // Note: Reading results immediately after reduce in the same command buffer
-        // requires careful synchronization. For best results, read on the next frame
-        // or use a fence to wait for completion.
+            if (index in pending.indices) pending[index] = true
+        }
     }
 }

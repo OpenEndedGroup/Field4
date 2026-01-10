@@ -76,7 +76,7 @@ class Camera(val renderer: Renderer = fromContext()) {
 
         val m = Matrix4f()
 
-        // Basis
+        // Basis (right, up, -forward) — camera looks down -Z in view space
         m[0 * 4 + 0] = s.x
         m[1 * 4 + 0] = s.y
         m[2 * 4 + 0] = s.z
@@ -85,14 +85,15 @@ class Camera(val renderer: Renderer = fromContext()) {
         m[1 * 4 + 1] = u.y
         m[2 * 4 + 1] = u.z
 
-        m[0 * 4 + 2] = f.x
-        m[1 * 4 + 2] = f.y
-        m[2 * 4 + 2] = f.z
+        m[0 * 4 + 2] = -f.x
+        m[1 * 4 + 2] = -f.y
+        m[2 * 4 + 2] = -f.z
 
         m[3 * 4 + 3] = 1f
 
         m.transpose()
-        m.translate(at)
+        // View = R^T * T(-eye)
+        m.translate(-at.x, -at.y, -at.z)
 
         return m
     }
