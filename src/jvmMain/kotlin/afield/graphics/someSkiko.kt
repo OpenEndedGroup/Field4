@@ -128,10 +128,7 @@ private fun FLine.applyFit(transform: FitTransform?): FLine {
     val scaled = this.transform { p ->
         vec((p.x + sx) * s, (p.y + sy) * s, p.z)
     }
-    return scaled.apply {
-        thickness = thickness?.times(s)
-        pointSize = pointSize?.times(s)
-    }
+    return scaled
 }
 
 fun outputTo(f: FLine, s: Canvas) {

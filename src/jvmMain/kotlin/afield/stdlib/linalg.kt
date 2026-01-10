@@ -122,6 +122,10 @@ operator fun Vector2f.remAssign(a: Vector2f) {
     this.set(a)
 }
 
+operator fun Quat.remAssign(a: Quat) {
+    this.set(a)
+}
+
 infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
 
 

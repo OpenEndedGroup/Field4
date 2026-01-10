@@ -149,7 +149,7 @@ class SideBySideStereoTarget(
         out.active = src.active
         out.poseValid = src.poseValid
         out.position = src.position
-        out.orientation = src.orientation
+        out.rotation = src.rotation
         out.selectPressed = src.selectPressed
         out.triggerValue = src.triggerValue; out.triggerPressed = src.triggerPressed
         out.squeezeValue = src.squeezeValue; out.squeezePressed = src.squeezePressed
