@@ -500,6 +500,29 @@ fun doResync() {
     }
 }
 
+fun syncExecutionStatus() {
+    // Periodically sync execution status for all boxes that are currently running
+    // This ensures the frontend stays in sync even after reconnections or state issues
+    documents.values.forEach { sessionInfo ->
+        sessionInfo.boxes.values.forEach { box ->
+            if (box.properties.get("_tombstone").isTrue()) return@forEach
+            
+            // Check each strand in runGeneration to see if it's actively running
+            box.runGeneration.forEach { (strand, generation) ->
+                // A box is running on this strand if:
+                // 1. The generation is >= 0 (has been started)
+                // 2. Has active jobs
+                val isRunning = generation >= 0 && box.jobs.any { !it.isCancelled && it.isActive }
+                
+                if (isRunning) {
+                    val message = Message("is-running").payload(IsRunning(box.id, true, generation, strand))
+                    sessionInfo.sessions.forEach { _send(it, message) }
+                }
+            }
+        }
+    }
+}
+
 fun Any?.isTrue(): Boolean {
     if (this == null) return false
     return when (this) {
