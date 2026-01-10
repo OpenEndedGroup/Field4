@@ -1,6 +1,6 @@
 # FLineGeometry - Comprehensive Computational Geometry Utilities
 
-`FLineGeometry` is a comprehensive utility object for performing computational geometry operations on `FLine` objects in Field4. It provides a rich set of 2D and 3D transformations, projections, intersections, decompositions, curvature analyses, and many other geometric algorithms.
+FLineGeometry provides comprehensive extension functions for FLine objects for computational geometry operations in Field4. It provides a rich set of 2D and 3D transformations, projections, intersections, decompositions, curvature analyses, and many other geometric algorithms.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@
 Rotate an FLine around a point in 2D (preserves Z coordinate):
 
 ```kotlin
-val rotated = FLineGeometry.rotate2D(myLine, angle = PI/4, center = vec(100f, 100f))
+val rotated = myLine.byRotating2D( angle = PI/4, center = vec(100f, 100f))
 ```
 
 Parameters:
@@ -41,13 +41,13 @@ Parameters:
 Scale uniformly from a center point:
 
 ```kotlin
-val scaled = FLineGeometry.scale2D(myLine, scale = 2.0f, center = vec(100f, 100f))
+val scaled = myLine.byScaling2D( scale = 2.0f, center = vec(100f, 100f))
 ```
 
 Scale with different X and Y factors:
 
 ```kotlin
-val stretched = FLineGeometry.scale2D(myLine, scaleX = 2.0f, scaleY = 0.5f, center = vec(100f, 100f))
+val stretched = myLine.byScaling2D( scaleX = 2.0f, scaleY = 0.5f, center = vec(100f, 100f))
 ```
 
 ### Reflection
@@ -55,7 +55,7 @@ val stretched = FLineGeometry.scale2D(myLine, scaleX = 2.0f, scaleY = 0.5f, cent
 Reflect across a line defined by two points:
 
 ```kotlin
-val reflected = FLineGeometry.reflect2D(myLine, 
+val reflected = myLine.byReflecting2D( 
     linePoint1 = vec(0f, 0f), 
     linePoint2 = vec(100f, 100f))
 ```
@@ -65,7 +65,7 @@ val reflected = FLineGeometry.reflect2D(myLine,
 Apply shear transformation:
 
 ```kotlin
-val sheared = FLineGeometry.shear2D(myLine, shearX = 0.5f, shearY = 0.2f)
+val sheared = myLine.byShearing2D( shearX = 0.5f, shearY = 0.2f)
 ```
 
 ## 3D Transformations
@@ -75,7 +75,7 @@ val sheared = FLineGeometry.shear2D(myLine, shearX = 0.5f, shearY = 0.2f)
 Rotate around an arbitrary 3D axis:
 
 ```kotlin
-val rotated = FLineGeometry.rotate3D(myLine, 
+val rotated = myLine.byRotating3D( 
     angle = PI/4, 
     axis = vec(1f, 1f, 0f),
     center = vec(100f, 100f, 0f))
@@ -86,7 +86,7 @@ val rotated = FLineGeometry.rotate3D(myLine,
 Project onto a plane with perspective:
 
 ```kotlin
-val projected = FLineGeometry.perspectiveProject(myLine,
+val projected = myLine.byPerspectiveProjecting(
     cameraPos = vec(0f, 0f, 100f),
     planePoint = vec(0f, 0f, 0f),
     planeNormal = vec(0f, 0f, 1f))
@@ -97,7 +97,7 @@ val projected = FLineGeometry.perspectiveProject(myLine,
 Project onto a plane orthographically:
 
 ```kotlin
-val projected = FLineGeometry.orthographicProject(myLine,
+val projected = myLine.byOrthographicProjecting(
     planePoint = vec(0f, 0f, 0f),
     planeNormal = vec(0f, 0f, 1f))
 ```
@@ -110,7 +110,7 @@ Create an offset curve at a specified distance:
 
 ```kotlin
 // Positive = right/outward, negative = left/inward
-val offset = FLineGeometry.offset(myLine, distance = 10f, samples = 50)
+val offset = myLine.byOffsetting( distance = 10f, samples = 50)
 ```
 
 ### Parallel Curves
@@ -118,7 +118,7 @@ val offset = FLineGeometry.offset(myLine, distance = 10f, samples = 50)
 Create parallel curves on both sides:
 
 ```kotlin
-val (leftOffset, rightOffset) = FLineGeometry.parallelCurves(myLine, distance = 10f, samples = 50)
+val (leftOffset, rightOffset) = myLine.byCreatingParallelCurves( distance = 10f, samples = 50)
 ```
 
 ## Curve Smoothing
@@ -128,7 +128,7 @@ val (leftOffset, rightOffset) = FLineGeometry.parallelCurves(myLine, distance = 
 Smooth a curve using Gaussian kernel:
 
 ```kotlin
-val smooth = FLineGeometry.gaussianSmooth(myLine, sigma = 2.0f, samples = 100)
+val smooth = myLine.byGaussianSmoothing( sigma = 2.0f, samples = 100)
 ```
 
 Parameters:
@@ -140,7 +140,7 @@ Parameters:
 Simplify using Ramer-Douglas-Peucker algorithm:
 
 ```kotlin
-val simplified = FLineGeometry.simplify(myLine, epsilon = 5.0f)
+val simplified = myLine.bySimplifying( epsilon = 5.0f)
 ```
 
 Parameters:
@@ -153,7 +153,7 @@ Parameters:
 Find all self-intersections in a curve:
 
 ```kotlin
-val intersections: List<Vec3> = FLineGeometry.findSelfIntersections(myLine, tolerance = 1f)
+val intersections: List<Vec3> = myLine.findSelfIntersections( tolerance = 1f)
 ```
 
 ### Curve-Curve Intersections
@@ -161,7 +161,7 @@ val intersections: List<Vec3> = FLineGeometry.findSelfIntersections(myLine, tole
 Find intersections between two curves:
 
 ```kotlin
-val intersections: List<Vec3> = FLineGeometry.findIntersections(line1, line2, tolerance = 1f)
+val intersections: List<Vec3> = line1.findIntersectionsWith(line2, tolerance = 1f)
 ```
 
 ## Curvature Analysis
@@ -171,7 +171,7 @@ val intersections: List<Vec3> = FLineGeometry.findIntersections(line1, line2, to
 Calculate curvature at regular intervals:
 
 ```kotlin
-val analysis: List<Pair<Vec3, Float>> = FLineGeometry.curvatureAnalysis(myLine, samples = 100)
+val analysis: List<Pair<Vec3, Float>> = myLine.curvatureAnalysis( samples = 100)
 // Each pair contains (position, curvature)
 ```
 
@@ -180,7 +180,7 @@ val analysis: List<Pair<Vec3, Float>> = FLineGeometry.curvatureAnalysis(myLine, 
 Sample with density proportional to curvature:
 
 ```kotlin
-val adaptive = FLineGeometry.curvatureAdaptiveSample(myLine, 
+val adaptive = myLine.byCurvatureAdaptiveSampling( 
     minSamples = 20, 
     maxSamples = 200)
 ```
@@ -190,7 +190,7 @@ val adaptive = FLineGeometry.curvatureAdaptiveSample(myLine,
 Find points of maximum curvature:
 
 ```kotlin
-val highCurvaturePoints: List<Vec3> = FLineGeometry.findHighCurvaturePoints(myLine, 
+val highCurvaturePoints: List<Vec3> = myLine.findHighCurvaturePoints( 
     threshold = 0.1f, 
     samples = 100)
 ```
@@ -202,7 +202,7 @@ val highCurvaturePoints: List<Vec3> = FLineGeometry.findHighCurvaturePoints(myLi
 Compute the 2D convex hull:
 
 ```kotlin
-val hull = FLineGeometry.convexHull2D(myLine)
+val hull = myLine.byConvexHull2D()
 ```
 
 ### Split at Inflections
@@ -210,7 +210,7 @@ val hull = FLineGeometry.convexHull2D(myLine)
 Split curve at points of inflection (where curvature changes sign):
 
 ```kotlin
-val pieces: List<FLine> = FLineGeometry.splitAtInflections(myLine)
+val pieces: List<FLine> = myLine.bySplittingAtInflections()
 ```
 
 ## Tangent and Normal Operations
@@ -220,7 +220,7 @@ val pieces: List<FLine> = FLineGeometry.splitAtInflections(myLine)
 Generate tangent lines at regular intervals:
 
 ```kotlin
-val tangents: List<FLine> = FLineGeometry.tangentLines(myLine, 
+val tangents: List<FLine> = myLine.byCreatingTangentLines( 
     samples = 20, 
     length = 10f)
 ```
@@ -230,7 +230,7 @@ val tangents: List<FLine> = FLineGeometry.tangentLines(myLine,
 Generate normal lines at regular intervals:
 
 ```kotlin
-val normals: List<FLine> = FLineGeometry.normalLines(myLine, 
+val normals: List<FLine> = myLine.byCreatingNormalLines( 
     samples = 20, 
     length = 10f)
 ```
@@ -240,7 +240,7 @@ val normals: List<FLine> = FLineGeometry.normalLines(myLine,
 Generate osculating circles (circles with same tangent and curvature):
 
 ```kotlin
-val circles: List<FLine> = FLineGeometry.osculatingCircles(myLine, 
+val circles: List<FLine> = myLine.byCreatingOsculatingCircles( 
     samples = 20, 
     circleSegments = 32)
 ```
@@ -252,25 +252,25 @@ These operations use Java2D Area for robust boolean operations:
 ### Union
 
 ```kotlin
-val combined = FLineGeometry.union(line1, line2)
+val combined = line1.byUnionWith(line2)
 ```
 
 ### Difference
 
 ```kotlin
-val difference = FLineGeometry.difference(line1, line2)  // line1 - line2
+val difference = line1.byDifferenceWith(line2)  // line1 - line2
 ```
 
 ### Intersection
 
 ```kotlin
-val intersection = FLineGeometry.intersection(line1, line2)
+val intersection = line1.byIntersectionWith(line2)
 ```
 
 ### Exclusive Or
 
 ```kotlin
-val xor = FLineGeometry.exclusiveOr(line1, line2)
+val xor = line1.byExclusiveOrWith(line2)
 ```
 
 ## Geometric Queries
@@ -280,7 +280,7 @@ val xor = FLineGeometry.exclusiveOr(line1, line2)
 Find the closest point on a curve to a given point:
 
 ```kotlin
-val (closestPoint, t) = FLineGeometry.closestPoint(myLine, point = vec(50f, 50f, 0f))
+val (closestPoint, t) = myLine.closestPoint( point = vec(50f, 50f, 0f))
 ```
 
 ### Winding Number
@@ -288,7 +288,7 @@ val (closestPoint, t) = FLineGeometry.closestPoint(myLine, point = vec(50f, 50f,
 Calculate winding number (for point-in-polygon test):
 
 ```kotlin
-val winding = FLineGeometry.windingNumber(myLine, point = vec(50f, 50f))
+val winding = myLine.windingNumber( point = vec(50f, 50f))
 // winding > 0 means point is inside (if curve is closed)
 ```
 
@@ -297,7 +297,7 @@ val winding = FLineGeometry.windingNumber(myLine, point = vec(50f, 50f))
 Test if a point is inside a closed curve:
 
 ```kotlin
-val inside = FLineGeometry.contains(myLine, point = vec(50f, 50f))
+val inside = myLine.contains( point = vec(50f, 50f))
 ```
 
 ### Signed Area
@@ -305,7 +305,7 @@ val inside = FLineGeometry.contains(myLine, point = vec(50f, 50f))
 Calculate the signed area of a 2D closed curve:
 
 ```kotlin
-val area = FLineGeometry.signedArea2D(myLine)
+val area = myLine.signedArea2D()
 // Positive = counter-clockwise, negative = clockwise
 ```
 
@@ -314,7 +314,7 @@ val area = FLineGeometry.signedArea2D(myLine)
 Calculate the centroid of a 2D closed curve:
 
 ```kotlin
-val center: Vec2 = FLineGeometry.centroid2D(myLine)
+val center: Vec2 = myLine.centroid2D()
 ```
 
 ## Path Operations
@@ -324,7 +324,7 @@ val center: Vec2 = FLineGeometry.centroid2D(myLine)
 Reverse the direction of a curve:
 
 ```kotlin
-val reversed = FLineGeometry.reverse(myLine)
+val reversed = myLine.byReversing()
 ```
 
 ### Concatenate
@@ -332,7 +332,7 @@ val reversed = FLineGeometry.reverse(myLine)
 Concatenate multiple curves into one:
 
 ```kotlin
-val combined = FLineGeometry.concatenate(line1, line2, line3)
+val combined = concatenate(line1, line2, line3)
 ```
 
 ### Blend
@@ -340,7 +340,7 @@ val combined = FLineGeometry.concatenate(line1, line2, line3)
 Blend between two curves:
 
 ```kotlin
-val blended = FLineGeometry.blend(line1, line2, t = 0.5f)
+val blended = line1.byBlendingWith(line2, t = 0.5f)
 // t=0 gives line1, t=1 gives line2, t=0.5 gives halfway blend
 ```
 
@@ -349,7 +349,7 @@ val blended = FLineGeometry.blend(line1, line2, t = 0.5f)
 Extract a sub-curve between two t parameters:
 
 ```kotlin
-val subCurve = FLineGeometry.extract(myLine, tStart = 1.5f, tEnd = 3.2f)
+val subCurve = myLine.byExtracting( tStart = 1.5f, tEnd = 3.2f)
 ```
 
 ## Advanced Curve Fitting
@@ -359,7 +359,7 @@ val subCurve = FLineGeometry.extract(myLine, tStart = 1.5f, tEnd = 3.2f)
 Fit a circle to points on the curve:
 
 ```kotlin
-val (center, radius, error) = FLineGeometry.fitCircle(myLine, samples = 20)
+val (center, radius, error) = myLine.fitCircle( samples = 20)
 ```
 
 Returns:
@@ -372,7 +372,7 @@ Returns:
 Subdivide using De Casteljau's algorithm:
 
 ```kotlin
-val subdivided = FLineGeometry.subdivide(myLine, levels = 2)
+val subdivided = myLine.bySubdividing( levels = 2)
 ```
 
 ### Arc-Length Parameterization
@@ -380,7 +380,7 @@ val subdivided = FLineGeometry.subdivide(myLine, levels = 2)
 Resample with equal spacing along length:
 
 ```kotlin
-val resampled = FLineGeometry.arcLengthParameterize(myLine, spacing = 5.0f)
+val resampled = myLine.byArcLengthParameterizing( spacing = 5.0f)
 ```
 
 ## Pattern Generation
@@ -390,7 +390,7 @@ val resampled = FLineGeometry.arcLengthParameterize(myLine, spacing = 5.0f)
 Create a dashed version of the curve:
 
 ```kotlin
-val dashes: List<FLine> = FLineGeometry.dash(myLine, 
+val dashes: List<FLine> = myLine.byDashing( 
     dashLength = 10f, 
     gapLength = 5f)
 ```
@@ -400,7 +400,7 @@ val dashes: List<FLine> = FLineGeometry.dash(myLine,
 Create a wave pattern along the curve:
 
 ```kotlin
-val wave = FLineGeometry.wave(myLine, 
+val wave = myLine.byWaving( 
     amplitude = 5f, 
     frequency = 2f, 
     samples = 100)
@@ -411,7 +411,7 @@ val wave = FLineGeometry.wave(myLine,
 Create a zigzag pattern:
 
 ```kotlin
-val zigzag = FLineGeometry.zigzag(myLine, 
+val zigzag = myLine.byZigzagging( 
     amplitude = 5f, 
     segments = 20)
 ```
@@ -424,7 +424,7 @@ Create a circular arc in any 3D plane:
 
 ```kotlin
 val line = FLine()
-FLineGeometry.appendArc3D(
+line.byAppendingArc3D(
     line,
     center = vec(0f, 0f, 0f),
     radius = 50f,
@@ -440,7 +440,7 @@ FLineGeometry.appendArc3D(
 Create an arc that passes through three 3D points:
 
 ```kotlin
-val arc = FLineGeometry.arcThrough3Points(
+val arc = arcThrough3Points(
     p1 = vec(0f, 0f, 0f),
     p2 = vec(50f, 50f, 0f),
     p3 = vec(100f, 0f, 0f),
@@ -455,7 +455,7 @@ Append a quadratic Bezier curve (converted to cubic internally):
 ```kotlin
 val line = FLine()
 line.moveTo(0f, 0f)
-FLineGeometry.appendQuadratic(
+line.byAppendingQuadratic(
     line,
     controlPoint = vec(50f, 100f, 0f),
     endPoint = vec(100f, 0f, 0f)
@@ -469,7 +469,7 @@ Create an arc constrained by tangent directions:
 ```kotlin
 val line = FLine()
 line.moveTo(0f, 0f)
-FLineGeometry.appendArcByTangent(
+line.byAppendingArcByTangent(
     line,
     endPoint = vec(100f, 0f, 0f),
     startTangent = vec(1f, 1f, 0f),
@@ -485,7 +485,7 @@ FLineGeometry.appendArcByTangent(
 Apply standard Gaussian (random) noise:
 
 ```kotlin
-val noisy = FLineGeometry.noiseGaussian(
+val noisy = byGaussianNoising(
     myLine,
     amplitude = 5f,
     seed = 12345L,
@@ -498,7 +498,7 @@ val noisy = FLineGeometry.noiseGaussian(
 Apply direction-sensitive noise primarily along curve normals:
 
 ```kotlin
-val noisy = FLineGeometry.noiseOrientedGaussian(
+val noisy = byOrientedGaussianNoising(
     myLine,
     normalAmplitude = 10f,    // Noise perpendicular to curve
     tangentAmplitude = 2f,    // Noise along curve direction
@@ -512,7 +512,7 @@ val noisy = FLineGeometry.noiseOrientedGaussian(
 Apply smooth, coherent Perlin noise:
 
 ```kotlin
-val noisy = FLineGeometry.noisePerlin(
+val noisy = byPerlinNoising(
     myLine,
     amplitude = 10f,
     frequency = 1f,           // Higher = more variation
@@ -529,7 +529,7 @@ val noisy = FLineGeometry.noisePerlin(
 Add two curves point-wise:
 
 ```kotlin
-val sum = FLineGeometry.add(curve1, curve2, samples = 100)
+val sum = curve1.byAddingWith(curve2, samples = 100)
 ```
 
 ### Subtraction
@@ -537,7 +537,7 @@ val sum = FLineGeometry.add(curve1, curve2, samples = 100)
 Subtract one curve from another:
 
 ```kotlin
-val difference = FLineGeometry.subtract(curve1, curve2, samples = 100)
+val difference = curve1.bySubtractingWith(curve2, samples = 100)
 ```
 
 ### Multiplication
@@ -545,7 +545,7 @@ val difference = FLineGeometry.subtract(curve1, curve2, samples = 100)
 Multiply curve coordinates component-wise:
 
 ```kotlin
-val product = FLineGeometry.multiply(curve1, curve2, samples = 100)
+val product = curve1.byMultiplyingWith(curve2, samples = 100)
 ```
 
 ### Projection
@@ -553,7 +553,7 @@ val product = FLineGeometry.multiply(curve1, curve2, samples = 100)
 Project one curve onto another (find closest points):
 
 ```kotlin
-val projected = FLineGeometry.projectOnto(curve1, curve2, samples = 100)
+val projected = curve1.byProjectingOnto(curve2, samples = 100)
 ```
 
 ### Geometric Inversion
@@ -561,7 +561,7 @@ val projected = FLineGeometry.projectOnto(curve1, curve2, samples = 100)
 Invert a curve through a circle (conformal mapping):
 
 ```kotlin
-val inverted = FLineGeometry.invert(
+val inverted = byInverting(
     myLine,
     center = vec(50f, 50f),
     radius = 100f,
@@ -578,13 +578,13 @@ The parameterization system allows any numeric parameter to vary along a curve a
 #### Constant Parameter
 
 ```kotlin
-val constant = FLineGeometry.ConstantParameter(value = 10f)
+val constant = ConstantParameter(value = 10f)
 ```
 
 #### Linear Parameter
 
 ```kotlin
-val linear = FLineGeometry.LinearParameter(start = 5f, end = 20f)
+val linear = LinearParameter(start = 5f, end = 20f)
 ```
 
 #### Curve-Driven Parameter
@@ -597,7 +597,7 @@ val controlCurve = FLine().apply {
     lineTo(50f, 20f)
     lineTo(100f, 5f)
 }
-val curveParam = FLineGeometry.CurveParameter(
+val curveParam = CurveParameter(
     curve = controlCurve,
     scale = 1f,
     offset = 0f
@@ -609,7 +609,7 @@ val curveParam = FLineGeometry.CurveParameter(
 Vary parameter based on distance from a point:
 
 ```kotlin
-val distParam = FLineGeometry.DistanceParameter(
+val distParam = DistanceParameter(
     point = vec(50f, 50f, 0f),
     minValue = 5f,
     maxValue = 20f,
@@ -622,7 +622,7 @@ val distParam = FLineGeometry.DistanceParameter(
 Vary parameter based on local curvature:
 
 ```kotlin
-val curvParam = FLineGeometry.CurvatureParameter(
+val curvParam = CurvatureParameter(
     line = myLine,
     minValue = 2f,
     maxValue = 10f,
@@ -633,7 +633,7 @@ val curvParam = FLineGeometry.CurvatureParameter(
 #### Sine Wave Parameter
 
 ```kotlin
-val sineParam = FLineGeometry.SineParameter(
+val sineParam = SineParameter(
     amplitude = 5f,
     frequency = 2f,
     phase = 0f,
@@ -646,7 +646,7 @@ val sineParam = FLineGeometry.SineParameter(
 Create custom parameter function:
 
 ```kotlin
-val customParam = FLineGeometry.parameterFromLambda { t, pos ->
+val customParam = parameterFromLambda { t, pos ->
     // Custom logic based on t (0 to 1) and position
     10f + 5f * sin(t * PI.toFloat()) * (1f + pos.x / 100f)
 }
@@ -659,9 +659,9 @@ val customParam = FLineGeometry.parameterFromLambda { t, pos ->
 Offset distance varies along the curve:
 
 ```kotlin
-val offset = FLineGeometry.offsetParameterized(
+val offset = byOffsettingParameterized(
     myLine,
-    distanceFunc = FLineGeometry.SineParameter(
+    distanceFunc = SineParameter(
         amplitude = 10f,
         frequency = 2f
     ),
@@ -674,9 +674,9 @@ val offset = FLineGeometry.offsetParameterized(
 Noise amplitude varies along the curve:
 
 ```kotlin
-val noisy = FLineGeometry.noiseParameterized(
+val noisy = byNoisingParameterized(
     myLine,
-    amplitudeFunc = FLineGeometry.LinearParameter(
+    amplitudeFunc = LinearParameter(
         start = 1f,
         end = 10f
     ),
@@ -690,9 +690,9 @@ val noisy = FLineGeometry.noiseParameterized(
 Scale factor varies along the curve:
 
 ```kotlin
-val scaled = FLineGeometry.scaleParameterized(
+val scaled = byScalingParameterized(
     myLine,
-    scaleFunc = FLineGeometry.CurvatureParameter(
+    scaleFunc = CurvatureParameter(
         line = myLine,
         minValue = 0.5f,
         maxValue = 2f
@@ -716,9 +716,9 @@ val base = FLine().apply {
 }
 
 // Apply offset that increases with curvature
-val offset = FLineGeometry.offsetParameterized(
+val offset = byOffsettingParameterized(
     base,
-    FLineGeometry.CurvatureParameter(
+    CurvatureParameter(
         line = base,
         minValue = 2f,
         maxValue = 15f
@@ -726,9 +726,9 @@ val offset = FLineGeometry.offsetParameterized(
 )
 
 // Add noise that decreases along the curve
-val final = FLineGeometry.noiseParameterized(
+val final = byNoisingParameterized(
     offset,
-    FLineGeometry.LinearParameter(start = 10f, end = 0f)
+    LinearParameter(start = 10f, end = 0f)
 )
 ```
 
@@ -747,23 +747,23 @@ val square = FLine().apply {
 }
 
 // Transform it
-val rotated = FLineGeometry.rotate2D(square, PI.toFloat() / 4, center = vec(50f, 50f))
-val scaled = FLineGeometry.scale2D(rotated, 1.5f, center = vec(50f, 50f))
+val rotated = square.byRotating2D( PI.toFloat() / 4, center = vec(50f, 50f))
+val scaled = rotated.byScaling2D( 1.5f, center = vec(50f, 50f))
 
 // Create an offset version
-val offset = FLineGeometry.offset(scaled, distance = 10f)
+val offset = scaled.byOffsetting( distance = 10f)
 
 // Get curvature information
-val curvatures = FLineGeometry.curvatureAnalysis(scaled, samples = 50)
+val curvatures = scaled.curvatureAnalysis( samples = 50)
 
 // Find centroid
-val center = FLineGeometry.centroid2D(scaled)
+val center = scaled.centroid2D()
 
 // Create tangent lines
-val tangents = FLineGeometry.tangentLines(scaled, samples = 10, length = 20f)
+val tangents = scaled.byCreatingTangentLines( samples = 10, length = 20f)
 
 // Create a smoothed version
-val smoothed = FLineGeometry.gaussianSmooth(scaled, sigma = 2.0f, samples = 100)
+val smoothed = scaled.byGaussianSmoothing( sigma = 2.0f, samples = 100)
 ```
 
 ## Notes
@@ -782,3 +782,4 @@ The utility uses:
 - Java2D Area for robust boolean operations
 - JOML (Java OpenGL Math Library) for vector math
 - Custom implementations for algorithms like convex hull, simplification, etc.
+
