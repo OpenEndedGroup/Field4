@@ -2,16 +2,16 @@
 
 ## Overview
 
-This PR adds a comprehensive computational geometry utility for FLine operations in Field4. The `FLineGeometry` object provides over 45 functions for transforming, analyzing, and manipulating curves and shapes.
+This PR adds a comprehensive computational geometry utility for FLine operations in Field4. The `FLineGeometry` object provides over 70 functions for transforming, analyzing, and manipulating curves and shapes, including advanced features like parameterization, noise generation, and arc construction.
 
-## Files Added
+## Files Added/Modified
 
-1. **src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt** (1,105 lines)
+1. **src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt** (1,886 lines)
    - Main utility object with all computational geometry functions
-   - Well-organized into logical sections
+   - Well-organized into 17 logical sections
    - Comprehensive KDoc documentation
 
-2. **docs/FLineGeometry.md** (documentation)
+2. **docs/FLineGeometry.md** (documentation - updated)
    - Complete usage guide with examples for every function
    - Organized by category for easy navigation
    - Includes parameter descriptions and return types
@@ -21,7 +21,7 @@ This PR adds a comprehensive computational geometry utility for FLine operations
    - Covers common use cases and combinations of functions
    - Includes a comprehensive demo function
 
-## Feature Categories (45+ functions)
+## Feature Categories (70+ functions)
 
 ### 2D Transformations (5 functions)
 - `rotate2D()` - Rotate around a point
@@ -91,6 +91,38 @@ This PR adds a comprehensive computational geometry utility for FLine operations
 - `wave()` - Sine wave patterns
 - `zigzag()` - Zigzag patterns
 
+### Arcs and Higher-Order Curves (4 functions)
+- `appendArc3D()` - Circular arcs in 3D with custom plane normal
+- `arcThrough3Points()` - Create arc passing through three 3D points
+- `appendQuadratic()` - Quadratic Bezier curves (converted to cubic)
+- `appendArcByTangent()` - Arcs constrained by tangent directions
+
+### Noise Utilities (3 functions + Perlin implementation)
+- `noiseGaussian()` - Standard Gaussian (random) noise
+- `noiseOrientedGaussian()` - Direction-sensitive noise along normals/tangents
+- `noisePerlin()` - Multi-octave Perlin noise for coherent variation
+- Helper: `PerlinNoise` class with octave support
+
+### Curve Combination (5 functions)
+- `add()` - Point-wise addition of two curves
+- `subtract()` - Point-wise subtraction
+- `multiply()` - Component-wise multiplication of coordinates
+- `projectOnto()` - Project one curve onto another (closest points)
+- `invert()` - Geometric inversion through a circle (conformal mapping)
+
+### Parameterization System (6 parameter types + 4 utilities)
+- `ParameterFunction` interface for varying parameters along curves
+- `ConstantParameter` - Fixed value
+- `LinearParameter` - Linear interpolation from start to end
+- `CurveParameter` - Driven by another curve's Y coordinate
+- `DistanceParameter` - Based on distance from a point
+- `CurvatureParameter` - Based on local curvature
+- `SineParameter` - Sine wave variation
+- `offsetParameterized()` - Variable offset along curve
+- `noiseParameterized()` - Variable noise amplitude
+- `scaleParameterized()` - Variable scaling factor
+- `parameterFromLambda()` - Create custom parameter functions
+
 ## Technical Details
 
 ### Dependencies
@@ -111,9 +143,13 @@ This PR adds a comprehensive computational geometry utility for FLine operations
 - **Ramer-Douglas-Peucker**: For curve simplification
 - **Graham Scan**: For 2D convex hull
 - **Gaussian Kernel**: For smoothing
+- **Box-Muller Transform**: For Gaussian noise generation
+- **Perlin Noise**: Multi-octave coherent noise
 - **Least Squares**: For circle fitting
 - **De Casteljau**: For curve subdivision
 - **Winding Number**: For point-in-polygon testing
+- **Geometric Inversion**: Conformal mapping through circles
+- **3D Circle Fitting**: For arcs through three points
 
 ## Usage Examples
 
@@ -140,6 +176,43 @@ val wave = FLineGeometry.wave(myLine, amplitude = 5f, frequency = 2f)
 val dashed = FLineGeometry.dash(myLine, dashLength = 10f, gapLength = 5f)
 ```
 
+### Arc construction:
+```kotlin
+val arc = FLineGeometry.arcThrough3Points(
+    p1 = vec(0f, 0f, 0f),
+    p2 = vec(50f, 50f, 0f),
+    p3 = vec(100f, 0f, 0f)
+)
+```
+
+### Noise application:
+```kotlin
+val noisy = FLineGeometry.noisePerlin(myLine, amplitude = 10f, frequency = 1f, octaves = 4)
+val oriented = FLineGeometry.noiseOrientedGaussian(myLine, normalAmplitude = 10f)
+```
+
+### Curve combination:
+```kotlin
+val sum = FLineGeometry.add(curve1, curve2)
+val projected = FLineGeometry.projectOnto(curve1, curve2)
+val inverted = FLineGeometry.invert(myLine, center = vec(50f, 50f), radius = 100f)
+```
+
+### Parameterization:
+```kotlin
+// Offset that varies with curvature
+val offset = FLineGeometry.offsetParameterized(
+    myLine,
+    FLineGeometry.CurvatureParameter(myLine, minValue = 2f, maxValue = 15f)
+)
+
+// Noise that fades from start to end
+val noisy = FLineGeometry.noiseParameterized(
+    myLine,
+    FLineGeometry.LinearParameter(start = 10f, end = 0f)
+)
+```
+
 ## Testing Status
 
 Due to a network connectivity issue with the Gradle jvmWrapper plugin (attempts to download from corretto.aws which is unreachable in this environment), the code could not be compiled during development. However:
@@ -154,15 +227,15 @@ The code should compile successfully in a normal development environment with ne
 ## Future Enhancements
 
 Potential additions for future work:
-- Bézier curve fitting to point clouds
-- Fractal generation (L-systems, Koch curves)
+- Additional spline types (Catmull-Rom, B-splines)
+- NURBS support
 - Voronoi diagram generation
 - Delaunay triangulation
-- Catmull-Rom spline interpolation
-- NURBS support
 - More projection types (spherical, cylindrical)
 - Curve-surface intersections
 - Geodesic calculations on surfaces
+- Fourier-based shape analysis
+- Fractal curve generation (L-systems, Koch curves)
 
 ## Integration
 

@@ -17,6 +17,10 @@
 - [Path Operations](#path-operations)
 - [Advanced Curve Fitting](#advanced-curve-fitting)
 - [Pattern Generation](#pattern-generation)
+- [Arcs and Higher-Order Curves](#arcs-and-higher-order-curves)
+- [Noise Utilities](#noise-utilities)
+- [Curve Combination](#curve-combination)
+- [Parameterization System](#parameterization-system)
 
 ## 2D Transformations
 
@@ -410,6 +414,322 @@ Create a zigzag pattern:
 val zigzag = FLineGeometry.zigzag(myLine, 
     amplitude = 5f, 
     segments = 20)
+```
+
+## Arcs and Higher-Order Curves
+
+### Circular Arc in 3D
+
+Create a circular arc in any 3D plane:
+
+```kotlin
+val line = FLine()
+FLineGeometry.appendArc3D(
+    line,
+    center = vec(0f, 0f, 0f),
+    radius = 50f,
+    startAngle = 0f,
+    endAngle = PI.toFloat(),
+    normal = vec(0f, 0f, 1f),  // XY plane
+    segments = 32
+)
+```
+
+### Arc Through Three Points
+
+Create an arc that passes through three 3D points:
+
+```kotlin
+val arc = FLineGeometry.arcThrough3Points(
+    p1 = vec(0f, 0f, 0f),
+    p2 = vec(50f, 50f, 0f),
+    p3 = vec(100f, 0f, 0f),
+    segments = 32
+)
+```
+
+### Quadratic Bezier Curve
+
+Append a quadratic Bezier curve (converted to cubic internally):
+
+```kotlin
+val line = FLine()
+line.moveTo(0f, 0f)
+FLineGeometry.appendQuadratic(
+    line,
+    controlPoint = vec(50f, 100f, 0f),
+    endPoint = vec(100f, 0f, 0f)
+)
+```
+
+### Arc by Tangent
+
+Create an arc constrained by tangent directions:
+
+```kotlin
+val line = FLine()
+line.moveTo(0f, 0f)
+FLineGeometry.appendArcByTangent(
+    line,
+    endPoint = vec(100f, 0f, 0f),
+    startTangent = vec(1f, 1f, 0f),
+    endTangent = vec(1f, -1f, 0f),
+    segments = 32
+)
+```
+
+## Noise Utilities
+
+### Gaussian Noise
+
+Apply standard Gaussian (random) noise:
+
+```kotlin
+val noisy = FLineGeometry.noiseGaussian(
+    myLine,
+    amplitude = 5f,
+    seed = 12345L,
+    samples = 100
+)
+```
+
+### Oriented Gaussian Noise
+
+Apply direction-sensitive noise primarily along curve normals:
+
+```kotlin
+val noisy = FLineGeometry.noiseOrientedGaussian(
+    myLine,
+    normalAmplitude = 10f,    // Noise perpendicular to curve
+    tangentAmplitude = 2f,    // Noise along curve direction
+    seed = 12345L,
+    samples = 100
+)
+```
+
+### Perlin Noise
+
+Apply smooth, coherent Perlin noise:
+
+```kotlin
+val noisy = FLineGeometry.noisePerlin(
+    myLine,
+    amplitude = 10f,
+    frequency = 1f,           // Higher = more variation
+    octaves = 4,              // More = more detail
+    seed = 12345L,
+    samples = 100
+)
+```
+
+## Curve Combination
+
+### Addition
+
+Add two curves point-wise:
+
+```kotlin
+val sum = FLineGeometry.add(curve1, curve2, samples = 100)
+```
+
+### Subtraction
+
+Subtract one curve from another:
+
+```kotlin
+val difference = FLineGeometry.subtract(curve1, curve2, samples = 100)
+```
+
+### Multiplication
+
+Multiply curve coordinates component-wise:
+
+```kotlin
+val product = FLineGeometry.multiply(curve1, curve2, samples = 100)
+```
+
+### Projection
+
+Project one curve onto another (find closest points):
+
+```kotlin
+val projected = FLineGeometry.projectOnto(curve1, curve2, samples = 100)
+```
+
+### Geometric Inversion
+
+Invert a curve through a circle (conformal mapping):
+
+```kotlin
+val inverted = FLineGeometry.invert(
+    myLine,
+    center = vec(50f, 50f),
+    radius = 100f,
+    samples = 100
+)
+```
+
+## Parameterization System
+
+The parameterization system allows any numeric parameter to vary along a curve according to different rules.
+
+### Parameter Types
+
+#### Constant Parameter
+
+```kotlin
+val constant = FLineGeometry.ConstantParameter(value = 10f)
+```
+
+#### Linear Parameter
+
+```kotlin
+val linear = FLineGeometry.LinearParameter(start = 5f, end = 20f)
+```
+
+#### Curve-Driven Parameter
+
+Use another curve's Y coordinate to drive a parameter:
+
+```kotlin
+val controlCurve = FLine().apply {
+    moveTo(0f, 5f)
+    lineTo(50f, 20f)
+    lineTo(100f, 5f)
+}
+val curveParam = FLineGeometry.CurveParameter(
+    curve = controlCurve,
+    scale = 1f,
+    offset = 0f
+)
+```
+
+#### Distance-Based Parameter
+
+Vary parameter based on distance from a point:
+
+```kotlin
+val distParam = FLineGeometry.DistanceParameter(
+    point = vec(50f, 50f, 0f),
+    minValue = 5f,
+    maxValue = 20f,
+    maxDistance = 100f
+)
+```
+
+#### Curvature-Based Parameter
+
+Vary parameter based on local curvature:
+
+```kotlin
+val curvParam = FLineGeometry.CurvatureParameter(
+    line = myLine,
+    minValue = 2f,
+    maxValue = 10f,
+    maxCurvature = 0.5f
+)
+```
+
+#### Sine Wave Parameter
+
+```kotlin
+val sineParam = FLineGeometry.SineParameter(
+    amplitude = 5f,
+    frequency = 2f,
+    phase = 0f,
+    offset = 10f
+)
+```
+
+#### Lambda Parameter
+
+Create custom parameter function:
+
+```kotlin
+val customParam = FLineGeometry.parameterFromLambda { t, pos ->
+    // Custom logic based on t (0 to 1) and position
+    10f + 5f * sin(t * PI.toFloat()) * (1f + pos.x / 100f)
+}
+```
+
+### Applying Parameterized Operations
+
+#### Parameterized Offset
+
+Offset distance varies along the curve:
+
+```kotlin
+val offset = FLineGeometry.offsetParameterized(
+    myLine,
+    distanceFunc = FLineGeometry.SineParameter(
+        amplitude = 10f,
+        frequency = 2f
+    ),
+    samples = 100
+)
+```
+
+#### Parameterized Noise
+
+Noise amplitude varies along the curve:
+
+```kotlin
+val noisy = FLineGeometry.noiseParameterized(
+    myLine,
+    amplitudeFunc = FLineGeometry.LinearParameter(
+        start = 1f,
+        end = 10f
+    ),
+    seed = 12345L,
+    samples = 100
+)
+```
+
+#### Parameterized Scaling
+
+Scale factor varies along the curve:
+
+```kotlin
+val scaled = FLineGeometry.scaleParameterized(
+    myLine,
+    scaleFunc = FLineGeometry.CurvatureParameter(
+        line = myLine,
+        minValue = 0.5f,
+        maxValue = 2f
+    ),
+    center = vec(50f, 50f),
+    samples = 100
+)
+```
+
+### Combined Example
+
+Combine multiple parameterized operations:
+
+```kotlin
+// Create a wavy line
+val base = FLine().apply {
+    moveTo(0f, 50f)
+    for (i in 1..100) {
+        lineTo(i.toFloat(), 50f + sin(i / 10f) * 20f)
+    }
+}
+
+// Apply offset that increases with curvature
+val offset = FLineGeometry.offsetParameterized(
+    base,
+    FLineGeometry.CurvatureParameter(
+        line = base,
+        minValue = 2f,
+        maxValue = 15f
+    )
+)
+
+// Add noise that decreases along the curve
+val final = FLineGeometry.noiseParameterized(
+    offset,
+    FLineGeometry.LinearParameter(start = 10f, end = 0f)
+)
 ```
 
 ## Example Usage
