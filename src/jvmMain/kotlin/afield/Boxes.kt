@@ -561,11 +561,12 @@ import afield.*
 import afield.stdlib.*
 import afield.Box
 import afield.four.util.*
-import afield.graphics.FLine
+import afield.graphics.*
 import afield.four.*
 import afield.four.modules.*
 import afield.four.targets.*
 import afield.four.buffers.*
+import afield.four.texture.*
 import afield.graphics.*
 import org.joml.*
 import kotlinx.coroutines.yield

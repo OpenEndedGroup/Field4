@@ -89,7 +89,7 @@ fun trianglesOut(
                         // this can't possibly work with cubic interpolations, we need to map index back to drawing instruction
                         cd.put(splits[i].second[4 * it + 0])
                         cd.put(splits[i].second[4 * it + 1])
-                        cd.put(splits[i].second[4 * it + 2])
+                        cd.put(splits[i].second[4 * it + 2 ])
                         cd.put(splits[i].second[4 * it + 3])
                         num++
                     }
