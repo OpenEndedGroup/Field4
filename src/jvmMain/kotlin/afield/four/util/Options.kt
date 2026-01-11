@@ -3,6 +3,7 @@ package afield.four.util
 import org.lwjgl.system.Configuration
 import org.lwjgl.vulkan.VK10.VK_FORMAT_D24_UNORM_S8_UINT
 import org.lwjgl.vulkan.VK10.VK_FORMAT_D32_SFLOAT_S8_UINT
+import java.io.File
 
 object Options {
 
@@ -23,10 +24,10 @@ object Options {
     val useVulkanSDK = true
     val robustness = false
     val profiling = false
-    val enableVR = true && !isMac
+    var enableVR = true && !isMac
 
     fun doVulkanSDK() {
-        if (useVulkanSDK && isMac) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
+        if (useVulkanSDK && isMac && File(vulkan_library_name).exists()) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
 
         if (isWindows) // too many vulkan extensions on latest nvidia!!
             Configuration.STACK_SIZE.set(512)

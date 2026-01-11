@@ -124,6 +124,37 @@ function disclosureInterface(container) {
                 }
         }
 
+        function removeAllExcept(id) {
+                const ids = Array.from(disclosures.keys());
+                for (const otherId of ids) {
+                        if (otherId !== id) {
+                                remove(otherId);
+                        }
+                }
+        }
+
+        function clearRemoveIndicators() {
+                for (const d of disclosures.values()) {
+                        d.arr.classList.remove("remove-mode");
+                }
+        }
+
+        function updateRemoveIndicators(id, event) {
+                if (event.altKey && event.shiftKey) {
+                        for (const [otherId, d] of disclosures.entries()) {
+                                d.arr.classList.toggle("remove-mode", otherId !== id);
+                        }
+                        return;
+                }
+                if (event.altKey) {
+                        for (const [otherId, d] of disclosures.entries()) {
+                                d.arr.classList.toggle("remove-mode", otherId === id);
+                        }
+                        return;
+                }
+                clearRemoveIndicators();
+        }
+
         function upsertDisclosure(id, title, content) {
                 let d = disclosures.get(id);
                 if (!d) {
@@ -142,29 +173,22 @@ function disclosureInterface(container) {
                         cw.className = "disclosure-content";
                         cw.innerHTML = content || "";
 
-                        // Handle arrow hover effects for alt key
-                        arr.addEventListener("mouseenter", (e) => {
-                                if (e.altKey) {
-                                        arr.classList.add("remove-mode");
-                                }
-                        });
+                        const updateIndicators = (e) => {
+                                updateRemoveIndicators(id, e);
+                        };
 
-                        arr.addEventListener("mouseleave", (e) => {
-                                arr.classList.remove("remove-mode");
-                        });
-
-                        // Track alt key state during hover
-                        arr.addEventListener("mousemove", (e) => {
-                                if (e.altKey) {
-                                        arr.classList.add("remove-mode");
-                                } else {
-                                        arr.classList.remove("remove-mode");
-                                }
-                        });
+                        arr.addEventListener("mouseenter", updateIndicators);
+                        arr.addEventListener("mousemove", updateIndicators);
+                        arr.addEventListener("mousedown", updateIndicators);
+                        arr.addEventListener("mouseleave", () => clearRemoveIndicators());
 
                         hdr.addEventListener("click", (e) => {
                                 if (!e.target.closest("input, label")) {
-                                        if (e.altKey) {
+                                        if (e.altKey && e.shiftKey) {
+                                                // Alt+Shift+click removes all other disclosures
+                                                removeAllExcept(id);
+                                                clearRemoveIndicators();
+                                        } else if (e.altKey) {
                                                 // Alt+click removes the disclosure
                                                 remove(id);
                                         } else if (e.shiftKey) {

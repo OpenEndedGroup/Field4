@@ -1005,6 +1005,14 @@ class Server {
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
                     }
+                    route("/threejs") {
+                        handle {
+                            val originalContent =
+                                File("./src/commonMain/resources/threejs_viewer.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
                     route("/history") {
                         handle {
                             val originalContent =

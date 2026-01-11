@@ -10,9 +10,49 @@ import org.joml.minus
 import org.joml.plus
 import org.joml.times
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
 var _flineSequenceNumber = 0L
+
+fun List<FLine>.plus(offset : Vec3) = this.map { it + offset }
+fun List<FLine>.times(scale : Vec3) = this.map { it * scale }
+fun List<FLine>.times(rotation : Quat) = this.map { it * rotation }
+fun List<FLine>.times(scale : Number) = this.map { it * scale }
+fun Map<String, List<FLine>>.plus(offset : Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
+fun FLineMap.plus(offset : Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
+fun Map<String, List<FLine>>.times(offset : Vec3) = this.entries.associate { it.key to it.value.times(offset) }
+fun FLineMap.times(offset : Vec3) = this.entries.associate { it.key to it.value.times(offset) }
+fun Map<String, List<FLine>>.times(scale : Number) = this.entries.associate { it.key to it.value.times(scale) }
+fun FLineMap.times(scale : Number) = this.entries.associate { it.key to it.value.times(scale) }
+fun Map<String, List<FLine>>.times(rotation : Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+fun FLineMap.times(rotation : Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+
+internal const val FLINE_PLANE2D_KEY = "_fline_plane2d"
+
+internal data class Plane2D(
+    val origin: Vec3,
+    val xAxis: Vec3,
+    val yAxis: Vec3,
+    val normal: Vec3
+) {
+    fun point(x: Number, y: Number, z: Number = 0): Vec3 {
+        val xf = x.toFloat()
+        val yf = y.toFloat()
+        val zf = z.toFloat()
+        return Vec3(origin)
+            .add(Vec3(xAxis).mul(xf))
+            .add(Vec3(yAxis).mul(yf))
+            .add(Vec3(normal).mul(zf))
+    }
+}
+
+internal fun FLine.plane2D(): Plane2D? = properties[FLINE_PLANE2D_KEY] as? Plane2D
+
+internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
+    val plane = plane2D() ?: return vec(x, y, z)
+    return plane.point(x, y, z)
+}
 
 class FLine : HasProperties {
 
@@ -88,7 +128,7 @@ class FLine : HasProperties {
     }
 
     class Close : Node(0) {
-        override fun create(): Node = MoveTo()
+        override fun create(): Node = Close()
         override fun toString(): String {
             return "Close"
         }
@@ -104,7 +144,7 @@ class FLine : HasProperties {
      * some documentation
      */
     fun moveTo(x: Number, y: Number, z: Number = 0): Node {
-        nodes.add(MoveTo().set(Vec3(x.toFloat(), y.toFloat(), z.toFloat())))
+        nodes.add(MoveTo().set(planePoint(x, y, z)))
         rev++
         return nodes.last()
     }
@@ -113,7 +153,9 @@ class FLine : HasProperties {
      * some documentation
      */
     fun moveTo(v: Vec3): Node {
-        return moveTo(v.x, v.y, v.z)
+        nodes.add(MoveTo().set(Vec3(v)))
+        rev++
+        return nodes.last()
     }
 
     fun moveTo(v: Vec2): Node {
@@ -122,7 +164,7 @@ class FLine : HasProperties {
 
 
     fun moveTo(v: Vector3d): Node {
-        return moveTo(v.x, v.y, v.z)
+        return moveTo(Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat()))
     }
 
     fun lineTo(x: Number, y: Number, z: Number = 0): Node {
@@ -131,16 +173,22 @@ class FLine : HasProperties {
             return moveTo(x, y, z)
         }
         rev++
-        nodes.add(LineTo().set(Vec3(x.toFloat(), y.toFloat(), z.toFloat())))
+        nodes.add(LineTo().set(planePoint(x, y, z)))
         return nodes.last()
     }
 
     fun lineTo(v: Vec3): Node {
-        return lineTo(v.x, v.y, v.z)
+        if (breakNext) {
+            breakNext = false
+            return moveTo(v)
+        }
+        rev++
+        nodes.add(LineTo().set(Vec3(v)))
+        return nodes.last()
     }
 
     fun lineTo(v: Vector3d): Node {
-        return lineTo(v.x, v.y, v.z)
+        return lineTo(Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat()))
     }
 
     fun lineTo(v: Vec2): Node {
@@ -163,11 +211,14 @@ class FLine : HasProperties {
             return moveTo(x, y, z)
         }
         rev++
+        val end = planePoint(x, y, z)
+        val c1 = planePoint(x0, y0, z0)
+        val c2 = planePoint(x1, y1, z1)
         nodes.add(
             CubicTo().set(
-                Vec3(x.toFloat(), y.toFloat(), z.toFloat()),
-                Vec3(x0.toFloat(), y0.toFloat(), z0.toFloat()),
-                Vec3(x1.toFloat(), y1.toFloat(), z1.toFloat()),
+                end,
+                c1,
+                c2,
             )
         )
         return nodes.last()
@@ -213,27 +264,29 @@ class FLine : HasProperties {
         x: Number,
         y: Number,
     ): Node {
+        return cubicTo(x0, y0, 0.0, x1, y1, 0.0, x, y, 0.0)
+    }
+
+    fun cubicTo(v0: Vec3, v1: Vec3, v: Vec3): Node {
         if (breakNext) {
             breakNext = false
-            return moveTo(x, y, 0.0)
+            return moveTo(v)
         }
         rev++
         nodes.add(
             CubicTo().set(
-                vec(x, y, 0.0),
-                vec(x0, y0, 0.0),
-                vec(x1, y1, 0.0),
+                Vec3(v),
+                Vec3(v0),
+                Vec3(v1),
             )
         )
         return nodes.last()
     }
 
-    fun cubicTo(v0: Vec3, v1: Vec3, v: Vec3): Node {
-        return cubicTo(v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v.x, v.y, v.z)
-    }
-
     fun close(): Node {
-        return Close()
+        rev++
+        nodes.add(Close())
+        return nodes.last()
     }
 
     fun transform(by: (Vec3) -> Vec3): FLine {
@@ -254,6 +307,10 @@ class FLine : HasProperties {
     }
 
     operator fun times(n: Vec3): FLine {
+        return transform { it * n }
+    }
+
+    operator fun times(n: Quat): FLine {
         return transform { it * n }
     }
 
@@ -482,27 +539,162 @@ class FLine : HasProperties {
     }
 
     fun tessellate(samplesPerCubic: Int = 100, meshAcceptor: (FloatArray, List<Int>) -> Unit) {
-        var d = ArrayList<Float>()
+        var current = mutableListOf<Vec3>()
+        val rings = mutableListOf<List<Vec3>>()
+        val eps = 1e-5f
 
-        fun dispatch() {
-            val da = d.toFloatArray()
-            val c = FloatEarcut.earcut(da, null, 3)
-            meshAcceptor(da, c)
+        fun same2D(a: Vec3, b: Vec3): Boolean {
+            return abs(a.x - b.x) <= eps && abs(a.y - b.y) <= eps
+        }
+
+        fun sanitize(points: MutableList<Vec3>): List<Vec3> {
+            if (points.isEmpty()) return emptyList()
+            val out = ArrayList<Vec3>(points.size)
+            points.forEach { p ->
+                if (out.isEmpty() || !same2D(out.last(), p)) {
+                    out.add(Vec3(p))
+                }
+            }
+            if (out.size >= 2 && same2D(out.first(), out.last())) {
+                out.removeAt(out.lastIndex)
+            }
+            return out
+        }
+
+        fun flush() {
+            val cleaned = sanitize(current)
+            if (cleaned.size >= 3) {
+                rings.add(cleaned)
+            }
+            current = mutableListOf()
         }
 
         uniform_linearize(samplesPerCubic) { at, instr ->
             if (instr < 0) {
-                if (d.size >= 9) {
-                    dispatch()
-                }
-                d.clear()
+                flush()
             }
-            d.add(at.x)
-            d.add(at.y)
-            d.add(at.z)
+            current.add(Vec3(at))
         }
-        if (d.size >= 9) {
-            dispatch()
+        flush()
+
+        if (rings.isEmpty()) return
+
+        data class BBox(val minX: Float, val minY: Float, val maxX: Float, val maxY: Float)
+        data class RingInfo(val points: List<Vec3>, val area: Float, val bbox: BBox)
+
+        fun bboxOf(points: List<Vec3>): BBox {
+            var minX = points[0].x
+            var minY = points[0].y
+            var maxX = points[0].x
+            var maxY = points[0].y
+            for (i in 1 until points.size) {
+                val p = points[i]
+                minX = min(minX, p.x)
+                minY = min(minY, p.y)
+                maxX = max(maxX, p.x)
+                maxY = max(maxY, p.y)
+            }
+            return BBox(minX, minY, maxX, maxY)
+        }
+
+        fun area2D(points: List<Vec3>): Float {
+            var sum = 0f
+            for (i in points.indices) {
+                val a = points[i]
+                val b = points[(i + 1) % points.size]
+                sum += (a.x * b.y) - (b.x * a.y)
+            }
+            return 0.5f * sum
+        }
+
+        fun bboxContains(b: BBox, p: Vec3): Boolean {
+            return p.x >= b.minX && p.x <= b.maxX && p.y >= b.minY && p.y <= b.maxY
+        }
+
+        fun pointInPolygon(points: List<Vec3>, p: Vec3): Boolean {
+            var inside = false
+            var j = points.size - 1
+            for (i in points.indices) {
+                val xi = points[i].x
+                val yi = points[i].y
+                val xj = points[j].x
+                val yj = points[j].y
+                val intersect = ((yi > p.y) != (yj > p.y)) &&
+                    (p.x < (xj - xi) * (p.y - yi) / ((yj - yi) + 1e-12f) + xi)
+                if (intersect) inside = !inside
+                j = i
+            }
+            return inside
+        }
+
+        val infos = rings.map { RingInfo(it, area2D(it), bboxOf(it)) }
+        val parent = IntArray(infos.size) { -1 }
+
+        for (i in infos.indices) {
+            val test = infos[i].points[0]
+            var best = -1
+            var bestArea = Float.POSITIVE_INFINITY
+            for (j in infos.indices) {
+                if (i == j) continue
+                if (!bboxContains(infos[j].bbox, test)) continue
+                if (!pointInPolygon(infos[j].points, test)) continue
+                val area = abs(infos[j].area)
+                if (area < bestArea) {
+                    bestArea = area
+                    best = j
+                }
+            }
+            parent[i] = best
+        }
+
+        val depth = IntArray(infos.size)
+        for (i in infos.indices) {
+            var d = 0
+            var p = parent[i]
+            while (p != -1) {
+                d++
+                p = parent[p]
+            }
+            depth[i] = d
+        }
+
+        val groups = mutableListOf<List<Int>>()
+        for (i in infos.indices) {
+            if (depth[i] % 2 == 0) {
+                val group = mutableListOf<Int>()
+                group.add(i)
+                for (j in infos.indices) {
+                    if (parent[j] == i && depth[j] % 2 == 1) {
+                        group.add(j)
+                    }
+                }
+                groups.add(group)
+            }
+        }
+
+        for (group in groups) {
+            val verts = ArrayList<Float>()
+            val holes = ArrayList<Int>()
+            var vertCount = 0
+
+            for ((idx, ringIndex) in group.withIndex()) {
+                if (idx > 0) holes.add(vertCount)
+                val pts = infos[ringIndex].points
+                for (p in pts) {
+                    verts.add(p.x)
+                    verts.add(p.y)
+                    verts.add(p.z)
+                }
+                vertCount += pts.size
+            }
+
+            if (vertCount < 3) continue
+            val holeIndices = if (holes.isEmpty()) null else holes.toIntArray()
+            val da = verts.toFloatArray()
+            val c = FloatEarcut.earcut(da, holeIndices, 3)
+            if (c.isNotEmpty()) {
+                meshAcceptor(da, c)
+            }
         }
     }
 

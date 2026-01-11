@@ -8,6 +8,7 @@ import doubleTap
 import handleCustomizationRequest
 import handleEvalRequest
 import handleOutputAreaRequest
+import handleOutputAreaControl
 import kotlinext.js.asJsObject
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -1582,6 +1583,14 @@ suspend fun main() {
                 handleOutputAreaRequest(found as HTMLElement, set)
             }
         }
+        Handled.yes
+    }
+
+    handlers.put("output-control") { message, _ ->
+        val control = Json.decodeFromJsonElement<OutputControl>(message.payload!!)
+        val u = control.uid
+        val found = defaultCreate(u)
+        handleOutputAreaControl(found as HTMLElement, control)
         Handled.yes
     }
 

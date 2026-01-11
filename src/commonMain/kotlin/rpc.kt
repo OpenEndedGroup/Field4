@@ -184,6 +184,9 @@ data class Set_string(val uid: String, val property: String, val value: String)
 data class Set_output(val uid: String, val property: String, val channel: String, val value: String)
 
 @Serializable
+data class OutputControl(val uid: String, val action: String, val channel: String? = null)
+
+@Serializable
 data class ProvisionalEntry(val uid: String, val property: String, val contents: String)
 
 @Serializable

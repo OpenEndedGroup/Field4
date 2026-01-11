@@ -53,6 +53,27 @@ class DefaultOutput : HasOutput {
     }
 }
 
+private fun Box.sendOutputControl(action: String, channel: String? = null) {
+    val channelValue = channel?.trim()?.takeIf { it.isNotEmpty() }
+    send(Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
+}
+
+fun Box.displayOpen(channel: String) {
+    sendOutputControl("open", channel)
+}
+
+fun Box.displayClose(channel: String) {
+    sendOutputControl("close", channel)
+}
+
+fun Box.displayClear(channel: String) {
+    sendOutputControl("clear", channel)
+}
+
+fun Box.displayClearAll() {
+    sendOutputControl("clear-all")
+}
+
 private fun escapeHtml(text: String): String {
     return buildString(text.length) {
         text.forEach {

@@ -647,12 +647,12 @@ class SavingContext {
             }, { value ->
                 val map = value as? EdnValue.MapVal
                     ?: throw IllegalArgumentException("expected map for FileInline, got $value")
-                val pathValue = map.values[EdnValue.Str("path")] as? EdnValue.Str
-                val inlineValue = map.values[EdnValue.Str("inline")] as? EdnValue.Str
-                if (pathValue == null || inlineValue == null) {
+                var pathValue = map.values[EdnValue.Str("path")] as? EdnValue.Str
+                var inlineValue = map.values[EdnValue.Str("inline")] as? EdnValue.Str
+                if (pathValue == null && inlineValue == null) {
                     throw IllegalArgumentException("missing path/inline for FileInline: $value")
                 }
-                FileInline(pathValue.value, inlineValue.value)
+                FileInline(pathValue?.value ?: "<<unset>>", inlineValue!!.value)
             })
             registerStringPayload(FileRef::class, "afield/file", { it.path }, { FileRef(it) })
         }

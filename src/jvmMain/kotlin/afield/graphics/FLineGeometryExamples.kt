@@ -2,6 +2,8 @@ package afield.graphics.examples
 
 import afield.graphics.*
 import afield.stdlib.Vec2
+import afield.stdlib.Vec3
+import afield.stdlib.pointed
 import afield.stdlib.vec
 import kotlin.math.PI
 
@@ -288,6 +290,17 @@ object FLineGeometryExamples {
             }
         }
         return circle
+    }
+
+    private fun pointMarker(x: Float, y: Float, z: Float = 0f): FLine {
+        return FLine().apply {
+            moveTo(x, y, z)
+            pointed = true
+        }
+    }
+
+    private fun pointMarkers(points: List<Vec3>): List<FLine> {
+        return points.map { pointMarker(it.x, it.y, it.z) }
     }
 
     /**
@@ -606,6 +619,479 @@ object FLineGeometryExamples {
     }
 
     /**
+     * Example 16: 2D transformations around explicit pivots and axes
+     */
+    fun transformations2DExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            lineTo(60f, 0f)
+            lineTo(60f, 30f)
+            lineTo(0f, 30f)
+            lineTo(0f, 0f)
+        }
+
+        val pivot = vec(30f, 15f)
+        val mirrorA = vec(-10f, -10f)
+        val mirrorB = vec(80f, 40f)
+        val mirrorAxis = FLine().apply {
+            moveTo(mirrorA)
+            lineTo(mirrorB)
+        }
+
+        return mapOf(
+            "base" to listOf(base),
+            "pivot" to listOf(pointMarker(pivot.x, pivot.y)),
+            "mirror_axis" to listOf(mirrorAxis),
+            "rotated" to listOf(base.byRotating2D(PI.toFloat() / 6f, pivot)),
+            "scaled_uniform" to listOf(base.byScaling2D(1.4f, pivot)),
+            "scaled_nonuniform" to listOf(base.byScaling2D(1.6f, 0.6f, pivot)),
+            "reflected" to listOf(base.byReflecting2D(mirrorA, mirrorB))
+        )
+    }
+
+    /**
+     * Example 17: Parallel curve generation
+     */
+    fun parallelCurvesExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..80) {
+                val x = i.toFloat() * 2f
+                val y = kotlin.math.sin(i / 8f) * 12f
+                lineTo(x, y)
+            }
+        }
+
+        val (left, right) = base.byCreatingParallelCurves(distance = 6f, samples = 120)
+
+        return mapOf(
+            "base" to listOf(base),
+            "parallel_left" to listOf(left),
+            "parallel_right" to listOf(right)
+        )
+    }
+
+    /**
+     * Example 18: Intersections and self-intersections
+     */
+    fun intersectionsExample(): Map<String, List<FLine>> {
+        val selfIntersecting = FLine().apply {
+            moveTo(-40f, -20f)
+            lineTo(40f, 20f)
+            lineTo(-40f, 20f)
+            lineTo(40f, -20f)
+        }
+        val selfIntersections = pointMarkers(selfIntersecting.findSelfIntersections(1f))
+
+        val circle = createCircle(vec(0f, 0f), 35f, 64)
+        val line = FLine().apply {
+            moveTo(-60f, -10f)
+            lineTo(60f, 10f)
+        }
+        val crossings = pointMarkers(line.findIntersectionsWith(circle, 1f))
+
+        return mapOf(
+            "self_intersecting" to listOf(selfIntersecting),
+            "self_intersections" to selfIntersections,
+            "circle" to listOf(circle),
+            "line" to listOf(line),
+            "line_circle_intersections" to crossings
+        )
+    }
+
+    /**
+     * Example 19: Curvature features and inflections
+     */
+    fun curvatureFeaturesExample(): Map<String, List<FLine>> {
+        val curve = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..120) {
+                val x = i.toFloat()
+                val y = kotlin.math.sin(i / 6f) * 18f + kotlin.math.sin(i / 20f) * 6f
+                lineTo(x, y)
+            }
+        }
+
+        val highCurvaturePoints = pointMarkers(curve.findHighCurvaturePoints(threshold = 0.2f, samples = 120))
+        val inflectionPieces = curve.bySplittingAtInflections()
+
+        return mapOf(
+            "curve" to listOf(curve),
+            "high_curvature_points" to highCurvaturePoints,
+            "inflection_pieces" to inflectionPieces
+        )
+    }
+
+    /**
+     * Example 20: Osculating circles along a curve
+     */
+    fun osculatingCirclesExample(): Map<String, List<FLine>> {
+        val points = (0..80).map { i ->
+            val x = i.toFloat() * 2f
+            val y = kotlin.math.sin(i / 10f) * 20f
+            vec(x, y, 0f)
+        }
+
+        // Smooth polyline into cubic segments (Catmull-Rom -> Bezier).
+        fun catmullRomToBezier(pts: List<Vec3>): FLine {
+            if (pts.isEmpty()) return FLine()
+            val curve = FLine()
+            curve.moveTo(pts.first())
+
+            val n = pts.size
+            for (i in 0 until n - 1) {
+                val p0 = if (i > 0) pts[i - 1] else pts[i]
+                val p1 = pts[i]
+                val p2 = pts[i + 1]
+                val p3 = if (i + 2 < n) pts[i + 2] else pts[i + 1]
+
+                val c1 = Vec3(p1).add(Vec3(p2).sub(p0).mul(1f / 6f))
+                val c2 = Vec3(p2).sub(Vec3(p3).sub(p1).mul(1f / 6f))
+                curve.cubicTo(c1, c2, p2)
+            }
+
+            return curve
+        }
+
+        val curve = catmullRomToBezier(points)
+        val circles = curve.byCreatingOsculatingCircles(samples = 10, circleSegments = 24)
+
+        return mapOf(
+            "curve" to listOf(curve),
+            "osculating_circles" to circles
+        )
+    }
+
+    /**
+     * Example 21: Geometric queries and point tests
+     */
+    fun geometricQueriesExample(): Map<String, List<FLine>> {
+        val square = FLine().apply {
+            moveTo(0f, 0f)
+            lineTo(60f, 0f)
+            lineTo(60f, 60f)
+            lineTo(0f, 60f)
+            lineTo(0f, 0f)
+        }
+
+        val probe = vec(80f, 20f, 0f)
+        val (closest, _) = square.closestPoint(probe)
+        val closestLine = FLine().apply {
+            moveTo(probe.x, probe.y, probe.z)
+            lineTo(closest.x, closest.y, closest.z)
+        }
+
+        val insidePoint = vec(20f, 20f, 0f)
+        val outsidePoint = vec(80f, 20f, 0f)
+        val insidePoint2D = vec(20f, 20f)
+        val outsidePoint2D = vec(80f, 20f)
+        val insideContains = square.contains(insidePoint2D)
+        val outsideContains = square.contains(outsidePoint2D)
+        val insideWinding = square.windingNumber(insidePoint2D)
+        val outsideWinding = square.windingNumber(outsidePoint2D)
+        val signedArea = square.signedArea2D()
+
+        val insideIndicator = FLine().apply {
+            val length = if (insideContains) 6f else 0f
+            moveTo(insidePoint.x, insidePoint.y + 6f)
+            lineTo(insidePoint.x + length, insidePoint.y + 6f)
+        }
+        val outsideIndicator = FLine().apply {
+            val length = if (outsideContains) 6f else 0f
+            moveTo(outsidePoint.x, outsidePoint.y + 6f)
+            lineTo(outsidePoint.x + length, outsidePoint.y + 6f)
+        }
+        val insideWindingBar = FLine().apply {
+            moveTo(insidePoint.x, insidePoint.y - 8f)
+            lineTo(insidePoint.x + insideWinding.toFloat() * 6f, insidePoint.y - 8f)
+        }
+        val outsideWindingBar = FLine().apply {
+            moveTo(outsidePoint.x, outsidePoint.y - 8f)
+            lineTo(outsidePoint.x + outsideWinding.toFloat() * 6f, outsidePoint.y - 8f)
+        }
+        val areaBar = FLine().apply {
+            moveTo(0f, -12f)
+            lineTo(signedArea / 100f, -12f)
+        }
+        val centroid = square.centroid2D()
+
+        return mapOf(
+            "square" to listOf(square),
+            "probe_point" to listOf(pointMarker(probe.x, probe.y, probe.z)),
+            "closest_point" to listOf(pointMarker(closest.x, closest.y, closest.z)),
+            "closest_connection" to listOf(closestLine),
+            "inside_point" to listOf(pointMarker(insidePoint.x, insidePoint.y, insidePoint.z)),
+            "outside_point" to listOf(pointMarker(outsidePoint.x, outsidePoint.y, outsidePoint.z)),
+            "inside_contains" to listOf(insideIndicator),
+            "outside_contains" to listOf(outsideIndicator),
+            "inside_winding" to listOf(insideWindingBar),
+            "outside_winding" to listOf(outsideWindingBar),
+            "signed_area" to listOf(areaBar),
+            "centroid" to listOf(pointMarker(centroid.x, centroid.y))
+        )
+    }
+
+    /**
+     * Example 22: Path operations (reverse, concatenate, extract)
+     */
+    fun pathOperationsExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            lineTo(40f, 20f)
+            lineTo(80f, -10f)
+            lineTo(120f, 30f)
+        }
+
+        val reversed = base.byReversing()
+        val extracted = base.byExtracting(0.25f, 0.75f)
+        val extractedMarkers = pointMarkers(extracted.sampleByNumber(2))
+        val circle = createCircle(vec(160f, 10f), 20f, 40)
+        val concatenated = concatenate(base, circle)
+
+        val baseStart = pointMarker(0f, 0f)
+        val baseEnd = pointMarker(120f, 30f)
+        val reversedStart = pointMarker(120f, 30f)
+        val reversedEnd = pointMarker(0f, 0f)
+
+        return mapOf(
+            "base" to listOf(base),
+            "base_start" to listOf(baseStart),
+            "base_end" to listOf(baseEnd),
+            "reversed" to listOf(reversed),
+            "reversed_start" to listOf(reversedStart),
+            "reversed_end" to listOf(reversedEnd),
+            "extracted" to listOf(extracted),
+            "extracted_ends" to extractedMarkers,
+            "concatenated" to listOf(concatenated),
+            "concat_circle" to listOf(circle)
+        )
+    }
+
+    /**
+     * Example 23: Fitting and resampling operations
+     */
+    fun curveFittingExample(): Map<String, List<FLine>> {
+        val noisyCircle = createCircle(vec(0f, 0f), 30f, 32).byGaussianNoising(
+            amplitude = 2f,
+            seed = 1234L,
+            samples = 64
+        )
+
+        val (fitCenter, fitRadius, _) = noisyCircle.fitCircle(32)
+        val fittedCircle = createCircle(fitCenter, fitRadius, 64)
+
+        val polyline = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..12) {
+                lineTo(i * 10f, kotlin.math.sin(i / 2f) * 15f)
+            }
+        }
+
+        val subdivided = polyline.bySubdividing(2)
+        val arcLength = polyline.byArcLengthParameterizing(5f)
+
+        return mapOf(
+            "noisy_circle" to listOf(noisyCircle),
+            "fitted_circle" to listOf(fittedCircle),
+            "fit_center" to listOf(pointMarker(fitCenter.x, fitCenter.y)),
+            "polyline" to listOf(polyline),
+            "subdivided" to listOf(subdivided),
+            "arc_length_param" to listOf(arcLength)
+        )
+    }
+
+    /**
+     * Example 24: Higher-order curves (quadratic, tangential arc, B-spline)
+     */
+    fun higherOrderCurvesExample(): Map<String, List<FLine>> {
+        val quad = FLine().apply { moveTo(0f, 0f) }
+        quad.byAppendingQuadratic(vec(50f, 80f, 0f), vec(100f, 0f, 0f))
+        val quadControl = pointMarker(50f, 80f)
+        val quadEnd = pointMarker(100f, 0f)
+
+        val arcByTangent = FLine().apply { moveTo(0f, 0f) }
+        arcByTangent.byAppendingArcByTangent(
+            endPoint = vec(100f, 0f, 0f),
+            startTangent = vec(1f, 1f, 0f),
+            endTangent = vec(1f, -1f, 0f),
+            segments = 32
+        )
+        val startTangent = FLine().apply {
+            moveTo(0f, 0f)
+            lineTo(15f, 15f)
+        }
+        val endTangent = FLine().apply {
+            moveTo(100f, 0f)
+            lineTo(115f, -15f)
+        }
+
+        val controls = listOf(
+            vec(0f, 0f, 0f),
+            vec(30f, 40f, 0f),
+            vec(70f, 60f, 0f),
+            vec(110f, 20f, 0f),
+            vec(140f, 50f, 0f)
+        )
+        val controlPolyline = FLine().apply {
+            moveTo(controls.first())
+            controls.drop(1).forEach { lineTo(it) }
+        }
+        val controlMarkers = controls.map { pointMarker(it.x, it.y, it.z) }
+        val spline = bsplineFrom(controls, degree = 3, samples = 80, closed = false)
+        val smoothed = controlPolyline.byBSplineSmoothed(
+            degree = 4,
+            controlSampleCount = 12,
+            samples = 80,
+            dryWet = 0.8f
+        )
+
+        return mapOf(
+            "quad" to listOf(quad),
+            "quad_control" to listOf(quadControl),
+            "quad_end" to listOf(quadEnd),
+            "arc_by_tangent" to listOf(arcByTangent),
+            "tangent_start" to listOf(startTangent),
+            "tangent_end" to listOf(endTangent),
+            "spline_controls" to listOf(controlPolyline),
+            "spline_control_points" to controlMarkers,
+            "bspline" to listOf(spline),
+            "bspline_smoothed" to listOf(smoothed)
+        )
+    }
+
+    /**
+     * Example 25: Euler spiral interpolation
+     */
+    fun eulerSpiralExample(): Map<String, List<FLine>> {
+        val start = vec(0f, 0f, 0f)
+        val end = vec(120f, 40f, 0f)
+        val spiral = eulerSpiralBetween(
+            start = start,
+            startHeading = 0f,
+            end = end,
+            endHeading = (PI.toFloat() / 3f),
+            samples = 120
+        )
+
+        val base = FLine().apply { moveTo(0f, 0f) }
+        val spiralTo = base.byEulerSpiralTo(
+            endPoint = vec(120f, -20f, 0f),
+            endHeading = (PI.toFloat() / 4f),
+            samples = 100,
+            iterations = 6,
+            dryWet = 0.9f
+        )
+
+        return mapOf(
+            "euler_spiral_between" to listOf(spiral),
+            "euler_spiral_to" to listOf(spiralTo),
+            "start_point" to listOf(pointMarker(start.x, start.y, start.z)),
+            "end_point" to listOf(pointMarker(end.x, end.y, end.z))
+        )
+    }
+
+    /**
+     * Example 26: Curvature-driven evolution (flow)
+     */
+    fun curvatureFlowExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..90) {
+                val x = i.toFloat()
+                val y = kotlin.math.sin(i / 7f) * 18f + kotlin.math.sin(i / 2f) * 3f
+                lineTo(x, y)
+            }
+        }
+
+        val flowed = base.byCurvatureFlow(
+            step = 0.2f,
+            iterations = 5,
+            samples = 120,
+            anchorEnds = true,
+            dryWet = 0.7f
+        )
+
+        return mapOf(
+            "base" to listOf(base),
+            "flowed" to listOf(flowed)
+        )
+    }
+
+    /**
+     * Example 27: Gaussian Process interpolation
+     */
+    fun gaussianProcessExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..40) {
+                val x = i.toFloat() * 3f
+                val y = kotlin.math.sin(i / 4f) * 12f + (Math.random().toFloat() - 0.5f) * 4f
+                lineTo(x, y)
+            }
+        }
+
+        val interpolated = base.byGaussianProcessInterpolating(
+            trainingSamples = 24,
+            samples = 120,
+            lengthScale = 0.2f,
+            variance = 1f,
+            noise = 1e-3f,
+            dryWet = 0.85f,
+            drawSamples = false
+        )
+
+        return mapOf(
+            "training_curve" to listOf(base),
+            "interpolated" to listOf(interpolated)
+        )
+    }
+
+    /**
+     * Example 28: Filtering comparisons
+     */
+    fun filteringExample(): Map<String, List<FLine>> {
+        val jittery = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..120) {
+                val x = i.toFloat()
+                val y = kotlin.math.sin(i / 6f) * 15f + (Math.random().toFloat() - 0.5f) * 6f
+                lineTo(x, y)
+            }
+        }
+
+        val ema = jittery.byEmaFiltering(alpha = 0.25f, samples = 120, dryWet = 0.8f)
+        val oneEuro = jittery.byOneEuroFiltering(
+            minCutoffHz = 1.5f,
+            beta = 0.02f,
+            dCutoffHz = 1f,
+            fpsHint = 90f,
+            samples = 120,
+            dryWet = 0.8f
+        )
+        val alphaBeta = jittery.byAlphaBetaFiltering(
+            alpha = 0.3f,
+            beta = 0.1f,
+            fpsHint = 120f,
+            samples = 120,
+            dryWet = 0.8f
+        )
+        val oneDollar = jittery.byOneDollarFiltering(
+            targetSamples = 48,
+            targetSize = 150f,
+            rotateToZero = true,
+            dryWet = 0.9f
+        )
+
+        return mapOf(
+            "jittery" to listOf(jittery),
+            "ema" to listOf(ema),
+            "one_euro" to listOf(oneEuro),
+            "alpha_beta" to listOf(alphaBeta),
+            "one_dollar" to listOf(oneDollar)
+        )
+    }
+
+    /**
      * Comprehensive smoke test that exercises all examples and every function in FLineGeometry
      * at least once to check for sanity and exceptions.
      *
@@ -635,6 +1121,19 @@ object FLineGeometryExamples {
             curveCombinationExample()
             parameterizationExample()
             complexCompositionExample()
+            transformations2DExample()
+            parallelCurvesExample()
+            intersectionsExample()
+            curvatureFeaturesExample()
+            osculatingCirclesExample()
+            geometricQueriesExample()
+            pathOperationsExample()
+            curveFittingExample()
+            higherOrderCurvesExample()
+            eulerSpiralExample()
+            curvatureFlowExample()
+            gaussianProcessExample()
+            filteringExample()
             println("    ✓ All examples passed")
 
             // ===== Create test lines for function testing =====

@@ -275,6 +275,56 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
 
 }
 
+private fun disclosureExists(container: Element, channelId: String): Boolean {
+    val disclosures = container.querySelectorAll(".disclosure").asList()
+    return disclosures.any { (it.asDynamic().__disclosureId as? String) == channelId }
+}
+
+fun handleOutputAreaControl(box: HTMLElement, control: OutputControl) {
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val di = js("window.disclosureInterface")
+    if (di == null) {
+        console.info("[output] disclosureInterface not ready yet; skipping control ${control.action}")
+        return
+    }
+    val inter = di(contain)
+    val channelId = control.channel?.trim()?.takeIf { it.isNotEmpty() }
+    val action = control.action.trim().lowercase()
+
+    when (action) {
+        "open" -> {
+            if (channelId == null) return
+            outputArea.style.visibility = "visible"
+            outputArea.style.height = "auto"
+            if (!disclosureExists(contain, channelId)) {
+                val title = if (channelId == "ai-chat") "AI Chat" else channelId
+                (inter.upsertDisclosure as (String, String, String) -> Element).invoke(channelId, title, "")
+            }
+            (inter.open as (String) -> Unit).invoke(channelId)
+        }
+        "close" -> {
+            if (channelId == null) return
+            (inter.close as (String) -> Unit).invoke(channelId)
+        }
+        "clear" -> {
+            if (channelId == null || channelId == "nested") return
+            (inter.remove as (String) -> Unit).invoke(channelId)
+        }
+        "clear-all" -> {
+            val ids = contain.querySelectorAll(".disclosure").asList().mapNotNull {
+                it.asDynamic().__disclosureId as? String
+            }
+            ids.forEach { id ->
+                if (id != "nested") {
+                    (inter.remove as (String) -> Unit).invoke(id)
+                }
+            }
+        }
+        else -> console.info("[output] unknown output-control action ${control.action}")
+    }
+}
+
 fun handleCustomizationRequest(box: HTMLElement, code: Set_string) {
     console.info("[customize] executing customization code for ${code.property}")
     val f = eval(

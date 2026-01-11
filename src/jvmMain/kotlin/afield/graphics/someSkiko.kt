@@ -21,19 +21,26 @@ fun Box.lines(
 }
 
 /**
- * Render multiple channels of FLines at once.
- * Each map entry key is used as the display channel, and the value is the list of lines to draw.
+ * Render FLines from a map, optionally splitting by channel.
+ * When splitByChannel is false, all lines are combined into `channel`.
  */
 fun Box.lines(
     linesByChannel: Map<String, List<FLine>>,
     w: Double = 1000.0,
     h: Double = 1000.0,
-    fitToSize: Boolean = false
+    fitToSize: Boolean = false,
+    splitByChannel: Boolean = false,
+    channel: String = "lines"
 ) {
     val allLines = linesByChannel.values.flatten()
     val fit = computeFitTransform(allLines, w, h, fitToSize)
-    linesByChannel.forEach { (channel, lines) ->
-        val scaled = lines.map { it.applyFit(fit) }
+    if (splitByChannel) {
+        linesByChannel.forEach { (channelName, lines) ->
+            val scaled = lines.map { it.applyFit(fit) }
+            display(channelName, drawToSVG(scaled, w, h))
+        }
+    } else {
+        val scaled = allLines.map { it.applyFit(fit) }
         display(channel, drawToSVG(scaled, w, h))
     }
 }
@@ -183,7 +190,7 @@ fun outputTo(f: FLine, s: Canvas) {
         s.drawPath(p, paint)
     }
 
-    fun radiusFor(f: FLine, it: FLine.Node) = it.pointSize ?: f.pointSize
+    fun radiusFor(f: FLine, it: FLine.Node) = (it.pointSize ?: f.pointSize)*3.0
 
     if (f.pointed) {
         var circ = Path()

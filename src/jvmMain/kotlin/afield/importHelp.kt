@@ -22,7 +22,8 @@ fun findClassesNamed(name: String): List<String>? {
 
 fun classesWithPrefix(name: String, hideDollarSignClasses : Boolean = true): List<Pair<String, String>> {
     return cache.entries.mapNotNull {
-        if (it.key.startsWith(name) && (!hideDollarSignClasses || !(it.key.contains("$") || it.value.contains("$")))) {
+        if (it.key.startsWith(name) && (!hideDollarSignClasses || !(it.key.contains("$") || it.value.contains("$")))
+            && !it.key.lowercase().contains("clojure")) {
             it.key.removePrefix(name) to it.value
         } else null
     }.flatMap { (suffix, l) ->
