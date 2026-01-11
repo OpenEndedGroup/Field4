@@ -4,26 +4,19 @@ import afield.Rect
 import afield.stdlib.Vec2
 import afield.stdlib.d
 import afield.stdlib.i
-import afield.stdlib.invoke
 import afield.stdlib.vec
 import afield.util.PngEncoder
-import kotlinx.coroutines.*
 import org.lwjgl.glfw.Callbacks
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import java.io.BufferedReader
 import java.io.File
 import java.nio.ByteBuffer
-import java.nio.charset.Charset
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.regex.Pattern
-import kotlin.math.roundToInt
 
 var lastWindowToOpen: Window? = null
 
@@ -39,6 +32,9 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     // --- Scroll accumulator (since last poll)
     private var scrollAccumX = 0.0
     private var scrollAccumY = 0.0
+
+    var mouseEvents : MouseEvents? = null
+    var keyEvents : KeyEvents? = null
 
     val cursor: Vec2
         get() {
@@ -166,14 +162,14 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     fun shouldClose(): Boolean {
         return GLFW.glfwWindowShouldClose(windowHandle)
     }
-    
+
     /**
      * Save the current framebuffer content to a temporary PNG file.
-     * 
+     *
      * When imageData is provided, it is interpreted as raw RGBA pixel data for an image of the
      * given width and height. The pixel data may come from any rendering backend (e.g. Vulkan,
      * OpenGL, or software rendering).
-     * 
+     *
      * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
      * @param width Image width in pixels
      * @param height Image height in pixels
@@ -186,7 +182,7 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         if (imageData == null) {
             throw IllegalArgumentException("imageData is null; cannot save framebuffer without explicit image data")
         }
-        
+
         // Validate buffer size
         val expectedSize = width * height * 4
         if (imageData.capacity() < expectedSize) {
@@ -195,26 +191,26 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
                 "but got ${imageData.capacity()} bytes"
             )
         }
-        
+
         try {
             // Create temp file with timestamp
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
             val tempFile = Files.createTempFile("field4_screenshot_$timestamp", ".png").toFile()
-            
+
             // Convert buffer to PNG and write to file
             val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
             Files.write(tempFile.toPath(), pngBytes, StandardOpenOption.WRITE)
-            
+
             return tempFile
         } catch (e: Exception) {
             throw RuntimeException("Failed to save framebuffer to temp file: ${e.message}", e)
         }
     }
-    
+
     /**
      * Get the current framebuffer as a base64-encoded PNG string.
      * Useful for sending image data over the network.
-     * 
+     *
      * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
      * @param width Image width in pixels
      * @param height Image height in pixels
@@ -224,7 +220,7 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         if (imageData == null) {
             return null
         }
-        
+
         return try {
             val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
             Base64.getEncoder().encodeToString(pngBytes)

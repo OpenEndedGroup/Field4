@@ -3,10 +3,9 @@ package afield.four.util
 import afield.Generator
 import afield.four.Renderer
 import afield.four.modules.fromContext
-import afield.stdlib.Vec2
 import afield.logger.lprintln
+import afield.stdlib.Vec2
 import org.lwjgl.glfw.GLFW
-import kotlin.collections.set
 
 data class MouseEvent(
     val pos: Vec2,
@@ -91,6 +90,7 @@ class MouseEvents(
 
     init {
         lastPos.set(renderer.window.cursor)
+        if (renderer.window.mouseEvents==null) renderer.window.mouseEvents = this
 
         renderer.window.onPoll[name] = sequence {
             while (true) {

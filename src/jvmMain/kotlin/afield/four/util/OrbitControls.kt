@@ -6,14 +6,7 @@ import afield.four.modules.fromContext
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.acos
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.tan
+import kotlin.math.*
 
 /**
  * Mouse-driven orbit controls inspired by Three.js OrbitControls.
@@ -26,7 +19,7 @@ import kotlin.math.tan
 class OrbitControls(
     val renderer: Renderer = fromContext(),
     val camera: Camera = fromContext(),
-    mouseEvents: MouseEvents? = null,
+    mouseEvents: MouseEvents? = renderer.window.mouseEvents,
     val name: String = "__orbitcontrols__"
 ) {
     val mouse: MouseEvents = mouseEvents ?: MouseEvents(renderer, name = "${name}__mouse__")
@@ -97,6 +90,10 @@ class OrbitControls(
     }
 
     private fun installMouseHandlers() {
+        mouse.onDown("left", name) { ev : MouseEvent ->
+            DownResult.Keep
+        }
+
         mouse.onDrag(name) { ev ->
             if (!enabled) return@onDrag true
             handleDrag(ev)
