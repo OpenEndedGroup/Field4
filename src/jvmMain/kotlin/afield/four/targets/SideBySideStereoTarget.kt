@@ -119,9 +119,15 @@ class SideBySideStereoTarget(
         return if (xr != null && xr.currentEyeIndex >= 0) {
             xr.currentEyeViewMatrix(out)
         } else {
-            val eye = currentEyeIndex.coerceIn(0, 1)
-            val views = stereoCamera.eyeViewMatrices()
-            out.set(views[eye])
+            if (xr != null) {
+                val eye = currentEyeIndex.coerceIn(0, 1)
+                xr.eyeViewMatrix(eye, out)
+            }
+            else {
+                val eye = currentEyeIndex.coerceIn(0, 1)
+                val views = stereoCamera.eyeViewMatrices()
+                out.set(views[eye])
+            }
         }
     }
 
@@ -131,9 +137,15 @@ class SideBySideStereoTarget(
         return if (xr != null && xr.currentEyeIndex >= 0) {
             xr.currentEyeProjectionMatrix(out)
         } else {
-            val eye = currentEyeIndex.coerceIn(0, 1)
-            val projs = stereoCamera.projectionMatrices()
-            out.set(projs[eye])
+            if (xr != null) {
+                val eye = currentEyeIndex.coerceIn(0, 1)
+                xr.eyeProjectionMatrix(eye, out)
+            }
+            else {
+                val eye = currentEyeIndex.coerceIn(0, 1)
+                val projs = stereoCamera.projectionMatrices()
+                out.set(projs[eye])
+            }
         }
     }
 

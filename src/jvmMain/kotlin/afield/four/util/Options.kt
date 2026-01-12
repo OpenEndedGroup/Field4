@@ -35,7 +35,7 @@ object Options {
 
     var defaultDepthFormat: Int = if (isWindows || isLinux) VK_FORMAT_D24_UNORM_S8_UINT else VK_FORMAT_D32_SFLOAT_S8_UINT
 
-    var validate = true
+    var validate = false
     var preferredDevice: String? = null
     var requestedImages = 3
     var vsync = true
