@@ -15,18 +15,18 @@ import kotlin.math.min
 
 var _flineSequenceNumber = 0L
 
-fun List<FLine>.plus(offset : Vec3) = this.map { it + offset }
-fun List<FLine>.times(scale : Vec3) = this.map { it * scale }
-fun List<FLine>.times(rotation : Quat) = this.map { it * rotation }
-fun List<FLine>.times(scale : Number) = this.map { it * scale }
-fun Map<String, List<FLine>>.plus(offset : Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
-fun FLineMap.plus(offset : Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
-fun Map<String, List<FLine>>.times(offset : Vec3) = this.entries.associate { it.key to it.value.times(offset) }
-fun FLineMap.times(offset : Vec3) = this.entries.associate { it.key to it.value.times(offset) }
-fun Map<String, List<FLine>>.times(scale : Number) = this.entries.associate { it.key to it.value.times(scale) }
-fun FLineMap.times(scale : Number) = this.entries.associate { it.key to it.value.times(scale) }
-fun Map<String, List<FLine>>.times(rotation : Quat) = this.entries.associate { it.key to it.value.times(rotation) }
-fun FLineMap.times(rotation : Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+operator fun List<FLine>.plus(offset: Vec3) = this.map { it + offset }
+operator fun List<FLine>.times(scale: Vec3) = this.map { it * scale }
+operator fun List<FLine>.times(rotation: Quat) = this.map { it * rotation }
+operator fun List<FLine>.times(scale: Number) = this.map { it * scale }
+operator fun Map<String, List<FLine>>.plus(offset: Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
+operator fun FLineMap.plus(offset: Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
+operator fun Map<String, List<FLine>>.times(offset: Vec3) = this.entries.associate { it.key to it.value.times(offset) }
+operator fun FLineMap.times(offset: Vec3) = this.entries.associate { it.key to it.value.times(offset) }
+operator fun Map<String, List<FLine>>.times(scale: Number) = this.entries.associate { it.key to it.value.times(scale) }
+operator fun FLineMap.times(scale: Number) = this.entries.associate { it.key to it.value.times(scale) }
+operator fun Map<String, List<FLine>>.times(rotation: Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+operator fun FLineMap.times(rotation: Quat) = this.entries.associate { it.key to it.value.times(rotation) }
 
 internal const val FLINE_PLANE2D_KEY = "_fline_plane2d"
 
@@ -94,6 +94,8 @@ class FLine : HasProperties {
         override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
     }
+
+    val here: Node get() = nodes.last()
 
     class MoveTo : Node(1) {
         override fun create(): Node = MoveTo()
@@ -343,7 +345,6 @@ class FLine : HasProperties {
         return c
     }
 
-
     fun sampleByNumber(steps: Int): List<Vec3> {
         val c = cursor()
         val r = ArrayList<Vec3>()
@@ -354,6 +355,11 @@ class FLine : HasProperties {
         return r
     }
 
+    fun drop(n: Int = 1): FLine {
+        if (nodes.size == 0) return this
+        nodes.subList(Math.max(0, nodes.size - n), nodes.size).clear()
+        return this
+    }
 
     /**
      * returns a list of `Vec3` (i.e. positions) by repeatedly moving along the line by 'distance' and recording those positions. Note that while the start of the line will be in this list the
@@ -620,7 +626,7 @@ class FLine : HasProperties {
                 val xj = points[j].x
                 val yj = points[j].y
                 val intersect = ((yi > p.y) != (yj > p.y)) &&
-                    (p.x < (xj - xi) * (p.y - yi) / ((yj - yi) + 1e-12f) + xi)
+                        (p.x < (xj - xi) * (p.y - yi) / ((yj - yi) + 1e-12f) + xi)
                 if (intersect) inside = !inside
                 j = i
             }

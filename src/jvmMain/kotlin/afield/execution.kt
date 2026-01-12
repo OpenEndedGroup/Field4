@@ -44,6 +44,11 @@ interface BoxExecution {
     val languageName: String
 }
 
+private fun escapeForHtml(text: String?): String {
+    if (text == null) return ""
+    return text.replace("<", "&lt;").replace(">", "&gt;")
+}
+
 fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
     box.output.proxy = { content, nl, line ->
         val n = content?.toString() ?: ""
@@ -64,7 +69,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
             reply(
                 Message("output").payload(
                     Output(
-                        line = nl.i, kind = "err", property = property, html = n, frame = Runloop.runLoop.frame.toInt()
+                        line = nl.i, kind = "err", property = property, html = escapeForHtml(n), frame = Runloop.runLoop.frame.toInt()
                     )
                 )
             )
@@ -123,6 +128,7 @@ class KotlinExecution : BoxExecution {
         val wm = ++box.fragmentGeneration
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
+            box.resetStdlibRandom()
             execute(box, code, reply, code.split("\n").size, finishedHandler = {
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
@@ -141,6 +147,8 @@ class KotlinExecution : BoxExecution {
         val code = ("\n" * ln) + exec.code.trimEnd()
 
         inMain {
+
+            box.resetStdlibRandom()
 
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}
             // this is just the field2 design
@@ -198,7 +206,7 @@ class KotlinExecution : BoxExecution {
                             line = (line + ln).i,
                             kind = "error",
                             property = property,
-                            html = content?.toString() ?: "",
+                            html = escapeForHtml(content?.toString()),
                             frame = Runloop.runLoop.frame.toInt()
                         )
                     )
@@ -224,7 +232,7 @@ class KotlinExecution : BoxExecution {
                                     Output(
                                         line = it.location!!.start.line,
                                         kind = "error",
-                                        html = message,
+                                        html = escapeForHtml(message),
                                         frame = Runloop.runLoop.frame.toInt()
                                     )
                                 )
@@ -235,7 +243,7 @@ class KotlinExecution : BoxExecution {
                                     Output(
                                         line = ln + dur,
                                         kind = "error",
-                                        html = message,
+                                        html = escapeForHtml(message),
                                         frame = Runloop.runLoop.frame.toInt()
                                     )
                                 )
@@ -271,7 +279,7 @@ class KotlinExecution : BoxExecution {
                         Output(
                             line = firstLine,
                             kind = "error",
-                            html = evalException.message ?: evalException.javaClass.name,
+                            html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
                             frame = Runloop.runLoop.frame.toInt()
                         )
                     )
@@ -314,7 +322,7 @@ class KotlinExecution : BoxExecution {
                                     Output(
                                         line = ln + dur,
                                         kind = "error",
-                                        html = returnValue.error.message ?: returnValue.error.javaClass.name,
+                                        html = escapeForHtml(returnValue.error.message ?: returnValue.error.javaClass.name),
                                         frame = Runloop.runLoop.frame.toInt()
                                     )
                                 )

@@ -965,21 +965,21 @@ object FLineGeometryExamples {
     fun eulerSpiralExample(): Map<String, List<FLine>> {
         val start = vec(0f, 0f, 0f)
         val end = vec(120f, 40f, 0f)
-        val spiral = eulerSpiralBetween(
+        val startDir = vec(1f, 0f, 0f)
+        val endDir = vec(kotlin.math.cos(PI.toFloat() / 3f), kotlin.math.sin(PI.toFloat() / 3f), 0f)
+        val spiral = eulerSpiralBetween3D(
             start = start,
-            startHeading = 0f,
+            startDirection = startDir,
             end = end,
-            endHeading = (PI.toFloat() / 3f),
+            endDirection = endDir,
             samples = 120
         )
 
-        val base = FLine().apply { moveTo(0f, 0f) }
+        val base = FLine().apply { moveTo(start) }
         val spiralTo = base.byEulerSpiralTo(
             endPoint = vec(120f, -20f, 0f),
-            endHeading = (PI.toFloat() / 4f),
-            samples = 100,
-            iterations = 6,
-            dryWet = 0.9f
+            endDirection = vec(kotlin.math.cos(PI.toFloat() / 4f), kotlin.math.sin(PI.toFloat() / 4f), 0f),
+            samples = 100
         )
 
         return mapOf(
@@ -1321,18 +1321,17 @@ object FLineGeometryExamples {
 
             // ===== Euler spiral interpolation =====
             println("  Testing Euler spirals...")
-            eulerSpiralBetween(
+            eulerSpiralBetween3D(
                 start = vec(0f, 0f, 0f),
-                startHeading = 0f,
+                startDirection = vec(1f, 0f, 0f),
                 end = vec(80f, 40f, 0f),
-                endHeading = (PI.toFloat() / 3f)
+                endDirection = vec(kotlin.math.cos(PI.toFloat() / 3f), kotlin.math.sin(PI.toFloat() / 3f), 0f)
             )
             testLine.byEulerSpiralTo(
                 endPoint = vec(120f, 40f, 0f),
-                endHeading = (PI.toFloat() / 4f),
+                endDirection = vec(kotlin.math.cos(PI.toFloat() / 4f), kotlin.math.sin(PI.toFloat() / 4f), 0f),
                 samples = 90,
-                iterations = 5,
-                dryWet = 0.9f
+                iterations = 5
             )
             println("    ✓ Euler spirals passed")
 

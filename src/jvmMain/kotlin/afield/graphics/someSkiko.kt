@@ -20,6 +20,18 @@ fun Box.lines(
     display(channel, drawToSVG(scaled, w, h))
 }
 
+fun Box.lines(
+    m: List<FLine>,
+    channel: String = "lines",
+    w: Double = 1000.0,
+    h: Double = 1000.0,
+    fitToSize: Boolean = false
+) {
+    val fit = computeFitTransform(m, w, h, fitToSize)
+    val scaled = m.map { it.applyFit(fit) }
+    display(channel, drawToSVG(scaled, w, h))
+}
+
 /**
  * Render FLines from a map, optionally splitting by channel.
  * When splitByChannel is false, all lines are combined into `channel`.

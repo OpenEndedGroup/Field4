@@ -322,28 +322,6 @@ fun Box.__m(s: String, onCreation: Marker.() -> Unit = {}) = this.markers.comput
     m
 }
 
-
-fun Vector2f.noise(d: Number) : Vector2f {
-    this.x += (Math.random() - 0.5).f * d.toFloat()
-    this.y += (Math.random() - 0.5).f * d.toFloat()
-    return this
-}
-
-fun Vector3f.noise(d: Number) : Vector3f {
-    this.x += (Math.random() - 0.5).f * d.toFloat()
-    this.y += (Math.random() - 0.5).f * d.toFloat()
-    this.z += (Math.random() - 0.5).f * d.toFloat()
-    return this
-}
-
-fun Vector4f.noise(d: Number) : Vector4f {
-    this.x += (Math.random() - 0.5).f * d.toFloat()
-    this.y += (Math.random() - 0.5).f * d.toFloat()
-    this.z += (Math.random() - 0.5).f * d.toFloat()
-    this.w += (Math.random() - 0.5).f * d.toFloat()
-    return this
-}
-
 operator fun <T> List<T>.get(range: IntRange) = this.slice(range)
 
 

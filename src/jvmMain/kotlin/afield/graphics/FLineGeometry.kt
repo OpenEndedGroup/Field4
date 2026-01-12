@@ -2789,101 +2789,120 @@ fun FLine.byBSplineSmoothed(
     return blended.toFLine()
 }
 
-// ---------- Euler spiral interpolation ----------
+// ---------- Euler spiral (3D) ----------
 
-private fun eulerSpiralCore(
-    start: Vec3,
-    startHeading: Float,
-    end: Vec3,
-    endHeading: Float,
-    samples: Int,
-    iterations: Int
-): List<Vec3> {
-    val targetVec = Vec3(end).sub(start)
-    val targetDist = targetVec.length().coerceAtLeast(1e-6f)
-    val deltaHeading = normalizeAngle(endHeading - startHeading)
-    var length = targetDist
+private data class SpiralFrame(val origin: Vec3, val u: Vec3, val v: Vec3, val n: Vec3)
 
-    fun integrate(L: Float): List<Vec3> {
-        val pts = ArrayList<Vec3>(samples)
-        val ds = L / (samples - 1).toFloat()
-        val curvatureRate = 2f * deltaHeading / (L * L).coerceAtLeast(1e-6f)
-        var heading = startHeading
-        var pos = Vec3(start)
-        pts.add(Vec3(pos))
-        var sAcc = 0f
-        for (i in 1 until samples) {
-            val curvature = curvatureRate * sAcc
-            heading += curvature * ds
-            pos = vec(
-                pos.x + cos(heading) * ds,
-                pos.y + sin(heading) * ds,
-                start.z + (end.z - start.z) * (i.toFloat() / (samples - 1))
-            )
-            pts.add(pos)
-            sAcc += ds
-        }
-        return pts
-    }
-
-    var pts = integrate(length)
-    repeat(iterations) {
-        val predictedDist = Vec3(pts.last()).sub(start).length().coerceAtLeast(1e-6f)
-        val scale = targetDist / predictedDist
-        length *= scale
-        pts = integrate(length)
-    }
-
-    val residual = Vec3(end).sub(pts.last())
-    return pts.mapIndexed { i, p ->
-        val t = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1)
-        Vec3(p).add(Vec3(residual).mul(t))
-    }
+private fun projectOntoPlane(v: Vec3, normal: Vec3): Vec3 {
+    val n = Vec3(normal)
+    return Vec3(v).sub(n.mul(v.dot(n), Vec3()))
 }
 
-private fun eulerSpiralCoreParametric(
+private fun orthonormalAround(normal: Vec3): Vec3 {
+    val n = Vec3(normal)
+    val ref = if (abs(n.x) < 0.6f) vec(1f, 0f, 0f) else vec(0f, 1f, 0f)
+    val u = Vec3(n).cross(ref)
+    return if (u.lengthSquared() < 1e-12f) vec(0f, 0f, 1f) else u.normalize()
+}
+
+private fun buildSpiralFrame(start: Vec3, end: Vec3, startDir: Vec3, endDir: Vec3): SpiralFrame {
+    val chord = Vec3(end).sub(start)
+    val startN = Vec3(startDir)
+    val endN = Vec3(endDir)
+
+    var n = Vec3(startN).cross(endN)
+    if (n.lengthSquared() < 1e-6f) n = Vec3(startN).cross(chord)
+    if (n.lengthSquared() < 1e-6f) n = Vec3(chord).cross(startN)
+    if (n.lengthSquared() < 1e-6f) {
+        val fallback = if (abs(chord.z) < 0.9f) vec(0f, 0f, 1f) else vec(0f, 1f, 0f)
+        n = Vec3(chord).cross(fallback)
+    }
+    if (n.lengthSquared() < 1e-12f) n = vec(0f, 0f, 1f)
+    n.normalize()
+
+    var u = Vec3(chord).sub(Vec3(n).mul(chord.dot(n)))
+    if (u.lengthSquared() < 1e-10f) u = projectOntoPlane(startN, n)
+    if (u.lengthSquared() < 1e-10f) u = projectOntoPlane(endN, n)
+    if (u.lengthSquared() < 1e-12f) u = orthonormalAround(n)
+    u.normalize()
+    val v = Vec3(n).cross(u).normalize()
+
+    return SpiralFrame(start, u, v, n)
+}
+
+private fun signedAngleOnPlane(from: Vec3, to: Vec3, normal: Vec3): Float {
+    val f = Vec3(from)
+    val t = Vec3(to)
+    val cross = Vec3(f).cross(t)
+    val dot = f.dot(t).coerceIn(-1f, 1f)
+    return atan2(cross.dot(normal), dot)
+}
+
+private fun eulerSpiralCore3D(
     start: Vec3,
-    startHeading: Float,
+    startDir: Vec3,
     end: Vec3,
-    endHeading: Float,
+    endDir: Vec3,
     samples: Int,
     iterations: Int,
     lengthScale: Float,
     headingScale: Float,
     turn: Float
 ): List<Vec3> {
-    val baseDist = Vec3(end).sub(start).length().coerceAtLeast(1e-6f)
-    val targetDist = (baseDist * lengthScale).coerceAtLeast(1e-6f)
-    val deltaHeading = normalizeAngle((endHeading - startHeading) + turn) * headingScale
-    var length = targetDist
+    val frame = buildSpiralFrame(start, end, startDir, endDir)
+    val targetVec = Vec3(end).sub(start)
+    val normalOffset = targetVec.dot(frame.n)
+    val baseLength = targetVec.length().coerceAtLeast(1e-5f) * lengthScale
+
+    val startForward = projectOntoPlane(startDir, frame.n).let { d ->
+        if (d.lengthSquared() > 1e-10f) Vec3(d).normalize() else Vec3(frame.u)
+    }
+    val endForward = projectOntoPlane(endDir, frame.n).let { d ->
+        if (d.lengthSquared() > 1e-10f) Vec3(d).normalize() else Vec3(frame.u)
+    }
+
+    val totalTurn = signedAngleOnPlane(startForward, endForward, frame.n) * headingScale + turn
+    val sampleCount = max(samples, 2)
 
     fun integrate(L: Float): List<Vec3> {
-        val pts = ArrayList<Vec3>(samples)
-        val ds = L / (samples - 1).toFloat()
-        val curvatureRate = 2f * deltaHeading / (L * L).coerceAtLeast(1e-6f)
-        var heading = startHeading
-        var pos = Vec3(start)
-        pts.add(Vec3(pos))
+        val pts = ArrayList<Vec3>(sampleCount)
+        val ds = L / (sampleCount - 1).toFloat()
+        val curvatureRate = 2f * totalTurn / (L * L).coerceAtLeast(1e-6f)
+        var orientation = Quaternionf().rotationTo(frame.u, startForward)
+        var posPlane = vec(0f, 0f, 0f)
+        pts.add(Vec3(start))
         var sAcc = 0f
-        for (i in 1 until samples) {
+
+        for (i in 1 until sampleCount) {
             val curvature = curvatureRate * sAcc
-            heading += curvature * ds
-            pos = vec(
-                pos.x + cos(heading) * ds,
-                pos.y + sin(heading) * ds,
-                start.z + (end.z - start.z) * (i.toFloat() / (samples - 1))
-            )
-            pts.add(pos)
+            val deltaQuat = Quaternionf().setAngleAxis(curvature * ds, frame.n.x, frame.n.y, frame.n.z)
+            orientation = Quaternionf(deltaQuat).mul(orientation)
+            val forward = frame.u * orientation
+            posPlane = Vec3(posPlane).add(Vec3(forward).mul(ds))
+
+            val t = i.toFloat() / (sampleCount - 1)
+            val normalDelta = Vec3(frame.n).mul(normalOffset * t)
+            pts.add(Vec3(start).add(posPlane).add(normalDelta))
             sAcc += ds
         }
         return pts
     }
 
+    fun endpoint(L: Float): Vec3 = integrate(L).last()
+
+    var length = baseLength
     var pts = integrate(length)
     repeat(iterations) {
-        val predictedDist = Vec3(pts.last()).sub(start).length().coerceAtLeast(1e-6f)
-        val scale = targetDist / predictedDist
-        length *= scale
+        val err = Vec3(pts.last()).sub(end)
+        if (err.lengthSquared() < 1e-10f) return@repeat
+
+        val eps = (length * 1e-3f).coerceAtLeast(1e-4f)
+        val endNext = endpoint(length + eps)
+        val deriv = Vec3(endNext).sub(pts.last()).mul(1f / eps)
+        val denom = deriv.lengthSquared().coerceAtLeast(1e-12f)
+        val step = err.dot(deriv) / denom
+
+        length = (length - step).coerceAtLeast(1e-4f)
         pts = integrate(length)
     }
 
@@ -2894,121 +2913,80 @@ private fun eulerSpiralCoreParametric(
     }
 }
 
-/**
- * Generate a clothoid (Euler spiral) bridging two poses in 2D, blending toward the exact end point.
- * @param start starting point
- * @param startHeading heading at start in radians
- * @param end end point
- * @param endHeading heading at end in radians
- * @param dryWet mix against a straight interpolation between start and end
- */
-fun eulerSpiralBetween(
+fun eulerSpiralBetween3D(
     start: Vec3,
-    startHeading: Float,
+    startDirection: Vec3,
     end: Vec3,
-    endHeading: Float,
+    endDirection: Vec3,
     samples: Int = 200,
     iterations: Int = 6,
-    dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
-): FLine {
-    if (samples < 2) {
-        val f = FLine()
-        f.moveTo(start)
-        f.lineTo(end)
-        return f
-    }
-    val spiral = eulerSpiralCore(start, startHeading, end, endHeading, samples, iterations)
-    val straight = (0 until samples).map { i ->
-        val t = i.toFloat() / (samples - 1)
-        vec(
-            start.x + (end.x - start.x) * t,
-            start.y + (end.y - start.y) * t,
-            start.z + (end.z - start.z) * t
-        )
-    }
-    val blended = mixSamples(straight, spiral, dryWet, wetModulator)
-    return blended.toFLine()
-}
-
-/**
- * Parametric Euler spiral with controllable length and heading scaling.
- * lengthScale stretches/shortens the spiral; headingScale scales the total turn; turn adds an extra twist.
- */
-fun eulerSpiralBetweenParametric(
-    start: Vec3,
-    startHeading: Float,
-    end: Vec3,
-    endHeading: Float,
-    samples: Int = 200,
-    iterations: Int = 6,
-    dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null,
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
 ): FLine {
-    if (samples < 2) {
-        val f = FLine()
-        f.moveTo(start)
-        f.lineTo(end)
-        return f
-    }
-    val spiral = eulerSpiralCoreParametric(
+    val pts = eulerSpiralCore3D(
         start = start,
-        startHeading = startHeading,
+        startDir = startDirection,
         end = end,
-        endHeading = endHeading,
+        endDir = endDirection,
         samples = samples,
         iterations = iterations,
         lengthScale = lengthScale,
         headingScale = headingScale,
         turn = turn
     )
-    val straight = (0 until samples).map { i ->
-        val t = i.toFloat() / (samples - 1)
-        vec(
-            start.x + (end.x - start.x) * t,
-            start.y + (end.y - start.y) * t,
-            start.z + (end.z - start.z) * t
-        )
-    }
-    val blended = mixSamples(straight, spiral, dryWet, wetModulator)
-    return blended.toFLine()
+    return pts.toFLine()
 }
 
-/**
- * Build an Euler spiral from the end of this curve toward an end point.
- * If no explicit heading is supplied, the tangent of the last segment is used.
- */
+private fun FLine.outgoingTangent3D(): Vec3? {
+    if (nodes.isEmpty()) return null
+    val last = nodes.last()
+    val prev = nodes.getOrNull(nodes.size - 2)?.to
+    return when (last) {
+        is FLine.CubicTo -> Vec3(last.to).sub(last.c2)
+        is FLine.LineTo -> if (prev != null) Vec3(last.to).sub(prev) else null
+        else -> null
+    }
+}
+
 fun FLine.byEulerSpiralTo(
     endPoint: Vec3,
-    endHeading: Float? = null,
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
     samples: Int = 200,
     iterations: Int = 6,
-    dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    lengthScale: Float = 1f,
+    headingScale: Float = 1f,
+    turn: Float = 0f
 ): FLine {
-    val start = if (nodes.isNotEmpty()) nodes.last().to else vec(0f, 0f, 0f)
-    val startHeading = if (nodes.size >= 2) {
-        val prev = nodes[nodes.size - 2].to
-        atan2(start.y - prev.y, start.x - prev.x)
-    } else 0f
-    val targetHeading = endHeading ?: atan2(endPoint.y - start.y, endPoint.x - start.x)
-    return eulerSpiralBetween(start, startHeading, endPoint, targetHeading, samples, iterations, dryWet, wetModulator)
+    val start = nodes.lastOrNull()?.to ?: vec(0f, 0f, 0f)
+    val startDirResolved = startDirection ?: outgoingTangent3D() ?: Vec3(endPoint).sub(start)
+    val endDirResolved = endDirection ?: Vec3(endPoint).sub(start)
+
+    val spiral = eulerSpiralBetween3D(
+        start = start,
+        startDirection = startDirResolved,
+        end = endPoint,
+        endDirection = endDirResolved,
+        samples = samples,
+        iterations = iterations,
+        lengthScale = lengthScale,
+        headingScale = headingScale,
+        turn = turn
+    )
+
+    val result = this.copy()
+    if (result.nodes.isEmpty()) result.moveTo(start)
+    spiral.nodes.drop(1).forEach { result.lineTo(it.to) }
+    return result
 }
 
-/**
- * Append a parametric Euler spiral to this path.
- */
 fun FLine.eulerSpiralTo(
     endPoint: Vec3,
-    startHeading: Float? = null,
-    endHeading: Float? = null,
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
     samples: Int = 200,
     iterations: Int = 6,
-    dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null,
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
@@ -3020,21 +2998,16 @@ fun FLine.eulerSpiralTo(
     if (nodes.isEmpty()) return moveTo(endPoint)
 
     val start = nodes.last().to
-    val resolvedStartHeading = startHeading ?: run {
-        val prev = nodes.getOrNull(nodes.size - 2)?.to
-        if (prev != null) atan2(start.y - prev.y, start.x - prev.x) else 0f
-    }
-    val resolvedEndHeading = endHeading ?: atan2(endPoint.y - start.y, endPoint.x - start.x)
+    val startDirResolved = startDirection ?: outgoingTangent3D() ?: Vec3(endPoint).sub(start)
+    val endDirResolved = endDirection ?: Vec3(endPoint).sub(start)
 
-    val spiral = eulerSpiralBetweenParametric(
+    val spiral = eulerSpiralBetween3D(
         start = start,
-        startHeading = resolvedStartHeading,
+        startDirection = startDirResolved,
         end = endPoint,
-        endHeading = resolvedEndHeading,
+        endDirection = endDirResolved,
         samples = samples,
         iterations = iterations,
-        dryWet = dryWet,
-        wetModulator = wetModulator,
         lengthScale = lengthScale,
         headingScale = headingScale,
         turn = turn
@@ -3050,55 +3023,43 @@ fun FLine.eulerSpiralTo(
     x: Number,
     y: Number,
     z: Number = 0,
-    startHeading: Float? = null,
-    endHeading: Float? = null,
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
     samples: Int = 200,
     iterations: Int = 6,
-    dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null,
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
-): FLine.Node {
-    return eulerSpiralTo(
-        planePoint(x, y, z),
-        startHeading,
-        endHeading,
-        samples,
-        iterations,
-        dryWet,
-        wetModulator,
-        lengthScale,
-        headingScale,
-        turn
-    )
-}
+): FLine.Node = eulerSpiralTo(
+    planePoint(x, y, z),
+    startDirection,
+    endDirection,
+    samples,
+    iterations,
+    lengthScale,
+    headingScale,
+    turn
+)
 
 fun FLine.eulerSpiralTo(
     v: Vec2,
-    startHeading: Float? = null,
-    endHeading: Float? = null,
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
     samples: Int = 200,
     iterations: Int = 6,
-    dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null,
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
-): FLine.Node {
-    return eulerSpiralTo(
-        planePoint(v.x, v.y, 0f),
-        startHeading,
-        endHeading,
-        samples,
-        iterations,
-        dryWet,
-        wetModulator,
-        lengthScale,
-        headingScale,
-        turn
-    )
-}
+): FLine.Node = eulerSpiralTo(
+    planePoint(v.x, v.y, 0f),
+    startDirection,
+    endDirection,
+    samples,
+    iterations,
+    lengthScale,
+    headingScale,
+    turn
+)
 
 // ---------- Curvature-driven evolution ----------
 
