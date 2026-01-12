@@ -1,12 +1,5 @@
-package afield.ai.core.bridge
+package afield.ai.core
 
-import afield.ai.core.logging.LogSink
-import afield.ai.core.logging.StdoutLog
-import afield.ai.core.logging.TraceLogger
-import afield.ai.core.logging.log
-import afield.ai.core.tools.Commentary
-import afield.ai.core.tools.ToolExecutionContext
-import afield.ai.core.tools.ToolRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -493,33 +486,33 @@ class OpenAiIdeCodexBridge(
         tools.register(Commentary::class.java) { _, _ -> mapOf("ok" to true) }
 
         // Attachments
-        tools.register(afield.ai.core.tools.ListAttachmentsRequest::class.java) { ctx, _ ->
-            afield.ai.core.tools.ListAttachmentsResult(
-                attachments = ctx.attachments.map { afield.ai.core.tools.AttachmentInfo(it.fileName, it.language) }
+        tools.register(ListAttachmentsRequest::class.java) { ctx, _ ->
+            ListAttachmentsResult(
+                attachments = ctx.attachments.map { AttachmentInfo(it.fileName, it.language) }
             )
         }
-        tools.register(afield.ai.core.tools.AttachmentRequest::class.java) { ctx, req ->
+        tools.register(AttachmentRequest::class.java) { ctx, req ->
             val hit = ctx.attachments.firstOrNull { it.fileName == req.file }
                 ?: throw IllegalArgumentException("No attachment named '${req.file}'. Call ListAttachments first.")
-            afield.ai.core.tools.AttachmentResponse(hit.fileName, hit.language, hit.code)
+            AttachmentResponse(hit.fileName, hit.language, hit.code)
         }
 
         // Kotlin-only tools (only work if provider is supplied in ctx)
-        tools.register(afield.ai.core.tools.ListDefinitionsRequest::class.java) { ctx, _ ->
+        tools.register(ListDefinitionsRequest::class.java) { ctx, _ ->
             ctx.listDefinitions?.invoke()
                 ?: throw IllegalStateException("ListDefinitions not available for this request.")
         }
-        tools.register(afield.ai.core.tools.ListContentsRequest::class.java) { ctx, _ ->
+        tools.register(ListContentsRequest::class.java) { ctx, _ ->
             ctx.listFileContents?.invoke()
                 ?: throw IllegalStateException("ListContents not available for this request.")
         }
-        tools.register(afield.ai.core.tools.EditFileRequest::class.java) { ctx, req ->
+        tools.register(EditFileRequest::class.java) { ctx, req ->
             ctx.editOtherFile?.invoke(req)
                 ?: throw IllegalStateException("EditFile not available for this request.")
         }
 
         // Optional extra tool
-        tools.register(afield.ai.core.tools.WorkspaceSymbolSearch::class.java) { ctx, req ->
+        tools.register(WorkspaceSymbolSearch::class.java) { ctx, req ->
             ctx.workspaceSymbolSearch?.invoke(req)
                 ?: throw IllegalStateException("WorkspaceSymbolSearch not available for this request.")
         }

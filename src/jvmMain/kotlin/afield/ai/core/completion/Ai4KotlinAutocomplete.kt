@@ -1,8 +1,8 @@
 package afield.ai.core.completion
 
-import afield.ai.core.bridge.OpenAiIdeCodexBridge
-import afield.ai.core.lang.KOTLIN_SCRIPT
-import afield.ai.core.logging.SilentLog
+import afield.ai.core.OpenAiIdeCodexBridge
+import afield.ai.core.KOTLIN_SCRIPT
+import afield.ai.core.SilentLog
 import com.openai.models.ReasoningEffort
 import java.util.concurrent.ConcurrentHashMap
 

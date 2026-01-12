@@ -2,8 +2,8 @@ package afield.ai.core.completion
 
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
-import afield.ai.core.bridge.OpenAiIdeCodexBridge
-import afield.ai.core.logging.SilentLog
+import afield.ai.core.OpenAiIdeCodexBridge
+import afield.ai.core.SilentLog
 import com.openai.models.ReasoningEffort
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files

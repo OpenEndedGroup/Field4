@@ -1,13 +1,8 @@
-package afield.ai.core.install
+package afield.ai.core
 
 import afield.*
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
-import afield.ai.core.bridge.OpenAiIdeCodexBridge
-import afield.ai.core.chat.IdeChatHelpers
-import afield.ai.core.lang.*
-import afield.ai.core.logging.NotifyLog
-import afield.ai.core.tools.*
 import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -1,4 +1,4 @@
-package afield.ai.core.lang
+package afield.ai.core
 
 data class LanguageSpec(
     val name: String,

@@ -1,4 +1,4 @@
-package afield.ai.core.logging
+package afield.ai.core
 
 import afield.notify
 import java.nio.charset.StandardCharsets

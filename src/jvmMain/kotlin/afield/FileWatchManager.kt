@@ -28,6 +28,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     fun start() {
         if (isRunning) return
 
+        // let's stop this for now.
+        if (true) return;
+
         isRunning = true
         val workspaceDir = File(sessionInfo.filename).absoluteFile
 

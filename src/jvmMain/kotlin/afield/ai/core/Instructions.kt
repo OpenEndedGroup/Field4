@@ -1,7 +1,4 @@
-package afield.ai.core.instructions
-
-import afield.ai.core.lang.LanguageSpec
-import afield.ai.core.tools.ToolExecutionContext
+package afield.ai.core
 
 private fun baseAssistantContract(langName: String): String = """
 You are a code-writing assistant for $langName embedded in an IDE.

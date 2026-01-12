@@ -1,4 +1,4 @@
-package afield.ai.core.tools
+package afield.ai.core
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
@@ -129,5 +129,5 @@ internal class ToolRegistry {
 fun validateNoMarkers(code: String) {
     val bad = listOf("<help>", "<error>", "</error>", "<cursor>", "<rewrite>", "</rewrite>")
     val hit = bad.firstOrNull { code.contains(it) }
-    if (hit != null) throw afield.ai.core.lang.MalformedAI("Model output still contained marker '$hit'. Refusing to apply.")
+    if (hit != null) throw MalformedAI("Model output still contained marker '$hit'. Refusing to apply.")
 }

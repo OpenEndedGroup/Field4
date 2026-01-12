@@ -1,7 +1,7 @@
 package afield.logger
 
-import afield.ai.core.logging.BlockBoundary
-import afield.ai.core.logging.LogDispatcher
+import afield.ai.core.BlockBoundary
+import afield.ai.core.LogDispatcher
 import org.jetbrains.kotlin.utils.threadLocal
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind

@@ -1,21 +1,4 @@
-package afield.ai.core.chat
-
-import afield.ai.core.bridge.OpenAiIdeCodexBridge
-import afield.ai.core.instructions.InstructionMode
-import afield.ai.core.instructions.buildDynamicInstructions
-import afield.ai.core.lang.LanguageSpec
-import afield.ai.core.lang.MalformedAI
-import afield.ai.core.tools.EditFileRequest
-import afield.ai.core.tools.EditFileResponse
-import afield.ai.core.tools.ListContentsResult
-import afield.ai.core.tools.ListDefinitionsResult
-import afield.ai.core.tools.ToolExecutionContext
-import afield.ai.core.tools.WorkspaceSymbolSearch
-import afield.ai.core.tools.WorkspaceSymbolSearchResult
-import afield.ai.core.tools.validateNoMarkers
-import afield.ai.core.logging.LogSink
-import afield.ai.core.logging.StdoutLog
-import afield.ai.core.logging.log
+package afield.ai.core
 
 class IdeChatHelpers(
     private val bridge: OpenAiIdeCodexBridge,
@@ -35,7 +18,7 @@ class IdeChatHelpers(
         code: String,
         lang: LanguageSpec,
         userPrompt: String,
-        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        attachments: List<ContextAttachment> = emptyList(),
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -89,7 +72,7 @@ class IdeChatHelpers(
         lang: LanguageSpec,
         userPrompt: String,
         imageUrls: List<String> = emptyList(),
-        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        attachments: List<ContextAttachment> = emptyList(),
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -136,7 +119,7 @@ class IdeChatHelpers(
         lang: LanguageSpec,
         lineNumber: Int,
         userPrompt: String,
-        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        attachments: List<ContextAttachment> = emptyList(),
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -193,7 +176,7 @@ class IdeChatHelpers(
         code: String,
         lang: LanguageSpec,
         errorMessage: String,
-        attachments: List<afield.ai.core.tools.ContextAttachment> = emptyList(),
+        attachments: List<ContextAttachment> = emptyList(),
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,

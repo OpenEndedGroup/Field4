@@ -1,6 +1,6 @@
 package afield.ai
 
-import afield.ai.core.logging.LogEvent
+import afield.ai.core.LogEvent
 import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty

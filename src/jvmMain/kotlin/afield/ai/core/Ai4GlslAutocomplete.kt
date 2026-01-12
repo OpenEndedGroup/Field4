@@ -1,9 +1,5 @@
-package afield.ai.core.glsl
+package afield.ai.core
 
-import afield.ai.core.bridge.OpenAiIdeCodexBridge
-import afield.ai.core.lang.LanguageSpec
-import afield.ai.core.lang.glslSpecForProperty
-import afield.ai.core.logging.SilentLog
 import com.openai.models.ReasoningEffort
 import java.util.concurrent.ConcurrentHashMap
 

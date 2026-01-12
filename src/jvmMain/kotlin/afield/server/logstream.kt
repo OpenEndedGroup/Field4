@@ -1,10 +1,10 @@
 package afield.server
 
 import afield.*
-import afield.ai.core.logging.BlockBoundary
-import afield.ai.core.logging.LogDispatcher
-import afield.ai.core.logging.LogEvent
-import afield.ai.core.logging.LogSink
+import afield.ai.core.BlockBoundary
+import afield.ai.core.LogDispatcher
+import afield.ai.core.LogEvent
+import afield.ai.core.LogSink
 import io.ktor.websocket.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
