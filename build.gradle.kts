@@ -314,6 +314,9 @@ kotlin {
 
 
                 implementation("com.illposed.osc:javaosc-core:0.9")
+
+                implementation("org.clojure:clojure:1.11.3")
+
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
 
