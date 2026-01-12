@@ -315,7 +315,11 @@ kotlin {
 
                 implementation("com.illposed.osc:javaosc-core:0.9")
 
+                implementation("org.ejml:ejml-simple:0.43.1")
                 implementation("org.clojure:clojure:1.11.3")
+                implementation("org.clojure:tools.reader:1.5.1")
+                implementation("compliment:compliment:0.5.5")
+                implementation("org.clojure:data.json:2.5.0")
 
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
