@@ -8,6 +8,11 @@ let currentBoxes = [];
 let selectedBox = null;
 let currentProperty = 'code';
 let ednFileUrl = null;
+let panX = 0;
+let panY = 0;
+let isPanning = false;
+let startPanX = 0;
+let startPanY = 0;
 
 // Initialize the viewer when page loads
 window.addEventListener('DOMContentLoaded', async () => {
@@ -39,6 +44,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         // Setup the "Open in Field4" button
         setupOpenLocalButton(ednFileUrl);
+
+        // Setup help overlay
+        setupHelpOverlay();
 
         // Hide loading indicator
         document.getElementById('loading').style.display = 'none';
@@ -112,6 +120,82 @@ function renderBoxes(boxes) {
             deselectBox();
         }
     });
+
+    // Setup pan controls
+    setupPanControls();
+}
+
+function setupPanControls() {
+    const viewport = document.getElementById('viewport');
+    const canvas = document.getElementById('canvas');
+
+    // Middle mouse button or space+drag to pan
+    viewport.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+            e.preventDefault();
+            isPanning = true;
+            startPanX = e.clientX - panX;
+            startPanY = e.clientY - panY;
+            viewport.style.cursor = 'grabbing';
+        }
+    });
+
+    viewport.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+            panX = e.clientX - startPanX;
+            panY = e.clientY - startPanY;
+            canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+        }
+    });
+
+    viewport.addEventListener('mouseup', () => {
+        isPanning = false;
+        viewport.style.cursor = 'default';
+    });
+
+    viewport.addEventListener('mouseleave', () => {
+        isPanning = false;
+        viewport.style.cursor = 'default';
+    });
+
+    // Scroll wheel to pan
+    viewport.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey) {
+            e.preventDefault();
+            panX -= e.deltaX;
+            panY -= e.deltaY;
+            canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+        }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Escape to deselect
+        if (e.key === 'Escape') {
+            deselectBox();
+        }
+        // Arrow keys to pan when no editor is focused
+        if (!isEditorFocused()) {
+            if (e.key === 'ArrowLeft') {
+                panX += 50;
+                canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+            } else if (e.key === 'ArrowRight') {
+                panX -= 50;
+                canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+            } else if (e.key === 'ArrowUp') {
+                panY += 50;
+                canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+            } else if (e.key === 'ArrowDown') {
+                panY -= 50;
+                canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+            }
+        }
+    });
+}
+
+function isEditorFocused() {
+    const active = document.activeElement;
+    return active && active.closest('.monaco-editor-container');
 }
 
 function selectBox(box, boxEl) {
@@ -299,3 +383,77 @@ window.addEventListener('resize', () => {
         monacoEditor.layout();
     }
 });
+
+function setupHelpOverlay() {
+    // Add help overlay that shows on ? key
+    let helpVisible = false;
+    
+    const helpOverlay = document.createElement('div');
+    helpOverlay.id = 'help-overlay';
+    helpOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+    `;
+    
+    helpOverlay.innerHTML = `
+        <div style="max-width: 600px; padding: 40px; background: rgba(30, 30, 30, 0.95); border-radius: 12px; border: 2px solid var(--field-cyan);">
+            <h2 style="margin-top: 0; color: var(--field-cyan); font-size: 28px;">Offline Viewer Help</h2>
+            <div style="line-height: 2; color: #d0d0d0;">
+                <p><strong>Navigation:</strong></p>
+                <p><kbd>Click box</kbd> — Select box and view code</p>
+                <p><kbd>Middle mouse</kbd> or <kbd>Shift + Drag</kbd> — Pan canvas</p>
+                <p><kbd>Mouse wheel</kbd> — Scroll canvas</p>
+                <p><kbd>Arrow keys</kbd> — Pan canvas (when editor not focused)</p>
+                <p><kbd>Escape</kbd> — Deselect box and hide editor</p>
+                <p><kbd>?</kbd> — Show/hide this help</p>
+                <p style="margin-top: 24px;"><strong>Features:</strong></p>
+                <p>• Click property tabs to switch between code/glsl/python</p>
+                <p>• Monaco editor provides syntax highlighting</p>
+                <p>• Click "🚀 Open in Field4" to launch in desktop app</p>
+                <p style="margin-top: 24px; opacity: 0.7; font-size: 13px;">
+                    This is a read-only documentation mode. To edit or execute code, open in Field4 desktop application.
+                </p>
+            </div>
+            <div style="text-align: center; margin-top: 24px;">
+                <button style="padding: 10px 24px; background: var(--field-cyan); border: none; border-radius: 6px; color: #000; cursor: pointer; font-size: 14px; font-family: inherit;">
+                    Close (Esc)
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(helpOverlay);
+    
+    const button = helpOverlay.querySelector('button');
+    button.addEventListener('click', () => {
+        helpOverlay.style.display = 'none';
+        helpVisible = false;
+    });
+    
+    helpOverlay.addEventListener('click', (e) => {
+        if (e.target === helpOverlay) {
+            helpOverlay.style.display = 'none';
+            helpVisible = false;
+        }
+    });
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '?' || e.key === 'h') {
+            helpOverlay.style.display = helpVisible ? 'none' : 'flex';
+            helpVisible = !helpVisible;
+        }
+        if (e.key === 'Escape' && helpVisible) {
+            helpOverlay.style.display = 'none';
+            helpVisible = false;
+        }
+    });
+}
