@@ -30,6 +30,28 @@
             box-sizing: border-box;
         }
 
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .box {
+            animation: fadeInUp 0.4s ease-out backwards;
+        }
+
+        .box:nth-child(1) { animation-delay: 0.05s; }
+        .box:nth-child(2) { animation-delay: 0.1s; }
+        .box:nth-child(3) { animation-delay: 0.15s; }
+        .box:nth-child(4) { animation-delay: 0.2s; }
+        .box:nth-child(5) { animation-delay: 0.25s; }
+        .box:nth-child(n+6) { animation-delay: 0.3s; }
+
         #viewport {
             position: absolute;
             width: 100vw;
@@ -58,7 +80,12 @@
             padding: 8px;
             cursor: pointer;
             user-select: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
+
+        .box:hover {
+            transform: translateZ(0) scale(1.02);
+            box-shadow: 0 4px 12px rgba(72, 201, 255, 0.2);
         }
 
         .box::before {
@@ -78,6 +105,8 @@
 
         .box.selected {
             border-color: rgba(var(--field-cyan-rgb), 0.9);
+            box-shadow: 0 0 20px rgba(var(--field-cyan-rgb), 0.4),
+                        inset 0 0 20px rgba(var(--field-cyan-rgb), 0.1);
         }
 
         .box-name {
@@ -100,10 +129,15 @@
             background: #1e1e1e;
             z-index: 19;
             display: none;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
 
         .monaco-editor-container.visible {
             display: block;
+            opacity: 1;
+            transform: translateX(0);
         }
 
         .monaco-editor {

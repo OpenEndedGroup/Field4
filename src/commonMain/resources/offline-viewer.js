@@ -39,6 +39,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         currentBoxes = data.boxes;
         renderBoxes(data.boxes);
 
+        // Show document info
+        showDocumentInfo(data, ednFileUrl);
+
         // Initialize Monaco editor
         await initializeMonaco();
 
@@ -374,6 +377,21 @@ function showError(message) {
         <p style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
             Make sure the EDN file exists and is accessible from this page.
         </p>
+    `;
+}
+
+function showDocumentInfo(data, fileUrl) {
+    const banner = document.querySelector('.offline-banner');
+    const fileName = fileUrl.split('/').pop();
+    const boxCount = data.boxes ? data.boxes.length : 0;
+    const version = data.version || 'unknown';
+    
+    banner.innerHTML = `
+        📖 Offline Documentation Mode — Read Only 
+        <span style="opacity: 0.6; margin-left: 12px; font-size: 11px;">
+            ${fileName} • ${boxCount} box${boxCount !== 1 ? 'es' : ''} • v${version}
+        </span>
+        <span style="opacity: 0.6; margin-left: 12px;">Press <kbd style="padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">?</kbd> for help</span>
     `;
 }
 
