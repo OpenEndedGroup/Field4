@@ -142,15 +142,29 @@ class EdnParser {
 
     parseNumber() {
         let numStr = '';
+        const start = this.pos;
+        let dotCount = 0;
+        
         while (this.pos < this.text.length) {
             const char = this.peek();
-            if ((char >= '0' && char <= '9') || char === '.' || char === '-' || char === 'e' || char === 'E') {
+            if (char === '.') {
+                dotCount++;
+                if (dotCount > 1) break; // Only one decimal point allowed
+                numStr += this.advance();
+            } else if ((char >= '0' && char <= '9') || 
+                       (char === '-' && this.pos === start) || 
+                       char === 'e' || char === 'E') {
                 numStr += this.advance();
             } else {
                 break;
             }
         }
-        return parseFloat(numStr);
+        
+        const num = parseFloat(numStr);
+        if (isNaN(num)) {
+            throw new Error(`Invalid number at position ${start}: ${numStr}`);
+        }
+        return num;
     }
 
     parseBoolean() {

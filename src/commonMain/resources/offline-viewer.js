@@ -347,16 +347,7 @@ async function initializeMonaco() {
 function setupOpenLocalButton(fileUrl) {
     const button = document.getElementById('open-local');
     
-    // Try to create a file:// URL or use the original URL
-    let localUrl = fileUrl;
-    
-    // If it's a relative URL, try to convert to absolute
-    if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://') && !fileUrl.startsWith('file://')) {
-        const currentUrl = new URL(window.location.href);
-        localUrl = new URL(fileUrl, currentUrl.origin).href;
-    }
-
-    // Create the field:// URL (custom protocol that could be registered)
+    // Create the field:// URL for opening in desktop app
     // For now, we'll use a localhost URL with the file parameter
     const fieldUrl = `http://localhost:9092/index.html?file=${encodeURIComponent(fileUrl)}`;
     
@@ -465,11 +456,19 @@ function setupHelpOverlay() {
     });
     
     document.addEventListener('keydown', (e) => {
-        if (e.key === '?' || e.key === 'h') {
+        // Don't process help keys if user is typing in an input field
+        const isTyping = document.activeElement && 
+                        (document.activeElement.tagName === 'INPUT' || 
+                         document.activeElement.tagName === 'TEXTAREA' ||
+                         document.activeElement.classList.contains('monaco-mouse-cursor-text'));
+        
+        if ((e.key === '?' || e.key === 'h') && !isTyping) {
+            e.preventDefault();
             helpOverlay.style.display = helpVisible ? 'none' : 'flex';
             helpVisible = !helpVisible;
         }
         if (e.key === 'Escape' && helpVisible) {
+            e.preventDefault();
             helpOverlay.style.display = 'none';
             helpVisible = false;
         }

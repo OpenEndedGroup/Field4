@@ -19,11 +19,34 @@ cp src/commonMain/resources/offline-viewer.js "$DIST_DIR/"
 cp src/commonMain/resources/examples-gallery.html "$DIST_DIR/"
 
 echo "Copying CSS files..."
-cp src/jsMain/resources/outputareas.css "$DIST_DIR/" 2>/dev/null || cp src/commonMain/resources/outputareas.css "$DIST_DIR/" 2>/dev/null || echo "Warning: outputareas.css not found"
-cp src/jsMain/resources/iosevka.css "$DIST_DIR/" 2>/dev/null || cp src/commonMain/resources/iosevka.css "$DIST_DIR/" 2>/dev/null || echo "Warning: iosevka.css not found"
+if [ -f "src/jsMain/resources/outputareas.css" ]; then
+    cp src/jsMain/resources/outputareas.css "$DIST_DIR/"
+elif [ -f "src/commonMain/resources/outputareas.css" ]; then
+    cp src/commonMain/resources/outputareas.css "$DIST_DIR/"
+else
+    echo "Warning: outputareas.css not found in jsMain or commonMain resources"
+fi
+
+if [ -f "src/jsMain/resources/iosevka.css" ]; then
+    cp src/jsMain/resources/iosevka.css "$DIST_DIR/"
+elif [ -f "src/commonMain/resources/iosevka.css" ]; then
+    cp src/commonMain/resources/iosevka.css "$DIST_DIR/"
+else
+    echo "Warning: iosevka.css not found in jsMain or commonMain resources"
+fi
 
 echo "Copying font files..."
-cp src/jsMain/resources/iosevka-*.woff2 "$DIST_DIR/" 2>/dev/null || cp src/commonMain/resources/iosevka-*.woff2 "$DIST_DIR/" 2>/dev/null || echo "Warning: font files not found"
+FONTS_COPIED=0
+for font_dir in "src/jsMain/resources" "src/commonMain/resources"; do
+    if ls "$font_dir"/iosevka-*.woff2 1> /dev/null 2>&1; then
+        cp "$font_dir"/iosevka-*.woff2 "$DIST_DIR/"
+        FONTS_COPIED=1
+        break
+    fi
+done
+if [ $FONTS_COPIED -eq 0 ]; then
+    echo "Warning: No font files (iosevka-*.woff2) found in resources directories"
+fi
 
 echo "Copying Monaco editor..."
 if [ -d "src/jsMain/resources/monaco/min" ]; then
