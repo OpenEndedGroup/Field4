@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Field | Offline Viewer</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/outputareas.css">
+    <style>
+        body {
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: rgba(20, 20, 20, 1);
+            overflow: hidden;
+        }
+
+        :root {
+            --field-cyan-rgb: 72, 201, 255;
+            --field-cyan: rgb(var(--field-cyan-rgb));
+            --field-cyan-muted: rgba(var(--field-cyan-rgb), 0.4);
+            --field-panel: rgba(0, 0, 0, 0.26);
+            --field-text: #a9e6ff;
+            --field-text-soft: #7fd4ff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .box {
+            animation: fadeInUp 0.4s ease-out backwards;
+        }
+
+        .box:nth-child(1) { animation-delay: 0.05s; }
+        .box:nth-child(2) { animation-delay: 0.1s; }
+        .box:nth-child(3) { animation-delay: 0.15s; }
+        .box:nth-child(4) { animation-delay: 0.2s; }
+        .box:nth-child(5) { animation-delay: 0.25s; }
+        .box:nth-child(n+6) { animation-delay: 0.3s; }
+
+        #viewport {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            overflow: auto;
+        }
+
+        #canvas {
+            position: relative;
+            min-width: 100vw;
+            min-height: 100vh;
+            transform-origin: 0 0;
+        }
+
+        .box {
+            position: absolute;
+            color: rgb(255, 255, 255, 0.8);
+            border-radius: 5px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgb(255, 255, 255, 0.0);
+            background-color: rgb(50, 50, 50, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
+
+        .box:hover {
+            transform: translateZ(0) scale(1.02);
+            box-shadow: 0 4px 12px rgba(72, 201, 255, 0.2);
+        }
+
+        .box::before {
+            content: " ";
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            right: -6px;
+            bottom: -6px;
+            border: 5px solid rgba(0, 0, 0, 0.8);
+            width: 100%;
+            height: 100%;
+            padding: 1px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+
+        .box.selected {
+            border-color: rgba(var(--field-cyan-rgb), 0.9);
+            box-shadow: 0 0 20px rgba(var(--field-cyan-rgb), 0.4),
+                        inset 0 0 20px rgba(var(--field-cyan-rgb), 0.1);
+        }
+
+        .box-name {
+            backdrop-filter: blur(5px) brightness(0.75);
+            padding: 8px;
+            display: block;
+            text-align: center;
+            word-break: break-word;
+        }
+
+        .monaco-editor-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            height: calc(100vh - 20px);
+            width: calc(40vw - 20px);
+            border: 5px solid black;
+            border-radius: 5px;
+            padding: 5px;
+            background: #1e1e1e;
+            z-index: 19;
+            display: none;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .monaco-editor-container.visible {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .monaco-editor {
+            width: 100%;
+            height: calc(100% - 40px);
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
+        }
+
+        .property-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            padding: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+        }
+
+        .property-tab {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: var(--field-text-soft);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .property-tab:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .property-tab.active {
+            background: var(--field-cyan);
+            color: #000;
+            border-color: var(--field-cyan);
+        }
+
+        .offline-banner {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--field-cyan);
+            border-radius: 8px;
+            color: var(--field-text);
+            font-size: 12px;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+
+        .open-local-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: rgba(var(--field-cyan-rgb), 0.2);
+            border: 2px solid var(--field-cyan);
+            border-radius: 8px;
+            color: var(--field-text);
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .open-local-button:hover {
+            background: rgba(var(--field-cyan-rgb), 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(var(--field-cyan-rgb), 0.3);
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--field-cyan);
+            font-size: 18px;
+            z-index: 100;
+        }
+
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid red;
+            border-radius: 8px;
+            color: white;
+            z-index: 100;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-banner">
+        📖 Offline Documentation Mode — Read Only  <span style="opacity: 0.6; margin-left: 12px;">Press <kbd style="padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">?</kbd> for help</span>
+    </div>
+
+    <div class="loading" id="loading">Loading Field document...</div>
+    <div class="error-message" id="error" style="display: none;"></div>
+
+    <div id="viewport">
+        <div id="canvas"></div>
+    </div>
+
+    <div class="monaco-editor-container" id="editor-container">
+        <div class="property-tabs" id="property-tabs"></div>
+        <div class="monaco-editor" id="editor"></div>
+    </div>
+
+    <a class="open-local-button" id="open-local" style="display: none;">
+        🚀 Open in Field4
+    </a>
+
+    <script type="text/javascript" src="./min/vs/loader.js"></script>
+    <script src="edn-parser.js"></script>
+    <script src="offline-viewer.js"></script>
+</body>
+</html>

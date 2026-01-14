@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Offline Viewer Test Page</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.pass { background: #d4edda; color: #155724; }
+        .status.pending { background: #fff3cd; color: #856404; }
+        .test-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #48c9ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 4px;
+        }
+        .test-link:hover {
+            background: #36b8ef;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Field4 Offline Viewer - Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>Pre-Flight Checks</h2>
+        <div id="file-checks">
+            <p>Checking required files...</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 1: Basic Viewer</h2>
+        <p>Open the offline viewer with a simple example:</p>
+        <a href="offline.html?file=metadata_store/simple_hello/metadata.edn" target="_blank" class="test-link">
+            Open Simple Hello Example
+        </a>
+        <p><strong>Expected:</strong> Should display one box with "Hello World" content. Clicking the box should show code in Monaco editor.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Multiple Boxes</h2>
+        <p>Open the offline viewer with multiple boxes:</p>
+        <a href="offline.html?file=metadata_store/example_template/metadata.edn" target="_blank" class="test-link">
+            Open Example Template
+        </a>
+        <p><strong>Expected:</strong> Should display two boxes. Each box should be clickable and show its code.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Examples Gallery</h2>
+        <p>Open the examples gallery page:</p>
+        <a href="examples-gallery.html" target="_blank" class="test-link">
+            Open Gallery
+        </a>
+        <p><strong>Expected:</strong> Should display a beautiful gallery page with cards for each example.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Embed Example</h2>
+        <p>Open the embedding demonstration:</p>
+        <a href="embed-example.html" target="_blank" class="test-link">
+            Open Embed Demo
+        </a>
+        <p><strong>Expected:</strong> Should show the offline viewer embedded in an iframe with controls.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: EDN Parser</h2>
+        <p>Test the EDN parser with various inputs:</p>
+        <button onclick="testEdnParser()" class="test-link">Run Parser Tests</button>
+        <div id="parser-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Interactive Features to Test</h2>
+        <p>When viewing examples, test these features:</p>
+        <ul>
+            <li>✓ Click on boxes to select them</li>
+            <li>✓ Monaco editor appears with syntax-highlighted code</li>
+            <li>✓ Pan canvas with middle mouse or Shift+drag</li>
+            <li>✓ Scroll with mouse wheel</li>
+            <li>✓ Navigate with arrow keys (when editor not focused)</li>
+            <li>✓ Press Escape to deselect and hide editor</li>
+            <li>✓ Press '?' to show help overlay</li>
+            <li>✓ Switch between properties (if box has multiple code properties)</li>
+            <li>✓ "Open in Field4" button is visible</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>Build Script Test</h2>
+        <p>Test the automated build script:</p>
+        <pre>cd /home/runner/work/Field4/Field4
+./build-offline-docs.sh
+cd dist/offline-viewer
+python3 -m http.server 8000</pre>
+        <p><strong>Expected:</strong> Should create dist/offline-viewer with all necessary files.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Documentation</h2>
+        <p>Review the documentation files:</p>
+        <ul>
+            <li><a href="../docs/OFFLINE_VIEWER.md">OFFLINE_VIEWER.md</a> - User guide</li>
+            <li><a href="../docs/OFFLINE_DEPLOYMENT.md">OFFLINE_DEPLOYMENT.md</a> - Deployment guide</li>
+            <li><a href="../docs/QUICKSTART_OFFLINE.md">QUICKSTART_OFFLINE.md</a> - Quick start</li>
+        </ul>
+    </div>
+
+    <script>
+        // Check for required files
+        async function checkFiles() {
+            const files = [
+                'offline.html',
+                'edn-parser.js',
+                'offline-viewer.js',
+                'examples-gallery.html',
+                'embed-example.html'
+            ];
+            
+            const checksDiv = document.getElementById('file-checks');
+            let html = '<ul>';
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch(file, { method: 'HEAD' });
+                    if (response.ok) {
+                        html += `<li>✓ ${file} <span class="status pass">FOUND</span></li>`;
+                    } else {
+                        html += `<li>✗ ${file} <span class="status">NOT FOUND</span></li>`;
+                    }
+                } catch (e) {
+                    html += `<li>✗ ${file} <span class="status">ERROR</span></li>`;
+                }
+            }
+            
+            html += '</ul>';
+            checksDiv.innerHTML = html;
+        }
+
+        // Test EDN parser
+        async function testEdnParser() {
+            const resultsDiv = document.getElementById('parser-results');
+            resultsDiv.innerHTML = '<p>Loading parser...</p>';
+            
+            try {
+                // Load the parser
+                const script = document.createElement('script');
+                script.src = 'edn-parser.js';
+                document.head.appendChild(script);
+                
+                await new Promise(resolve => script.onload = resolve);
+                
+                // Run tests
+                const tests = [
+                    { input: '42', expected: 42 },
+                    { input: '3.14', expected: 3.14 },
+                    { input: '"hello"', expected: 'hello' },
+                    { input: 'true', expected: true },
+                    { input: 'false', expected: false },
+                    { input: '[1 2 3]', expected: [1, 2, 3] },
+                    { input: '{:a 1}', expected: { a: 1 } },
+                ];
+                
+                let html = '<h3>Parser Test Results:</h3><ul>';
+                
+                for (const test of tests) {
+                    try {
+                        const result = parseEdn(test.input);
+                        const passed = JSON.stringify(result) === JSON.stringify(test.expected);
+                        html += `<li>${passed ? '✓' : '✗'} ${test.input} → ${JSON.stringify(result)}</li>`;
+                    } catch (e) {
+                        html += `<li>✗ ${test.input} → ERROR: ${e.message}</li>`;
+                    }
+                }
+                
+                html += '</ul>';
+                resultsDiv.innerHTML = html;
+            } catch (e) {
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${e.message}</p>`;
+            }
+        }
+
+        // Run file checks on load
+        checkFiles();
+    </script>
+</body>
+</html>
