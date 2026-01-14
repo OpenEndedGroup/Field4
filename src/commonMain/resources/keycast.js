@@ -33,6 +33,13 @@
     };
 
     const functionKeys = new Set(Array.from({ length: 24 }, (_, i) => `F${i + 1}`));
+    const mouseButtons = {
+        0: "LMB",
+        1: "MMB",
+        2: "RMB",
+        3: "MB4",
+        4: "MB5",
+    };
 
     let enabled = false;
     let buffer = "";
@@ -141,6 +148,27 @@
         return (parts.join("") + base).trim();
     }
 
+    function resolveButton(event) {
+        if (typeof event.button === "number" && event.button >= 0) return event.button;
+        // Fallback for browsers/devices that only expose `buttons` bitmask
+        const mask = event.buttons;
+        if (mask === 1) return 0; // left
+        if (mask === 2) return 2; // right
+        if (mask === 4) return 1; // middle
+        if (mask === 8) return 3; // X1
+        if (mask === 16) return 4; // X2
+        if (event.type === "contextmenu") return 2; // right click fallback
+        if (event.type === "click" || event.type === "mouseup" || event.type === "mousedown") return 0;
+        return null;
+    }
+
+    function formatMouse(event) {
+        const button = resolveButton(event);
+        if (button === null) return "";
+        const label = mouseButtons[button];
+        return label || "";
+    }
+
     function restartFade() {
         if (!textEl) return;
         if (fadeTimer) window.clearTimeout(fadeTimer);
@@ -166,6 +194,29 @@
         lastStamp = now;
 
         const label = formatKey(event);
+        if (!label) return;
+
+        if (buffer.length + label.length > maxCharacters) {
+            buffer = "";
+        }
+        const next = buffer + label;
+        buffer = next.length > maxCharacters ? next.slice(-maxCharacters) : next;
+        ensureElements();
+        alignOverlay();
+        textEl.textContent = buffer;
+        restartFade();
+    }
+
+    function handleMouse(event) {
+        if (!enabled) return;
+
+        const now = Date.now();
+        if (now - lastStamp > joinWindowMs) {
+            buffer = "";
+        }
+        lastStamp = now;
+
+        const label = formatMouse(event);
         if (!label) return;
 
         if (buffer.length + label.length > maxCharacters) {
@@ -230,6 +281,10 @@
     function attachListenersOnce() {
         if (listenersAttached) return;
         window.addEventListener("keydown", handleKey, { capture: true });
+        // Support both Pointer and Mouse events to cover older browsers/iframes
+        const targets = [window, document];
+        const events = ["pointerdown", "pointerup", "mousedown", "mouseup", "auxclick", "click", "contextmenu"];
+        targets.forEach((t) => events.forEach((ev) => t.addEventListener(ev, handleMouse, { capture: true })));
         window.addEventListener("resize", alignOverlay);
         listenersAttached = true;
     }

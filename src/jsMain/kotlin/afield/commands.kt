@@ -68,6 +68,18 @@ fun deleteSelectedBoxes() {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
+fun selectAllBoxes() {
+    val boxes = document.body!!.getElementsByClassName("box").asList().mapNotNull { it as? HTMLElement }
+    if (boxes.isEmpty()) return
+
+    // Normalize selection state then select everything
+    selected.toList().forEach { deselectBox(it) }
+    boxes.forEach { selectBox(it) }
+    canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun copySelectedBoxesToClipboard() {
     val ids = getSelectedIds()
     if (ids.isEmpty()) return
@@ -670,6 +682,18 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             val a = eval(e)
             all.push(a)
         }
+    }
+    run {
+        val e = """
+        ({
+            id:'select-all-boxes', label:'Select All Boxes',
+            detail:'Select every box on the canvas',
+            canvasKeybinding: (event) => false,
+            run: () => { selectAllBoxes() }
+        })
+    """.trimIndent()
+        val a = eval(e)
+        all.push(a)
     }
     allActions.fromSelection = all
     updateActions()

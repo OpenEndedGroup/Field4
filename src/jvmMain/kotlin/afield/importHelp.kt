@@ -1,7 +1,7 @@
 package afield
 
-import io.github.classgraph.ClassGraph
 import afield.logger.lprintln
+import io.github.classgraph.ClassGraph
 import kotlin.concurrent.thread
 import kotlin.time.measureTime
 
@@ -27,7 +27,7 @@ fun classesWithPrefix(name: String, hideDollarSignClasses : Boolean = true): Lis
             it.key.removePrefix(name) to it.value
         } else null
     }.flatMap { (suffix, l) ->
-        l.map {
+        l.filter { !it.contains("$")}.map {
             suffix to it
         }
     }
