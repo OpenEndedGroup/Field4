@@ -155,6 +155,7 @@ fun restoreScrollPosition(position: ScrollPosition) {
     try {
         mainTranslation = listOf(position.x, position.y)
         mainCanvas.style.transform = "translate(${position.x}px, ${position.y}px)"
+        updateBackgroundGrid(position.x, position.y, panning = false)
         canvasGestures.rebuildConnectionGroup()
     } catch (e: dynamic) {
         console.warn("Error restoring scroll position:", e)

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field4 Examples Gallery</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/iosevka.css">
+    <style>
+        body {
+            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 12px;
+            color: #48c9ff;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: #a9e6ff;
+            margin-bottom: 60px;
+            opacity: 0.8;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(72, 201, 255, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            backdrop-filter: blur(10px);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(72, 201, 255, 0.6);
+            box-shadow: 0 8px 24px rgba(72, 201, 255, 0.15);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #48c9ff;
+        }
+
+        .card-description {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #b0b0b0;
+            margin-bottom: 16px;
+        }
+
+        .card-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #7fd4ff;
+            opacity: 0.7;
+        }
+
+        .card-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(72, 201, 255, 0.15);
+            border: 1px solid rgba(72, 201, 255, 0.3);
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            color: #a9e6ff;
+        }
+
+        .badges {
+            margin-top: 12px;
+        }
+
+        .intro {
+            background: rgba(72, 201, 255, 0.08);
+            border: 1px solid rgba(72, 201, 255, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 48px;
+            line-height: 1.8;
+        }
+
+        .intro h2 {
+            color: #48c9ff;
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 24px;
+            font-weight: 400;
+        }
+
+        .intro p {
+            margin-bottom: 12px;
+            color: #d0d0d0;
+        }
+
+        .intro code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: "Iosevka Web", monospace;
+            color: #7fd4ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Field4 Examples</h1>
+        <div class="subtitle">Interactive visual programming examples — Read-only documentation mode</div>
+
+        <div class="intro">
+            <h2>📖 About This Gallery</h2>
+            <p>
+                Welcome to the Field4 examples gallery. These are read-only documentation views of Field4 projects.
+                You can browse the code, see how boxes are structured, and explore different programming techniques.
+            </p>
+            <p>
+                To run these examples or edit them, click on any example and then use the 
+                <strong>"🚀 Open in Field4"</strong> button to launch them in the Field4 desktop application.
+            </p>
+            <p>
+                <strong>Note:</strong> This is a static documentation viewer. Code cannot be executed in this mode.
+            </p>
+        </div>
+
+        <div class="gallery">
+            <a href="offline.html?file=metadata_store/simple_hello/metadata.edn" class="card">
+                <div class="card-title">Hello World</div>
+                <div class="card-description">
+                    A simple introduction to Field4 with a basic println statement. Perfect starting point for beginners.
+                </div>
+                <div class="badges">
+                    <span class="badge">🏷️ hello</span>
+                    <span class="badge">🏷️ simple</span>
+                    <span class="badge">🏷️ example</span>
+                </div>
+                <div class="card-meta">
+                    <span>📦 1 box</span>
+                    <span>💻 Kotlin</span>
+                </div>
+            </a>
+
+            <a href="offline.html?file=metadata_store/example_template/metadata.edn" class="card">
+                <div class="card-title">Example Template</div>
+                <div class="card-description">
+                    Demonstrates multiple boxes working together. Shows basic box composition and structure.
+                </div>
+                <div class="badges">
+                    <span class="badge">🏷️ example</span>
+                    <span class="badge">🏷️ template</span>
+                </div>
+                <div class="card-meta">
+                    <span>📦 2 boxes</span>
+                    <span>💻 Kotlin</span>
+                </div>
+            </a>
+
+            <!-- Template for adding more examples -->
+            <!-- 
+            <a href="offline.html?file=path/to/your/metadata.edn" class="card">
+                <div class="card-title">Your Example Title</div>
+                <div class="card-description">
+                    Description of what this example demonstrates.
+                </div>
+                <div class="badges">
+                    <span class="badge">🏷️ tag1</span>
+                    <span class="badge">🏷️ tag2</span>
+                </div>
+                <div class="card-meta">
+                    <span>📦 X boxes</span>
+                    <span>💻 Language</span>
+                </div>
+            </a>
+            -->
+        </div>
+    </div>
+</body>
+</html>

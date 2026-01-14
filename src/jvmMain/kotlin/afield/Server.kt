@@ -33,6 +33,7 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
@@ -41,6 +42,7 @@ import java.awt.Desktop
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URI
+import java.net.URLEncoder
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
@@ -172,6 +174,20 @@ var globalPlaywriteContext: Page? = null
 
 class Server {
     companion object {
+
+        @Serializable
+        data class OfflineImportRequest(
+            val recommendedName: String? = null,
+            val ednText: String? = null,
+            val sourceUrl: String? = null
+        )
+
+        @Serializable
+        data class OfflineImportResponse(
+            val documentName: String,
+            val openUrl: String,
+            val projectUrl: String
+        )
 
         lateinit var ourServer: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>
         var ai_assistant: String? by PersistentString()
@@ -890,6 +906,43 @@ class Server {
                 install(AutoHeadResponse)
 
                 routing {
+                    post("/api/import-offline-doc") {
+                        try {
+                            val payload = call.receive<OfflineImportRequest>()
+                            val rawName = payload.recommendedName ?: "imported-document"
+                            val ednText = payload.ednText ?: throw IllegalArgumentException("missing ednText")
+
+                            fun sanitize(base: String): String {
+                                val cleaned = base.lowercase().replace(Regex("[^a-z0-9_-]+"), "-").trim('-')
+                                return cleaned.ifBlank { "imported-document" }
+                            }
+
+                            val baseName = sanitize(rawName.removeSuffix(".edn"))
+                            var candidate = baseName
+                            var counter = 2
+                            while (File(home, candidate).exists()) {
+                                candidate = "${baseName}_${counter}"
+                                counter++
+                            }
+
+                            val targetDir = File(home, candidate)
+                            targetDir.mkdirs()
+
+                            // Persist the incoming EDN as-is; Field will expand sidecar files on next save.
+                            val metadataFile = File(targetDir, SavingContext.METADATA_EDN)
+                            metadataFile.writeText(ednText)
+
+                            val encodedName = URLEncoder.encode(candidate, "UTF-8")
+                            val openUrl = "http://localhost:${port}/index.html?file=${encodedName}"
+                            val projectUrl = "http://localhost:${port}/${encodedName}/${SavingContext.METADATA_EDN}"
+
+                            call.respond(OfflineImportResponse(candidate, openUrl, projectUrl))
+                        } catch (ex: Exception) {
+                            lprintln("error,server", "offline import failed: ${ex.message}")
+                            call.respond(HttpStatusCode.BadRequest, ex.message ?: "import failed")
+                        }
+                    }
+
                     webSocket("/ws") {
                         val ts = this
                         thisSession.set(ts)

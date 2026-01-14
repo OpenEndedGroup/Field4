@@ -62,6 +62,7 @@ external object Provisional {
     fun set(uid: String, property: String, contents: String)
 }
 
+lateinit var mainViewport: HTMLElement
 lateinit var mainCanvas: HTMLElement
 lateinit var overlaySVGLayer: SVGSVGElement
 external val monaco: dynamic
@@ -74,6 +75,21 @@ lateinit var moveHandler: (dynamic) -> Unit
 lateinit var resizeHandler: (dynamic) -> Unit
 lateinit var monacoResizeHandler: (dynamic) -> Unit
 var mainTranslation = listOf(0.0, 0.0)
+
+private const val dotSpacingSmall = 25.0
+private const val dotSpacingLarge = 100.0
+private const val dotAlphaSmallIdle = 0.02
+private const val dotAlphaLargeIdle = 0.04
+private const val dotAlphaSmallActive = 0.16
+private const val dotAlphaLargeActive = 0.24
+private const val axisAlpha = 0.06
+
+private var dotAlphaSmall = dotAlphaSmallIdle
+private var dotAlphaLarge = dotAlphaLargeIdle
+private var dotAlphaSmallTarget = dotAlphaSmallIdle
+private var dotAlphaLargeTarget = dotAlphaLargeIdle
+private var backgroundFadeTimeoutHandle: Int? = null
+private var backgroundLerpHandle: Int? = null
 
 @JsExport
 @JsName("launchNumber")
@@ -217,6 +233,82 @@ private fun attachPanToNestedArea(container: HTMLElement) {
     container.onmouseleave = endPan
     container.onpointerup = endPan
     container.onpointercancel = endPan
+}
+
+private fun normalizeOffset(value: Double, spacing: Double): Double {
+    var mod = value % spacing
+    if (mod < 0) mod += spacing
+    return mod
+}
+
+private fun applyBackgroundAlphas() {
+    if (!::mainViewport.isInitialized) return
+    mainViewport.style.setProperty("--dot-alpha-25", dotAlphaSmall.toString())
+    mainViewport.style.setProperty("--dot-alpha-100", dotAlphaLarge.toString())
+}
+
+private fun stepBackgroundLerp(): Boolean {
+    val deltaSmall = dotAlphaSmallTarget - dotAlphaSmall
+    val deltaLarge = dotAlphaLargeTarget - dotAlphaLarge
+    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005
+
+    dotAlphaSmall += deltaSmall * 0.18
+    dotAlphaLarge += deltaLarge * 0.18
+
+    applyBackgroundAlphas()
+    return changed
+}
+
+private fun scheduleBackgroundLerp() {
+    if (backgroundLerpHandle != null) return
+    backgroundLerpHandle = window.requestAnimationFrame {
+        backgroundLerpHandle = null
+        val needsMore = stepBackgroundLerp()
+        if (needsMore) {
+            scheduleBackgroundLerp()
+        }
+    }
+}
+
+private fun bumpBackgroundVisibility() {
+    dotAlphaSmallTarget = dotAlphaSmallActive
+    dotAlphaLargeTarget = dotAlphaLargeActive
+    scheduleBackgroundLerp()
+
+    backgroundFadeTimeoutHandle?.let { window.clearTimeout(it) }
+    backgroundFadeTimeoutHandle = window.setTimeout({
+        dotAlphaSmallTarget = dotAlphaSmallIdle
+        dotAlphaLargeTarget = dotAlphaLargeIdle
+        scheduleBackgroundLerp()
+    }, 420)
+}
+
+fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Boolean = false) {
+    if (!::mainViewport.isInitialized) return
+
+    val posSmall = "${normalizeOffset(translationX, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px ${normalizeOffset(translationY, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px"
+    val posLarge = "${normalizeOffset(translationX, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px ${normalizeOffset(translationY, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px"
+    val posAxisX = "${translationX}px 0px"
+    val posAxisY = "0px ${translationY}px"
+
+    mainViewport.style.backgroundPosition = "$posAxisX, $posAxisY, $posSmall, $posLarge"
+
+    if (panning) {
+        bumpBackgroundVisibility()
+    }
+}
+
+fun initializeBackgroundGrid(host: HTMLElement) {
+    mainViewport = host
+    host.style.backgroundColor = "rgb(20, 20, 20)"
+                    host.style.backgroundImage = "linear-gradient(90deg, rgba(255,255,255,$axisAlpha) 1px, rgba(255,255,255,0) 1px), " +
+                        "linear-gradient(0deg, rgba(255,255,255,$axisAlpha) 1px, rgba(255,255,255,0) 1px), " +
+                        "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
+                        "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px)"
+    host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat"
+    host.style.backgroundSize = "1px 100%, 100% 1px, ${dotSpacingSmall}px ${dotSpacingSmall}px, ${dotSpacingLarge}px ${dotSpacingLarge}px"
+    host.style.backgroundPosition = "0px 0px, 0px 0px, 0px 0px, 0px 0px"
+    applyBackgroundAlphas()
 }
 
 private fun isEditorFocused(): Boolean {
@@ -1984,7 +2076,7 @@ suspend fun main() {
             }
         }
     }
-    val mainViewport = body.append {
+    mainViewport = body.append {
         div {
             style = CssBuilder().apply {
                 width = 100.vw
@@ -1995,6 +2087,8 @@ suspend fun main() {
             }.toString()
         }
     }.first()
+
+    initializeBackgroundGrid(mainViewport)
 
     mainCanvas = mainViewport.append {
         div {
@@ -2059,6 +2153,8 @@ suspend fun main() {
             mc.data_x = x
             mc.data_y = y
 
+            updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
+
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
             canvasGestures.rebuildConnectionGroup()
@@ -2098,6 +2194,8 @@ suspend fun main() {
             mc.data_x = x
             mc.data_y = y
 
+            updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
+
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
             canvasGestures.rebuildConnectionGroup()
@@ -2113,6 +2211,7 @@ suspend fun main() {
 
     mainCanvas.unsafeCast<dynamic>().data_x = 0
     mainCanvas.unsafeCast<dynamic>().data_y = 0
+    updateBackgroundGrid(0.0, 0.0, panning = false)
 
     // File drop handler for importing metadata.edn files into the current document
     // This allows users to drag and drop .edn files onto the page to import boxes
