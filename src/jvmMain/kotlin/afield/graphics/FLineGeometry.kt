@@ -783,6 +783,7 @@ fun FLine.signedArea2D(): Float {
     var firstPoint: Vec2? = null
 
     this.nodes.forEach { node ->
+        if (node is FLine.Close) return@forEach
         val currentPoint = Vec2(node.to.x, node.to.y)
 
         if (firstPoint == null) {
@@ -826,6 +827,7 @@ fun FLine.centroid2D(): Vec2 {
     var firstPoint: Vec2? = null
 
     this.nodes.forEach { node ->
+        if (node is FLine.Close) return@forEach
         val currentPoint = Vec2(node.to.x, node.to.y)
 
         if (firstPoint == null) {

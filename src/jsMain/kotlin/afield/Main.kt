@@ -30,6 +30,8 @@ import web.cssom.important
 import web.timers.setTimeout
 import kotlin.js.json
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -82,12 +84,15 @@ private const val dotAlphaSmallIdle = 0.02
 private const val dotAlphaLargeIdle = 0.04
 private const val dotAlphaSmallActive = 0.16
 private const val dotAlphaLargeActive = 0.24
-private const val axisAlpha = 0.06
+private const val axisAlphaIdle = 0.0
+private const val axisAlphaActive = 0.12
 
 private var dotAlphaSmall = dotAlphaSmallIdle
 private var dotAlphaLarge = dotAlphaLargeIdle
 private var dotAlphaSmallTarget = dotAlphaSmallIdle
 private var dotAlphaLargeTarget = dotAlphaLargeIdle
+private var axisAlpha = axisAlphaIdle
+private var axisAlphaTarget = axisAlphaIdle
 private var backgroundFadeTimeoutHandle: Int? = null
 private var backgroundLerpHandle: Int? = null
 
@@ -149,6 +154,124 @@ fun serviceEvents() {
     events.entries.retainAll { (k, v) ->
         v()
     }
+}
+
+private fun findBoxElementByUid(uid: String): HTMLElement? {
+    val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
+    return boxes.firstOrNull { (it.asDynamic().uid as? String) == uid } as? HTMLElement
+}
+
+private fun domRectToRect(r: dynamic): Rect {
+    return Rect(
+        (r.left as Number).toDouble(),
+        (r.top as Number).toDouble(),
+        (r.width as Number).toDouble(),
+        (r.height as Number).toDouble()
+    )
+}
+
+private val Rect.right: Double get() = x + w
+private val Rect.bottom: Double get() = y + h
+
+private fun Rect.expand(padding: Double) = Rect(x - padding, y - padding, w + padding * 2.0, h + padding * 2.0)
+private fun Rect.translate(dx: Double, dy: Double) = Rect(x + dx, y + dy, w, h)
+
+private fun unionRects(rects: List<Rect>): Rect? {
+    if (rects.isEmpty()) return null
+    return rects.drop(1).fold(rects.first()) { acc, r ->
+        val nx = min(acc.x, r.x)
+        val ny = min(acc.y, r.y)
+        val nr = max(acc.right, r.right)
+        val nb = max(acc.bottom, r.bottom)
+        Rect(nx, ny, nr - nx, nb - ny)
+    }
+}
+
+private fun collectScreenshotRects(box: HTMLElement): List<Rect> {
+    val rects = mutableListOf(domRectToRect(box.getBoundingClientRect()))
+    val outputArea = box.querySelector(".outputArea") as? HTMLElement
+    outputArea?.let { oa ->
+        if (oa.style.visibility != "hidden") {
+            val disclosures = oa.querySelectorAll(".disclosure").asList()
+            if (disclosures.isNotEmpty()) {
+                disclosures.mapNotNull { it as? HTMLElement }
+                    .forEach { rects.add(domRectToRect(it.getBoundingClientRect())) }
+            } else {
+                rects.add(domRectToRect(oa.getBoundingClientRect()))
+            }
+        }
+    }
+    return rects
+}
+
+private fun centerViewportOn(rect: Rect) {
+    val dx = window.innerWidth / 2.0 - (rect.x + rect.w / 2.0)
+    val dy = window.innerHeight / 2.0 - (rect.y + rect.h / 2.0)
+    val nextX = mainTranslation[0] + dx
+    val nextY = mainTranslation[1] + dy
+
+    mainCanvas.style.transform = "translate(${nextX}px, ${nextY}px)"
+    mainTranslation = listOf(nextX, nextY)
+    updateBackgroundGrid(nextX, nextY, panning = false)
+
+    send(
+        Message("set-viewport").payload(
+            Set_rect(
+                uid = "root",
+                property = "viewport",
+                value = Rect(nextX, nextY, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+            )
+        )
+    )
+
+    canvasGestures.rebuildConnectionGroup()
+    repositionSlideNoteOverlayIfVisible()
+}
+
+private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotResponse {
+    val box = findBoxElementByUid(req.uid)
+        ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
+
+    if (req.hideMonaco) {
+        runCatching { hideMonaco() }
+    }
+
+    fun measure(): Rect? = unionRects(collectScreenshotRects(box))
+
+    var targetRect = measure() ?: return BoxScreenshotResponse(
+        uid = req.uid,
+        success = false,
+        message = "no geometry for ${req.uid}"
+    )
+
+    if (req.panIntoView) {
+        centerViewportOn(targetRect.expand(req.padding))
+        targetRect = measure() ?: targetRect
+    }
+
+    val padded = targetRect.expand(req.padding)
+    val clip = padded.translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    val viewport = Rect(
+        window.scrollX.toDouble(),
+        window.scrollY.toDouble(),
+        window.innerWidth.toDouble(),
+        window.innerHeight.toDouble()
+    )
+
+    if (clip.w <= 0.0 || clip.h <= 0.0) {
+        return BoxScreenshotResponse(
+            uid = req.uid,
+            success = false,
+            message = "invalid clip for ${req.uid}"
+        )
+    }
+
+    return BoxScreenshotResponse(
+        uid = req.uid,
+        success = true,
+        clip = clip,
+        viewport = viewport
+    )
 }
 
 private fun attachPanToNestedArea(container: HTMLElement) {
@@ -245,15 +368,18 @@ private fun applyBackgroundAlphas() {
     if (!::mainViewport.isInitialized) return
     mainViewport.style.setProperty("--dot-alpha-25", dotAlphaSmall.toString())
     mainViewport.style.setProperty("--dot-alpha-100", dotAlphaLarge.toString())
+    mainViewport.style.setProperty("--axis-alpha", axisAlpha.toString())
 }
 
 private fun stepBackgroundLerp(): Boolean {
     val deltaSmall = dotAlphaSmallTarget - dotAlphaSmall
     val deltaLarge = dotAlphaLargeTarget - dotAlphaLarge
-    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005
+    val deltaAxis = axisAlphaTarget - axisAlpha
+    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005
 
     dotAlphaSmall += deltaSmall * 0.18
     dotAlphaLarge += deltaLarge * 0.18
+    axisAlpha += deltaAxis * 0.18
 
     applyBackgroundAlphas()
     return changed
@@ -273,12 +399,14 @@ private fun scheduleBackgroundLerp() {
 private fun bumpBackgroundVisibility() {
     dotAlphaSmallTarget = dotAlphaSmallActive
     dotAlphaLargeTarget = dotAlphaLargeActive
+    axisAlphaTarget = axisAlphaActive
     scheduleBackgroundLerp()
 
     backgroundFadeTimeoutHandle?.let { window.clearTimeout(it) }
     backgroundFadeTimeoutHandle = window.setTimeout({
         dotAlphaSmallTarget = dotAlphaSmallIdle
         dotAlphaLargeTarget = dotAlphaLargeIdle
+        axisAlphaTarget = axisAlphaIdle
         scheduleBackgroundLerp()
     }, 420)
 }
@@ -301,8 +429,8 @@ fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Bo
 fun initializeBackgroundGrid(host: HTMLElement) {
     mainViewport = host
     host.style.backgroundColor = "rgb(20, 20, 20)"
-                    host.style.backgroundImage = "linear-gradient(90deg, rgba(255,255,255,$axisAlpha) 1px, rgba(255,255,255,0) 1px), " +
-                        "linear-gradient(0deg, rgba(255,255,255,$axisAlpha) 1px, rgba(255,255,255,0) 1px), " +
+                        host.style.backgroundImage = "linear-gradient(90deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
+                            "linear-gradient(0deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
                         "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
                         "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px)"
     host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat"
@@ -1660,6 +1788,14 @@ suspend fun main() {
     handlers.put("notify") { message, _ ->
         val set = Json.decodeFromJsonElement<Notify>(message.payload!!)
         notify(set.text, set.category)
+        Handled.yes
+    }
+
+    handlers.put("box-screenshot") { message, reply ->
+        val req = Json.decodeFromJsonElement<BoxScreenshotRequest>(message.payload!!)
+        val result = prepareBoxScreenshot(req)
+        val responseName = message.replyTo ?: "box-screenshot"
+        reply(Message(responseName).payload(result))
         Handled.yes
     }
 

@@ -14,7 +14,12 @@ import kotlin.time.toDuration
 
 external fun notify(message : String, category : String)
 
-var client = WebSocket("ws://" + document.location?.host + "/ws")
+private fun wsUrl(): String {
+    val proto = if (document.location?.protocol == "https:") "wss" else "ws"
+    return "$proto://" + document.location?.host + "/ws"
+}
+
+var client = WebSocket(wsUrl())
 
 val pileup = mutableListOf<String>()
 val onOpen = mutableListOf<Message>()
@@ -25,7 +30,7 @@ var reopen_backoff = 100L
 fun reopen() {
     console.log(" attempting reopen ")
     notify("Attempting reconnect...", "connectivity")
-    client = WebSocket("ws://" + document.location?.host + "/ws")
+    client = WebSocket(wsUrl())
     initializeClient()
 }
 

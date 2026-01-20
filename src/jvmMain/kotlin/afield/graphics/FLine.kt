@@ -410,11 +410,13 @@ class FLine : HasProperties {
         nodes.forEach {
             if (r == null) r = Rect(it.to.x.d, it.to.y.d, 0.0, 0.0)
             else {
-                val mix = Math.min(r.x.d, it.to.x.d)
-                val miy = Math.min(r.y.d, it.to.y.d)
-                val mxx = Math.max(r.x.d + r.w, it.to.x.d)
-                val mxy = Math.max(r.y.d + r.h, it.to.y.d)
-                r = Rect(mix, miy, mxx - mix, mxy - miy)
+                it.storage.forEach { X ->
+                    val mix = Math.min(r!!.x.d, X.x.d)
+                    val miy = Math.min(r!!.y.d, X.y.d)
+                    val mxx = Math.max(r!!.x.d + r!!.w, X.x.d)
+                    val mxy = Math.max(r!!.y.d + r!!.h, X.y.d)
+                    r = Rect(mix, miy, mxx - mix, mxy - miy)
+                }
             }
         }
         return r!!

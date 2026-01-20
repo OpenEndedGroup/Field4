@@ -267,6 +267,24 @@ data class Set_boolean(val uid: String, val property: String, val number: Boolea
 
 
 @Serializable
+data class BoxScreenshotRequest(
+    val uid: String,
+    val padding: Double = 12.0,
+    val panIntoView: Boolean = true,
+    val hideMonaco: Boolean = true
+)
+
+@Serializable
+data class BoxScreenshotResponse(
+    val uid: String,
+    val success: Boolean,
+    val clip: Rect? = null,
+    val viewport: Rect? = null,
+    val message: String = ""
+)
+
+
+@Serializable
 data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
     fun intersects(r: Rect): Boolean {
         return ((r.x < this.x + this.w && r.w + r.x > x && r.y < y + this.h) && r.y + r.h > this.y)

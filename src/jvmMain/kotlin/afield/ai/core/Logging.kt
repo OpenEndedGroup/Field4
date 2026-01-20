@@ -61,9 +61,16 @@ object LogDispatcher {
 }
 
 object StdoutLog : LogSink {
+    private const val ANSI_RESET = "\u001B[0m"
+    private const val ANSI_DARK_GRAY = "\u001B[90m"
+    private const val ANSI_ITALIC = "\u001B[3m"
+
     override fun log(event: LogEvent) {
         val prefix = ""
-        val channelPart = if (event.channel.isNotBlank()) "[${event.channel}] " else ""
+        val channelPart = if (event.channel.isNotBlank()) {
+            // Render channel tags as dark gray + italic for easier skimming in stdout
+            "$ANSI_DARK_GRAY$ANSI_ITALIC[${event.channel}]$ANSI_RESET "
+        } else ""
         val boundaryMarker = when (event.boundary) {
             BlockBoundary.BEGIN -> ">|> "
             BlockBoundary.END -> "<|< "

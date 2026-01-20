@@ -133,7 +133,8 @@
     if (filter.blockId) pill("block: " + filter.blockId);
     if (latestOnly) pill("latest only");
 
-    const ws = new WebSocket(`ws://${document.location.host}/ws`);
+    const wsProto = document.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProto}://${document.location.host}/ws`);
     let open = false;
 
     function escape(text){

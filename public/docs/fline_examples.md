@@ -1,0 +1,1745 @@
+# FLine examples (Field graphics)
+
+`FLine` is Field’s core geometry container type: it’s basically an ordered list of drawing instructions (`moveTo`, `lineTo`, `cubicTo`, `close`) plus style properties (`color`, `thickness`, `filled`, `stroked`, `pointed`, and so on). This isn’t a new idea — it’s essentially a “path” like you’ll find in [SVG](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics), [PDF](https://en.wikipedia.org/wiki/PDF), and [PostScript](https://en.wikipedia.org/wiki/PostScript). Unlike those formats, Field stores points in 3D when that makes sense.
+
+All of the code below are meant to run inside a Box inside Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
+
+If you want to run these examples, this embedded viewer's "Open in Field4" button will do just that, if you have Field already running.
+
+<iframe
+    src="/offline.html?file=/field.fline_examples.edn"
+    title="FLine examples (offline viewer)"
+    style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
+
+
+## Some syntax, before we get started
+
+In 'professional' Kotlin you’ll often see something like `FLine().apply { ... }`. It’s just a convenient way to create an object, run some setup code on it, and get the object back. This is less typing but maybe less clear than just naming the FLine you are building repeatedly. A comparison:
+
+```diffstatic {data-lang=kotlin}
+:::static
+// 1) Most common: build inside `apply { ... }`.
+val f1 = FLine().apply {
+    moveTo(20, 20)
+    lineTo(120, 20)
+    lineTo(120, 120)
+    close()
+
+    filled = true
+    stroked = true
+    thickness = 3.0
+    color = vec(1.0, 1.0, 1.0, 0.25)
+}
+
+// 2) The explicit style: make a var and reuse it.
+val f3 = FLine()
+f3.moveTo(20, 20)
+f3.lineTo(120, 20)
+f3.lineTo(120, 120)
+f3.close()
+f3.filled = true
+f3.stroked = true
+f3.thickness = 3.0
+f3.color = vec(1.0, 1.0, 1.0, 0.25)
+
+// Show they really are the same geometry (offset so you can see them).
+lines(listOf(f1 + vec(0, 0, 0), f3 + vec(180, 0, 0)), w = 320.0, h = 170.0, fitToSize = true)
+```
+
+![](assets/some_syntax_before_we_get_started.png)
+## Styling: `color`, `stroked`, `filled`, `pointed`
+
+`FLine` geometry (where the points are) is separate from `FLine` styling (how it’s drawn). You’ll use these properties constantly:
+
+```diffstatic {data-lang=kotlin}
+:::static
+// from afield.stdlib.StandardDrawing
+var FLine.color: Vec4
+var FLine.thickness: Double
+var FLine.filled: Boolean
+var FLine.stroked: Boolean
+var FLine.pointed: Boolean
+
+var FLine.pointSize: Double
+var FLine.Node.pointSize: Double
+```
+
+`color` is RGBA in [sRGB](https://en.wikipedia.org/wiki/SRGB) (`vec(r,g,b,a)` with numbers between 0 and 1). Setting `stroked` to true draws the outline (the default), `filled` fills closed shapes (not the default), and `pointed` draws a dot at every node (useful for debugging or particle systems).
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val shape = FLine().apply {
+    moveTo(60, 60)
+    cubicTo(120, 20, 300, 240, 360, 180)
+    lineTo(360, 240)
+    lineTo(60, 240)
+    close()
+}
+
+val strokedOnly = shape.copy().apply {
+    stroked = true
+    filled = false
+    thickness = 6.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val filledOnly = shape.copy().apply {
+    stroked = false
+    filled = true
+    color = vec(0.4, 1.0, 0.6, 0.25)
+}
+
+val debugPoints = shape.copy().apply {
+    stroked = false
+    filled = false
+    pointed = true
+    pointSize = 3.0
+    color = vec(1.0, 0.5, 0.2, 1.0)
+}
+
+lines(listOf(filledOnly, strokedOnly, debugPoints), w = 420.0, h = 320.0, fitToSize = true)
+```
+
+![](assets/styling_color_stroked_filled_pointed.png)
+## Building paths: `moveTo`, `lineTo`, `cubicTo`, `close`
+
+This is the “core vocabulary” of `FLine`: you `moveTo` to place the pen, then add segments (`lineTo` / `cubicTo`), and optionally `close()` to seal a shape. Most other helpers ultimately build on these four calls.
+
+### `moveTo(...)` overloads
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.moveTo(x: Number, y: Number, z: Number = 0): FLine.Node
+fun FLine.moveTo(v: Vec3): FLine.Node
+fun FLine.moveTo(v: Vec2): FLine.Node
+```
+
+Moves the “pen” without drawing; starts a new subpath when followed by segments.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val a = vec(50, 50)
+val b = vec(350, 200)
+
+val f = FLine().apply {
+    moveTo(a)          // Vec2
+    lineTo(b.x, b.y)   // Numbers
+
+    thickness = 6.0
+    color = vec(0.9, 0.9, 1.0, 1.0)
+}
+
+lines(f, w = 400.0, h = 250.0, fitToSize = true)
+```
+
+![](assets/moveto_overloads.png)
+### `lineTo(...)` overloads
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.lineTo(x: Number, y: Number, z: Number = 0): FLine.Node
+fun FLine.lineTo(v: Vec3): FLine.Node
+fun FLine.lineTo(v: Vec2): FLine.Node
+```
+
+Adds a straight segment from the current point to the new point. Equivalent to `.moveTo( ... )` if there isn't a current point.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val poly = FLine().apply {
+    moveTo(50, 50)
+    lineTo(350, 50)
+    lineTo(350, 200)
+    lineTo(50, 200)
+    close()
+
+    stroked = true
+    filled = true
+    thickness = 3.0
+    color = vec(0.2, 0.9, 0.6, 0.35)
+}
+
+lines(poly, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/lineto_overloads.png)
+### `cubicTo(...)` (Bézier curves)
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.cubicTo(
+    x0: Number, y0: Number, z0: Number = 0,
+    x1: Number, y1: Number, z1: Number = 0,
+    x: Number,  y: Number,  z: Number = 0
+): FLine.Node
+
+fun FLine.cubicTo(x0: Number, y0: Number, x1: Number, y1: Number, x: Number, y: Number): FLine.Node
+fun FLine.cubicTo(v0: Vec3, v1: Vec3, v: Vec3): FLine.Node
+```
+
+Adds a cubic [Bézier curve](https://en.wikipedia.org/wiki/B%C3%A9zier_curve) segment (two control points plus an end point). Cubics are the workhorse for smooth vector shapes.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+// We'll draw the curve AND its control handles.
+val p0 = vec(50, 160)
+val c1 = vec(150, 20)
+val c2 = vec(250, 300)
+val p3 = vec(350, 160)
+
+val curve = FLine().apply {
+    moveTo(p0)
+    cubicTo(c1.v3, c2.v3, p3.v3)
+    thickness = 5.0
+    color = vec(1.0, 0.8, 0.2, 1.0)
+}
+
+// The "handle lines" show how tangents are determined.
+val handles = listOf(
+    seg(p0, c1, pointed = false, color = vec(1.0, 1.0, 1.0, 0.35)).apply { thickness = 2.0 },
+    seg(p3, c2, pointed = false, color = vec(1.0, 1.0, 1.0, 0.35)).apply { thickness = 2.0 },
+)
+
+// Dots for endpoints and control points.
+fun dot(p: Vec2, color: Vec4) = FLine().apply {
+    moveTo(p.x, p.y)
+    lineTo(p.x + 0.001, p.y + 0.001)
+    pointed = true
+    pointSize = 4.5
+    stroked = false
+    filled = true
+    this.color = color
+}
+
+val pts = listOf(
+    dot(p0, vec(1.0, 1.0, 1.0, 1.0)),
+    dot(p3, vec(1.0, 1.0, 1.0, 1.0)),
+    dot(c1, vec(0.4, 1.0, 0.6, 1.0)),
+    dot(c2, vec(0.4, 1.0, 0.6, 1.0)),
+)
+
+lines(handles + listOf(curve) + pts, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+![](assets/cubicto_bezier_curves.png)
+### `close()`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.close(): FLine.Node
+```
+
+Closes the current subpath by drawing a segment back to the last `moveTo`.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val tri = FLine().apply {
+    moveTo(200, 40)
+    lineTo(360, 240)
+    lineTo(40, 240)
+    close()
+
+    filled = true
+    stroked = true
+    thickness = 2.0
+    color = vec(0.9, 0.4, 0.9, 0.35)
+}
+
+lines(tri, w = 420.0, h = 300.0, fitToSize = true)
+```
+
+![](assets/close.png)
+## Multiple subpaths: `breakNext()` and `pieces()`
+
+One `FLine` can contain multiple disjoint strokes (multiple `moveTo`-initiated subpaths). This section shows how to force a new subpath while building (`breakNext`) and how to split an existing line into separate pieces (`pieces`).
+
+### `breakNext()`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.breakNext()
+```
+
+Forces the next segment call (`lineTo`, `cubicTo`) to start a new subpath (internally inserts a `moveTo`). Useful for “multi-stroke” FLines.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(50, 50)
+    lineTo(350, 50)
+
+    breakNext()
+    lineTo(50, 200)    // starts a new subpath
+    lineTo(350, 200)
+
+    thickness = 6.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+lines(f, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/breaknext.png)
+### `pieces()`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.pieces(): List<FLine>
+```
+
+Splits an `FLine` into separate `FLine`s at each `moveTo`.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(50, 50)
+    lineTo(350, 50)
+
+    moveTo(50, 200)
+    lineTo(350, 200)
+
+    thickness = 5.0
+    color = vec(0.7, 0.9, 1.0, 1.0)
+}
+
+val ps = f.pieces()
+lines(ps, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/pieces.png)
+## Copying and transforms
+
+These are the everyday tools for reusing a shape without rebuilding it: `copy()` duplicates geometry, `transform {}` maps every node through a function, and the operator overloads (`+`, `*`, etc.) make common transforms concise.
+
+### `copy()` and `transform(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.copy(): FLine
+fun FLine.transform(by: (Vec3) -> Vec3): FLine
+```
+
+`copy()` duplicates the geometry. `transform` maps every control point through a function (translate, scale, warp, …).
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val base = FLine().apply {
+    moveTo(60, 60)
+    cubicTo(120, 20, 240, 200, 320, 140)
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val wobble = base.transform { p ->
+    val dx = 10f * kotlin.math.sin(p.y * 0.05f)
+    vec(p.x + dx, p.y, p.z)
+}.apply {
+    color = vec(1.0, 0.4, 0.4, 1.0)
+}
+
+lines(listOf(base, wobble), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/copy_and_transform.png)
+### Operator transforms: `+`, `-`, `*`
+
+```diffstatic {data-lang=kotlin}
+:::static
+operator fun FLine.plus(n: Vec3): FLine
+operator fun FLine.minus(n: Vec3): FLine
+operator fun FLine.times(n: Vec3): FLine
+operator fun FLine.times(n: Quat): FLine
+operator fun FLine.times(n: Number): FLine
+
+operator fun List<FLine>.plus(offset: Vec3): List<FLine>
+operator fun List<FLine>.times(scale: Number): List<FLine>
+```
+
+These are convenience transforms: translate (`+`/`-`), scale (`*` with a `Number` or `Vec3`), and rotate (`*` with a `Quat`).
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val square = FLine().apply {
+    moveTo(0, 0); lineTo(100, 0); lineTo(100, 100); lineTo(0, 100); close()
+    thickness = 3.0
+    filled = true
+    color = vec(0.3, 0.8, 1.0, 0.35)
+}
+
+val a = (square * 1.0) + vec(60, 60, 0)
+val b = (square * 1.4) + vec(200, 80, 0)
+val c = (square * 0.7) + vec(320, 140, 0)
+
+lines(listOf(a, b, c), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/operator_transforms.png)
+## Quick path construction helpers
+
+When you already have points (samples, mouse input, a polyline) or you want a specific primitive (like an arc), these helpers get you to an `FLine` quickly and readably.
+
+### Polylines: `polylineFrom(...)` and `byAppendingPolyline(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun polylineFrom(points: List<Vec3>, closed: Boolean = false): FLine
+fun polylineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false): FLine
+
+fun FLine.byAppendingPolyline(points: Iterable<Vec3>, closed: Boolean = false): FLine
+fun FLine.byAppendingPolyline(points: Iterable<Vec2>, z: Number = 0, closed: Boolean = false): FLine
+```
+
+Builds a line strip from points. Great for samples, plots, and quick geometry.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val pts = (0..80).map { i ->
+    val x = 20 + i * 5
+    val y = 120 + 60 * kotlin.math.sin(i * 0.2)
+    vec(x, y)
+}
+
+val wave = polylineFrom(pts, closed = false).apply {
+    thickness = 3.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+lines(wave, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/polylines_polylinefrom_and_byappendingpolyline.png)
+### Smooth polylines: cubic splines
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun cubicSplineFrom(points: List<Vec3>, closed: Boolean = false, tension: Float = 1f): FLine
+fun cubicSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, tension: Float = 1f): FLine
+```
+
+This turns a list of points into a smooth cubic spline ([Catmull–Rom spline](https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline)-ish under the hood). It’s a great default if you have gesture data and want a pleasing curve.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val pts2 = (0..10).map { i ->
+    val x = 40 + i * 34
+    val y = 130 + 70 * kotlin.math.sin(i * 0.8)
+    vec(x, y)
+}
+
+val poly2 = polylineFrom(pts2, closed = false).apply {
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.25)
+    pointed = true
+    pointSize = 3.0
+}
+
+val spline = cubicSplineFrom(pts2, closed = false, tension = 1f).apply {
+    thickness = 5.0
+    color = vec(0.7, 0.9, 1.0, 1.0)
+}
+
+lines(listOf(poly2, spline), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/smooth_polylines_cubic_splines.png)
+### Incremental smoothing: `smoothTo(...)` and `tcbTo(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine.Node
+fun FLine.smoothTo(x: Number, y: Number, z: Number = 0, smoothness: Float = 1f): FLine.Node
+fun FLine.smoothTo(v: Vec2, smoothness: Float = 1f): FLine.Node
+
+fun FLine.tcbTo(endPoint: Vec3, tension: Float = 0f, continuity: Float = 0f, bias: Float = 0f): FLine.Node
+fun FLine.tcbTo(x: Number, y: Number, z: Number = 0, tension: Float = 0f, continuity: Float = 0f, bias: Float = 0f): FLine.Node
+fun FLine.tcbTo(v: Vec2, tension: Float = 0f, continuity: Float = 0f, bias: Float = 0f): FLine.Node
+```
+
+These are “streaming” builders: you call them point-by-point (like `lineTo`), but they try to maintain smooth tangents. `tcbTo` gives you explicit control over the feel of the spline via [Kochanek–Bartels (TCB) spline](https://en.wikipedia.org/wiki/Kochanek%E2%80%93Bartels_spline) parameters.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val s1 = FLine().apply {
+    moveTo(60, 200)
+    smoothTo(120, 60)
+    smoothTo(220, 240)
+    smoothTo(360, 120)
+    thickness = 5.0
+    color = vec(1.0, 0.7, 0.2, 0.9)
+}
+
+val s2 = FLine().apply {
+    moveTo(60, 200)
+    tcbTo(vec(120, 60), tension = 0.2f, continuity = -0.2f, bias = 0.0f)
+    tcbTo(vec(220, 240), tension = 0.2f, continuity = -0.2f, bias = 0.0f)
+    tcbTo(vec(360, 120), tension = 0.2f, continuity = -0.2f, bias = 0.0f)
+    thickness = 5.0
+    color = vec(0.4, 1.0, 0.6, 0.9)
+}
+
+lines(listOf(s1, s2), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/incremental_smoothing_smoothto_and_tcbto.png)
+### Biarcs: `biarcTo(...)` and `biarcBetween(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.biarcTo(
+    endPoint: Vec3,
+    startTangent: Vec3? = null,
+    endTangent: Vec3? = null,
+    join: Float = 0.5f,
+    joinTangentMix: Float = 0.5f,
+    bulge: Float = 0f,
+    segments: Int = 32,
+    planeNormal: Vec3? = null,
+    joinTangent: Vec3? = null
+): FLine.Node
+
+fun FLine.biarcTo(
+    endPoint: Vec2,
+    startHeading: Float? = null,
+    endHeading: Float? = null,
+    join: Float = 0.5f,
+    joinTangentMix: Float = 0.5f,
+    bulge: Float = 0f,
+    segments: Int = 32
+): FLine.Node
+
+fun biarcBetween(
+    start: Vec3,
+    end: Vec3,
+    startTangent: Vec3,
+    endTangent: Vec3,
+    join: Float = 0.5f,
+    joinTangentMix: Float = 0.5f,
+    bulge: Float = 0f,
+    segments: Int = 32,
+    planeNormal: Vec3? = null,
+    joinTangent: Vec3? = null
+): FLine
+```
+
+A biarc is two circular arcs joined together. It’s a nice option when you want “arc-like” smoothness without going full cubic Bézier.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val a = vec(70, 190)
+val b = vec(350, 90)
+
+val f1 = FLine().apply {
+    moveTo(a)
+    // Headings are in radians in the current drawing plane
+    biarcTo(b, startHeading = 0.0f, endHeading = (-1.2f), join = 0.55f, bulge = 0.08f, segments = 40)
+    thickness = 6.0
+    color = vec(1.0, 0.7, 0.2, 0.9)
+}
+
+val f2 = FLine().apply {
+    moveTo(a.x, a.y - 60)
+    biarcTo(vec(b.x, b.y - 60), startHeading = 0.2f, endHeading = (-1.0f), join = 0.35f, bulge = -0.10f, segments = 40)
+    thickness = 6.0
+    color = vec(0.4, 1.0, 0.6, 0.9)
+}
+
+// Endpoints as dots
+fun dot(p: Vec2, c: Vec4) = FLine().apply {
+    moveTo(p)
+    lineTo(p.x + 0.001, p.y + 0.001)
+    pointed = true
+    pointSize = 4.0
+    stroked = false
+    filled = true
+    color = c
+}
+
+lines(listOf(f1, f2, dot(a, vec(1, 1, 1, 1)), dot(b, vec(1, 1, 1, 1))), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/biarcs_biarcto_and_biarcbetween.png)
+### Arcs: `arcTo(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine.Node
+fun FLine.arcTo(p1: Vec2, p2: Vec2, radius: Number, segments: Int = 32): FLine.Node
+fun FLine.arcTo(p1x: Number, p1y: Number, p2x: Number, p2y: Number, radius: Number, segments: Int = 32): FLine.Node
+```
+
+Creates a circular arc that smoothly rounds the corner between the current point → `p1` → `p2` with a given radius.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val rounded = FLine().apply {
+    moveTo(60, 200)
+    lineTo(60, 60)
+    arcTo(vec(60, 60), vec(360, 60), radius = 40, segments = 32)
+    lineTo(360, 200)
+
+    thickness = 6.0
+    color = vec(1.0, 0.9, 0.5, 1.0)
+}
+
+lines(rounded, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/arcs_arcto.png)
+### Circular arc through a point: `circleThroughTo(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine.Node
+fun FLine.circleThroughTo(through: Vec2, end: Vec2, segments: Int = 32): FLine.Node
+fun FLine.circleThroughTo(throughX: Number, throughY: Number, endX: Number, endY: Number, segments: Int = 32): FLine.Node
+```
+
+Creates an arc that passes through a “through” point and ends at `end`.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(60, 200)
+    circleThroughTo(through = vec(220, 40), end = vec(360, 200), segments = 48)
+
+    thickness = 5.0
+    color = vec(0.6, 0.9, 1.0, 1.0)
+}
+
+lines(f, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/circular_arc_through_a_point_circlethroughto.png)
+## 2D transformations (geometry-aware)
+
+These are convenience transforms specialized for “2D shapes living in the XY plane” (rotate around a center, reflect across a line, shear, etc.). They’re often nicer than writing a custom `transform { p -> ... }` when you’re doing design-y operations.
+
+### Rotate / scale / reflect / shear
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byRotating2D(angle: Float, center: Vec2 = vec(0f, 0f)): FLine
+fun FLine.byScaling2D(scale: Float, center: Vec2 = vec(0f, 0f)): FLine
+fun FLine.byScaling2D(scaleX: Float, scaleY: Float, center: Vec2 = vec(0f, 0f)): FLine
+fun FLine.byReflecting2D(linePoint1: Vec2, linePoint2: Vec2): FLine
+fun FLine.byShearing2D(shearX: Float, shearY: Float): FLine
+```
+
+These are “2D-plane” transforms (as opposed to the generic point-wise `transform`). They’re convenient for design-y operations.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val base = FLine().apply {
+    moveTo(80, 60)
+    lineTo(320, 60)
+    lineTo(320, 200)
+    lineTo(80, 200)
+    close()
+
+    thickness = 3.0
+    stroked = true
+    filled = true
+    color = vec(1.0, 1.0, 1.0, 0.15)
+}
+
+val rot = base.byRotating2D(angle = 0.4f, center = vec(200f, 130f)).apply {
+    color = vec(1.0, 0.5, 0.2, 0.25)
+}
+
+val shear = base.byShearing2D(shearX = 0.35f, shearY = 0.0f).apply {
+    color = vec(0.4, 1.0, 0.6, 0.25)
+}
+
+lines(listOf(base, rot, shear), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/rotate_scale_reflect_shear.png)
+### 3D transforms and projections
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byRotating3D(angle: Float, axis: Vec3, center: Vec3 = vec(0f, 0f, 0f)): FLine
+
+fun FLine.byPerspectiveProjecting(
+    cameraPos: Vec3,
+    planePoint: Vec3 = vec(0f, 0f, 0f),
+    planeNormal: Vec3 = vec(0f, 0f, 1f)
+): FLine
+
+fun FLine.byOrthographicProjecting(
+    planePoint: Vec3 = vec(0f, 0f, 0f),
+    planeNormal: Vec3 = vec(0f, 0f, 1f)
+): FLine
+```
+
+Field’s `FLine` nodes are 3D, so you can do “real” 3D transforms and then project down into 2D for drawing.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+// A little 3D helix, projected onto the Z=0 plane.
+val helix = FLine().apply {
+    moveTo(60, 120, -80)
+    for (i in 1..160) {
+        val t = i / 160.0
+        val a = t * kotlin.math.PI * 6.0
+        val r = 120.0
+        val x = 210 + r * kotlin.math.cos(a)
+        val y = 130 + r * kotlin.math.sin(a)
+        val z = -80 + 160 * t
+        lineTo(x, y, z)
+    }
+}
+
+val rotated = helix.byRotating3D(angle = 0.7f, axis = vec(0f, 1f, 0f), center = vec(210f, 130f, 0f))
+
+val ortho = rotated.byOrthographicProjecting(planePoint = vec(0f, 0f, 0f), planeNormal = vec(0f, 0f, 1f)).apply {
+    thickness = 3.0
+    color = vec(1.0, 1.0, 1.0, 0.45)
+}
+
+val persp = rotated.byPerspectiveProjecting(cameraPos = vec(210f, 130f, -320f)).apply {
+    thickness = 4.5
+    color = vec(1.0, 0.7, 0.2, 0.9)
+}
+
+lines(listOf(ortho, persp), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/3d_transforms_and_projections.png)
+## Sampling and traversal
+
+Sampling turns a path into a list of points, which is the bridge to lots of procedural tricks: animation along a curve, particle emission, spacing markers by distance, and measurement. `Cursor` is the lower-level primitive; `sampleBy...` are the friendly wrappers.
+
+### Cursor: continuous traversal over segments
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.cursor(tol: Float = 0.01f): field.graphics.FLinesAndJavaShapes.Cursor
+fun FLine.cursor(closestTo: Vec3): field.graphics.FLinesAndJavaShapes.Cursor
+```
+
+A `Cursor` walks along an `FLine` by node index (`t`) or arc-length distance (`d`). It’s the basis for “sample at fixed distance” and many geometry ops.
+
+In practice, you’ll reach for `Cursor` when you need **even spacing by distance** (`setD`) or when you want access to **differentials** (tangent / normal / curvature-ish things) while walking along a curve.
+
+```diffstatic {data-lang=kotlin}
+:::static
+// In field.graphics.FLinesAndJavaShapes.Cursor
+class Cursor {
+    fun reset()
+    fun hasNext(): Boolean
+
+    // Parameterization
+    val t: Float
+    fun setT(q: Float): Cursor
+
+    val d: Float
+    fun setD(d: Float): Cursor
+
+    fun lengthT(): Int
+    fun lengthD(): Float
+
+    // Geometry at current position
+    fun position(): Vec3
+    fun tangent(): Vec3?
+    fun acceleration(): Vec3?
+    fun normal(): Vec3?
+    fun normal2(): Vec2?
+    fun radiusOfCurvature(): Vec3?
+
+    // Analysis helpers (mostly for cubics)
+    fun extremalInnerPoints(): List<Float>
+    fun tangentBreaks(): List<Float>
+    fun inflectionPointsXY(): List<Float>
+
+    // Editing / splitting
+    fun split(): Pair<FLine?, FLine?>
+    fun splitD(d: List<Float>): List<FLine>
+    fun splitT(t: List<Float>): List<FLine>
+    fun segment(): FLine.Node?
+}
+```
+
+Here’s a “Cursor-driven sampler” that spaces dots by distance, and also draws short tangent tick-marks so you can see direction:
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(50, 180)
+    cubicTo(120, 20, 300, 280, 350, 120)
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val c = f.cursor(tol = 0.01f)
+val total = c.lengthD()
+
+val dots = mutableListOf<FLine>()
+val ticks = mutableListOf<FLine>()
+
+fun dot(p: Vec3, color: Vec4) = FLine().apply {
+    moveTo(p.x, p.y)
+    lineTo(p.x + 0.001, p.y + 0.001)
+    pointed = true
+    pointSize = 2.75
+    stroked = false
+    filled = true
+    this.color = color
+}
+
+val step = 18f
+var d = 0f
+while (d <= total) {
+    c.setD(d)
+    val p = c.position()
+    dots.add(dot(p, vec(1.0, 0.4, 0.3, 1.0)))
+
+    val t = c.tangent()
+    if (t != null && t.lengthSquared() > 1e-9) {
+        val dir = Vec3(t).normalize()
+        val a = Vec3(p).sub(Vec3(dir).mul(8f))
+        val b = Vec3(p).add(Vec3(dir).mul(8f))
+        ticks.add(FLine().apply {
+            moveTo(a)
+            lineTo(b)
+            thickness = 1.5
+            color = vec(1.0, 1.0, 1.0, 0.25)
+        })
+    }
+
+    d += step
+}
+
+lines(listOf(f) + ticks + dots, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/cursor_continuous_traversal_over_segments.png)
+### `sampleByNumber(...)` and `sampleByDistance(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.sampleByNumber(steps: Int): List<Vec3>
+fun FLine.sampleByDistance(distance: Float): List<Vec3>
+```
+
+Samples points along the path either by count (`steps`) or by approximate arc-length spacing (`distance`).
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(60, 150)
+    cubicTo(120, 20, 300, 260, 360, 120)
+    thickness = 3.0
+    color = vec(0.9, 0.9, 1.0, 1.0)
+}
+
+val dots = polylineFrom(f.sampleByNumber(40).map { it.v2 }).apply {
+    pointed = true
+    pointSize = 2.5
+    stroked = false
+    filled = true
+    color = vec(1.0, 0.5, 0.2, 1.0)
+}
+
+lines(listOf(f, dots), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/samplebynumber_and_samplebydistance.png)
+## Geometry operations (simple → complex)
+
+These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). They’re great for turning raw input into clean, stylized shapes. For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Filtering + interpolation](#filters-and-gp).
+
+### Simplify and smooth
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byGaussianSmoothing(sigma: Float, samples: Int = 100): FLine
+fun FLine.bySimplifying(epsilon: Float): FLine
+```
+
+Smoothing reduces jitter; simplifying removes points while keeping the shape within a tolerance. Together they’re great for turning noisy polylines into clean strokes.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val noisy = FLine().apply {
+    moveTo(20, 130)
+    for (i in 0..90) {
+        val x = 20 + i * 4
+        val y = 130 + 50 * kotlin.math.sin(i * 0.2) + 12 * kotlin.math.sin(i * 1.7)
+        lineTo(x, y)
+    }
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.25)
+}
+
+val smooth = noisy.byGaussianSmoothing(sigma = 2.0f, samples = 120).apply {
+    thickness = 4.0
+    color = vec(0.4, 1.0, 0.6, 1.0)
+}
+
+val simple = smooth.bySimplifying(epsilon = 2.0f).apply {
+    thickness = 6.0
+    color = vec(1.0, 0.4, 0.4, 0.75)
+}
+
+lines(listOf(noisy, smooth, simple), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/simplify_and_smooth.png)
+### Cleanup and resampling
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byChopping(threshold: Float = 0f): FLine
+fun FLine.byChoppingSpacing(spacing: Float = 0f): FLine
+fun FLine.byDecimating(every: Int): FLine
+fun FLine.byRemovingShortSections(length: Float): FLine
+fun FLine.byResampling(every: Int): FLine
+fun FLine.byResampling(spacing: Float = 0f): FLine
+```
+
+These are “make it usable” tools for raw input: chop out repeated points, drop every Nth point, remove tiny segments, or resample at a fixed spacing.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val raw = FLine().apply {
+    moveTo(40, 140)
+    for (i in 1..240) {
+        val t = i / 240.0
+        val x = 40 + t * 340
+        val y = 140 + 55 * kotlin.math.sin(t * 7.0 * kotlin.math.PI) + 8 * kotlin.math.sin(t * 60.0)
+        lineTo(x, y)
+    }
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.25)
+}
+
+val chopped = raw.byChoppingSpacing(spacing = 1.5f).apply {
+    thickness = 3.0
+    color = vec(0.7, 0.9, 1.0, 0.75)
+}
+
+val resampled = chopped.byResampling(spacing = 12f).apply {
+    thickness = 4.5
+    color = vec(1.0, 0.6, 0.2, 0.95)
+    pointed = true
+    pointSize = 2.5
+    stroked = true
+    filled = false
+}
+
+lines(listOf(raw, chopped, resampled), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/cleanup_and_resampling.png)
+### Noise utilities (make it organic)
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byGaussianNoising(amplitude: Float, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine
+fun FLine.byOrientedGaussianNoising(normalAmplitude: Float, tangentAmplitude: Float = 0f, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine
+fun FLine.byPerlinNoising(amplitude: Float, frequency: Float = 1f, octaves: Int = 4, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine
+```
+
+These reconstruct a new polyline by sampling your curve, perturbing the samples, and stitching them back together. `byOrientedGaussianNoising` and `byPerlinNoising` try to push mostly along the curve’s normal, which often looks more “hand-drawn”.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val base = FLine().apply {
+    moveTo(60, 180)
+    cubicTo(120, 20, 260, 280, 360, 120)
+}
+
+val clean = base.copy().apply {
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 0.30)
+}
+
+val gauss = base.byGaussianNoising(amplitude = 6f, seed = 1L, samples = 140).apply {
+    thickness = 3.0
+    color = vec(1.0, 0.6, 0.2, 0.85)
+}
+
+val oriented = base.byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140).apply {
+    thickness = 4.5
+    color = vec(0.4, 1.0, 0.6, 0.85)
+}
+
+val perlin = base.byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 4, seed = 3L, samples = 140).apply {
+    thickness = 3.5
+    color = vec(0.7, 0.9, 1.0, 0.85)
+}
+
+lines(listOf(clean, gauss, oriented, perlin), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/noise_utilities_make_it_organic.png)
+### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta) {#filters-and-gp}
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byGaussianProcessInterpolating(
+    trainingSamples: Int = 48,
+    samples: Int = 200,
+    lengthScale: Float = 0.15f,
+    variance: Float = 1f,
+    noise: Float = 1e-3f,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null,
+    drawSamples: Boolean = false,
+    seed: Long? = null
+): FLine
+
+fun FLine.byEmaFiltering(
+    alpha: Float = 0.18f,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine
+
+fun FLine.byOneEuroFiltering(
+    minCutoffHz: Float = 1.5f,
+    beta: Float = 0.03f,
+    dCutoffHz: Float = 1f,
+    fpsHint: Float = 60f,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine
+
+fun FLine.byAlphaBetaFiltering(
+    alpha: Float = 0.25f,
+    beta: Float = 0.08f,
+    fpsHint: Float = 90f,
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine
+
+fun FLine.byOneDollarFiltering(
+    targetSamples: Int = 64,
+    targetSize: Float = 200f,
+    rotateToZero: Boolean = true,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine
+```
+
+These all take a sampled version of your path and return a “regularized” polyline:
+
+- `byEmaFiltering` is a simple [exponential moving average](https://en.wikipedia.org/wiki/Exponential_smoothing) (cheap, effective, but it lags).
+- `byOneEuroFiltering` adapts smoothing based on speed (good for interactive cursors/gestures; see the [1€ filter](https://cristal.univ-lille.fr/~casiez/1euro/)).
+- `byAlphaBetaFiltering` is a light constant-velocity tracker (good for jitter + latency tradeoffs; [alpha-beta filter](https://en.wikipedia.org/wiki/Alpha_beta_filter)).
+- `byGaussianProcessInterpolating` does a smooth GP fit along arc length ([Gaussian process regression](https://en.wikipedia.org/wiki/Gaussian_process_regression); book: [GPML](http://www.gaussianprocess.org/gpml/)) and can generate *variations* with `drawSamples=true`.
+- `byOneDollarFiltering` normalizes a gesture (rotate + scale + resample; the [$1 Recognizer](https://depts.washington.edu/madlab/proj/dollar/)) so noisy input becomes more comparable.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val raw = FLine().apply {
+    moveTo(40, 140)
+    for (i in 1..240) {
+        val t = i / 240.0
+        val x = 40 + t * 340
+        val y = 140 + 55 * kotlin.math.sin(t * 7.0 * kotlin.math.PI) + 11 * kotlin.math.sin(t * 70.0)
+        lineTo(x, y)
+    }
+}
+
+val showRaw = raw.copy().apply {
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.20)
+}
+
+val ema = raw.byEmaFiltering(alpha = 0.10f, samples = 220).apply {
+    thickness = 3.0
+    color = vec(0.7, 0.9, 1.0, 0.85)
+}
+
+val oneEuro = raw.byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220).apply {
+    thickness = 4.0
+    color = vec(0.4, 1.0, 0.6, 0.85)
+}
+
+val ab = raw.byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220).apply {
+    thickness = 3.5
+    color = vec(1.0, 0.6, 0.2, 0.85)
+}
+
+val gpMean = raw.byGaussianProcessInterpolating(
+    trainingSamples = 44,
+    samples = 220,
+    lengthScale = 0.11f,
+    variance = 1f,
+    noise = 0.02f,
+    drawSamples = false
+).apply {
+    thickness = 5.0
+    color = vec(1.0, 0.4, 0.4, 0.70)
+}
+
+// One-Dollar outputs a normalized gesture around the origin; shift it back into view.
+val oneDollar = (raw.byOneDollarFiltering(targetSamples = 64, targetSize = 220f, rotateToZero = true)).apply {
+    thickness = 4.0
+    color = vec(0.8, 0.6, 1.0, 0.85)
+}
+val oneDollarPlaced = oneDollar + vec(210, 140, 0)
+
+lines(listOf(showRaw, ema, oneEuro, ab, gpMean, oneDollarPlaced), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/filtering_interpolation_gaussian_process_ema_one_euro_alpha_beta_filters_and_gp.png)
+### Offsetting / parallel curves
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine
+fun FLine.byCreatingParallelCurves(distance: Float, samples: Int = 50): Pair<FLine, FLine>
+```
+
+Offsetting creates a curve “parallel” to the original at a given distance. This is useful for stroke outlines and “tubing”.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val base = FLine().apply {
+    moveTo(60, 180)
+    cubicTo(120, 20, 260, 280, 360, 120)
+    thickness = 3.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val (l, r) = base.byCreatingParallelCurves(distance = 12f, samples = 80)
+
+val left = l.apply { color = vec(0.4, 1.0, 0.6, 1.0); thickness = 3.0 }
+val right = r.apply { color = vec(1.0, 0.4, 0.4, 1.0); thickness = 3.0 }
+
+lines(listOf(base, left, right), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/offsetting_parallel_curves.png)
+### Dashing
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine>
+```
+
+Breaks a path into multiple `FLine`s representing dash segments.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(50, 180)
+    cubicTo(120, 20, 300, 280, 350, 120)
+    thickness = 6.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val dashes = f.byDashing(dashLength = 18f, gapLength = 10f).mapIndexed { i, seg ->
+    seg.apply {
+        thickness = 6.0
+        color = if (i % 2 == 0) vec(1.0, 0.7, 0.2, 1.0) else vec(0.4, 1.0, 0.6, 1.0)
+    }
+}
+
+lines(dashes, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/dashing.png)
+### Intersections
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.findIntersectionsWith(other: FLine, tolerance: Float = 1f): List<Vec3>
+fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3>
+```
+
+For “where do these two curves cross?”, use `findIntersectionsWith`. `findSelfIntersections` is handy for detecting loops and crossings inside a single stroke.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val a = FLine().apply {
+    moveTo(60, 60)
+    cubicTo(140, 10, 220, 260, 360, 180)
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val b = FLine().apply {
+    moveTo(60, 200)
+    cubicTo(120, 260, 260, 10, 360, 80)
+    thickness = 4.0
+    color = vec(0.7, 0.9, 1.0, 0.9)
+}
+
+val hits = a.findIntersectionsWith(b, tolerance = 1f)
+val hitDots = polylineFrom(hits.map { it.v2 }).apply {
+    pointed = true
+    pointSize = 5.0
+    stroked = false
+    filled = true
+    color = vec(1.0, 0.5, 0.2, 1.0)
+}
+
+lines(listOf(a, b, hitDots), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/intersections.png)
+### Curvature + tangents/normals
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.curvatureAnalysis(samples: Int = 100): List<Pair<Vec3, Float>>
+fun FLine.findHighCurvaturePoints(threshold: Float = 0.1f, samples: Int = 100): List<Vec3>
+fun FLine.byCurvatureAdaptiveSampling(minSamples: Int = 20, maxSamples: Int = 200): FLine
+
+fun FLine.byCreatingTangentLines(samples: Int = 20, length: Float = 10f): List<FLine>
+fun FLine.byCreatingNormalLines(samples: Int = 20, length: Float = 10f): List<FLine>
+```
+
+Curvature is “how fast the direction is turning”. These helpers are great for debugging, stylization, and for finding corners/interesting points.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val f = FLine().apply {
+    moveTo(60, 190)
+    cubicTo(120, 20, 260, 280, 360, 120)
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val tangents = f.byCreatingTangentLines(samples = 18, length = 22f).onEach {
+    it.thickness = 1.5
+    it.color = vec(1.0, 1.0, 1.0, 0.20)
+}
+
+val normals = f.byCreatingNormalLines(samples = 18, length = 18f).onEach {
+    it.thickness = 1.5
+    it.color = vec(0.4, 1.0, 0.6, 0.22)
+}
+
+val corners = polylineFrom(f.findHighCurvaturePoints(threshold = 0.03f, samples = 120).map { it.v2 }).apply {
+    pointed = true
+    pointSize = 3.5
+    stroked = false
+    filled = true
+    color = vec(1.0, 0.5, 0.2, 1.0)
+}
+
+lines(listOf(f) + tangents + normals + listOf(corners), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/curvature_tangents_normals.png)
+### Convex hull + inflections
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byConvexHull2D(): FLine
+fun FLine.bySplittingAtInflections(): List<FLine>
+```
+
+`byConvexHull2D()` wraps a stroke’s points with a tight convex polygon (useful for quick “envelopes” and coarse collision). Splitting at inflections is a good way to break a cubic-heavy curve into “monotone-ish” pieces.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val scribble = FLine().apply {
+    moveTo(60, 160)
+    cubicTo(120, 10, 160, 280, 220, 120)
+    cubicTo(280, -10, 320, 280, 360, 140)
+    thickness = 3.0
+    color = vec(1.0, 1.0, 1.0, 0.6)
+}
+
+val hull = scribble.byConvexHull2D().apply {
+    filled = true
+    stroked = true
+    thickness = 2.0
+    color = vec(0.4, 1.0, 0.6, 0.20)
+}
+
+val pieces = scribble.bySplittingAtInflections().mapIndexed { i, p ->
+    p.apply {
+        thickness = 4.0
+        color = if (i % 2 == 0) vec(1.0, 0.5, 0.2, 0.65) else vec(0.7, 0.9, 1.0, 0.65)
+    }
+}
+
+lines(listOf(hull, scribble) + pieces, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/convex_hull_inflections.png)
+## Parameterized operations (vary along the curve)
+
+Sometimes you want an effect that changes along the path: offset more near one end, add noise only in the middle, or scale based on curvature. `ParameterFunction` lets you define “a number as a function of position along the curve”.
+
+```diffstatic {data-lang=kotlin}
+:::static
+interface ParameterFunction {
+    fun evaluate(t: Float, position: Vec3): Float
+}
+
+class ConstantParameter(val value: Float) : ParameterFunction
+class LinearParameter(val start: Float, val end: Float) : ParameterFunction
+class SineParameter(val amplitude: Float, val frequency: Float, val phase: Float = 0f, val offset: Float = 0f) : ParameterFunction
+class DistanceParameter(val point: Vec3, val minValue: Float, val maxValue: Float, val maxDistance: Float) : ParameterFunction
+class CurvatureParameter(val line: FLine, val minValue: Float, val maxValue: Float, val maxCurvature: Float = 1f) : ParameterFunction
+
+fun parameterFromLambda(func: (t: Float, pos: Vec3) -> Float): ParameterFunction
+
+fun FLine.byOffsettingParameterized(distanceFunc: ParameterFunction, samples: Int = 100): FLine
+fun FLine.byNoisingParameterized(amplitudeFunc: ParameterFunction, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine
+fun FLine.byScalingParameterized(scaleFunc: ParameterFunction, center: Vec2 = vec(0f, 0f), samples: Int = 100): FLine
+```
+
+This example uses a sine wave to vary the offset distance, and a distance-based parameter to add noise that ramps up as you get farther from a “quiet point”.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val base = FLine().apply {
+    moveTo(60, 180)
+    cubicTo(120, 20, 260, 280, 360, 120)
+}
+
+val clean = base.copy().apply {
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+
+val wobble = base.byOffsettingParameterized(
+    distanceFunc = SineParameter(amplitude = 22f, frequency = 2.0f, phase = 0f, offset = 0f),
+    samples = 160
+).apply {
+    thickness = 3.0
+    color = vec(0.7, 0.9, 1.0, 0.85)
+}
+
+val quietPoint = vec(110, 70, 0)
+val amp = DistanceParameter(point = quietPoint, minValue = 0f, maxValue = 14f, maxDistance = 260f)
+val noisy = base.byNoisingParameterized(amplitudeFunc = amp, seed = 9L, samples = 160).apply {
+    thickness = 4.5
+    color = vec(1.0, 0.6, 0.2, 0.85)
+}
+
+val qp = FLine().apply {
+    moveTo(quietPoint.x, quietPoint.y)
+    lineTo(quietPoint.x + 0.001, quietPoint.y + 0.001)
+    pointed = true
+    pointSize = 4.5
+    stroked = false
+    filled = true
+    color = vec(0.4, 1.0, 0.6, 1.0)
+}
+
+lines(listOf(clean, wobble, noisy, qp), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/parameterized_operations_vary_along_the_curve.png)
+### Curve combination utilities
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byAddingWith(other: FLine, samples: Int = 100): FLine
+fun FLine.bySubtractingWith(other: FLine, samples: Int = 100): FLine
+fun FLine.byMultiplyingWith(other: FLine, samples: Int = 100): FLine
+
+fun FLine.byProjectingOnto(other: FLine, samples: Int = 100): FLine
+fun FLine.byInverting(center: Vec2 = vec(0f, 0f), radius: Float = 100f, samples: Int = 100): FLine
+```
+
+These are “curve algebra” helpers: sample two curves and combine their points, or map one curve onto another using closest-point projection.
+
+`byInverting` is [geometric inversion](https://en.wikipedia.org/wiki/Inversion_%28geometry%29); if you want the bigger picture, see [inversive geometry](https://en.wikipedia.org/wiki/Inversive_geometry).
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+// A smooth target curve (a circle-ish polyline)
+val center = vec(210.0, 130.0)
+val radius = 95.0
+
+val circle = FLine().apply {
+    for (i in 0..140) {
+        val a = (i / 140.0) * kotlin.math.PI * 2.0
+        val p = vec(center.x + radius * kotlin.math.cos(a), center.y + radius * kotlin.math.sin(a))
+        if (i == 0) moveTo(p) else lineTo(p)
+    }
+    close()
+    thickness = 3.0
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+
+// A “messy” version of it
+val messy = circle.byPerlinNoising(amplitude = 26f, frequency = 0.03f, octaves = 4, seed = 10L, samples = 180).apply {
+    thickness = 2.5
+    color = vec(1.0, 0.6, 0.2, 0.65)
+}
+
+// Project the messy samples back onto the circle
+val projected = messy.byProjectingOnto(circle, samples = 180).apply {
+    thickness = 4.0
+    color = vec(0.4, 1.0, 0.6, 0.85)
+}
+
+lines(listOf(circle, messy, projected), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/curve_combination_utilities.png)
+## Path operations and fitting
+
+These are higher-level operations that treat an `FLine` as something you can edit, split, reverse, or fit/smooth into a new representation.
+
+### Reverse / blend / extract
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byReversing(): FLine
+fun FLine.byBlendingWith(other: FLine, t: Float): FLine
+fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine
+```
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val a = FLine().apply {
+    moveTo(60, 190)
+    cubicTo(120, 20, 260, 280, 360, 120)
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val b = a.byReversing().apply { color = vec(1.0, 0.4, 0.4, 0.65) }
+
+val mid = a.byBlendingWith(b, t = 0.5f).apply {
+    thickness = 6.0
+    color = vec(0.4, 1.0, 0.6, 0.7)
+}
+
+val snippet = a.byExtracting(tStart = 0.8f, tEnd = 1.9f).apply {
+    thickness = 8.0
+    color = vec(1.0, 0.7, 0.2, 0.8)
+}
+
+lines(listOf(a, b, mid, snippet), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/reverse_blend_extract.png)
+### Circle fitting + subdivision
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float>
+fun FLine.bySubdividing(levels: Int = 1): FLine
+```
+
+`fitCircle` gives you an approximate circle for a curve segment (center/radius + an error estimate). `bySubdividing` increases resolution (more control points) for a smoother-looking polyline approximation.
+
+
+
+## Advanced / experimental curves (FLineGeometry)
+
+These are more specialized tools that are still extremely useful when you need them.
+
+### Euler spiral in 3D (clothoid-ish connection)
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun eulerSpiralBetween3D(
+    start: Vec3,
+    startDirection: Vec3,
+    end: Vec3,
+    endDirection: Vec3,
+    samples: Int = 200,
+    iterations: Int = 6,
+    lengthScale: Float = 1f,
+    headingScale: Float = 1f,
+    turn: Float = 0f
+): FLine
+
+fun FLine.byEulerSpiralTo(
+    endPoint: Vec3,
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
+    samples: Int = 200,
+    iterations: Int = 6,
+    lengthScale: Float = 1f,
+    headingScale: Float = 1f,
+    turn: Float = 0f
+): FLine
+
+fun FLine.eulerSpiralTo(
+    endPoint: Vec3,
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
+    samples: Int = 200,
+    iterations: Int = 6,
+    lengthScale: Float = 1f,
+    headingScale: Float = 1f,
+    turn: Float = 0f
+): FLine.Node
+```
+
+This builds a smooth-ish curve between two points with start/end direction constraints in 3D. It’s great for “motion paths” and connecting strokes while controlling how the heading evolves.
+
+This is essentially an [Euler spiral](https://en.wikipedia.org/wiki/Euler_spiral) / [clothoid](https://en.wikipedia.org/wiki/Clothoid).
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val start = vec(60, 180, 0)
+val end = vec(360, 120, 0)
+
+val f = FLine().apply {
+    moveTo(start)
+    // Start direction points right; end direction points up-left.
+    eulerSpiralTo(
+        endPoint = end,
+        startDirection = vec(1f, 0f, 0f),
+        endDirection = vec(-0.2f, -1f, 0f),
+        samples = 160,
+        iterations = 6
+    )
+    thickness = 5.0
+    color = vec(1.0, 0.7, 0.2, 1.0)
+}
+
+val endDirs = listOf(
+    seg(start.v2, (start + vec(60, 0, 0)).v2, pointed = false, color = vec(1.0, 1.0, 1.0, 0.25)).apply { thickness = 2.0 },
+    seg(end.v2, (end + vec(-15, -60, 0)).v2, pointed = false, color = vec(1.0, 1.0, 1.0, 0.25)).apply { thickness = 2.0 },
+)
+
+lines(endDirs + listOf(f), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/euler_spiral_in_3d_clothoid_ish_connection.png)
+## Boolean ops (2D)
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.byUnionWith(other: FLine): FLine
+fun FLine.byDifferenceWith(other: FLine): FLine
+fun FLine.byIntersectionWith(other: FLine): FLine
+fun FLine.byExclusiveOrWith(other: FLine): FLine
+```
+
+These use Java2D `Area` under the hood (via `FLinesAndJavaShapes`) to do 2D polygon boolean operations. Best results when your shapes are closed and reasonably well-behaved.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val a = FLine().apply {
+    moveTo(80, 80); lineTo(260, 80); lineTo(260, 220); lineTo(80, 220); close()
+    filled = true
+    stroked = true
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.20)
+}
+
+val b = FLine().apply {
+    moveTo(170, 40); lineTo(340, 140); lineTo(170, 240); lineTo(40, 140); close()
+    filled = true
+    stroked = true
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.20)
+}
+
+val u = a.byUnionWith(b).apply { color = vec(0.4, 1.0, 0.6, 0.40); filled = true; stroked = true; thickness = 3.0 }
+val i = a.byIntersectionWith(b).apply { color = vec(1.0, 0.5, 0.2, 0.55); filled = true; stroked = true; thickness = 3.0 }
+
+lines(listOf(a, b, u, i), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/boolean_ops_2d.png)
+## Queries and analysis
+
+These don’t change geometry — they help you *measure* it. Use them for picking (closest point), hit-testing (`contains`), and computing basic shape properties like area and centroid.
+
+### Closest point
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float>
+```
+
+Finds the closest point on the curve to a query position. Returns `(closestPoint, t)` where `t` is in the cursor’s parameterization.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val curve = FLine().apply {
+    moveTo(50, 180)
+    cubicTo(120, 20, 300, 280, 350, 120)
+    thickness = 5.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val query = vec(260, 60, 0)
+val (closest, _) = curve.closestPoint(query)
+
+val marker = polylineFrom(listOf(query.v2, closest.v2)).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.4, 0.4, 1.0)
+    pointed = true
+    pointSize = 3.0
+}
+
+lines(listOf(curve, marker), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/closest_point.png)
+### Containment and area
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.contains(point: Vec2): Boolean
+fun FLine.signedArea2D(): Float
+fun FLine.centroid2D(): Vec2
+```
+
+These treat the path as a 2D polygon (winding-based). `signedArea2D` is positive/negative depending on orientation.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+val poly = FLine().apply {
+    moveTo(60, 60)
+    lineTo(360, 80)
+    lineTo(320, 220)
+    lineTo(80, 200)
+    close()
+
+    filled = true
+    stroked = true
+    thickness = 3.0
+    color = vec(0.7, 0.9, 1.0, 0.25)
+}
+
+val c = poly.centroid2D()
+val center = FLine().apply {
+    moveTo(c.x, c.y)
+    lineTo(c.x + 0.001, c.y + 0.001) // tiny segment so it shows
+    pointed = true
+    pointSize = 5.0
+    stroked = false
+    filled = true
+    color = vec(1.0, 0.5, 0.2, 1.0)
+}
+
+lines(listOf(poly, center), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/containment_and_area.png)
+## Java2D bridge (advanced but incredibly useful)
+
+```diffstatic {data-lang=kotlin}
+:::static
+// In field.graphics.FLinesAndJavaShapes.Companion
+fun flineToJavaShape(f: FLine): java.awt.Shape
+fun flineToJavaShape(f: Collection<FLine>): java.awt.Shape
+fun javaShapeToFLine(f: java.awt.Shape): FLine
+
+fun closestT(to: FLine, point: Vec3): Float
+fun intersect(a: FLine, b: FLine): List<Vec3>
+```
+
+These let you round-trip between `FLine` and Java2D shapes (and pick up a ton of 2D computational geometry “for free”). You’ll see them used internally for booleans, insetting/outsetting, and intersections.
+
+```diffstatic {data-lang=kotlin}
+:::static
+import field.graphics.FLinesAndJavaShapes
+import java.awt.geom.Ellipse2D
+
+val circleShape = Ellipse2D.Double(80.0, 60.0, 220.0, 220.0)
+val circle = FLinesAndJavaShapes.javaShapeToFLine(circleShape).apply {
+    thickness = 5.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val diag = FLine().apply {
+    moveTo(40, 260)
+    lineTo(380, 40)
+    thickness = 3.0
+    color = vec(1.0, 0.4, 0.4, 1.0)
+}
+
+val hits = FLinesAndJavaShapes.intersect(circle, diag)
+val hitPts = polylineFrom(hits.map { it.v2 }).apply {
+    pointed = true
+    pointSize = 4.0
+    stroked = false
+    filled = true
+    color = vec(0.4, 1.0, 0.6, 1.0)
+}
+
+lines(listOf(circle, diag, hitPts), w = 420.0, h = 320.0, fitToSize = true)
+```
+
+![](assets/java2d_bridge_advanced_but_incredibly_useful.png)
+## Bonus: the tiny path mini-language `data(format, parameters)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.data(format: String, parameters: List<Any>): FLine
+```
+
+This is a compact way to “stamp” an FLine using a simple format string (commands like `m`, `l`, `c`, `z`, with a postfix `+` repetition operator). It’s great for procedural patterns.
+
+```diffstatic {data-lang=kotlin}
+:::static
+
+// A little "flower" made from repeated cubic petals.
+val f = FLine().apply {
+    data(
+        format = "m c+ z",
+        parameters = listOf(
+            vec(200, 130, 0),
+
+            // Each repetition of `c` consumes 3 points: c1, c2, end.
+            vec(260, 40, 0), vec(340, 80, 0), vec(300, 130, 0),
+            vec(340, 180, 0), vec(260, 220, 0), vec(200, 190, 0),
+            vec(140, 220, 0), vec(60, 180, 0), vec(100, 130, 0),
+            vec(60, 80, 0),  vec(140, 40, 0),  vec(200, 130, 0),
+        )
+    )
+
+    filled = true
+    stroked = true
+    thickness = 3.0
+    color = vec(1.0, 0.7, 0.2, 0.35)
+}
+
+lines(f, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+![](assets/bonus_the_tiny_path_mini_language_data_format_parameters.png)
+

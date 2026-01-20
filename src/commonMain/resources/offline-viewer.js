@@ -672,7 +672,8 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         button.textContent = 'Sending to Field4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
-            const response = await fetch('http://localhost:9092/api/import-offline-doc', {
+            const localBase = 'https://localhost:9092';
+            const response = await fetch(`${localBase}/api/import-offline-doc`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -687,8 +688,8 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
             }
 
             const result = await response.json();
-            const localEdnUrl = result.projectUrl || `http://localhost:9092/${encodeURIComponent(result.documentName)}/metadata.edn`;
-            const openUrl = result.openUrl || `http://localhost:9092/index.html?file=${encodeURIComponent(result.documentName)}`;
+            const localEdnUrl = result.projectUrl || `${localBase}/${encodeURIComponent(result.documentName)}/metadata.edn`;
+            const openUrl = result.openUrl || `${localBase}/index.html?file=${encodeURIComponent(result.documentName)}`;
 
             // Update state so further loads use the local copy
             ednFileUrl = localEdnUrl;

@@ -175,7 +175,7 @@
         const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
 
         (() => {
-                const WS_URL = "ws://localhost:9092/ws";
+                const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
                 const CHANNEL = "__browsing__";
 
                 const treeEl  = document.getElementById('tree');

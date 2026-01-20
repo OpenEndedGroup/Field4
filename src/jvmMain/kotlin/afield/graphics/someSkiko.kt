@@ -132,11 +132,16 @@ private fun computeFitTransform(lines: Collection<FLine>, w: Double, h: Double, 
     val bounds = lines.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
     if (bounds.w <= 0f || bounds.h <= 0f) return null
 
-    val scale = min((w / bounds.w).toFloat(), (h / bounds.h).toFloat())
-    val offsetX = -bounds.x
-    val offsetY = -bounds.y
+    val safety = 20f
+    val availableW = (w - safety * 2).toFloat()
+    val availableH = (h - safety * 2).toFloat()
+    if (availableW <= 0f || availableH <= 0f) return null
 
-    return FitTransform(scale, offsetX.toFloat(), offsetY.toFloat())
+    val scale = min(availableW / bounds.w, availableH / bounds.h)
+    val offsetX = -bounds.x + safety / scale
+    val offsetY = -bounds.y + safety / scale
+
+    return FitTransform(scale.toFloat(), offsetX.toFloat(), offsetY.toFloat())
 }
 
 private fun FLine.applyFit(transform: FitTransform?): FLine {

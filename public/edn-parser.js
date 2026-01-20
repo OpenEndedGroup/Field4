@@ -1,5 +1,5 @@
 /**
- * Simple EDN (Extensible Data Notation) parser for Field4 offline viewer
+ * Simple EDN (Extensible Data Notation) parser for Field·4 offline viewer
  * Supports the subset of EDN used in Field metadata files:
  * - Maps: {:key value}
  * - Vectors: [1 2 3]

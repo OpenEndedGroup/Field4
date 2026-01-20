@@ -10,11 +10,13 @@ import org.apache.commons.math4.legacy.optim.univariate.BrentOptimizer
 import org.apache.commons.math4.legacy.optim.univariate.SearchInterval
 import org.apache.commons.math4.legacy.optim.univariate.UnivariateObjectiveFunction
 import org.apache.commons.math4.legacy.optim.univariate.UnivariatePointValuePair
-import org.joml.*
+import org.joml.Vector4d
+import org.joml.minus
+import org.joml.plus
+import org.joml.times
 import java.awt.BasicStroke
 import java.awt.Shape
 import java.awt.geom.*
-import java.lang.Math
 import java.util.*
 import java.util.function.Consumer
 import java.util.function.Function
@@ -588,6 +590,7 @@ class FLinesAndJavaShapes {
                     f.add(s.first!!)
                     soFar = at
                     right = s.second
+                    if (right==null) return f
                     cursor = Cursor(right!!, 0.1f)
                 }
                 f.add(right!!)

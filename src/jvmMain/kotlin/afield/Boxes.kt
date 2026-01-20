@@ -559,6 +559,10 @@ fun box(
 var intro = """
 import afield.*
 import afield.stdlib.*
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
+import afield.stdlib.Vec4
+import afield.stdlib.Quat
 import afield.Box
 import afield.four.util.*
 import afield.graphics.*
@@ -570,6 +574,7 @@ import afield.four.texture.*
 import afield.graphics.*
 import org.joml.*
 import kotlinx.coroutines.yield
+import kotlinx.coroutines.runBlocking
 """
 
 fun makeKI(box: Box): KotlinInterface {

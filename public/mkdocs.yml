@@ -1,0 +1,66 @@
+site_name: OpenEndedGroup | Field·4
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Survival Guide: survivalGuide.md
+  - Kotlin Overview: kotlin_overview.md
+  - VR:
+    - Sketch 2: vr_sketch2.md
+    - FLine Examples: fline_examples.md
+
+markdown_extensions:
+  - pymdownx.superfences:         # required extension
+      custom_fences:
+        - name: diff
+          class: code-diff-fence
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: diffstatic
+          class: code-diff-fence-static
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+  - pymdownx.highlight:
+      linenums: true
+      anchor_linenums: true
+      use_pygments: true          # use pygments library    
+      pygments_style: github-dark # use 'github-dark' style
+  - pymdownx.inlinehilite         # style inline code
+  - md_in_html
+  - def_list
+  - attr_list
+  - pymdownx.inlinehilite
+
+plugins:
+    - mkdocs-jupyter:
+        include_requirejs: true
+        include_source: True
+    - search
+    - include_dir_to_nav:
+        file_pattern: ".*[.md,.ipynb]"
+        recurse: false
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: black
+    accent: red
+  font:
+    text: "Roboto Condensed"
+  custom_dir: overrides
+  features:
+    - navigation.path
+    # - navigation.expand
+    - content.code.copy
+
+extra_css:
+  - stylesheets/extra.css
+  - assets/code-diff-player/code-diff-player.css
+
+extra_javascript:
+  - assets/code-diff-player/fence-upgrade.js
+  - assets/code-diff-player/code-diff-player.js
+
+site_url: http://openendedgroup.com/Field4/
+site_dir: field4
+  

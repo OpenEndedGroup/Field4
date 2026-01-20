@@ -310,7 +310,7 @@
     <div class="tooltip" id="tooltip"></div>
 
     <script>
-        const WS_URL = `ws://${document.location.host}/ws`;
+        const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${document.location.host}/ws`;
         const statusEl = document.getElementById('status');
         const emptyStateEl = document.getElementById('empty-state');
         const timelineSvg = document.getElementById('timeline-svg');

@@ -32,8 +32,8 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
@@ -43,6 +43,8 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.net.URI
 import java.net.URLEncoder
+import java.nio.file.Paths
+import java.security.KeyStore
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
@@ -95,7 +97,7 @@ fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
 fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long = 500L) {
     GlobalScope.launch {
         delay(delayMs)
-        
+
         // Wait for all boxes to be online before starting autorun
         val allBoxes = boxes.values.filter { it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }
         var attempts = 0
@@ -103,7 +105,7 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
             delay(100)
             attempts++
         }
-        
+
         targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
             launch {
                 try {
@@ -219,6 +221,34 @@ class Server {
             } catch (t: Throwable) {
                 lprintln("warning,server", "Failed to launch system browser via $command: ${t.message}")
             }
+        }
+
+        private fun ensureLocalKeystore(target: File, password: String, alias: String): File {
+            if (target.exists()) return target
+
+            target.parentFile?.mkdirs()
+            val keytool = Paths.get(System.getProperty("java.home"), "bin", "keytool").toFile()
+
+            val command = listOf(
+                keytool.absolutePath,
+                "-genkeypair",
+                "-alias", alias,
+                "-keyalg", "RSA",
+                "-keysize", "2048",
+                "-storetype", "PKCS12",
+                "-keystore", target.absolutePath,
+                "-storepass", password,
+                "-keypass", password,
+                "-validity", "3650",
+                "-dname", "CN=localhost, OU=Field, O=Field, L=Local, ST=Local, C=US",
+                "-ext", "SAN=DNS:localhost,IP:127.0.0.1"
+            )
+
+            val process = ProcessBuilder(command).inheritIO().start()
+            val exit = process.waitFor()
+            if (exit != 0) error("Failed to generate keystore: keytool exited with $exit")
+
+            return target
         }
 
         @OptIn(DelicateCoroutinesApi::class, BetaOpenAI::class)
@@ -878,7 +908,26 @@ class Server {
             registerTemplate(home)
 
             val port = System.getenv("PORT")?.toInt() ?: 9092
-            ourServer = embeddedServer(Netty, port) {
+            val httpsHost = "0.0.0.0"
+            val keystorePath = System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
+            val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
+            val keystoreAlias = System.getenv("AFIELD_KEYSTORE_ALIAS") ?: "field4"
+            val keystoreFile = ensureLocalKeystore(File(keystorePath), keystorePassword, keystoreAlias)
+            val keyStore = KeyStore.getInstance("PKCS12").apply {
+                load(keystoreFile.inputStream(), keystorePassword.toCharArray())
+            }
+
+            ourServer = embeddedServer(Netty, configure = {
+                sslConnector(
+                    keyStore = keyStore,
+                    keyAlias = keystoreAlias,
+                    keyStorePassword = { keystorePassword.toCharArray() },
+                    privateKeyPassword = { keystorePassword.toCharArray() }
+                ) {
+                    this.host = httpsHost
+                    this.port = port
+                }
+            }) {
                 install(ContentNegotiation) {
                     json()
                 }
@@ -933,8 +982,8 @@ class Server {
                             metadataFile.writeText(ednText)
 
                             val encodedName = URLEncoder.encode(candidate, "UTF-8")
-                            val openUrl = "http://localhost:${port}/index.html?file=${encodedName}"
-                            val projectUrl = "http://localhost:${port}/${encodedName}/${SavingContext.METADATA_EDN}"
+                            val openUrl = "https://localhost:${port}/index.html?file=${encodedName}"
+                            val projectUrl = "https://localhost:${port}/${encodedName}/${SavingContext.METADATA_EDN}"
 
                             call.respond(OfflineImportResponse(candidate, openUrl, projectUrl))
                         } catch (ex: Exception) {
@@ -1170,7 +1219,7 @@ class Server {
                     }
                 }
 
-                val initialURL = "http://localhost:${port}/index.html?file=${lastFn}"
+                val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
                 lprintln("info,server", asciiWelcome)
                 lprintln("info,server", "welcome to Field, alpha022")
                 lprintln("info,server", initialURL)
@@ -1184,14 +1233,18 @@ class Server {
                         Playwright.create().let { pw ->
                             val browser = pw.chromium().launch(
                                 BrowserType.LaunchOptions()
-//                                    .setHeadless(!showPlaywrightWindow)
+                                    .setHeadless(false)
                                     .setArgs(
                                         listOf(
                                             "--app=${initialURL}",
                                         )
                                     )
                             )
-                            val ctx = browser.newContext(Browser.NewContextOptions().setViewportSize(null))
+                            val ctx = browser.newContext(
+                                Browser.NewContextOptions()
+                                    .setViewportSize(null)
+                                    .setIgnoreHTTPSErrors(true)
+                            )
                             val page = ctx.newPage()
                             page.navigate(initialURL)
                             page.waitForLoadState(LoadState.NETWORKIDLE)
@@ -1201,7 +1254,9 @@ class Server {
                         }
                     }
                 }
-            }.start(wait = true)
+            }
+
+            ourServer.start(wait = true)
         }
 
 

@@ -436,6 +436,57 @@ tasks.register<JavaExec>("runfilestore") {
     standardInput = System.`in`
 }
 
+val generateLocalKeystore = tasks.register("generateLocalKeystore") {
+    group = "application"
+    description = "Generates a self-signed PKCS12 keystore for local HTTPS (config/field4-local.p12)."
+
+    val javaLauncher = javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(24))
+    }
+
+    val keystoreFile = layout.projectDirectory.file("config/field4-local.p12").asFile
+    outputs.file(keystoreFile)
+    inputs.property("javaHome", javaLauncher.map { it.metadata.installationPath.asFile })
+
+    doLast {
+        if (keystoreFile.exists()) {
+            logger.lifecycle("Keystore already exists at ${keystoreFile}; delete it to regenerate.")
+            return@doLast
+        }
+
+        keystoreFile.parentFile.mkdirs()
+
+        val javaHome = javaLauncher.get().metadata.installationPath.asFile
+        val keytoolName = if (System.getProperty("os.name").lowercase().contains("windows")) "keytool.exe" else "keytool"
+        val keytoolPath = javaHome.toPath().resolve("bin").resolve(keytoolName).toFile()
+
+        if (!keytoolPath.exists()) {
+            throw GradleException("keytool not found at ${keytoolPath.absolutePath}")
+        }
+
+        exec {
+            workingDir = projectDir
+            commandLine(
+                keytoolPath.absolutePath,
+                "-genkeypair",
+                "-alias", "field4",
+                "-keyalg", "RSA",
+                "-storetype", "PKCS12",
+                "-keystore", keystoreFile.absolutePath,
+                "-storepass", "changeit",
+                "-keypass", "changeit",
+                "-dname", "CN=localhost",
+                "-validity", "3650",
+                "-ext", "SAN=dns:localhost,ip:127.0.0.1"
+            )
+        }
+    }
+}
+
+tasks.named<JavaExec>("runJvm").configure {
+    dependsOn(generateLocalKeystore)
+}
+
 
 tasks.named("jvmDistTar") {
     enabled = false

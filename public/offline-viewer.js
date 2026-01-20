@@ -1,5 +1,5 @@
 /**
- * Field4 Offline Viewer
+ * Field·4 Offline Viewer
  * Renders Field documents in read-only mode without backend connection
  */
 
@@ -76,7 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Setup view toggle
         setupLiterateToggle();
 
-        // Setup the "Open in Field4" button
+        // Setup the "Open in Field·4" button
         setupOpenLocalButton(ednFileUrl, ednText, data);
 
         // Setup help overlay
@@ -660,7 +660,7 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
     const button = document.getElementById('open-local');
     button.style.display = 'inline-block';
     button.href = '#';
-    button.title = 'Send to Field4 desktop application';
+    button.title = 'Send to Field·4 desktop application';
 
     let busy = false;
 
@@ -669,10 +669,11 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         if (busy) return;
         busy = true;
         const originalLabel = button.textContent;
-        button.textContent = 'Sending to Field4...';
+        button.textContent = 'Sending to Field·4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
-            const response = await fetch('http://localhost:9092/api/import-offline-doc', {
+            const localBase = 'https://localhost:9092';
+            const response = await fetch(`${localBase}/api/import-offline-doc`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -687,8 +688,8 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
             }
 
             const result = await response.json();
-            const localEdnUrl = result.projectUrl || `http://localhost:9092/${encodeURIComponent(result.documentName)}/metadata.edn`;
-            const openUrl = result.openUrl || `http://localhost:9092/index.html?file=${encodeURIComponent(result.documentName)}`;
+            const localEdnUrl = result.projectUrl || `${localBase}/${encodeURIComponent(result.documentName)}/metadata.edn`;
+            const openUrl = result.openUrl || `${localBase}/index.html?file=${encodeURIComponent(result.documentName)}`;
 
             // Update state so further loads use the local copy
             ednFileUrl = localEdnUrl;
@@ -700,15 +701,17 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
             // Update URL bar so this offline page now points at the local copy
             window.history.pushState({}, '', `?file=${encodeURIComponent(localEdnUrl)}`);
 
-            // Convert button back into a normal link to Field4
+            // Convert button back into a normal link to Field·4
             button.href = openUrl;
-            button.textContent = 'Open in Field4';
-            button.title = `Open ${result.documentName} in Field4`;
+            button.target = '_blank';
+            button.rel = 'noopener';
+            button.textContent = 'Open in Field·4';
+            button.title = `Open ${result.documentName} in Field·4`;
 
-            // Launch Field4
-            window.location.href = openUrl;
+            // Launch Field·4 in a new tab
+            window.open(openUrl, '_blank', 'noopener');
         } catch (error) {
-            showError(`Failed to send to Field4: ${error.message}`);
+            showError(`Failed to send to Field·4: ${error.message}`);
             button.textContent = originalLabel;
         } finally {
             busy = false;
@@ -752,11 +755,9 @@ function showDocumentInfo(data, fileUrl) {
     const version = data.version || 'unknown';
 
     banner.innerHTML = `
-        Offline Documentation Mode — Read Only 
-        <span style="opacity: 0.6; margin-left: 12px; font-size: 11px;">
+        <span style="opacity: 0.7; font-size: 11px;">
             ${fileName} • ${boxCount} box${boxCount !== 1 ? 'es' : ''} • v${version}
         </span>
-        <span style="opacity: 0.6; margin-left: 12px;">Press <kbd style="padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">?</kbd> for help</span>
     `;
 }
 
@@ -800,9 +801,9 @@ function setupHelpOverlay() {
                 <p style="margin: 12px 0 8px 0;"><strong>Features</strong></p>
                 <p style="margin: 0 0 6px 0;">• Click property tabs to switch between code/GLSL/python</p>
                 <p style="margin: 0 0 6px 0;">• Monaco editor provides syntax highlighting</p>
-                <p style="margin: 0 0 16px 0;">• Click "Open in Field4" to launch in an allready running desktop app</p>
+                <p style="margin: 0 0 16px 0;">• Click "Open in Field·4" to launch in an allready running desktop app</p>
                 <p style="margin: 0; opacity: 0.8; font-size: 13px;">
-                    This is a <b>read-only</b> documentation mode. To edit or execute code, launch Field4 and click on the link in the bottom right.
+                    This is a <b>read-only</b> documentation mode. To edit or execute code, launch Field·4 and click on the link in the bottom right.
                 </p>
             </div>
             <div style="text-align: center; margin-top: 18px;">

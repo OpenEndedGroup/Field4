@@ -220,7 +220,7 @@
         const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
 
         (() => {
-                const WS_URL = `ws://${document.location.host}/ws`;
+                const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${document.location.host}/ws`;
                 const CHANNEL = "__browsing__";
 
                 const columnsEl = document.getElementById('columns');

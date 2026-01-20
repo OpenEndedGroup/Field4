@@ -522,7 +522,7 @@ window.launchAll = monacoLaunchAll
 // Documentation iframe support
 let docsIframeAnimationGeneration = 0
 
-const defaultDocsIframeUrl = "http://localhost:9092/sample-docs.html"
+const defaultDocsIframeUrl = "http://localhost:8000/field4/index.html"
 const historyBaseUrl = "http://localhost:9092/history"
 
 const historyUrlForFile = (filename) => {
