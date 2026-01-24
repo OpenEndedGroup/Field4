@@ -2,7 +2,7 @@
 
 Field uses _Kotlin_, which is a language that might be new to you. Promoted by Google as the "official" language for Android app development, Kotlin was initiated by (and is still maintained by) Jetbrains — a company that is primarily responsible for a really good Java development environment. Kotlin has emerged over the last decade as the winner of an attempt to invent a "better Java" through a cunning combination of interoperability (which means the ecosystem is _huge_), a terser syntax (which means it's much more fun to write), and quality of life improvements like operator overloading (which means that doing the kind of math that computer graphics wants us to do is bareable).
  
-All in all 'live-coding' Kotlin is a fairly pleasant experience — safer than JS or Python (there's a compiler that checks your code before it runs), quicker than JS or Python (there's a real type system that can offer real help) and yet still understandable by LLMs.
+All in all, 'live-coding' Kotlin is a fairly pleasant experience — safer than JS or Python (there's a compiler that checks your code before it runs), quicker than JS or Python (there's a real type system that can offer real help) and yet still understandable by LLMs.
 
 ## Basics
 
@@ -18,7 +18,7 @@ Comments are notes for humans — the compiler ignores them. They’re a good pl
 
 Swift and C# also use `//` for single-line comments, and `/* ... */` for block comments.
 
-In Python you use `#` for line comments; there’s no true block comment (triple-quoted strings are sometimes used as “docstrings/comments”). In JavaScript (and C, C++, C#, Java etc. ), comment syntax is the same as Kotlin (`//` and `/* ... */`).
+In Python you use `#` for line comments; there’s no true block comment (triple-quoted strings are sometimes used as “docstrings/comments”). 
 
 ### Variables: `val` vs `var`
 
@@ -60,11 +60,11 @@ x = 10        # common: no type annotation
 x: int = 10   # optional: type hint (same runtime behavior)
 ```
 
-JavaScript has no built-in type annotations (TypeScript adds them). Swift and C# should feel familiar here: Swift infers types aggressively, and C# has `var` for type inference (but it’s still statically typed).
+JavaScript has no built-in type annotations (TypeScript is what you get if you add them). Swift and C# should feel familiar here: Swift infers types aggressively, and C# has `var` for type inference (but it’s still statically typed).
 
 ### Numbers are strict (Int vs Double vs Float)
 
-Kotlin takes its number types seriously in ways that might irritate you (it certainly irritates me). `1` (an `Int`), `1L` (a `Long`), `1.0` (a `Double`), and `1.0f` (a `Float`) are different types, and Kotlin will not silently coerce between them. This is one of the most common impedance mismatches when coming from Python or JavaScript.
+Kotlin takes its number types seriously in ways that might irritate you (it certainly irritates me). `1` (an `Int`), `1L` (a `Long`), `1.0` (a `Double`), and `1.0f` (a `Float`) are different types, and Kotlin will not silently coerce one to another. In particular calling a function that expects a float with a double is an error; as is the other way around. This is one of the most common impedance mismatches when coming from Python or JavaScript.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -96,10 +96,92 @@ val ok1: Double = i.d // result: 1.0
 val ok2: Float = i.f   // result: 1.0f
 
 val sumD = d + i.d    // result: 2.0
-val sumF = f + i.f     // result: 2.0f
+val sumF = f + i.f + 0.2.f    // result: 2.2f
 ```
 
 And `.i` and `.l` as well. This looks a bit odd, but it's much less typing than `.toDouble()`.
+
+### Printing
+
+Printing is the simplest way to see what your code is doing. Kotlin uses `println(...)` (prints a line) and `print(...)` (prints without a trailing newline). Kotlin will call `toString()` for you.
+
+```diffstatic {data-lang=kotlin}
+:::static
+val x = 42
+
+println(x)           // prints: 42
+println("x = " + x)  // prints: x = 42
+```
+
+Field wires Kotlin's `print( ... )` and `println( ... )` functions such that whatever is printed arrives at the bottom of the text editor. Furthermore, there's a `_print( ... )` that arrives right there next to that line itself. This is especially handy for instrumenting code and figuring out if it's even running.
+
+For larger outputs Field also defines a `display(channel :String, contents: Any)` function that lets you 'print' to a channel on the canvas. So:
+
+```diffstatic {data-lang=kotlin}
+:::static
+display("foo", "hello!?")
+```
+
+![](assets/screenshot_24.png)
+
+That output is straight HTML and therefore we can use this to embed charts, SVG files, and interactive controls. For example:
+
+```diffstatic {data-lang=kotlin}
+:::static
+controlGroup("controls") {
+    slider("name") { /*...*/ }
+    colorPicker("myColor") { /*...*/ }
+    vec2Control("the position") { /*...*/ }
+    checkbox("flag") { /*...*/ }
+    stringInput("label") { /*...*/ }
+    checkbox("bar") { _print(it) }
+    stringInput("foo") { _print(it) }
+}
+```
+
+Yields:
+
+![](assets/screenshot_25.png)
+
+In Python you use `print(...)` and, in Jupyter there's a very simpler protocol for embedding interactive widgets and showing pixel and SVG based output. In JavaScript you typically use `console.log(...)` (or conspire to put HTML into the DOM). Swift uses `print(...)`. C# uses `Console.WriteLine(...)` (or `Console.Write(...)`).
+
+Python:
+
+```diffstatic {data-lang=python}
+:::static
+x = 42
+print(x)
+print("x =", x)
+```
+
+JavaScript:
+
+```diffstatic {data-lang=javascript}
+:::static
+const x = 42;
+console.log(x);
+console.log("x =", x);
+```
+
+Swift:
+
+```diffstatic {data-lang=swift}
+:::static
+let x = 42
+print(x)
+print("x =", x)
+```
+
+C#:
+
+```diffstatic {data-lang=csharp}
+:::static
+using System;
+
+var x = 42;
+Console.WriteLine(x);
+Console.WriteLine("x = " + x);
+```
 
 ### Strings and interpolation
 
@@ -122,11 +204,15 @@ Python interpolation (today) is typically f-strings (`f"Hello, {who}"`). JavaScr
 
 Swift and C# both have built-in string interpolation too:
 
+Swift:
+
 ```diffstatic {data-lang=swift}
 :::static
 let who = "world"
 let msg = "Hello, \(who)"
 ```
+
+C#:
 
 ```diffstatic {data-lang=csharp}
 :::static
@@ -164,11 +250,15 @@ In Field you’ll often skip this because Field pre-imports a lot of things (mos
 
 Python, JavaScript, Swift, and C# all have the same basic idea (bring names into scope), just with different syntax:
 
+Python:
+
 ```diffstatic {data-lang=python}
 :::static
 import math
 print(math.sqrt(9))
 ```
+
+JavaScript:
 
 ```diffstatic {data-lang=javascript}
 :::static
@@ -176,11 +266,15 @@ import { readFile } from "node:fs/promises";
 console.log(await readFile("./foo.txt", "utf8"));
 ```
 
+Swift:
+
 ```diffstatic {data-lang=swift}
 :::static
 import Foundation
 print("hi")
 ```
+
+C#:
 
 ```diffstatic {data-lang=csharp}
 :::static
@@ -208,6 +302,8 @@ Python supports default values and named arguments directly. JavaScript has no n
 
 If you’re curious, here’s the same idea in Python (named args work like Kotlin) and in JavaScript using an options object (because JS doesn’t have named args).
 
+Python:
+
 ```diffstatic {data-lang=python}
 :::static
 def greet(name="world", punct="!"):
@@ -217,6 +313,8 @@ greet()
 greet("Ada")
 greet(punct="?", name="Ada")
 ```
+
+JavaScript:
 
 ```diffstatic {data-lang=javascript}
 :::static
@@ -231,6 +329,8 @@ greet({ punct: "?", name: "Ada" });
 
 Swift and C# both support default values and named arguments too (Swift leans on named arguments heavily):
 
+Swift:
+
 ```diffstatic {data-lang=swift}
 :::static
 func greet(name: String = "world", punct: String = "!") {
@@ -241,6 +341,8 @@ greet()
 greet(name: "Ada")
 greet(punct: "?", name: "Ada")
 ```
+
+C#:
 
 ```diffstatic {data-lang=csharp}
 :::static
@@ -286,9 +388,27 @@ for (i in 6 downTo 0 step 2) {
 }
 ```
 
+Field also defines an extension function to make the common case even terser:
+
+```diffstatic {data-lang=kotlin}
+:::static
+6 {
+  _print(it) // 0,1,2,3,4,5
+}
+```
+
+And for interpolation between 0 and 1 _inclusive_
+
+```diffstatic {data-lang=kotlin}
+:::static
+5.alphas {
+  _print(it) // 0, 0.25, 0.5, 0.75, 1
+}
+```
+
 Python loops over values; counting uses `range(start, stop[, step])`. JavaScript usually uses classic `for (let i = ...; ...; ...)` loops for counting.
 
-### Lists and maps (Python’s lists and dicts)
+### Lists and maps
 
 If you only learn two data structures in Kotlin for everyday Field scripting, learn `List` and `Map`. Kotlin distinguishes between read-only interfaces (`List`, `Map`) and mutable versions (`MutableList`, `MutableMap`). The common constructors are `listOf(...)` and `mapOf(...)`, and the mutable ones are `mutableListOf(...)` and `mutableMapOf(...)`.
 
@@ -319,7 +439,85 @@ for ((k, v) in mm) {
 
 The `"a" to 1` syntax builds a key/value `Pair`, which is why `mapOf("a" to 1)` looks a little unusual at first. Also note that `m["a"]` returns a nullable (`Int?`) because the key might not exist.
 
-### `when` (switch-like, but richer)
+Python:
+
+```diffstatic {data-lang=python}
+:::static
+xs = [10, 20, 30]
+first = xs[0]  # result: 10
+
+ys = [1, 2, 3]
+ys.append(4)
+ys[0] = 99
+# result: ys is [99, 2, 3, 4]
+
+m = {"a": 1, "b": 2}
+a1 = m["a"]            # result: 1
+c1 = m.get("c")        # result: None
+safe = m.get("c", 0)   # result: 0
+
+mm = {"x": 10}
+mm["y"] = 20
+mm["x"] = 11
+# result: mm is {"x": 11, "y": 20}
+
+for k, v in mm.items():
+    print(f"{k} -> {v}")
+```
+
+JavaScript:
+
+```diffstatic {data-lang=javascript}
+:::static
+const xs = [10, 20, 30];
+const first = xs[0]; // result: 10
+
+const ys = [1, 2, 3];
+ys.push(4);
+ys[0] = 99;
+// result: ys is [99, 2, 3, 4]
+
+const m = new Map([["a", 1], ["b", 2]]);
+const a1 = m.get("a");           // result: 1
+const c1 = m.get("c");           // result: undefined
+const safe = (m.get("c") ?? 0);  // result: 0
+
+const mm = new Map([["x", 10]]);
+mm.set("y", 20);
+mm.set("x", 11);
+
+for (const [k, v] of mm) {
+  console.log(`${k} -> ${v}`);
+}
+```
+
+Swift:
+
+```diffstatic {data-lang=swift}
+:::static
+let xs = [10, 20, 30]
+let first = xs[0] // result: 10
+
+var ys = [1, 2, 3]
+ys.append(4)
+ys[0] = 99
+// result: ys is [99, 2, 3, 4]
+
+let m = ["a": 1, "b": 2]
+let a1 = m["a"]         // result: Int?
+let c1 = m["c"]         // result: nil
+let safe = m["c"] ?? 0  // result: 0
+
+var mm: [String: Int] = ["x": 10]
+mm["y"] = 20
+mm["x"] = 11
+
+for (k, v) in mm {
+  print("\(k) -> \(v)")
+}
+```
+
+### `when` (switch-like)
 
 When you have more than two cases, Kotlin’s `when` is a clean way to choose between many branches. It can match exact values, multiple values, ranges, and even types.
 
@@ -610,6 +808,8 @@ val n: Int = try {
 
 Python and JavaScript both use `try`/`except` or `try`/`catch` blocks in the usual statement style:
 
+Python:
+
 ```diffstatic {data-lang=python}
 :::static
 try:
@@ -617,6 +817,8 @@ try:
 except Exception:
     n = 0
 ```
+
+JavaScript:
 
 ```diffstatic {data-lang=javascript}
 :::static
@@ -666,12 +868,16 @@ fun shout(x: Any) {
 
 Python and JavaScript can do similar checks, but they don’t “smart cast” the variable for you in quite the same way:
 
+Python:
+
 ```diffstatic {data-lang=python}
 :::static
 def shout(x):
     if isinstance(x, str):
         print(x.upper())
 ```
+
+JavaScript:
 
 ```diffstatic {data-lang=javascript}
 :::static
@@ -721,6 +927,8 @@ Python typically uses an `__init__` constructor and stores fields on `self`. Jav
 
 Here are direct equivalents. In the Python version, the `name: str` / `age: int` parts are optional type hints; delete them if you haven’t seen annotations before.
 
+Python:
+
 ```diffstatic {data-lang=python}
 :::static
 class Person:
@@ -728,6 +936,8 @@ class Person:
         self.name = name
         self.age = age
 ```
+
+JavaScript:
 
 ```diffstatic {data-lang=javascript}
 :::static
@@ -741,6 +951,8 @@ class Person {
 
 Swift has `class` and `struct` with initializers; C# has classes with auto-properties:
 
+Swift:
+
 ```diffstatic {data-lang=swift}
 :::static
 final class Person {
@@ -753,6 +965,8 @@ final class Person {
   }
 }
 ```
+
+C#:
 
 ```diffstatic {data-lang=csharp}
 :::static
@@ -788,6 +1002,8 @@ val (x, y) = b
 
 Python’s closest equivalent is usually a `@dataclass` (optional, but very common), and JavaScript often uses a plain object or a small class depending on taste:
 
+Python:
+
 ```diffstatic {data-lang=python}
 :::static
 from dataclasses import dataclass, replace
@@ -802,6 +1018,8 @@ b = replace(a, y=5.0)  # like Kotlin copy
 x, y = b.x, b.y
 ```
 
+JavaScript:
+
 ```diffstatic {data-lang=javascript}
 :::static
 // plain object (common)
@@ -811,6 +1029,8 @@ const { x, y } = b;
 ```
 
 Swift’s closest equivalent is a `struct` (often `Equatable`) — copying is usually “by value”:
+
+Swift:
 
 ```diffstatic {data-lang=swift}
 :::static
@@ -826,6 +1046,8 @@ let (x, y) = (b.x, b.y)
 ```
 
 C#’s closest equivalent is a `record`, with `with`-expressions and deconstruction:
+
+C#:
 
 ```diffstatic {data-lang=csharp}
 :::static

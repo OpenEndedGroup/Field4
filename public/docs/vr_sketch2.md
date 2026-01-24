@@ -100,12 +100,20 @@ So, a fully fleshed out "idea" might be — can change opacity from speed and ha
 The cookbook then, looks like this document here:
 
 <iframe
-  src="/offline.html?file=/field.sketch2_cooked.edn"
+  src="/offline.html?file=/field.sketch2_examples.edn"
   title="Offline Viewer"
   style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
   loading="lazy"
   allowfullscreen>
 </iframe>
 
-Which has 6 examples (of outputs) and examples of computing speed, and accessing the other hand and head.
+Which has lots of examples (of outputs) and lots examples of computing speed and so on. If you are on a machine that doesn't support XR (for example all Mac's or Windows / Linux machines without headset), you'll want this example here:
+
+<iframe
+  src="/offline.html?file=/field.sketch2_examples_noXR.edn"
+  title="Offline Viewer"
+  style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
+  loading="lazy"
+  allowfullscreen>
+</iframe>
 

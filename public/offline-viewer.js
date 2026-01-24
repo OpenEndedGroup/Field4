@@ -104,6 +104,19 @@ async function fetchEdnFile(url) {
     }
 }
 
+function hasDisplayableCode(props = {}) {
+    const code = props.code;
+    if (typeof code !== 'string') {
+        return true;
+    }
+    return code.trim().length > 0;
+}
+
+function hasDisplayableName(props = {}) {
+    const name = props.name;
+    return typeof name === 'string' && name.trim().length > 0;
+}
+
 function renderBoxes(boxes) {
     const canvas = document.getElementById('canvas');
     const connections = document.getElementById('connections');
@@ -112,7 +125,7 @@ function renderBoxes(boxes) {
 
     visibleBoxes = boxes.filter(box => {
         const props = box.properties || {};
-        return props._tombstone !== true && box.id !== 'root';
+        return props._tombstone !== true && box.id !== 'root' && hasDisplayableCode(props) && hasDisplayableName(props);
     });
 
     // Calculate canvas size to fit all boxes

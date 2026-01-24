@@ -1,38 +1,68 @@
 package afield.four.modules
 
-import afield.four.util.Options
 import afield.logger.lprintln
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import org.json.JSONObject
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
+import org.lwjgl.util.spvc.Spvc
 import org.lwjgl.vulkan.VK10
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
-import java.nio.file.Files
-import java.nio.file.StandardOpenOption
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
-fun runCommand(command: List<String>, dir: String = "."): String {
-    val processBuilder = ProcessBuilder(command)
-    processBuilder.redirectErrorStream(true) // Redirects error stream to stdout
+private fun spvcReflectJson(spirvBytecode: ByteBuffer): String {
+    val words = spirvBytecode.slice().order(ByteOrder.nativeOrder()).asIntBuffer()
 
-    val process = processBuilder.start()
-    val output = StringBuilder()
+    MemoryStack.stackPush().use { stack ->
+        val pContext = stack.mallocPointer(1)
+        val createResult = Spvc.spvc_context_create(pContext)
+        require(createResult == Spvc.SPVC_SUCCESS) {
+            "spvc_context_create failed (result=$createResult)"
+        }
 
-    BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-        var line: String?
-        while (reader.readLine().also { line = it } != null) {
-            output.append(line).append("\n")
+        val context = pContext[0]
+        try {
+            val pParsedIr = stack.mallocPointer(1)
+            run {
+                val parseResult = Spvc.spvc_context_parse_spirv(context, words, words.remaining().toLong(), pParsedIr)
+                require(parseResult == Spvc.SPVC_SUCCESS) {
+                    "spvc_context_parse_spirv failed (result=$parseResult, error=${Spvc.spvc_context_get_last_error_string(context)})"
+                }
+            }
+
+            val parsedIr = pParsedIr[0]
+            val pCompiler = stack.mallocPointer(1)
+            run {
+                val compilerResult = Spvc.spvc_context_create_compiler(
+                    context,
+                    Spvc.SPVC_BACKEND_JSON,
+                    parsedIr,
+                    Spvc.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP,
+                    pCompiler
+                )
+                require(compilerResult == Spvc.SPVC_SUCCESS) {
+                    "spvc_context_create_compiler failed (result=$compilerResult, error=${Spvc.spvc_context_get_last_error_string(context)})"
+                }
+            }
+
+            val compiler = pCompiler[0]
+            val pSource = stack.mallocPointer(1)
+            run {
+                val compileResult = Spvc.spvc_compiler_compile(compiler, pSource)
+                require(compileResult == Spvc.SPVC_SUCCESS) {
+                    "spvc_compiler_compile failed (result=$compileResult, error=${Spvc.spvc_context_get_last_error_string(context)})"
+                }
+            }
+
+            val json = MemoryUtil.memUTF8(pSource[0])
+            Spvc.spvc_context_release_allocations(context)
+            return json
+        } finally {
+            Spvc.spvc_context_destroy(context)
         }
     }
-
-    val exitCode = process.waitFor()
-    if (exitCode != 0) {
-        lprintln("error,graphics", "Command exited with error code $exitCode")
-    }
-
-    return output.toString()
 }
 
 enum class ImageType(val vulkan_format: Int) {
@@ -194,26 +224,7 @@ class Introspection(
             val data = spirv.bytecode()!!
 
             code = spirv
-
-            val spv = File.createTempFile("afield", "spv")
-            spv.deleteOnExit()
-
-            Files.newByteChannel(spv.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
-                while (data.hasRemaining()) {
-                    channel.write(data)
-                }
-            }
-
-            if (!File(Options.spirv_cross_path).exists()) {
-                lprintln("error,graphics", "cannot find pre-built spirv-cross at ${Options.spirv_cross_path}")
-            }
-            val check = runCommand(
-                listOf(
-                    Options.spirv_cross_path, spv.path, "--vulkan-semantics"
-                )
-            )
-            lprintln("debug,graphics", check)
-            val json = runCommand(listOf(Options.spirv_cross_path, spv.path, "--reflect"))
+            val json = spvcReflectJson(data)
             val j = JSONObject(json)
 
             lprintln("debug,graphics", j.toString())

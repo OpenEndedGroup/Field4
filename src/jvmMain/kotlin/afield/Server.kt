@@ -1221,7 +1221,7 @@ class Server {
 
                 val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
                 lprintln("info,server", asciiWelcome)
-                lprintln("info,server", "welcome to Field, alpha022")
+                lprintln("info,server", "welcome to Field, ß-032")
                 lprintln("info,server", initialURL)
                 lprintln("info,server", "---")
 

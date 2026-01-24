@@ -42,9 +42,18 @@ h1 {
     margin-top: -30px !important;
 }
 
-img {
-    /* max-width: 90% !important; */
-    object-fit: scale-down !important;
+/* Avoid upscaling embedded images (pixelation), but still shrink-to-fit the column */
+.md-typeset img {
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* HiDPI: if your images are not provided at @2x, keep them smaller to avoid visible pixels */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+    .md-typeset img {
+        max-width: 50% !important;
+    }
 }
 
 h2 {

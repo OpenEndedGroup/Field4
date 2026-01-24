@@ -1,6 +1,6 @@
 # Installation
 
-The current version of _Field·4_ is **beta023**.
+The current version of _Field·4_ is **beta032**.
 
 You can download the distribution [here](assets/field_beta1.zip). Alternatively you can press `f1` inside a running Field·4, "Check for Updates" and restart Field.
 

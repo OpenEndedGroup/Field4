@@ -13,7 +13,6 @@ import org.lwjgl.openxr.KHRVulkanEnable2.xrGetVulkanGraphicsRequirements2KHR
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK
 import org.lwjgl.vulkan.EXTDebugUtils
 import org.lwjgl.vulkan.EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT
 import org.lwjgl.vulkan.EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT
@@ -69,7 +68,8 @@ class Instance(validate: Boolean) {
                             "Either Vulkan is not set up or this platform configuration is unsupported."
                 )
 
-            val usePortability = (OS == OSType.MACOS)
+            val hasPortabilityEnumeration = PORTABILITY_EXTENSION in supportedExts
+            val usePortability = (OS == OSType.MACOS) && hasPortabilityEnumeration
             val hasDebugUtils = EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME in supportedExts
             val hasLayerSettings = "VK_EXT_layer_settings" in supportedExts
             val hasValidationFeatures =
@@ -81,7 +81,7 @@ class Instance(validate: Boolean) {
                 if (supportsValidation && hasDebugUtils) add(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
                 if (supportsValidation && hasValidationFeatures) add(EXTValidationFeatures.VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME)
                 if (supportsValidation && hasLayerSettings) add("VK_EXT_layer_settings")
-                if (usePortability) add(PORTABILITY_EXTENSION) // VK_KHR_portability_enumeration
+                if (usePortability && PORTABILITY_EXTENSION !in this) add(PORTABILITY_EXTENSION) // VK_KHR_portability_enumeration
                 if (Options.enableVR) addAll(getOpenXRRequiredInstanceExts())
             }
 
@@ -136,7 +136,9 @@ class Instance(validate: Boolean) {
                 .ppEnabledExtensionNames(requiredExtensions)
 
             if (usePortability) {
-                instanceInfo.flags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)
+                instanceInfo.flags(instanceInfo.flags() or VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)
+            } else if (OS == OSType.MACOS && !hasPortabilityEnumeration) {
+                lprintln("warning,vulkan", "VK_KHR_portability_enumeration not available; continuing without portability enumeration")
             }
 
             if (Options.enableVR && xrBootstrap != null) {

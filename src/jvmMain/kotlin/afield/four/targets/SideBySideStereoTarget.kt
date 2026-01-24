@@ -200,11 +200,13 @@ class SideBySideStereoTarget(
             updateFromScreen(ev)
             mockController.selectPressed = true
             mockController.triggerPressed = true
+            mockController.triggerValue = 1f
             DownResult.Keep
         }
         mouse.onUp("left", name) { _ ->
             mockController.selectPressed = false
             mockController.triggerPressed = false
+            mockController.triggerValue = 0f
             true
         }
     }

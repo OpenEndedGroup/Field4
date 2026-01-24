@@ -10,25 +10,24 @@ val lwjglVersion = "3.4.0-SNAPSHOT"
 val jomlVersion = "1.10.7"
 val `joml-primitivesVersion` = "1.10.0"
 
-val lwjglNatives = Pair(
-    System.getProperty("os.name")!!,
-    System.getProperty("os.arch")!!
-).let { (name, arch) ->
-    println("$name, $arch")
-    when {
-        arrayOf("Mac OS X", "Darwin").any { name.startsWith(it) } ->
-            "natives-macos-arm64"
+val osName = System.getProperty("os.name")!!
+val osArch = System.getProperty("os.arch")!!
+println("$osName, $osArch")
+val lwjglNatives = when {
+    arrayOf("Mac OS X", "Darwin").any { osName.startsWith(it) } ->
+        if (osArch == "aarch64") "natives-macos-arm64" else "natives-macos"
 
-        arrayOf("Windows").any { name.startsWith(it) } ->
-            "natives-windows"
+    arrayOf("Windows").any { osName.startsWith(it) } ->
+        "natives-windows"
 
-        arrayOf("Linux").any { name.startsWith(it) } ->
-            "natives-linux"
+    arrayOf("Linux").any { osName.startsWith(it) } ->
+        "natives-linux"
 
-        else ->
-            throw Error("Unrecognized or unsupported platform. Please set \"lwjglNatives\" manually")
-    }
+    else ->
+        throw Error("Unrecognized or unsupported platform. Please set \"lwjglNatives\" manually")
 }
+val extraLwjglNativeClassifiers =
+    if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
 val kotlinVersion = "2.2.10"
 val serializationVersion = "1.6.0"
@@ -130,7 +129,6 @@ kotlin {
             }
         }
 
-        val osName = System.getProperty("os.name")
         val targetOs = when {
             osName == "Mac OS X" -> "macos"
             osName.startsWith("Win") -> "windows"
@@ -138,7 +136,6 @@ kotlin {
             else -> error("Unsupported OS: $osName")
         }
 
-        val osArch = System.getProperty("os.arch")
         val targetArch = when (osArch) {
             "x86_64", "amd64" -> "x64"
             "aarch64" -> "arm64"
@@ -182,38 +179,36 @@ kotlin {
                 implementation("org.lwjgl:lwjgl:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-assimp:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-glfw:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-glfw::$lwjglNatives")
                 implementation("org.lwjgl:lwjgl-openal:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
-                implementation("org.lwjgl:lwjgl-par:${lwjglVersion}")
-                //                implementation("org.lwjgl:lwjgl-openvr:${lwjglVersion}")
-                implementation("org.lwjgl:lwjgl-openxr:${lwjglVersion}")
-                implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-stb::$lwjglNatives")
-                implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
-
-                implementation("org.lwjgl:lwjgl-shaderc:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-shaderc::${lwjglNatives}")
-                implementation("org.lwjgl:lwjgl:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl::$lwjglNatives")
-                implementation("org.lwjgl:lwjgl-assimp::$lwjglNatives")
-                implementation("org.lwjgl:lwjgl-glfw:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-openal::${lwjglNatives}")
                 implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
-                implementation("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
-//                if (!lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-openvr::${lwjglNatives}")
-                if (!lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-openxr::${lwjglNatives}")
-                implementation("org.lwjgl:lwjgl-par::${lwjglNatives}")
-                implementation("org.lwjgl:lwjgl-vma::${lwjglNatives}")
-
+                implementation("org.lwjgl:lwjgl-par:$lwjglVersion")
+                //                implementation("org.lwjgl:lwjgl-openvr:${lwjglVersion}")
+                implementation("org.lwjgl:lwjgl-openxr:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
+                implementation("org.lwjgl:lwjgl-shaderc:$lwjglVersion")
+                implementation("org.lwjgl:lwjgl-spvc:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vulkan")
 
-                if (lwjglNatives.contains("macos")) implementation("org.lwjgl:lwjgl-vulkan::${lwjglNatives}")
+                val addLwjglNativeArtifacts: (String) -> Unit = { classifier ->
+                    implementation("org.lwjgl:lwjgl-glfw::$classifier")
+                    implementation("org.lwjgl:lwjgl-stb::$classifier")
+                    implementation("org.lwjgl:lwjgl-shaderc::$classifier")
+                    implementation("org.lwjgl:lwjgl-spvc::$classifier")
+                    implementation("org.lwjgl:lwjgl::$classifier")
+                    implementation("org.lwjgl:lwjgl-assimp::$classifier")
+                    implementation("org.lwjgl:lwjgl-openal::$classifier")
+                    implementation("org.lwjgl:lwjgl-opengl::$classifier")
+                    if (!classifier.contains("macos")) implementation("org.lwjgl:lwjgl-openxr::$classifier")
+                    implementation("org.lwjgl:lwjgl-par::$classifier")
+                    implementation("org.lwjgl:lwjgl-vma::$classifier")
+                    if (classifier.contains("macos")) implementation("org.lwjgl:lwjgl-vulkan::$classifier")
+                }
+
+                addLwjglNativeArtifacts(lwjglNatives)
+                extraLwjglNativeClassifiers.forEach(addLwjglNativeArtifacts)
                 implementation("org.joml:joml:$jomlVersion")
                 implementation("org.joml:joml-primitives:${`joml-primitivesVersion`}")
-                implementation("org.lwjgl:lwjgl-shaderc:$lwjglVersion")
 
                 implementation("io.github.earcut4j:earcut4j:2.2.2")
 
