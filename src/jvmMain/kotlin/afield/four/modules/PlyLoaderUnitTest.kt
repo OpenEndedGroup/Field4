@@ -137,7 +137,7 @@ end_header
         var allPassed = true
         
         println("Running PLY Loader Unit Tests")
-        println("=" .repeat(50))
+        println("=".repeat(50))
         
         createTestFiles()
         
@@ -262,7 +262,7 @@ end_header
             allPassed = false
         }
         
-        println("=" .repeat(50))
+        println("=".repeat(50))
         println(if (allPassed) "All tests PASSED ✓" else "Some tests FAILED ✗")
         
         return allPassed

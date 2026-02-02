@@ -430,17 +430,6 @@ object PlySupport {
 
         val vertices = mutableListOf<Vertex>()
 
-        // Calculate vertex stride
-        val vertexStride = vertexElement.properties.sumOf { prop ->
-            when {
-                prop.isList -> 0  // We'll handle lists specially
-                else -> getPropertySize(prop.type)
-            }
-        }
-
-        // Build property index map
-        val propMap = vertexElement.properties.mapIndexed { i, prop -> prop.name to (prop to i) }.toMap()
-
         repeat(vertexElement.count) {
             val startPos = buffer.position()
 
