@@ -259,8 +259,20 @@ class Introspection(
                         } catch (e: java.lang.IllegalArgumentException) {
                             val physical_pointer =
                                 if (m.has("physical_pointer")) m.getBoolean("physical_pointer") else false
+                            val typeKey = m.getString("type")
+                            val typeLower = typeKey.lowercase()
+                            val mapped = when (typeLower) {
+                                "uvec2", "ivec2" -> PrimitiveType.vec2
+                                "uvec3", "ivec3" -> PrimitiveType.vec3
+                                "uvec4", "ivec4" -> PrimitiveType.vec4
+                                else -> null
+                            }
+                            val memberType = mapped?.left() ?: types[typeKey]?.right()
+                            if (memberType == null) {
+                                throw IllegalArgumentException("Unknown member type '$typeKey' for '${n2}'")
+                            }
                             Member(
-                                n2, offset, types.get(m.getString("type"))!!.right(), 0, physical_pointer
+                                n2, offset, memberType, 0, physical_pointer
                             )
                         }
                     })

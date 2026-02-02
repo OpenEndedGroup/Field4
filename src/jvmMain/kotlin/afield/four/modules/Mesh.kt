@@ -24,12 +24,15 @@ class FromInput {
 
 inline fun <reified A> fromContext(defaultValue: A? = null): A {
     val f = Box.context.get()
-    if (f::class.isSubclassOf(A::class)) return f as A
+    if (f is A) return f
 
-    val a = f.properties.values.firstOrNull { it != null && it!!::class.isSubclassOf(A::class) }
-    if (a != null) return a as A
-    f.ki.context.vars.entries.firstOrNull { it != null && it!!::class.isSubclassOf(A::class) }?.let {
-        return a as A
+    for (value in f.properties.values) {
+        if (value is A) return value
+    }
+
+    for (variable in f.ki.context.vars.values) {
+        val value = variable.value
+        if (value is A) return value
     }
 
     val seen = mutableSetOf<Box>()
@@ -39,11 +42,13 @@ inline fun <reified A> fromContext(defaultValue: A? = null): A {
         val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
         seen.addAll(nextFringe)
 
-        nextFringe.forEach {
-            val a = it.properties.values.firstOrNull { it != null && it!!::class.isSubclassOf(A::class) }
-            if (a != null) return a as A
-            it.ki.context.vars.entries.firstOrNull { it != null && it!!::class.isSubclassOf(A::class) }?.let {
-                return a as A
+        nextFringe.forEach { box ->
+            for (value in box.properties.values) {
+                if (value is A) return value
+            }
+            for (variable in box.ki.context.vars.values) {
+                val value = variable.value
+                if (value is A) return value
             }
         }
         fringe = nextFringe

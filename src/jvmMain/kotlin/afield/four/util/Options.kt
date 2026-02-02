@@ -20,7 +20,7 @@ object Options {
 
     val spirv_cross_path = "./bin/spirv-cross-$target" + (if (isWindows) ".exe"  else "")
 
-    var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.328.1/macOS/lib/libvulkan.1.dylib"
+    var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.335.1/macOS/lib/libvulkan.1.dylib"
     val useVulkanSDK = true
     val robustness = false
     val profiling = false
@@ -35,7 +35,7 @@ object Options {
 
     var defaultDepthFormat: Int = if (isWindows || isLinux) VK_FORMAT_D24_UNORM_S8_UINT else VK_FORMAT_D32_SFLOAT_S8_UINT
 
-    var validate = false
+    var validate = true
     var preferredDevice: String? = null
     var requestedImages = 3
     var vsync = true

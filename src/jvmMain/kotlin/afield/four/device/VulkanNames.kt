@@ -7,6 +7,7 @@ import java.nio.FloatBuffer
 
 fun Device.nameObject(handle: Long, type: Int, name: String) {
     if (!Options.validate) return
+    if (this.vkDevice.getCapabilitiesInstance().vkSetDebugUtilsObjectNameEXT == 0L) return
     MemoryStack.stackPush().use { s ->
         val info = VkDebugUtilsObjectNameInfoEXT.calloc(s)
             .sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT)
@@ -19,6 +20,7 @@ fun Device.nameObject(handle: Long, type: Int, name: String) {
 
 fun CommandBuffer.beginLabel(name: String, rgba: FloatBuffer) {
     if (!Options.validate) return
+    if (this.vkCommandBuffer.getCapabilitiesInstance().vkCmdBeginDebugUtilsLabelEXT == 0L) return
     MemoryStack.stackPush().use { stack ->
         val label = VkDebugUtilsLabelEXT.calloc(stack)
             .sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT)
@@ -30,5 +32,6 @@ fun CommandBuffer.beginLabel(name: String, rgba: FloatBuffer) {
 
 fun CommandBuffer.endLabel() {
     if (!Options.validate) return
+    if (this.vkCommandBuffer.getCapabilitiesInstance().vkCmdEndDebugUtilsLabelEXT == 0L) return
     EXTDebugUtils.vkCmdEndDebugUtilsLabelEXT(this.vkCommandBuffer)
 }

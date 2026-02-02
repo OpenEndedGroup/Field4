@@ -68,12 +68,24 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, if (!fullscreen) GLFW.GLFW_TRUE else GLFW.GLFW_FALSE)
 
         windowHandle = GLFW.glfwCreateWindow(width, height, title, MemoryUtil.NULL, MemoryUtil.NULL)
+        if (windowHandle == MemoryUtil.NULL) {
+            throw RuntimeException("Failed to create the GLFW window")
+        }
+
         initialDimensions?.let {
             GLFW.glfwSetWindowPos(windowHandle, it.x.i, it.y.i)
             GLFW.glfwSetWindowSize(windowHandle, it.w.i, it.h.i)
         }
-        if (windowHandle == MemoryUtil.NULL) {
-            throw RuntimeException("Failed to create the GLFW window")
+
+        // Ensure initial width/height reflect framebuffer pixels (HiDPI / Retina).
+        // The framebuffer callback may not fire until the first event poll, but swapchain/RTT sizing
+        // often happens immediately after window creation.
+        MemoryStack.stackPush().use { stack ->
+            val fbW = stack.mallocInt(1)
+            val fbH = stack.mallocInt(1)
+            GLFW.glfwGetFramebufferSize(windowHandle, fbW, fbH)
+            width = fbW[0]
+            height = fbH[0]
         }
 
         GLFW.glfwSetFramebufferSizeCallback(windowHandle) { _: Long, w: Int, h: Int -> resize(w, h) }

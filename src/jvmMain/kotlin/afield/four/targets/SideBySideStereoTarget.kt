@@ -14,9 +14,7 @@ import afield.four.util.MouseEvent
 import afield.four.util.MouseEvents
 import afield.stdlib.times
 import afield.stdlib.vec
-import org.joml.Matrix4f
-import org.joml.Vector3f
-import org.joml.plus
+import org.joml.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
@@ -83,6 +81,8 @@ class SideBySideStereoTarget(
 
     // Simple mock controller fallback when OpenXR is absent.
     private val mockController = ControllerState(active = true, poseValid = true, position = vec(0.0, 0.0, 0.0))
+    private var mouseControllerPos: Vector2f? = null
+    private var mouseControllerDistance: Float = 1f
 
     init {
         // Render eyes before the main swapchain if desired.
@@ -178,19 +178,27 @@ class SideBySideStereoTarget(
         val cam = stereoCamera.base
         val origin = cam.at
         val forward = cam.forward
-        mockController.position = origin + forward * distanceMeters
+        val dir = Vector3f(forward).normalize()
+        mockController.position = origin + dir * distanceMeters
+        mockController.rotation = lookAlongZ(dir, cam.up)
+        mockController.poseValid = true
     }
 
     /** Position the mock controller along an arbitrary ray (origin + direction * distance). */
     fun updateMockControllerFromRay(origin: Vector3f, direction: Vector3f, distanceMeters: Float = 1f) {
         val nx = direction.normalize(Vector3f())
         mockController.position = origin + nx * distanceMeters
+        mockController.rotation = lookAlongZ(nx, Vector3f(0f, 1f, 0f))
+        mockController.poseValid = true
     }
 
     /** Attach mouse handlers to drive the mock controller. Re-registering replaces previous handlers. */
     fun enableMouseController(mouse: MouseEvents = renderer.window.mouseEvents ?: MouseEvents(renderer), name: String = "sbs-mouse-controller", distanceMeters: Float = 1f) {
+        mouseControllerDistance = distanceMeters
+
         val updateFromScreen: (MouseEvent) -> Unit = { ev ->
             updateMockControllerFromScreen(ev.pos.x, ev.pos.y, distanceMeters)
+            mouseControllerPos = Vector2f(ev.pos.x, ev.pos.y)
         }
 
         mouse.onMove(name, callback = { ev -> updateFromScreen(ev); true })
@@ -231,10 +239,23 @@ class SideBySideStereoTarget(
             .normalize()
 
         mockController.position = origin + dir * distanceMeters
+        mockController.rotation = lookAlongZ(dir, cam.up)
         mockController.poseValid = true
     }
 
+    private fun lookAlongZ(direction: Vector3f, up: Vector3f): Quaternionf {
+        val dir = Vector3f(direction).normalize()
+        val upNorm = Vector3f(up).normalize()
+        return Quaternionf().lookAlong(dir, upNorm)
+    }
+
     override fun render(command: CommandBuffer, index: Int) {
+        // Keep mock controller aligned with camera even if mouse hasn’t moved.
+        mouseControllerPos?.let { updateMockControllerFromScreen(it.x, it.y, mouseControllerDistance) }
+
+        // Keep stereo camera projection matched to eye render size.
+        stereoCamera.base.p.resize(eyeWidth, eyeHeight)
+
         // Render each eye into its own RTT.
         currentEyeIndex = 0
         left.render(command, index)

@@ -245,6 +245,20 @@ open class RenderToTexture(
 
     protected open fun afterRender(index: Int) {}
 
+    /**
+     * Hook for subclasses that need to record transfer/upload commands *before* dynamic rendering begins.
+     *
+     * Called after any module/mesh buffer preparation, while `command.inRenderPassInstance == false`.
+     */
+    protected open fun prepareAdditionalResources(command: CommandBuffer, index: Int) {}
+
+    /**
+     * Hook for subclasses that want to emit additional draw commands *inside* the dynamic rendering scope.
+     *
+     * Called after modules have rendered and viewport/scissor have been set to this RTT's configured viewports.
+     */
+    protected open fun renderAdditional(command: CommandBuffer, index: Int, stack: MemoryStack) {}
+
     data class ColorGrade(
         var exposure: Vec4 = vec(1f, 1f, 1f, 1f),
         var gamma: Vec4 = vec(1f, 1f, 1f, 1f),
@@ -531,6 +545,9 @@ open class RenderToTexture(
                 }
             }
 
+            // Allow subclasses to enqueue additional transfers/uploads before rendering begins.
+            prepareAdditionalResources(command, index)
+
             command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
@@ -560,6 +577,9 @@ open class RenderToTexture(
             modules.values.forEach {
                 it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
             }
+
+            // Allow subclasses to emit additional drawing inside the dynamic rendering region.
+            renderAdditional(command, index, stack)
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
             command.inRenderPassInstance = false

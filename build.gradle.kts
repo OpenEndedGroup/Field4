@@ -33,6 +33,7 @@ val kotlinVersion = "2.2.10"
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
+val imguiVersion = "1.90.0"
 
 // Bytedeco FFmpeg for video support
 val ffmpegVersion = "7.1-1.5.11"
@@ -189,6 +190,9 @@ kotlin {
                 implementation("org.lwjgl:lwjgl-shaderc:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-spvc:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vulkan")
+
+                implementation("io.github.spair:imgui-java-binding:$imguiVersion")
+                implementation("io.github.spair:imgui-java-natives-$targetOs:$imguiVersion")
 
                 val addLwjglNativeArtifacts: (String) -> Unit = { classifier ->
                     implementation("org.lwjgl:lwjgl-glfw::$classifier")

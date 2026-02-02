@@ -489,7 +489,7 @@ class Module(val parameters: Parameters) : Renderable {
                     }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     try {
-                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(), kind)
+                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
                     } catch (_: NullPointerException) {
                         throw IllegalArgumentException("UBO ${it.name}, no longer resolves")
                     }
@@ -521,7 +521,7 @@ class Module(val parameters: Parameters) : Renderable {
                     val buf = parameters.ssboResolver(bp)
                         ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
                     try {
-                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.buffer, kind)
+                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
                     } catch (_: NullPointerException) {
                         throw IllegalArgumentException("buffer ${it.name} resolved to null")
                     }
