@@ -716,9 +716,10 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     }
     
     // Get or initialize the cached previous value from the marker's properties
-    val cachedValue = this.properties.computeIfAbsent(cacheKey) {
+    // Use safe cast to handle potential type mismatches in the properties map
+    val cachedValue = (this.properties.computeIfAbsent(cacheKey) {
         defaultValue
-    } as Double
+    } as? Double) ?: defaultValue
     
     if (location == null) {
         lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}, using cached value: $cachedValue")
