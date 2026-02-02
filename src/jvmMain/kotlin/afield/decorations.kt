@@ -684,10 +684,16 @@ fun seriesPlotToSvg(
  * Returns a "live number" - a number that is read directly from the source code at this marker's location.
  * When the source code changes, the returned value changes immediately without recompilation or reevaluation.
  * 
+ * **Important**: The argument must be a literal numeric value (e.g., `10.0`, `42`, `1e-5`). 
+ * Expressions like `1 + 2`, `Math.PI`, or variable references are not supported and will cause 
+ * the function to return the default value.
+ * 
  * Usage example:
- *   val m = __m("myMarker")
- *   val speed = m.liveNumber(10.0)  // Initially returns 10.0
- *   // When user changes "10.0" to "20.0" in the code editor, next call returns 20.0 without recompilation
+ * ```
+ * val m = __m("myMarker")
+ * val speed = m.liveNumber(10.0)  // Initially returns 10.0
+ * // When user changes "10.0" to "20.0" in the code editor, next call returns 20.0 without recompilation
+ * ```
  * 
  * @param defaultValue The default value to return if the source cannot be found or parsed
  * @return The numeric value extracted from the source code, or defaultValue if extraction fails
@@ -713,15 +719,16 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     
     val line = lines[lineIndex]
     
-    // Find the position of ".liveNumber(" in the line
-    val methodCallPos = line.indexOf(".liveNumber(")
-    if (methodCallPos == -1) {
-        lprintln("warn,decorations", "liveNumber: Could not find .liveNumber( in line")
+    // Use the column information from location to find the exact position
+    // location.col points to just after ".liveNumber(" due to end=true in locationForTextStringOnStack
+    val startPos = location.col
+    
+    // Verify we're at the expected position
+    if (startPos <= 0 || startPos > line.length) {
+        lprintln("warn,decorations", "liveNumber: Column position out of bounds: ${location.col}")
         return defaultValue
     }
     
-    // Extract the argument: start after the opening parenthesis
-    val startPos = methodCallPos + ".liveNumber(".length
     var endPos = startPos
     var parenDepth = 1
     
@@ -751,7 +758,7 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     // This handles integers, floats, and scientific notation (e.g., 1.0, 42, 1e-5)
     val parsedValue = argText.toDoubleOrNull()
     if (parsedValue == null) {
-        lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText'")
+        lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText' - only literal numeric values are supported")
         return defaultValue
     }
     
