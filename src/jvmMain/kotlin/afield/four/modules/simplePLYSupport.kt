@@ -117,10 +117,8 @@ object PlySupport {
             m.inside.current.liveUniformStructures["VertexData"]!!["useVertexColor"] = if (buffers.hasColors) 1 else 0
             
             // Set point size for point cloud shaders (will be ignored if not present in shader)
-            try {
+            if ("pointSize" in m.inside.current.liveUniformStructures["VertexData"]!!.offsets) {
                 m.inside.current.liveUniformStructures["VertexData"]!!["pointSize"] = pointSize
-            } catch (e: Exception) {
-                // Uniform not present in this shader, ignore
             }
 
             val vertexData = defaultBuffer {
@@ -775,13 +773,13 @@ void main()
         color = vec4(1.0);
     }
 
-    vec4 viewPos = data.proj * data.modelView * vec4(pos, 1.0);
+    vec4 clipPos = data.proj * data.modelView * vec4(pos, 1.0);
 
-    vViewPos = viewPos.xyz;
+    vViewPos = clipPos.xyz;
     vColor = color * data.materialBaseColor;
     vPointSize = data.pointSize;
 
-    gl_Position = viewPos;
+    gl_Position = clipPos;
     gl_PointSize = data.pointSize;
 }
 """.trimIndent()
@@ -811,6 +809,7 @@ void main()
 """.trimIndent()
 
     // Alternative geometry shader-based approach for instanced quads
+    // Note: This is a template that requires viewport dimensions to be added
     val plyPointCloudGeometryShader = """
 #version 450
 layout(points) in;
@@ -825,6 +824,7 @@ layout (binding = 0) uniform VertexData {
     uint vertexStride;
     uint useVertexColor;
     float pointSize;
+    vec2 viewportSize;  // Add this to your uniform structure (width, height in pixels)
 } data;
 
 layout(location = 0) in vec3 vViewPos[];
@@ -840,7 +840,8 @@ void main()
     float size = vPointSize[0];
     
     // Calculate screen-aligned quad size in clip space
-    vec2 screenSize = vec2(size) / vec2(1920.0, 1080.0); // Adjust for actual viewport
+    // Convert pixel size to normalized device coordinates
+    vec2 screenSize = vec2(size) / data.viewportSize;
     
     gColor = vColor[0];
     

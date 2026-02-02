@@ -121,6 +121,9 @@ fun pointCloudExample() {
 /**
  * Alternative: Using geometry shader for even more control over quad generation
  * This approach generates screen-aligned quads per point with geometry shader
+ * 
+ * Note: Requires adding 'viewportSize' vec2 uniform to VertexData structure
+ * and setting it each frame: uniforms["VertexData"]["viewportSize"] = Vec2(width, height)
  */
 fun pointCloudWithGeometryShaderExample() {
     val window = Window("Point Cloud with Geometry Shader")
@@ -152,6 +155,10 @@ fun pointCloudWithGeometryShaderExample() {
             clear()
 
             pointCloudModule.draw(it) {
+                // Set viewport size uniform (required for geometry shader)
+                pointCloudModule.liveUniformStructures["VertexData"]!!["viewportSize"] = 
+                    org.joml.Vector2f(window.width.toFloat(), window.height.toFloat())
+                
                 pointCloud.applyToMesh(mesh, camera, pointSize = 16.0f)
                 mesh.draw(pointCloudModule, it, pointCloudModule.pushConstantBuffer)
             }
