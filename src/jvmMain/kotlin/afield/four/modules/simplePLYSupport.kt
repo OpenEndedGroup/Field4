@@ -168,6 +168,9 @@ object PlySupport {
         /**
          * Apply point cloud data to mesh using quad-based rendering (6 vertices per point).
          * This version is for use with plyPointCloudVertexShader which generates quads in the vertex shader.
+         * 
+         * @param viewportWidth Viewport width in pixels (required for proper quad sizing)
+         * @param viewportHeight Viewport height in pixels (required for proper quad sizing)
          */
         fun applyToMeshAsQuads(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f, viewportWidth: Float, viewportHeight: Float) {
             m.inside.current.liveUniformStructures["VertexData"]!!["modelView"] = camera.m()
@@ -202,7 +205,8 @@ object PlySupport {
                 }
             }
 
-            // Resize mesh to 6 times the vertex count (6 vertices per quad: 2 triangles)
+            // Resize mesh to 6 times the vertex count
+            // Each point generates 6 vertices (2 triangles with 3 vertices each forming a quad)
             m.resize(buffers.vertexCount * 6)
         }
     }
