@@ -63,7 +63,7 @@ fun Box._plyPointCloudHere(
     val renderer: Renderer = fromContext()
     val module = _moduleHere(parameters(renderer = renderer) {
         p()
-        primitiveType = points
+        primitiveType = triangles  // Changed from points to triangles for quad rendering
     })
     val loader = PlySupport.loadPly(filename)
     return module to loader
@@ -163,6 +163,47 @@ object PlySupport {
 
                 m.resize(buffers.indexCount)
             }
+        }
+        
+        /**
+         * Apply point cloud data to mesh using quad-based rendering (6 vertices per point).
+         * This version is for use with plyPointCloudVertexShader which generates quads in the vertex shader.
+         */
+        fun applyToMeshAsQuads(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f, viewportWidth: Float, viewportHeight: Float) {
+            m.inside.current.liveUniformStructures["VertexData"]!!["modelView"] = camera.m()
+            m.inside.current.liveUniformStructures["VertexData"]!!["proj"] = camera.p()
+            m.inside.current.liveUniformStructures["VertexData"]!!["vertexOffset"] = 0
+            m.inside.current.liveUniformStructures["VertexData"]!!["indexOffset"] = 0
+            m.inside.current.liveUniformStructures["VertexData"]!!["vertexStride"] = 10
+            m.inside.current.liveUniformStructures["VertexData"]!!["materialBaseColor"] = Vector4f(1f, 1f, 1f, 1f)
+            m.inside.current.liveUniformStructures["VertexData"]!!["useVertexColor"] = if (buffers.hasColors) 1 else 0
+            m.inside.current.liveUniformStructures["VertexData"]!!["pointSize"] = pointSize
+            m.inside.current.liveUniformStructures["VertexData"]!!["viewportSize"] = org.joml.Vector2f(viewportWidth, viewportHeight)
+
+            val vertexData = defaultBuffer {
+                size = (buffers.vertexCount * 10).floats
+            }.buffer
+
+            m.initializePushConstantsFromModule(m.inside)
+            m.push["vertexBuffer"] = vertexData
+
+            vertexData.write { this.put(buffers.vertexData.asFloatBuffer()) }
+
+            // Create index buffer for point data
+            val indexData = defaultBuffer {
+                size = buffers.vertexCount.ints
+            }.buffer
+
+            m.push["indexBuffer"] = indexData
+
+            indexData.write {
+                for (n in 0 until buffers.vertexCount) {
+                    this.putInt(n)
+                }
+            }
+
+            // Resize mesh to 6 times the vertex count (6 vertices per quad: 2 triangles)
+            m.resize(buffers.vertexCount * 6)
         }
     }
 
@@ -714,6 +755,7 @@ void main()
     // ------------------------------------------------------------------------
     // Point cloud visualization shaders
     // Screen-aligned quads with crisp circles for point rendering
+    // Uses vertex pulling to generate 6 vertices per point (2 triangles forming a quad)
     // ------------------------------------------------------------------------
 
     val plyPointCloudVertexShader = """
@@ -740,6 +782,7 @@ layout (binding = 0) uniform VertexData {
     uint vertexStride;     // in floats (10 for PLY)
     uint useVertexColor;   // bool as uint
     float pointSize;       // point size in pixels
+    vec2 viewportSize;     // viewport dimensions (width, height)
 } data;
 
 layout(push_constant) uniform PushConstants {
@@ -747,13 +790,19 @@ layout(push_constant) uniform PushConstants {
     IndexBuffer indexBuffer;
 } pc;
 
-layout(location = 0) out vec3 vViewPos;
-layout(location = 1) out vec4 vColor;
-layout(location = 2) out float vPointSize;
+layout(location = 0) out vec4 vColor;
+layout(location = 1) out vec2 vQuadCoord;
 
 void main()
 {
-    uint idx = pc.indexBuffer.indexData[data.indexOffset+uint(gl_VertexIndex)];
+    // Each point generates 6 vertices (2 triangles)
+    // gl_VertexIndex / 6 = point index
+    // gl_VertexIndex % 6 = corner index (0-5)
+    uint pointIndex = uint(gl_VertexIndex) / 6u;
+    uint cornerIndex = uint(gl_VertexIndex) % 6u;
+    
+    // Get the actual point data
+    uint idx = pc.indexBuffer.indexData[data.indexOffset + pointIndex];
     uint base = data.vertexOffset + idx * data.vertexStride;
 
     vec3 pos = vec3(
@@ -773,115 +822,48 @@ void main()
         color = vec4(1.0);
     }
 
+    // Transform point to clip space
     vec4 clipPos = data.proj * data.modelView * vec4(pos, 1.0);
-
-    vViewPos = clipPos.xyz;
+    
+    // Calculate quad size in clip space (convert from pixels)
+    vec2 quadSize = data.pointSize / data.viewportSize;
+    
+    // Generate quad corners
+    // Two triangles: (0,1,2) and (2,3,0) mapped to corners
+    vec2 corners[6];
+    corners[0] = vec2(-1.0, -1.0);  // bottom-left
+    corners[1] = vec2( 1.0, -1.0);  // bottom-right
+    corners[2] = vec2( 1.0,  1.0);  // top-right
+    corners[3] = vec2( 1.0,  1.0);  // top-right
+    corners[4] = vec2(-1.0,  1.0);  // top-left
+    corners[5] = vec2(-1.0, -1.0);  // bottom-left
+    
+    vec2 corner = corners[cornerIndex];
+    
+    // Offset in clip space
+    vec2 offset = corner * quadSize;
+    
+    // Apply offset to clip position
+    gl_Position = clipPos + vec4(offset, 0.0, 0.0);
+    
+    // Pass through color and quad coordinates for fragment shader
     vColor = color * data.materialBaseColor;
-    vPointSize = data.pointSize;
-
-    gl_Position = clipPos;
-    gl_PointSize = data.pointSize;
+    vQuadCoord = corner; // -1 to 1 range for circle calculation
 }
 """.trimIndent()
 
     val plyPointCloudFragmentShader = """
 #version 450
 layout(location = 0) out vec4 uFragColor;
-layout(location = 1) in vec4 vColor;
-layout(location = 2) in float vPointSize;
+layout(location = 0) in vec4 vColor;
+layout(location = 1) in vec2 vQuadCoord;
 
 void main()
 {
-    // Calculate distance from center of point sprite
-    vec2 coord = gl_PointCoord * 2.0 - 1.0;
-    float dist = length(coord);
+    // Calculate distance from center for crisp circles
+    float dist = length(vQuadCoord);
     
-    // Discard fragments outside circle radius for crisp circles
-    if (dist > 1.0) {
-        discard;
-    }
-    
-    // Optional: smooth anti-aliasing at edge
-    float alpha = 1.0 - smoothstep(0.9, 1.0, dist);
-    
-    uFragColor = vec4(vColor.rgb, vColor.a * alpha);
-}
-""".trimIndent()
-
-    // Alternative geometry shader-based approach for instanced quads
-    // Note: This is a template that requires viewport dimensions to be added
-    val plyPointCloudGeometryShader = """
-#version 450
-layout(points) in;
-layout(triangle_strip, max_vertices = 4) out;
-
-layout (binding = 0) uniform VertexData {
-    mat4 modelView;
-    mat4 proj;
-    vec4 materialBaseColor;
-    uint vertexOffset;
-    uint indexOffset;
-    uint vertexStride;
-    uint useVertexColor;
-    float pointSize;
-    vec2 viewportSize;  // Add this to your uniform structure (width, height in pixels)
-} data;
-
-layout(location = 0) in vec3 vViewPos[];
-layout(location = 1) in vec4 vColor[];
-layout(location = 2) in float vPointSize[];
-
-layout(location = 0) out vec4 gColor;
-layout(location = 1) out vec2 gTexCoord;
-
-void main()
-{
-    vec4 center = gl_in[0].gl_Position;
-    float size = vPointSize[0];
-    
-    // Calculate screen-aligned quad size in clip space
-    // Convert pixel size to normalized device coordinates
-    vec2 screenSize = vec2(size) / data.viewportSize;
-    
-    gColor = vColor[0];
-    
-    // Bottom-left
-    gl_Position = center + vec4(-screenSize.x, -screenSize.y, 0.0, 0.0);
-    gTexCoord = vec2(0.0, 0.0);
-    EmitVertex();
-    
-    // Bottom-right
-    gl_Position = center + vec4(screenSize.x, -screenSize.y, 0.0, 0.0);
-    gTexCoord = vec2(1.0, 0.0);
-    EmitVertex();
-    
-    // Top-left
-    gl_Position = center + vec4(-screenSize.x, screenSize.y, 0.0, 0.0);
-    gTexCoord = vec2(0.0, 1.0);
-    EmitVertex();
-    
-    // Top-right
-    gl_Position = center + vec4(screenSize.x, screenSize.y, 0.0, 0.0);
-    gTexCoord = vec2(1.0, 1.0);
-    EmitVertex();
-    
-    EndPrimitive();
-}
-""".trimIndent()
-
-    val plyPointCloudGeometryFragmentShader = """
-#version 450
-layout(location = 0) out vec4 uFragColor;
-layout(location = 0) in vec4 gColor;
-layout(location = 1) in vec2 gTexCoord;
-
-void main()
-{
-    // Calculate distance from center for crisp circle
-    vec2 coord = gTexCoord * 2.0 - 1.0;
-    float dist = length(coord);
-    
-    // Discard fragments outside circle
+    // Discard fragments outside circle radius
     if (dist > 1.0) {
         discard;
     }
@@ -889,7 +871,7 @@ void main()
     // Smooth anti-aliasing at edge
     float alpha = 1.0 - smoothstep(0.9, 1.0, dist);
     
-    uFragColor = vec4(gColor.rgb, gColor.a * alpha);
+    uFragColor = vec4(vColor.rgb, vColor.a * alpha);
 }
 """.trimIndent()
 }

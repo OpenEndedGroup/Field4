@@ -115,16 +115,17 @@ Fixed layout for GPU transfer:
 - Uniform buffers for material properties
 - Multiple shader sets:
   - Standard mesh rendering with lighting
-  - Point cloud rendering with `gl_PointSize` and circular discard
-  - Geometry shader-based point clouds with screen-aligned quads
+  - Point cloud rendering with vertex-pulled quads (generates 6 vertices per point in vertex shader)
 - Compatible with existing afield.four rendering pipeline
+- No geometry shader dependency (supports target platforms without geometry shader support)
 
 ### Point Cloud Visualization
-- Screen-aligned point sprites with `gl_PointSize`
+- Screen-aligned quads generated via vertex pulling
+- Each point generates 6 vertices (2 triangles) in the vertex shader
 - Crisp circular rendering with fragment discard
 - Smooth anti-aliasing at edges
 - Configurable point size via `pointSize` parameter
-- Optional geometry shader approach for advanced control
+- Requires viewport dimensions for proper quad sizing
 
 ## Files Added/Modified
 

@@ -78,20 +78,20 @@ class PlyLoaderExample {
 }
 
 /**
- * Example usage for point cloud rendering with crisp circles
+ * Example usage for point cloud rendering with crisp circles using vertex-pulled quads
  */
 fun pointCloudExample() {
     val window = Window("Point Cloud Example")
     val renderer = Renderer(window)
 
-    // Use the dedicated point cloud shaders for screen-aligned quads with crisp circles
+    // Use the point cloud shaders that generate quads via vertex pulling
     val pointCloudModule = Module(
         Parameters(
             renderer,
             vertex = PlySupport.plyPointCloudVertexShader,
             fragment = PlySupport.plyPointCloudFragmentShader,
             name = "PLY Point Cloud",
-            primitiveType = VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+            primitiveType = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
         )
     )
 
@@ -110,56 +110,15 @@ fun pointCloudExample() {
             clear()
 
             pointCloudModule.draw(it) {
-                // Specify point size (in pixels) - default is 8.0
-                pointCloud.applyToMesh(mesh, camera, pointSize = 12.0f)
-                mesh.draw(pointCloudModule, it, pointCloudModule.pushConstantBuffer)
-            }
-        }
-    }
-}
-
-/**
- * Alternative: Using geometry shader for even more control over quad generation
- * This approach generates screen-aligned quads per point with geometry shader
- * 
- * Note: Requires adding 'viewportSize' vec2 uniform to VertexData structure
- * and setting it each frame: uniforms["VertexData"]["viewportSize"] = Vec2(width, height)
- */
-fun pointCloudWithGeometryShaderExample() {
-    val window = Window("Point Cloud with Geometry Shader")
-    val renderer = Renderer(window)
-
-    // Note: Geometry shader support requires enabling the geometryShader feature
-    val pointCloudModule = Module(
-        Parameters(
-            renderer,
-            vertex = PlySupport.plyPointCloudVertexShader,
-            geometry = PlySupport.plyPointCloudGeometryShader,
-            fragment = PlySupport.plyPointCloudGeometryFragmentShader,
-            name = "PLY Point Cloud with Geometry Shader",
-            primitiveType = VK_PRIMITIVE_TOPOLOGY_POINT_LIST
-        )
-    )
-
-    val pointCloud = PlySupport.loadPly("path/to/pointcloud.ply")
-    val mesh = Mesh(renderer, pointCloudModule.pointer())
-    val camera = Camera().apply {
-        position = Vector3f(0f, 0f, 5f)
-        lookAt(Vector3f(0f, 0f, 0f))
-    }
-
-    val renderTarget = RenderTarget(renderer)
-
-    forever(window, renderer) {
-        renderTarget.renderPass {
-            clear()
-
-            pointCloudModule.draw(it) {
-                // Set viewport size uniform (required for geometry shader)
-                pointCloudModule.liveUniformStructures["VertexData"]!!["viewportSize"] = 
-                    org.joml.Vector2f(window.width.toFloat(), window.height.toFloat())
-                
-                pointCloud.applyToMesh(mesh, camera, pointSize = 16.0f)
+                // Use applyToMeshAsQuads for vertex-pulled quad rendering
+                // Each point generates 6 vertices (2 triangles) in the vertex shader
+                pointCloud.applyToMeshAsQuads(
+                    mesh, 
+                    camera, 
+                    pointSize = 12.0f,
+                    viewportWidth = window.width.toFloat(),
+                    viewportHeight = window.height.toFloat()
+                )
                 mesh.draw(pointCloudModule, it, pointCloudModule.pushConstantBuffer)
             }
         }

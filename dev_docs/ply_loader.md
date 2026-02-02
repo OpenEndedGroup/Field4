@@ -203,35 +203,38 @@ The loader includes multiple GLSL shader sets for different use cases:
 - `PlySupport.plyVertexShader` - Vertex shader with SSBO vertex pulling
 - `PlySupport.plyFragmentShader` - Fragment shader with color and lighting
 
-### Point Cloud Visualization
-For crisp, screen-aligned point rendering:
-- `PlySupport.plyPointCloudVertexShader` - Point cloud vertex shader with `gl_PointSize`
+### Point Cloud Visualization (Vertex-Pulled Quads)
+For crisp, screen-aligned point rendering using vertex pulling to generate quads:
+- `PlySupport.plyPointCloudVertexShader` - Generates 6 vertices per point (2 triangles) via vertex pulling
 - `PlySupport.plyPointCloudFragmentShader` - Fragment shader with circular discard and anti-aliasing
 
-### Advanced Point Cloud (Geometry Shader)
-For precise control over quad generation:
-- `PlySupport.plyPointCloudGeometryShader` - Generates screen-aligned quads per point
-- `PlySupport.plyPointCloudGeometryFragmentShader` - Renders crisp circles on quads
+**Note**: This approach uses `VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST` and generates screen-aligned quads directly in the vertex shader. Each point results in 6 vertices being drawn. This avoids the need for geometry shaders which are not supported on all target platforms.
 
 All shaders use:
 - Buffer references for vertex/index data (Vulkan extension)
 - Push constants for transformation matrices
-- Uniform buffer for additional parameters (including `pointSize` for point clouds)
+- Uniform buffer for additional parameters (including `pointSize` and `viewportSize` for point clouds)
 
 ### Point Cloud Usage Example
 ```kotlin
-// Using point cloud shaders
+// Using point cloud shaders with vertex-pulled quads
 val module = Module(
     Parameters(
         renderer,
         vertex = PlySupport.plyPointCloudVertexShader,
         fragment = PlySupport.plyPointCloudFragmentShader,
-        primitiveType = VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+        primitiveType = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
     )
 )
 
-// Apply with custom point size
-model.applyToMesh(mesh, camera, pointSize = 12.0f)
+// Apply with custom point size and viewport dimensions
+model.applyToMeshAsQuads(
+    mesh, 
+    camera, 
+    pointSize = 12.0f,
+    viewportWidth = window.width.toFloat(),
+    viewportHeight = window.height.toFloat()
+)
 ```
 
 ## Notes
