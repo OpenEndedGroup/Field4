@@ -680,3 +680,82 @@ fun seriesPlotToSvg(
     """.trimIndent()
 }
 
+/**
+ * Returns a "live number" - a number that is read directly from the source code at this marker's location.
+ * When the source code changes, the returned value changes immediately without recompilation or reevaluation.
+ * 
+ * Usage example:
+ *   val m = __m("myMarker")
+ *   val speed = m.liveNumber(10.0)  // Initially returns 10.0
+ *   // When user changes "10.0" to "20.0" in the code editor, next call returns 20.0 without recompilation
+ * 
+ * @param defaultValue The default value to return if the source cannot be found or parsed
+ * @return The numeric value extracted from the source code, or defaultValue if extraction fails
+ */
+fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
+    // Find the location where liveNumber was called in the source code
+    val location = locationForTextStringOnStack(".liveNumber(", this.box, end = true, offset = 0)
+    
+    if (location == null) {
+        lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}")
+        return defaultValue
+    }
+    
+    // Get the source code and split it into lines
+    val lines = this.box.code?.split("\n") ?: return defaultValue
+    
+    // Get the line where liveNumber is called
+    val lineIndex = location.line - 1
+    if (lineIndex < 0 || lineIndex >= lines.size) {
+        lprintln("warn,decorations", "liveNumber: Line index out of bounds: $lineIndex")
+        return defaultValue
+    }
+    
+    val line = lines[lineIndex]
+    
+    // Find the position of ".liveNumber(" in the line
+    val methodCallPos = line.indexOf(".liveNumber(")
+    if (methodCallPos == -1) {
+        lprintln("warn,decorations", "liveNumber: Could not find .liveNumber( in line")
+        return defaultValue
+    }
+    
+    // Extract the argument: start after the opening parenthesis
+    val startPos = methodCallPos + ".liveNumber(".length
+    var endPos = startPos
+    var parenDepth = 1
+    
+    // Find the matching closing parenthesis, handling nested parentheses
+    while (endPos < line.length && parenDepth > 0) {
+        when (line[endPos]) {
+            '(' -> parenDepth++
+            ')' -> parenDepth--
+        }
+        if (parenDepth > 0) endPos++
+    }
+    
+    if (parenDepth != 0) {
+        lprintln("warn,decorations", "liveNumber: Could not find matching closing parenthesis")
+        return defaultValue
+    }
+    
+    // Extract the argument text and trim whitespace
+    val argText = line.substring(startPos, endPos).trim()
+    
+    // If argument is empty, return default
+    if (argText.isEmpty()) {
+        return defaultValue
+    }
+    
+    // Try to parse the argument as a double
+    // This handles integers, floats, and scientific notation (e.g., 1.0, 42, 1e-5)
+    val parsedValue = argText.toDoubleOrNull()
+    if (parsedValue == null) {
+        lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText'")
+        return defaultValue
+    }
+    
+    lprintln("debug,decorations", "liveNumber: Extracted value $parsedValue from source (marker: ${this.name})")
+    return parsedValue
+}
+
