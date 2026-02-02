@@ -25,6 +25,8 @@ class PlyLoaderExample {
 
     init {
         // Example 1: Load a triangle mesh PLY file
+        // You can use the test files created by PlyLoaderUnitTest.createTestFiles()
+        // or any PLY file you have available
         val triangleMeshModule = Module(
             Parameters(
                 renderer,
@@ -35,6 +37,8 @@ class PlyLoaderExample {
         )
 
         // Load the PLY file - handles both ASCII and binary formats automatically
+        // To use: replace with your actual PLY file path
+        // Or use: File(System.getProperty("java.io.tmpdir"), "ply_test/test_ascii_triangle.ply").absolutePath
         val plyModel = PlySupport.loadPly("path/to/your/model.ply")
         
         val mesh = Mesh(renderer, triangleMeshModule.pointer())
@@ -92,6 +96,7 @@ fun pointCloudExample() {
     )
 
     val pointCloud = PlySupport.loadPly("path/to/pointcloud.ply")
+    // Or use: File(System.getProperty("java.io.tmpdir"), "ply_test/test_ascii_pointcloud.ply").absolutePath
     val mesh = Mesh(renderer, pointCloudModule.pointer())
     val camera = Camera().apply {
         position = Vector3f(0f, 0f, 5f)

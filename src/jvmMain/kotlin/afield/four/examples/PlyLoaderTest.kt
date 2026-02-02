@@ -7,13 +7,15 @@ import java.io.File
  * Simple test program to verify PLY loader functionality without requiring full graphics setup
  */
 fun main() {
+    val testDir = File(System.getProperty("java.io.tmpdir"), "ply_test")
+    
     println("PLY Loader Test")
     println("================")
     
     // Test 1: ASCII Triangle Mesh
     println("\nTest 1: ASCII Triangle Mesh")
     try {
-        val testFile = File("/tmp/ply_test/test_ascii.ply")
+        val testFile = File(testDir, "test_ascii.ply")
         if (testFile.exists()) {
             val model = PlySupport.loadPly(testFile.absolutePath)
             println("✓ Successfully loaded: ${model.name}")
@@ -76,7 +78,7 @@ end_header
     // Test 2: ASCII Point Cloud
     println("\nTest 2: ASCII Point Cloud")
     try {
-        val testFile = File("/tmp/ply_test/test_pointcloud.ply")
+        val testFile = File(testDir, "test_pointcloud.ply")
         if (testFile.exists()) {
             val model = PlySupport.loadPly(testFile.absolutePath)
             println("✓ Successfully loaded: ${model.name}")
@@ -133,7 +135,7 @@ end_header
     // Test 3: Minimal PLY (no colors, no normals)
     println("\nTest 3: Minimal PLY (positions only)")
     try {
-        val testFile = File("/tmp/ply_test/test_minimal.ply")
+        val testFile = File(testDir, "test_minimal.ply")
         testFile.parentFile.mkdirs()
         testFile.writeText("""
 ply
@@ -172,7 +174,7 @@ end_header
     // Test 4: Polygon triangulation (quad)
     println("\nTest 4: Polygon Triangulation (Quad)")
     try {
-        val testFile = File("/tmp/ply_test/test_quad.ply")
+        val testFile = File(testDir, "test_quad.ply")
         testFile.parentFile.mkdirs()
         testFile.writeText("""
 ply

@@ -9,8 +9,9 @@ import java.nio.ByteOrder
  */
 object PlyLoaderUnitTest {
     
+    private val testDir = File(System.getProperty("java.io.tmpdir"), "ply_test")
+    
     fun createTestFiles() {
-        val testDir = File("/tmp/ply_test")
         testDir.mkdirs()
         
         // ASCII triangle mesh
@@ -144,7 +145,7 @@ end_header
         // Test 1: ASCII Triangle Mesh
         print("Test 1: ASCII Triangle Mesh... ")
         try {
-            val model = PlySupport.loadPly("/tmp/ply_test/test_ascii_triangle.ply")
+            val model = PlySupport.loadPly(File(testDir, "test_ascii_triangle.ply").absolutePath)
             assert(model.buffers.vertexCount == 4) { "Expected 4 vertices" }
             assert(model.buffers.indexCount == 6) { "Expected 6 indices" }
             assert(model.buffers.hasColors) { "Expected colors" }
@@ -163,7 +164,7 @@ end_header
         // Test 2: ASCII Point Cloud
         print("Test 2: ASCII Point Cloud... ")
         try {
-            val model = PlySupport.loadPly("/tmp/ply_test/test_ascii_pointcloud.ply")
+            val model = PlySupport.loadPly(File(testDir, "test_ascii_pointcloud.ply").absolutePath)
             assert(model.buffers.vertexCount == 8) { "Expected 8 vertices" }
             assert(model.buffers.isPointCloud) { "Should be point cloud" }
             assert(model.buffers.hasColors) { "Expected colors" }
@@ -199,7 +200,7 @@ end_header
         // Test 4: Binary Little-Endian
         print("Test 4: Binary Little-Endian... ")
         try {
-            val model = PlySupport.loadPly("/tmp/ply_test/test_binary_le.ply")
+            val model = PlySupport.loadPly(File(testDir, "test_binary_le.ply").absolutePath)
             assert(model.buffers.vertexCount == 3) { "Expected 3 vertices" }
             assert(model.buffers.indexCount == 3) { "Expected 3 indices" }
             assert(model.buffers.hasColors) { "Expected colors" }
@@ -216,7 +217,7 @@ end_header
         // Test 5: Binary Big-Endian
         print("Test 5: Binary Big-Endian... ")
         try {
-            val model = PlySupport.loadPly("/tmp/ply_test/test_binary_be.ply")
+            val model = PlySupport.loadPly(File(testDir, "test_binary_be.ply").absolutePath)
             assert(model.buffers.vertexCount == 3) { "Expected 3 vertices" }
             assert(model.buffers.indexCount == 3) { "Expected 3 indices" }
             assert(model.buffers.hasColors) { "Expected colors" }
@@ -233,7 +234,7 @@ end_header
         // Test 6: Vertex data validation
         print("Test 6: Vertex Data Validation... ")
         try {
-            val model = PlySupport.loadPly("/tmp/ply_test/test_minimal.ply")
+            val model = PlySupport.loadPly(File(testDir, "test_minimal.ply").absolutePath)
             val vd = model.buffers.vertexData
             vd.rewind()
             

@@ -59,6 +59,14 @@ object PlySupport {
     // Public data model
     // ------------------------------------------------------------------------
 
+    /**
+     * PLY mesh buffers containing vertex and optional index data.
+     * 
+     * Note: The ByteBuffer and IntBuffer are allocated with LWJGL's memAlloc
+     * and should be freed when no longer needed. Typically, these buffers are
+     * transferred to GPU via defaultBuffer and can be freed after the transfer.
+     * The buffers are managed by the Vulkan buffer system when used with applyToMesh.
+     */
     data class PlyMeshBuffers(
         val vertexData: ByteBuffer,  // tightly packed floats: [pos.xyz][normal.xyz][color.rgba] = 10 floats
         val indexData: java.nio.IntBuffer?,   // 32-bit indices (null for point clouds)
@@ -518,16 +526,6 @@ object PlySupport {
         }
     }
 
-    private fun getPropertySize(type: String): Int {
-        return when (type) {
-            "char", "uchar", "int8", "uint8" -> 1
-            "short", "ushort", "int16", "uint16" -> 2
-            "int", "uint", "int32", "uint32", "float", "float32" -> 4
-            "double", "float64" -> 8
-            else -> error("Unsupported property type: $type")
-        }
-    }
-
     private data class Vertex(
         val position: Vector3f,
         val normal: Vector3f,
@@ -676,6 +674,7 @@ layout(location = 1) in vec3 vNormalVS;
 
 void main()
 {
+    // Simple directional lighting from upper-right-front
     float d = abs(dot(vNormalVS.xyz, normalize(vec3(1, 0.4, -0.2))));
     uFragColor = vColor * vec4(vNormalVS.rgb * d, 1);
 }
