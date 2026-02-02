@@ -115,8 +115,10 @@ object PlySupport {
                 m.push["indexBuffer"] = indexData
 
                 indexData.write {
+                    val sourceIndices = buffers.indexData 
+                        ?: error("Internal error: indexData should not be null for non-point-cloud")
                     for (n in 0 until buffers.indexCount) {
-                        this.putInt(buffers.indexData!!.get(n))
+                        this.putInt(sourceIndices.get(n))
                     }
                 }
 
@@ -164,25 +166,24 @@ object PlySupport {
 
         lprintln("info,ply", "Loading PLY file: $path")
 
-        // Parse header
-        val reader = BufferedReader(FileReader(file))
-        val header = parseHeader(reader)
+        // Parse header and data using try-with-resources
+        val buffers = BufferedReader(FileReader(file)).use { reader ->
+            val header = parseHeader(reader)
 
-        // Find vertex and face elements
-        val vertexElement = header.elements.find { it.name == "vertex" }
-            ?: error("PLY file must contain a 'vertex' element")
-        val faceElement = header.elements.find { it.name == "face" }
+            // Find vertex and face elements
+            val vertexElement = header.elements.find { it.name == "vertex" }
+                ?: error("PLY file must contain a 'vertex' element")
+            val faceElement = header.elements.find { it.name == "face" }
 
-        lprintln("info,ply", "Found ${vertexElement.count} vertices" +
-                (faceElement?.let { ", ${it.count} faces" } ?: ", no faces (point cloud)"))
+            lprintln("info,ply", "Found ${vertexElement.count} vertices" +
+                    (faceElement?.let { ", ${it.count} faces" } ?: ", no faces (point cloud)"))
 
-        val buffers = when (header.format) {
-            PlyFormat.ASCII -> parseAsciiData(reader, header, vertexElement, faceElement)
-            PlyFormat.BINARY_LITTLE_ENDIAN -> parseBinaryData(file, header, vertexElement, faceElement, ByteOrder.LITTLE_ENDIAN)
-            PlyFormat.BINARY_BIG_ENDIAN -> parseBinaryData(file, header, vertexElement, faceElement, ByteOrder.BIG_ENDIAN)
+            when (header.format) {
+                PlyFormat.ASCII -> parseAsciiData(reader, header, vertexElement, faceElement)
+                PlyFormat.BINARY_LITTLE_ENDIAN -> parseBinaryData(file, header, vertexElement, faceElement, ByteOrder.LITTLE_ENDIAN)
+                PlyFormat.BINARY_BIG_ENDIAN -> parseBinaryData(file, header, vertexElement, faceElement, ByteOrder.BIG_ENDIAN)
+            }
         }
-
-        reader.close()
 
         lprintln("info,ply", "Successfully loaded PLY file")
 
@@ -335,6 +336,20 @@ object PlySupport {
                 val values = line.split(Regex("\\s+")).map { it.toInt() }
                 
                 val numIndices = values[0]
+                
+                // Validate face has enough values
+                if (values.size < numIndices + 1) {
+                    error("Face has $numIndices indices but only ${values.size - 1} values provided")
+                }
+                
+                // Validate all indices are within bounds
+                for (i in 1..numIndices) {
+                    val idx = values[i]
+                    if (idx < 0 || idx >= vertices.size) {
+                        error("Face index $idx out of bounds (vertex count: ${vertices.size})")
+                    }
+                }
+                
                 if (numIndices == 3) {
                     // Triangle
                     indices.add(values[1])
@@ -477,6 +492,13 @@ object PlySupport {
                     faceIndices.add(readValue(buffer, faceElement.properties[0].listElementType!!).toInt())
                 }
 
+                // Validate all indices are within bounds
+                for (idx in faceIndices) {
+                    if (idx < 0 || idx >= vertices.size) {
+                        error("Face index $idx out of bounds (vertex count: ${vertices.size})")
+                    }
+                }
+
                 if (numIndices == 3) {
                     indices.addAll(faceIndices)
                 } else if (numIndices > 3) {
@@ -535,6 +557,10 @@ object PlySupport {
         // Layout: [pos.xyz][normal.xyz][color.rgba] = 10 floats per vertex
         val componentsPerVertex = 10
         val strideBytes = componentsPerVertex * 4
+        
+        // Note: These buffers are allocated with memAlloc and should be freed by the caller
+        // when they're done with the PlyMeshBuffers. The buffers are typically transferred
+        // to GPU and can be freed after transfer.
         val vertexData = memAlloc(vertexCount * strideBytes)
 
         vertices.forEach { vertex ->
