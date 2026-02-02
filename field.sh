@@ -6,12 +6,10 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
-# Check if we're running in a terminal
-if [ -t 0 ]; then
-    # Running in a terminal, just execute
-    ./gradlew runJvm
-else
-    # Not in a terminal (likely double-clicked), try to open one
+# Function to run Field4 in a new terminal
+run_in_terminal() {
+    local terminal_cmd=""
+    
     # Try different terminal emulators in order of preference
     if command -v gnome-terminal >/dev/null 2>&1; then
         gnome-terminal -- bash -c "cd '$DIR' && ./gradlew runJvm; echo ''; echo 'Press Enter to close...'; read"
@@ -25,4 +23,13 @@ else
         # No terminal found, try to run directly (may not show output)
         ./gradlew runJvm
     fi
+}
+
+# Check if we're running in a terminal
+if [ -t 0 ]; then
+    # Running in a terminal, just execute
+    ./gradlew runJvm
+else
+    # Not in a terminal (likely double-clicked), open one
+    run_in_terminal
 fi

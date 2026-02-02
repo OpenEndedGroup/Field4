@@ -19,7 +19,7 @@ if [ $? -ne 0 ]; then
     echo ""
     echo "==================================="
     echo "Field4 exited with an error."
-    echo "Press any key to close this window."
+    echo "Press Enter to close this window."
     echo "==================================="
     read -n 1 -s
 fi
