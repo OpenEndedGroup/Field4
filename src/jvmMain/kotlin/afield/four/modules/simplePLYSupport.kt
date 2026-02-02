@@ -30,10 +30,21 @@ fun Box.plyModelHere(p: Parameters.() -> Unit): Pair<ModulePointer, PlySupport.P
     throw MacroRegistry.MacroNotExpandedException("plyModelHere should not be callable directly, but should be expanded as a macro")
 }
 
+fun Box.plyPointCloudHere(p: Parameters.() -> Unit): Pair<ModulePointer, PlySupport.PlyModel> {
+    throw MacroRegistry.MacroNotExpandedException("plyPointCloudHere should not be callable directly, but should be expanded as a macro")
+}
+
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_plyModelHere(args: List<String>): Insert? {
     return macro_moduleHereWithDefaultShaders(
         args, vertex = PlySupport.plyVertexShader, fragment = PlySupport.plyFragmentShader, resolvesToCall = "_plyModelHere"
+    )
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+fun Box.macro_plyPointCloudHere(args: List<String>): Insert? {
+    return macro_moduleHereWithDefaultShaders(
+        args, vertex = PlySupport.plyPointCloudVertexShader, fragment = PlySupport.plyPointCloudFragmentShader, resolvesToCall = "_plyPointCloudHere"
     )
 }
 
@@ -46,10 +57,25 @@ fun Box._plyModelHere(
     return module to loader
 }
 
+fun Box._plyPointCloudHere(
+    filename: String, pointSize: Float = 8.0f, p: Parameters.() -> Unit = {}
+): Pair<ModulePointer, PlySupport.PlyModel> {
+    val renderer: Renderer = fromContext()
+    val module = _moduleHere(parameters(renderer = renderer) {
+        p()
+        primitiveType = points
+    })
+    val loader = PlySupport.loadPly(filename)
+    return module to loader
+}
+
 @RunsAt(macroRegistration)
 fun registerPLYLoader() {
     callRewrite["plyModelHere"] = { box, id, args ->
         box.macro_plyModelHere(args)
+    }
+    callRewrite["plyPointCloudHere"] = { box, id, args ->
+        box.macro_plyPointCloudHere(args)
     }
 }
 
@@ -81,7 +107,7 @@ object PlySupport {
         val buffers: PlyMeshBuffers,
         val name: String
     ) {
-        fun applyToMesh(m: Mesh, camera: Camera = fromContext()) {
+        fun applyToMesh(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f) {
             m.inside.current.liveUniformStructures["VertexData"]!!["modelView"] = camera.m()
             m.inside.current.liveUniformStructures["VertexData"]!!["proj"] = camera.p()
             m.inside.current.liveUniformStructures["VertexData"]!!["vertexOffset"] = 0
@@ -89,6 +115,13 @@ object PlySupport {
             m.inside.current.liveUniformStructures["VertexData"]!!["vertexStride"] = 10
             m.inside.current.liveUniformStructures["VertexData"]!!["materialBaseColor"] = Vector4f(1f, 1f, 1f, 1f)
             m.inside.current.liveUniformStructures["VertexData"]!!["useVertexColor"] = if (buffers.hasColors) 1 else 0
+            
+            // Set point size for point cloud shaders (will be ignored if not present in shader)
+            try {
+                m.inside.current.liveUniformStructures["VertexData"]!!["pointSize"] = pointSize
+            } catch (e: Exception) {
+                // Uniform not present in this shader, ignore
+            }
 
             val vertexData = defaultBuffer {
                 size = (buffers.vertexCount * 10).floats
@@ -677,6 +710,185 @@ void main()
     // Simple directional lighting from upper-right-front
     float d = abs(dot(vNormalVS.xyz, normalize(vec3(1, 0.4, -0.2))));
     uFragColor = vColor * vec4(vNormalVS.rgb * d, 1);
+}
+""".trimIndent()
+
+    // ------------------------------------------------------------------------
+    // Point cloud visualization shaders
+    // Screen-aligned quads with crisp circles for point rendering
+    // ------------------------------------------------------------------------
+
+    val plyPointCloudVertexShader = """
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(std430, buffer_reference) readonly buffer VertexBuffer {
+    float vertexData[];
+};
+
+layout(std430, buffer_reference) readonly buffer IndexBuffer {
+    uint indexData[];
+};
+
+layout (binding = 0) uniform VertexData {
+    mat4 modelView;        // view * model
+    mat4 proj;             // projection
+
+    vec4 materialBaseColor;
+
+    uint vertexOffset;     // in floats
+    uint indexOffset;      // in indices
+    uint vertexStride;     // in floats (10 for PLY)
+    uint useVertexColor;   // bool as uint
+    float pointSize;       // point size in pixels
+} data;
+
+layout(push_constant) uniform PushConstants {
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+} pc;
+
+layout(location = 0) out vec3 vViewPos;
+layout(location = 1) out vec4 vColor;
+layout(location = 2) out float vPointSize;
+
+void main()
+{
+    uint idx = pc.indexBuffer.indexData[data.indexOffset+uint(gl_VertexIndex)];
+    uint base = data.vertexOffset + idx * data.vertexStride;
+
+    vec3 pos = vec3(
+        pc.vertexBuffer.vertexData[base + 0],
+        pc.vertexBuffer.vertexData[base + 1],
+        pc.vertexBuffer.vertexData[base + 2]
+    );
+
+    vec4 color = vec4(
+        pc.vertexBuffer.vertexData[base + 6],
+        pc.vertexBuffer.vertexData[base + 7],
+        pc.vertexBuffer.vertexData[base + 8],
+        pc.vertexBuffer.vertexData[base + 9]
+    );
+
+    if (data.useVertexColor == 0u) {
+        color = vec4(1.0);
+    }
+
+    vec4 viewPos = data.proj * data.modelView * vec4(pos, 1.0);
+
+    vViewPos = viewPos.xyz;
+    vColor = color * data.materialBaseColor;
+    vPointSize = data.pointSize;
+
+    gl_Position = viewPos;
+    gl_PointSize = data.pointSize;
+}
+""".trimIndent()
+
+    val plyPointCloudFragmentShader = """
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 1) in vec4 vColor;
+layout(location = 2) in float vPointSize;
+
+void main()
+{
+    // Calculate distance from center of point sprite
+    vec2 coord = gl_PointCoord * 2.0 - 1.0;
+    float dist = length(coord);
+    
+    // Discard fragments outside circle radius for crisp circles
+    if (dist > 1.0) {
+        discard;
+    }
+    
+    // Optional: smooth anti-aliasing at edge
+    float alpha = 1.0 - smoothstep(0.9, 1.0, dist);
+    
+    uFragColor = vec4(vColor.rgb, vColor.a * alpha);
+}
+""".trimIndent()
+
+    // Alternative geometry shader-based approach for instanced quads
+    val plyPointCloudGeometryShader = """
+#version 450
+layout(points) in;
+layout(triangle_strip, max_vertices = 4) out;
+
+layout (binding = 0) uniform VertexData {
+    mat4 modelView;
+    mat4 proj;
+    vec4 materialBaseColor;
+    uint vertexOffset;
+    uint indexOffset;
+    uint vertexStride;
+    uint useVertexColor;
+    float pointSize;
+} data;
+
+layout(location = 0) in vec3 vViewPos[];
+layout(location = 1) in vec4 vColor[];
+layout(location = 2) in float vPointSize[];
+
+layout(location = 0) out vec4 gColor;
+layout(location = 1) out vec2 gTexCoord;
+
+void main()
+{
+    vec4 center = gl_in[0].gl_Position;
+    float size = vPointSize[0];
+    
+    // Calculate screen-aligned quad size in clip space
+    vec2 screenSize = vec2(size) / vec2(1920.0, 1080.0); // Adjust for actual viewport
+    
+    gColor = vColor[0];
+    
+    // Bottom-left
+    gl_Position = center + vec4(-screenSize.x, -screenSize.y, 0.0, 0.0);
+    gTexCoord = vec2(0.0, 0.0);
+    EmitVertex();
+    
+    // Bottom-right
+    gl_Position = center + vec4(screenSize.x, -screenSize.y, 0.0, 0.0);
+    gTexCoord = vec2(1.0, 0.0);
+    EmitVertex();
+    
+    // Top-left
+    gl_Position = center + vec4(-screenSize.x, screenSize.y, 0.0, 0.0);
+    gTexCoord = vec2(0.0, 1.0);
+    EmitVertex();
+    
+    // Top-right
+    gl_Position = center + vec4(screenSize.x, screenSize.y, 0.0, 0.0);
+    gTexCoord = vec2(1.0, 1.0);
+    EmitVertex();
+    
+    EndPrimitive();
+}
+""".trimIndent()
+
+    val plyPointCloudGeometryFragmentShader = """
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 0) in vec4 gColor;
+layout(location = 1) in vec2 gTexCoord;
+
+void main()
+{
+    // Calculate distance from center for crisp circle
+    vec2 coord = gTexCoord * 2.0 - 1.0;
+    float dist = length(coord);
+    
+    // Discard fragments outside circle
+    if (dist > 1.0) {
+        discard;
+    }
+    
+    // Smooth anti-aliasing at edge
+    float alpha = 1.0 - smoothstep(0.9, 1.0, dist);
+    
+    uFragColor = vec4(gColor.rgb, gColor.a * alpha);
 }
 """.trimIndent()
 }

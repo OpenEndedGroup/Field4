@@ -197,14 +197,42 @@ This layout is compatible with the provided GLSL shaders.
 
 ## Shaders
 
-The loader includes default GLSL shaders:
+The loader includes multiple GLSL shader sets for different use cases:
+
+### Standard Mesh Rendering
 - `PlySupport.plyVertexShader` - Vertex shader with SSBO vertex pulling
 - `PlySupport.plyFragmentShader` - Fragment shader with color and lighting
 
-These shaders use:
+### Point Cloud Visualization
+For crisp, screen-aligned point rendering:
+- `PlySupport.plyPointCloudVertexShader` - Point cloud vertex shader with `gl_PointSize`
+- `PlySupport.plyPointCloudFragmentShader` - Fragment shader with circular discard and anti-aliasing
+
+### Advanced Point Cloud (Geometry Shader)
+For precise control over quad generation:
+- `PlySupport.plyPointCloudGeometryShader` - Generates screen-aligned quads per point
+- `PlySupport.plyPointCloudGeometryFragmentShader` - Renders crisp circles on quads
+
+All shaders use:
 - Buffer references for vertex/index data (Vulkan extension)
 - Push constants for transformation matrices
-- Uniform buffer for additional parameters
+- Uniform buffer for additional parameters (including `pointSize` for point clouds)
+
+### Point Cloud Usage Example
+```kotlin
+// Using point cloud shaders
+val module = Module(
+    Parameters(
+        renderer,
+        vertex = PlySupport.plyPointCloudVertexShader,
+        fragment = PlySupport.plyPointCloudFragmentShader,
+        primitiveType = VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+    )
+)
+
+// Apply with custom point size
+model.applyToMesh(mesh, camera, pointSize = 12.0f)
+```
 
 ## Notes
 

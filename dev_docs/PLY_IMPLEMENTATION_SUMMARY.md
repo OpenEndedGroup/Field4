@@ -113,7 +113,18 @@ Fixed layout for GPU transfer:
 - Buffer reference extensions for efficient vertex pulling
 - Push constants for transformation matrices
 - Uniform buffers for material properties
+- Multiple shader sets:
+  - Standard mesh rendering with lighting
+  - Point cloud rendering with `gl_PointSize` and circular discard
+  - Geometry shader-based point clouds with screen-aligned quads
 - Compatible with existing afield.four rendering pipeline
+
+### Point Cloud Visualization
+- Screen-aligned point sprites with `gl_PointSize`
+- Crisp circular rendering with fragment discard
+- Smooth anti-aliasing at edges
+- Configurable point size via `pointSize` parameter
+- Optional geometry shader approach for advanced control
 
 ## Files Added/Modified
 
