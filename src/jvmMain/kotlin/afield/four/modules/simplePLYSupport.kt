@@ -379,19 +379,38 @@ object PlySupport {
         val hasColors = hasRed && hasGreen && hasBlue
         val hasNormals = hasNX && hasNY && hasNZ
 
-        // Calculate header size by reading ASCII header
-        val reader = BufferedReader(FileReader(file))
-        var headerSize = 0L
-        while (true) {
-            val line = reader.readLine() ?: break
-            headerSize += line.length + 1  // +1 for newline
-            if (line.trim() == "end_header") break
+        // Calculate header size by finding "end_header" in the file
+        val fileBytes = file.readBytes()
+        var headerSize = 0
+        val endHeaderBytes = "end_header".toByteArray()
+        
+        // Search for "end_header" in the file
+        outer@ for (i in 0 until fileBytes.size - endHeaderBytes.size) {
+            var match = true
+            for (j in endHeaderBytes.indices) {
+                if (fileBytes[i + j] != endHeaderBytes[j]) {
+                    match = false
+                    break
+                }
+            }
+            if (match) {
+                // Find the end of this line (skip to next newline)
+                var pos = i + endHeaderBytes.size
+                while (pos < fileBytes.size && fileBytes[pos] != '\n'.code.toByte()) {
+                    pos++
+                }
+                if (pos < fileBytes.size) pos++ // Skip the newline itself
+                headerSize = pos
+                break@outer
+            }
         }
-        reader.close()
+        
+        if (headerSize == 0) {
+            error("Could not find end_header in binary PLY file")
+        }
 
         // Read binary data
-        val fileBytes = file.readBytes()
-        val buffer = ByteBuffer.wrap(fileBytes, headerSize.toInt(), fileBytes.size - headerSize.toInt())
+        val buffer = ByteBuffer.wrap(fileBytes, headerSize, fileBytes.size - headerSize)
         buffer.order(byteOrder)
 
         val vertices = mutableListOf<Vertex>()
