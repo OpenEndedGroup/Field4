@@ -704,31 +704,39 @@ fun seriesPlotToSvg(
  * @return The numeric value extracted from the source code, or the last known good value if extraction fails
  */
 fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
-    // Get or initialize the stored previous value from the marker's properties
-    val storedValue = this.properties.computeIfAbsent("__liveNumber__") {
-        defaultValue
-    } as Double
-    
     // Find the location where liveNumber was called in the source code
     val location = locationForTextStringOnStack(".liveNumber(", this.box, end = true, offset = 0)
     
+    // Create a unique key for this specific liveNumber call based on its location
+    // This allows multiple liveNumber calls on the same marker to maintain separate cached values
+    val cacheKey = if (location != null) {
+        "__liveNumber__${location.line}:${location.col}__"
+    } else {
+        "__liveNumber__default__"
+    }
+    
+    // Get or initialize the cached previous value from the marker's properties
+    val cachedValue = this.properties.computeIfAbsent(cacheKey) {
+        defaultValue
+    } as Double
+    
     if (location == null) {
-        lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}, using stored value: $storedValue")
-        return storedValue
+        lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}, using cached value: $cachedValue")
+        return cachedValue
     }
     
     // Get the source code and split it into lines
     val lines = this.box.code?.split("\n")
     if (lines == null) {
-        lprintln("warn,decorations", "liveNumber: Could not access source code, using stored value: $storedValue")
-        return storedValue
+        lprintln("warn,decorations", "liveNumber: Could not access source code, using cached value: $cachedValue")
+        return cachedValue
     }
     
     // Get the line where liveNumber is called
     val lineIndex = location.line - 1
     if (lineIndex < 0 || lineIndex >= lines.size) {
-        lprintln("warn,decorations", "liveNumber: Line index out of bounds: $lineIndex, using stored value: $storedValue")
-        return storedValue
+        lprintln("warn,decorations", "liveNumber: Line index out of bounds: $lineIndex, using cached value: $cachedValue")
+        return cachedValue
     }
     
     val line = lines[lineIndex]
@@ -739,8 +747,8 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     
     // Verify we're at the expected position (column is 0-based)
     if (startPos < 0 || startPos > line.length) {
-        lprintln("warn,decorations", "liveNumber: Column position out of bounds: ${location.col}, using stored value: $storedValue")
-        return storedValue
+        lprintln("warn,decorations", "liveNumber: Column position out of bounds: ${location.col}, using cached value: $cachedValue")
+        return cachedValue
     }
     
     var endPos = startPos
@@ -756,28 +764,28 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     }
     
     if (parenDepth != 0) {
-        lprintln("warn,decorations", "liveNumber: Could not find matching closing parenthesis, using stored value: $storedValue")
-        return storedValue
+        lprintln("warn,decorations", "liveNumber: Could not find matching closing parenthesis, using cached value: $cachedValue")
+        return cachedValue
     }
     
     // Extract the argument text and trim whitespace
     val argText = line.substring(startPos, endPos).trim()
     
-    // If argument is empty, return stored value
+    // If argument is empty, return cached value
     if (argText.isEmpty()) {
-        return storedValue
+        return cachedValue
     }
     
     // Try to parse the argument as a double
     // This handles integers, floats, and scientific notation (e.g., 1.0, 42, 1e-5)
     val parsedValue = argText.toDoubleOrNull()
     if (parsedValue == null) {
-        lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText' - only literal numeric values are supported, using stored value: $storedValue")
-        return storedValue
+        lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText' - only literal numeric values are supported, using cached value: $cachedValue")
+        return cachedValue
     }
     
     // Store the successfully parsed value for future use
-    this.properties["__liveNumber__"] = parsedValue
+    this.properties[cacheKey] = parsedValue
     
     lprintln("debug,decorations", "liveNumber: Extracted value $parsedValue from source (marker: ${this.name})")
     return parsedValue
