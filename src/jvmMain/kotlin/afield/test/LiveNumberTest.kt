@@ -7,6 +7,9 @@ import afield.stdlib.Marker
  * Test file demonstrating the liveNumber functionality.
  * This can be used as a reference or executed in a Field4 box.
  * 
+ * Note: These are demonstration examples, not automated unit tests.
+ * They are meant to be run interactively in Field4 to see the live number behavior.
+ * 
  * The liveNumber feature allows reading numeric values directly from source code
  * without recompilation. When you change the number in the editor, the value
  * changes immediately on the next evaluation.

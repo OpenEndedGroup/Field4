@@ -723,8 +723,8 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     // location.col points to just after ".liveNumber(" due to end=true in locationForTextStringOnStack
     val startPos = location.col
     
-    // Verify we're at the expected position
-    if (startPos <= 0 || startPos > line.length) {
+    // Verify we're at the expected position (column is 0-based)
+    if (startPos < 0 || startPos > line.length) {
         lprintln("warn,decorations", "liveNumber: Column position out of bounds: ${location.col}")
         return defaultValue
     }
