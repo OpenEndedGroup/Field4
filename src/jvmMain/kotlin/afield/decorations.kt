@@ -680,3 +680,115 @@ fun seriesPlotToSvg(
     """.trimIndent()
 }
 
+/**
+ * Returns a "live number" - a number that is read directly from the source code at this marker's location.
+ * When the source code changes, the returned value changes immediately without recompilation or reevaluation.
+ * 
+ * The function stores the last successfully extracted value in the marker's properties. If extraction fails
+ * (e.g., during editing or if the source is temporarily invalid), it returns the stored value instead of
+ * the default. This provides stability during interactive editing.
+ * 
+ * **Important**: The argument must be a literal numeric value (e.g., `10.0`, `42`, `1e-5`). 
+ * Expressions like `1 + 2`, `Math.PI`, or variable references are not supported and will cause 
+ * the function to return the stored value (or defaultValue on first call).
+ * 
+ * Usage example:
+ * ```
+ * val m = __m("myMarker")
+ * val speed = m.liveNumber(10.0)  // Initially returns 10.0
+ * // When user changes "10.0" to "20.0" in the code editor, next call returns 20.0 without recompilation
+ * // If editing causes temporary parse failure, returns the last known value (20.0) until editing is complete
+ * ```
+ * 
+ * @param defaultValue The initial value to use on first call if source cannot be found or parsed
+ * @return The numeric value extracted from the source code, or the last known good value if extraction fails
+ */
+fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
+    // Find the location where liveNumber was called in the source code
+    val location = locationForTextStringOnStack(".liveNumber(", this.box, end = true, offset = 0)
+    
+    // Create a unique key for this specific liveNumber call based on its location
+    // This allows multiple liveNumber calls on the same marker to maintain separate cached values
+    val cacheKey = if (location != null) {
+        "__liveNumber__${location.line}:${location.col}__"
+    } else {
+        "__liveNumber__default__"
+    }
+    
+    // Get or initialize the cached previous value from the marker's properties
+    // Use safe cast to handle potential type mismatches in the properties map
+    val cachedValue = (this.properties.computeIfAbsent(cacheKey) {
+        defaultValue
+    } as? Double) ?: defaultValue
+    
+    if (location == null) {
+        lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}, using cached value: $cachedValue")
+        return cachedValue
+    }
+    
+    // Get the source code and split it into lines
+    val lines = this.box.code?.split("\n")
+    if (lines == null) {
+        lprintln("warn,decorations", "liveNumber: Could not access source code, using cached value: $cachedValue")
+        return cachedValue
+    }
+    
+    // Get the line where liveNumber is called
+    val lineIndex = location.line - 1
+    if (lineIndex < 0 || lineIndex >= lines.size) {
+        lprintln("warn,decorations", "liveNumber: Line index out of bounds: $lineIndex, using cached value: $cachedValue")
+        return cachedValue
+    }
+    
+    val line = lines[lineIndex]
+    
+    // Use the column information from location to find the exact position
+    // location.col points to just after ".liveNumber(" due to end=true in locationForTextStringOnStack
+    val startPos = location.col
+    
+    // Verify we're at the expected position (column is 0-based)
+    if (startPos < 0 || startPos > line.length) {
+        lprintln("warn,decorations", "liveNumber: Column position out of bounds: ${location.col}, using cached value: $cachedValue")
+        return cachedValue
+    }
+    
+    var endPos = startPos
+    var parenDepth = 1
+    
+    // Find the matching closing parenthesis, handling nested parentheses
+    while (endPos < line.length && parenDepth > 0) {
+        when (line[endPos]) {
+            '(' -> parenDepth++
+            ')' -> parenDepth--
+        }
+        if (parenDepth > 0) endPos++
+    }
+    
+    if (parenDepth != 0) {
+        lprintln("warn,decorations", "liveNumber: Could not find matching closing parenthesis, using cached value: $cachedValue")
+        return cachedValue
+    }
+    
+    // Extract the argument text and trim whitespace
+    val argText = line.substring(startPos, endPos).trim()
+    
+    // If argument is empty, return cached value
+    if (argText.isEmpty()) {
+        return cachedValue
+    }
+    
+    // Try to parse the argument as a double
+    // This handles integers, floats, and scientific notation (e.g., 1.0, 42, 1e-5)
+    val parsedValue = argText.toDoubleOrNull()
+    if (parsedValue == null) {
+        lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText' - only literal numeric values are supported, using cached value: $cachedValue")
+        return cachedValue
+    }
+    
+    // Store the successfully parsed value for future use
+    this.properties[cacheKey] = parsedValue
+    
+    lprintln("debug,decorations", "liveNumber: Extracted value $parsedValue from source (marker: ${this.name})")
+    return parsedValue
+}
+
