@@ -13,6 +13,15 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 
+/**
+ * A single Monaco decoration payload for a box.
+ *
+ * Coordinates are 1-based line/column pairs. The decoration is applied on the client by the
+ * `decorations.js` bridge, which expects a class name and optional CSS class definitions.
+ *
+ * If [clickCallback] is provided, a synthetic action id is generated and wired so Monaco can
+ * dispatch a click on this decoration back to the server.
+ */
 data class RawDecoration(
     val lineStart: Int,
     val colStart: Int,
@@ -22,6 +31,9 @@ data class RawDecoration(
     val classDef: Map<String, String> = emptyMap(),
     val clickCallback: (() -> Unit)? = null
 ) {
+    /**
+     * Convenience constructor that decorates exactly one character at [l].
+     */
     constructor(
         l: Location, className: String, classDef: Map<String, String> = emptyMap(), clickCallback: (() -> Unit)? = null
     ) : this(
@@ -29,8 +41,19 @@ data class RawDecoration(
     )
 }
 
+/**
+ * Serialized decoration payload cached on the box and pushed to clients.
+ */
 var Box.code_decorationState by Delegation<String>()
+/**
+ * Per-decoration callback table keyed by generated action ids.
+ */
 var Box.code_decorationCallbackTable by Delegation<MutableMap<String, () -> Unit>>(defaultValue = { HashMap() })
+/**
+ * High-level decoration state for a box.
+ *
+ * Whenever this map is read, it schedules a decoration update on the UI thread.
+ */
 val Box.decorationState by Delegation<MutableMap<String, RawDecoration>>(
     defaultValue = { mutableMapOf() },
     onGet = { inside, v ->
@@ -38,12 +61,22 @@ val Box.decorationState by Delegation<MutableMap<String, RawDecoration>>(
             yield()
             setDecorations(inside as Box, v.values.toList())
         }
-    })
+ })
 
 /*
 need to gather this from a map and some fancy delegation tricks
  */
 @OptIn(ExperimentalUuidApi::class)
+/**
+ * Push a set of decorations for [box] to all active sessions.
+ *
+ * This:
+ * 1. Flattens class definitions into a single CSS string.
+ * 2. Registers click callbacks and maps them to action ids.
+ * 3. Builds the inline decoration payload consumed by the JS bridge.
+ *
+ * Callers typically update [Box.decorationState] and let the delegate invoke this.
+ */
 fun setDecorations(box: Box, decor: List<RawDecoration>) {
 
     box.code_decorationCallbackTable.clear()
@@ -73,14 +106,30 @@ fun setDecorations(box: Box, decor: List<RawDecoration>) {
     box.code_decorationState = r
 }
 
+/**
+ * A precise source location inside a box property.
+ *
+ * The coordinates are 1-based and refer to the *current* code string in the box.
+ */
 data class Location(val inside: Box, val property: String, val line: Int, val col: Int)
 
+/**
+ * Update a map entry by computing or inserting a default, then applying [u].
+ *
+ * @return The updated value.
+ */
 fun <K, V> MutableMap<K, in V>.update(key: K, d: V, u: (V) -> V): V {
     val v = u(computeIfAbsent(key) { d } as V)
     put(key, v)
     return v
 }
 
+/**
+ * Attach a clickable "toggle" decoration to the call site.
+ *
+ * The decoration is anchored to the `.toggle(` text in the current stack frame.
+ * Clicking the decoration invokes [cb].
+ */
 fun Marker.toggle(cb: () -> Unit) {
     val location = locationForTextStringOnStack(".toggle(", this.box, end = true, offset = 1)
     if (location != null) this.box.decorationState.put(
@@ -99,6 +148,11 @@ fun Marker.toggle(cb: () -> Unit) {
     )
 }
 
+/**
+ * Attach an alternating glyph decoration to the call site.
+ *
+ * Used as a lightweight "I was here" visual pulse when re-running code.
+ */
 fun Marker.beep(
     tick: Int = properties.update("beep", 0) { it + 1 }
 ) {
@@ -117,7 +171,18 @@ fun Marker.beep(
     )
 }
 
+/**
+ * Wraps a string with a decoration emitter.
+ *
+ * The wrapper can be used to stamp additional glyphs at the call site without
+ * mutating the underlying string.
+ */
 class BoppableString(val s: String, val inside: Marker) : () -> String {
+    /**
+     * Add a small glyph decoration at the call site.
+     *
+     * Multiple calls can stack, using [index] to offset the glyph horizontally.
+     */
     fun bop(index: Int, color: String = "white", filled: Boolean = true) {
         val location = locationForTextStringOnStack(".bop(", inside.box, end = true, offset = 1)
         val glyph = if (filled) "🞊" else "🞅"
@@ -137,6 +202,9 @@ class BoppableString(val s: String, val inside: Marker) : () -> String {
     }
 }
 
+/**
+ * Creates a [BoppableString] wrapper to drive glyph decorations.
+ */
 fun Marker.bop(
     text: String
 ): BoppableString {
@@ -144,11 +212,19 @@ fun Marker.bop(
 }
 
 
+/**
+ * Minimal rolling history for histogram and time-series sketches.
+ *
+ * The class also rate-limits SVG output to avoid flooding the editor output.
+ */
 class LittleHistory {
 
     var d = LinkedList<Double>()
 
     var outputRateLimiter = RateLimiter(10.0, 0.2)
+    /**
+     * Append a value and cap history length.
+     */
     fun add(v: Double, size: Int = 100) {
         d.add(v)
         if (d.size > size) {
@@ -156,6 +232,9 @@ class LittleHistory {
         }
     }
 
+    /**
+     * Render a histogram SVG for the current history.
+     */
     fun histogram(): String {
         var dropped = 0
         return histogramToSvg(
@@ -168,6 +247,9 @@ class LittleHistory {
         )
     }
 
+    /**
+     * Render a line chart SVG for the current history.
+     */
     fun history(): String {
         return seriesPlotToSvg(
             d, widthPx = 480, heightPx = 100, padTop = 20, padLeft = 50, padRight = 80, padBottom = 15, decimals = 2
@@ -176,6 +258,11 @@ class LittleHistory {
 }
 
 
+/**
+ * Track a rolling histogram and emit it into the editor output.
+ *
+ * The call site is used as the output anchor, so the histogram appears next to the code line.
+ */
 fun <T> Marker.histogram(value: T, dur: Int = 100): T {
     val location = locationForTextStringOnStack("histogram", this.box, end = true, offset = 1)
     val h = this.properties.computeIfAbsent("__histogram__") {
@@ -188,6 +275,11 @@ fun <T> Marker.histogram(value: T, dur: Int = 100): T {
     return value
 }
 
+/**
+ * Track a rolling time series and emit it into the editor output.
+ *
+ * The call site is used as the output anchor, so the chart appears next to the code line.
+ */
 fun <T> Marker.history(value: T, dur: Int = 100): T {
     val location = locationForTextStringOnStack("history", this.box, end = true, offset = 1)
     val h = this.properties.computeIfAbsent("__histogram__") { // intentional
@@ -201,6 +293,18 @@ fun <T> Marker.history(value: T, dur: Int = 100): T {
 }
 
 
+/**
+ * Locate the call site of [code] inside a box's current source text.
+ *
+ * This inspects the stack trace, filters to frames belonging to [box], and then searches
+ * the corresponding source line for [code]. It returns a [Location] pointing to the match.
+ *
+ * @param code The snippet to search for (e.g. ".liveNumber(").
+ * @param box The box whose source should be searched.
+ * @param st Stack trace to inspect (defaults to current stack).
+ * @param end If true, the returned column points to the end of the match.
+ * @param offset Additional column offset applied after [end].
+ */
 fun locationForTextStringOnStack(
     code: String,
     box: Box? = null,
@@ -246,6 +350,11 @@ data class Histogram(
     val binWidth: Double
 )
 
+/**
+ * Compute histogram bins and summary statistics.
+ *
+ * Non-finite values are dropped (and optionally counted via [onDrop]).
+ */
 fun buildHistogram(
     rawValues: List<Double>, onDrop: ((droppedCount: Int) -> Unit)? = null
 ): Histogram {
@@ -301,6 +410,11 @@ fun buildHistogram(
     return Histogram(bins, min, q1, median, q3, max, width)
 }
 
+/**
+ * Render a histogram to an SVG string.
+ *
+ * The chart includes bin bars and reference ticks at min/Q1/median/Q3/max.
+ */
 fun histogramToSvg(
     hist: Histogram,
     widthPx: Int = 480,
@@ -449,6 +563,9 @@ fun histogramToSvg(
 
 // ---------- Internals ----------
 
+/**
+ * Freedman–Diaconis rule of thumb for histogram bin width.
+ */
 private fun freedmanDiaconisWidth(sorted: DoubleArray): Double {
     val n = sorted.size
     if (n < 2) return Double.NaN
@@ -459,6 +576,9 @@ private fun freedmanDiaconisWidth(sorted: DoubleArray): Double {
     return 2.0 * iqr * n.toDouble().pow(-1.0 / 3.0)
 }
 
+/**
+ * Scott's rule of thumb for histogram bin width.
+ */
 private fun scottWidth(sorted: DoubleArray): Double {
     val n = sorted.size
     if (n < 2) return Double.NaN
@@ -481,6 +601,11 @@ private fun quantileSorted(sorted: DoubleArray, p: Double): Double {
     return if (i >= n - 1) sorted[n - 1] else sorted[i] * (1 - frac) + sorted[i + 1] * frac
 }
 
+/**
+ * Format a number for SVG labels.
+ *
+ * Large and tiny magnitudes use scientific notation; everything else uses fixed decimals.
+ */
 private fun formatNumber(v: Double, decimals: Int): String {
     if (!v.isFinite()) return v.toString()
     val abs = kotlin.math.abs(v)
@@ -492,6 +617,12 @@ private fun formatNumber(v: Double, decimals: Int): String {
 }
 
 
+/**
+ * Render a time-series plot to SVG.
+ *
+ * The plot shows a polyline with reference lines for min/Q1/median/Q3/max
+ * and an optional zero line when the range crosses 0.
+ */
 fun seriesPlotToSvg(
     rawValues: List<Double>,
     widthPx: Int = 480,
@@ -683,15 +814,15 @@ fun seriesPlotToSvg(
 /**
  * Returns a "live number" - a number that is read directly from the source code at this marker's location.
  * When the source code changes, the returned value changes immediately without recompilation or reevaluation.
- * 
+ *
  * The function stores the last successfully extracted value in the marker's properties. If extraction fails
  * (e.g., during editing or if the source is temporarily invalid), it returns the stored value instead of
  * the default. This provides stability during interactive editing.
- * 
- * **Important**: The argument must be a literal numeric value (e.g., `10.0`, `42`, `1e-5`). 
- * Expressions like `1 + 2`, `Math.PI`, or variable references are not supported and will cause 
+ *
+ * **Important**: The argument must be a literal numeric value (e.g., `10.0`, `42`, `1e-5`).
+ * Expressions like `1 + 2`, `Math.PI`, or variable references are not supported and will cause
  * the function to return the stored value (or defaultValue on first call).
- * 
+ *
  * Usage example:
  * ```
  * val m = __m("myMarker")
@@ -699,14 +830,14 @@ fun seriesPlotToSvg(
  * // When user changes "10.0" to "20.0" in the code editor, next call returns 20.0 without recompilation
  * // If editing causes temporary parse failure, returns the last known value (20.0) until editing is complete
  * ```
- * 
+ *
  * @param defaultValue The initial value to use on first call if source cannot be found or parsed
  * @return The numeric value extracted from the source code, or the last known good value if extraction fails
  */
-fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
+fun Marker.liveNumber(defaultValue: Number = 0.0): Double {
     // Find the location where liveNumber was called in the source code
     val location = locationForTextStringOnStack(".liveNumber(", this.box, end = true, offset = 0)
-    
+
     // Create a unique key for this specific liveNumber call based on its location
     // This allows multiple liveNumber calls on the same marker to maintain separate cached values
     val cacheKey = if (location != null) {
@@ -714,47 +845,85 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
     } else {
         "__liveNumber__default__"
     }
-    
+
     // Get or initialize the cached previous value from the marker's properties
     // Use safe cast to handle potential type mismatches in the properties map
     val cachedValue = (this.properties.computeIfAbsent(cacheKey) {
-        defaultValue
-    } as? Double) ?: defaultValue
-    
+        defaultValue.toDouble()
+    } as? Double) ?: defaultValue.toDouble()
+
+    val errorKey = "${cacheKey}__error__"
+    val errorClass = "liveNumberError"
+    val errorCss = """
+        .${errorClass} {
+            color: #ff6b6b;
+            background: rgba(255, 80, 80, 0.18);
+            border-bottom: 1px solid rgba(255, 80, 80, 0.95);
+        }
+    """.trimIndent().replace("\n", " ")
+
+    fun clearLiveNumberError() {
+        this.box.decorationState.remove(errorKey)
+    }
+
+    fun setLiveNumberError(lineNumber: Int, startPos: Int, endPos: Int, lineText: String) {
+        var startCol = startPos + 1
+        var endCol = endPos + 1
+        if (endCol <= startCol) {
+            if (startPos < lineText.length) {
+                endCol = startCol + 1
+            } else {
+                return
+            }
+        }
+        this.box.decorationState[errorKey] = RawDecoration(
+            lineNumber,
+            startCol,
+            lineNumber,
+            endCol,
+            errorClass,
+            mapOf(errorClass to errorCss)
+        )
+    }
+
     if (location == null) {
         lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}, using cached value: $cachedValue")
-        return cachedValue
+        clearLiveNumberError()
+        return cachedValue.toDouble()
     }
-    
+
     // Get the source code and split it into lines
     val lines = this.box.code?.split("\n")
     if (lines == null) {
         lprintln("warn,decorations", "liveNumber: Could not access source code, using cached value: $cachedValue")
+        clearLiveNumberError()
         return cachedValue
     }
-    
+
     // Get the line where liveNumber is called
     val lineIndex = location.line - 1
     if (lineIndex < 0 || lineIndex >= lines.size) {
         lprintln("warn,decorations", "liveNumber: Line index out of bounds: $lineIndex, using cached value: $cachedValue")
+        clearLiveNumberError()
         return cachedValue
     }
-    
+
     val line = lines[lineIndex]
-    
+
     // Use the column information from location to find the exact position
     // location.col points to just after ".liveNumber(" due to end=true in locationForTextStringOnStack
     val startPos = location.col
-    
+
     // Verify we're at the expected position (column is 0-based)
     if (startPos < 0 || startPos > line.length) {
         lprintln("warn,decorations", "liveNumber: Column position out of bounds: ${location.col}, using cached value: $cachedValue")
+        clearLiveNumberError()
         return cachedValue
     }
-    
+
     var endPos = startPos
     var parenDepth = 1
-    
+
     // Find the matching closing parenthesis, handling nested parentheses
     while (endPos < line.length && parenDepth > 0) {
         when (line[endPos]) {
@@ -763,32 +932,35 @@ fun Marker.liveNumber(defaultValue: Double = 0.0): Double {
         }
         if (parenDepth > 0) endPos++
     }
-    
+
     if (parenDepth != 0) {
         lprintln("warn,decorations", "liveNumber: Could not find matching closing parenthesis, using cached value: $cachedValue")
+        setLiveNumberError(location.line, startPos, endPos, line)
         return cachedValue
     }
-    
+
     // Extract the argument text and trim whitespace
     val argText = line.substring(startPos, endPos).trim()
-    
+
     // If argument is empty, return cached value
     if (argText.isEmpty()) {
+        setLiveNumberError(location.line, startPos, endPos, line)
         return cachedValue
     }
-    
+
     // Try to parse the argument as a double
     // This handles integers, floats, and scientific notation (e.g., 1.0, 42, 1e-5)
     val parsedValue = argText.toDoubleOrNull()
     if (parsedValue == null) {
         lprintln("warn,decorations", "liveNumber: Could not parse argument as number: '$argText' - only literal numeric values are supported, using cached value: $cachedValue")
+        setLiveNumberError(location.line, startPos, endPos, line)
         return cachedValue
     }
-    
+
     // Store the successfully parsed value for future use
     this.properties[cacheKey] = parsedValue
-    
+    clearLiveNumberError()
+
     lprintln("debug,decorations", "liveNumber: Extracted value $parsedValue from source (marker: ${this.name})")
     return parsedValue
 }
-
