@@ -446,6 +446,57 @@ window.addEventListener("keydown", (e) => {
     }, {capture: true}  // run before the browser’s own handlers
 )
 
+const isMonacoTextTarget = (el) => {
+        if (!el) return false
+        const classList = el.classList
+        if (classList && (classList.contains("inputarea") || classList.contains("monaco-mouse-cursor-text"))) return true
+        const closest = el.closest ? el.closest(".monaco-editor") : null
+        if (!closest) return false
+        if (el.closest && (el.closest(".monaco-findInput") || el.closest(".monaco-inputbox"))) return false
+        return true
+}
+
+const isMonacoTextFocused = () => {
+        const ed = window.globalEditor
+        if (ed && typeof ed.hasTextFocus === "function" && ed.hasTextFocus()) return true
+        return isMonacoTextTarget(document.activeElement)
+}
+
+const runMonacoAction = (id) => {
+        const ed = window.globalEditor
+        if (!ed) return false
+        try {
+                const action = ed.getAction && ed.getAction(id)
+                if (action && typeof action.run === "function") {
+                        action.run()
+                        return true
+                }
+        } catch (_) {}
+        try {
+                ed.trigger("", id, null)
+                return true
+        } catch (_) {}
+        return false
+}
+
+window.addEventListener("keydown", (e) => {
+        const isCtrlOrCmd = (e.ctrlKey || e.metaKey) && !e.altKey
+        if (!isCtrlOrCmd) return
+        const key = (e.key || "").toLowerCase()
+        if (key !== "a" && key !== "z") return
+        if (!isMonacoTextFocused()) return
+
+        e.preventDefault()
+        e.stopImmediatePropagation()
+
+        if (key === "a") {
+                runMonacoAction("editor.action.selectAll")
+        } else if (key === "z") {
+                const cmd = e.shiftKey ? "redo" : "undo"
+                runMonacoAction(cmd)
+        }
+}, {capture: true})
+
 const isDocsIframeVisible = () => {
         const container = document.querySelector('.docs-iframe-container')
         if (!container) return false

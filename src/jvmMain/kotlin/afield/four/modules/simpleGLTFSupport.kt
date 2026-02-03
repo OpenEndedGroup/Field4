@@ -15,7 +15,6 @@ import afield.four.texture.HasImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Camera
-import afield.logger.lprint
 import afield.logger.lprintln
 import afield.macroRegistration
 import afield.macros.Insert
@@ -32,8 +31,7 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.assimp.*
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil.memAlloc
-import org.lwjgl.system.MemoryUtil.memAllocInt
+import org.lwjgl.system.MemoryUtil.*
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -78,7 +76,7 @@ fun Box._gltfModelHereWithTexture(
         val was = textureResolver
         textureResolver = { tex ->
             if (tex.name == "uTextures") {
-                val textures = loader.meshes[2].material.textures.map { slot -> slot.texture as HasImageView }
+                val textures = loader.meshes[0].material.textures.map { slot -> slot.texture as HasImageView }
                 val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
                 fromViews(textures, sampler = TextureSampler(renderer = fromContext(), maxMip, true))
             } else was(tex)
@@ -149,12 +147,14 @@ object GltfSupport {
     ) {
         fun applyToMesh(m: Mesh, camera: Camera = fromContext()) {
 
-            m.inside.current.liveUniformStructures["VertexData"]!!["modelView"] = camera.m()
-            m.inside.current.liveUniformStructures["VertexData"]!!["proj"] = camera.p()
-            m.inside.current.liveUniformStructures["VertexData"]!!["vertexOffset"] = 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["indexOffset"] = 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["vertexStride"] = 12
-            m.inside.current.liveUniformStructures["VertexData"]!!["materialBaseColor"] = material.baseColor
+            m.initializePushConstantsFromModule(m.inside)
+            m.push["modelView"] = camera.m()
+            m.push["proj"] = camera.p()
+            m.push["vertexOffset"] = 0
+            m.push["indexOffset"] = 0
+            m.push["vertexStride"] = 12
+            m.push["materialBaseColor"] = material.baseColor
+            m.push["useVertexColor"] = 1
 
             val vertexData = defaultBuffer {
                 size = (buffers.vertexCount * 12).floats
@@ -164,7 +164,6 @@ object GltfSupport {
                 size = buffers.indexCount.ints
             }.buffer
 
-            m.initializePushConstantsFromModule(m.inside)
             m.push["vertexBuffer"] = vertexData
             m.push["indexBuffer"] = indexData
 
@@ -173,16 +172,16 @@ object GltfSupport {
             val f = buffers.vertexData.asFloatBuffer()
             for (n in 0 until f.capacity()) {
                 val x = f.get(n)
-                lprint("debug,gltf", "$x ")
-                if (n % 12 == 11) lprintln("debug,gltf", "")
+//                lprint("debug,gltf", "$x ")
+//                if (n % 12 == 11) lprintln("debug,gltf", "")
             }
             indexData.write {
                 // TODO!
                 for (n in 0 until buffers.indexCount) {
                     val x = buffers.indexData.get(n)
-                    lprint("debug,gltf", "$x ")
+//                    lprint("debug,gltf", "$x ")
                     this.putInt(x)
-                    if (n % 3 == 2) lprintln("debug,gltf", "")
+//                    if (n % 3 == 2) lprintln("debug,gltf", "")
                 }
             }
 
@@ -329,7 +328,7 @@ object GltfSupport {
             // uv or default
             if (hasTex) {
                 val t = texBuf!![i]
-                lprintln("debug,gltf", "tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
+//                lprintln("debug,gltf", "tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
                 vertexData.putFloat(t.x())
                 vertexData.putFloat(t.y())
             } else {
@@ -467,8 +466,11 @@ object GltfSupport {
         if (path.isEmpty()) return null
         // Embedded texture reference: "*0", "*1", ...
         if (path.startsWith("*")) {
-            lprintln("warning,gltf", "Skipping embedded texture $path: embedded textures not yet handled")
-            return null
+            val embedded = loadEmbeddedTexture(scene, path, renderer)
+            if (embedded == null) {
+                lprintln("warning,gltf", "Skipping embedded texture $path: unable to decode")
+            }
+            return embedded
         } else {
             val p = Paths.get(path)
             val resolved = if (p.isAbsolute) p else baseDir?.resolve(p) ?: p
@@ -478,6 +480,72 @@ object GltfSupport {
                 t
             } catch (_: Exception) {
                 null
+            }
+        }
+    }
+
+    private fun loadEmbeddedTexture(scene: AIScene, path: String, renderer: Renderer): LoadedTexture? {
+        val index = path.drop(1).toIntOrNull()
+        if (index == null) {
+            lprintln("warning,gltf", "Embedded texture reference is not numeric: $path")
+            return null
+        }
+
+        val textures = scene.mTextures()
+        if (textures == null || index < 0 || index >= scene.mNumTextures()) {
+            lprintln("warning,gltf", "Embedded texture index out of range: $path")
+            return null
+        }
+
+        val aiTex = AITexture.create(textures[index])
+        val width = aiTex.mWidth()
+        val height = aiTex.mHeight()
+        if (width <= 0) {
+            lprintln("warning,gltf", "Embedded texture has invalid size: $path (w=$width h=$height)")
+            return null
+        }
+
+        return if (height == 0) {
+            // Compressed data (PNG/JPEG/etc) stored in pcData with byte length = width
+            val texels = aiTex.pcData()
+            if (texels == null) {
+                lprintln("warning,gltf", "Embedded texture has no data buffer: $path")
+                return null
+            }
+            val encoded = memByteBuffer(texels.address(), width)
+            try {
+                val t = LoadedTexture.fromEncodedMemory("embedded:$path", encoded, renderer)
+                t.transferNow()
+                t
+            } catch (_: Exception) {
+                null
+            }
+        } else {
+            // Raw texels stored as BGRA in pcData (width*height entries)
+            val texels = aiTex.pcData()
+            val pixelCount = width * height
+            if (texels == null || texels.capacity() < pixelCount) {
+                lprintln("warning,gltf", "Embedded texture texel data is incomplete: $path")
+                return null
+            }
+
+            val rgba = memAlloc(pixelCount * 4)
+            try {
+                for (i in 0 until pixelCount) {
+                    val t = texels[i]
+                    rgba.put((t.r().toInt() and 0xFF).toByte())
+                    rgba.put((t.g().toInt() and 0xFF).toByte())
+                    rgba.put((t.b().toInt() and 0xFF).toByte())
+                    rgba.put((t.a().toInt() and 0xFF).toByte())
+                }
+                rgba.flip()
+                val t = LoadedTexture.fromRawRGBA("embedded:$path", width, height, rgba, renderer)
+                t.transferNow()
+                t
+            } catch (_: Exception) {
+                null
+            } finally {
+                memFree(rgba)
             }
         }
     }
@@ -673,6 +741,8 @@ object GltfSupport {
     //     uint indexOffset;    // in indices
     //     uint vertexStride;   // in floats (12 for this layout)
     //     uint useVertexColor; // 0 or 1
+    //     VertexBuffer vertexBuffer;
+    //     IndexBuffer indexBuffer;
     //
     // - Vertex layout exactly: 12 floats
     //   0..2: pos, 3..5: normal, 6..7: uv, 8..11: color
@@ -690,7 +760,7 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
     uint indexData[];
 };
 
-layout (binding = 0) uniform VertexData {
+layout(push_constant) uniform PushConstants {
     mat4 modelView;        // view * model
     mat4 proj;             // projection
 
@@ -700,10 +770,7 @@ layout (binding = 0) uniform VertexData {
     uint indexOffset;      // in indices
     uint vertexStride;     // in floats
     uint useVertexColor;   // bool as uint
-} data;
 
-
-layout(push_constant) uniform PushConstants {
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
 } pc;
@@ -715,8 +782,8 @@ layout(location = 3) out vec4 vColor;
 
 void main()
 {
-    uint idx = pc.indexBuffer.indexData[data.indexOffset+uint(gl_VertexIndex)];
-    uint base = data.vertexOffset + idx * data.vertexStride;
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset+uint(gl_VertexIndex)];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
 
     vec3 pos = vec3(
         pc.vertexBuffer.vertexData[base + 0],
@@ -742,19 +809,19 @@ void main()
         pc.vertexBuffer.vertexData[base + 11]
     );
 
-    if (data.useVertexColor == 0u) {
+    if (pc.useVertexColor == 0u) {
         color = vec4(1.0);
     }
 
-    vec4 viewPos =  data.proj * data.modelView*vec4(pos, 1.0);
+    vec4 viewPos =  pc.proj * pc.modelView*vec4(pos, 1.0);
 
-    mat3 mv3 = mat3(data.modelView);
+    mat3 mv3 = mat3(pc.modelView);
     vec3 normalVS = normalize(mv3 * normal);
 
     vViewPos = viewPos.xyz;
     vNormalVS = normalVS;
     vUV = uv;
-    vColor = color * data.materialBaseColor;
+    vColor = color * pc.materialBaseColor;
 
     gl_Position = viewPos;
 }
@@ -774,7 +841,7 @@ void main()
 """.trimIndent()
 
     // Simple textured fragment: samples first available texture; falls back to vertex color if none bound.
-    // Expects descriptor array of combined image samplers at set=0, binding=0, and a push constant for count.
+    // Expects descriptor array of combined image samplers at set=0, binding=1.
     val gltfFragmentShaderTextured = """
 #version 450
 layout(location = 0) out vec4 uFragColor;

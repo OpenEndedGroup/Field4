@@ -14,6 +14,9 @@ import afield.macros.MacroRegistry
 import afield.macros.MacroRegistry.callRewrite
 import afield.stdlib._moduleHere
 import afield.stdlib.macro_moduleHereWithDefaultShaders
+import com.github.jelmerk.knn.DistanceFunctions
+import com.github.jelmerk.knn.Item
+import com.github.jelmerk.knn.hnsw.HnswIndex
 import kotlinx.coroutines.DelicateCoroutinesApi
 import org.joml.Vector3f
 import org.joml.Vector4f
@@ -87,7 +90,7 @@ object PlySupport {
 
     /**
      * PLY mesh buffers containing vertex and optional index data.
-     * 
+     *
      * Note: The ByteBuffer and IntBuffer are allocated with LWJGL's memAlloc
      * and should be freed when no longer needed. Typically, these buffers are
      * transferred to GPU via defaultBuffer and can be freed after the transfer.
@@ -108,24 +111,24 @@ object PlySupport {
         val name: String
     ) {
         fun applyToMesh(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f) {
-            m.inside.current.liveUniformStructures["VertexData"]!!["modelView"] = camera.m()
-            m.inside.current.liveUniformStructures["VertexData"]!!["proj"] = camera.p()
-            m.inside.current.liveUniformStructures["VertexData"]!!["vertexOffset"] = 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["indexOffset"] = 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["vertexStride"] = 10
-            m.inside.current.liveUniformStructures["VertexData"]!!["materialBaseColor"] = Vector4f(1f, 1f, 1f, 1f)
-            m.inside.current.liveUniformStructures["VertexData"]!!["useVertexColor"] = if (buffers.hasColors) 1 else 0
-            
+            m.initializePushConstantsFromModule(m.inside)
+            m.push["modelView"] = camera.m()
+            m.push["proj"] = camera.p()
+            m.push["vertexOffset"] = 0
+            m.push["indexOffset"] = 0
+            m.push["vertexStride"] = 10
+            m.push["materialBaseColor"] = Vector4f(1f, 1f, 1f, 1f)
+            m.push["useVertexColor"] = if (buffers.hasColors) 1 else 0
+
             // Set point size for point cloud shaders (will be ignored if not present in shader)
-            if ("pointSize" in m.inside.current.liveUniformStructures["VertexData"]!!.offsets) {
-                m.inside.current.liveUniformStructures["VertexData"]!!["pointSize"] = pointSize
+            if (m.push.offsets.containsKey("pointSize")) {
+                m.push["pointSize"] = pointSize
             }
 
             val vertexData = defaultBuffer {
                 size = (buffers.vertexCount * 10).floats
             }.buffer
 
-            m.initializePushConstantsFromModule(m.inside)
             m.push["vertexBuffer"] = vertexData
 
             vertexData.write { this.put(buffers.vertexData.asFloatBuffer()) }
@@ -154,7 +157,7 @@ object PlySupport {
                 m.push["indexBuffer"] = indexData
 
                 indexData.write {
-                    val sourceIndices = buffers.indexData 
+                    val sourceIndices = buffers.indexData
                         ?: error("Internal error: indexData should not be null for non-point-cloud")
                     for (n in 0 until buffers.indexCount) {
                         this.putInt(sourceIndices.get(n))
@@ -164,30 +167,38 @@ object PlySupport {
                 m.resize(buffers.indexCount)
             }
         }
-        
+
         /**
          * Apply point cloud data to mesh using quad-based rendering (6 vertices per point).
          * This version is for use with plyPointCloudVertexShader which generates quads in the vertex shader.
-         * 
+         *
          * @param viewportWidth Viewport width in pixels (required for proper quad sizing)
          * @param viewportHeight Viewport height in pixels (required for proper quad sizing)
          */
         fun applyToMeshAsQuads(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f, viewportWidth: Float, viewportHeight: Float) {
-            m.inside.current.liveUniformStructures["VertexData"]!!["modelView"] = camera.m()
-            m.inside.current.liveUniformStructures["VertexData"]!!["proj"] = camera.p()
-            m.inside.current.liveUniformStructures["VertexData"]!!["vertexOffset"] = 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["indexOffset"] = 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["vertexStride"] = 10
-            m.inside.current.liveUniformStructures["VertexData"]!!["materialBaseColor"] = Vector4f(1f, 1f, 1f, 1f)
-            m.inside.current.liveUniformStructures["VertexData"]!!["useVertexColor"] = if (buffers.hasColors) 1 else 0
-            m.inside.current.liveUniformStructures["VertexData"]!!["pointSize"] = pointSize
-            m.inside.current.liveUniformStructures["VertexData"]!!["viewportSize"] = org.joml.Vector2f(viewportWidth, viewportHeight)
+            m.initializePushConstantsFromModule(m.inside)
+            if (m.push.offsets.containsKey("modelView")) {
+                m.push.bind("modelView") {
+                    camera.m()
+                }
+            }
+            m.push["proj"] =  camera.p()
+            m.push["vertexOffset"] = 0
+            m.push["indexOffset"] = 0
+            m.push["vertexStride"] = 10
+            m.push["materialBaseColor"] = Vector4f(1f, 1f, 1f, 1f)
+            m.push["useVertexColor"] = if (buffers.hasColors) 1 else 0
+            if (m.push.offsets.containsKey("pointSize")) {
+                m.push["pointSize"] = pointSize
+            }
+            if (m.push.offsets.containsKey("viewportSize")) {
+                m.push["viewportSize"] = org.joml.Vector2f(viewportWidth, viewportHeight)
+            }
 
             val vertexData = defaultBuffer {
                 size = (buffers.vertexCount * 10).floats
             }.buffer
 
-            m.initializePushConstantsFromModule(m.inside)
             m.push["vertexBuffer"] = vertexData
 
             vertexData.write { this.put(buffers.vertexData.asFloatBuffer()) }
@@ -208,6 +219,192 @@ object PlySupport {
             // Resize mesh to 6 times the vertex count
             // Each point generates 6 vertices (2 triangles with 3 vertices each forming a quad)
             m.resize(buffers.vertexCount * 6)
+        }
+
+        /**
+         * Build a packed IntBuffer of K-nearest-neighbor indices for each vertex.
+         *
+         * Layout: [n0_k0, n0_k1, ... n0_k{K-1}, n1_k0, ...] (stride = K).
+         * If K > (vertexCount - 1), the remaining entries are filled with -1.
+         *
+         * Note: The returned buffer is allocated with memAllocInt and should be freed
+         * when no longer needed. Typical usage is to upload to GPU then free.
+         */
+        fun buildKnnIndexBuffer(k: Int): java.nio.IntBuffer {
+            require(k > 0) { "k must be > 0" }
+
+            val vertexCount = buffers.vertexCount
+            val output = memAllocInt(vertexCount * k)
+
+            if (vertexCount == 0) {
+                output.flip()
+                return output
+            }
+
+            val kEffective = when {
+                vertexCount <= 1 -> 0
+                k < vertexCount -> k
+                else -> vertexCount - 1
+            }
+
+            // Extract positions (x,y,z) into a contiguous array for fast access.
+            val positions = FloatArray(vertexCount * 3)
+            val vertexFloats = buffers.vertexData.asFloatBuffer()
+            val strideFloats = 10
+            for (i in 0 until vertexCount) {
+                val base = i * strideFloats
+                val p = i * 3
+                positions[p] = vertexFloats.get(base)
+                positions[p + 1] = vertexFloats.get(base + 1)
+                positions[p + 2] = vertexFloats.get(base + 2)
+            }
+
+            if (kEffective == 0) {
+                repeat(vertexCount) {
+                    repeat(k) { output.put(-1) }
+                }
+                output.flip()
+                return output
+            }
+
+            val bestDistances = FloatArray(kEffective) { Float.POSITIVE_INFINITY }
+            val bestIndices = IntArray(kEffective) { -1 }
+
+            for (i in 0 until vertexCount) {
+                bestDistances.fill(Float.POSITIVE_INFINITY)
+                bestIndices.fill(-1)
+
+                val pi = i * 3
+                val ix = positions[pi]
+                val iy = positions[pi + 1]
+                val iz = positions[pi + 2]
+
+                for (j in 0 until vertexCount) {
+                    if (j == i) continue
+
+                    val pj = j * 3
+                    val dx = ix - positions[pj]
+                    val dy = iy - positions[pj + 1]
+                    val dz = iz - positions[pj + 2]
+                    val distSq = dx * dx + dy * dy + dz * dz
+
+                    if (distSq >= bestDistances[kEffective - 1]) continue
+
+                    var pos = kEffective - 1
+                    while (pos > 0 && distSq < bestDistances[pos - 1]) {
+                        bestDistances[pos] = bestDistances[pos - 1]
+                        bestIndices[pos] = bestIndices[pos - 1]
+                        pos--
+                    }
+
+                    bestDistances[pos] = distSq
+                    bestIndices[pos] = j
+                }
+
+                for (kk in 0 until kEffective) {
+                    output.put(bestIndices[kk])
+                }
+                for (kk in kEffective until k) {
+                    output.put(-1)
+                }
+            }
+
+            output.flip()
+            return output
+        }
+
+        private data class PointItem(
+            private val idValue: Int,
+            private val vectorValue: FloatArray
+        ) : Item<Int, FloatArray> {
+            override fun id(): Int = idValue
+            override fun vector(): FloatArray = vectorValue
+            override fun dimensions(): Int = vectorValue.size
+        }
+
+        /**
+         * Build a packed IntBuffer of K-nearest-neighbor indices for each vertex using HNSW.
+         *
+         * Layout: [n0_k0, n0_k1, ... n0_k{K-1}, n1_k0, ...] (stride = K).
+         * If K > (vertexCount - 1), the remaining entries are filled with -1.
+         *
+         * Note: The returned buffer is allocated with memAllocInt and should be freed
+         * when no longer needed. Typical usage is to upload to GPU then free.
+         */
+        fun buildKnnIndexBufferApprox(
+            k: Int,
+            m: Int = 16,
+            efConstruction: Int = 200,
+            efSearch: Int = 200
+        ): java.nio.IntBuffer {
+            require(k > 0) { "k must be > 0" }
+            require(m > 0) { "m must be > 0" }
+            require(efConstruction > 0) { "efConstruction must be > 0" }
+            require(efSearch > 0) { "efSearch must be > 0" }
+
+            val vertexCount = buffers.vertexCount
+            val output = memAllocInt(vertexCount * k)
+
+            if (vertexCount == 0) {
+                output.flip()
+                return output
+            }
+
+            val kEffective = when {
+                vertexCount <= 1 -> 0
+                k < vertexCount -> k
+                else -> vertexCount - 1
+            }
+
+            val vectors = Array(vertexCount) { FloatArray(3) }
+            val vertexFloats = buffers.vertexData.asFloatBuffer()
+            val strideFloats = 10
+            for (i in 0 until vertexCount) {
+                val base = i * strideFloats
+                val vec = vectors[i]
+                vec[0] = vertexFloats.get(base)
+                vec[1] = vertexFloats.get(base + 1)
+                vec[2] = vertexFloats.get(base + 2)
+            }
+
+            if (kEffective == 0) {
+                repeat(vertexCount) {
+                    repeat(k) { output.put(-1) }
+                }
+                output.flip()
+                return output
+            }
+
+            val index: HnswIndex<Int, FloatArray, PointItem, Float> = HnswIndex
+                .newBuilder(3, DistanceFunctions.FLOAT_EUCLIDEAN_DISTANCE, vertexCount)
+                .withM(m)
+                .withEfConstruction(efConstruction)
+                .withEf(efSearch.coerceAtLeast(kEffective))
+                .build()
+
+            for (i in 0 until vertexCount) {
+                index.add(PointItem(i, vectors[i]))
+            }
+
+            val queryK = (kEffective + 1).coerceAtMost(vertexCount)
+            for (i in 0 until vertexCount) {
+                val results = index.findNearest(vectors[i], queryK)
+                var added = 0
+                for (result in results) {
+                    val id = result.item().id()
+                    if (id == i) continue
+                    output.put(id)
+                    added++
+                    if (added == kEffective) break
+                }
+                while (added < k) {
+                    output.put(-1)
+                    added++
+                }
+            }
+
+            output.flip()
+            return output
         }
     }
 
@@ -287,7 +484,7 @@ object PlySupport {
 
         while (true) {
             val headerLine = reader.readLine()?.trim() ?: error("Unexpected end of file in header")
-            
+
             if (headerLine.isEmpty() || headerLine.startsWith("comment")) {
                 continue
             }
@@ -347,23 +544,23 @@ object PlySupport {
     ): PlyMeshBuffers {
         // Parse vertices
         val vertices = mutableListOf<Vertex>()
-        
+
         val hasX = vertexElement.properties.any { it.name == "x" }
         val hasY = vertexElement.properties.any { it.name == "y" }
         val hasZ = vertexElement.properties.any { it.name == "z" }
         val hasNX = vertexElement.properties.any { it.name == "nx" }
         val hasNY = vertexElement.properties.any { it.name == "ny" }
         val hasNZ = vertexElement.properties.any { it.name == "nz" }
-        val hasRed = vertexElement.properties.any { it.name == "red" }
-        val hasGreen = vertexElement.properties.any { it.name == "green" }
-        val hasBlue = vertexElement.properties.any { it.name == "blue" }
-        val hasAlpha = vertexElement.properties.any { it.name == "alpha" }
+        val colorRedName = findFirstPropertyName(vertexElement, listOf("red", "diffuse_red"))
+        val colorGreenName = findFirstPropertyName(vertexElement, listOf("green", "diffuse_green"))
+        val colorBlueName = findFirstPropertyName(vertexElement, listOf("blue", "diffuse_blue"))
+        val colorAlphaName = findFirstPropertyName(vertexElement, listOf("alpha", "diffuse_alpha"))
 
         if (!hasX || !hasY || !hasZ) {
             error("PLY vertex element must have x, y, z properties")
         }
 
-        val hasColors = hasRed && hasGreen && hasBlue
+        val hasColors = colorRedName != null && colorGreenName != null && colorBlueName != null
         val hasNormals = hasNX && hasNY && hasNZ
 
         // Build property index map
@@ -385,21 +582,21 @@ object PlySupport {
             val g: Float
             val b: Float
             val a: Float
-            
+
             if (hasColors) {
                 // Colors might be 0-255 or 0.0-1.0
-                val redVal = values[propIndices["red"]!!].toFloat()
+                val redVal = values[propIndices[colorRedName!!]!!].toFloat()
                 r = if (redVal > 1.0f) redVal / 255.0f else redVal
-                g = if (values[propIndices["green"]!!].toFloat() > 1.0f) 
-                    values[propIndices["green"]!!].toFloat() / 255.0f 
-                else 
-                    values[propIndices["green"]!!].toFloat()
-                b = if (values[propIndices["blue"]!!].toFloat() > 1.0f) 
-                    values[propIndices["blue"]!!].toFloat() / 255.0f 
-                else 
-                    values[propIndices["blue"]!!].toFloat()
-                a = if (hasAlpha) {
-                    val alphaVal = values[propIndices["alpha"]!!].toFloat()
+                g = if (values[propIndices[colorGreenName!!]!!].toFloat() > 1.0f)
+                    values[propIndices[colorGreenName!!]!!].toFloat() / 255.0f
+                else
+                    values[propIndices[colorGreenName!!]!!].toFloat()
+                b = if (values[propIndices[colorBlueName!!]!!].toFloat() > 1.0f)
+                    values[propIndices[colorBlueName!!]!!].toFloat() / 255.0f
+                else
+                    values[propIndices[colorBlueName!!]!!].toFloat()
+                a = if (colorAlphaName != null) {
+                    val alphaVal = values[propIndices[colorAlphaName]!!].toFloat()
                     if (alphaVal > 1.0f) alphaVal / 255.0f else alphaVal
                 } else 1f
             } else {
@@ -418,14 +615,14 @@ object PlySupport {
             repeat(faceElement.count) {
                 val line = reader.readLine()?.trim() ?: error("Unexpected end of file in face data")
                 val values = line.split(Regex("\\s+")).map { it.toInt() }
-                
+
                 val numIndices = values[0]
-                
+
                 // Validate face has enough values
                 if (values.size < numIndices + 1) {
                     error("Face has $numIndices indices but only ${values.size - 1} values provided")
                 }
-                
+
                 // Validate all indices are within bounds
                 for (i in 1..numIndices) {
                     val idx = values[i]
@@ -433,7 +630,7 @@ object PlySupport {
                         error("Face index $idx out of bounds (vertex count: ${vertices.size})")
                     }
                 }
-                
+
                 if (numIndices == 3) {
                     // Triangle
                     indices.add(values[1])
@@ -466,23 +663,23 @@ object PlySupport {
         val hasNX = vertexElement.properties.any { it.name == "nx" }
         val hasNY = vertexElement.properties.any { it.name == "ny" }
         val hasNZ = vertexElement.properties.any { it.name == "nz" }
-        val hasRed = vertexElement.properties.any { it.name == "red" }
-        val hasGreen = vertexElement.properties.any { it.name == "green" }
-        val hasBlue = vertexElement.properties.any { it.name == "blue" }
-        val hasAlpha = vertexElement.properties.any { it.name == "alpha" }
+        val colorRedName = findFirstPropertyName(vertexElement, listOf("red", "diffuse_red"))
+        val colorGreenName = findFirstPropertyName(vertexElement, listOf("green", "diffuse_green"))
+        val colorBlueName = findFirstPropertyName(vertexElement, listOf("blue", "diffuse_blue"))
+        val colorAlphaName = findFirstPropertyName(vertexElement, listOf("alpha", "diffuse_alpha"))
 
         if (!hasX || !hasY || !hasZ) {
             error("PLY vertex element must have x, y, z properties")
         }
 
-        val hasColors = hasRed && hasGreen && hasBlue
+        val hasColors = colorRedName != null && colorGreenName != null && colorBlueName != null
         val hasNormals = hasNX && hasNY && hasNZ
 
         // Calculate header size by finding "end_header" in the file
         val fileBytes = file.readBytes()
         var headerSize = 0
         val endHeaderBytes = "end_header".toByteArray()
-        
+
         // Search for "end_header" in the file
         outer@ for (i in 0 until fileBytes.size - endHeaderBytes.size) {
             var match = true
@@ -503,7 +700,7 @@ object PlySupport {
                 break@outer
             }
         }
-        
+
         if (headerSize == 0) {
             error("Could not find end_header in binary PLY file")
         }
@@ -544,10 +741,10 @@ object PlySupport {
                         "nx" -> nx = value
                         "ny" -> ny = value
                         "nz" -> nz = value
-                        "red" -> r = if (prop.type == "uchar") value / 255f else value
-                        "green" -> g = if (prop.type == "uchar") value / 255f else value
-                        "blue" -> b = if (prop.type == "uchar") value / 255f else value
-                        "alpha" -> a = if (prop.type == "uchar") value / 255f else value
+                        colorRedName -> r = if (prop.type == "uchar") value / 255f else value
+                        colorGreenName -> g = if (prop.type == "uchar") value / 255f else value
+                        colorBlueName -> b = if (prop.type == "uchar") value / 255f else value
+                        colorAlphaName -> a = if (prop.type == "uchar") value / 255f else value
                     }
                 }
             }
@@ -602,6 +799,11 @@ object PlySupport {
         }
     }
 
+    private fun findFirstPropertyName(element: PlyElement, candidates: List<String>): String? {
+        val names = element.properties.map { it.name }.toSet()
+        return candidates.firstOrNull { it in names }
+    }
+
     private data class Vertex(
         val position: Vector3f,
         val normal: Vector3f,
@@ -620,7 +822,7 @@ object PlySupport {
         // Layout: [pos.xyz][normal.xyz][color.rgba] = 10 floats per vertex
         val componentsPerVertex = 10
         val strideBytes = componentsPerVertex * 4
-        
+
         // Note: These buffers are allocated with memAlloc and should be freed by the caller
         // when they're done with the PlyMeshBuffers. The buffers are typically transferred
         // to GPU and can be freed after transfer.
@@ -680,7 +882,7 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
     uint indexData[];
 };
 
-layout (binding = 0) uniform VertexData {
+layout(push_constant) uniform PushConstants {
     mat4 modelView;        // view * model
     mat4 proj;             // projection
 
@@ -690,9 +892,7 @@ layout (binding = 0) uniform VertexData {
     uint indexOffset;      // in indices
     uint vertexStride;     // in floats (10 for PLY)
     uint useVertexColor;   // bool as uint
-} data;
 
-layout(push_constant) uniform PushConstants {
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
 } pc;
@@ -703,8 +903,8 @@ layout(location = 2) out vec4 vColor;
 
 void main()
 {
-    uint idx = pc.indexBuffer.indexData[data.indexOffset+uint(gl_VertexIndex)];
-    uint base = data.vertexOffset + idx * data.vertexStride;
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset+uint(gl_VertexIndex)];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
 
     vec3 pos = vec3(
         pc.vertexBuffer.vertexData[base + 0],
@@ -725,18 +925,18 @@ void main()
         pc.vertexBuffer.vertexData[base + 9]
     );
 
-    if (data.useVertexColor == 0u) {
+    if (pc.useVertexColor == 0u) {
         color = vec4(1.0);
     }
 
-    vec4 viewPos = data.proj * data.modelView * vec4(pos, 1.0);
+    vec4 viewPos = pc.proj * pc.modelView * vec4(pos, 1.0);
 
-    mat3 mv3 = mat3(data.modelView);
+    mat3 mv3 = mat3(pc.modelView);
     vec3 normalVS = normalize(mv3 * normal);
 
     vViewPos = viewPos.xyz;
     vNormalVS = normalVS;
-    vColor = color * data.materialBaseColor;
+    vColor = color * pc.materialBaseColor;
 
     gl_Position = viewPos;
 }
@@ -775,7 +975,7 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
     uint indexData[];
 };
 
-layout (binding = 0) uniform VertexData {
+layout(push_constant) uniform PushConstants {
     mat4 modelView;        // view * model
     mat4 proj;             // projection
 
@@ -787,9 +987,7 @@ layout (binding = 0) uniform VertexData {
     uint useVertexColor;   // bool as uint
     float pointSize;       // point size in pixels
     vec2 viewportSize;     // viewport dimensions (width, height)
-} data;
 
-layout(push_constant) uniform PushConstants {
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
 } pc;
@@ -806,8 +1004,8 @@ void main()
     uint cornerIndex = uint(gl_VertexIndex) % 6u;
     
     // Get the actual point data
-    uint idx = pc.indexBuffer.indexData[data.indexOffset + pointIndex];
-    uint base = data.vertexOffset + idx * data.vertexStride;
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset + pointIndex];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
 
     vec3 pos = vec3(
         pc.vertexBuffer.vertexData[base + 0],
@@ -822,15 +1020,15 @@ void main()
         pc.vertexBuffer.vertexData[base + 9]
     );
 
-    if (data.useVertexColor == 0u) {
+    if (pc.useVertexColor == 0u) {
         color = vec4(1.0);
     }
 
     // Transform point to clip space
-    vec4 clipPos = data.proj * data.modelView * vec4(pos, 1.0);
+    vec4 clipPos = pc.proj * pc.modelView * vec4(pos, 1.0);
     
     // Calculate quad size in clip space (convert from pixels)
-    vec2 quadSize = data.pointSize / data.viewportSize;
+    vec2 quadSize = pc.pointSize / pc.viewportSize;
     
     // Generate quad corners
     // Two triangles: (0,1,2) and (2,3,0) mapped to corners
@@ -851,7 +1049,7 @@ void main()
     gl_Position = clipPos + vec4(offset, 0.0, 0.0);
     
     // Pass through color and quad coordinates for fragment shader
-    vColor = color * data.materialBaseColor;
+    vColor = color * pc.materialBaseColor;
     vQuadCoord = corner; // -1 to 1 range for circle calculation
 }
 """.trimIndent()

@@ -107,6 +107,18 @@ open class LoadedTexture protected constructor(
             }
         }
 
+        fun fromRawRGBA(
+            name: String,
+            width: Int,
+            height: Int,
+            rgba: ByteBuffer,
+            renderer: Renderer = fromContext(),
+            imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
+        ): LoadedTexture {
+            val decoded = DecodedImage(rgba, width, height)
+            return LoadedTexture(name, renderer, imageFormat, decoded)
+        }
+
         operator fun invoke(
             fileName: String,
             renderer: Renderer = fromContext(),

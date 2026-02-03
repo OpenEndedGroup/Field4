@@ -1210,7 +1210,7 @@
             align-items: center;
             justify-content: center;
             z-index: 10000;
-            transition: opacity 4s;
+            transition: opacity var(--splash-fade, 700ms) ease-out;
             pointer-events: none;
         }
 
@@ -1227,7 +1227,7 @@
             white-space: pre;
             /*text-align: center;*/
             opacity: 0;
-            transition: opacity 200ms ease-in;
+            transition: opacity var(--splash-pre-fade, 200ms) ease-in;
         }
 
         #splash-screen pre.f4lit {

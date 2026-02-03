@@ -275,6 +275,7 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
     val c = value.split("\n").toTypedArray()
     val merged = w.diff.mergeDigIn(b, a, c)
     val result = (merged.result as Array<*>).joinToString("\n") { it?.toString() ?: "" }
+    console.log(" testing to see if this change is actually a change ", result, currentValue)
     if (result == currentValue) return
 
     val selection = editor.getSelection()

@@ -152,6 +152,32 @@ class OpenXRHmdTarget(
         return out.set(eyeProjMatrices[eyeIndex])
     }
 
+    /**
+     * Approximate head pose from the currently tracked eye views.
+     *
+     * Returns false if views are not initialized yet.
+     * The position is the average of all eye positions, and the orientation
+     * is taken from the first eye (OpenXR typically reports identical orientation per-eye).
+     */
+    fun headPose(outPosition: Vec3 = Vec3(), outOrientation: Quat = Quat()): Boolean {
+        if (eyeStates.isEmpty()) return false
+
+        var px = 0f
+        var py = 0f
+        var pz = 0f
+        for (s in eyeStates) {
+            px += s.px
+            py += s.py
+            pz += s.pz
+        }
+        val inv = 1f / eyeStates.size.toFloat()
+        outPosition.set(px * inv, py * inv, pz * inv)
+
+        val s0 = eyeStates[0]
+        outOrientation.set(s0.qx, s0.qy, s0.qz, s0.qw)
+        return true
+    }
+
     // -------------------------------------------------------------------------
     // Controller state (basic: grip pose + select/squeeze)
     // -------------------------------------------------------------------------

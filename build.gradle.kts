@@ -315,6 +315,7 @@ kotlin {
                 implementation("com.illposed.osc:javaosc-core:0.9")
 
                 implementation("org.ejml:ejml-simple:0.43.1")
+                implementation("com.github.jelmerk:hnswlib-core:1.1.0")
                 implementation("org.clojure:clojure:1.11.3")
                 implementation("org.clojure:tools.reader:1.5.1")
                 implementation("compliment:compliment:0.5.5")

@@ -1229,27 +1229,53 @@ private fun deactivateSpatialNavMode() {
 private fun installSpatialNavigationShortcut() {
     var lastMetaDown = 0.0
     var lastCtrlDown = 0.0
+    var lastMetaDownSerial = 0
+    var lastCtrlDownSerial = 0
+    var lastMetaWasPure = false
+    var lastCtrlWasPure = false
+    var keydownSerial = 0
 
     fun trackTrigger(key: String, event: KeyboardEvent) {
         val now = window.performance.now()
         val alreadyPressed = if (key == "Meta") metaPressed else ctrlPressed
         val lastDown = if (key == "Meta") lastMetaDown else lastCtrlDown
-        if (!alreadyPressed && now - lastDown < spatialNavDoubleTapThresholdMs) {
+        val lastSerial = if (key == "Meta") lastMetaDownSerial else lastCtrlDownSerial
+        val lastPure = if (key == "Meta") lastMetaWasPure else lastCtrlWasPure
+        val isPure = when (key) {
+            "Meta" -> !(event.shiftKey || event.altKey || event.ctrlKey)
+            "Control" -> !(event.shiftKey || event.altKey || event.metaKey)
+            else -> true
+        }
+        val noInterveningKey = lastSerial != 0 && lastSerial == keydownSerial - 1
+        val shouldTrigger = !alreadyPressed &&
+            lastPure &&
+            isPure &&
+            noInterveningKey &&
+            now - lastDown < spatialNavDoubleTapThresholdMs
+
+        if (shouldTrigger) {
             event.preventDefault()
             activateSpatialNav(key)
         }
 
         if (key == "Meta") {
             metaPressed = true
-            lastMetaDown = now
+            lastMetaDown = if (shouldTrigger) 0.0 else now
+            lastMetaDownSerial = if (shouldTrigger) 0 else keydownSerial
+            lastMetaWasPure = if (shouldTrigger) false else isPure
         } else {
             ctrlPressed = true
-            lastCtrlDown = now
+            lastCtrlDown = if (shouldTrigger) 0.0 else now
+            lastCtrlDownSerial = if (shouldTrigger) 0 else keydownSerial
+            lastCtrlWasPure = if (shouldTrigger) false else isPure
         }
     }
 
     window.addEventListener("keydown", { raw ->
         val event = raw as KeyboardEvent
+        if (!event.repeat) {
+            keydownSerial += 1
+        }
         when (event.key) {
             "Meta" -> if (!event.repeat) trackTrigger("Meta", event)
             "Control" -> if (!event.repeat) trackTrigger("Control", event)
