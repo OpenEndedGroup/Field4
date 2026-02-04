@@ -1,0 +1,183 @@
+# API Documentation Generation
+
+This document explains how to generate and maintain API documentation for Field4.
+
+## Overview
+
+Field4 uses [Dokka](https://kotlinlang.org/docs/dokka-introduction.html) to generate API documentation from KDoc comments in the source code. The documentation is generated in two formats:
+
+1. **HTML** - Rich, browsable documentation with search and cross-references
+2. **GitHub Flavored Markdown (GFM)** - Markdown documentation integrated into the MkDocs site
+
+## Documented Packages
+
+The API documentation focuses on the public API packages:
+
+- `afield.four.*` - Core graphics and rendering system
+- `afield.stdlib.*` - Standard library extensions and utilities
+
+Other internal packages are suppressed from the documentation.
+
+## Generating Documentation
+
+### Markdown for MkDocs
+
+To generate markdown documentation that integrates with the MkDocs site:
+
+```bash
+./gradlew generateApiDocs
+```
+
+Or directly run the Dokka GFM task:
+
+```bash
+./gradlew dokkaGfm
+```
+
+This generates markdown files in `public/docs/api/`.
+
+### HTML Documentation
+
+To generate standalone HTML documentation:
+
+```bash
+./gradlew dokkaHtml
+```
+
+The HTML output will be available in `build/dokka/html/`. You can open `build/dokka/html/index.html` in a browser to browse the documentation.
+
+## Building the MkDocs Site
+
+After generating the markdown documentation, you can build the complete MkDocs site:
+
+```bash
+cd public
+mkdocs build
+```
+
+The site will be generated in `public/field4/` and can be deployed to a web server.
+
+To preview the site locally:
+
+```bash
+cd public  
+mkdocs serve
+```
+
+Then open http://localhost:8000 in your browser.
+
+## Configuration
+
+### Dokka Configuration
+
+The Dokka configuration is in `build.gradle.kts`:
+
+```kotlin
+dokka {
+    // HTML format
+    dokkaPublications.html {
+        outputDirectory.set(layout.buildDirectory.dir("dokka/html"))
+        // ... package filters ...
+    }
+    
+    // GFM (Markdown) format for MkDocs
+    dokkaPublications.create("gfm") {
+        outputDirectory.set(file("public/docs/api"))
+        // ... package filters ...
+    }
+}
+```
+
+### MkDocs Configuration
+
+The MkDocs navigation is configured in `public/mkdocs.yml` and includes the API documentation under the "API Documentation" section.
+
+## Adding Documentation
+
+To add documentation to your code:
+
+1. Add KDoc comments to public classes, functions, and properties:
+
+```kotlin
+/**
+ * Represents a drawing primitive for lines and shapes.
+ * 
+ * FLine provides a fluent API for creating and manipulating
+ * vector graphics paths.
+ * 
+ * @property nodes The list of nodes that make up this FLine
+ * @constructor Creates an empty FLine
+ */
+class FLine {
+    /**
+     * Adds a line segment to this FLine.
+     * 
+     * @param x The x coordinate of the endpoint
+     * @param y The y coordinate of the endpoint
+     * @return This FLine for method chaining
+     */
+    fun lineTo(x: Double, y: Double): FLine {
+        // implementation
+    }
+}
+```
+
+2. Regenerate the documentation:
+
+```bash
+./gradlew generateApiDocs
+```
+
+3. Review the generated markdown in `public/docs/api/`
+
+## CI/CD Integration
+
+You can integrate documentation generation into your CI/CD pipeline:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Generate API Documentation
+  run: ./gradlew generateApiDocs
+
+- name: Build MkDocs Site
+  run: |
+    cd public
+    mkdocs build
+    
+- name: Deploy Documentation
+  # ... deploy public/field4/ to web server ...
+```
+
+## Troubleshooting
+
+### Documentation not updating
+
+1. Clean the build:
+   ```bash
+   ./gradlew clean
+   ```
+
+2. Regenerate:
+   ```bash
+   ./gradlew generateApiDocs
+   ```
+
+### Package not appearing in documentation
+
+Check that the package matches the filter patterns in `build.gradle.kts`:
+
+```kotlin
+perPackageOption {
+    matchingRegex.set("""afield\.four(\..*)?""")
+    suppress.set(false)
+}
+```
+
+Add your package pattern if it's not covered.
+
+## References
+
+- [Dokka Documentation](https://kotlinlang.org/docs/dokka-introduction.html)
+- [KDoc Syntax](https://kotlinlang.org/docs/kotlin-doc.html)
+- [MkDocs](https://www.mkdocs.org/)
+- [MkDocs Material Theme](https://squidfunk.github.io/mkdocs-material/)
