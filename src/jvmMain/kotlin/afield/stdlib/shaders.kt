@@ -421,6 +421,7 @@ fun insertForShader(
 
     var here = "$resolvesToCall${args[0]}"
     if (args.size == 2) here += args[1]
+    if (args.size == 3) here += args[2]
 
     return Insert(
         preamble = """

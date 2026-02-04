@@ -1,27 +1,9 @@
 package afield.graphics
 
-import afield.Box
-import afield.Handled
-import afield.RunsAt
-import afield.installHandlers
-import afield.inMain
-import afield.rawHandlers
-import afield.thisSession
-import afield.stdlib.Vec3
-import afield.stdlib.Vec4
-import afield.stdlib.color
-import afield.stdlib.filled
-import afield.stdlib.filled
-import afield.stdlib.pointSize
-import afield.stdlib.pointed
-import afield.stdlib.stroked
-import afield.stdlib.pointed
-import afield.stdlib.stroked
-import afield.stdlib.vec
-import io.ktor.websocket.WebSocketSession
-import io.ktor.websocket.send
+import afield.*
+import afield.stdlib.*
+import io.ktor.websocket.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -82,15 +64,29 @@ private val threeJson = Json {
     encodeDefaults = true
 }
 
+/**
+ * Server-side state for a live Three.js geometry viewer.
+ *
+ * Instances are returned by [Box.threeLines]. Call [update] to push new geometry
+ * to all connected viewers.
+ */
 class ThreeGeometryViewState(val uid: String) {
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
     @Volatile private var lastPayload: String? = null
 
+    /**
+     * Attach a websocket session to this viewer and replay the latest payload.
+     *
+     * This is used by the server's Three.js websocket handler.
+     */
     fun attach(session: WebSocketSession) {
         sessions.add(session)
         lastPayload?.let { sendTo(session, it) }
     }
 
+    /**
+     * Push a new payload to all attached viewers.
+     */
     fun update(payload: ThreeGeometryPayload) {
         val encoded = threeJson.encodeToString(payload)
         lastPayload = encoded
@@ -121,7 +117,18 @@ fun installThreeJsHandler() {
     }
 }
 
-fun Box.threejs(
+/**
+ * Display a Three.js viewer for the given lines and stream geometry updates to it.
+ *
+ * This creates an iframe in the output [channel] and sends a geometry payload to `/threejs`.
+ *
+ * @param channel Output channel name (disclosure panel).
+ * @param name Viewer name used to build a stable id within this [Box].
+ * @param height Iframe height in pixels.
+ * @param samplesPerCubic Sampling density for cubic curves.
+ * @param autoFrame If true, the viewer auto-frames the bounds on update.
+ */
+fun Box.threeLines(
     lines: Collection<FLine>,
     channel: String = "debug",
     name: String = "threejs",
@@ -142,14 +149,17 @@ fun Box.threejs(
     return view
 }
 
-fun Box.threejs(
+/**
+ * Vararg convenience overload of [threeLines].
+ */
+fun Box.threeLines(
     vararg lines: FLine,
     channel: String = "debug",
     name: String = "threejs",
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true
-): ThreeGeometryViewState = threejs(
+): ThreeGeometryViewState = threeLines(
     lines = lines.toList(),
     channel = channel,
     name = name,
@@ -158,14 +168,17 @@ fun Box.threejs(
     autoFrame = autoFrame
 )
 
-fun Box.threejs(
+/**
+ * Map convenience overload of [threeLines], combining all values into one viewer.
+ */
+fun Box.threeLines(
     linesByChannel: Map<String, List<FLine>>,
     channel: String = "debug",
     name: String = "threejs",
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true
-): ThreeGeometryViewState = threejs(
+): ThreeGeometryViewState = threeLines(
     lines = linesByChannel.values.flatten(),
     channel = channel,
     name = name,

@@ -6,8 +6,16 @@ import afield.stdlib.f
 import afield.stdlib.pointSize
 import afield.stdlib.vec
 
+/**
+ * Ordered map of named [FLine]s with a lightweight revision hash.
+ *
+ * Handy for GPU uploads where stable keys and change detection matter.
+ */
 class FLineMap : LinkedHashMap<String, FLine>() {
 
+    /**
+     * Combined revision hash of all contained lines.
+     */
     val rev: Long
         get() {
             var hash: Long = 1L
@@ -30,11 +38,24 @@ class FLineMap : LinkedHashMap<String, FLine>() {
 
 
 
+/**
+ * Convenience overload of [pointsOut] for an [FLineMap].
+ *
+ * Note: [colorData] holds point sizes (one float per point), not colors.
+ */
 fun pointsOut(
     m: FLineMap, vertexData: DynamicallyWriteable,
     colorData: DynamicallyWriteable
 ) = pointsOut(m.values, vertexData, colorData)
 
+/**
+ * Write point positions and sizes for a collection of [FLine]s.
+ *
+ * Positions are written to [vertexData], and sizes (one float per point)
+ * are written to [pointSizeData].
+ *
+ * @return number of points written.
+ */
 fun pointsOut(
     m: Collection<FLine>, vertexData: DynamicallyWriteable, pointSizeData: DynamicallyWriteable
 ): Int {
@@ -56,6 +77,9 @@ fun pointsOut(
     return num
 }
 
+/**
+ * Convenience overload of [trianglesOut] for an [FLineMap].
+ */
 fun trianglesOut(
     m: FLineMap, vertexData: DynamicallyWriteable,
     colorData: DynamicallyWriteable,
@@ -63,6 +87,13 @@ fun trianglesOut(
 ) = trianglesOut(m.values, vertexData, colorData, samplesPerCubic)
 
 
+/**
+ * Tessellate filled [FLine]s into triangles and write positions and colors.
+ *
+ * @param samplesPerCubic Sampling density for cubic curves.
+ * Note: currently ignored; tessellation uses a fixed value of 10.
+ * @return number of vertices written.
+ */
 fun trianglesOut(
     m: Collection<FLine>, vertexData: DynamicallyWriteable, colorData: DynamicallyWriteable, samplesPerCubic: Int = 100
 ): Int {
@@ -100,6 +131,9 @@ fun trianglesOut(
     return num
 }
 
+/**
+ * Convenience overload of [linesOut] for a single [FLine].
+ */
 fun linesOut(
     m: FLine,
     vertexData: DynamicallyWriteable? = null,
@@ -107,12 +141,23 @@ fun linesOut(
     samplesPerCubic: Int = 100
 ) = linesOut(listOf(m), vertexData, colorData, samplesPerCubic)
 
+/**
+ * Convenience overload of [linesOut] for an [FLineMap].
+ */
 fun linesOut(
     m: FLineMap, vertexData: DynamicallyWriteable? = null,
     colorData: DynamicallyWriteable? = null,
     samplesPerCubic: Int = 100
 ) = linesOut(m.values, vertexData, colorData, samplesPerCubic)
 
+/**
+ * Linearize stroke paths into a vertex stream and optional per-vertex colors.
+ *
+ * If provided, [vertexData] receives a stream of points with a segment id encoded
+ * in the 4th component. A sentinel `(0,0,0,-1)` is written between lines.
+ *
+ * @return number of vertices written.
+ */
 fun linesOut(
     m: Collection<FLine>,
     vertexData: DynamicallyWriteable? = null,

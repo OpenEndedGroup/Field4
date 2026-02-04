@@ -12,8 +12,11 @@ import org.joml.Vector3f
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.openal.AL11.AL_SAMPLE_OFFSET
+import org.lwjgl.openal.AL11.alSource3i
 import org.lwjgl.openal.ALC
 import org.lwjgl.openal.ALC10.*
+import org.lwjgl.openal.EXTEfx
+import org.lwjgl.openal.EXTEfx.*
 import org.lwjgl.openal.SOFTHRTF
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
@@ -33,6 +36,40 @@ import kotlin.math.sqrt
 class SimpleSpatialAudioEngine(
     private val distanceModel: Int = AL_INVERSE_DISTANCE_CLAMPED
 ) {
+    companion object {
+        @Volatile
+        private var sharedInstance: SimpleSpatialAudioEngine? = null
+
+        /**
+         * Shared, lazily-created engine. Intended for live-coding workflows.
+         *
+         * - The first call constructs the engine (using distanceModel).
+         * - Subsequent calls return the same instance and ignore distanceModel.
+         * - By default, initializes the engine (no-op if already initialized).
+         */
+        @Synchronized
+        fun shared(
+            initialize: Boolean = true,
+            enableHrtf: Boolean = true,
+            deviceName: String? = null,
+            distanceModel: Int = AL_INVERSE_DISTANCE_CLAMPED
+        ): SimpleSpatialAudioEngine {
+            val engine = sharedInstance ?: SimpleSpatialAudioEngine(distanceModel).also {
+                sharedInstance = it
+            }
+            if (initialize) {
+                engine.initialize(enableHrtf = enableHrtf, deviceName = deviceName)
+            }
+            return engine
+        }
+
+        @Synchronized
+        fun destroyShared() {
+            sharedInstance?.destroy()
+            sharedInstance = null
+        }
+    }
+
     private var device: Long = 0
     private var context: Long = 0
     private var initialized: Boolean = false
@@ -40,6 +77,28 @@ class SimpleSpatialAudioEngine(
     private val sources = mutableSetOf<Int>()
     private val buffers = mutableSetOf<Int>()
     private val bufferById = mutableMapOf<Int, SoundBuffer>()
+    private val bufferByName = mutableMapOf<String, SoundBuffer>()
+    private val bufferNameById = mutableMapOf<Int, String>()
+    private val sourceByName = mutableMapOf<String, SoundSource>()
+    private val sourceNameById = mutableMapOf<Int, String>()
+
+    private var efxChecked: Boolean = false
+    private var efxAvailable: Boolean = false
+    private var efxInitialized: Boolean = false
+    private var efxEffect: Int = 0
+    private var efxSlot: Int = 0
+    private var efxFilter: Int = 0
+
+    var efxMaxAuxSends: Int = 0
+        private set
+
+    var reverbSlotGain: Float = 1.0f
+        set(value) {
+            field = value.coerceIn(0.0f, 1.0f)
+            if (efxInitialized) {
+                alAuxiliaryEffectSlotf(efxSlot, AL_EFFECTSLOT_GAIN, field)
+            }
+        }
 
     private var listenerOrientation: java.nio.FloatBuffer? = null
 
@@ -58,6 +117,24 @@ class SimpleSpatialAudioEngine(
         private set
 
     fun isInitialized(): Boolean = initialized
+
+    fun isEfxAvailable(): Boolean {
+        if (!initialized) return false
+        if (!efxChecked) {
+            efxAvailable = alcIsExtensionPresent(device, "ALC_EXT_EFX")
+            if (efxAvailable) {
+                MemoryStack.stackPush().use { stack ->
+                    val buf = stack.mallocInt(1)
+                    alcGetIntegerv(device, EXTEfx.ALC_MAX_AUXILIARY_SENDS, buf)
+                    efxMaxAuxSends = buf[0]
+                }
+            } else {
+                efxMaxAuxSends = 0
+            }
+            efxChecked = true
+        }
+        return efxAvailable
+    }
 
     /**
      * Initialize OpenAL context and set up default listener state.
@@ -134,14 +211,136 @@ class SimpleSpatialAudioEngine(
     }
 
     /**
+     * Initialize EFX (effects, auxiliary effect slot) if available.
+     */
+    fun initializeEfx(): Boolean {
+        return ensureEfx()
+    }
+
+    /**
+     * Configure standard EFX reverb.
+     */
+    fun setReverb(settings: ReverbSettings = ReverbSettings()): Boolean {
+        if (!ensureEfx()) return false
+        alEffecti(efxEffect, AL_EFFECT_TYPE, AL_EFFECT_REVERB)
+        alEffectf(efxEffect, AL_REVERB_DENSITY, settings.density)
+        alEffectf(efxEffect, AL_REVERB_DIFFUSION, settings.diffusion)
+        alEffectf(efxEffect, AL_REVERB_GAIN, settings.gain)
+        alEffectf(efxEffect, AL_REVERB_GAINHF, settings.gainHF)
+        alEffectf(efxEffect, AL_REVERB_DECAY_TIME, settings.decayTime)
+        alEffectf(efxEffect, AL_REVERB_DECAY_HFRATIO, settings.decayHFRatio)
+        alEffectf(efxEffect, AL_REVERB_REFLECTIONS_GAIN, settings.reflectionsGain)
+        alEffectf(efxEffect, AL_REVERB_REFLECTIONS_DELAY, settings.reflectionsDelay)
+        alEffectf(efxEffect, AL_REVERB_LATE_REVERB_GAIN, settings.lateReverbGain)
+        alEffectf(efxEffect, AL_REVERB_LATE_REVERB_DELAY, settings.lateReverbDelay)
+        alEffectf(efxEffect, AL_REVERB_AIR_ABSORPTION_GAINHF, settings.airAbsorptionGainHF)
+        alEffectf(efxEffect, AL_REVERB_ROOM_ROLLOFF_FACTOR, settings.roomRolloffFactor)
+        alEffecti(efxEffect, AL_REVERB_DECAY_HFLIMIT, if (settings.decayHFLimit) AL_TRUE else AL_FALSE)
+
+        alAuxiliaryEffectSloti(efxSlot, AL_EFFECTSLOT_EFFECT, efxEffect)
+        return alGetError() == AL_NO_ERROR
+    }
+
+    /**
+     * Configure standard EFX reverb using a settings builder.
+     */
+    fun setReverb(block: ReverbSettings.() -> Unit): Boolean {
+        return setReverb(ReverbSettings().apply(block))
+    }
+
+    /**
+     * Configure high-quality EAX reverb (OpenAL Soft).
+     */
+    fun setEaxReverb(settings: EaxReverbSettings = EaxReverbSettings()): Boolean {
+        if (!ensureEfx()) return false
+        alEffecti(efxEffect, AL_EFFECT_TYPE, AL_EFFECT_EAXREVERB)
+        alEffectf(efxEffect, AL_EAXREVERB_DENSITY, settings.density)
+        alEffectf(efxEffect, AL_EAXREVERB_DIFFUSION, settings.diffusion)
+        alEffectf(efxEffect, AL_EAXREVERB_GAIN, settings.gain)
+        alEffectf(efxEffect, AL_EAXREVERB_GAINHF, settings.gainHF)
+        alEffectf(efxEffect, AL_EAXREVERB_GAINLF, settings.gainLF)
+        alEffectf(efxEffect, AL_EAXREVERB_DECAY_TIME, settings.decayTime)
+        alEffectf(efxEffect, AL_EAXREVERB_DECAY_HFRATIO, settings.decayHFRatio)
+        alEffectf(efxEffect, AL_EAXREVERB_DECAY_LFRATIO, settings.decayLFRatio)
+        alEffectf(efxEffect, AL_EAXREVERB_REFLECTIONS_GAIN, settings.reflectionsGain)
+        alEffectf(efxEffect, AL_EAXREVERB_REFLECTIONS_DELAY, settings.reflectionsDelay)
+        alEffectfv(
+            efxEffect,
+            AL_EAXREVERB_REFLECTIONS_PAN,
+            floatArrayOf(settings.reflectionsPanX, settings.reflectionsPanY, settings.reflectionsPanZ)
+        )
+        alEffectf(efxEffect, AL_EAXREVERB_LATE_REVERB_GAIN, settings.lateReverbGain)
+        alEffectf(efxEffect, AL_EAXREVERB_LATE_REVERB_DELAY, settings.lateReverbDelay)
+        alEffectfv(
+            efxEffect,
+            AL_EAXREVERB_LATE_REVERB_PAN,
+            floatArrayOf(settings.lateReverbPanX, settings.lateReverbPanY, settings.lateReverbPanZ)
+        )
+        alEffectf(efxEffect, AL_EAXREVERB_ECHO_TIME, settings.echoTime)
+        alEffectf(efxEffect, AL_EAXREVERB_ECHO_DEPTH, settings.echoDepth)
+        alEffectf(efxEffect, AL_EAXREVERB_MODULATION_TIME, settings.modulationTime)
+        alEffectf(efxEffect, AL_EAXREVERB_MODULATION_DEPTH, settings.modulationDepth)
+        alEffectf(efxEffect, AL_EAXREVERB_AIR_ABSORPTION_GAINHF, settings.airAbsorptionGainHF)
+        alEffectf(efxEffect, AL_EAXREVERB_HFREFERENCE, settings.hfReference)
+        alEffectf(efxEffect, AL_EAXREVERB_LFREFERENCE, settings.lfReference)
+        alEffectf(efxEffect, AL_EAXREVERB_ROOM_ROLLOFF_FACTOR, settings.roomRolloffFactor)
+        alEffecti(efxEffect, AL_EAXREVERB_DECAY_HFLIMIT, if (settings.decayHFLimit) AL_TRUE else AL_FALSE)
+
+        alAuxiliaryEffectSloti(efxSlot, AL_EFFECTSLOT_EFFECT, efxEffect)
+        return alGetError() == AL_NO_ERROR
+    }
+
+    /**
+     * Configure high-quality EAX reverb using a settings builder.
+     */
+    fun setEaxReverb(block: EaxReverbSettings.() -> Unit): Boolean {
+        return setEaxReverb(EaxReverbSettings().apply(block))
+    }
+
+    /**
+     * Attach the current reverb effect slot to a source.
+     */
+    fun attachReverb(source: SoundSource, send: Int = 0, filter: Int = AL_FILTER_NULL): Boolean {
+        if (!ensureEfx()) return false
+        if (efxMaxAuxSends > 0 && (send < 0 || send >= efxMaxAuxSends)) {
+            error("EFX send index out of range: $send (max ${efxMaxAuxSends - 1})")
+        }
+        alSource3i(source.id, AL_AUXILIARY_SEND_FILTER, efxSlot, send, filter)
+        return alGetError() == AL_NO_ERROR
+    }
+
+    /**
+     * Detach any reverb effect from a source.
+     */
+    fun detachReverb(source: SoundSource, send: Int = 0) {
+        if (!initialized) return
+        alSource3i(source.id, AL_AUXILIARY_SEND_FILTER, AL_EFFECTSLOT_NULL, send, AL_FILTER_NULL)
+    }
+
+    /**
+     * Disable the current reverb effect slot.
+     */
+    fun disableReverb() {
+        if (efxInitialized) {
+            alAuxiliaryEffectSloti(efxSlot, AL_EFFECTSLOT_EFFECT, AL_EFFECT_NULL)
+        }
+    }
+
+    /**
      * Clean up OpenAL resources.
      */
     fun destroy() {
         if (initialized) {
             sources.forEach { alDeleteSources(it) }
             buffers.forEach { alDeleteBuffers(it) }
+            destroyEfx()
             sources.clear()
             buffers.clear()
+            bufferById.clear()
+            bufferByName.clear()
+            bufferNameById.clear()
+            sourceByName.clear()
+            sourceNameById.clear()
         }
 
         if (context != 0L) {
@@ -158,15 +357,23 @@ class SimpleSpatialAudioEngine(
             MemoryUtil.memFree(it)
             listenerOrientation = null
         }
+        efxChecked = false
+        efxAvailable = false
+        efxMaxAuxSends = 0
         initialized = false
     }
 
     /**
      * Load a WAV file and create an OpenAL buffer.
      * Only PCM WAV is supported (8/16-bit, mono or stereo). Stereo is downmixed to mono by default.
+     *
+     * If name is provided (or defaults to path) and the buffer already exists, the existing buffer is returned.
      */
-    fun loadWav(path: String, forceMono: Boolean = true): SoundBuffer {
+    fun loadWav(path: String, forceMono: Boolean = true, name: String? = null): SoundBuffer {
         requireInitialized()
+        val key = name ?: path
+        bufferByName[key]?.let { return it }
+
         val data = WavLoader.load(path, forceMono)
 
         val buffer = alGenBuffers()
@@ -188,24 +395,44 @@ class SimpleSpatialAudioEngine(
             sampleRate = data.sampleRate,
             channels = data.channels,
             sampleCount = data.sampleCount,
-            samples16 = data.samples16
+            samples16 = data.samples16,
+            engine = this
         )
         buffers.add(buffer)
         bufferById[buffer] = soundBuffer
+        bufferByName[key] = soundBuffer
+        bufferNameById[buffer] = key
         return soundBuffer
     }
 
     /**
      * Create an OpenAL source (optionally with a buffer attached).
+     *
+     * If name is provided (or derived from the buffer name), an existing source with that name is returned
+     * and updated with the supplied parameters.
      */
     fun createSource(
         buffer: SoundBuffer? = null,
         looping: Boolean = false,
         referenceDistance: Float = 1.0f,
         maxDistance: Float = 1000.0f,
-        rolloffFactor: Float = 1.0f
+        rolloffFactor: Float = 1.0f,
+        name: String? = null
     ): SoundSource {
         requireInitialized()
+
+        val key = name ?: buffer?.let { bufferNameById[it.id] }
+        if (key != null) {
+            val existing = sourceByName[key]
+            if (existing != null) {
+                if (buffer != null) {
+                    existing.attachBuffer(buffer)
+                }
+                existing.looping = looping
+                existing.setDistanceModel(referenceDistance, maxDistance, rolloffFactor)
+                return existing
+            }
+        }
 
         val source = alGenSources()
         if (source == 0) {
@@ -227,12 +454,18 @@ class SimpleSpatialAudioEngine(
         }
 
         sources.add(source)
-        return SoundSource(this, source)
+        val soundSource = SoundSource(this, source)
+        if (key != null) {
+            sourceByName[key] = soundSource
+            sourceNameById[source] = key
+        }
+        return soundSource
     }
 
     fun destroySource(source: SoundSource) {
         if (sources.remove(source.id)) {
             alDeleteSources(source.id)
+            sourceNameById.remove(source.id)?.let { sourceByName.remove(it) }
         }
     }
 
@@ -240,6 +473,7 @@ class SimpleSpatialAudioEngine(
         if (buffers.remove(buffer.id)) {
             alDeleteBuffers(buffer.id)
             bufferById.remove(buffer.id)
+            bufferNameById.remove(buffer.id)?.let { bufferByName.remove(it) }
         }
     }
 
@@ -382,6 +616,50 @@ class SimpleSpatialAudioEngine(
         return sqrt((sumSquares / count).toFloat())
     }
 
+    private fun ensureEfx(): Boolean {
+        requireInitialized()
+        if (efxInitialized) return true
+        if (!isEfxAvailable()) return false
+
+        efxEffect = alGenEffects()
+        if (efxEffect == 0 || alGetError() != AL_NO_ERROR) {
+            destroyEfx()
+            return false
+        }
+
+        efxSlot = alGenAuxiliaryEffectSlots()
+        if (efxSlot == 0 || alGetError() != AL_NO_ERROR) {
+            destroyEfx()
+            return false
+        }
+
+        alAuxiliaryEffectSloti(efxSlot, AL_EFFECTSLOT_EFFECT, efxEffect)
+        alAuxiliaryEffectSlotf(efxSlot, AL_EFFECTSLOT_GAIN, reverbSlotGain)
+        if (alGetError() != AL_NO_ERROR) {
+            destroyEfx()
+            return false
+        }
+
+        efxInitialized = true
+        return true
+    }
+
+    private fun destroyEfx() {
+        if (efxFilter != 0) {
+            alDeleteFilters(efxFilter)
+            efxFilter = 0
+        }
+        if (efxSlot != 0) {
+            alDeleteAuxiliaryEffectSlots(efxSlot)
+            efxSlot = 0
+        }
+        if (efxEffect != 0) {
+            alDeleteEffects(efxEffect)
+            efxEffect = 0
+        }
+        efxInitialized = false
+    }
+
     private fun requireInitialized() {
         check(initialized) { "SimpleSpatialAudioEngine is not initialized" }
     }
@@ -392,8 +670,27 @@ data class SoundBuffer(
     val sampleRate: Int,
     val channels: Int,
     val sampleCount: Int,
-    val samples16: ShortArray?
+    val samples16: ShortArray?,
+    val engine: SimpleSpatialAudioEngine? = null
 )
+
+fun SoundBuffer.createSource(
+    looping: Boolean = false,
+    referenceDistance: Float = 1.0f,
+    maxDistance: Float = 1000.0f,
+    rolloffFactor: Float = 1.0f,
+    name: String? = null
+): SoundSource {
+    val owner = engine ?: error("SoundBuffer has no engine; create sources via SimpleSpatialAudioEngine")
+    return owner.createSource(
+        buffer = this,
+        looping = looping,
+        referenceDistance = referenceDistance,
+        maxDistance = maxDistance,
+        rolloffFactor = rolloffFactor,
+        name = name
+    )
+}
 
 class SoundSource internal constructor(
     private val engine: SimpleSpatialAudioEngine,
@@ -465,10 +762,64 @@ class SoundSource internal constructor(
         return engine.estimateSourceEnergy(this, windowSeconds)
     }
 
+    fun attachReverb(send: Int = 0, filter: Int = AL_FILTER_NULL): Boolean {
+        return engine.attachReverb(this, send, filter)
+    }
+
+    fun detachReverb(send: Int = 0) {
+        engine.detachReverb(this, send)
+    }
+
     fun destroy() {
         engine.destroySource(this)
     }
 }
+
+data class ReverbSettings(
+    val density: Float = AL_REVERB_DEFAULT_DENSITY,
+    val diffusion: Float = AL_REVERB_DEFAULT_DIFFUSION,
+    val gain: Float = AL_REVERB_DEFAULT_GAIN,
+    val gainHF: Float = AL_REVERB_DEFAULT_GAINHF,
+    val decayTime: Float = AL_REVERB_DEFAULT_DECAY_TIME,
+    val decayHFRatio: Float = AL_REVERB_DEFAULT_DECAY_HFRATIO,
+    val reflectionsGain: Float = AL_REVERB_DEFAULT_REFLECTIONS_GAIN,
+    val reflectionsDelay: Float = AL_REVERB_DEFAULT_REFLECTIONS_DELAY,
+    val lateReverbGain: Float = AL_REVERB_DEFAULT_LATE_REVERB_GAIN,
+    val lateReverbDelay: Float = AL_REVERB_DEFAULT_LATE_REVERB_DELAY,
+    val airAbsorptionGainHF: Float = AL_REVERB_DEFAULT_AIR_ABSORPTION_GAINHF,
+    val roomRolloffFactor: Float = AL_REVERB_DEFAULT_ROOM_ROLLOFF_FACTOR,
+    val decayHFLimit: Boolean = AL_REVERB_DEFAULT_DECAY_HFLIMIT != 0
+)
+
+data class EaxReverbSettings(
+    val density: Float = AL_EAXREVERB_DEFAULT_DENSITY,
+    val diffusion: Float = AL_EAXREVERB_DEFAULT_DIFFUSION,
+    val gain: Float = AL_EAXREVERB_DEFAULT_GAIN,
+    val gainHF: Float = AL_EAXREVERB_DEFAULT_GAINHF,
+    val gainLF: Float = AL_EAXREVERB_DEFAULT_GAINLF,
+    val decayTime: Float = AL_EAXREVERB_DEFAULT_DECAY_TIME,
+    val decayHFRatio: Float = AL_EAXREVERB_DEFAULT_DECAY_HFRATIO,
+    val decayLFRatio: Float = AL_EAXREVERB_DEFAULT_DECAY_LFRATIO,
+    val reflectionsGain: Float = AL_EAXREVERB_DEFAULT_REFLECTIONS_GAIN,
+    val reflectionsDelay: Float = AL_EAXREVERB_DEFAULT_REFLECTIONS_DELAY,
+    val reflectionsPanX: Float = 0.0f,
+    val reflectionsPanY: Float = 0.0f,
+    val reflectionsPanZ: Float = 0.0f,
+    val lateReverbGain: Float = AL_EAXREVERB_DEFAULT_LATE_REVERB_GAIN,
+    val lateReverbDelay: Float = AL_EAXREVERB_DEFAULT_LATE_REVERB_DELAY,
+    val lateReverbPanX: Float = 0.0f,
+    val lateReverbPanY: Float = 0.0f,
+    val lateReverbPanZ: Float = 0.0f,
+    val echoTime: Float = AL_EAXREVERB_DEFAULT_ECHO_TIME,
+    val echoDepth: Float = AL_EAXREVERB_DEFAULT_ECHO_DEPTH,
+    val modulationTime: Float = AL_EAXREVERB_DEFAULT_MODULATION_TIME,
+    val modulationDepth: Float = AL_EAXREVERB_DEFAULT_MODULATION_DEPTH,
+    val airAbsorptionGainHF: Float = AL_EAXREVERB_DEFAULT_AIR_ABSORPTION_GAINHF,
+    val hfReference: Float = AL_EAXREVERB_DEFAULT_HFREFERENCE,
+    val lfReference: Float = AL_EAXREVERB_DEFAULT_LFREFERENCE,
+    val roomRolloffFactor: Float = AL_EAXREVERB_DEFAULT_ROOM_ROLLOFF_FACTOR,
+    val decayHFLimit: Boolean = AL_EAXREVERB_DEFAULT_DECAY_HFLIMIT != 0
+)
 
 private data class WavData(
     val pcm: ByteBuffer,

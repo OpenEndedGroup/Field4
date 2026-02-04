@@ -15,17 +15,64 @@ import kotlin.math.min
 
 var _flineSequenceNumber = 0L
 
+/**
+ * Translate all lines in the list by [offset].
+ */
 operator fun List<FLine>.plus(offset: Vec3) = this.map { it + offset }
+
+/**
+ * Scale all lines in the list component-wise by [scale].
+ */
 operator fun List<FLine>.times(scale: Vec3) = this.map { it * scale }
+
+/**
+ * Rotate all lines in the list by [rotation].
+ */
 operator fun List<FLine>.times(rotation: Quat) = this.map { it * rotation }
+
+/**
+ * Uniformly scale all lines in the list by [scale].
+ */
 operator fun List<FLine>.times(scale: Number) = this.map { it * scale }
+
+/**
+ * Translate all lines in each map entry by [offset].
+ */
 operator fun Map<String, List<FLine>>.plus(offset: Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
+
+/**
+ * Translate all lines in an [FLineMap] by [offset].
+ */
 operator fun FLineMap.plus(offset: Vec3) = this.entries.associate { it.key to it.value.plus(offset) }
+
+/**
+ * Scale all lines in each map entry component-wise by [offset].
+ */
 operator fun Map<String, List<FLine>>.times(offset: Vec3) = this.entries.associate { it.key to it.value.times(offset) }
+
+/**
+ * Scale all lines in an [FLineMap] component-wise by [offset].
+ */
 operator fun FLineMap.times(offset: Vec3) = this.entries.associate { it.key to it.value.times(offset) }
+
+/**
+ * Uniformly scale all lines in each map entry by [scale].
+ */
 operator fun Map<String, List<FLine>>.times(scale: Number) = this.entries.associate { it.key to it.value.times(scale) }
+
+/**
+ * Uniformly scale all lines in an [FLineMap] by [scale].
+ */
 operator fun FLineMap.times(scale: Number) = this.entries.associate { it.key to it.value.times(scale) }
+
+/**
+ * Rotate all lines in each map entry by [rotation].
+ */
 operator fun Map<String, List<FLine>>.times(rotation: Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+
+/**
+ * Rotate all lines in an [FLineMap] by [rotation].
+ */
 operator fun FLineMap.times(rotation: Quat) = this.entries.associate { it.key to it.value.times(rotation) }
 
 internal const val FLINE_PLANE2D_KEY = "_fline_plane2d"
@@ -54,6 +101,13 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
     return plane.point(x, y, z)
 }
 
+/**
+ * Mutable path composed of move/line/cubic/close instructions.
+ *
+ * Use [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Most builders
+ * return the created [Node] so you can attach per-instruction properties (for example,
+ * `color` or `pointSize`).
+ */
 class FLine : HasProperties {
 
     var nodes = arrayListOf<Node>()
@@ -62,10 +116,20 @@ class FLine : HasProperties {
     var rev = ++_flineSequenceNumber
     val uid = ++_flineSequenceNumber
 
+    /**
+     * Base class for drawing instructions in an [FLine].
+     *
+     * Each node stores its control points in [storage] and has its own property map.
+     */
     sealed class Node(val n: Int) : HasProperties {
         val storage = mutableListOf<Vec3>()
         val properties = mutableMapOf<String, Any?>()
 
+        /**
+         * Replace the node's control points.
+         *
+         * @throws IllegalArgumentException if the number of points does not match this node type.
+         */
         fun set(vararg data: Vec3): Node {
             storage.clear()
             storage.addAll(data)
@@ -75,6 +139,9 @@ class FLine : HasProperties {
 
         abstract fun create(): Node
 
+        /**
+         * Copy this node, optionally transforming each stored point.
+         */
         fun copy(transform: (Vec3) -> Vec3 = { it }): Node {
             val next = create()
             storage.forEach { next.storage.add(transform(it)) }
@@ -95,8 +162,14 @@ class FLine : HasProperties {
 
     }
 
+    /**
+     * The most recently added node.
+     */
     val here: Node get() = nodes.last()
 
+    /**
+     * Move instruction (starts a new subpath).
+     */
     class MoveTo : Node(1) {
         override fun create(): Node = MoveTo()
         override fun toString(): String {
@@ -104,6 +177,9 @@ class FLine : HasProperties {
         }
     }
 
+    /**
+     * Line instruction (straight segment).
+     */
     class LineTo : Node(1) {
         override fun create(): Node = LineTo()
         override fun toString(): String {
@@ -111,6 +187,9 @@ class FLine : HasProperties {
         }
     }
 
+    /**
+     * Cubic Bezier instruction (endpoint plus two control points).
+     */
     class CubicTo : Node(3) {
         override fun create(): Node = CubicTo()
         var c1: Vec3
@@ -129,6 +208,9 @@ class FLine : HasProperties {
         }
     }
 
+    /**
+     * Close instruction (connects back to the most recent move).
+     */
     class Close : Node(0) {
         override fun create(): Node = Close()
         override fun toString(): String {
@@ -136,14 +218,20 @@ class FLine : HasProperties {
         }
     }
 
+    /**
+     * When set, the next [lineTo] or [cubicTo] becomes a [moveTo].
+     */
     var breakNext = false
 
+    /**
+     * Convenience to set [breakNext] for the next instruction.
+     */
     fun breakNext() {
         breakNext = true
     }
 
     /**
-     * some documentation
+     * Move the current point without drawing, starting a new subpath.
      */
     fun moveTo(x: Number, y: Number, z: Number = 0): Node {
         nodes.add(MoveTo().set(planePoint(x, y, z)))
@@ -152,7 +240,7 @@ class FLine : HasProperties {
     }
 
     /**
-     * some documentation
+     * Move the current point without drawing, starting a new subpath.
      */
     fun moveTo(v: Vec3): Node {
         nodes.add(MoveTo().set(Vec3(v)))
@@ -160,15 +248,25 @@ class FLine : HasProperties {
         return nodes.last()
     }
 
+    /**
+     * 2D overload of [moveTo].
+     */
     fun moveTo(v: Vec2): Node {
         return moveTo(v.x, v.y, 0.0)
     }
 
-
+    /**
+     * 3D vector overload of [moveTo].
+     */
     fun moveTo(v: Vector3d): Node {
         return moveTo(Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat()))
     }
 
+    /**
+     * Add a line segment to the given position.
+     *
+     * If [breakNext] is set, this becomes a [moveTo] instead.
+     */
     fun lineTo(x: Number, y: Number, z: Number = 0): Node {
         if (breakNext) {
             breakNext = false
@@ -179,6 +277,11 @@ class FLine : HasProperties {
         return nodes.last()
     }
 
+    /**
+     * Add a line segment to the given position.
+     *
+     * If [breakNext] is set, this becomes a [moveTo] instead.
+     */
     fun lineTo(v: Vec3): Node {
         if (breakNext) {
             breakNext = false
@@ -189,14 +292,27 @@ class FLine : HasProperties {
         return nodes.last()
     }
 
+    /**
+     * 3D vector overload of [lineTo].
+     */
     fun lineTo(v: Vector3d): Node {
         return lineTo(Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat()))
     }
 
+    /**
+     * 2D overload of [lineTo].
+     */
     fun lineTo(v: Vec2): Node {
         return lineTo(v.x, v.y, 0)
     }
 
+    /**
+     * Add a cubic Bezier segment.
+     *
+     * @param x0,y0,z0 First control point.
+     * @param x1,y1,z1 Second control point.
+     * @param x,y,z End point.
+     */
     fun cubicTo(
         x0: Number,
         y0: Number,
@@ -227,6 +343,11 @@ class FLine : HasProperties {
     }
 
 
+    /**
+     * Return a new line thickened to the given stroke width.
+     *
+     * This uses Java2D shape conversion, so it is a 2D operation.
+     */
     fun byThickening(_thickness: Float) = FLinesAndJavaShapes.javaShapeToFLine(
         FLinesAndJavaShapes.flineToJavaShape(
             copy {
@@ -234,6 +355,13 @@ class FLine : HasProperties {
             })
     )
 
+    /**
+     * Return a filtered copy of this line.
+     *
+     * The predicate is called with the previous point (or null at the start) and the node.
+     * Returning false removes the node; if a node is removed in the middle of a segment, it
+     * is replaced with a [MoveTo] to preserve subpaths.
+     */
     fun byFiltering(predicate: (Vec3?, Node) -> Boolean): FLine {
         fun removeInstruction(at: Vec3?, node: Node, inside: FLine) {
             val i = inside.nodes.indexOf(node)
@@ -258,6 +386,9 @@ class FLine : HasProperties {
 //        return MoveTo()
 //    }
 
+    /**
+     * 2D overload of [cubicTo] (z defaults to 0).
+     */
     fun cubicTo(
         x0: Number,
         y0: Number,
@@ -269,6 +400,11 @@ class FLine : HasProperties {
         return cubicTo(x0, y0, 0.0, x1, y1, 0.0, x, y, 0.0)
     }
 
+    /**
+     * Add a cubic Bezier segment using vector control points.
+     *
+     * If [breakNext] is set, this becomes a [moveTo] instead.
+     */
     fun cubicTo(v0: Vec3, v1: Vec3, v: Vec3): Node {
         if (breakNext) {
             breakNext = false
@@ -285,12 +421,18 @@ class FLine : HasProperties {
         return nodes.last()
     }
 
+    /**
+     * Close the current subpath.
+     */
     fun close(): Node {
         rev++
         nodes.add(Close())
         return nodes.last()
     }
 
+    /**
+     * Copy this line while transforming every stored point.
+     */
     fun transform(by: (Vec3) -> Vec3): FLine {
         val r = FLine()
         nodes.forEach {
@@ -300,44 +442,86 @@ class FLine : HasProperties {
         return r
     }
 
+    /**
+     * Translate this line by [n].
+     */
     operator fun plus(n: Vec3): FLine {
         return transform { it + n }
     }
 
+    /**
+     * Translate this line by `-n`.
+     */
     operator fun minus(n: Vec3): FLine {
         return transform { it - n }
     }
 
+    /**
+     * Scale this line component-wise by [n].
+     */
     operator fun times(n: Vec3): FLine {
         return transform { it * n }
     }
 
+    /**
+     * Rotate this line by [n].
+     */
     operator fun times(n: Quat): FLine {
         return transform { it * n }
     }
 
+    /**
+     * Uniformly scale this line by [n].
+     */
     operator fun times(n: Number): FLine {
         return transform { it * n }
     }
 
 
+    /**
+     * 2D translation overload of [plus].
+     */
     operator fun plus(n: Vec2) = this + n.v3
 
+    /**
+     * 2D translation overload of [minus].
+     */
     operator fun minus(n: Vec2) = this - n.v3
 
+    /**
+     * 2D scale overload of [times].
+     */
     operator fun times(n: Vec2) = this * n.v3
 
 
+    /**
+     * Append a copy of [other] to this line.
+     */
     fun copyTo(other: Node) {
         rev++
         nodes.add(other.copy())
     }
 
+    /**
+     * Deep copy of this line and its properties.
+     */
     fun copy() = this.transform { Vec3(it) }
+
+    /**
+     * Copy this line and apply a mutating block to the clone.
+     */
     fun copy(block: FLine.() -> Unit) = this.copy().apply(block)
 
+    /**
+     * Create a cursor for querying length, tangents, normals, and positions.
+     *
+     * @param tol Flatness tolerance used by the cursor.
+     */
     fun cursor(tol: Float = 0.01f): FLinesAndJavaShapes.Cursor = FLinesAndJavaShapes.Cursor(this, tol = tol.toFloat())
 
+    /**
+     * Create a cursor positioned at the closest point to [closestTo].
+     */
     fun cursor(closestTo: Vec3): Cursor {
         val c = this.cursor()
         val t = FLinesAndJavaShapes.closestT(this, closestTo)
@@ -345,6 +529,11 @@ class FLine : HasProperties {
         return c
     }
 
+    /**
+     * Sample evenly along arc length.
+     *
+     * @param steps Number of sample points (includes both ends).
+     */
     fun sampleByNumber(steps: Int): List<Vec3> {
         val c = cursor()
         val r = ArrayList<Vec3>()
@@ -355,6 +544,9 @@ class FLine : HasProperties {
         return r
     }
 
+    /**
+     * Remove the last [n] nodes from this line.
+     */
     fun drop(n: Int = 1): FLine {
         if (nodes.size == 0) return this
         nodes.subList(Math.max(0, nodes.size - n), nodes.size).clear()
@@ -362,8 +554,10 @@ class FLine : HasProperties {
     }
 
     /**
-     * returns a list of `Vec3` (i.e. positions) by repeatedly moving along the line by 'distance' and recording those positions. Note that while the start of the line will be in this list the
-     * end point will probably not (unless the length of the line just happens to be exactly divisible by `distance`)
+     * Sample points by stepping along the curve in fixed increments.
+     *
+     * The start point is included; the end point is only included when the length is
+     * an exact multiple of [distance].
      */
     fun sampleByDistance(distance: Float): List<Vec3> {
         val c = cursor()
@@ -390,6 +584,9 @@ class FLine : HasProperties {
         return "FLine[{${nodes.size}n]"
     }
 
+    /**
+     * Split this line into subpaths at [MoveTo] boundaries.
+     */
     fun pieces(): List<FLine> {
         val ff = mutableListOf<FLine>()
 
@@ -405,6 +602,9 @@ class FLine : HasProperties {
         return ff
     }
 
+    /**
+     * Fast axis-aligned 2D bounds based on node control points.
+     */
     fun fast2DBounds(): Rect {
         var r: Rect? = null
         nodes.forEach {
@@ -422,6 +622,12 @@ class FLine : HasProperties {
         return r!!
     }
 
+    /**
+     * Build commands from a compact format string and parameter list.
+     *
+     * Format uses `m`, `l`, `c`, `z` for move/line/cubic/close. Parentheses group, and a
+     * trailing `+` repeats the preceding command/group greedily.
+     */
     fun data(format: String, parameters: List<Any>): FLine {
         val points = parametersToPoints(parameters) // -> MutableList<Vec3>
         val ast = Parser(format).parse()
@@ -518,6 +724,11 @@ class FLine : HasProperties {
         }
     }
 
+    /**
+     * Sample a cubic Bezier segment and feed points to [dest].
+     *
+     * The instruction value is interpolated between [fromInstr] and [toInstr].
+     */
     fun uniform_linearize_cubic(
         dest: (Vec3, Float) -> Unit,
         a: Vec3,
@@ -546,6 +757,11 @@ class FLine : HasProperties {
         }
     }
 
+    /**
+     * Tessellate filled subpaths into triangle indices.
+     *
+     * @param meshAcceptor Called with a packed vertex array (x,y,z) and index list.
+     */
     fun tessellate(samplesPerCubic: Int = 100, meshAcceptor: (FloatArray, List<Int>) -> Unit) {
         var current = mutableListOf<Vec3>()
         val rings = mutableListOf<List<Vec3>>()

@@ -5,6 +5,7 @@ import org.joml.Vector4f
 import java.awt.Stroke
 
 var FLine.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
+var FLine.Node.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
 var FLine.thickness by Delegation<Double?>()
 var FLine.thicken by Delegation<Stroke?>()
 var FLine.filled by Delegation<Boolean> { false }

@@ -5,6 +5,9 @@ import afield.SavingContext.Companion.format
 import afield.stdlib.invoke
 import kotlinx.serialization.encodeToString
 import afield.logger.lprintln
+import java.lang.reflect.Field
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.io.File
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -338,3 +341,146 @@ fun <T> lazyVar(
 data class Named<T>(val name: String, val value: T)
 
 infix fun <T> T.named(name: String) = Named(name, this)
+
+/**
+ * Dump an object's class hierarchy (superclasses + interfaces) and print:
+ * - declared fields + their values
+ * - declared methods + their signatures
+ *
+ * Notes:
+ * - "Declared" means exactly what's declared on that type (not inherited).
+ * - Values are read reflectively; may fail for some fields due to security/module access.
+ * - Reading a field value can throw, and calling toString() can have side-effects; both are guarded.
+ */
+fun Any?.reflectionDump(
+    includeStatic: Boolean = false,
+    includeSynthetic: Boolean = false,
+    showInterfaces: Boolean = true
+) {
+    if (this == null) {
+        println("<<null>>")
+        return
+    }
+
+    val rootClass = this.javaClass
+    println("=== Reflection dump for instance: ${safeToString(this)}")
+    println("=== Runtime class: ${rootClass.name}")
+    println()
+
+    val visitedTypes = LinkedHashSet<Class<*>>()
+    for (type in rootClass.walkTypes(showInterfaces)) {
+        if (!visitedTypes.add(type)) continue
+
+        println("----- TYPE: ${type.name}")
+        type.superclass?.let { println("  superclass: ${it.name}") }
+        if (showInterfaces) {
+            val ifaces = type.interfaces.map { it.name }
+            println("  interfaces: ${ifaces.ifEmpty { listOf("<none>") }.joinToString()}")
+        }
+
+        println("  [FIELDS]")
+        val fields = type.declaredFields
+            .asSequence()
+            .filter { includeSynthetic || !it.isSynthetic }
+            .sortedBy { it.name }
+            .toList()
+
+        if (fields.isEmpty()) {
+            println("    <none>")
+        } else {
+            for (f in fields) {
+                val isStatic = Modifier.isStatic(f.modifiers)
+                if (!includeStatic && isStatic) continue
+                dumpField(this, f)
+            }
+        }
+
+        println("  [METHODS]")
+        val methods = type.declaredMethods
+            .asSequence()
+            .filter { includeSynthetic || !it.isSynthetic }
+            .sortedWith(compareBy<Method>({ it.name }, { it.parameterCount }))
+            .toList()
+
+        if (methods.isEmpty()) {
+            println("    <none>")
+        } else {
+            for (m in methods) {
+                val isStatic = Modifier.isStatic(m.modifiers)
+                if (!includeStatic && isStatic) continue
+                println("    ${m.toGenericString()}")
+            }
+        }
+
+        println()
+    }
+}
+
+/**
+ * Walk class hierarchy:
+ * - current class, its superclasses
+ * - (optionally) interfaces at each level, including their parent interfaces
+ *
+ * De-duplicated by caller.
+ */
+private fun Class<*>.walkTypes(includeInterfaces: Boolean): Sequence<Class<*>> = sequence {
+    var c: Class<*>? = this@walkTypes
+    while (c != null) {
+        yield(c)
+
+        if (includeInterfaces) {
+            // BFS over interface graph for this class level
+            val queue = ArrayDeque<Class<*>>(c.interfaces.toList())
+            val seen = HashSet<Class<*>>()
+            while (queue.isNotEmpty()) {
+                val i = queue.removeFirst()
+                if (seen.add(i)) {
+                    yield(i)
+                    i.interfaces.forEach(queue::addLast)
+                }
+            }
+        }
+
+        c = c.superclass
+    }
+}
+
+private fun dumpField(instance: Any, f: Field) {
+    val mods = Modifier.toString(f.modifiers).ifBlank { "package-private" }
+    val typeName = f.genericType.typeName
+    val name = f.name
+
+    val valueStr = runCatching {
+        f.tryMakeAccessible()
+        val v = f.get(instance)
+        safeToString(v)
+    }.getOrElse { e ->
+        "<unreadable: ${e::class.java.simpleName}: ${e.message}>"
+    }
+
+    println("    $mods $typeName $name = $valueStr")
+}
+
+private fun Field.tryMakeAccessible() {
+    // Works on many JVMs; on newer Java with modules, this can still fail (caught by caller).
+    runCatching { isAccessible = true }
+    runCatching { trySetAccessible() }
+}
+
+private fun safeToString(v: Any?): String = when (v) {
+    null -> "null"
+    is String -> "\"$v\""
+    is Char -> "'$v'"
+    is Boolean, is Number -> v.toString()
+    is Array<*> -> v.contentDeepToString()
+    is ByteArray -> v.contentToString()
+    is ShortArray -> v.contentToString()
+    is IntArray -> v.contentToString()
+    is LongArray -> v.contentToString()
+    is FloatArray -> v.contentToString()
+    is DoubleArray -> v.contentToString()
+    is CharArray -> v.contentToString()
+    is BooleanArray -> v.contentToString()
+    else -> runCatching { v.toString() }
+        .getOrElse { "<toString failed: ${it::class.java.simpleName}: ${it.message}>" }
+}

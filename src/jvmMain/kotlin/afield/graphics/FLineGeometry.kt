@@ -1206,6 +1206,9 @@ fun FLine.set2DPlane(
     return this
 }
 
+/**
+ * Clear any plane set by [set2DPlane], returning to the default XY plane.
+ */
 fun FLine.clear2DPlane(): FLine {
     properties.remove(FLINE_PLANE2D_KEY)
     return this
@@ -1319,6 +1322,9 @@ fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine.No
     return nodes.last()
 }
 
+/**
+ * 2D overload of [arcTo] using the active 2D plane.
+ */
 fun FLine.arcTo(p1: Vec2, p2: Vec2, radius: Number, segments: Int = 32): FLine.Node {
     return arcTo(
         planePoint(p1.x, p1.y, 0f),
@@ -1328,6 +1334,9 @@ fun FLine.arcTo(p1: Vec2, p2: Vec2, radius: Number, segments: Int = 32): FLine.N
     )
 }
 
+/**
+ * Numeric overload of [arcTo] using the active 2D plane.
+ */
 fun FLine.arcTo(
     x1: Number,
     y1: Number,
@@ -1355,6 +1364,9 @@ fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine.N
     return nodes.last()
 }
 
+/**
+ * 2D overload of [circleThroughTo] using the active 2D plane.
+ */
 fun FLine.circleThroughTo(through: Vec2, end: Vec2, segments: Int = 32): FLine.Node {
     return circleThroughTo(
         planePoint(through.x, through.y, 0f),
@@ -1363,6 +1375,9 @@ fun FLine.circleThroughTo(through: Vec2, end: Vec2, segments: Int = 32): FLine.N
     )
 }
 
+/**
+ * Numeric overload of [circleThroughTo] using the active 2D plane.
+ */
 fun FLine.circleThroughTo(
     throughX: Number,
     throughY: Number,
@@ -1398,6 +1413,9 @@ fun FLine.polarCubicTo(
     return cubicTo(c1, c2, endPoint)
 }
 
+/**
+ * 2D overload of [polarCubicTo] using the active 2D plane.
+ */
 fun FLine.polarCubicTo(
     c1Angle: Float,
     c1Length: Float,
@@ -1414,6 +1432,9 @@ fun FLine.polarCubicTo(
     )
 }
 
+/**
+ * Numeric overload of [polarCubicTo] using the active 2D plane.
+ */
 fun FLine.polarCubicTo(
     c1Angle: Float,
     c1Length: Float,
@@ -1470,6 +1491,9 @@ fun polylineFrom(points: List<Vec3>, closed: Boolean = false): FLine {
     return f
 }
 
+/**
+ * 2D overload of [polylineFrom], with an optional constant Z value.
+ */
 fun polylineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false): FLine {
     val f = FLine()
     if (points.isNotEmpty()) {
@@ -1482,6 +1506,9 @@ fun polylineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false): FL
     return f
 }
 
+/**
+ * Append a polyline to this line, honoring [FLine.breakNext].
+ */
 fun FLine.byAppendingPolyline(points: Iterable<Vec3>, closed: Boolean = false): FLine {
     val it = points.iterator()
     if (!it.hasNext()) return this
@@ -1499,6 +1526,9 @@ fun FLine.byAppendingPolyline(points: Iterable<Vec3>, closed: Boolean = false): 
     return this
 }
 
+/**
+ * 2D overload of [byAppendingPolyline], with an optional constant Z value.
+ */
 fun FLine.byAppendingPolyline(points: Iterable<Vec2>, z: Number = 0, closed: Boolean = false): FLine {
     val it = points.iterator()
     if (!it.hasNext()) return this
@@ -1556,6 +1586,9 @@ fun catmullRomToBezier(points: List<Vec3>, closed: Boolean = false, tension: Flo
     return curve
 }
 
+/**
+ * 2D overload of [catmullRomToBezier], with an optional constant Z value.
+ */
 fun catmullRomToBezier(points: List<Vec2>, z: Number = 0, closed: Boolean = false, tension: Float = 1f): FLine {
     val pts3 = points.map { vec(it.x, it.y, z) }
     return catmullRomToBezier(pts3, closed, tension)
@@ -1568,6 +1601,9 @@ fun cubicSplineFrom(points: List<Vec3>, closed: Boolean = false, tension: Float 
     return catmullRomToBezier(points, closed, tension)
 }
 
+/**
+ * 2D overload of [cubicSplineFrom], with an optional constant Z value.
+ */
 fun cubicSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, tension: Float = 1f): FLine {
     return catmullRomToBezier(points, z, closed, tension)
 }
@@ -1615,10 +1651,16 @@ fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine.Node {
     return cubicTo(c1New, c2New, endPoint)
 }
 
+/**
+ * Numeric overload of [smoothTo].
+ */
 fun FLine.smoothTo(x: Number, y: Number, z: Number = 0, smoothness: Float = 1f): FLine.Node {
     return smoothTo(vec(x, y, z), smoothness)
 }
 
+/**
+ * 2D overload of [smoothTo].
+ */
 fun FLine.smoothTo(v: Vec2, smoothness: Float = 1f): FLine.Node {
     return smoothTo(vec(v.x, v.y, 0f), smoothness)
 }
@@ -1703,6 +1745,9 @@ fun FLine.tcbTo(
     return node
 }
 
+/**
+ * Numeric overload of [tcbTo] using the active 2D plane.
+ */
 fun FLine.tcbTo(
     x: Number,
     y: Number,
@@ -1714,6 +1759,9 @@ fun FLine.tcbTo(
     return tcbTo(planePoint(x, y, z), tension, continuity, bias)
 }
 
+/**
+ * 2D overload of [tcbTo] using the active 2D plane.
+ */
 fun FLine.tcbTo(
     v: Vec2,
     tension: Float = 0f,
@@ -1812,6 +1860,9 @@ fun FLine.biarcTo(
     return nodes.last()
 }
 
+/**
+ * 2D overload of [biarcTo] using heading angles in radians.
+ */
 fun FLine.biarcTo(
     endPoint: Vec2,
     startHeading: Float? = null,
@@ -1836,6 +1887,9 @@ fun FLine.biarcTo(
     )
 }
 
+/**
+ * Numeric overload of [biarcTo] using the active 2D plane.
+ */
 fun FLine.biarcTo(
     x: Number,
     y: Number,
@@ -1849,6 +1903,9 @@ fun FLine.biarcTo(
     return biarcTo(vec(x, y), startHeading, endHeading, join, joinTangentMix, bulge, segments)
 }
 
+/**
+ * Build a standalone biarc between two points with specified tangents.
+ */
 fun biarcBetween(
     start: Vec3,
     end: Vec3,
@@ -2435,6 +2492,9 @@ fun FLine.byMultiplyingWith(other: FLine, samples: Int = 100): FLine {
  * This allows any numeric parameter to be a function of position along the curve.
  */
 interface ParameterFunction {
+    /**
+     * Evaluate the parameter at normalized position [t] and curve [position].
+     */
     fun evaluate(t: Float, position: Vec3): Float
 }
 
@@ -2915,6 +2975,9 @@ private fun eulerSpiralCore3D(
     }
 }
 
+/**
+ * Build a 3D Euler spiral between two points with specified directions.
+ */
 fun eulerSpiralBetween3D(
     start: Vec3,
     startDirection: Vec3,
@@ -2951,6 +3014,9 @@ private fun FLine.outgoingTangent3D(): Vec3? {
     }
 }
 
+/**
+ * Return a new line with an Euler spiral appended from the current end to [endPoint].
+ */
 fun FLine.byEulerSpiralTo(
     endPoint: Vec3,
     startDirection: Vec3? = null,
@@ -2983,6 +3049,9 @@ fun FLine.byEulerSpiralTo(
     return result
 }
 
+/**
+ * Append an Euler spiral from the current end to [endPoint].
+ */
 fun FLine.eulerSpiralTo(
     endPoint: Vec3,
     startDirection: Vec3? = null,
@@ -3021,6 +3090,9 @@ fun FLine.eulerSpiralTo(
     return nodes.last()
 }
 
+/**
+ * Numeric overload of [eulerSpiralTo] using the active 2D plane.
+ */
 fun FLine.eulerSpiralTo(
     x: Number,
     y: Number,
@@ -3043,6 +3115,9 @@ fun FLine.eulerSpiralTo(
     turn
 )
 
+/**
+ * 2D overload of [eulerSpiralTo] using the active 2D plane.
+ */
 fun FLine.eulerSpiralTo(
     v: Vec2,
     startDirection: Vec3? = null,

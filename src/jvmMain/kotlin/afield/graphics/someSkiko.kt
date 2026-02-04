@@ -8,6 +8,14 @@ import org.jetbrains.skia.svg.SVGCanvas
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
 
+/**
+ * Render one or more [FLine]s to SVG and display them in an output channel.
+ *
+ * @param channel Output channel name (disclosure panel).
+ * @param w Output SVG width in pixels.
+ * @param h Output SVG height in pixels.
+ * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
+ */
 fun Box.lines(
     vararg m: FLine,
     channel: String = "lines",
@@ -20,6 +28,14 @@ fun Box.lines(
     display(channel, drawToSVG(scaled, w, h))
 }
 
+/**
+ * Render a list of [FLine]s to SVG and display them in an output channel.
+ *
+ * @param channel Output channel name (disclosure panel).
+ * @param w Output SVG width in pixels.
+ * @param h Output SVG height in pixels.
+ * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
+ */
 fun Box.lines(
     m: List<FLine>,
     channel: String = "lines",
@@ -33,8 +49,13 @@ fun Box.lines(
 }
 
 /**
- * Render FLines from a map, optionally splitting by channel.
- * When splitByChannel is false, all lines are combined into `channel`.
+ * Render [FLine]s from a map, optionally splitting by channel.
+ *
+ * @param w Output SVG width in pixels.
+ * @param h Output SVG height in pixels.
+ * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
+ * @param splitByChannel If true, each map entry is displayed in its own channel key.
+ * @param channel When [splitByChannel] is false, all lines are combined and displayed here.
  */
 fun Box.lines(
     linesByChannel: Map<String, List<FLine>>,
@@ -58,7 +79,11 @@ fun Box.lines(
 }
 
 
-// Convenience display helpers for example maps
+/**
+ * Convenience wrapper for example maps.
+ *
+ * Uses smaller defaults and [fitToSize] true so small demos are easy to view.
+ */
 fun Box.l(
     m: Map<String, List<FLine>>,
     w: Double = 200.0,
@@ -70,7 +95,9 @@ private fun Map<String, List<FLine>>.namespaced(prefix: String): Map<String, Lis
     this.mapKeys { (k, _) -> "$prefix/$k" }
 
 /**
- * Showcase: render all FLineGeometryExamples with sensible defaults.
+ * Showcase: render all [FLineGeometryExamples] with sensible defaults.
+ *
+ * Each example is displayed via [l] so you can quickly inspect the full set.
  */
 fun Box.showFLineGeometryExamples(w: Double = 200.0, h: Double = 200.0, fitToSize: Boolean = true) {
     val examples = listOf(
@@ -97,6 +124,11 @@ fun Box.showFLineGeometryExamples(w: Double = 200.0, h: Double = 200.0, fitToSiz
     }
 }
 
+/**
+ * Render a list of [FLine]s into an SVG string.
+ *
+ * If [w] or [h] are -1, the SVG size is derived from the line bounds.
+ */
 fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
     val ba = ByteArrayOutputStream()
     val o = OutputWStream(ba)
@@ -155,6 +187,9 @@ private fun FLine.applyFit(transform: FitTransform?): FLine {
     return scaled
 }
 
+/**
+ * Draw a single [FLine] to a Skia [Canvas], honoring stroke, fill, and point settings.
+ */
 fun outputTo(f: FLine, s: Canvas) {
     var p = Path()
 
