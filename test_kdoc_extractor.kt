@@ -1,6 +1,6 @@
 package afield.test
 
-import afield.ai.core.completion.KDocExtractor
+import afield.ai.KDocExtractor
 import java.nio.file.Paths
 import kotlin.io.path.readText
 

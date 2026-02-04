@@ -1,4 +1,4 @@
-package afield.ai.core.completion
+package afield.ai
 
 import java.nio.file.Files
 import java.nio.file.Path
