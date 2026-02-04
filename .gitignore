@@ -153,3 +153,7 @@ server/__pycache__/
 *.egg-info/
 
 .DS_Store
+
+### Test files
+test_kdoc_*.kt
+test_kdoc_*.kts
