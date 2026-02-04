@@ -436,6 +436,18 @@ tasks.register<JavaExec>("runfilestore") {
     standardInput = System.`in`
 }
 
+tasks.register("generateApiDocs") {
+    group = "documentation"
+    description = "Generates API documentation in markdown format for MkDocs"
+    
+    dependsOn("dokkaGfm")
+    
+    doLast {
+        println("API documentation generated in public/docs/api/")
+        println("To build the MkDocs site, run: cd public && mkdocs build")
+    }
+}
+
 val generateLocalKeystore = tasks.register("generateLocalKeystore") {
     group = "application"
     description = "Generates a self-signed PKCS12 keystore for local HTTPS (config/field4-local.p12)."
@@ -499,7 +511,33 @@ tasks.named("jvmDistZip") {
 
 
 dokka {
+    // HTML documentation (existing configuration)
     dokkaPublications.html {
+        outputDirectory.set(layout.buildDirectory.dir("dokka/html"))
+        
+        dokkaSourceSets.configureEach {
+            perPackageOption {
+                matchingRegex.set(".*")
+                suppress.set(true)
+            }
+
+            perPackageOption {
+                matchingRegex.set("""afield\.four(\..*)?""")
+                suppress.set(false)
+            }
+            perPackageOption {
+                matchingRegex.set("""afield\.stdlib(\..*)?""")
+                suppress.set(false)
+            }
+
+            skipEmptyPackages.set(true)
+        }
+    }
+    
+    // GitHub Flavored Markdown documentation for MkDocs integration
+    dokkaPublications.create("gfm") {
+        outputDirectory.set(file("public/docs/api"))
+        
         dokkaSourceSets.configureEach {
             perPackageOption {
                 matchingRegex.set(".*")
