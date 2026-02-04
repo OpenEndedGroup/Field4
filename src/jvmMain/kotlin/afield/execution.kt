@@ -1,6 +1,7 @@
 package afield
 
 import afield.ai.Ai4GlslAutocomplete
+import afield.ai.KotlinSourceIndex
 import afield.ai.glslSpecForProperty
 import afield.logger.lprintln
 import afield.macros.standardExecutionPractice
@@ -746,12 +747,17 @@ class KotlinExecution : BoxExecution {
                 var extraDoc = ""
                 val descriptor = it.extraInfo.getOrDefault("original", null)
                 var mainText = it.displayText
+                var symbolName: String? = null
+                
                 descriptor?.let {
                     if (descriptor is DeclarationDescriptor) {
 //                                                mainText = DescriptorRenderer.HTML.render(descriptor as DeclarationDescriptor)
                         mainText = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
                             withDefinedIn = false
                         }.render(descriptor as DeclarationDescriptor) + "\n"
+                        
+                        // Extract symbol name for KDoc lookup
+                        symbolName = descriptor.name.asString()
                     }
                     (it as? Annotated)?.let {
                         it.annotations.forEach {
@@ -763,6 +769,15 @@ class KotlinExecution : BoxExecution {
                         }
                     }
                 }
+                
+                // Try to get KDoc from the source index for afield symbols
+                if (extraDoc.isEmpty() && symbolName != null) {
+                    val kdoc = KotlinSourceIndex.getKDocForSymbol(symbolName)
+                    if (kdoc != null) {
+                        extraDoc = kdoc
+                    }
+                }
+                
                 Metadata(
                     icon = it.icon,
                     tail = it.tail,

@@ -29,7 +29,8 @@ data class KotlinDefinitionRecord(
     val filePath: String,
     val line: Int,
     val fileId: String?,
-    val contentHash: String
+    val contentHash: String,
+    val kdoc: String? = null
 )
 
 data class KotlinSourceIndexDb(
@@ -153,7 +154,8 @@ object KotlinSourceIndex {
                     filePath = rel,
                     line = def.line,
                     fileId = fileId,
-                    contentHash = contentHash
+                    contentHash = contentHash,
+                    kdoc = def.kdoc
                 )
             }
         }
@@ -199,6 +201,27 @@ object KotlinSourceIndex {
 
         latestIndex = index
         lprintln("info,sourceindex", "indexed ${files.size} files, ${definitions.size} definitions")
+    }
+
+    /**
+     * Get KDoc for a symbol from the index.
+     * Searches through indexed definitions for the given symbol name.
+     */
+    fun getKDocForSymbol(symbolName: String): String? {
+        val index = latestIndex ?: loadIndex() ?: return null
+        
+        // First try exact match
+        val exactMatch = index.definitions.firstOrNull { it.name == symbolName }
+        if (exactMatch?.kdoc != null) {
+            return exactMatch.kdoc
+        }
+        
+        // Try matching the last part of qualified names
+        val lastPart = symbolName.substringAfterLast('.')
+        val partialMatch = index.definitions.firstOrNull { 
+            it.name == lastPart || it.name.endsWith(".$lastPart") 
+        }
+        return partialMatch?.kdoc
     }
 
     fun currentVectorStoreId(): String? =
@@ -344,7 +367,7 @@ object KotlinSourceIndex {
         return out
     }
 
-    private data class ParsedDefinition(val kind: String, val name: String, val line: Int)
+    private data class ParsedDefinition(val kind: String, val name: String, val line: Int, val kdoc: String? = null)
 
     private val modifierTokens = setOf(
         "public", "private", "internal", "protected",
@@ -355,6 +378,11 @@ object KotlinSourceIndex {
 
     private fun parseTopLevelDefinitions(text: String): List<ParsedDefinition> {
         val out = mutableListOf<ParsedDefinition>()
+        
+        // Extract KDocs using the KDocExtractor
+        val kdocs = KDocExtractor.extractKDocs(text)
+        val kdocByLine = kdocs.associateBy { it.declarationLine }
+        
         val state = KotlinParseState()
         val lines = text.split("\n")
         lines.forEachIndexed { index, rawLine ->
@@ -363,7 +391,8 @@ object KotlinSourceIndex {
             val canParse = depthAtStart == 0 && !state.inBlockComment && !state.inRawString && !state.inString
             if (canParse) {
                 parseDefinitionFromLine(rawLine)?.let { def ->
-                    out += ParsedDefinition(def.first, def.second, lineNumber)
+                    val kdoc = kdocByLine[lineNumber]?.text
+                    out += ParsedDefinition(def.first, def.second, lineNumber, kdoc)
                 }
             }
             state.consumeLine(rawLine)
