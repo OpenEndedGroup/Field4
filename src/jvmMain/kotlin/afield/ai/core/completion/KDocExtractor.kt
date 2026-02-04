@@ -241,64 +241,14 @@ object KDocExtractor {
     
     /**
      * Build a map of symbol names to their KDoc for quick lookup
+     * Used internally by parseTopLevelDefinitions in KotlinSourceIndex
      */
-    fun buildKDocIndex(sourceText: String): Map<String, String> {
+    internal fun buildKDocIndex(sourceText: String): Map<String, String> {
         val kdocs = extractKDocs(sourceText)
         return kdocs.mapNotNull { kdoc ->
             kdoc.declarationName?.let { name ->
                 name to kdoc.text
             }
         }.toMap()
-    }
-    
-    /**
-     * Extract KDoc for a specific symbol from a file
-     */
-    fun extractKDocForSymbol(filePath: Path, symbolName: String): String? {
-        if (!filePath.exists() || !filePath.isRegularFile()) return null
-        
-        return try {
-            val sourceText = filePath.readText()
-            val index = buildKDocIndex(sourceText)
-            index[symbolName]
-        } catch (e: Exception) {
-            null
-        }
-    }
-    
-    /**
-     * Get KDoc for a symbol from the afield package
-     */
-    fun getKDocForAfieldSymbol(symbolName: String): String? {
-        val projectRoot = Paths.get(System.getProperty("user.dir"))
-        val sourceRoots = listOf(
-            projectRoot.resolve("src/jvmMain/kotlin"),
-            projectRoot.resolve("src/personal/kotlin")
-        ).filter { Files.exists(it) }
-        
-        for (root in sourceRoots) {
-            val result = searchKDocInDirectory(root, symbolName)
-            if (result != null) return result
-        }
-        
-        return null
-    }
-    
-    private fun searchKDocInDirectory(dir: Path, symbolName: String): String? {
-        if (!Files.exists(dir)) return null
-        
-        try {
-            Files.walk(dir).use { stream ->
-                stream.filter { it.isRegularFile() && it.toString().endsWith(".kt") }
-                    .forEach { file ->
-                        val kdoc = extractKDocForSymbol(file, symbolName)
-                        if (kdoc != null) return kdoc
-                    }
-            }
-        } catch (e: Exception) {
-            // Continue searching
-        }
-        
-        return null
     }
 }

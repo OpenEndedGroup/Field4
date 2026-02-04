@@ -755,7 +755,6 @@ class KotlinExecution : BoxExecution {
                         mainText = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
                             withDefinedIn = false
                         }.render(descriptor as DeclarationDescriptor) + "\n"
-                        
                         // Extract symbol name for KDoc lookup
                         symbolName = descriptor.name.asString()
                     }
