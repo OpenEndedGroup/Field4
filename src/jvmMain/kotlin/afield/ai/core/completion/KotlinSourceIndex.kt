@@ -216,7 +216,9 @@ object KotlinSourceIndex {
             return exactMatch.kdoc
         }
         
-        // Try matching the last part of qualified names
+        // Try matching the last part of qualified names as a fallback
+        // Note: This may return incorrect results if multiple symbols have the same simple name
+        // A more robust solution would require storing and matching fully qualified names
         val lastPart = symbolName.substringAfterLast('.')
         val partialMatch = index.definitions.firstOrNull { 
             it.name == lastPart || it.name.endsWith(".$lastPart") 

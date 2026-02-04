@@ -238,17 +238,4 @@ object KDocExtractor {
         }
         return sb.toString()
     }
-    
-    /**
-     * Build a map of symbol names to their KDoc for quick lookup
-     * Used internally by parseTopLevelDefinitions in KotlinSourceIndex
-     */
-    internal fun buildKDocIndex(sourceText: String): Map<String, String> {
-        val kdocs = extractKDocs(sourceText)
-        return kdocs.mapNotNull { kdoc ->
-            kdoc.declarationName?.let { name ->
-                name to kdoc.text
-            }
-        }.toMap()
-    }
 }

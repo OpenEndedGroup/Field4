@@ -16,8 +16,6 @@ A utility class that parses Kotlin source files to extract KDoc comments:
 
 **Key Functions:**
 - `extractKDocs(sourceText: String): List<KDocComment>` - Parses all KDocs from source
-- `buildKDocIndex(sourceText: String): Map<String, String>` - Creates symbol → KDoc map
-- `getKDocForAfieldSymbol(symbolName: String): String?` - Searches afield sources for KDoc
 
 ### 2. KotlinSourceIndex.kt (Modified)
 **Location:** `src/jvmMain/kotlin/afield/ai/core/completion/KotlinSourceIndex.kt`
