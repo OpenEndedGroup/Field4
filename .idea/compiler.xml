@@ -4,6 +4,6 @@
     <option name="BUILD_PROCESS_HEAP_SIZE" value="3700" />
     <option name="USE_RELEASE_OPTION" value="false" />
     <option name="PARALLEL_COMPILATION_OPTION" value="Enabled" />
-    <bytecodeTargetLevel target="24" />
+    <bytecodeTargetLevel target="25" />
   </component>
 </project>

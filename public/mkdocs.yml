@@ -8,8 +8,6 @@ nav:
   - VR:
     - Sketch 2: vr_sketch2.md
     - FLine Examples: fline_examples.md
-  - API Documentation:
-    - Overview: api/index.md
 
 markdown_extensions:
   - pymdownx.superfences:         # required extension

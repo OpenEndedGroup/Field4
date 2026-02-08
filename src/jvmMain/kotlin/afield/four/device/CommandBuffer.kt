@@ -1,16 +1,11 @@
 package afield.four.device
 
-import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-import org.lwjgl.vulkan.VK13
-import org.lwjgl.vulkan.VkCommandBuffer
-import org.lwjgl.vulkan.VkCommandBufferAllocateInfo
-import org.lwjgl.vulkan.VkCommandBufferBeginInfo
-import org.lwjgl.vulkan.VkCommandBufferInheritanceInfo
-import org.lwjgl.vulkan.VkCommandBufferInheritanceRenderingInfo
 import afield.four.util.vkCheck
+import afield.logger.lblock
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
 
 class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: Boolean) {
     private val commandPool: CommandPool
@@ -107,10 +102,12 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     }
 
     fun cleanup() {
-        VK10.vkFreeCommandBuffers(
-            commandPool.device.vkDevice, commandPool.vkCommandPool,
-            vkCommandBuffer
-        )
+        lblock("info,vulkan", "freeing command buffer") {
+            VK10.vkFreeCommandBuffers(
+                commandPool.device.vkDevice, commandPool.vkCommandPool,
+                vkCommandBuffer
+            )
+        }
     }
 
     fun endRecording() {

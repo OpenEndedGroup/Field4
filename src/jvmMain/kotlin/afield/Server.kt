@@ -38,6 +38,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
 import org.joml.Vector4f
+import org.lwjgl.system.Configuration
 import java.awt.Desktop
 import java.io.File
 import java.io.FileNotFoundException
@@ -1267,6 +1268,8 @@ class Server {
         @JvmStatic
         fun main(args: Array<String>) {
             System.setProperty("java.awt.headless", "true")
+
+            Configuration.GLFW_CHECK_THREAD0.set(false)
 
             runAll(early)
 

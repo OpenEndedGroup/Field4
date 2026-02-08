@@ -116,7 +116,10 @@ fun Box.showFLineGeometryExamples(w: Double = 200.0, h: Double = 200.0, fitToSiz
         "noise" to FLineGeometryExamples.noiseComparisonExample(),
         "curveCombination" to FLineGeometryExamples.curveCombinationExample(),
         "parameterization" to FLineGeometryExamples.parameterizationExample(),
-        "complexComposition" to FLineGeometryExamples.complexCompositionExample()
+        "complexComposition" to FLineGeometryExamples.complexCompositionExample(),
+        "smileSpline" to FLineGeometryExamples.smileSplineExample(),
+        "smileGaussianProcess" to FLineGeometryExamples.smileGaussianProcessExample(),
+        "akimaInterpolation" to FLineGeometryExamples.akimaInterpolationExample()
     )
 
     examples.forEach { (name, m) ->

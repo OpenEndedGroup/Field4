@@ -42,6 +42,7 @@ typealias ListDefinitionsResult = afield.ai.core.ListDefinitionsResult
 typealias DefinitionInfo = afield.ai.core.DefinitionInfo
 typealias ListContentsRequest = afield.ai.core.ListContentsRequest
 typealias ListContentsResult = afield.ai.core.ListContentsResult
+typealias ListContentEntry = afield.ai.core.ListContentEntry
 typealias EditFileRequest = afield.ai.core.EditFileRequest
 typealias EditFileResponse = afield.ai.core.EditFileResponse
 typealias WorkspaceSymbolSearch = afield.ai.core.WorkspaceSymbolSearch

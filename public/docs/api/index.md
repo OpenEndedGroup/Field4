@@ -14,17 +14,19 @@ The API documentation covers the following packages:
 To generate the latest API documentation from source code, run:
 
 ```bash
-./gradlew dokkaGfm
+./gradlew dokkaGenerateHtml
 ```
 
-This will generate markdown files in this directory that can be browsed directly or included in the MkDocs site.
+This will generate HTML files in `build/dokka/html/` that can be browsed directly in a browser.
 
 ## Browsing HTML Documentation
 
-For a richer browsing experience with search and cross-references, you can generate HTML documentation:
+To generate all supported Dokka publications:
 
 ```bash
-./gradlew dokkaHtml
+./gradlew dokkaGenerate
 ```
 
 The HTML documentation will be available in `build/dokka/html/`.
+
+> Note: Dokka Gradle plugin v2 only supports HTML and Javadoc outputs. Markdown/GFM is no longer supported.

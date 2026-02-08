@@ -627,8 +627,9 @@ class FLinesAndJavaShapes {
             if (segmentIsMove()) {
                 return null
             } else if (segmentIsLinear()) {
-                val s = on.lineTo(position())
+                val s = FLine.LineTo().set(Vec3(position()))
                 on.nodes.add(index + 1, s)
+                on.rev++
                 alpha = 0.0f
                 index++
                 return on.nodes.get(index + 1)
@@ -649,7 +650,9 @@ class FLinesAndJavaShapes {
                 (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2.set(c12)
                 (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to.set(m)
 
-                on.nodes.add(index + 2, on.cubicTo(c21, c2, b))
+                val inserted = FLine.CubicTo().set(Vec3(b), Vec3(c21), Vec3(c2))
+                on.nodes.add(index + 2, inserted)
+                on.rev++
 
                 p = null
                 alpha = 0.0f
@@ -2522,5 +2525,4 @@ class FLinesAndJavaShapes {
         }
     }
 }
-
 

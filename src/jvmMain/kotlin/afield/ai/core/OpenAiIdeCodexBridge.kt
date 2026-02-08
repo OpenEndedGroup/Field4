@@ -492,9 +492,29 @@ class OpenAiIdeCodexBridge(
             )
         }
         tools.register(AttachmentRequest::class.java) { ctx, req ->
-            val hit = ctx.attachments.firstOrNull { it.fileName == req.file }
-                ?: throw IllegalArgumentException("No attachment named '${req.file}'. Call ListAttachments first.")
-            AttachmentResponse(hit.fileName, hit.language, hit.code)
+            val requested = req.file.trim()
+            if (requested.isEmpty()) {
+                throw IllegalArgumentException("Attachment name is empty.")
+            }
+
+            fun normalizePath(value: String): String = value.replace('\\', '/').trim()
+
+            val normalizedRequested = normalizePath(requested)
+            val hit = ctx.attachments.firstOrNull { it.fileName == requested }
+                ?: ctx.attachments.firstOrNull { normalizePath(it.fileName) == normalizedRequested }
+                ?: ctx.attachments.firstOrNull {
+                    val normalizedCandidate = normalizePath(it.fileName)
+                    normalizedCandidate.endsWith("/$normalizedRequested")
+                }
+
+            if (hit != null) {
+                AttachmentResponse(hit.fileName, hit.language, hit.code)
+            } else {
+                ctx.resolveAttachment?.invoke(requested)
+                    ?: throw IllegalArgumentException(
+                        "No attachment or resolvable file named '$requested'. Call ListAttachments first."
+                    )
+            }
         }
 
         // Kotlin-only tools (only work if provider is supplied in ctx)

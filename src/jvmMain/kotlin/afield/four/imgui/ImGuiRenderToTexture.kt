@@ -17,7 +17,10 @@ import afield.four.texture.StreamingTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.MapOfGenerators
 import afield.four.util.Window
+import afield.stdlib.f
 import imgui.*
+import imgui.ImGui.text
+import imgui.flag.ImGuiKey
 import imgui.internal.ImGuiContext
 import imgui.type.ImInt
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +34,7 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 import java.net.URL
 import java.nio.ByteOrder
+import java.util.*
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -88,6 +92,14 @@ class ImGuiRenderToTexture(
     @Volatile private var pendingFont: PendingFont? = null
     private val uiGenerators = MapOfGenerators<ImGuiIO, Unit>()
     @Volatile private var pointerOverride: PointerOverride? = null
+    private val pendingKeyEvents = ArrayDeque<KeyEvent>()
+    private val pendingChars = ArrayDeque<Int>()
+    private var removeKeyListener: (() -> Unit)? = null
+    private var removeCharListener: (() -> Unit)? = null
+    private var modCtrl = false
+    private var modShift = false
+    private var modAlt = false
+    private var modSuper = false
 
     private var lastFrameNs = System.nanoTime()
     private var drawData: ImDrawData? = null
@@ -108,6 +120,8 @@ class ImGuiRenderToTexture(
             io.setIniFilename(null)
             io.setBackendPlatformName("field-glfw")
             io.setBackendRendererName("field-vulkan-rtt")
+            io.setBackendUsingLegacyKeyArrays(0.toShort())
+            io.setBackendUsingLegacyNavInputArray(false)
             io.setDisplayFramebufferScale(1f, 1f)
             ImGui.styleColorsDark()
             if (monochromeTheme) applyMonochromeStyle()
@@ -139,6 +153,8 @@ class ImGuiRenderToTexture(
         } finally {
             ImGui.setCurrentContext(prev)
         }
+
+        installInputCallbacks()
     }
 
     /**
@@ -165,6 +181,10 @@ class ImGuiRenderToTexture(
         fontSampler.cleanup()
         fontTexture.cleanup()
         module.cleanup()
+        removeKeyListener?.invoke()
+        removeKeyListener = null
+        removeCharListener?.invoke()
+        removeCharListener = null
 
         val prev = ImGui.getCurrentContext()
         ImGui.setCurrentContext(context)
@@ -347,6 +367,7 @@ class ImGuiRenderToTexture(
         lastFrameNs = nowNs
 
         io.setDeltaTime(dt)
+        flushInputEvents(io)
 
         if (width <= 0 || height <= 0) return
 
@@ -357,6 +378,7 @@ class ImGuiRenderToTexture(
         io.setDisplaySize(width.toFloat()*fbScaleX, height.toFloat()*fbScaleY)
         io.setDisplayFramebufferScale(fbScaleX, fbScaleY)
 
+        var skipWindowMouse = false
         pointerOverride?.let { override ->
             pointerOverride = null
             io.addMousePosEvent(override.x / fbScaleX, override.y / fbScaleY)
@@ -364,10 +386,10 @@ class ImGuiRenderToTexture(
             if (override.scrollY != 0f) {
                 io.addMouseWheelEvent(0f, override.scrollY)
             }
-            return
+            skipWindowMouse = true
         }
 
-        if (useWindowMouseEvents) {
+        if (useWindowMouseEvents && !skipWindowMouse) {
             val w = window ?: return
             val cursor = w.cursor
             val winW = w.width.coerceAtLeast(1)
@@ -388,6 +410,178 @@ class ImGuiRenderToTexture(
                 io.addMouseWheelEvent(scroll.x, scroll.y)
             }
         }
+    }
+
+    private fun flushInputEvents(io: ImGuiIO) {
+        while (pendingKeyEvents.isNotEmpty()) {
+            val ev = pendingKeyEvents.removeFirst()
+            if (ev.nativeKey >= 0) {
+                io.setKeyEventNativeData(ev.imguiKey, ev.nativeKey, ev.nativeScancode)
+            }
+            io.addKeyEvent(ev.imguiKey, ev.down)
+        }
+        while (pendingChars.isNotEmpty()) {
+            io.addInputCharacter(pendingChars.removeFirst())
+        }
+    }
+
+    private fun installInputCallbacks() {
+        val w = window ?: return
+        removeKeyListener = w.addKeyListener { key, scancode, action, mods ->
+            val imguiKey = glfwKeyToImGuiKey(key)
+            if (imguiKey != ImGuiKey.None) {
+                val down = action != GLFW.GLFW_RELEASE
+                pendingKeyEvents.add(KeyEvent(imguiKey, down, key, scancode))
+            }
+            updateModKeys(mods)
+        }
+        removeCharListener = w.addCharListener { codepoint ->
+            pendingChars.add(codepoint)
+        }
+    }
+
+    private fun updateModKeys(mods: Int) {
+        val ctrl = mods and GLFW.GLFW_MOD_CONTROL != 0
+        val shift = mods and GLFW.GLFW_MOD_SHIFT != 0
+        val alt = mods and GLFW.GLFW_MOD_ALT != 0
+        val sup = mods and GLFW.GLFW_MOD_SUPER != 0
+        if (ctrl != modCtrl) {
+            modCtrl = ctrl
+            pendingKeyEvents.add(KeyEvent(ImGuiKey.ModCtrl, ctrl, -1, -1))
+        }
+        if (shift != modShift) {
+            modShift = shift
+            pendingKeyEvents.add(KeyEvent(ImGuiKey.ModShift, shift, -1, -1))
+        }
+        if (alt != modAlt) {
+            modAlt = alt
+            pendingKeyEvents.add(KeyEvent(ImGuiKey.ModAlt, alt, -1, -1))
+        }
+        if (sup != modSuper) {
+            modSuper = sup
+            pendingKeyEvents.add(KeyEvent(ImGuiKey.ModSuper, sup, -1, -1))
+        }
+    }
+
+    private fun glfwKeyToImGuiKey(key: Int): Int = when (key) {
+        GLFW.GLFW_KEY_TAB -> ImGuiKey.Tab
+        GLFW.GLFW_KEY_LEFT -> ImGuiKey.LeftArrow
+        GLFW.GLFW_KEY_RIGHT -> ImGuiKey.RightArrow
+        GLFW.GLFW_KEY_UP -> ImGuiKey.UpArrow
+        GLFW.GLFW_KEY_DOWN -> ImGuiKey.DownArrow
+        GLFW.GLFW_KEY_PAGE_UP -> ImGuiKey.PageUp
+        GLFW.GLFW_KEY_PAGE_DOWN -> ImGuiKey.PageDown
+        GLFW.GLFW_KEY_HOME -> ImGuiKey.Home
+        GLFW.GLFW_KEY_END -> ImGuiKey.End
+        GLFW.GLFW_KEY_INSERT -> ImGuiKey.Insert
+        GLFW.GLFW_KEY_DELETE -> ImGuiKey.Delete
+        GLFW.GLFW_KEY_BACKSPACE -> ImGuiKey.Backspace
+        GLFW.GLFW_KEY_SPACE -> ImGuiKey.Space
+        GLFW.GLFW_KEY_ENTER -> ImGuiKey.Enter
+        GLFW.GLFW_KEY_ESCAPE -> ImGuiKey.Escape
+        GLFW.GLFW_KEY_APOSTROPHE -> ImGuiKey.Apostrophe
+        GLFW.GLFW_KEY_COMMA -> ImGuiKey.Comma
+        GLFW.GLFW_KEY_MINUS -> ImGuiKey.Minus
+        GLFW.GLFW_KEY_PERIOD -> ImGuiKey.Period
+        GLFW.GLFW_KEY_SLASH -> ImGuiKey.Slash
+        GLFW.GLFW_KEY_SEMICOLON -> ImGuiKey.Semicolon
+        GLFW.GLFW_KEY_EQUAL -> ImGuiKey.Equal
+        GLFW.GLFW_KEY_LEFT_BRACKET -> ImGuiKey.LeftBracket
+        GLFW.GLFW_KEY_BACKSLASH -> ImGuiKey.Backslash
+        GLFW.GLFW_KEY_RIGHT_BRACKET -> ImGuiKey.RightBracket
+        GLFW.GLFW_KEY_GRAVE_ACCENT -> ImGuiKey.GraveAccent
+        GLFW.GLFW_KEY_CAPS_LOCK -> ImGuiKey.CapsLock
+        GLFW.GLFW_KEY_SCROLL_LOCK -> ImGuiKey.ScrollLock
+        GLFW.GLFW_KEY_NUM_LOCK -> ImGuiKey.NumLock
+        GLFW.GLFW_KEY_PRINT_SCREEN -> ImGuiKey.PrintScreen
+        GLFW.GLFW_KEY_PAUSE -> ImGuiKey.Pause
+        GLFW.GLFW_KEY_KP_0 -> ImGuiKey.Keypad0
+        GLFW.GLFW_KEY_KP_1 -> ImGuiKey.Keypad1
+        GLFW.GLFW_KEY_KP_2 -> ImGuiKey.Keypad2
+        GLFW.GLFW_KEY_KP_3 -> ImGuiKey.Keypad3
+        GLFW.GLFW_KEY_KP_4 -> ImGuiKey.Keypad4
+        GLFW.GLFW_KEY_KP_5 -> ImGuiKey.Keypad5
+        GLFW.GLFW_KEY_KP_6 -> ImGuiKey.Keypad6
+        GLFW.GLFW_KEY_KP_7 -> ImGuiKey.Keypad7
+        GLFW.GLFW_KEY_KP_8 -> ImGuiKey.Keypad8
+        GLFW.GLFW_KEY_KP_9 -> ImGuiKey.Keypad9
+        GLFW.GLFW_KEY_KP_DECIMAL -> ImGuiKey.KeypadDecimal
+        GLFW.GLFW_KEY_KP_DIVIDE -> ImGuiKey.KeypadDivide
+        GLFW.GLFW_KEY_KP_MULTIPLY -> ImGuiKey.KeypadMultiply
+        GLFW.GLFW_KEY_KP_SUBTRACT -> ImGuiKey.KeypadSubtract
+        GLFW.GLFW_KEY_KP_ADD -> ImGuiKey.KeypadAdd
+        GLFW.GLFW_KEY_KP_ENTER -> ImGuiKey.KeypadEnter
+        GLFW.GLFW_KEY_KP_EQUAL -> ImGuiKey.KeypadEqual
+        GLFW.GLFW_KEY_LEFT_SHIFT -> ImGuiKey.LeftShift
+        GLFW.GLFW_KEY_LEFT_CONTROL -> ImGuiKey.LeftCtrl
+        GLFW.GLFW_KEY_LEFT_ALT -> ImGuiKey.LeftAlt
+        GLFW.GLFW_KEY_LEFT_SUPER -> ImGuiKey.LeftSuper
+        GLFW.GLFW_KEY_RIGHT_SHIFT -> ImGuiKey.RightShift
+        GLFW.GLFW_KEY_RIGHT_CONTROL -> ImGuiKey.RightCtrl
+        GLFW.GLFW_KEY_RIGHT_ALT -> ImGuiKey.RightAlt
+        GLFW.GLFW_KEY_RIGHT_SUPER -> ImGuiKey.RightSuper
+        GLFW.GLFW_KEY_MENU -> ImGuiKey.Menu
+        GLFW.GLFW_KEY_0 -> ImGuiKey._0
+        GLFW.GLFW_KEY_1 -> ImGuiKey._1
+        GLFW.GLFW_KEY_2 -> ImGuiKey._2
+        GLFW.GLFW_KEY_3 -> ImGuiKey._3
+        GLFW.GLFW_KEY_4 -> ImGuiKey._4
+        GLFW.GLFW_KEY_5 -> ImGuiKey._5
+        GLFW.GLFW_KEY_6 -> ImGuiKey._6
+        GLFW.GLFW_KEY_7 -> ImGuiKey._7
+        GLFW.GLFW_KEY_8 -> ImGuiKey._8
+        GLFW.GLFW_KEY_9 -> ImGuiKey._9
+        GLFW.GLFW_KEY_A -> ImGuiKey.A
+        GLFW.GLFW_KEY_B -> ImGuiKey.B
+        GLFW.GLFW_KEY_C -> ImGuiKey.C
+        GLFW.GLFW_KEY_D -> ImGuiKey.D
+        GLFW.GLFW_KEY_E -> ImGuiKey.E
+        GLFW.GLFW_KEY_F -> ImGuiKey.F
+        GLFW.GLFW_KEY_G -> ImGuiKey.G
+        GLFW.GLFW_KEY_H -> ImGuiKey.H
+        GLFW.GLFW_KEY_I -> ImGuiKey.I
+        GLFW.GLFW_KEY_J -> ImGuiKey.J
+        GLFW.GLFW_KEY_K -> ImGuiKey.K
+        GLFW.GLFW_KEY_L -> ImGuiKey.L
+        GLFW.GLFW_KEY_M -> ImGuiKey.M
+        GLFW.GLFW_KEY_N -> ImGuiKey.N
+        GLFW.GLFW_KEY_O -> ImGuiKey.O
+        GLFW.GLFW_KEY_P -> ImGuiKey.P
+        GLFW.GLFW_KEY_Q -> ImGuiKey.Q
+        GLFW.GLFW_KEY_R -> ImGuiKey.R
+        GLFW.GLFW_KEY_S -> ImGuiKey.S
+        GLFW.GLFW_KEY_T -> ImGuiKey.T
+        GLFW.GLFW_KEY_U -> ImGuiKey.U
+        GLFW.GLFW_KEY_V -> ImGuiKey.V
+        GLFW.GLFW_KEY_W -> ImGuiKey.W
+        GLFW.GLFW_KEY_X -> ImGuiKey.X
+        GLFW.GLFW_KEY_Y -> ImGuiKey.Y
+        GLFW.GLFW_KEY_Z -> ImGuiKey.Z
+        GLFW.GLFW_KEY_F1 -> ImGuiKey.F1
+        GLFW.GLFW_KEY_F2 -> ImGuiKey.F2
+        GLFW.GLFW_KEY_F3 -> ImGuiKey.F3
+        GLFW.GLFW_KEY_F4 -> ImGuiKey.F4
+        GLFW.GLFW_KEY_F5 -> ImGuiKey.F5
+        GLFW.GLFW_KEY_F6 -> ImGuiKey.F6
+        GLFW.GLFW_KEY_F7 -> ImGuiKey.F7
+        GLFW.GLFW_KEY_F8 -> ImGuiKey.F8
+        GLFW.GLFW_KEY_F9 -> ImGuiKey.F9
+        GLFW.GLFW_KEY_F10 -> ImGuiKey.F10
+        GLFW.GLFW_KEY_F11 -> ImGuiKey.F11
+        GLFW.GLFW_KEY_F12 -> ImGuiKey.F12
+        GLFW.GLFW_KEY_F13 -> ImGuiKey.F13
+        GLFW.GLFW_KEY_F14 -> ImGuiKey.F14
+        GLFW.GLFW_KEY_F15 -> ImGuiKey.F15
+        GLFW.GLFW_KEY_F16 -> ImGuiKey.F16
+        GLFW.GLFW_KEY_F17 -> ImGuiKey.F17
+        GLFW.GLFW_KEY_F18 -> ImGuiKey.F18
+        GLFW.GLFW_KEY_F19 -> ImGuiKey.F19
+        GLFW.GLFW_KEY_F20 -> ImGuiKey.F20
+        GLFW.GLFW_KEY_F21 -> ImGuiKey.F21
+        GLFW.GLFW_KEY_F22 -> ImGuiKey.F22
+        GLFW.GLFW_KEY_F23 -> ImGuiKey.F23
+        GLFW.GLFW_KEY_F24 -> ImGuiKey.F24
+        else -> ImGuiKey.None
     }
 
     private fun estimateContentScale(): Float {
@@ -723,11 +917,14 @@ class ImGuiRenderToTexture(
         }
     }
 
+    private data class KeyEvent(val imguiKey: Int, val down: Boolean, val nativeKey: Int, val nativeScancode: Int)
     private data class PendingFont(val bytes: ByteArray, val sizePixels: Float)
     private data class PointerOverride(val x: Float, val y: Float, val down: Boolean, val scrollY: Float)
 
     companion object {
         private const val DEFAULT_FONT_SIZE = 13f
+        private const val DEFAULT_NAME = "imgui-rtt"
+        private val instances = WeakHashMap<Renderer, MutableMap<String, ImGuiRenderToTexture>>()
         private val imguiVertexShader = """
             #version 460
             
@@ -764,5 +961,66 @@ class ImGuiRenderToTexture(
                 outColor = fragColor * texture(fontTexture, fragUV);
             }
         """.trimIndent()
+
+        /**
+         * Return a per-[Renderer] singleton (keyed by [name]) created on demand.
+         */
+        @JvmStatic
+        fun get(
+            renderer: Renderer = fromContext(),
+            window: Window = renderer.window,
+            name: String = DEFAULT_NAME,
+            overSample: Int = 2,
+            fontSuperSample: Float = 0f,
+            target: RenderTarget = renderer.renderList
+        ): ImGuiRenderToTexture {
+            val byName = instances.getOrPut(renderer) { mutableMapOf() }
+            return byName.getOrPut(name) {
+                create(renderer, window, name, overSample, fontSuperSample, target)
+            }
+        }
+
+        operator fun invoke(
+            renderer: Renderer = fromContext(),
+            window: Window = renderer.window,
+            name: String = DEFAULT_NAME,
+            overSample: Int = 2,
+            fontSuperSample: Float = 4f,
+            target: RenderTarget = renderer.renderList
+        ): ImGuiRenderToTexture = get(renderer, window, name, overSample, fontSuperSample, target)
+
+        private fun create(
+            renderer: Renderer,
+            window: Window,
+            name: String,
+            overSample: Int,
+            fontSuperSample: Float,
+            target: RenderTarget
+        ): ImGuiRenderToTexture {
+            val imgui = ImGuiRenderToTexture(
+                renderer = renderer,
+                window = window,
+                parameters = {
+                    width = window.width * overSample
+                    height = window.height * overSample
+                    mipLevels = 4
+                    generateColorMipmaps = true
+                    clearFirst = true
+                },
+                fontSupersample = fontSuperSample,
+                displayScale = 1f // overSample.f
+            )
+
+            imgui.addUi("test") {
+                window("ImGui → RenderToTexture") {
+                    text("Hello from imgui-java")
+                    text("Renderer: Vulkan → RTT → screen blit")
+                }
+            }
+
+            imgui.loadFontFromResource("Iosevka-Light.ttf", sizePixels = 12 * 2 * overSample.f)
+            imgui.attachTo(target = target, name = name, blitName = "$name-blit")
+            return imgui
+        }
     }
 }

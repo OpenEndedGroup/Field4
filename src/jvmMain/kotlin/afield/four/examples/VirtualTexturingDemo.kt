@@ -1,41 +1,41 @@
 package afield.four.examples
 
 import afield.four.Renderer
+import afield.four.device.CommandBuffer
 import afield.four.modules.Mesh
 import afield.four.modules.ModulePointer
-import afield.four.targets.RenderTarget
+import afield.four.modules.fromContext
 import afield.four.texture.VirtualTextureSystem
-import afield.four.util.Projection
+import afield.four.util.Camera
 import afield.four.util.Window
 import org.joml.Matrix4f
-import org.joml.Vector3f
+import org.joml.times
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.random.Random
 
-class VirtualTexturingDemo {
-    private val window = Window("Field")
-    private val renderer = Renderer(window)
+class VirtualTexturingDemo(
+    val window: Window = fromContext(),
+    val renderer: Renderer = fromContext(),
+    val camera: Camera = fromContext()
+) {
+//    private val window = Window("Field")
+//    private val renderer = Renderer(window)
 
-    private val renderTarget = RenderTarget(renderer)
-    private val module: ModulePointer
-    private val mesh: Mesh
+    val module: ModulePointer
+    val mesh: Mesh
 
-    private val vt: VirtualTextureSystem
-    private val quads: MutableList<VirtualTextureSystem.VirtualQuadInstance>
+    val vt: VirtualTextureSystem
+    val quads: MutableList<VirtualTextureSystem.VirtualQuadInstance>
 
-    private val projection = Projection(window.width, window.height)
-    private val view = Matrix4f()
-    private val viewProj = Matrix4f()
 
     init {
-        renderer.renderList = renderTarget
+        val renderTarget = renderer.renderList
 
-        val images = collectImages(Paths.get("/Users/marc/Movies/blade/scenes/allBlade/"))
+        val images = collectImages(Paths.get("/Users/marc/Downloads/Blade Runner (1982) [2160p] [4K] [BluRay] [5.1] [YTS.MX]/blade/")).sorted()
         afield.logger.lprintln("info,vt", "VirtualTexturingDemo: found ${images.size} images")
+
         val source = object : VirtualTextureSystem.VirtualTextureSource {
             override fun resolvePath(virtualTexId: Int): Path? {
                 if (images.isEmpty()) return null
@@ -44,17 +44,26 @@ class VirtualTexturingDemo {
         }
 
         val config = VirtualTextureSystem.VirtualTextureConfig(
-            virtualTexCount = maxOf(images.size, 1),
-            maxInstances = 100_000,
+            virtualTexCount = maxOf(150*150, 1),
+            maxInstances = 150*150,
             decodeThreads = 4,
             logEveryNFrames = 60,
             enableLogging = true,
-            debugCheckDecoded = true,
-            debugLogDecodedAnomalies = true
+            debugCheckDecoded = false,
+            debugLogDecodedAnomalies = false,
+            thumbnailCacheEnabled = true,
+            thumbnailCacheFromBandIndex = 1,
+            maxDecodeQueueSize = 4096/4,
+            centerBoostEnabled = true,
+            centerBoostRegionFraction = 0.5f,
+            centerBoostPixelScale = 1.15f,
+            centerBoostPriorityScale = 1.25f,
+            fastCullingEnabled = true,
+            fastCullingThreshold = 5000,
         )
 
         vt = VirtualTextureSystem(renderer, config, source)
-        vt.setDebugFlags(showLodTint = true, showPlaceholder = true, showUv = true)
+        vt.setDebugFlags(showLodTint = true, showPlaceholder = false, showUv = false)
 
         module = vt.buildModule("virtual-texturing")
         renderTarget += "virtual-textures" to module
@@ -97,12 +106,19 @@ class VirtualTexturingDemo {
         }
 
         quads = buildQuadGrid(config.virtualTexCount)
+
+        renderTarget.preTargets["__virtualtext__"] = object : afield.four.Target {
+            var f = 0
+            override fun render(command: CommandBuffer, index: Int) {
+                update(f++)
+            }
+        }
     }
 
     private fun buildQuadGrid(texCount: Int): MutableList<VirtualTextureSystem.VirtualQuadInstance> {
         val list = mutableListOf<VirtualTextureSystem.VirtualQuadInstance>()
-        val gridX = 80
-        val gridY = 60
+        val gridX = 200
+        val gridY = 200
         val spacing = 1.1f
         val rnd = Random(1)
         var id = 0
@@ -110,9 +126,9 @@ class VirtualTexturingDemo {
             for (x in 0 until gridX) {
                 val tx = (x - gridX / 2) * spacing
                 val ty = (y - gridY / 2) * spacing
-                val tz = rnd.nextFloat() * 2f - 1f
+                val tz = 0f//rnd.nextFloat() * 2f - 1f
                 val model = Matrix4f().translate(tx, ty, tz).scale(1.0f)
-                list.add(VirtualTextureSystem.VirtualQuadInstance(id % texCount, model))
+                list.add(VirtualTextureSystem.VirtualQuadInstance((x+y*gridX) % texCount, model))
                 id++
             }
         }
@@ -132,39 +148,8 @@ class VirtualTexturingDemo {
     }
 
     fun update(frame: Int) {
-        projection.resize(window.width, window.height)
-        val radius = 40f
-        val angle = frame * 0.002f
-        val cx = cos(angle) * radius
-        val cy = sin(angle) * radius
-        view.identity().lookAt(
-            Vector3f(cx, cy, 30f),
-            Vector3f(0f, 0f, 0f),
-            Vector3f(0f, 1f, 0f)
-        )
-        viewProj.set(projection.projectionMatrix).mul(view)
-
-        mesh.push["viewProj"] = viewProj
-        vt.update(quads, viewProj, window.width, window.height)
+        mesh.push["viewProj"] = camera.p.projectionMatrix * camera.modelView()
+        vt.update(quads, camera.p.projectionMatrix * camera.modelView(), window.width, window.height)
         mesh.instanceCount = vt.lastInstanceCount
-    }
-
-    fun run() {
-        var frame = 0
-        while (!window.shouldClose()) {
-            window.pollEvents()
-            update(frame)
-            renderer.render()
-            frame++
-        }
-    }
-
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            // Configuration.VULKAN_LIBRARY_NAME.set("/path/to/libvulkan")
-            val demo = VirtualTexturingDemo()
-            demo.run()
-        }
     }
 }

@@ -834,6 +834,429 @@ object Functions {
         }
     }
 
+    enum class ChunkMapMode { DIRECT, STRETCH, CLAMP, WRAP, MIRROR }
+
+    enum class ChunkBlend { REPLACE, ADD, MULTIPLY }
+
+    data class TimelineChunk(
+        val source: Fn,
+        val sourceDomain: Domain = source.roi,
+        val targetDomain: Domain,
+        val mapMode: ChunkMapMode = ChunkMapMode.DIRECT,
+        val blend: ChunkBlend = ChunkBlend.REPLACE,
+        val edge: EdgeMode = EdgeMode.ZERO,
+        val outside: Double = 0.0,
+        val window: Fn? = null,
+        val gain: Fn? = null,
+        val name: String? = source.name
+    ) {
+        private fun targetAlpha(globalX: Double): Double {
+            val len = targetDomain.length
+            if (!len.isFinite() || len == 0.0) return 0.0
+            return ((globalX - targetDomain.min) / len).coerceIn(0.0, 1.0)
+        }
+
+        fun contains(globalX: Double): Boolean = targetDomain.containsInclusive(globalX)
+
+        private fun mapToSource(globalX: Double): Double {
+            val linear = sourceDomain.min + (globalX - targetDomain.min)
+            return when (mapMode) {
+                ChunkMapMode.DIRECT -> linear
+                ChunkMapMode.STRETCH -> sourceDomain.lerp(targetAlpha(globalX))
+                ChunkMapMode.CLAMP -> sourceDomain.clamp(linear)
+                ChunkMapMode.WRAP -> sourceDomain.wrap(linear)
+                ChunkMapMode.MIRROR -> sourceDomain.reflect(linear)
+            }
+        }
+
+        fun weightAt(globalX: Double): Double {
+            if (!contains(globalX)) return 0.0
+            val shaped = window?.evalSafe(targetAlpha(globalX), outside = 0.0, edge = EdgeMode.CLAMP) ?: 1.0
+            val g = gain?.eval(globalX) ?: 1.0
+            return shaped * g
+        }
+
+        fun sampleAt(globalX: Double): Double? {
+            if (!contains(globalX) || sourceDomain._isEmpty) return null
+            val sourceX = mapToSource(globalX)
+            return source.evalSafe(sourceX, outside = outside, edge = edge)
+        }
+    }
+
+    class TimelineGraph(
+        chunks: List<TimelineChunk>,
+        val outside: Double = 0.0,
+        val defaultRange: Domain = Domain.point(0.0)
+    ) {
+        val chunks: List<TimelineChunk> = chunks.toList()
+
+        val activeDomain: Domain = run {
+            var d = Domain.EMPTY
+            for (chunk in this.chunks) {
+                d = if (d._isEmpty) chunk.targetDomain else d.union(chunk.targetDomain)
+            }
+            if (d._isEmpty) defaultRange else d
+        }
+
+        private fun applyBlend(base: Double, sample: Double, weight: Double, blendMode: ChunkBlend): Double =
+            when (blendMode) {
+                ChunkBlend.REPLACE -> blend(base, sample, clamp01(weight))
+                ChunkBlend.ADD -> base + sample * weight
+                ChunkBlend.MULTIPLY -> base * blend(1.0, sample, clamp01(weight))
+            }
+
+        fun eval(x: Double): Double {
+            var value = outside
+            var active = false
+            for (chunk in chunks) {
+                val sample = chunk.sampleAt(x) ?: continue
+                val weight = chunk.weightAt(x)
+                value = applyBlend(value, sample, weight, chunk.blend)
+                active = true
+            }
+            return if (active) value else outside
+        }
+
+        operator fun invoke(x: Double): Double = eval(x)
+
+        fun asFn(
+            name: String = "timeline",
+            range: Domain = activeDomain
+        ): Fn = Fn(roi = range, domain = range, name = name) { x -> eval(x) }
+
+        fun tap(offset: Double = 0.0, name: String = "timelineTap"): Fn {
+            val tapRoi = if (activeDomain._isEmpty) activeDomain else activeDomain.shift(offset)
+            return Fn(roi = tapRoi, domain = tapRoi, name = name) { x -> eval(x - offset) }
+        }
+    }
+
+    class TimelineBuilder(
+        start: Double = 0.0,
+        private val outside: Double = 0.0
+    ) {
+        private val chunks = mutableListOf<TimelineChunk>()
+        private val marks = LinkedHashMap<String, Double>()
+        private val startAt = start
+
+        var cursor: Double = start
+            private set
+
+        private fun defaultDurationFor(domain: Domain): Double {
+            val len = domain.length
+            return if (len.isFinite() && len > 0.0) len else 1.0
+        }
+
+        private fun normalizeDuration(duration: Double?, sourceDomain: Domain): Double {
+            val d = duration ?: defaultDurationFor(sourceDomain)
+            return if (!d.isFinite()) defaultDurationFor(sourceDomain) else kotlin.math.abs(d)
+        }
+
+        fun mark(name: String): Double {
+            marks[name] = cursor
+            return cursor
+        }
+
+        fun mark(name: String, at: Double): Double {
+            marks[name] = at
+            return at
+        }
+
+        fun marker(name: String): Double? = marks[name]
+
+        fun moveTo(x: Double): Double {
+            cursor = x
+            return cursor
+        }
+
+        fun moveToMark(name: String, offset: Double = 0.0): Double {
+            cursor = (marks[name] ?: cursor) + offset
+            return cursor
+        }
+
+        fun advance(by: Double): Double {
+            cursor += by
+            return cursor
+        }
+
+        fun rewind(by: Double): Double = advance(-by)
+
+        private fun insertChunk(
+            source: Fn,
+            at: Double = cursor,
+            duration: Double? = null,
+            sourceDomain: Domain = source.roi,
+            mapMode: ChunkMapMode = ChunkMapMode.DIRECT,
+            blend: ChunkBlend = ChunkBlend.REPLACE,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this.outside,
+            window: Fn? = null,
+            gain: Fn? = null,
+            advanceCursor: Boolean = true
+        ): TimelineChunk {
+            val dur = normalizeDuration(duration, sourceDomain)
+            val target = Domain.of(at, at + dur)
+            val chunk = TimelineChunk(
+                source = source,
+                sourceDomain = sourceDomain,
+                targetDomain = target,
+                mapMode = mapMode,
+                blend = blend,
+                edge = edge,
+                outside = outside,
+                window = window,
+                gain = gain
+            )
+            chunks += chunk
+            if (advanceCursor) cursor = target.max
+            return chunk
+        }
+
+        fun repeatToFit(
+            source: Fn,
+            duration: Double,
+            at: Double = cursor,
+            sourceDomain: Domain = source.roi,
+            blend: ChunkBlend = ChunkBlend.REPLACE,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this.outside,
+            window: Fn? = null,
+            gain: Fn? = null,
+            advanceCursor: Boolean = true
+        ): TimelineChunk = insertChunk(
+            source = source,
+            at = at,
+            duration = duration,
+            sourceDomain = sourceDomain,
+            mapMode = ChunkMapMode.WRAP,
+            blend = blend,
+            edge = edge,
+            outside = outside,
+            window = window,
+            gain = gain,
+            advanceCursor = advanceCursor
+        )
+
+        fun stretchToFit(
+            source: Fn,
+            duration: Double,
+            at: Double = cursor,
+            sourceDomain: Domain = source.roi,
+            blend: ChunkBlend = ChunkBlend.REPLACE,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this.outside,
+            window: Fn? = null,
+            gain: Fn? = null,
+            advanceCursor: Boolean = true
+        ): TimelineChunk = insertChunk(
+            source = source,
+            at = at,
+            duration = duration,
+            sourceDomain = sourceDomain,
+            mapMode = ChunkMapMode.STRETCH,
+            blend = blend,
+            edge = edge,
+            outside = outside,
+            window = window,
+            gain = gain,
+            advanceCursor = advanceCursor
+        )
+
+        private fun insertOverlap(
+            source: Fn,
+            overlap: Double,
+            at: Double = cursor,
+            duration: Double? = null,
+            sourceDomain: Domain = source.roi,
+            mapMode: ChunkMapMode = ChunkMapMode.DIRECT,
+            blend: ChunkBlend = ChunkBlend.REPLACE,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this.outside,
+            window: Fn = hannWindow(Domain.of(0.0, 1.0)),
+            gain: Fn? = null
+        ): TimelineChunk {
+            val dur = normalizeDuration(duration, sourceDomain)
+            val ov = overlap.coerceIn(0.0, dur)
+            return insertChunk(
+                source = source,
+                at = at - ov,
+                duration = dur,
+                sourceDomain = sourceDomain,
+                mapMode = mapMode,
+                blend = blend,
+                edge = edge,
+                outside = outside,
+                window = window,
+                gain = gain,
+                advanceCursor = true
+            )
+        }
+
+        private fun insertSplice(
+            source: Fn,
+            lookBack: Double,
+            duration: Double? = null,
+            sourceDomain: Domain = source.roi,
+            fadeIn: Double = 0.15,
+            fadeOut: Double = fadeIn,
+            mapMode: ChunkMapMode = ChunkMapMode.STRETCH,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this.outside,
+            gain: Fn? = null,
+            advanceCursor: Boolean = false
+        ): TimelineChunk {
+            val dur = normalizeDuration(duration, sourceDomain)
+            val start = cursor - kotlin.math.abs(lookBack)
+            return insertChunk(
+                source = source,
+                at = start,
+                duration = dur,
+                sourceDomain = sourceDomain,
+                mapMode = mapMode,
+                blend = ChunkBlend.REPLACE,
+                edge = edge,
+                outside = outside,
+                window = spliceWindow(fadeIn = fadeIn, fadeOut = fadeOut),
+                gain = gain,
+                advanceCursor = advanceCursor
+            )
+        }
+
+        fun snapshot(offset: Double = 0.0, name: String = "timelineSnapshot"): Fn {
+            val graph = buildGraph()
+            val roi = graph.activeDomain.shift(offset)
+            return Fn(roi = roi, domain = roi, name = name) { x -> graph.eval(x - offset) }
+        }
+
+        fun lookBack(delay: Double, name: String = "timelineLookBack"): Fn =
+            snapshot(offset = delay, name = name)
+
+        fun Fn.place(
+            at: Double = cursor,
+            duration: Double? = null,
+            sourceDomain: Domain = roi,
+            mapMode: ChunkMapMode = ChunkMapMode.DIRECT,
+            blend: ChunkBlend = ChunkBlend.REPLACE,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this@TimelineBuilder.outside,
+            window: Fn? = null,
+            gain: Fn? = null,
+            advanceCursor: Boolean = true
+        ): TimelineChunk = this@TimelineBuilder.insertChunk(
+            source = this,
+            at = at,
+            duration = duration,
+            sourceDomain = sourceDomain,
+            mapMode = mapMode,
+            blend = blend,
+            edge = edge,
+            outside = outside,
+            window = window,
+            gain = gain,
+            advanceCursor = advanceCursor
+        )
+
+        fun Fn.overlap(
+            amount: Double,
+            at: Double = cursor,
+            duration: Double? = null,
+            sourceDomain: Domain = roi,
+            mapMode: ChunkMapMode = ChunkMapMode.DIRECT,
+            blend: ChunkBlend = ChunkBlend.REPLACE,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this@TimelineBuilder.outside,
+            window: Fn = hannWindow(Domain.of(0.0, 1.0)),
+            gain: Fn? = null
+        ): TimelineChunk = this@TimelineBuilder.insertOverlap(
+            source = this,
+            overlap = amount,
+            at = at,
+            duration = duration,
+            sourceDomain = sourceDomain,
+            mapMode = mapMode,
+            blend = blend,
+            edge = edge,
+            outside = outside,
+            window = window,
+            gain = gain
+        )
+
+        fun Fn.splice(
+            lookBack: Double,
+            duration: Double? = null,
+            sourceDomain: Domain = roi,
+            fadeIn: Double = 0.15,
+            fadeOut: Double = fadeIn,
+            mapMode: ChunkMapMode = ChunkMapMode.STRETCH,
+            edge: EdgeMode = EdgeMode.ZERO,
+            outside: Double = this@TimelineBuilder.outside,
+            gain: Fn? = null,
+            advanceCursor: Boolean = false
+        ): TimelineChunk = this@TimelineBuilder.insertSplice(
+            source = this,
+            lookBack = lookBack,
+            duration = duration,
+            sourceDomain = sourceDomain,
+            fadeIn = fadeIn,
+            fadeOut = fadeOut,
+            mapMode = mapMode,
+            edge = edge,
+            outside = outside,
+            gain = gain,
+            advanceCursor = advanceCursor
+        )
+
+        fun chunks(): List<TimelineChunk> = chunks.toList()
+
+        fun buildGraph(): TimelineGraph = TimelineGraph(
+            chunks = chunks,
+            outside = outside,
+            defaultRange = Domain.point(startAt)
+        )
+
+        fun build(name: String = "timeline", range: Domain? = null): Fn {
+            val graph = buildGraph()
+            return graph.asFn(name = name, range = range ?: graph.activeDomain)
+        }
+    }
+
+    fun spliceWindow(
+        fadeIn: Double = 0.15,
+        fadeOut: Double = fadeIn,
+        domain: Domain = Domain.of(0.0, 1.0)
+    ): Fn {
+        val fi = fadeIn.coerceAtLeast(0.0).coerceAtMost(1.0)
+        val fo = fadeOut.coerceAtLeast(0.0).coerceAtMost(1.0)
+        return Fn(domain, domain, "spliceWindow") { x ->
+            val t = clamp01(domain.alphaOf(x))
+            val inW = if (fi == 0.0 || t >= fi) 1.0 else smoothstep(t / fi)
+            val outStart = 1.0 - fo
+            val outW = if (fo == 0.0 || t <= outStart) 1.0 else smoothstep((1.0 - t) / fo)
+            (inW * outW).coerceIn(0.0, 1.0)
+        }
+    }
+
+    fun timelineGraph(
+        start: Double = 0.0,
+        outside: Double = 0.0,
+        init: TimelineBuilder.() -> Unit
+    ): TimelineGraph {
+        val builder = TimelineBuilder(start = start, outside = outside)
+        builder.init()
+        return builder.buildGraph()
+    }
+
+    fun timeline(
+        start: Double = 0.0,
+        outside: Double = 0.0,
+        name: String = "timeline",
+        range: Domain? = null,
+        init: TimelineBuilder.() -> Unit
+    ): Fn {
+        val builder = TimelineBuilder(start = start, outside = outside)
+        builder.init()
+        return builder.build(name = name, range = range)
+    }
+
     fun Fn.toFLine(
         domain: Domain = roi,
         samples: Int = 256,
@@ -1059,6 +1482,10 @@ object Functions {
         val r = intersectRois(range, outside).intersect(d)
         return Fn(r, d, name) { x -> if (range.containsInclusive(x)) eval(x) else outside.eval(x) }
     }
+
+    fun Fn.trim(range: Domain, outside: Fn = c(0.0)): Fn = cut(range, outside)
+
+    fun Fn.slice(range: Domain, outside: Fn = c(0.0)): Fn = cut(range, outside)
 
     fun Fn.replace(range: Domain, replacement: Fn): Fn {
         val domain = this.domain.union(replacement.domain)

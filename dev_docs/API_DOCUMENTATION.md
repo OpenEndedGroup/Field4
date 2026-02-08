@@ -4,10 +4,7 @@ This document explains how to generate and maintain API documentation for Field4
 
 ## Overview
 
-Field4 uses [Dokka](https://kotlinlang.org/docs/dokka-introduction.html) to generate API documentation from KDoc comments in the source code. The documentation is generated in two formats:
-
-1. **HTML** - Rich, browsable documentation with search and cross-references
-2. **GitHub Flavored Markdown (GFM)** - Markdown documentation integrated into the MkDocs site
+Field4 uses [Dokka](https://kotlinlang.org/docs/dokka-introduction.html) to generate API documentation from KDoc comments in the source code. The documentation is generated in HTML format.
 
 ## Documented Packages
 
@@ -20,35 +17,27 @@ Other internal packages are suppressed from the documentation.
 
 ## Generating Documentation
 
-### Markdown for MkDocs
+### HTML Documentation
 
-To generate markdown documentation that integrates with the MkDocs site:
+To generate HTML documentation:
 
 ```bash
 ./gradlew generateApiDocs
 ```
 
-Or directly run the Dokka GFM task:
+Or directly run the Dokka task:
 
 ```bash
-./gradlew dokkaGfm
-```
-
-This generates markdown files in `public/docs/api/`.
-
-### HTML Documentation
-
-To generate standalone HTML documentation:
-
-```bash
-./gradlew dokkaHtml
+./gradlew dokkaGenerateHtml
 ```
 
 The HTML output will be available in `build/dokka/html/`. You can open `build/dokka/html/index.html` in a browser to browse the documentation.
 
+> Note: Dokka Gradle plugin v2 only supports HTML and Javadoc outputs. Markdown/GFM is no longer supported.
+
 ## Building the MkDocs Site
 
-After generating the markdown documentation, you can build the complete MkDocs site:
+After generating the HTML documentation, you can build the complete MkDocs site (the API docs page can link to the HTML output):
 
 ```bash
 cd public
@@ -80,11 +69,7 @@ dokka {
         // ... package filters ...
     }
     
-    // GFM (Markdown) format for MkDocs
-    dokkaPublications.create("gfm") {
-        outputDirectory.set(file("public/docs/api"))
-        // ... package filters ...
-    }
+    // HTML format only (Dokka Gradle plugin v2)
 }
 ```
 
@@ -128,7 +113,7 @@ class FLine {
 ./gradlew generateApiDocs
 ```
 
-3. Review the generated markdown in `public/docs/api/`
+3. Review the generated HTML in `build/dokka/html/`
 
 ## CI/CD Integration
 

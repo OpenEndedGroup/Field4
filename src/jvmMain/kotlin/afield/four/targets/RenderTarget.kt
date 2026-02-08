@@ -97,9 +97,11 @@ class RenderTarget(
             run {
                 val (srcStage, srcAccess, oldLayout) =
                     if (seenBefore.contains(index))
-                        Triple(VK_PIPELINE_STAGE_2_NONE, 0L, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                        Triple(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0L, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                     else
-                        Triple(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0L, VK_IMAGE_LAYOUT_UNDEFINED)
+                        // Note: Use COLOR_ATTACHMENT_OUTPUT so this transition is synchronized by the
+                        // swapchain acquire semaphore wait (sync validation on MoltenVK).
+                        Triple(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0L, VK_IMAGE_LAYOUT_UNDEFINED)
 
                 image_layout_transition(
                     command.vkCommandBuffer,

@@ -76,6 +76,7 @@ open class RenderToTexture(
     val colorImageRefs: MutableList<Image?>          // null when external view has no underlying Image
     val colorImageHandles: MutableList<Long>         // always the underlying VkImage handle
     protected val mutableImageViewArray: MutableList<HasImageView>
+    private val attachmentImageViews: MutableList<ImageView>
     override val imageViewArray: List<HasImageView>
         get() = mutableImageViewArray
     val colorFormats: List<Int>
@@ -158,6 +159,7 @@ open class RenderToTexture(
         }
 
         val tmpViews = MutableList<HasImageView?>(colorFormats.size) { null }
+        val tmpAttachmentViews = MutableList<ImageView?>(colorFormats.size) { null }
         val tmpImageRefs = MutableList<Image?>(colorFormats.size) { null }
         val tmpImageHandles = MutableList<Long>(colorFormats.size) { 0L }
 
@@ -170,6 +172,20 @@ open class RenderToTexture(
                 tmpViews[idx] = external
                 tmpImageRefs[idx] = external.imageView.underlyingImage
                 tmpImageHandles[idx] = external.imageView.image
+
+                val attachmentView =
+                    if (mipLevels == 1) external.imageView
+                    else {
+                        val ivd = ImageViewData()
+                            .format(fmt)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .baseArrayLayer(external.imageView.imageViewData.baseArrayLayer)
+                            .layerCount(colorLayerCount.coerceAtLeast(1))
+                            .mipLevels(1)
+                        if (ivd.layerCount > 1) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                        ImageView(renderer.device, external.imageView.image, ivd)
+                    }
+                tmpAttachmentViews[idx] = attachmentView
             } else {
                 val needsMipTransfers = wantsMips && colorFormatCanBlit[idx]
                 val data = ImageData()
@@ -197,10 +213,24 @@ open class RenderToTexture(
                 tmpViews[idx] = view
                 tmpImageRefs[idx] = img
                 tmpImageHandles[idx] = img.vkImage
+
+                val attachmentView =
+                    if (mipLevels == 1) view
+                    else {
+                        val avd = ImageViewData()
+                            .format(data.format)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .layerCount(data.arrayLayers)
+                            .mipLevels(1)
+                        if (avd.layerCount > 1) avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                        ImageView(renderer.device, img, avd)
+                    }
+                tmpAttachmentViews[idx] = attachmentView
             }
         }
 
         mutableImageViewArray = tmpViews.map { requireNotNull(it) }.toMutableList()
+        attachmentImageViews = tmpAttachmentViews.map { requireNotNull(it) }.toMutableList()
         colorImageRefs = tmpImageRefs
         colorImageHandles = tmpImageHandles
         colorLayout = IntArray(colorImageHandles.size) { VK_IMAGE_LAYOUT_UNDEFINED }
@@ -276,6 +306,7 @@ open class RenderToTexture(
         name: String = "rtt-blit",
         viewport: Rect? = null,
         sourceRect: Rect? = null,
+        additive: Boolean = false,
         configure: ColorGrade.() -> Unit = {}
     ): ModulePointer {
         require(attachment in imageViewArray.indices) {
@@ -291,6 +322,10 @@ open class RenderToTexture(
             depth = 1
             depthFormat = Options.defaultDepthFormat
             depthTest = false
+            if (additive) {
+                colorBlendOp = VK_BLEND_OP_ADD
+                alphaBlendOp = VK_BLEND_OP_ADD
+            }
             this.viewport = viewport
             vertex = blitVertexShader
             fragment = blitFragmentShader
@@ -483,7 +518,7 @@ open class RenderToTexture(
             colorImageHandles.indices.forEach { i ->
                 colorAttachmentInfo[i]
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
-                    .imageView(imageViewArray[i].imageView.vkImageView)
+                    .imageView(attachmentImageViews[i].vkImageView)
                     .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(if (parameters.clearFirst) VK_ATTACHMENT_LOAD_OP_CLEAR else VK_ATTACHMENT_LOAD_OP_LOAD)

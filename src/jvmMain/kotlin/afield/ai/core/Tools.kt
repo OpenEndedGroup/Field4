@@ -43,11 +43,23 @@ data class ListDefinitionsRequest(val unused: Int = 0)
 data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
-/** Tool: get full contents of the current Kotlin file. */
-@JsonClassDescription("Return the full contents of the current Kotlin file.")
+/** Tool: get full contents of text properties for the current box/file context. */
+@JsonClassDescription("Return full contents for available text properties (code and shaders) with file refs and languages.")
 data class ListContentsRequest(val unused: Int = 0)
 
-data class ListContentsResult(val fileRef: String, val content: String)
+data class ListContentsResult(
+    val fileRef: String? = null,
+    val content: String? = null,
+    val language: String? = null,
+    val contents: List<ListContentEntry> = emptyList()
+)
+
+data class ListContentEntry(
+    val fileRef: String,
+    val property: String,
+    val language: String,
+    val content: String
+)
 
 /** Tool: edit another file by name (your integration decides how to apply this). */
 @JsonClassDescription("Edit another file by specifying its name and new content.")
@@ -84,6 +96,7 @@ data class Recall(val key: String)
 
 data class ToolExecutionContext(
     val attachments: List<ContextAttachment> = emptyList(),
+    val resolveAttachment: ((String) -> AttachmentResponse?)? = null,
 
     // Kotlin-only providers (optional)
     val listDefinitions: (() -> ListDefinitionsResult)? = null,

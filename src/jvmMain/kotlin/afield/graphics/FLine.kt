@@ -104,9 +104,9 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
 /**
  * Mutable path composed of move/line/cubic/close instructions.
  *
- * Use [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Most builders
- * return the created [Node] so you can attach per-instruction properties (for example,
- * `color` or `pointSize`).
+ * Use [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Builders return
+ * [FLine] for chaining; use [here] to access the most recently added [Node] when you
+ * need per-instruction properties (for example, `color` or `pointSize`).
  */
 class FLine : HasProperties {
 
@@ -233,32 +233,32 @@ class FLine : HasProperties {
     /**
      * Move the current point without drawing, starting a new subpath.
      */
-    fun moveTo(x: Number, y: Number, z: Number = 0): Node {
+    fun moveTo(x: Number, y: Number, z: Number = 0): FLine {
         nodes.add(MoveTo().set(planePoint(x, y, z)))
         rev++
-        return nodes.last()
+        return this
     }
 
     /**
      * Move the current point without drawing, starting a new subpath.
      */
-    fun moveTo(v: Vec3): Node {
+    fun moveTo(v: Vec3): FLine {
         nodes.add(MoveTo().set(Vec3(v)))
         rev++
-        return nodes.last()
+        return this
     }
 
     /**
      * 2D overload of [moveTo].
      */
-    fun moveTo(v: Vec2): Node {
+    fun moveTo(v: Vec2): FLine {
         return moveTo(v.x, v.y, 0.0)
     }
 
     /**
      * 3D vector overload of [moveTo].
      */
-    fun moveTo(v: Vector3d): Node {
+    fun moveTo(v: Vector3d): FLine {
         return moveTo(Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat()))
     }
 
@@ -267,14 +267,14 @@ class FLine : HasProperties {
      *
      * If [breakNext] is set, this becomes a [moveTo] instead.
      */
-    fun lineTo(x: Number, y: Number, z: Number = 0): Node {
+    fun lineTo(x: Number, y: Number, z: Number = 0): FLine {
         if (breakNext) {
             breakNext = false
             return moveTo(x, y, z)
         }
         rev++
         nodes.add(LineTo().set(planePoint(x, y, z)))
-        return nodes.last()
+        return this
     }
 
     /**
@@ -282,27 +282,27 @@ class FLine : HasProperties {
      *
      * If [breakNext] is set, this becomes a [moveTo] instead.
      */
-    fun lineTo(v: Vec3): Node {
+    fun lineTo(v: Vec3): FLine {
         if (breakNext) {
             breakNext = false
             return moveTo(v)
         }
         rev++
         nodes.add(LineTo().set(Vec3(v)))
-        return nodes.last()
+        return this
     }
 
     /**
      * 3D vector overload of [lineTo].
      */
-    fun lineTo(v: Vector3d): Node {
+    fun lineTo(v: Vector3d): FLine {
         return lineTo(Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat()))
     }
 
     /**
      * 2D overload of [lineTo].
      */
-    fun lineTo(v: Vec2): Node {
+    fun lineTo(v: Vec2): FLine {
         return lineTo(v.x, v.y, 0)
     }
 
@@ -323,7 +323,7 @@ class FLine : HasProperties {
         x: Number,
         y: Number,
         z: Number = 0
-    ): Node {
+    ): FLine {
         if (breakNext) {
             breakNext = false
             return moveTo(x, y, z)
@@ -339,7 +339,7 @@ class FLine : HasProperties {
                 c2,
             )
         )
-        return nodes.last()
+        return this
     }
 
 
@@ -396,7 +396,7 @@ class FLine : HasProperties {
         y1: Number,
         x: Number,
         y: Number,
-    ): Node {
+    ): FLine {
         return cubicTo(x0, y0, 0.0, x1, y1, 0.0, x, y, 0.0)
     }
 
@@ -405,7 +405,7 @@ class FLine : HasProperties {
      *
      * If [breakNext] is set, this becomes a [moveTo] instead.
      */
-    fun cubicTo(v0: Vec3, v1: Vec3, v: Vec3): Node {
+    fun cubicTo(v0: Vec3, v1: Vec3, v: Vec3): FLine {
         if (breakNext) {
             breakNext = false
             return moveTo(v)
@@ -418,16 +418,16 @@ class FLine : HasProperties {
                 Vec3(v1),
             )
         )
-        return nodes.last()
+        return this
     }
 
     /**
      * Close the current subpath.
      */
-    fun close(): Node {
+    fun close(): FLine {
         rev++
         nodes.add(Close())
-        return nodes.last()
+        return this
     }
 
     /**

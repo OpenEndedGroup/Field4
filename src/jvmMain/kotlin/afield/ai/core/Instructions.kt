@@ -73,14 +73,16 @@ fun buildDynamicInstructions(
     val toolAds = mutableListOf<String>()
     toolAds += "- Commentary: use this for non-code notes/questions/alternatives."
 
-    if (ctx.attachments.isNotEmpty()) {
+    if (ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null) {
         toolAds += "- ListAttachments: lists available attached context files."
-        toolAds += "- AttachmentRequest: retrieve an attached file's contents by filename (call ListAttachments first)."
+        toolAds += "- AttachmentRequest: retrieve attached context by name/path (supports attached names and resolvable refs/paths)."
     }
 
     val isKotlin = lang.name.equals("Kotlin", ignoreCase = true)
     if (isKotlin && ctx.listDefinitions != null) toolAds += "- ListDefinitions: list visible definitions (including shaders associated with Kotlin)."
-    if (isKotlin && ctx.listFileContents != null) toolAds += "- ListContents: get full contents of the current Kotlin file."
+    if (ctx.listFileContents != null) {
+        toolAds += "- ListContents: get full contents of available text properties for the current box (code/shaders), with file refs and languages."
+    }
     if (ctx.editOtherFile != null) toolAds += "- EditFile: update another file by name (e.g., paired shaders)."
     if (ctx.workspaceSymbolSearch != null) {
         toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."

@@ -35,6 +35,8 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
 
     var mouseEvents : MouseEvents? = null
     var keyEvents : KeyEvents? = null
+    private val keyListeners = mutableListOf<(Int, Int, Int, Int) -> Unit>()
+    private val charListeners = mutableListOf<(Int) -> Unit>()
 
     val cursor: Vec2
         get() {
@@ -93,6 +95,9 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         GLFW.glfwSetKeyCallback(windowHandle) { window: Long, key: Int, scancode: Int, action: Int, mods: Int ->
             keyCallback(key, scancode, action, mods)
         }
+        GLFW.glfwSetCharCallback(windowHandle) { _: Long, codepoint: Int ->
+            charCallback(codepoint)
+        }
 
         // --- Scroll callback: accumulate until consumed in poll loop
         GLFW.glfwSetScrollCallback(windowHandle) { _: Long, xoffset: Double, yoffset: Double ->
@@ -116,7 +121,13 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         return Rect(x[0].d, y[0].d, width[0].d, height[0].d)
     }
 
-    fun keyCallback(key: Int, scancode: Int, action: Int, mods: Int) { }
+    fun keyCallback(key: Int, scancode: Int, action: Int, mods: Int) {
+        keyListeners.forEach { it(key, scancode, action, mods) }
+    }
+
+    fun charCallback(codepoint: Int) {
+        charListeners.forEach { it(codepoint) }
+    }
 
     fun cleanup() {
         Callbacks.glfwFreeCallbacks(windowHandle)
@@ -126,6 +137,16 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
 
     fun isKeyPressed(keyCode: Int): Boolean {
         return GLFW.glfwGetKey(windowHandle, keyCode) == GLFW.GLFW_PRESS
+    }
+
+    fun addKeyListener(listener: (Int, Int, Int, Int) -> Unit): () -> Unit {
+        keyListeners.add(listener)
+        return { keyListeners.remove(listener) }
+    }
+
+    fun addCharListener(listener: (Int) -> Unit): () -> Unit {
+        charListeners.add(listener)
+        return { charListeners.remove(listener) }
     }
 
     // --- MOUSE: pressed state (used by MouseEvents)

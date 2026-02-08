@@ -1273,7 +1273,7 @@ private fun appendArcBetweenVectors(
 /**
  * Append a circular arc tangent to segments (current -> p1) and (p1 -> p2).
  */
-fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine.Node {
+fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine {
     if (breakNext) {
         breakNext = false
         return moveTo(p1)
@@ -1319,13 +1319,13 @@ fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine.No
         lineTo(tangent1)
     }
     appendArcBetweenVectors(this, center, normal, Vec3(tangent1).sub(center), Vec3(tangent2).sub(center), segments)
-    return nodes.last()
+    return this
 }
 
 /**
  * 2D overload of [arcTo] using the active 2D plane.
  */
-fun FLine.arcTo(p1: Vec2, p2: Vec2, radius: Number, segments: Int = 32): FLine.Node {
+fun FLine.arcTo(p1: Vec2, p2: Vec2, radius: Number, segments: Int = 32): FLine {
     return arcTo(
         planePoint(p1.x, p1.y, 0f),
         planePoint(p2.x, p2.y, 0f),
@@ -1344,14 +1344,14 @@ fun FLine.arcTo(
     y2: Number,
     radius: Number,
     segments: Int = 32
-): FLine.Node {
+): FLine {
     return arcTo(planePoint(x1, y1, 0f), planePoint(x2, y2, 0f), radius.toFloat(), segments)
 }
 
 /**
  * Append a circular arc through a midpoint to an end point.
  */
-fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine.Node {
+fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine {
     if (breakNext || nodes.isEmpty()) {
         breakNext = false
         moveTo(through)
@@ -1361,13 +1361,13 @@ fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine.N
     val start = nodes.last().to
     val arc = arcThrough3Points(start, through, end, segments)
     arc.nodes.drop(1).forEach { lineTo(it.to) }
-    return nodes.last()
+    return this
 }
 
 /**
  * 2D overload of [circleThroughTo] using the active 2D plane.
  */
-fun FLine.circleThroughTo(through: Vec2, end: Vec2, segments: Int = 32): FLine.Node {
+fun FLine.circleThroughTo(through: Vec2, end: Vec2, segments: Int = 32): FLine {
     return circleThroughTo(
         planePoint(through.x, through.y, 0f),
         planePoint(end.x, end.y, 0f),
@@ -1384,7 +1384,7 @@ fun FLine.circleThroughTo(
     endX: Number,
     endY: Number,
     segments: Int = 32
-): FLine.Node {
+): FLine {
     return circleThroughTo(
         planePoint(throughX, throughY, 0f),
         planePoint(endX, endY, 0f),
@@ -1401,7 +1401,7 @@ fun FLine.polarCubicTo(
     c2Angle: Float,
     c2Length: Float,
     endPoint: Vec3
-): FLine.Node {
+): FLine {
     if (breakNext || nodes.isEmpty()) {
         breakNext = false
         return moveTo(endPoint)
@@ -1422,7 +1422,7 @@ fun FLine.polarCubicTo(
     c2Angle: Float,
     c2Length: Float,
     endPoint: Vec2
-): FLine.Node {
+): FLine {
     return polarCubicTo(
         c1Angle,
         c1Length,
@@ -1443,7 +1443,7 @@ fun FLine.polarCubicTo(
     x: Number,
     y: Number,
     z: Number = 0
-): FLine.Node {
+): FLine {
     return polarCubicTo(c1Angle, c1Length, c2Angle, c2Length, planePoint(x, y, z))
 }
 
@@ -1613,7 +1613,7 @@ fun cubicSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, 
  * If called immediately after a MoveTo, this falls back to lineTo.
  * smoothness scales the (next - prev) / 6 handle length (1f = default).
  */
-fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine.Node {
+fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine {
     if (breakNext) {
         breakNext = false
         return moveTo(endPoint)
@@ -1654,14 +1654,14 @@ fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine.Node {
 /**
  * Numeric overload of [smoothTo].
  */
-fun FLine.smoothTo(x: Number, y: Number, z: Number = 0, smoothness: Float = 1f): FLine.Node {
+fun FLine.smoothTo(x: Number, y: Number, z: Number = 0, smoothness: Float = 1f): FLine {
     return smoothTo(vec(x, y, z), smoothness)
 }
 
 /**
  * 2D overload of [smoothTo].
  */
-fun FLine.smoothTo(v: Vec2, smoothness: Float = 1f): FLine.Node {
+fun FLine.smoothTo(v: Vec2, smoothness: Float = 1f): FLine {
     return smoothTo(vec(v.x, v.y, 0f), smoothness)
 }
 
@@ -1674,39 +1674,38 @@ fun FLine.tcbTo(
     tension: Float = 0f,
     continuity: Float = 0f,
     bias: Float = 0f
-): FLine.Node {
+): FLine {
     val paramsNew = TCBParams(tension, continuity, bias)
+    fun attachParams(): FLine {
+        setTcbParams(here, paramsNew)
+        return this
+    }
 
     if (breakNext) {
         breakNext = false
-        val node = moveTo(endPoint)
-        setTcbParams(node, paramsNew)
-        return node
+        moveTo(endPoint)
+        return attachParams()
     }
     if (nodes.isEmpty()) {
-        val node = moveTo(endPoint)
-        setTcbParams(node, paramsNew)
-        return node
+        moveTo(endPoint)
+        return attachParams()
     }
 
     val last = nodes.last()
     if (last is FLine.MoveTo) {
-        val node = lineTo(endPoint)
-        setTcbParams(node, paramsNew)
-        return node
+        lineTo(endPoint)
+        return attachParams()
     }
     if (last is FLine.Close) {
-        val node = moveTo(endPoint)
-        setTcbParams(node, paramsNew)
-        return node
+        moveTo(endPoint)
+        return attachParams()
     }
 
     val prev = last.to
     val prevNode = nodes.getOrNull(nodes.size - 2)
     if (prevNode == null) {
-        val node = lineTo(endPoint)
-        setTcbParams(node, paramsNew)
-        return node
+        lineTo(endPoint)
+        return attachParams()
     }
 
     val prevPrev = prevNode.to
@@ -1740,9 +1739,8 @@ fun FLine.tcbTo(
     val c1New = Vec3(prev).add(Vec3(outPrev).mul(1f / 3f))
     val inEnd = tcbIn(prev, endPoint, endPoint, paramsNew)
     val c2New = Vec3(endPoint).sub(Vec3(inEnd).mul(1f / 3f))
-    val node = cubicTo(c1New, c2New, endPoint)
-    setTcbParams(node, paramsNew)
-    return node
+    cubicTo(c1New, c2New, endPoint)
+    return attachParams()
 }
 
 /**
@@ -1755,7 +1753,7 @@ fun FLine.tcbTo(
     tension: Float = 0f,
     continuity: Float = 0f,
     bias: Float = 0f
-): FLine.Node {
+): FLine {
     return tcbTo(planePoint(x, y, z), tension, continuity, bias)
 }
 
@@ -1767,7 +1765,7 @@ fun FLine.tcbTo(
     tension: Float = 0f,
     continuity: Float = 0f,
     bias: Float = 0f
-): FLine.Node {
+): FLine {
     return tcbTo(planePoint(v.x, v.y, 0f), tension, continuity, bias)
 }
 
@@ -1786,7 +1784,7 @@ fun FLine.biarcTo(
     segments: Int = 32,
     planeNormal: Vec3? = null,
     joinTangent: Vec3? = null
-): FLine.Node {
+): FLine {
     if (breakNext) {
         breakNext = false
         return moveTo(endPoint)
@@ -1821,7 +1819,7 @@ fun FLine.biarcTo(
     val j = join.coerceIn(0f, 1f)
     if (j < 0.01f || j > 0.99f) {
         byAppendingArcByTangent(endPoint, startTan, endTan, segments.coerceAtLeast(2))
-        return nodes.last()
+        return this
     }
     var mid = Vec3(start).add(Vec3(chord).mul(j))
     if (bulge != 0f) {
@@ -1857,7 +1855,7 @@ fun FLine.biarcTo(
 
     byAppendingArcByTangent(mid, startTan, jt, segA)
     byAppendingArcByTangent(endPoint, jt, endTan, segB)
-    return nodes.last()
+    return this
 }
 
 /**
@@ -1871,7 +1869,7 @@ fun FLine.biarcTo(
     joinTangentMix: Float = 0.5f,
     bulge: Float = 0f,
     segments: Int = 32
-): FLine.Node {
+): FLine {
     val plane = plane2DOrDefault()
     val startTan = startHeading?.let { polarVector(it, 1f, plane) }
     val endTan = endHeading?.let { polarVector(it, 1f, plane) }
@@ -1899,7 +1897,7 @@ fun FLine.biarcTo(
     joinTangentMix: Float = 0.5f,
     bulge: Float = 0f,
     segments: Int = 32
-): FLine.Node {
+): FLine {
     return biarcTo(vec(x, y), startHeading, endHeading, join, joinTangentMix, bulge, segments)
 }
 
@@ -3061,7 +3059,7 @@ fun FLine.eulerSpiralTo(
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
-): FLine.Node {
+): FLine {
     if (breakNext) {
         breakNext = false
         return moveTo(endPoint)
@@ -3087,7 +3085,7 @@ fun FLine.eulerSpiralTo(
     val pts = spiral.nodes
     if (pts.size <= 1) return lineTo(endPoint)
     pts.drop(1).forEach { lineTo(it.to) }
-    return nodes.last()
+    return this
 }
 
 /**
@@ -3104,7 +3102,7 @@ fun FLine.eulerSpiralTo(
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
-): FLine.Node = eulerSpiralTo(
+): FLine = eulerSpiralTo(
     planePoint(x, y, z),
     startDirection,
     endDirection,
@@ -3127,7 +3125,7 @@ fun FLine.eulerSpiralTo(
     lengthScale: Float = 1f,
     headingScale: Float = 1f,
     turn: Float = 0f
-): FLine.Node = eulerSpiralTo(
+): FLine = eulerSpiralTo(
     planePoint(v.x, v.y, 0f),
     startDirection,
     endDirection,

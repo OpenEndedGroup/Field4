@@ -19,6 +19,8 @@ import org.joml.Matrix4f
 import org.joml.Vector4f
 import org.lwjgl.stb.STBImage.stbi_image_free
 import org.lwjgl.stb.STBImage.stbi_load
+import org.lwjgl.stb.STBImageResize.stbir_resize_uint8_linear
+import org.lwjgl.stb.STBImageWrite.stbi_write_jpg
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
@@ -27,7 +29,10 @@ import org.lwjgl.vulkan.VK12.vkGetSemaphoreCounterValue
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.PriorityBlockingQueue
@@ -85,6 +90,27 @@ class VirtualTextureSystem(
 
     private val desiredLodByTex: IntArray
     private val desiredPriorityByTex: FloatArray
+    private val desiredMaskByTex: IntArray
+    private val visibleByTex: BooleanArray
+    private val visibleTexIds: IntArray
+    private var visibleTexCount: Int = 0
+    private val missingVisibleTexIds: IntArray
+    private var missingVisibleCount: Int = 0
+
+    private val residentCountByTex: IntArray
+
+    private val basePrefetchBandIndex: Int
+    private val thumbnailBandIndex: Int
+    private val thumbnailCacheFromBandIndex: Int
+    private val thumbnailLocks = ConcurrentHashMap<Path, Any>()
+
+    private val lodThresholdsCached: IntArray
+    private val bandNoCapacityFrame: LongArray
+    private val bandNextFreeSearch: IntArray
+
+    private val mvpScratch = Matrix4f()
+    private val tmpV4 = Vector4f()
+    private val tmpMat16 = FloatArray(16)
 
     private val frameCounter: () -> Long = { renderer.frameCounter }
 
@@ -102,6 +128,7 @@ class VirtualTextureSystem(
     private val uploadTimeline: Semaphore?
 
     private val pendingBatches = ArrayDeque<PendingBatch>()
+    private val uploadCmdPool = ArrayDeque<CommandBuffer>()
 
     private val statsRequests = AtomicLong(0)
     private val statsUploads = AtomicLong(0)
@@ -109,7 +136,12 @@ class VirtualTextureSystem(
     private val statsDecodeStarted = AtomicLong(0)
     private val statsDecodeFailed = AtomicLong(0)
     private val statsDecodeZero = AtomicLong(0)
+    private val statsAllocFailed = AtomicLong(0)
     private val statsResolveMiss = AtomicLong(0)
+    private val statsThumbHit = AtomicLong(0)
+    private val statsThumbWrite = AtomicLong(0)
+    private val statsThumbWriteFail = AtomicLong(0)
+    private val statsCanceled = AtomicLong(0)
     private var lastLogFrame = -1L
     private var lastRequests = 0L
     private var lastUploads = 0L
@@ -117,7 +149,12 @@ class VirtualTextureSystem(
     private var lastDecodeStarted = 0L
     private var lastDecodeFailed = 0L
     private var lastDecodeZero = 0L
+    private var lastAllocFailed = 0L
     private var lastResolveMiss = 0L
+    private var lastThumbHit = 0L
+    private var lastThumbWrite = 0L
+    private var lastThumbWriteFail = 0L
+    private var lastCanceled = 0L
 
     init {
         // Build LOD bands and atlases
@@ -139,6 +176,15 @@ class VirtualTextureSystem(
 
         desiredLodByTex = IntArray(config.virtualTexCount) { bands.size - 1 }
         desiredPriorityByTex = FloatArray(config.virtualTexCount) { 0f }
+        desiredMaskByTex = IntArray(config.virtualTexCount) { 0 }
+        visibleByTex = BooleanArray(config.virtualTexCount) { false }
+        visibleTexIds = IntArray(config.virtualTexCount) { 0 }
+        missingVisibleTexIds = IntArray(config.virtualTexCount) { 0 }
+        residentCountByTex = IntArray(config.virtualTexCount) { 0 }
+
+        lodThresholdsCached = computeLodThresholds()
+        bandNoCapacityFrame = LongArray(bands.size) { Long.MIN_VALUE }
+        bandNextFreeSearch = IntArray(bands.size) { 0 }
 
         // Slot arrays per band
         slotStates = Array(bands.size) { IntArray(bands[it].totalSlots) { SlotState.FREE.code } }
@@ -194,8 +240,18 @@ class VirtualTextureSystem(
 
         stagingPool = StagingPool(renderer, config.stagingBytesPerBatch, config.stagingPoolSize)
 
+        basePrefetchBandIndex = computeBasePrefetchBandIndex()
+        thumbnailBandIndex = computeThumbnailBandIndex()
+        thumbnailCacheFromBandIndex = computeThumbnailCacheFromBandIndex()
+
         // Start decode workers
         startDecodeWorkers()
+
+        // Pre-allocate a small set of reusable upload command buffers.
+        // We never need more in flight than the staging pool size.
+        repeat(config.stagingPoolSize.coerceAtLeast(1)) {
+            uploadCmdPool.add(CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true))
+        }
 
         // Push initial band info
         flushBandInfo()
@@ -209,12 +265,12 @@ class VirtualTextureSystem(
         val maxInstances: Int,
         val bands: List<LODBandConfig> = defaultBands(),
         val stagingBytesPerBatch: Long = 32L * 1024 * 1024, // 32 MB
-        val stagingPoolSize: Int = 3,
-        val decodeThreads: Int = 4,
-        val maxUploadsPerFrame: Int = 64,
-        val maxRequestsPerFrame: Int = 256,
+        val stagingPoolSize: Int = 6,
+        val decodeThreads: Int = 6,
+        val maxUploadsPerFrame: Int = 64*4,
+        val maxRequestsPerFrame: Int = 256*4,
         val useTimelineSemaphore: Boolean = true,
-        val lodHysteresis: Float = 0.20f,
+        val lodHysteresis: Float = 0.10f,
         val logEveryNFrames: Int = 120,
         val enableLogging: Boolean = true,
         // Debug: scan decoded pixels for obvious "all zero/flat" issues.
@@ -222,7 +278,44 @@ class VirtualTextureSystem(
         val debugLogDecodedAnomalies: Boolean = true,
         val debugMaxDecodedWarnings: Int = 10,
         // Debug: bypass IO/decoder and generate a procedural pattern instead.
-        val debugForcePattern: Boolean = false
+        val debugForcePattern: Boolean = false,
+        // Prefetch a cheap base LOD so we can fall back instead of showing placeholders.
+        val prefetchBaseEnabled: Boolean = true,
+        // -1 means "coarsest band" (bands.lastIndex). Otherwise, a concrete band index.
+        val prefetchBaseBandIndex: Int = -1,
+        // Requests reserved per frame for base prefetch so it doesn't get starved by higher LODs.
+        val prefetchBaseBudgetPerFrame: Int = 64,
+        // Lower priority multiplier for "background" base prefetch when a texture already has some resident LOD.
+        val prefetchBasePriorityScale: Float = 0.05f,
+        // If false, prefetch base only for textures that have no resident LOD at all (i.e. would show placeholder).
+        val prefetchBaseEvenIfResident: Boolean = true,
+        // Thumbnail cache: for a low-res band, load/write cached JPEGs in a sibling directory.
+        val thumbnailCacheEnabled: Boolean = false,
+        // -1 means "coarsest band" (bands.lastIndex). Otherwise, a concrete band index.
+        val thumbnailCacheBandIndex: Int = -1,
+        // If set (>=0), cache this band and all coarser bands (inclusive). Otherwise, only `thumbnailCacheBandIndex`.
+        val thumbnailCacheFromBandIndex: Int = -1,
+        val thumbnailCacheDirName: String = ".thumbnails",
+        val thumbnailCacheJpegQuality: Int = 80,
+        // Request cancellation & backpressure.
+        val cancelStaleRequests: Boolean = true,
+        val pruneCanceledDecodeRequests: Boolean = true,
+        val pruneDecodeQueueMinSize: Int = 2048,
+        // 0 disables the cap.
+        val maxDecodeQueueSize: Int = 0,
+        // Center-screen boost: prioritize and slightly bias LOD for quads whose projected center lies
+        // within a central rectangle of the screen (e.g. 0.5 => middle half).
+        val centerBoostEnabled: Boolean = false,
+        val centerBoostRegionFraction: Float = 0.5f,
+        val centerBoostPixelScale: Float = 1.15f,
+        val centerBoostPriorityScale: Float = 1.25f,
+        // Faster approximate culling/LOD for large instance counts.
+        val fastCullingEnabled: Boolean = false,
+        val fastCullingThreshold: Int = 5000,
+        // Optional single-pixel final LOD (if it fits within the sampler array limit).
+        val singlePixelBandEnabled: Boolean = true,
+        val singlePixelBandSlots: Int = -1,
+        val maxAtlasSamplers: Int = 16
     )
 
     data class LODBandConfig(
@@ -264,13 +357,14 @@ class VirtualTextureSystem(
         var model: Matrix4f = Matrix4f(),
         var desiredLod: Int = 0,
         var lastLod: Int = -1,
-        var pixelSize: Float = 0f
+        var pixelSize: Float = 0f,
+        var visible: Boolean = true
     )
 
     data class LODChoice(val lod: Int, val pixelSize: Float)
 
     private enum class VTState(val code: Int) { INVALID(0), LOADING(1), RESIDENT(2) }
-    private enum class SlotState(val code: Int) { FREE(0), LOADING(1), RESIDENT(2) }
+    private enum class SlotState(val code: Int) { FREE(0), LOADING(1), UPLOADING(2), RESIDENT(3) }
 
     private data class AtlasGrid(val cols: Int, val rows: Int)
 
@@ -300,10 +394,12 @@ class VirtualTextureSystem(
     private data class PendingPublish(
         val virtualTexId: Int,
         val bandIndex: Int,
-        val slotId: Int
+        val slotId: Int,
+        val requestId: Int
     )
 
     private data class PendingBatch(
+        val cmd: CommandBuffer,
         val fence: Fence?,
         val timelineValue: Long,
         val publishes: List<PendingPublish>,
@@ -393,6 +489,79 @@ class VirtualTextureSystem(
         }
     }
 
+    private fun computeBasePrefetchBandIndex(): Int {
+        val requested = config.prefetchBaseBandIndex
+        return if (requested in 0 until bands.size) requested else bands.lastIndex
+    }
+
+    private fun computeThumbnailBandIndex(): Int {
+        val requested = config.thumbnailCacheBandIndex
+        return if (requested in 0 until bands.size) requested else bands.lastIndex
+    }
+
+    private fun computeThumbnailCacheFromBandIndex(): Int {
+        val requested = config.thumbnailCacheFromBandIndex
+        if (requested < 0) return -1
+        return requested.coerceIn(0, bands.lastIndex)
+    }
+
+    private fun cancelStaleRequests() {
+        // Cancel LOADING entries that are no longer desired / visible. This prevents runaway decode queues
+        // when the camera moves rapidly or LOD requirements churn.
+        var canceled = 0L
+        val baseBit = if (config.prefetchBaseEnabled) (1 shl basePrefetchBandIndex) else 0
+        val allBits = ((1L shl bands.size) - 1L).toInt()
+
+        for (vt in 0 until config.virtualTexCount) {
+            val keepMask = if (!visibleByTex[vt]) {
+                0
+            } else {
+                // Keep any currently-loading coarser bands as potential fallbacks while finer LODs stream in.
+                val minDesired = desiredLodByTex[vt].coerceIn(0, bands.size - 1)
+                (allBits and (allBits shl minDesired)) or baseBit
+            }
+            val base = vt * bands.size
+            for (lod in 0 until bands.size) {
+                val entry = base + lod
+                if (entryStates[entry] != VTState.LOADING.code) continue
+                if ((keepMask and (1 shl lod)) != 0) continue
+
+                val slotId = entrySlots[entry]
+
+                entryStates[entry] = VTState.INVALID.code
+                entrySlots[entry] = -1
+                entryRequestId[entry] = 0
+                writeEntryCPU(entry, 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0, VTState.INVALID.code)
+                indirectionDirty = true
+
+                if (slotId >= 0) {
+                    freeLoadingSlotIfOwned(lod, slotId, vt)
+                }
+                canceled++
+            }
+        }
+
+        if (canceled > 0) statsCanceled.addAndGet(canceled)
+
+        // If the decode queue is huge, prune any stale requests in bulk.
+        val dqSize = decodeQueue.size
+        if (config.pruneCanceledDecodeRequests && (canceled > 0 || dqSize >= config.pruneDecodeQueueMinSize)) {
+            decodeQueue.removeIf {
+                val entry = entryIndex(it.virtualTexId, it.bandIndex)
+                entryRequestId[entry] != it.requestId
+            }
+        }
+    }
+
+    private fun freeLoadingSlotIfOwned(bandIndex: Int, slotId: Int, virtualTexId: Int) {
+        if (slotId < 0) return
+        if (slotStates[bandIndex][slotId] == SlotState.LOADING.code && slotVirtualTex[bandIndex][slotId] == virtualTexId) {
+            slotStates[bandIndex][slotId] = SlotState.FREE.code
+            slotVirtualTex[bandIndex][slotId] = -1
+            slotGeneration[bandIndex][slotId] += 1
+        }
+    }
+
     /**
      * Update LOD selection, request streaming, schedule uploads, and publish completed residency.
      * Call once per frame.
@@ -411,15 +580,51 @@ class VirtualTextureSystem(
             writeInstanceBuffer(quads)
         }
 
-        // Touch LRU for resident slots (best-effort)
-        for (q in quads) {
-            val lod = q.desiredLod
-            if (lod < 0 || lod >= bands.size) continue
-            val entry = entryIndex(q.virtualTexId, lod)
-            if (entryStates[entry] == VTState.RESIDENT.code) {
-                val slotId = entrySlots[entry]
-                if (slotId >= 0) {
-                    slotLastUsedFrame[lod][slotId] = frame
+        // Track visible textures with no resident LOD (placeholders). We prioritize these.
+        var missingCount = 0
+        if (visibleTexCount > 0) {
+            for (i in 0 until visibleTexCount) {
+                val vt = visibleTexIds[i]
+                if (vt !in 0 until config.virtualTexCount) continue
+                if (residentCountByTex[vt] == 0) {
+                    missingVisibleTexIds[missingCount++] = vt
+                }
+            }
+        }
+        missingVisibleCount = missingCount
+
+        if (config.cancelStaleRequests) cancelStaleRequests()
+
+        // Touch LRU for resident slots (best-effort). Do this per *visible texture* and per desired LOD,
+        // rather than per quad, to avoid O(quads) duplication when many instances share textures.
+        for (i in 0 until visibleTexCount) {
+            val vt = visibleTexIds[i]
+            if (vt !in 0 until config.virtualTexCount) continue
+            var mask = desiredMaskByTex[vt]
+            while (mask != 0) {
+                val lod0 = Integer.numberOfTrailingZeros(mask).coerceIn(0, bands.size - 1)
+                mask = mask and (mask - 1)
+
+                // Mirror shader fallback: desired->coarser, then finer.
+                var touched = false
+                for (lod in lod0 until bands.size) {
+                    val entry = entryIndex(vt, lod)
+                    if (entryStates[entry] == VTState.RESIDENT.code) {
+                        val slotId = entrySlots[entry]
+                        if (slotId >= 0) slotLastUsedFrame[lod][slotId] = frame
+                        touched = true
+                        break
+                    }
+                }
+                if (!touched) {
+                    for (lod in (lod0 - 1) downTo 0) {
+                        val entry = entryIndex(vt, lod)
+                        if (entryStates[entry] == VTState.RESIDENT.code) {
+                            val slotId = entrySlots[entry]
+                            if (slotId >= 0) slotLastUsedFrame[lod][slotId] = frame
+                            break
+                        }
+                    }
                 }
             }
         }
@@ -429,18 +634,65 @@ class VirtualTextureSystem(
 
         // Enqueue streaming requests
         CPUSpan.time("vt_requests") {
-            val maxReq = config.maxRequestsPerFrame
-            var count = 0
-            for (vt in 0 until config.virtualTexCount) {
-                if (desiredPriorityByTex[vt] <= 0f) continue
-                val desired = desiredLodByTex[vt]
-                if (desired < 0 || desired >= bands.size) continue
-                val entry = entryIndex(vt, desired)
-                if (entryStates[entry] == VTState.INVALID.code) {
-                    if (count >= maxReq) break
-                    val priority = desiredPriorityByTex[vt]
-                    if (enqueueRequest(vt, desired, priority)) {
-                        count++
+            val maxReq = config.maxRequestsPerFrame.coerceAtLeast(0)
+            val doBasePrefetch = config.prefetchBaseEnabled && config.prefetchBaseBudgetPerFrame > 0
+            val baseBand = basePrefetchBandIndex
+            val baseBudget = if (doBasePrefetch) {
+                if (missingVisibleCount > 0) maxReq else config.prefetchBaseBudgetPerFrame.coerceIn(0, maxReq)
+            } else 0
+            val desiredBudget = (maxReq - baseBudget).coerceAtLeast(0)
+
+            var desiredCount = 0
+
+            // Pass 1: request all LODs currently desired by any instance, coarse-first.
+            // (Skip base band when prefetch is enabled so it doesn't starve higher LODs.)
+            run {
+                for (lod in bands.size - 1 downTo 0) {
+                    if (doBasePrefetch && lod == baseBand) continue
+                    val bit = 1 shl lod
+                    val sourceCount = if (missingVisibleCount > 0) missingVisibleCount else visibleTexCount
+                    val source = if (missingVisibleCount > 0) missingVisibleTexIds else visibleTexIds
+                    for (i in 0 until sourceCount) {
+                        val vt = source[i]
+                        if ((desiredMaskByTex[vt] and bit) == 0) continue
+                        val entry = entryIndex(vt, lod)
+                        if (entryStates[entry] != VTState.INVALID.code) continue
+                        if (desiredCount >= desiredBudget) return@run
+
+                        val priority = desiredPriorityByTex[vt]
+                        if (priority <= 0f) continue
+                        if (enqueueRequestBestEffort(vt, lod, priority)) desiredCount++
+                    }
+                }
+            }
+
+            // Pass 2: prefetch base LOD for visible textures so transitions can fall back to it.
+            if (doBasePrefetch && baseBudget > 0 && visibleTexCount > 0) {
+                var baseCount = 0
+                // 2a) First, ensure we always have *something* (no placeholders): base for textures with no resident LOD.
+                for (i in 0 until visibleTexCount) {
+                    if (baseCount >= baseBudget) break
+                    val vt = visibleTexIds[i]
+                    if (hasAnyResident(vt)) continue
+                    val baseEntry = entryIndex(vt, baseBand)
+                    if (entryStates[baseEntry] != VTState.INVALID.code) continue
+                    val p = desiredPriorityByTex[vt]
+                    if (p <= 0f) continue
+                    if (enqueueRequestBestEffort(vt, baseBand, p)) baseCount++
+                }
+
+                // 2b) Then prefetch base in the background for textures that already have some resident LOD.
+                if (baseCount < baseBudget && config.prefetchBaseEvenIfResident && missingVisibleCount == 0) {
+                    for (i in 0 until visibleTexCount) {
+                        if (baseCount >= baseBudget) break
+                        val vt = visibleTexIds[i]
+                        val baseEntry = entryIndex(vt, baseBand)
+                        if (entryStates[baseEntry] != VTState.INVALID.code) continue
+                        if (!hasAnyResident(vt)) continue // handled above
+
+                        val p = desiredPriorityByTex[vt] * config.prefetchBasePriorityScale
+                        if (p <= 0f) continue
+                        if (enqueueRequestBestEffort(vt, baseBand, p)) baseCount++
                     }
                 }
             }
@@ -574,8 +826,9 @@ class VirtualTextureSystem(
                     return;
                 }
 
-                for (uint i = 0u; i < bandCount; ++i) {
-                    uint band = min(lod + i, bandCount - 1u);
+                // Prefer desired->coarser, but if we're missing at the coarsest LOD,
+                // fall back to finer rather than showing a placeholder.
+                for (uint band = lod; band < bandCount; ++band) {
                     uint entryIndex = texId * bandCount + band;
                     uvec4 entry = indir.entries[entryIndex];
                     if (entry.w == STATE_RESIDENT) {
@@ -604,9 +857,44 @@ class VirtualTextureSystem(
                             float t = float(band) / float(max(bandCount - 1u, 1u));
                             color.rgb = mix(color.rgb, vec3(t, 1.0 - t, 0.2), 0.35);
                         }
-                        color.rgba += vec4(vUV.xy, 0.1, 1);
                         found = true;
                         break;
+                    }
+                }
+
+                if (!found) {
+                    for (int bi = int(lod) - 1; bi >= 0; --bi) {
+                        uint band = uint(bi);
+                        uint entryIndex = texId * bandCount + band;
+                        uvec4 entry = indir.entries[entryIndex];
+                        if (entry.w == STATE_RESIDENT) {
+                            uint atlasIndex = entry.x;
+                            uint slotIndex = entry.y;
+                            uvec4 a = band_a(band);
+                            uvec4 b = band_b(band);
+                            uint slotW = a.x;
+                            uint slotH = a.y;
+                            uint padding = a.z;
+                            uint cols = a.w;
+                            uint rows = b.x;
+                            uint atlasW = b.y;
+                            uint atlasH = b.z;
+                            uint slotPitchX = b.w;
+                            uint slotPitchY = band_c(band).x;
+
+                            uint col = slotIndex % cols;
+                            uint row = slotIndex / cols;
+                            vec2 base = vec2(float(col * slotPitchX + padding), float(row * slotPitchY + padding));
+                            vec2 uvAtlas = (base + vUV * vec2(float(slotW), float(slotH))) / vec2(float(atlasW), float(atlasH));
+
+                            color = texture(atlasTex[nonuniformEXT(atlasIndex)], uvAtlas);
+                            if ((debugFlags & 1u) != 0u) {
+                                float t = float(band) / float(max(bandCount - 1u, 1u));
+                                color.rgb = mix(color.rgb, vec3(t, 1.0 - t, 0.2), 0.35);
+                            }
+                            found = true;
+                            break;
+                        }
                     }
                 }
 
@@ -614,7 +902,7 @@ class VirtualTextureSystem(
                     if ((debugFlags & 2u) != 0u) {
                         color = vec4(1.0, 0.0, 0.5, 1.0);
                     } else {
-                        color = vec4(0.2, 0.2, 0.2, 1.0);
+                        color = vec4(0.2, 0.2, 0.3, 1.0);
                     }
                 }
 
@@ -626,6 +914,192 @@ class VirtualTextureSystem(
     }
 
     // --- LOD selection ---
+
+    private data class QuadScreenInfo(val visible: Boolean, val pixelSize: Float, val centerBoost: Boolean)
+
+    private fun computeQuadScreenInfo(
+        model: Matrix4f,
+        viewProj: Matrix4f,
+        viewportW: Int,
+        viewportH: Int,
+        mvpScratch: Matrix4f,
+        tmp: Vector4f
+    ): QuadScreenInfo {
+        mvpScratch.set(viewProj).mul(model)
+
+        var allBehind = true
+        var anyBehind = false
+
+        // Conservative homogeneous frustum reject for the easy case (all corners in front).
+        var allLeft = true
+        var allRight = true
+        var allBottom = true
+        var allTop = true
+        var allNear = true
+        var allFar = true
+
+        var minSx = Float.POSITIVE_INFINITY
+        var maxSx = Float.NEGATIVE_INFINITY
+        var minSy = Float.POSITIVE_INFINITY
+        var maxSy = Float.NEGATIVE_INFINITY
+        var frontCount = 0
+
+        fun corner(x: Float, y: Float) {
+            tmp.set(x, y, 0f, 1f)
+            mvpScratch.transform(tmp)
+            val cx = tmp.x
+            val cy = tmp.y
+            val cz = tmp.z
+            val cw = tmp.w
+
+            if (cw <= 0f) {
+                anyBehind = true
+                return
+            }
+            allBehind = false
+
+            // Plane tests in homogeneous clip space (Vulkan depth [0,1]): inside is
+            // -w <= x <= w, -w <= y <= w, 0 <= z <= w.
+            if (cx >= -cw) allLeft = false
+            if (cx <= cw) allRight = false
+            if (cy >= -cw) allBottom = false
+            if (cy <= cw) allTop = false
+            if (cz >= 0f) allNear = false
+            if (cz <= cw) allFar = false
+
+            val ndcX = cx / cw
+            val ndcY = cy / cw
+            val sx = (ndcX * 0.5f + 0.5f) * viewportW.toFloat()
+            val sy = (ndcY * 0.5f + 0.5f) * viewportH.toFloat()
+            if (sx < minSx) minSx = sx
+            if (sx > maxSx) maxSx = sx
+            if (sy < minSy) minSy = sy
+            if (sy > maxSy) maxSy = sy
+            frontCount++
+        }
+
+        corner(-0.5f, -0.5f)
+        corner(0.5f, -0.5f)
+        corner(0.5f, 0.5f)
+        corner(-0.5f, 0.5f)
+
+        if (allBehind) return QuadScreenInfo(visible = false, pixelSize = 0f, centerBoost = false)
+
+        // If any corner is behind, avoid culling; the quad may cross the near plane.
+        if (!anyBehind) {
+            val offscreen = allLeft || allRight || allBottom || allTop || allNear || allFar
+            if (offscreen) return QuadScreenInfo(visible = false, pixelSize = 0f, centerBoost = false)
+        }
+
+        // Pixel footprint estimate: bounding box of projected corners in front of the camera.
+        // If we have too few corners in front (near-plane crossing), treat as big.
+        val px = if (frontCount >= 2) {
+            max(maxSx - minSx, maxSy - minSy)
+        } else {
+            max(viewportW, viewportH).toFloat()
+        }
+
+        val centerBoost = if (!config.centerBoostEnabled) {
+            false
+        } else {
+            val frac = config.centerBoostRegionFraction
+            if (!frac.isFinite() || frac <= 0f) {
+                false
+            } else {
+                val clamped = frac.coerceIn(0f, 1f)
+                val minX = viewportW.toFloat() * (0.5f - clamped * 0.5f)
+                val maxX = viewportW.toFloat() * (0.5f + clamped * 0.5f)
+                val minY = viewportH.toFloat() * (0.5f - clamped * 0.5f)
+                val maxY = viewportH.toFloat() * (0.5f + clamped * 0.5f)
+                val cx = (minSx + maxSx) * 0.5f
+                val cy = (minSy + maxSy) * 0.5f
+                (cx >= minX && cx <= maxX && cy >= minY && cy <= maxY)
+            }
+        }
+
+        return QuadScreenInfo(visible = true, pixelSize = px, centerBoost = centerBoost)
+    }
+
+    private fun computeQuadScreenInfoFast(
+        model: Matrix4f,
+        viewProj: Matrix4f,
+        viewportW: Int,
+        viewportH: Int,
+        mvpScratch: Matrix4f,
+        tmp: Vector4f
+    ): QuadScreenInfo {
+        mvpScratch.set(viewProj).mul(model)
+
+        val vw = viewportW.toFloat()
+        val vh = viewportH.toFloat()
+
+        // Center
+        tmp.set(0f, 0f, 0f, 1f)
+        mvpScratch.transform(tmp)
+        val cw = tmp.w
+        if (cw == 0f || cw.isNaN()) {
+            return QuadScreenInfo(visible = true, pixelSize = max(vw, vh), centerBoost = false)
+        }
+        if (cw < 0f) {
+            // Conservative: treat as visible with large footprint to avoid popping when crossing near plane.
+            return QuadScreenInfo(visible = true, pixelSize = max(vw, vh), centerBoost = false)
+        }
+
+        val ndcX = tmp.x / cw
+        val ndcY = tmp.y / cw
+        val sx = (ndcX * 0.5f + 0.5f) * vw
+        val sy = (ndcY * 0.5f + 0.5f) * vh
+
+        // Approximate radius using projected half-axes.
+        var dx = 0f
+        var dy = 0f
+
+        tmp.set(0.5f, 0f, 0f, 1f)
+        mvpScratch.transform(tmp)
+        val cwX = tmp.w
+        if (cwX != 0f && cwX.isFinite()) {
+            val sx2 = (tmp.x / cwX * 0.5f + 0.5f) * vw
+            dx = abs(sx2 - sx)
+        }
+
+        tmp.set(0f, 0.5f, 0f, 1f)
+        mvpScratch.transform(tmp)
+        val cwY = tmp.w
+        if (cwY != 0f && cwY.isFinite()) {
+            val sy2 = (tmp.y / cwY * 0.5f + 0.5f) * vh
+            dy = abs(sy2 - sy)
+        }
+
+        var radius = max(dx, dy)
+        if (!radius.isFinite() || radius <= 0f) radius = max(vw, vh) * 0.5f
+
+        val minX = sx - radius
+        val maxX = sx + radius
+        val minY = sy - radius
+        val maxY = sy + radius
+        if (maxX < 0f || minX > vw || maxY < 0f || minY > vh) {
+            return QuadScreenInfo(visible = false, pixelSize = 0f, centerBoost = false)
+        }
+
+        val px = radius * 2f
+        val centerBoost = if (!config.centerBoostEnabled) {
+            false
+        } else {
+            val frac = config.centerBoostRegionFraction
+            if (!frac.isFinite() || frac <= 0f) {
+                false
+            } else {
+                val clamped = frac.coerceIn(0f, 1f)
+                val minXb = vw * (0.5f - clamped * 0.5f)
+                val maxXb = vw * (0.5f + clamped * 0.5f)
+                val minYb = vh * (0.5f - clamped * 0.5f)
+                val maxYb = vh * (0.5f + clamped * 0.5f)
+                (sx >= minXb && sx <= maxXb && sy >= minYb && sy <= maxYb)
+            }
+        }
+
+        return QuadScreenInfo(visible = true, pixelSize = px, centerBoost = centerBoost)
+    }
 
     fun computeQuadScreenPixelSize(
         model: Matrix4f,
@@ -673,60 +1147,88 @@ class VirtualTextureSystem(
         // reset desired per texture
         java.util.Arrays.fill(desiredLodByTex, bands.size - 1)
         java.util.Arrays.fill(desiredPriorityByTex, 0f)
+        java.util.Arrays.fill(desiredMaskByTex, 0)
+        java.util.Arrays.fill(visibleByTex, false)
+        visibleTexCount = 0
 
-        val thresholds = lodThresholds()
+        val thresholds = lodThresholdsCached
+        val maxQuads = min(quads.size, config.maxInstances)
+        val useFast = config.fastCullingEnabled && maxQuads >= config.fastCullingThreshold
+        var qi = 0
         for (q in quads) {
-            val px = computeQuadScreenPixelSize(q.model, viewProj, viewportW, viewportH)
+            if (qi++ >= maxQuads) break
+            val info = if (useFast) {
+                computeQuadScreenInfoFast(q.model, viewProj, viewportW, viewportH, mvpScratch, tmpV4)
+            } else {
+                computeQuadScreenInfo(q.model, viewProj, viewportW, viewportH, mvpScratch, tmpV4)
+            }
+            q.visible = info.visible
+            if (!info.visible) {
+                q.pixelSize = 0f
+                val target = bands.size - 1
+                q.desiredLod = target
+                q.lastLod = target
+                continue
+            }
+
+            val px = info.pixelSize
             q.pixelSize = px
-            val target = chooseLod(px, q.lastLod, thresholds, config.lodHysteresis)
+            val lodPx = if (info.centerBoost) px * config.centerBoostPixelScale else px
+            val priorityPx = if (info.centerBoost) px * config.centerBoostPriorityScale else px
+            val target = chooseLod(lodPx, q.lastLod, thresholds, config.lodHysteresis)
             q.desiredLod = target
             q.lastLod = target
 
             val vt = q.virtualTexId
             if (vt in 0 until config.virtualTexCount) {
+                if (!visibleByTex[vt]) {
+                    visibleByTex[vt] = true
+                    visibleTexIds[visibleTexCount++] = vt
+                }
                 if (target < desiredLodByTex[vt]) desiredLodByTex[vt] = target
-                if (px > desiredPriorityByTex[vt]) desiredPriorityByTex[vt] = px
+                if (priorityPx > desiredPriorityByTex[vt]) desiredPriorityByTex[vt] = priorityPx
+                desiredMaskByTex[vt] = desiredMaskByTex[vt] or (1 shl target)
             }
         }
     }
 
-    private fun lodThresholds(): IntArray {
-        // thresholds aligned with band sizes: <=band4 -> LOD4 ... <=band1 -> LOD1, else LOD0
-        if (bands.size >= 5) {
-            val dims = bands.map { max(it.slotW, it.slotH) }
-            return intArrayOf(dims[1], dims[2], dims[3], dims[4])
+    private fun computeLodThresholds(): IntArray {
+        // thresholds aligned with band sizes: for band i (>0), threshold is max(slotW, slotH)
+        if (bands.size <= 1) return intArrayOf(1)
+        val out = IntArray(bands.size - 1)
+        for (i in 1 until bands.size) {
+            out[i - 1] = max(bands[i].slotW, bands[i].slotH)
         }
-        // fallback to fixed thresholds for 5-band setup
-        return intArrayOf(480, 120, 32, 8)
+        return out
+    }
+
+    private fun lodThresholds(): IntArray {
+        return computeLodThresholds()
     }
 
     private fun chooseLod(pixelSize: Float, prev: Int, thresholds: IntArray, hysteresis: Float): Int {
         val bandCount = bands.size
-        val target = when {
-            pixelSize <= thresholds[3] -> 4
-            pixelSize <= thresholds[2] -> 3
-            pixelSize <= thresholds[1] -> 2
-            pixelSize <= thresholds[0] -> 1
-            else -> 0
-        }.coerceIn(0, bandCount - 1)
+        if (bandCount <= 1) return 0
+        var target = 0
+        for (i in thresholds.indices) {
+            if (pixelSize <= thresholds[i]) target = i + 1
+        }
+        target = target.coerceIn(0, bandCount - 1)
 
         if (prev < 0) return target
         if (target == prev) return prev
 
         // Hysteresis: require a margin to move between bands
-        val prevMin = when (prev) {
-            0 -> thresholds[0].toFloat()
-            1 -> thresholds[1].toFloat()
-            2 -> thresholds[2].toFloat()
-            3 -> thresholds[3].toFloat()
-            else -> 0f
+        val lastThresholdIndex = thresholds.size - 1
+        val prevMin = when {
+            prev <= 0 -> thresholds[0].toFloat()
+            prev >= bandCount - 1 -> 0f
+            else -> thresholds[prev].toFloat()
         }
-        val prevMax = when (prev) {
-            0 -> Float.MAX_VALUE
-            1 -> thresholds[0].toFloat()
-            2 -> thresholds[1].toFloat()
-            3 -> thresholds[2].toFloat()
-            else -> thresholds[3].toFloat()
+        val prevMax = when {
+            prev <= 0 -> Float.MAX_VALUE
+            prev >= bandCount - 1 -> thresholds[lastThresholdIndex].toFloat()
+            else -> thresholds[prev - 1].toFloat()
         }
 
         return if (target < prev) {
@@ -741,6 +1243,7 @@ class VirtualTextureSystem(
     private fun enqueueRequest(vt: Int, bandIndex: Int, priority: Float): Boolean {
         val entry = entryIndex(vt, bandIndex)
         if (entryStates[entry] != VTState.INVALID.code) return false
+        if (config.maxDecodeQueueSize > 0 && decodeQueue.size >= config.maxDecodeQueueSize) return false
 
         val path = source.resolvePath(vt)
         if (path == null) {
@@ -748,7 +1251,10 @@ class VirtualTextureSystem(
             return false
         }
         val slotId = allocateSlot(bandIndex)
-        if (slotId < 0) return false
+        if (slotId < 0) {
+            statsAllocFailed.incrementAndGet()
+            return false
+        }
 
         val requestId = nextRequestId.getAndIncrement()
         entryStates[entry] = VTState.LOADING.code
@@ -768,26 +1274,91 @@ class VirtualTextureSystem(
         return true
     }
 
+    /**
+     * Best-effort request: if the desired band is saturated, fall back to requesting
+     * progressively coarser bands so the shader can show *something* instead of a placeholder.
+     *
+     * Returns true only if a new request was enqueued.
+     */
+    private fun enqueueRequestBestEffort(vt: Int, desiredBandIndex: Int, priority: Float): Boolean {
+        if (enqueueRequest(vt, desiredBandIndex, priority)) return true
+
+        // If desired can't be requested (usually saturated), try coarser bands.
+        for (band in (desiredBandIndex + 1) until bands.size) {
+            val entry = entryIndex(vt, band)
+            val st = entryStates[entry]
+            if (st == VTState.RESIDENT.code) {
+                // Already resident at a coarser band — no new request needed.
+                return false
+            }
+            if (st == VTState.LOADING.code) {
+                // Coarser is in flight, but we might still want an even-coarser fallback to avoid placeholders.
+                continue
+            }
+            if (enqueueRequest(vt, band, priority)) return true
+        }
+        return false
+    }
+
+    private fun hasAnyResident(vt: Int): Boolean {
+        return vt in 0 until config.virtualTexCount && residentCountByTex[vt] > 0
+    }
+
+    private fun hasResidentOtherThan(vt: Int, excludingBandIndex: Int): Boolean {
+        if (vt !in 0 until config.virtualTexCount) return false
+        val count = residentCountByTex[vt]
+        if (count == 0) return false
+        val entry = entryIndex(vt, excludingBandIndex)
+        return if (entryStates[entry] == VTState.RESIDENT.code) count > 1 else true
+    }
+
     private fun allocateSlot(bandIndex: Int): Int {
         val total = bands[bandIndex].totalSlots
         val framesInFlight = renderer.numImages
         val frame = frameCounter()
+        val desiredBit = 1 shl bandIndex
 
-        // Free slot first
-        for (i in 0 until total) {
-            if (slotStates[bandIndex][i] == SlotState.FREE.code) return i
+        // If we've already determined this band has no capacity this frame, bail early to avoid O(total) scans.
+        if (bandNoCapacityFrame[bandIndex] == frame) return -1
+
+        val states = slotStates[bandIndex]
+
+        // Free slot first (ring scan so we don't always start at 0).
+        run {
+            var i = bandNextFreeSearch[bandIndex].coerceIn(0, max(total - 1, 0))
+            var n = 0
+            while (n < total) {
+                if (states[i] == SlotState.FREE.code) {
+                    bandNextFreeSearch[bandIndex] = if (i + 1 >= total) 0 else i + 1
+                    return i
+                }
+                i++
+                if (i >= total) i = 0
+                n++
+            }
         }
 
         // Evict LRU (oldest lastUsed) that is safe. We use a frames-in-flight heuristic
         // because renderer fences are not exposed here; this is conservative enough for now.
         var best = -1
         var bestAge = Long.MIN_VALUE
+        var bestKey = Int.MAX_VALUE
         for (i in 0 until total) {
-            if (slotStates[bandIndex][i] != SlotState.RESIDENT.code) continue
+            if (states[i] != SlotState.RESIDENT.code) continue
             val last = slotLastUsedFrame[bandIndex][i]
             if (frame - last < framesInFlight) continue
             val age = frame - last
-            if (age > bestAge) {
+
+            val vt = slotVirtualTex[bandIndex][i]
+            // Prefer evicting entries that won't leave a texture with no resident LOD (avoid placeholders).
+            val hasOtherResident = vt >= 0 && hasResidentOtherThan(vt, bandIndex)
+            val isLastResident = if (vt >= 0 && !hasOtherResident) 1 else 0
+            // Prefer evicting entries that aren't currently desired at this band.
+            val isDesiredHere = if (vt >= 0 && (desiredMaskByTex[vt] and desiredBit) != 0) 1 else 0
+            val key = isLastResident * 2 + isDesiredHere
+
+            if (key < bestKey || (key == bestKey && age > bestAge)) {
+                bestKey = key
                 bestAge = age
                 best = i
             }
@@ -797,6 +1368,7 @@ class VirtualTextureSystem(
             return best
         }
 
+        bandNoCapacityFrame[bandIndex] = frame
         return -1
     }
 
@@ -804,6 +1376,9 @@ class VirtualTextureSystem(
         val vt = slotVirtualTex[bandIndex][slotId]
         if (vt >= 0) {
             val entry = entryIndex(vt, bandIndex)
+            if (entryStates[entry] == VTState.RESIDENT.code && vt in 0 until config.virtualTexCount) {
+                residentCountByTex[vt] = (residentCountByTex[vt] - 1).coerceAtLeast(0)
+            }
             entryStates[entry] = VTState.INVALID.code
             entrySlots[entry] = -1
             writeEntryCPU(entry, 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0, VTState.INVALID.code)
@@ -821,7 +1396,9 @@ class VirtualTextureSystem(
         val staging = stagingPool.acquire(completedTimeline, useTimeline) ?: return
 
         var uploads = 0
-        val uploadJobs = mutableListOf<UploadJob>()
+        val uploadJobs = ArrayList<UploadJob>(config.maxUploadsPerFrame.coerceAtLeast(0))
+        val mapped = staging.buffer.map()
+        val dst = MemoryUtil.memByteBuffer(mapped, staging.capacity.toInt())
 
         while (uploads < config.maxUploadsPerFrame) {
             val decoded = readyUploads.poll() ?: break
@@ -829,6 +1406,8 @@ class VirtualTextureSystem(
             val entry = entryIndex(decoded.virtualTexId, decoded.bandIndex)
             if (entryRequestId[entry] != decoded.requestId) {
                 MemoryUtil.memFree(decoded.data)
+                // Slot might still be marked LOADING for an outdated request; free it so we don't leak capacity.
+                freeLoadingSlotIfOwned(decoded.bandIndex, decoded.slotId, decoded.virtualTexId)
                 continue
             }
 
@@ -840,14 +1419,12 @@ class VirtualTextureSystem(
             }
 
             // copy to staging buffer
-            val mapped = staging.buffer.map()
-            val dst = MemoryUtil.memByteBuffer(mapped, staging.capacity.toInt())
             dst.position(alignedOffset.toInt())
             dst.put(decoded.data)
-            staging.buffer.unmap(alignedOffset, decoded.bytes.toLong())
 
             val atlasIndex = slotAtlasIndex(decoded.bandIndex, decoded.slotId)
             val slotIndex = slotIndexInAtlas(decoded.bandIndex, decoded.slotId)
+            slotStates[decoded.bandIndex][decoded.slotId] = SlotState.UPLOADING.code
             uploadJobs.add(
                 UploadJob(
                     bandIndex = decoded.bandIndex,
@@ -856,7 +1433,8 @@ class VirtualTextureSystem(
                     bufferOffset = alignedOffset,
                     bytes = decoded.bytes,
                     virtualTexId = decoded.virtualTexId,
-                    slotId = decoded.slotId
+                    slotId = decoded.slotId,
+                    requestId = decoded.requestId
                 )
             )
 
@@ -869,31 +1447,34 @@ class VirtualTextureSystem(
             stagingPool.markFree(staging)
             return
         }
+
+        // Flush all staging writes in one go.
+        staging.buffer.unmap(0, staging.offset)
         statsUploads.addAndGet(uploadJobs.size.toLong())
 
         // record command buffer
-        val cmd = CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true)
+        val cmd = acquireUploadCommandBuffer()
         cmd.beginRecording()
         recordUploads(cmd, uploadJobs, staging.buffer.buffer)
         cmd.endRecording()
 
         // submit
         val pendingPublishes = uploadJobs.map {
-            PendingPublish(it.virtualTexId, it.bandIndex, it.slotId)
+            PendingPublish(it.virtualTexId, it.bandIndex, it.slotId, it.requestId)
         }
 
         if (useTimeline) {
             val signalValue = uploadTimeline!!.nextSignalValue()
             submitWithTimeline(cmd, uploadTimeline!!, signalValue)
             pendingBatches.add(
-                PendingBatch(null, signalValue, pendingPublishes, staging)
+                PendingBatch(cmd, null, signalValue, pendingPublishes, staging)
             )
             stagingPool.release(staging, null, signalValue)
         } else {
             val fence = Fence(renderer.device, signaled = false)
             submitWithFence(cmd, fence)
             pendingBatches.add(
-                PendingBatch(fence, 0L, pendingPublishes, staging)
+                PendingBatch(cmd, fence, 0L, pendingPublishes, staging)
             )
             stagingPool.release(staging, fence, 0L)
         }
@@ -914,16 +1495,44 @@ class VirtualTextureSystem(
             }
             if (!done) continue
 
+            recycleUploadCommandBuffer(batch.cmd)
             batch.publishes.forEach { publishResidency(it) }
             stagingPool.markFree(batch.staging)
-            batch.fence?.cleanup()
             iter.remove()
         }
+    }
+
+    private fun acquireUploadCommandBuffer(): CommandBuffer {
+        val cmd = if (uploadCmdPool.isNotEmpty()) {
+            uploadCmdPool.removeFirst()
+        } else {
+            // Should be rare; fall back to allocating another one-time buffer.
+            CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true)
+        }
+        cmd.reset()
+        return cmd
+    }
+
+    private fun recycleUploadCommandBuffer(cmd: CommandBuffer) {
+        uploadCmdPool.addLast(cmd)
     }
 
     private fun publishResidency(p: PendingPublish) {
         val entry = entryIndex(p.virtualTexId, p.bandIndex)
         val slotId = p.slotId
+        // If the request was canceled/replaced while the upload was in flight, drop the publish and free the slot.
+        if (entryRequestId[entry] != p.requestId || entryStates[entry] != VTState.LOADING.code) {
+            if (slotId >= 0 &&
+                (slotStates[p.bandIndex][slotId] == SlotState.UPLOADING.code || slotStates[p.bandIndex][slotId] == SlotState.LOADING.code) &&
+                slotVirtualTex[p.bandIndex][slotId] == p.virtualTexId
+            ) {
+                slotStates[p.bandIndex][slotId] = SlotState.FREE.code
+                slotVirtualTex[p.bandIndex][slotId] = -1
+                slotGeneration[p.bandIndex][slotId] += 1
+            }
+            return
+        }
+
         val atlasIndex = slotAtlasIndex(p.bandIndex, slotId)
         val slotIndex = slotIndexInAtlas(p.bandIndex, slotId)
         val gen = slotGeneration[p.bandIndex][slotId]
@@ -935,6 +1544,10 @@ class VirtualTextureSystem(
 
         slotStates[p.bandIndex][slotId] = SlotState.RESIDENT.code
         slotLastUsedFrame[p.bandIndex][slotId] = frameCounter()
+        val vt = p.virtualTexId
+        if (vt in 0 until config.virtualTexCount) {
+            residentCountByTex[vt] += 1
+        }
         statsPublishes.incrementAndGet()
     }
 
@@ -1029,7 +1642,6 @@ class VirtualTextureSystem(
                 vkCheck(VK10.vkQueueSubmit(renderer.graphQueue.vkQueue, submitInfo, VK_NULL_HANDLE), "Failed to submit upload")
             }
         }
-        cmd.cleanup()
     }
 
     private fun submitWithFence(cmd: CommandBuffer, fence: Fence) {
@@ -1041,7 +1653,6 @@ class VirtualTextureSystem(
                 vkCheck(VK10.vkQueueSubmit(renderer.graphQueue.vkQueue, submitInfo, fence.vkFence), "Failed to submit upload")
             }
         }
-        cmd.cleanup()
     }
 
     private fun getTimelineValue(semaphore: Semaphore): Long {
@@ -1083,6 +1694,7 @@ class VirtualTextureSystem(
         val fence = Fence(renderer.device, signaled = false)
         submitWithFence(cmd, fence)
         fence.fenceWait()
+        cmd.cleanup()
         fence.cleanup()
     }
 
@@ -1144,20 +1756,21 @@ class VirtualTextureSystem(
     // --- Instance buffer ---
 
     private fun writeInstanceBuffer(quads: List<VirtualQuadInstance>) {
-        val tmp = FloatArray(16)
         val max = min(quads.size, config.maxInstances)
         lastInstanceCount = max
         instanceBuffer.get(write = true).mapAndWrite_bytes {
             clear()
             order(ByteOrder.nativeOrder())
-            for (i in 0 until max) {
-                val q = quads[i]
-                q.model.get(tmp)
-                for (k in 0 until 16) putFloat(tmp[k])
+            var written = 0
+            for (q in quads) {
+                if (written >= max) break
+                q.model.get(tmpMat16)
+                for (k in 0 until 16) putFloat(tmpMat16[k])
                 putInt(q.virtualTexId)
                 putInt(q.desiredLod)
                 putInt(0)
                 putInt(0)
+                written++
             }
             flip()
         }
@@ -1173,24 +1786,41 @@ class VirtualTextureSystem(
                     val req = decodeQueue.take()
                     val entry = entryIndex(req.virtualTexId, req.bandIndex)
                     statsDecodeStarted.incrementAndGet()
-                    if (entryRequestId[entry] != req.requestId) continue
+                    if (entryRequestId[entry] != req.requestId) {
+                        freeLoadingSlotIfOwned(req.bandIndex, req.slotId, req.virtualTexId)
+                        continue
+                    }
                     val band = bands[req.bandIndex]
 
-                    val decoded = decodeAndDownsample(req.path, band.slotW, band.slotH)
+                    val decoded = decodeAndDownsample(req.path, band.slotW, band.slotH, req.bandIndex)
                     if (decoded == null) {
                         println("Failed to decode $req")
 
-                        entryStates[entry] = VTState.INVALID.code
-                        entrySlots[entry] = -1
-                        writeEntryCPU(entry, 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0, VTState.INVALID.code)
-                        indirectionDirty = true
-                        slotStates[req.bandIndex][req.slotId] = SlotState.FREE.code
-                        slotVirtualTex[req.bandIndex][req.slotId] = -1
-                        statsDecodeFailed.incrementAndGet()
+                        // If this request was canceled/replaced while decoding, don't touch shared slot state.
+                        if (entryRequestId[entry] == req.requestId) {
+                            entryStates[entry] = VTState.INVALID.code
+                            entrySlots[entry] = -1
+                            writeEntryCPU(entry, 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0, VTState.INVALID.code)
+                            indirectionDirty = true
+                            statsDecodeFailed.incrementAndGet()
+                        }
+                        freeLoadingSlotIfOwned(req.bandIndex, req.slotId, req.virtualTexId)
+                        continue
+                    }
+
+                    // Canceled while decoding; drop work early.
+                    if (entryRequestId[entry] != req.requestId) {
+                        MemoryUtil.memFree(decoded)
+                        freeLoadingSlotIfOwned(req.bandIndex, req.slotId, req.virtualTexId)
                         continue
                     }
 
                     val padded = padWithClamp(decoded, band.slotW, band.slotH, band.padding)
+                    if (entryRequestId[entry] != req.requestId) {
+                        MemoryUtil.memFree(padded)
+                        freeLoadingSlotIfOwned(req.bandIndex, req.slotId, req.virtualTexId)
+                        continue
+                    }
                     if (config.debugCheckDecoded) {
                         val stats = sampleDecodedStats(padded, padded.remaining())
                         if (stats.isSuspicious) {
@@ -1214,7 +1844,45 @@ class VirtualTextureSystem(
         }
     }
 
-    private fun decodeAndDownsample(path: Path, targetW: Int, targetH: Int): ByteBuffer? {
+    private fun decodeAndDownsample(path: Path, targetW: Int, targetH: Int, bandIndex: Int): ByteBuffer? {
+        val useDiskCache = config.thumbnailCacheEnabled && (
+            (thumbnailCacheFromBandIndex >= 0 && bandIndex >= thumbnailCacheFromBandIndex) ||
+                (thumbnailCacheFromBandIndex < 0 && bandIndex == thumbnailBandIndex)
+            )
+        if (!useDiskCache) return decodeAndDownsampleNoCache(path, targetW, targetH)
+
+        val thumbPath = thumbnailPathFor(path, targetW, targetH) ?: return decodeAndDownsampleNoCache(path, targetW, targetH)
+
+        // Fast path: try cached thumbnail first.
+        decodeAndDownsampleNoCache(thumbPath, targetW, targetH)?.let {
+            statsThumbHit.incrementAndGet()
+            return it
+        }
+
+        // Slow path: serialize generation per thumbnail to avoid duplicate decode+resize work.
+        val lockKey = try {
+            thumbPath.toAbsolutePath().normalize()
+        } catch (_: Throwable) {
+            thumbPath
+        }
+        val lock = thumbnailLocks.computeIfAbsent(lockKey) { Any() }
+        synchronized(lock) {
+            // Re-check after acquiring the lock in case another worker generated it.
+            decodeAndDownsampleNoCache(thumbPath, targetW, targetH)?.let {
+                statsThumbHit.incrementAndGet()
+                return it
+            }
+
+            val decoded = decodeAndDownsampleNoCache(path, targetW, targetH) ?: return null
+
+            val wrote = writeThumbnailJpeg(thumbPath, targetW, targetH, decoded)
+            if (wrote) statsThumbWrite.incrementAndGet() else statsThumbWriteFail.incrementAndGet()
+
+            return decoded
+        }
+    }
+
+    private fun decodeAndDownsampleNoCache(path: Path, targetW: Int, targetH: Int): ByteBuffer? {
         return try {
             MemoryStack.stackPush().use { stack ->
                 val w = stack.mallocInt(1)
@@ -1235,7 +1903,9 @@ class VirtualTextureSystem(
                     out
                 } else {
                     val out = MemoryUtil.memAlloc(targetW * targetH * 4)
-                    resizeRgbaBilinear(buf, srcW, srcH, out, targetW, targetH)
+                    // Use stb_image_resize for native bilinear resizing; fall back to Kotlin if it fails.
+                    val ok = resizeRgbaStbir(buf, srcW, srcH, out, targetW, targetH)
+                    if (!ok) resizeRgbaBilinear(buf, srcW, srcH, out, targetW, targetH)
                     stbi_image_free(buf)
                     out
                 }
@@ -1244,6 +1914,56 @@ class VirtualTextureSystem(
             lprintln("warning,graphics", "decode failed: ${t.message}")
             null
         }
+    }
+
+    private fun thumbnailPathFor(original: Path, targetW: Int, targetH: Int): Path? {
+        val parent = original.parent ?: return null
+        val dirName = config.thumbnailCacheDirName.ifBlank { ".thumbnails" }
+        val thumbDir = parent.resolve(dirName)
+
+        val file = original.fileName?.toString() ?: return null
+        // Include the source extension in the cache key to avoid collisions (e.g. foo.jpg vs foo.png).
+        val base = file.replace('.', '_')
+        val name = "${base}_${targetW}x${targetH}.jpg"
+        return thumbDir.resolve(name)
+    }
+
+    private fun writeThumbnailJpeg(path: Path, w: Int, h: Int, rgba: ByteBuffer): Boolean {
+        return try {
+            val parent = path.parent ?: return false
+            Files.createDirectories(parent)
+
+            val quality = config.thumbnailCacheJpegQuality.coerceIn(1, 100)
+            val tmp = path.resolveSibling(path.fileName.toString() + ".tmp")
+            runCatching { Files.deleteIfExists(tmp) }
+
+            rgba.position(0)
+            val ok = stbi_write_jpg(tmp.toString(), w, h, 4, rgba, quality)
+            rgba.position(0)
+            if (!ok) {
+                runCatching { Files.deleteIfExists(tmp) }
+                return false
+            }
+
+            try {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: Throwable) {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
+            }
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun resizeRgbaStbir(src: ByteBuffer, srcW: Int, srcH: Int, dst: ByteBuffer, dstW: Int, dstH: Int): Boolean {
+        // stb_image_resize uses the buffer's current position as the base address.
+        src.position(0)
+        dst.position(0)
+        val out = stbir_resize_uint8_linear(src, srcW, srcH, 0, dst, dstW, dstH, 0, 4)
+        dst.position(0)
+        dst.limit(dst.capacity())
+        return out != null
     }
 
     private fun resizeRgbaBilinear(src: ByteBuffer, srcW: Int, srcH: Int, dst: ByteBuffer, dstW: Int, dstH: Int) {
@@ -1365,7 +2085,58 @@ class VirtualTextureSystem(
         val runtimeBands = mutableListOf<LODBandRuntime>()
         val atlasList = mutableListOf<AtlasImage>()
 
+        val baseTargetSlots = min(config.virtualTexCount, config.maxInstances).coerceAtLeast(1)
+        val samplerLimit = config.maxAtlasSamplers
+
+        fun atlasCountFor(band: LODBandConfig, bandSlotsTotal: Int): Int {
+            val slotPitchX = band.slotW + band.padding * 2
+            val slotPitchY = band.slotH + band.padding * 2
+            val maxCols = max(1, maxDim / slotPitchX)
+            val maxRows = max(1, maxDim / slotPitchY)
+            val maxSlotsPerAtlas = maxCols * maxRows
+            val preferred = min(band.preferredAtlasSlots, maxSlotsPerAtlas)
+            return ceil(bandSlotsTotal / preferred.toDouble()).toInt().coerceAtLeast(1)
+        }
+
+        val requestedBase = config.prefetchBaseBandIndex
+        val singlePixelSlots = if (config.singlePixelBandSlots > 0) config.singlePixelBandSlots else baseTargetSlots
+        val singlePixelBand = LODBandConfig(
+            slotW = 1,
+            slotH = 1,
+            padding = 0,
+            maxSlotsTotal = singlePixelSlots,
+            preferredAtlasSlots = singlePixelSlots
+        )
+
+        val canAddSinglePixel = if (config.singlePixelBandEnabled) {
+            val baseIndexIfSingle = if (requestedBase in 0 until (config.bands.size + 1)) {
+                requestedBase
+            } else {
+                config.bands.size
+            }
+
+            var tempAtlasBase = 0
+            config.bands.forEachIndexed { index, band ->
+                val bandSlotsTotal = if (config.prefetchBaseEnabled && index == baseIndexIfSingle) {
+                    max(band.maxSlotsTotal, baseTargetSlots)
+                } else band.maxSlotsTotal
+                tempAtlasBase += atlasCountFor(band, bandSlotsTotal)
+            }
+            val singleAtlasCount = atlasCountFor(singlePixelBand, singlePixelSlots)
+            (samplerLimit <= 0 || tempAtlasBase + singleAtlasCount <= samplerLimit)
+        } else false
+
+        val baseIndexWanted = if (canAddSinglePixel) {
+            if (requestedBase in 0 until (config.bands.size + 1)) requestedBase else config.bands.size
+        } else {
+            if (requestedBase in 0 until config.bands.size) requestedBase else config.bands.lastIndex
+        }
+
         config.bands.forEachIndexed { index, band ->
+            val bandSlotsTotal = if (config.prefetchBaseEnabled && index == baseIndexWanted) {
+                max(band.maxSlotsTotal, baseTargetSlots)
+            } else band.maxSlotsTotal
+
             val slotPitchX = band.slotW + band.padding * 2
             val slotPitchY = band.slotH + band.padding * 2
             val maxCols = max(1, maxDim / slotPitchX)
@@ -1373,8 +2144,8 @@ class VirtualTextureSystem(
             val maxSlotsPerAtlas = maxCols * maxRows
 
             val preferred = min(band.preferredAtlasSlots, maxSlotsPerAtlas)
-            val atlasCount = ceil(band.maxSlotsTotal / preferred.toDouble()).toInt().coerceAtLeast(1)
-            val slotsPerAtlas = ceil(band.maxSlotsTotal / atlasCount.toDouble()).toInt().coerceAtMost(maxSlotsPerAtlas)
+            val atlasCount = ceil(bandSlotsTotal / preferred.toDouble()).toInt().coerceAtLeast(1)
+            val slotsPerAtlas = ceil(bandSlotsTotal / atlasCount.toDouble()).toInt().coerceAtMost(maxSlotsPerAtlas)
 
             val grid = computeAtlasGrid(slotsPerAtlas, maxCols, maxRows)
             val cols = grid.cols
@@ -1409,6 +2180,61 @@ class VirtualTextureSystem(
                 )
                 atlasList.add(AtlasImage(img, view, atlasW, atlasH, cols, rows, slotPitchX, slotPitchY, atlasBase))
                 atlasBase++
+            }
+        }
+
+        if (config.singlePixelBandEnabled) {
+            if (canAddSinglePixel) {
+                val bandSlotsTotal = if (config.prefetchBaseEnabled && baseIndexWanted == config.bands.size) {
+                    max(singlePixelBand.maxSlotsTotal, baseTargetSlots)
+                } else singlePixelBand.maxSlotsTotal
+
+                val slotPitchX = singlePixelBand.slotW + singlePixelBand.padding * 2
+                val slotPitchY = singlePixelBand.slotH + singlePixelBand.padding * 2
+                val maxCols = max(1, maxDim / slotPitchX)
+                val maxRows = max(1, maxDim / slotPitchY)
+                val maxSlotsPerAtlas = maxCols * maxRows
+
+                val preferred = min(singlePixelBand.preferredAtlasSlots, maxSlotsPerAtlas)
+                val atlasCount = ceil(bandSlotsTotal / preferred.toDouble()).toInt().coerceAtLeast(1)
+                val slotsPerAtlas = ceil(bandSlotsTotal / atlasCount.toDouble()).toInt().coerceAtMost(maxSlotsPerAtlas)
+
+                val grid = computeAtlasGrid(slotsPerAtlas, maxCols, maxRows)
+                val cols = grid.cols
+                val rows = grid.rows
+                val atlasW = cols * slotPitchX
+                val atlasH = rows * slotPitchY
+
+                val runtime = LODBandRuntime(
+                    index = runtimeBands.size,
+                    slotW = singlePixelBand.slotW,
+                    slotH = singlePixelBand.slotH,
+                    padding = singlePixelBand.padding,
+                    slotPitchX = slotPitchX,
+                    slotPitchY = slotPitchY,
+                    cols = cols,
+                    rows = rows,
+                    atlasW = atlasW,
+                    atlasH = atlasH,
+                    slotsPerAtlas = cols * rows,
+                    atlasCount = atlasCount,
+                    totalSlots = atlasCount * cols * rows,
+                    atlasBaseIndex = atlasBase
+                )
+                runtimeBands.add(runtime)
+
+                repeat(atlasCount) {
+                    val img = createAtlasImage(atlasW, atlasH)
+                    val view = ImageView(renderer.device, img, ImageView.ImageViewData()
+                        .format(img.format)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mipLevels(1)
+                    )
+                    atlasList.add(AtlasImage(img, view, atlasW, atlasH, cols, rows, slotPitchX, slotPitchY, atlasBase))
+                    atlasBase++
+                }
+            } else if (samplerLimit > 0) {
+                lprintln("info,vt", "Skipping single-pixel LOD: atlas sampler limit=$samplerLimit exceeded")
             }
         }
 
@@ -1477,16 +2303,26 @@ class VirtualTextureSystem(
         val pub = statsPublishes.get()
         val decS = statsDecodeStarted.get()
         val decF = statsDecodeFailed.get()
+        val allocF = statsAllocFailed.get()
         val miss = statsResolveMiss.get()
         val decZ = statsDecodeZero.get()
+        val th = statsThumbHit.get()
+        val tw = statsThumbWrite.get()
+        val twf = statsThumbWriteFail.get()
+        val canc = statsCanceled.get()
 
         val dReq = req - lastRequests
         val dUp = up - lastUploads
         val dPub = pub - lastPublishes
         val dDecS = decS - lastDecodeStarted
         val dDecF = decF - lastDecodeFailed
+        val dAllocF = allocF - lastAllocFailed
         val dMiss = miss - lastResolveMiss
         val dDecZ = decZ - lastDecodeZero
+        val dTh = th - lastThumbHit
+        val dTw = tw - lastThumbWrite
+        val dTwf = twf - lastThumbWriteFail
+        val dCanc = canc - lastCanceled
 
         lastLogFrame = frame
         lastRequests = req
@@ -1494,8 +2330,13 @@ class VirtualTextureSystem(
         lastPublishes = pub
         lastDecodeStarted = decS
         lastDecodeFailed = decF
+        lastAllocFailed = allocF
         lastResolveMiss = miss
         lastDecodeZero = decZ
+        lastThumbHit = th
+        lastThumbWrite = tw
+        lastThumbWriteFail = twf
+        lastCanceled = canc
 
         val bandSummary = bands.indices.joinToString(" | ") { i ->
             val total = bands[i].totalSlots
@@ -1504,14 +2345,14 @@ class VirtualTextureSystem(
             val slots = slotStates[i]
             for (s in slots) {
                 if (s == SlotState.RESIDENT.code) res++
-                else if (s == SlotState.LOADING.code) load++
+                else if (s == SlotState.LOADING.code || s == SlotState.UPLOADING.code) load++
             }
             "L$i res=$res load=$load/$total"
         }
 
         lprintln(
             "info,vt",
-            "vt frame=$frame req+$dReq up+$dUp pub+$dPub dec+$dDecS fail+$dDecF zero+$dDecZ miss+$dMiss " +
+            "vt frame=$frame vis=$visibleTexCount/${config.virtualTexCount} miss=$missingVisibleCount req+$dReq up+$dUp pub+$dPub dec+$dDecS fail+$dDecF cancel+$dCanc allocFail+$dAllocF thumb(h+$dTh w+$dTw f+$dTwf) zero+$dDecZ miss+$dMiss " +
                 "q(decode=${decodeQueue.size}, ready=${readyUploads.size}, pending=${pendingBatches.size}) | $bandSummary"
         )
     }
@@ -1525,7 +2366,8 @@ class VirtualTextureSystem(
         val bufferOffset: Long,
         val bytes: Int,
         val virtualTexId: Int,
-        val slotId: Int
+        val slotId: Int,
+        val requestId: Int
     )
 
     companion object {

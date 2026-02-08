@@ -17,33 +17,35 @@ This guide will help you quickly generate and view API documentation for Field4.
 ```
 
 This will:
-1. Generate markdown documentation using Dokka
-2. Place the files in `public/docs/api/`
+1. Generate HTML documentation using Dokka
+2. Place the files in `build/dokka/html/`
 3. Show you next steps
 
 ### Option 2: Using Gradle Directly
 
-Generate markdown documentation:
+Generate HTML documentation:
 ```bash
 ./gradlew generateApiDocs
 ```
 
-Or just run the Dokka task:
+Or just run the Dokka task directly:
 ```bash
-./gradlew dokkaGfm
+./gradlew dokkaGenerateHtml
 ```
 
-Generate HTML documentation:
+Generate all supported Dokka publications:
 ```bash
-./gradlew dokkaHtml
+./gradlew dokkaGenerate
 # Output: build/dokka/html/index.html
 ```
 
 ## Viewing the Documentation
 
-### View Markdown Files Directly
+### View HTML Files Directly
 
-The generated markdown files are in `public/docs/api/` and can be read directly on GitHub or in any markdown viewer.
+The generated HTML files are in `build/dokka/html/`. Open `build/dokka/html/index.html` in a browser.
+
+> Note: Dokka Gradle plugin v2 only supports HTML and Javadoc outputs. Markdown/GFM is no longer supported.
 
 ### Build and Preview the MkDocs Site
 
@@ -122,8 +124,8 @@ Field4/
 │       └── api/
 │           ├── .gitignore        # Ignores generated files
 │           ├── index.md          # API documentation overview
-│           └── [generated]/      # Generated markdown files (after running Dokka)
+│           └── [generated]/      # Previously generated markdown files (legacy)
 └── build/
     └── dokka/
-        └── html/                 # Generated HTML docs (after running dokkaHtml)
+        └── html/                 # Generated HTML docs (after running dokkaGenerateHtml)
 ```

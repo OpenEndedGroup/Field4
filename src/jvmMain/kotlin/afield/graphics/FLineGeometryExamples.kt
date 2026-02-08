@@ -1047,7 +1047,84 @@ object FLineGeometryExamples {
     }
 
     /**
-     * Example 28: Filtering comparisons
+     * Example 28: Smile cubic spline interpolation.
+     */
+    fun smileSplineExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..36) {
+                val x = i.toFloat() * 3f
+                val y = kotlin.math.sin(i / 4f) * 10f + kotlin.math.cos(i / 7f) * 4f
+                lineTo(x, y)
+            }
+        }
+
+        val smooth = base.bySmileSplineInterpolating(
+            trainingSamples = 24,
+            samples = 140,
+            dryWet = 0.9f
+        )
+
+        return mapOf(
+            "training_curve" to listOf(base),
+            "smile_spline" to listOf(smooth)
+        )
+    }
+
+    /**
+     * Example 29: Smile Gaussian Process interpolation.
+     */
+    fun smileGaussianProcessExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..48) {
+                val x = i.toFloat() * 2.5f
+                val y = kotlin.math.sin(i / 6f) * 15f + (Math.random().toFloat() - 0.5f) * 4f
+                lineTo(x, y)
+            }
+        }
+
+        val interpolated = base.bySmileGaussianProcessInterpolating(
+            trainingSamples = 28,
+            samples = 150,
+            lengthScale = 0.2f,
+            noise = 1e-3f,
+            dryWet = 0.85f
+        )
+
+        return mapOf(
+            "training_curve" to listOf(base),
+            "smile_gp" to listOf(interpolated)
+        )
+    }
+
+    /**
+     * Example 30: Custom Akima interpolation.
+     */
+    fun akimaInterpolationExample(): Map<String, List<FLine>> {
+        val base = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..32) {
+                val x = i.toFloat() * 3.5f
+                val y = kotlin.math.sin(i / 3f) * 8f + kotlin.math.sin(i / 9f) * 6f
+                lineTo(x, y)
+            }
+        }
+
+        val interpolated = base.byAkimaInterpolating(
+            trainingSamples = 20,
+            samples = 150,
+            dryWet = 0.9f
+        )
+
+        return mapOf(
+            "training_curve" to listOf(base),
+            "akima" to listOf(interpolated)
+        )
+    }
+
+    /**
+     * Example 31: Filtering comparisons
      */
     fun filteringExample(): Map<String, List<FLine>> {
         val jittery = FLine().apply {
@@ -1133,6 +1210,9 @@ object FLineGeometryExamples {
             eulerSpiralExample()
             curvatureFlowExample()
             gaussianProcessExample()
+            smileSplineExample()
+            smileGaussianProcessExample()
+            akimaInterpolationExample()
             filteringExample()
             println("    ✓ All examples passed")
 
@@ -1359,6 +1439,27 @@ object FLineGeometryExamples {
                 drawSamples = false
             )
             println("    ✓ Gaussian Process interpolation passed")
+
+            // ===== Smile interpolation/regression =====
+            println("  Testing Smile interpolation/regression...")
+            testLine.bySmileSplineInterpolating(
+                trainingSamples = 20,
+                samples = 100,
+                dryWet = 0.8f
+            )
+            testLine.bySmileGaussianProcessInterpolating(
+                trainingSamples = 20,
+                samples = 100,
+                lengthScale = 0.2f,
+                noise = 1e-3f,
+                dryWet = 0.8f
+            )
+            testLine.byAkimaInterpolating(
+                trainingSamples = 20,
+                samples = 100,
+                dryWet = 0.8f
+            )
+            println("    ✓ Smile interpolation/regression passed")
 
             // ===== Filtered geometry =====
             println("  Testing filtered geometry...")

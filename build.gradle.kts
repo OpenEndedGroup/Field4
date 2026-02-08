@@ -29,11 +29,13 @@ val lwjglNatives = when {
 val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
-val kotlinVersion = "2.2.10"
+val kotlinVersion = "2.3.0"
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
 val imguiVersion = "1.90.0"
+val smileVersion = "5.0.1"
+val javaToolchainVersion = 25
 
 // Bytedeco FFmpeg for video support
 val ffmpegVersion = "7.1-1.5.11"
@@ -41,8 +43,8 @@ val javacppVersion = "1.5.11"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 
 plugins {
-    kotlin("multiplatform") version "2.2.10"
-    kotlin("plugin.serialization") version "2.2.10"
+    kotlin("multiplatform") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
     id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
 }
@@ -59,7 +61,9 @@ jvmWrapper {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
+        languageVersion = JavaLanguageVersion.of(javaToolchainVersion)
+        // Constrain vendor to avoid Foojay returning non-directly-downloadable builds (which can 4xx on /redirect).
+        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 
@@ -93,7 +97,7 @@ kotlin {
                     "-Djoml.format=false","-Dorg.lwjgl.util.Debug=true","-Dorg.lwjgl.util.DebugLoader=true"
                 )
 
-                args += "-Dorg.lwjgl.system.stackSize=256"
+                args += "-Dorg.lwjgl.system.stackSize=257"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
 
                 applicationDefaultJvmArgs.set(args)
@@ -154,8 +158,6 @@ kotlin {
             else -> error("Unsupported platform for FFmpeg: $targetOs-$targetArch")
         }
 
-
-
         val jvmMain by getting {
 
             val personalSrc = file("src/personal")
@@ -163,7 +165,6 @@ kotlin {
                 kotlin.srcDir("src/personal/kotlin")
                 resources.srcDir("src/personal/resources")
             }
-
 
             dependencies {
 
@@ -261,15 +262,17 @@ kotlin {
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
-                val kotlinScriptingVersion = "2.2.0"
+                val kotlinScriptingVersion = "2.3.0"
 
                 /*
                 gently customized versions of the kotlin scripting front-end to provide better completion and skip the history check on the repl evaluator to allow us to reused compiled fragments
                  */
-                implementation(files("libs/kotlin-scripting-common-2.2.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-2.2.255-SNAPSHOT.jar"))
-                implementation(files("libs/jep-4.2.2.jar"))
+//                implementation(files("libs/kotlin-scripting-common-2.2.255-SNAPSHOT.jar"))
+//                implementation(files("libs/kotlin-scripting-jvm-2.2.255-SNAPSHOT.jar"))
+//                implementation(files("libs/kotlin-scripting-ide-services-2.2.255-SNAPSHOT.jar"))
+//                implementation(files("libs/kotlin-scripting-ide-common-2.2.255-SNAPSHOT.jar"))
 
+                implementation(files("libs/jep-4.2.2.jar"))
 
 
                 implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinScriptingVersion")
@@ -277,20 +280,18 @@ kotlin {
                 implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinScriptingVersion")
                 implementation("com.facebook:ktfmt:0.54")
 
-//                implementation("org.jetbrains.kotlin:kotlin-scripting-ide-services:$kotlinScriptingVersion")
-                implementation(files("libs/kotlin-scripting-ide-services-2.2.255-SNAPSHOT.jar"))
-//                implementation("org.jetbrains.kotlin:kotlin-scripting-common:$kotlinScriptingVersion")
-                implementation(files("libs/kotlin-scripting-ide-common-2.2.255-SNAPSHOT.jar"))
-
+                implementation(files("libs/kotlin-scripting-ide-services-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-common-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-jsr223-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-host-2.3.255-SNAPSHOT.jar"))
 
 //                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinScriptingVersion")
                 implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies:$kotlinScriptingVersion")
                 implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven:$kotlinScriptingVersion")
                 implementation("org.apache.maven.resolver:maven-resolver-api:2.0.7")
 
-
                 implementation("org.joml:joml-experimental:1.10.7")
-
 
                 implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
 
@@ -309,13 +310,12 @@ kotlin {
 
                 implementation("com.github.sya-ri:kgit:1.1.0")
 
-                implementation("com.github.sya-ri:kgit:1.1.0")
-
-
                 implementation("com.illposed.osc:javaosc-core:0.9")
 
                 implementation("org.ejml:ejml-simple:0.43.1")
                 implementation("com.github.jelmerk:hnswlib-core:1.1.0")
+                implementation("com.github.haifengl:smile-core:$smileVersion")
+                implementation("com.github.haifengl:smile-kotlin:$smileVersion")
                 implementation("org.clojure:clojure:1.11.3")
                 implementation("org.clojure:tools.reader:1.5.1")
                 implementation("compliment:compliment:0.5.5")
@@ -379,14 +379,43 @@ tasks {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
 
 tasks.named<JavaExec>("runJvm").configure {
+    val os = System.getProperty("os.name").lowercase()
+    val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
+
+    val requiredJvmArgs = mutableListOf(
+        "--add-opens=java.base/java.net=ALL-UNNAMED",
+        "-Dorg.lwjgl.system.stackSize=256",
+        "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
+    )
+    if (!onWindowsOrLinux) {
+        requiredJvmArgs += "-XstartOnFirstThread"
+        requiredJvmArgs += "-Djoml.format=false"
+        requiredJvmArgs += "-Dorg.lwjgl.util.Debug=true"
+        requiredJvmArgs += "-Dorg.lwjgl.util.DebugLoader=true"
+    }
+    requiredJvmArgs += "--add-modules"
+    requiredJvmArgs += "jdk.incubator.vector"
+
+    doFirst {
+        val merged = (jvmArgs ?: emptyList<Any>()).map { it.toString() }.toMutableList()
+        requiredJvmArgs.forEach { arg ->
+            if (!merged.contains(arg)) merged += arg
+        }
+        setJvmArgs(merged)
+    }
+
     dependsOn(tasks.named("jvmJar"))
 }
 
 tasks.register<JavaExec>("runai") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     })
     group = "application"
     description = "Runs ai3 tests"
@@ -399,7 +428,7 @@ tasks.register<JavaExec>("runai") {
 
 tasks.register<JavaExec>("runai2") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     })
     group = "application"
     description = "Runs ai2 chat"
@@ -412,7 +441,7 @@ tasks.register<JavaExec>("runai2") {
 
 tasks.register<JavaExec>("runmcp") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     })
     group = "application"
     description = "Runs ai2 tests"
@@ -425,7 +454,7 @@ tasks.register<JavaExec>("runmcp") {
 
 tasks.register<JavaExec>("runfilestore") {
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     })
     group = "application"
     description = "Runs AI4 filestore CLI"
@@ -438,23 +467,23 @@ tasks.register<JavaExec>("runfilestore") {
 
 tasks.register("generateApiDocs") {
     group = "documentation"
-    description = "Generates API documentation in markdown format for MkDocs"
-    
-    dependsOn("dokkaGfm")
-    
+    description = "Generates API documentation (HTML) with Dokka"
+
+    dependsOn("dokkaGenerateHtml")
+
     doLast {
-        println("API documentation generated in public/docs/api/")
+        println("API documentation generated in build/dokka/html/")
         println("To build the MkDocs site, run: cd public && mkdocs build")
     }
 }
 
-val generateLocalKeystore = tasks.register("generateLocalKeystore") {
-    group = "application"
-    description = "Generates a self-signed PKCS12 keystore for local HTTPS (config/field4-local.p12)."
+	val generateLocalKeystore = tasks.register("generateLocalKeystore") {
+		group = "application"
+		description = "Generates a self-signed PKCS12 keystore for local HTTPS (config/field4-local.p12)."
 
-    val javaLauncher = javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(24))
-    }
+		val javaLauncher = javaToolchains.launcherFor {
+			languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+		}
 
     val keystoreFile = layout.projectDirectory.file("config/field4-local.p12").asFile
     outputs.file(keystoreFile)
@@ -511,33 +540,10 @@ tasks.named("jvmDistZip") {
 
 
 dokka {
-    // HTML documentation (existing configuration)
+    // HTML documentation (Dokka Gradle plugin v2)
     dokkaPublications.html {
         outputDirectory.set(layout.buildDirectory.dir("dokka/html"))
-        
-        dokkaSourceSets.configureEach {
-            perPackageOption {
-                matchingRegex.set(".*")
-                suppress.set(true)
-            }
 
-            perPackageOption {
-                matchingRegex.set("""afield\.four(\..*)?""")
-                suppress.set(false)
-            }
-            perPackageOption {
-                matchingRegex.set("""afield\.stdlib(\..*)?""")
-                suppress.set(false)
-            }
-
-            skipEmptyPackages.set(true)
-        }
-    }
-    
-    // GitHub Flavored Markdown documentation for MkDocs integration
-    dokkaPublications.create("gfm") {
-        outputDirectory.set(file("public/docs/api"))
-        
         dokkaSourceSets.configureEach {
             perPackageOption {
                 matchingRegex.set(".*")

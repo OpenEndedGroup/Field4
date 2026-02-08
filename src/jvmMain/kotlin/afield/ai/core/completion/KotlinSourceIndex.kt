@@ -370,6 +370,8 @@ object KotlinSourceIndex {
     }
 
     private data class ParsedDefinition(val kind: String, val name: String, val line: Int, val kdoc: String? = null)
+    private data class ClassContext(val name: String, val depth: Int)
+    private data class PendingClass(val name: String, val lineNumber: Int)
 
     private val modifierTokens = setOf(
         "public", "private", "internal", "protected",
@@ -380,24 +382,67 @@ object KotlinSourceIndex {
 
     private fun parseTopLevelDefinitions(text: String): List<ParsedDefinition> {
         val out = mutableListOf<ParsedDefinition>()
-        
+
         // Extract KDocs using the KDocExtractor
         val kdocs = KDocExtractor.extractKDocs(text)
         val kdocByLine = kdocs.associateBy { it.declarationLine }
-        
+
         val state = KotlinParseState()
+        val classStack = ArrayDeque<ClassContext>()
+        var pendingClass: PendingClass? = null
+
         val lines = text.split("\n")
         lines.forEachIndexed { index, rawLine ->
             val lineNumber = index + 1
             val depthAtStart = state.depth
-            val canParse = depthAtStart == 0 && !state.inBlockComment && !state.inRawString && !state.inString
+            val currentClass = classStack.lastOrNull()
+            val canParse = !state.inBlockComment &&
+                !state.inRawString &&
+                !state.inString &&
+                (depthAtStart == 0 || (currentClass != null && depthAtStart == currentClass.depth))
+
             if (canParse) {
-                parseDefinitionFromLine(rawLine)?.let { def ->
+                val def = parseDefinitionFromLine(rawLine)
+                if (pendingClass != null && pendingClass?.lineNumber != lineNumber && def != null) {
+                    // A new declaration appeared before the pending class body opened.
+                    pendingClass = null
+                }
+                def?.let { (kind, name) ->
                     val kdoc = kdocByLine[lineNumber]?.text
-                    out += ParsedDefinition(def.first, def.second, lineNumber, kdoc)
+                    when (kind) {
+                        "class", "interface", "object" -> {
+                            val qualifiedName = if (currentClass != null) {
+                                "${currentClass.name}.$name"
+                            } else {
+                                name
+                            }
+                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc)
+                            pendingClass = PendingClass(qualifiedName, lineNumber)
+                        }
+                        "fun", "val", "var" -> {
+                            val qualifiedName = if (currentClass != null && depthAtStart == currentClass.depth) {
+                                "${currentClass.name}.$name"
+                            } else {
+                                name
+                            }
+                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc)
+                        }
+                    }
                 }
             }
-            state.consumeLine(rawLine)
+
+            var openedClassThisLine = false
+            state.consumeLine(rawLine) { ch, _, after ->
+                if (ch == '{' && pendingClass != null && !openedClassThisLine) {
+                    classStack.addLast(ClassContext(pendingClass!!.name, after))
+                    pendingClass = null
+                    openedClassThisLine = true
+                }
+            }
+
+            while (classStack.isNotEmpty() && state.depth < classStack.last().depth) {
+                classStack.removeLast()
+            }
         }
         return out
     }
@@ -420,20 +465,22 @@ object KotlinSourceIndex {
 
         val tokens = s.split(Regex("\\s+"))
         var idx = 0
+        var sawCompanion = false
         while (idx < tokens.size && modifierTokens.contains(tokens[idx])) {
+            if (tokens[idx] == "companion") sawCompanion = true
             idx++
         }
         if (idx >= tokens.size) return null
 
         val keyword = tokens[idx]
         val remainder = s.substringAfter(keyword, "").trimStart()
-        val name = when (keyword) {
+        val rawName = when (keyword) {
             "fun" -> {
                 if (remainder.startsWith("interface")) return null
                 val head = remainder.substringBefore("(").trim()
                 parseQualifiedName(head)
             }
-            "class" -> {
+            "class", "interface", "object" -> {
                 Regex("^(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)")
                     .find(remainder)?.groupValues?.get(1)?.let { unwrapIdentifier(it) }
             }
@@ -442,9 +489,15 @@ object KotlinSourceIndex {
                 parseQualifiedName(head)
             }
             else -> null
-        } ?: return null
+        }
+        val effectiveName = when {
+            keyword == "object" && (rawName == null || rawName.isBlank()) && sawCompanion -> "Companion"
+            rawName == null -> return null
+            else -> rawName
+        }
+        val name = effectiveName
         if (name.isBlank()) return null
-        if (keyword == "class" || keyword == "fun" || keyword == "val" || keyword == "var") {
+        if (keyword == "class" || keyword == "interface" || keyword == "object" || keyword == "fun" || keyword == "val" || keyword == "var") {
             return keyword to name
         }
         return null
@@ -502,7 +555,7 @@ object KotlinSourceIndex {
         var inString: Boolean = false
         private var stringChar: Char = '"'
 
-        fun consumeLine(line: String) {
+        fun consumeLine(line: String, onBrace: ((ch: Char, before: Int, after: Int) -> Unit)? = null) {
             var i = 0
             var inLineComment = false
             while (i < line.length) {
@@ -558,8 +611,16 @@ object KotlinSourceIndex {
                     i++
                     continue
                 }
-                if (ch == '{') depth++
-                if (ch == '}') depth = (depth - 1).coerceAtLeast(0)
+                if (ch == '{') {
+                    val before = depth
+                    depth++
+                    onBrace?.invoke(ch, before, depth)
+                }
+                if (ch == '}') {
+                    val before = depth
+                    depth = (depth - 1).coerceAtLeast(0)
+                    onBrace?.invoke(ch, before, depth)
+                }
                 i++
             }
         }

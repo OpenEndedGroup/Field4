@@ -19,6 +19,7 @@ class IdeChatHelpers(
         lang: LanguageSpec,
         userPrompt: String,
         attachments: List<ContextAttachment> = emptyList(),
+        resolveAttachment: ((String) -> AttachmentResponse?)? = null,
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -30,6 +31,7 @@ class IdeChatHelpers(
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
+            resolveAttachment = resolveAttachment,
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
@@ -73,6 +75,7 @@ class IdeChatHelpers(
         userPrompt: String,
         imageUrls: List<String> = emptyList(),
         attachments: List<ContextAttachment> = emptyList(),
+        resolveAttachment: ((String) -> AttachmentResponse?)? = null,
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -87,6 +90,7 @@ class IdeChatHelpers(
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
+            resolveAttachment = resolveAttachment,
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
@@ -120,6 +124,7 @@ class IdeChatHelpers(
         lineNumber: Int,
         userPrompt: String,
         attachments: List<ContextAttachment> = emptyList(),
+        resolveAttachment: ((String) -> AttachmentResponse?)? = null,
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -131,6 +136,7 @@ class IdeChatHelpers(
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
+            resolveAttachment = resolveAttachment,
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
@@ -177,6 +183,7 @@ class IdeChatHelpers(
         lang: LanguageSpec,
         errorMessage: String,
         attachments: List<ContextAttachment> = emptyList(),
+        resolveAttachment: ((String) -> AttachmentResponse?)? = null,
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
@@ -188,6 +195,7 @@ class IdeChatHelpers(
 
         val ctx = ToolExecutionContext(
             attachments = attachments,
+            resolveAttachment = resolveAttachment,
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,

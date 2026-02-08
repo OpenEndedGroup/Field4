@@ -13,6 +13,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -87,12 +88,59 @@ fun installAi4() {
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
 
+        val sessionInfo = thisSessionInfo.get()
+        if (sessionInfo == null) {
+            notify("AI4 unavailable: no active session context.", "AI4")
+            return@mutableSetOf Handled.yes
+        }
+
         val langName = languageNameForProperty(box, exec.property)
         val lang = langSpecForName(langName)
-        val docName = documentName()
-        val docPath = thisSessionInfo.get().filename
+        val docName = File(sessionInfo.filename).name
+        val docPath = sessionInfo.filename
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
+        val textProperties = linkedSetOf("code", "vertex", "fragment", "mesh", "task", "compute").apply {
+            if (exec.property.isNotBlank()) add(exec.property)
+        }
+
+        fun languageNameForBoxProperty(target: Box, property: String): String = when (property) {
+            "code" -> target.ke.languageName
+            "vertex" -> "GLSL (vertex)"
+            "fragment" -> "GLSL (fragment)"
+            "compute" -> "GLSL (compute)"
+            "mesh" -> "GLSL (mesh)"
+            "task" -> "GLSL (task)"
+            "customization", "remote_js" -> "JavaScript"
+            "metadata" -> "YAML"
+            else -> languageNameForProperty(target, property)
+        }
+
+        fun boxByIdOrNull(uid: String): Box? =
+            if (uid == sessionInfo.root.id) sessionInfo.root else sessionInfo.boxes[uid]
+
+        fun textPropertyContents(target: Box, property: String): String? =
+            (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
+
+        fun languageForFilePath(path: Path): String {
+            val lower = path.fileName?.toString()?.lowercase().orEmpty()
+            return when {
+                lower.endsWith(".kt") || lower.endsWith(".kts") -> "Kotlin"
+                lower.endsWith(".glsl") || lower.endsWith(".vert") || lower.endsWith(".frag")
+                    || lower.endsWith(".comp") || lower.endsWith(".mesh") || lower.endsWith(".task") -> "GLSL"
+                lower.endsWith(".js") || lower.endsWith(".mjs") || lower.endsWith(".cjs") -> "JavaScript"
+                lower.endsWith(".ts") || lower.endsWith(".tsx") -> "TypeScript"
+                lower.endsWith(".java") -> "Java"
+                lower.endsWith(".py") -> "Python"
+                lower.endsWith(".md") -> "Markdown"
+                lower.endsWith(".yaml") || lower.endsWith(".yml") -> "YAML"
+                lower.endsWith(".json") -> "JSON"
+                lower.endsWith(".html") -> "HTML"
+                lower.endsWith(".css") -> "CSS"
+                lower.endsWith(".xml") -> "XML"
+                else -> "text"
+            }
+        }
 
         val listDefinitions = {
             fun definitionsForBox(target: Box): List<DefinitionInfo> {
@@ -118,7 +166,7 @@ fun installAi4() {
             }
 
             val currentDefs = definitionsForBox(box)
-            val otherDefs = afield.thisSessionInfo.get().boxes.values
+            val otherDefs = sessionInfo.boxes.values
                 .filter { it.id != box.id }
                 .sortedBy { it.name.ifBlank { it.id } }
                 .flatMap { definitionsForBox(it) }
@@ -127,13 +175,78 @@ fun installAi4() {
         }
 
         val listFileContents = {
-            val fileRef = fileRefFor(docName, exec.uid, exec.property)
-            notify("Listing contents for $fileRef", "AI4")
-            val contents = box.getPropertyRaw(exec.property)
-            if (contents !is String) {
-                throw IllegalStateException("No text content for $fileRef")
+            val entries = textProperties.mapNotNull { property ->
+                val content = textPropertyContents(box, property) ?: return@mapNotNull null
+                ListContentEntry(
+                    fileRef = fileRefFor(docName, box.id, property),
+                    property = property,
+                    language = languageNameForBoxProperty(box, property),
+                    content = content
+                )
             }
-            ListContentsResult(fileRef, contents)
+            if (entries.isEmpty()) {
+                throw IllegalStateException("No text content available for box '${box.id}'.")
+            }
+            val primary = entries.firstOrNull { it.property == exec.property } ?: entries.first()
+            notify("Listing ${entries.size} content property/properties for ${box.id}", "AI4")
+            ListContentsResult(
+                fileRef = primary.fileRef,
+                content = primary.content,
+                language = primary.language,
+                contents = entries
+            )
+        }
+
+        val resolveAttachment: (String) -> AttachmentResponse? = attachmentResolver@{ raw ->
+            val requested = raw.trim()
+            if (requested.isEmpty()) return@attachmentResolver null
+
+            parseFileRef(requested)?.let { ref ->
+                if (ref.document != docName) return@let
+                val target = boxByIdOrNull(ref.uid) ?: return@let
+                val content = textPropertyContents(target, ref.property) ?: return@let
+                return@attachmentResolver AttachmentResponse(
+                    file = fileRefFor(docName, target.id, ref.property),
+                    language = languageNameForBoxProperty(target, ref.property),
+                    content = content
+                )
+            }
+
+            val requestedProperty = requested.removePrefix("/")
+            if (requestedProperty in textProperties) {
+                val content = textPropertyContents(box, requestedProperty) ?: return@attachmentResolver null
+                return@attachmentResolver AttachmentResponse(
+                    file = fileRefFor(docName, box.id, requestedProperty),
+                    language = languageNameForBoxProperty(box, requestedProperty),
+                    content = content
+                )
+            }
+
+            val candidatePaths = linkedSetOf<Path>()
+            val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
+            if (requestedPath != null) {
+                if (requestedPath.isAbsolute) {
+                    candidatePaths.add(requestedPath.normalize())
+                } else {
+                    candidatePaths.add(Paths.get(System.getProperty("user.dir")).resolve(requestedPath).normalize())
+                    val docDir = Paths.get(docPath).parent
+                    if (docDir != null) {
+                        candidatePaths.add(docDir.resolve(requestedPath).normalize())
+                    }
+                }
+            }
+
+            for (candidate in candidatePaths) {
+                if (!Files.exists(candidate) || !Files.isRegularFile(candidate)) continue
+                val content = runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
+                return@attachmentResolver AttachmentResponse(
+                    file = candidate.toString(),
+                    language = languageForFilePath(candidate),
+                    content = content
+                )
+            }
+
+            null
         }
 
         val editOtherFile: (EditFileRequest) -> EditFileResponse = editOtherFile@{ req ->
@@ -143,7 +256,7 @@ fun installAi4() {
             if (ref.document != docName) {
                 return@editOtherFile EditFileResponse(false, "Unknown document '${ref.document}'")
             }
-            val target = afield.thisSessionInfo.get().boxes[ref.uid]
+            val target = boxByIdOrNull(ref.uid)
                 ?: return@editOtherFile EditFileResponse(false, "Unknown box '${ref.uid}'")
             setProvisional(docPath, target.id, ref.property, req.newContent)
             EditFileResponse(true, "Updated ${req.file}")
@@ -305,6 +418,7 @@ fun installAi4() {
                             lang = lang,
                             lineNumber = exec.startLine,
                             userPrompt = exec.extraPrompt,
+                            resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
@@ -349,6 +463,7 @@ fun installAi4() {
                             lang = lang,
                             userPrompt = exec.extraPrompt,
                             imageUrls = exec.images,
+                            resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
@@ -380,6 +495,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Complete the code at <cursor>.",
+                            resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
@@ -394,6 +510,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Rewrite only the code between <rewrite> and </rewrite>.",
+                            resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
@@ -408,6 +525,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Fix the error described between <error> and </error>.",
+                            resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
