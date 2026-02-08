@@ -81,6 +81,15 @@ To run an example, typically you would:
 3. Execute the code
 4. Observe the results in the browser UI or graphics window
 
+## Additional Documentation
+
+For more documentation examples that are not part of the compiled codebase, see the `dev_docs/` directory at the repository root. These include:
+- `viz_demo.kt` - Value visualizer demonstrations
+- `SLIDER_EXAMPLES.kt` - Additional slider examples
+- `GUIDE_CHAT_EXAMPLE.kt` - Chat integration examples
+- `SHARED_CHAT_EXAMPLE.kt` - Shared chat examples
+- `EXTENDED_CONTROLS_EXAMPLES.kt` - Extended UI control examples
+
 ## For AI Agents
 
 This examples package provides comprehensive reference material for:
@@ -89,4 +98,4 @@ This examples package provides comprehensive reference material for:
 - Finding code snippets for common tasks
 - Understanding best practices and conventions
 
-When helping users with Field4 code, refer to these examples as canonical implementations.
+When helping users with Field4 code, refer to these examples as canonical implementations. Also check the `dev_docs/` directory for additional documentation examples.
