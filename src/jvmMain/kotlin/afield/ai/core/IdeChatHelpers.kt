@@ -24,6 +24,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        checkCode: ((CheckCodeRequest) -> CheckCodeResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
@@ -35,7 +36,8 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            checkCode = checkCode
         )
 
         val instructions = buildDynamicInstructions(
@@ -80,6 +82,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        checkCode: ((CheckCodeRequest) -> CheckCodeResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): OpenAiIdeCodexBridge.SendResult {
@@ -94,7 +97,8 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            checkCode = checkCode
         )
 
         val instructions = buildDynamicInstructions(
@@ -129,6 +133,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        checkCode: ((CheckCodeRequest) -> CheckCodeResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
@@ -140,7 +145,8 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            checkCode = checkCode
         )
 
         val instructions = buildDynamicInstructions(
@@ -188,6 +194,7 @@ class IdeChatHelpers(
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        checkCode: ((CheckCodeRequest) -> CheckCodeResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null
     ): HighLevelResult {
@@ -199,7 +206,8 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            checkCode = checkCode
         )
 
         val instructions = buildDynamicInstructions(
