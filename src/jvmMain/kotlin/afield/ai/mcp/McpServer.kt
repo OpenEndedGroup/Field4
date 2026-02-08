@@ -253,6 +253,33 @@ class McpServer(
                     }
                     putJsonArray("required") { add(JsonPrimitive("query")) }
                 }
+            ),
+            
+            // Check code
+            ToolDef(
+                name = "check_code",
+                description = "Check code for compilation/syntax errors without executing it. Supports Kotlin, Python, Clojure, and GLSL.",
+                inputSchema = buildJsonObject {
+                    put("type", JsonPrimitive("object"))
+                    putJsonObject("properties") {
+                        putJsonObject("code") {
+                            put("type", JsonPrimitive("string"))
+                            put("description", JsonPrimitive("Source code to check"))
+                        }
+                        putJsonObject("language") {
+                            put("type", JsonPrimitive("string"))
+                            put("description", JsonPrimitive("Programming language (Kotlin, Python, Clojure, GLSL)"))
+                        }
+                        putJsonObject("property") {
+                            put("type", JsonPrimitive("string"))
+                            put("description", JsonPrimitive("Optional property name (for GLSL: vertex, fragment, compute, mesh, task)"))
+                        }
+                    }
+                    putJsonArray("required") { 
+                        add(JsonPrimitive("code"))
+                        add(JsonPrimitive("language"))
+                    }
+                }
             )
         )
     }
@@ -360,6 +387,38 @@ class McpServer(
                     } else {
                         ToolCallResult(
                             content = listOf(ToolText(text = "No workspace search provider available")),
+                            isError = true
+                        )
+                    }
+                }
+                
+                "check_code" -> {
+                    val code = args["code"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val language = args["language"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val property = args["property"]?.jsonPrimitive?.contentOrNull
+                    val result = toolContext.checkCode?.invoke(
+                        CheckCodeRequest(code, language, property)
+                    )
+                    if (result != null) {
+                        if (result.success) {
+                            ToolCallResult(content = listOf(ToolText(text = "✓ Code compiles successfully (no errors)")))
+                        } else {
+                            val errorText = result.errors.joinToString("\n") { error ->
+                                val location = if (error.line != null) {
+                                    "Line ${error.line}${if (error.column != null) ", Column ${error.column}" else ""}"
+                                } else {
+                                    "Location unknown"
+                                }
+                                "[$location] ${error.severity.uppercase()}: ${error.message}"
+                            }
+                            ToolCallResult(
+                                content = listOf(ToolText(text = "✗ Compilation errors:\n$errorText")),
+                                isError = false // Not a tool error, just compilation errors
+                            )
+                        }
+                    } else {
+                        ToolCallResult(
+                            content = listOf(ToolText(text = "No code checker provider available")),
                             isError = true
                         )
                     }

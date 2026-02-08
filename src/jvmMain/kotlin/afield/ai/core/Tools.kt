@@ -83,6 +83,27 @@ data class WorkspaceSymbolMatch(
     val definitionBody: String? = null
 )
 
+/** Code validation tool ----------------------------------------------------- */
+
+@JsonClassDescription("Check code for compilation/syntax errors without executing it. Supports Kotlin, Python, Clojure, and GLSL.")
+data class CheckCodeRequest(
+    val code: String,
+    val language: String,
+    val property: String? = null
+)
+
+data class CheckCodeResult(
+    val success: Boolean,
+    val errors: List<CodeError> = emptyList()
+)
+
+data class CodeError(
+    val line: Int? = null,
+    val column: Int? = null,
+    val message: String,
+    val severity: String = "error"
+)
+
 /** CLI example tools -------------------------------------------------------- */
 
 @JsonClassDescription("Return the current UTC time in the requested format.")
@@ -104,7 +125,8 @@ data class ToolExecutionContext(
     val editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
 
     // Optional extra tools
-    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null
+    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+    val checkCode: ((CheckCodeRequest) -> CheckCodeResult)? = null
 )
 
 fun virtualFilesToAttachments(files: List<afield.ai.VirtualTextFile>): List<ContextAttachment> =
