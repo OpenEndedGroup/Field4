@@ -1,4 +1,4 @@
-package afield
+package afield.examples
 
 /**
  * Example usage of the playlist functionality

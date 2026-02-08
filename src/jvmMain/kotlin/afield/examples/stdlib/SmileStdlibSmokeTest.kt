@@ -1,4 +1,4 @@
-package afield.stdlib
+package afield.examples.stdlib
 
 import kotlin.math.PI
 import kotlin.math.abs

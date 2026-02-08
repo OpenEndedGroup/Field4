@@ -1,4 +1,4 @@
-package afield.graphics.examples
+package afield.examples.graphics
 
 import afield.graphics.*
 import afield.stdlib.Vec2

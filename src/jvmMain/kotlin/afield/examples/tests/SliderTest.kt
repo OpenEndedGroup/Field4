@@ -1,4 +1,4 @@
-package afield.test
+package afield.examples.tests
 
 import afield.*
 import kotlinx.coroutines.delay

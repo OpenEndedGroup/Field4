@@ -1,4 +1,4 @@
-package afield.four.texture.video
+package afield.examples.video
 
 import afield.four.Renderer
 import afield.four.device.CommandBuffer

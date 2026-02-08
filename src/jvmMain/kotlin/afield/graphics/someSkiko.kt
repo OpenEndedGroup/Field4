@@ -1,7 +1,7 @@
 package afield.graphics
 
 import afield.Box
-import afield.graphics.examples.FLineGeometryExamples
+import afield.examples.graphics.FLineGeometryExamples
 import afield.stdlib.*
 import org.jetbrains.skia.*
 import org.jetbrains.skia.svg.SVGCanvas

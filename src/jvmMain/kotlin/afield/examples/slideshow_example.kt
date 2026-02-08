@@ -1,4 +1,4 @@
-package afield
+package afield.examples
 
 import afield.logger.lprintln
 import afield.stdlib.action
