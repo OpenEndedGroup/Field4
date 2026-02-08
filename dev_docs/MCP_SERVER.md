@@ -42,6 +42,19 @@ Looks up symbols in the IDE workspace index.
   - `query` (string) - Search query
   - `limit` (integer, optional) - Maximum number of results (default: 25)
 
+### 8. **check_code** ✨ NEW
+Check code for compilation/syntax errors without executing it. Supports multiple languages.
+- **Parameters**:
+  - `code` (string) - Source code to check
+  - `language` (string) - Programming language (Kotlin, Python, Clojure, GLSL)
+  - `property` (string, optional) - For GLSL: shader type (vertex, fragment, compute, mesh, task)
+- **Returns**: Success status and list of errors with line numbers and messages
+- **Supported Languages**:
+  - **Kotlin**: Full compilation checking via KotlinInterface
+  - **Python**: Syntax validation (implementation in progress)
+  - **Clojure**: Compilation checking via ClojureHost
+  - **GLSL**: Shader compilation via shaderc with detailed error reporting
+
 ## Running the MCP Server
 
 ### Automatic Start (Default)

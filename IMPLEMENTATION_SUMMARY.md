@@ -13,7 +13,7 @@ A complete MCP server implementation featuring:
 - **Server-Sent Events (SSE)**: Streaming responses for real-time communication
 - **Heartbeat Support**: Keep-alive mechanism for persistent connections
 - **Progress Notifications**: Real-time progress updates during tool execution
-- **7 AI Tools Exposed**:
+- **8 AI Tools Exposed**:
   1. `commentary` - Assistant design notes and comments
   2. `list_attachments` - List available context files
   3. `get_attachment` - Retrieve file contents by name
@@ -21,6 +21,7 @@ A complete MCP server implementation featuring:
   5. `list_contents` - Get all text properties (code + shaders)
   6. `edit_file` - Edit files by name
   7. `workspace_symbol_search` - Search workspace symbols
+  8. `check_code` - ✨ NEW: Check code for compilation/syntax errors (Kotlin, Python, Clojure, GLSL)
 
 ### 2. Auto-Start Integration (`src/jvmMain/kotlin/afield/Server.kt`)
 
@@ -35,7 +36,27 @@ Implementation:
 - `startMcpServer()` - Launches server in background daemon thread
 - Added to `server()` initialization function
 
-### 3. Integration Updates
+### 3. Code Checking Tool (`src/jvmMain/kotlin/afield/ai/core/CodeChecker.kt`) ✨ NEW
+
+**Multi-Language Code Validation**
+- Checks code for compilation/syntax errors without executing
+- Integrated into AI4 tools and MCP server
+- Returns detailed error information with line numbers
+
+**Language Support:**
+- **Kotlin**: Uses `KotlinInterface.compile()` for full compilation checking
+- **Python**: Syntax validation (placeholder - requires Jep integration)
+- **Clojure**: Uses `ClojureHost.compileOnly()` for compilation checking
+- **GLSL**: Uses `ShaderSPIRVUtils.compileShader()` with detailed error parsing
+
+**Implementation:**
+- `CodeChecker` utility class with language-specific validation
+- `CheckCodeRequest`, `CheckCodeResult`, `CodeError` data classes
+- Integrated into `Ai4Installer.kt` with access to box's language interfaces
+- Added to all `IdeChatHelpers` methods for AI access
+- Exposed via MCP server as `check_code` tool
+
+### 4. Integration Updates
 
 - **AI4.kt**: Added `McpServer` type alias for easy access
 - **build.gradle.kts**: Updated `runmcp` task to use new server
@@ -43,7 +64,7 @@ Implementation:
   - `mcp-server.sh` (Unix/macOS/Linux)
   - `mcp-server.bat` (Windows)
 
-### 4. Testing Tools
+### 5. Testing Tools
 
 - **test-mcp-server.py**: Comprehensive Python test client
 - **test-mcp-server.sh**: Quick curl-based testing script
@@ -58,27 +79,32 @@ Implementation:
 ## File Changes Summary
 
 ```
-New Files Created (13):
+New Files Created (14):
 ├── README.md                                  (updated)
 ├── mcp-server.sh                             (315 B)
 ├── mcp-server.bat                            (311 B)
 ├── test-mcp-server.py                        (4.3 KB)
 ├── test-mcp-server.sh                        (1.7 KB)
 ├── src/jvmMain/kotlin/afield/ai/mcp/
-│   └── McpServer.kt                          (24.1 KB)
+│   └── McpServer.kt                          (updated - check_code tool)
+├── src/jvmMain/kotlin/afield/ai/core/
+│   └── CodeChecker.kt                        (✨ NEW - 8.5 KB)
 └── dev_docs/
     ├── MCP_SERVER.md                         (updated)
     ├── CLAUDE_INTEGRATION.md                 (4.9 KB)
     └── MCP_ARCHITECTURE.md                   (9.2 KB)
 
-Modified Files (4):
+Modified Files (7):
 ├── src/jvmMain/kotlin/afield/Server.kt       (+43 lines - auto-start)
-├── src/jvmMain/kotlin/afield/ai/AI4.kt       (+3 lines)
+├── src/jvmMain/kotlin/afield/ai/AI4.kt       (+6 lines - new types)
+├── src/jvmMain/kotlin/afield/ai/core/Tools.kt (+20 lines - check_code types)
+├── src/jvmMain/kotlin/afield/ai/core/Ai4Installer.kt (+45 lines - checkCode impl)
+├── src/jvmMain/kotlin/afield/ai/core/IdeChatHelpers.kt (+8 lines - checkCode param)
 ├── build.gradle.kts                          (+2 lines)
 └── README.md                                 (updated with auto-start)
 
-Total: 13 new files, 4 modified files
-Total new code: ~54 KB of documentation and implementation
+Total: 14 new files, 7 modified files
+Total new code: ~65 KB of documentation and implementation
 ```
 
 ## Key Features

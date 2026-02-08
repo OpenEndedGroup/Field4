@@ -45,6 +45,24 @@ curl -s -X POST "$MCP_URL" \
   python3 -m json.tool 2>/dev/null || echo "Server not responding"
 echo ""
 
+# Test 5: Call check_code tool (Kotlin - valid)
+echo "Test 5: Check Kotlin code (valid)"
+echo "-----------------------------------"
+curl -s -X POST "$MCP_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"check_code","arguments":{"code":"val x = 42\nprintln(x)","language":"Kotlin"}}}' | \
+  python3 -m json.tool 2>/dev/null || echo "Server not responding"
+echo ""
+
+# Test 6: Call check_code tool (Kotlin - invalid)
+echo "Test 6: Check Kotlin code (with error)"
+echo "----------------------------------------"
+curl -s -X POST "$MCP_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"check_code","arguments":{"code":"val x = \nprintln(y)","language":"Kotlin"}}}' | \
+  python3 -m json.tool 2>/dev/null || echo "Server not responding"
+echo ""
+
 echo "==============================================="
 echo "Tests completed!"
 echo "==============================================="
