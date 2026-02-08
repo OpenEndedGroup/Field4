@@ -4,6 +4,8 @@
 
 The `CompiledSnippet` feature allows you to compile a piece of Kotlin code once within the context of a `KotlinInterface` and then evaluate it multiple times. This is more efficient than using `exec()` repeatedly for the same code, as compilation happens only once.
 
+For a complete runnable example, see [CompiledSnippetExample.kt](../src/jvmMain/kotlin/afield/examples/CompiledSnippetExample.kt).
+
 ## Use Cases
 
 1. **Performance-critical loops**: When you need to execute the same code snippet in a tight loop or animation frame

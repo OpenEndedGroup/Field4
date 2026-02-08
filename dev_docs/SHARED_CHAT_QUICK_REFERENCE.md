@@ -59,7 +59,7 @@ withChat()
 - `src/jvmMain/kotlin/afield/Boxes.kt`
 - `src/jvmMain/kotlin/afield/SlideShow.kt`
 - `src/jvmMain/kotlin/afield/server/templating.kt`
-- `src/jvmMain/kotlin/afield/slideshow_example.kt`
+- `src/jvmMain/kotlin/afield/examples/slideshow_example.kt`
 
 ## New Documentation
 
