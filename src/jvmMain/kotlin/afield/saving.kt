@@ -670,7 +670,74 @@ class SavingContext {
 
     fun ensureDirectory(fn: String): String {
         File(fn).mkdirs()
+        ensureAgentGuides(fn)
         return fn
+    }
+    
+    /**
+     * Ensure agent guides are present in the workspace directory.
+     * Copies README and agent guide files if they don't exist.
+     * This helps AI agents working in the workspace understand how to interact with Field4.
+     */
+    private fun ensureAgentGuides(workspaceDir: String) {
+        try {
+            val workspace = File(workspaceDir)
+            if (!workspace.exists() || !workspace.isDirectory) return
+            
+            // Define the guide files to copy
+            val guidesToCopy = mapOf(
+                "templates/WORKSPACE_README.md" to "README.md",
+                "AGENT_GUIDE.md" to "AGENT_GUIDE.md",
+                "AGENT_QUICK_REF.md" to "AGENT_QUICK_REF.md"
+            )
+            
+            // Get the repository root (go up from wherever we are)
+            val repoRoot = findRepositoryRoot() ?: return
+            
+            guidesToCopy.forEach { (sourcePath, destName) ->
+                val sourceFile = File(repoRoot, sourcePath)
+                val destFile = File(workspace, destName)
+                
+                // Only copy if source exists and destination doesn't exist
+                if (sourceFile.exists() && !destFile.exists()) {
+                    try {
+                        sourceFile.copyTo(destFile, overwrite = false)
+                        lprintln("info,workspace", "Copied $destName to workspace: $workspaceDir")
+                    } catch (e: Exception) {
+                        // Don't fail workspace creation if guides can't be copied
+                        lprintln("warning,workspace", "Could not copy $destName: ${e.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Silently continue if guide copying fails - it's not critical
+            lprintln("debug,workspace", "Guide copying failed: ${e.message}")
+        }
+    }
+    
+    /**
+     * Find the repository root by looking for characteristic files.
+     * Searches up the directory tree for build.gradle.kts or .git directory.
+     */
+    private fun findRepositoryRoot(): File? {
+        // Try common locations relative to the classpath
+        var current = File(System.getProperty("user.dir"))
+        
+        // Look up the tree for repository markers
+        var attempts = 10
+        while (attempts > 0 && current.parent != null) {
+            // Check for repository markers
+            if (File(current, "build.gradle.kts").exists() || 
+                File(current, ".git").exists() ||
+                File(current, "AGENT_GUIDE.md").exists()) {
+                return current
+            }
+            current = current.parentFile ?: break
+            attempts--
+        }
+        
+        // Fallback: use current directory
+        return File(System.getProperty("user.dir"))
     }
 }
 

@@ -6,10 +6,18 @@ import java.io.File
 import java.nio.file.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * FileWatchManager monitors workspace directories for external file changes
  * and reloads sidecar files into Box properties, syncing to the frontend.
+ * 
+ * Enhanced with self-healing capabilities:
+ * - Detects orphaned sidecar files (files without corresponding boxes)
+ * - Auto-creates boxes with sensible defaults (frame, name)
+ * - Watches metadata.edn for external changes
+ * - Reconciles box hierarchy when metadata is edited externally
  */
 class FileWatchManager(private val sessionInfo: SessionInformation) {
 
@@ -21,15 +29,19 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private val internalSaveGraceMs = 15000L
     private var watchJob: Job? = null
     private var isRunning = false
+    private var orphanCheckJob: Job? = null
+    
+    // Track metadata.edn timestamp to detect external changes
+    private var metadataTimestamp: Long = 0
+    
+    // Dedicated coroutine scope for file watching with proper lifecycle management
+    private val watchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
      * Start watching the workspace directory for external file changes
      */
     fun start() {
         if (isRunning) return
-
-        // let's stop this for now.
-        if (true) return;
 
         isRunning = true
         val workspaceDir = File(sessionInfo.filename).absoluteFile
@@ -39,13 +51,32 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
         // Initialize file timestamps
         scanAndRecordTimestamps(workspaceDir)
-
-        // Start the watch loop
-        watchJob = GlobalScope.launch(Dispatchers.IO) {
-            watchLoop()
+        
+        // Initialize metadata.edn timestamp
+        val metadataFile = File(workspaceDir, METADATA_EDN)
+        if (metadataFile.exists()) {
+            metadataTimestamp = metadataFile.lastModified()
         }
 
-        lprintln("info,file-watch", "FileWatchManager started for ${sessionInfo.filename}")
+        // Start the watch loop
+        watchJob = watchScope.launch {
+            watchLoop()
+        }
+        
+        // Start periodic orphan check (every 5 seconds)
+        orphanCheckJob = watchScope.launch {
+            delay(5000.milliseconds) // Initial delay
+            while (isRunning) {
+                try {
+                    checkForOrphanedFiles(workspaceDir)
+                } catch (e: Exception) {
+                    lprintln("error,file-watch", "Error checking for orphaned files: ${e.message}")
+                }
+                delay(5000.milliseconds)
+            }
+        }
+
+        lprintln("info,file-watch", "FileWatchManager started for ${sessionInfo.filename} with self-healing enabled")
     }
 
     /**
@@ -56,6 +87,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
         isRunning = false
         watchJob?.cancel()
+        orphanCheckJob?.cancel()
+        watchScope.cancel() // Cancel the entire scope to clean up all coroutines
         watchKeys.keys.forEach { it.cancel() }
         watchKeys.clear()
         fileTimestamps.clear()
@@ -146,7 +179,10 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                     val child = dir.resolve(filename)
                     val file = child.toFile()
 
-                    if (file.isFile && isSidecarFile(file)) {
+                    // Handle metadata.edn changes
+                    if (file.name == METADATA_EDN) {
+                        handleMetadataChange(file)
+                    } else if (file.isFile && isSidecarFile(file)) {
                         handleFileChange(file)
                     }
                 }
@@ -211,11 +247,15 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val boxId = parts[0]
             val propertyName = parts[1]
 
-            // Find the box
-            val box = sessionInfo.boxes[boxId]
+            // Find the box - if not found, try to create it
+            var box = sessionInfo.boxes[boxId]
             if (box == null) {
-                lprintln("warning,file-watch", "Box not found for sidecar file: $filename")
-                return
+                lprintln("info,file-watch", "Box not found for sidecar file: $filename - attempting auto-creation")
+                box = autoCreateBoxForSidecarFile(file, boxId, propertyName)
+                if (box == null) {
+                    lprintln("warning,file-watch", "Could not auto-create box for sidecar file: $filename")
+                    return
+                }
             }
 
             // Check if this property should be stored separately
@@ -246,5 +286,259 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         } catch (e: Exception) {
             lprintln("error,file-watch", "Error reloading sidecar file ${file.name}: ${e.message}")
         }
+    }
+    
+    /**
+     * Handle changes to metadata.edn file
+     */
+    private suspend fun handleMetadataChange(file: File) {
+        try {
+            if (!file.exists()) return
+            
+            val currentTime = file.lastModified()
+            
+            // Check if this is an internal save
+            val lastInternalSave = internalSaveTimestamps[file.absolutePath]
+            if (lastInternalSave != null && currentTime <= lastInternalSave + internalSaveGraceMs) {
+                metadataTimestamp = currentTime
+                return
+            }
+            
+            // Check if file was actually modified
+            if (currentTime <= metadataTimestamp) {
+                return
+            }
+            
+            metadataTimestamp = currentTime
+            
+            lprintln("info,file-watch", "External change detected to metadata.edn")
+            
+            // Small delay to ensure file write is complete
+            delay(200.milliseconds)
+            
+            // Reload the metadata and reconcile
+            inMain {
+                try {
+                    reconcileMetadata(file.parentFile)
+                } catch (e: Exception) {
+                    lprintln("error,file-watch", "Error reconciling metadata: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+            
+        } catch (e: Exception) {
+            lprintln("error,file-watch", "Error handling metadata change: ${e.message}")
+        }
+    }
+    
+    /**
+     * Reconcile the current box hierarchy with metadata.edn
+     * This handles external additions/deletions to metadata
+     */
+    private fun reconcileMetadata(workspaceDir: File) {
+        try {
+            val savingContext = SavingContext()
+            val transfers = savingContext.readEdnTransfers(workspaceDir.absolutePath)
+            
+            val metadataBoxIds = transfers.map { it.id }.toSet()
+            val currentBoxIds = sessionInfo.boxes.keys.filter { it != "root" }.toSet()
+            
+            // Find boxes in metadata but not in current session (newly added externally)
+            val newBoxIds = metadataBoxIds - currentBoxIds
+            if (newBoxIds.isNotEmpty()) {
+                lprintln("info,file-watch", "Found ${newBoxIds.size} new boxes in metadata.edn: $newBoxIds")
+                
+                // Load these boxes
+                for (transfer in transfers.filter { it.id in newBoxIds }) {
+                    val box = box(transfer.id, createIfMissing = true, initIfCreated = true, root = sessionInfo)
+                    
+                    // Apply properties from metadata
+                    for ((name, value) in transfer.properties) {
+                        val resolved = savingContext.resolveStoredValue(value, workspaceDir.absolutePath)
+                        if (resolved != null) {
+                            box.setPropertyRaw(name, resolved, doResync = true)
+                        }
+                    }
+                    
+                    lprintln("info,file-watch", "Created box from metadata: ${box.name} (${box.id})")
+                }
+                
+                notify("Loaded ${newBoxIds.size} new box(es) from external metadata changes", "file-watch")
+            }
+            
+            // Find boxes in current session but not in metadata (removed externally)
+            val removedBoxIds = currentBoxIds - metadataBoxIds
+            if (removedBoxIds.isNotEmpty()) {
+                lprintln("info,file-watch", "Found ${removedBoxIds.size} boxes removed from metadata.edn: $removedBoxIds")
+                
+                // Mark as tombstones instead of deleting
+                for (boxId in removedBoxIds) {
+                    val box = sessionInfo.boxes[boxId]
+                    if (box != null) {
+                        box.setPropertyRaw("_tombstone", true, doResync = true)
+                        lprintln("info,file-watch", "Marked box as removed: ${box.name} (${box.id})")
+                    }
+                }
+                
+                notify("Marked ${removedBoxIds.size} box(es) as removed from external metadata changes", "file-watch")
+            }
+            
+        } catch (e: Exception) {
+            lprintln("error,file-watch", "Error reconciling metadata: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Check for orphaned sidecar files and auto-create boxes for them
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    private suspend fun checkForOrphanedFiles(workspaceDir: File) {
+        try {
+            val sidecarFiles = workspaceDir.listFiles()?.filter { it.isFile && isSidecarFile(it) } ?: return
+            
+            for (file in sidecarFiles) {
+                val filename = file.name
+                val lastUnderscore = filename.lastIndexOf("_.")
+                if (lastUnderscore == -1) continue
+                
+                val beforeLastUnderscore = filename.substring(0, lastUnderscore)
+                val parts = beforeLastUnderscore.split("_")
+                if (parts.size < 2) continue
+                
+                val boxId = parts[0]
+                val propertyName = parts[1]
+                
+                // Check if box exists
+                if (!sessionInfo.boxes.containsKey(boxId)) {
+                    lprintln("info,file-watch", "Found orphaned sidecar file: $filename")
+                    
+                    inMain {
+                        autoCreateBoxForSidecarFile(file, boxId, propertyName)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            lprintln("error,file-watch", "Error checking for orphaned files: ${e.message}")
+        }
+    }
+    
+    /**
+     * Auto-create a box for an orphaned sidecar file
+     * Returns the created box or null if creation failed
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    private fun autoCreateBoxForSidecarFile(file: File, boxId: String, propertyName: String): Box? {
+        try {
+            // Create the box
+            val box = box(boxId, createIfMissing = true, initIfCreated = true, root = sessionInfo)
+            
+            // Generate a sensible name from the filename
+            // 1. Start with filename without extension
+            val baseName = file.nameWithoutExtension
+            // 2. Replace underscores with spaces
+            val withSpaces = baseName.replace("_", " ").trim()
+            // 3. Extract meaningful part: if it contains box ID, take the part after
+            val meaningfulPart = if (withSpaces.contains(boxId, ignoreCase = true)) {
+                withSpaces.substringAfter(boxId, "").trim()
+            } else {
+                withSpaces
+            }
+            // 4. Use a default if empty, otherwise capitalize first letter
+            val displayName = if (meaningfulPart.isEmpty()) {
+                "Box $boxId"
+            } else {
+                meaningfulPart.replaceFirstChar { it.uppercase() }
+            }
+            
+            box.name = displayName
+            
+            // Calculate a non-overlapping frame position
+            val frame = calculateNewBoxFrame(boxId)
+            box.frame = frame
+            
+            // Read and set the file content
+            val content = file.readText()
+            box.setPropertyRaw(propertyName, content, doResync = true)
+            
+            // Mark for persistence
+            if (box.isInsideInitialized()) {
+                box.inside.pendingSidecarSaves += box.id to propertyName
+                // Also ensure the box itself is saved to metadata
+                box.inside.isDirty = true
+            }
+            
+            lprintln("info,file-watch", "Auto-created box: $displayName ($boxId) with frame $frame")
+            notify("Auto-created box '$displayName' from external file: ${file.name}", "file-watch")
+            
+            // Trigger a save to persist the new box
+            inMain {
+                try {
+                    val workspaceDir = File(sessionInfo.filename).absoluteFile
+                    val savingContext = SavingContext()
+                    savingContext.save(workspaceDir.absolutePath, sessionInfo.boxes.values.toSet())
+                } catch (e: Exception) {
+                    lprintln("error,file-watch", "Error saving after auto-creating box: ${e.message}")
+                }
+            }
+            
+            return box
+        } catch (e: Exception) {
+            lprintln("error,file-watch", "Error auto-creating box for ${file.name}: ${e.message}")
+            e.printStackTrace()
+            return null
+        }
+    }
+    
+    /**
+     * Calculate a non-overlapping frame for a new box
+     * Uses a simple grid layout starting at (50, 50) with 350x250 boxes
+     * @param boxId The box ID to use for deterministic fallback positioning
+     */
+    private fun calculateNewBoxFrame(boxId: String): Rect {
+        val startX = 50.0
+        val startY = 50.0
+        val boxWidth = 350.0
+        val boxHeight = 250.0
+        val padding = 20.0
+        val columns = 4
+        
+        // Find all existing frames
+        val existingFrames = sessionInfo.boxes.values
+            .filter { it.id != "root" && !it.properties["_tombstone"].isTrue() }
+            .mapNotNull { it.frame }
+        
+        // Try to find a non-overlapping position in grid
+        var row = 0
+        var col = 0
+        var maxAttempts = 100
+        
+        while (maxAttempts > 0) {
+            val x = startX + col * (boxWidth + padding)
+            val y = startY + row * (boxHeight + padding)
+            val testFrame = Rect(x, y, boxWidth, boxHeight)
+            
+            // Check if this frame overlaps with any existing frame
+            val overlaps = existingFrames.any { existing ->
+                testFrame.intersects(existing)
+            }
+            
+            if (!overlaps) {
+                return testFrame
+            }
+            
+            // Move to next position
+            col++
+            if (col >= columns) {
+                col = 0
+                row++
+            }
+            maxAttempts--
+        }
+        
+        // Fallback: use deterministic offset based on box ID hash
+        // This ensures boxes created simultaneously get unique positions
+        val hashOffset = (boxId.hashCode().toLong() and 0x7FFFFFFF) % 200 // 0-199 pixel offset
+        return Rect(startX + hashOffset, startY + hashOffset, boxWidth, boxHeight)
     }
 }
