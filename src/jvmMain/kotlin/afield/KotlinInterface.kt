@@ -532,13 +532,16 @@ class KotlinInterface(
 
         /**
          * Synchronous version of eval() that blocks until evaluation completes.
+         * 
+         * Note: Unlike the async eval(), this version uses empty default error handlers
+         * to avoid throwing exceptions, providing a simpler API for synchronous use cases.
          */
         @JvmOverloads
         fun evalAndWait(
             updateContext: Boolean = false,
             implicits: List<Any> = defaultImplicits,
-            onEvalError: (List<ScriptDiagnostic>) -> Unit = {},
-            onEvalException: (Throwable) -> Unit = {}
+            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
+            onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it") }
         ): ResultValue? {
             return runBlocking {
                 eval(updateContext, implicits, onEvalError, onEvalException)

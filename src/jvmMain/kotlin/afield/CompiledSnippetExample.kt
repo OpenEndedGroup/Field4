@@ -1,5 +1,8 @@
 package afield
 
+// Helper extension for string repetition
+private operator fun String.times(n: Int) = repeat(n)
+
 /**
  * Simple example demonstrating the CompiledSnippet usage pattern.
  * 
@@ -70,5 +73,3 @@ object CompiledSnippetExample {
         println("Example completed successfully!")
     }
 }
-
-private operator fun String.times(n: Int) = repeat(n)
