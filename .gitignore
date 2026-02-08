@@ -134,6 +134,7 @@ hs_err_pid*
 metadata_store/*
 !metadata_store/example_template/
 !metadata_store/simple_hello/
+!metadata_store/agent_demo/
 
 # Telemetry data
 metadata_server_telemetry.json

@@ -1,0 +1,15 @@
+{:version 2
+ :boxes [{:id "welcome"
+          :properties {:name "Welcome to Agent Demo"
+                       :code "(println \"This workspace demonstrates Field4's self-healing metadata system.\")\n(println \"Try creating new files like: my-box_code_.kt\")\n(println \"Field will automatically create boxes for them!\")"
+                       :frame [50.0 50.0 400.0 250.0]
+                       :metadata "tags:\n  - demo\n  - agent\n  - documentation\ndescription: Welcome box for the agent demo workspace"}}
+         {:id "instructions"
+          :properties {:name "How to Use"
+                       :code "(println \"1. Create a file: echo 'println(\\\"Hello!\\\")' > test_code_.kt\")\n(println \"2. Wait 5-10 seconds\")\n(println \"3. New box appears automatically!\")\n(println \"4. Edit files freely - changes sync immediately\")\n(println \"5. Check metadata.edn to see structure\")"
+                       :frame [470.0 50.0 400.0 250.0]}}
+         {:id "example-shader"
+          :properties {:name "Example Shader"
+                       :fragment "void main() {\n    vec2 uv = gl_FragCoord.xy / vec2(1920.0, 1080.0);\n    gl_FragColor = vec4(uv.x, uv.y, 0.5, 1.0);\n}"
+                       :frame [50.0 320.0 400.0 250.0]
+                       :metadata "tags:\n  - shader\n  - graphics\n  - example"}}]}
