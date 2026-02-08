@@ -1,38 +1,20 @@
-package afield.four.examples
+package afield.examples.four
 
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import org.lwjgl.system.Configuration
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import afield.four.*
 import afield.four.modules.*
 import afield.four.targets.RenderTarget
 import afield.four.texture.LoadedTexture
+import afield.four.texture.StorageImage
 import afield.four.util.Projection
 import afield.four.util.Window
 import afield.four.util.forever
 import java.util.Random
 
-
-//@Suppress("UNCHECKED_CAST")
-//class A {
-//    class C<T> {
-//        operator fun setValue(inside: A, property: KProperty<*>, any: T) {
-//        }
-//
-//        operator fun getValue(inside: A, property: KProperty<*>): T {
-//            return "a" as T
-//        }
-//    }
-//
-//    var b by C<Vector3f>()
-//
-//    fun foo() {
-//        b = Vector3f()
-//        b = "banana"
-//    }
-//}
-
-class NewMain7_dynamicNumberOfVerts {
+class NewMain8_writeToImage {
     val window = Window("Field")
     val renderer = Renderer(window)
 
@@ -43,8 +25,7 @@ class NewMain7_dynamicNumberOfVerts {
         val rt = RenderTarget(renderer)
         renderer.renderList = rt
 
-
-        val texture = LoadedTexture( "/Users/marc/Desktop/bbc.jpg", renderer,VK_FORMAT_R8G8B8A8_SRGB)
+        val texture = LoadedTexture( "/Users/marc/Desktop/bbc.jpg", renderer, VK_FORMAT_R8G8B8A8_SRGB)
         texture.transferNow()
 
         val positions = floatArrayOf(
@@ -63,8 +44,8 @@ class NewMain7_dynamicNumberOfVerts {
             0, 1, 2, 0, 2, 3
         )
 
-        val module = Module(
-            Parameters(renderer,
+        val module = Module( Parameters(
+            renderer,
             vertex = """
                 #version 450
 
@@ -94,17 +75,29 @@ class NewMain7_dynamicNumberOfVerts {
 
                 layout(location = 0) out vec4 uFragColor;
                 
+                layout(rgba16f, set=0, binding=0) uniform image2D image;
+                 
                 layout(location = 0) in struct Output {
                     vec4 f_color;
                 } o;
 
                 void main()
                 {
-                    uFragColor = vec4(o.f_color.rgb, 1.0);
+                    vec4 a = imageLoad(image, ivec2(0,0));
+                    uFragColor = vec4(a.xx, 0.0, 1.0);
+                    imageStore(image, ivec2(0,0), vec4(fract(a.x+0.001),1,1,1));
                 }
             """.trimIndent(),
-            name = "some shader")
-        )
+            name = "some shader",
+            imageResolver = { image ->
+
+                //TODO get this format from image.type
+                println("${image.type} for storage is")
+                val si = StorageImage(renderer, 1024, 1024, ImageType.valueOf(image.type).vulkan_format)
+                si.transitionNow()
+                si.imageView
+            }
+        ))
 
 
         rt += "module" to module
@@ -119,8 +112,6 @@ class NewMain7_dynamicNumberOfVerts {
         innerRectangle.update["resize"] = forever {
 
             frame++
-            if (frame>10) return@forever true
-
             val layers = (frame / 50) % 10 + 1
 
             innerRectangle.resize( 4 * layers, 2 * layers)
@@ -214,7 +205,7 @@ class NewMain7_dynamicNumberOfVerts {
 
             frame++
             if (frame % 100 == 0) {
-                println("\n\n fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)} \n\n")
+                println("fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)}")
                 initialTime = System.currentTimeMillis()
             }
         }
@@ -227,8 +218,8 @@ class NewMain7_dynamicNumberOfVerts {
         @JvmStatic
         fun main(args: Array<String>) {
 //            useVulkanSdk()
-//            Configuration.VULKAN_LIBRARY_NAME.set("/Users/marc/VulkanSDK/1.3.296.0//macOS/lib/libvulkan.1.dylib")
-            val main = NewMain7_dynamicNumberOfVerts()
+            Configuration.VULKAN_LIBRARY_NAME.set("/Users/marc/VulkanSDK/1.3.296.0//macOS/lib/libvulkan.1.dylib")
+            val main = NewMain8_writeToImage()
             main.run()
         }
     }

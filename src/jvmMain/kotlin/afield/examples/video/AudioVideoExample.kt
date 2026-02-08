@@ -1,4 +1,4 @@
-package afield.four.texture.video
+package afield.examples.video
 
 /**
  * AudioVideoExample demonstrates synchronized audio/video playback with clock integration.
