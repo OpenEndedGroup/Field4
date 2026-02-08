@@ -320,6 +320,9 @@ kotlin {
                 implementation("org.clojure:tools.reader:1.5.1")
                 implementation("compliment:compliment:0.5.5")
                 implementation("org.clojure:data.json:2.5.0")
+                
+                // Processing support
+                implementation("org.processing:core:3.3.7")
 
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
