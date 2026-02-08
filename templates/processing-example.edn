@@ -1,0 +1,46 @@
+{:boxes
+ [{:id "processing-root"
+   :name "Processing Root"
+   :isProcessingRoot true
+   :x 100
+   :y 100
+   :w 200
+   :h 50}
+  
+  {:id "processing-circle"
+   :name "Animated Circle"
+   :parent "processing-root"
+   :code "// This code runs every frame
+p.background(0f)
+p.fill(255f, 100f, 100f)
+p.ellipse(p.mouseX.toFloat(), p.mouseY.toFloat(), 50f, 50f)"
+   :x 120
+   :y 170
+   :w 300
+   :h 150}
+  
+  {:id "processing-lines"
+   :name "Lines to Mouse"
+   :parent "processing-root"
+   :code "// Draw lines from corners to mouse
+p.stroke(100f, 255f, 100f)
+p.line(0f, 0f, p.mouseX.toFloat(), p.mouseY.toFloat())
+p.line(p.width.toFloat(), 0f, p.mouseX.toFloat(), p.mouseY.toFloat())
+p.line(0f, p.height.toFloat(), p.mouseX.toFloat(), p.mouseY.toFloat())
+p.line(p.width.toFloat(), p.height.toFloat(), p.mouseX.toFloat(), p.mouseY.toFloat())"
+   :x 120
+   :y 340
+   :w 400
+   :h 200}
+  
+  {:id "processing-setup"
+   :name "Processing Setup"
+   :parent "processing-root"
+   :code "// One-time setup code
+p.stroke(255f)
+p.strokeWeight(2f)
+println(\"Processing applet initialized: ${p.width}x${p.height}\")"
+   :x 450
+   :y 170
+   :w 300
+   :h 120}]}
