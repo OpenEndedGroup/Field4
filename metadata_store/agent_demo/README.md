@@ -1,30 +1,75 @@
-# Field4 Workspace
+# Agent Demo Workspace
 
-Welcome to this Field4 workspace! This directory contains boxes (code units) that can be edited live while Field is running.
+This is a demonstration workspace for Field4's self-healing metadata system. It's designed to help AI agents learn how to work with Field4.
 
-## For AI Agents Working Here
+## About This Demo
 
-Field4 has a **self-healing metadata system** that makes it easy for you to work on files in this workspace without manually managing metadata.
+This workspace showcases:
+- ✅ Auto-box creation from external files
+- ✅ Live file synchronization
+- ✅ Metadata reconciliation
+- ✅ Grid-based frame positioning
+- ✅ Smart naming from filenames
 
-### Quick Start
+### Included Boxes
 
-**Create a new box:**
+This workspace comes with 3 example boxes:
+1. **welcome** - Introduction to the agent demo
+2. **instructions** - Step-by-step usage guide
+3. **example-shader** - Sample shader demonstrating graphics
+
+## For AI Agents: Quick Start
+
+Field4 has a **self-healing metadata system** that makes it easy for you to work without manually managing metadata.
+
+### Create a New Box
+
 ```bash
 # Just create a file with this pattern: <boxId>_<property>_.<extension>
-echo 'println("Hello from AI!")' > my-box_code_.kt
+echo 'println("Hello from AI!")' > my-test_code_.kt
 ```
 
 Within 5-10 seconds, Field will:
 - Detect your new file
-- Auto-create a box named "My Box"
+- Auto-create a box named "My Test"
 - Position it in the UI
 - Load your code
-- Save everything to metadata.edn
+- Save to metadata.edn
 
-**Edit existing boxes:**
+### Try These Examples
+
+**1. Add Kotlin Code:**
 ```bash
-# Edit any file - changes sync immediately
-echo 'println("Updated code!")' > my-box_code_.kt
+echo 'println("Demo box created by agent")
+println("Time: ${System.currentTimeMillis()}")' > agent-test_code_.kt
+```
+
+**2. Add a Shader:**
+```bash
+cat > rainbow-shader_fragment_.glsl << 'GLSL'
+void main() {
+    vec2 uv = gl_FragCoord.xy / vec2(1920.0, 1080.0);
+    gl_FragColor = vec4(uv.x, uv.y, 0.5, 1.0);
+}
+GLSL
+```
+
+**3. Add Metadata:**
+```bash
+cat > my-test_metadata_.yaml << 'YAML'
+tags:
+  - demo
+  - agent-created
+description: Created by an AI agent
+YAML
+```
+
+**4. Bulk Create:**
+```bash
+for i in {1..3}; do
+  echo "println(\"Particle $i\")" > particle-$i_code_.kt
+done
+# Wait 10 seconds - 3 boxes appear in grid!
 ```
 
 ### Supported File Types
@@ -46,90 +91,39 @@ echo 'println("Updated code!")' > my-box_code_.kt
 ❌ Don't worry about frame positions (auto-calculated)
 ❌ Don't manage box IDs (just use descriptive names)
 
-### Workspace Structure
+### Expected Logs
 
+Check Field's console for:
 ```
-workspace/
-├── README.md              ← You are here
-├── AGENT_GUIDE.md        ← Full documentation
-├── metadata.edn           ← Auto-managed box definitions
-├── boxid_code_.kt         ← Kotlin code files
-├── boxid_fragment_.glsl   ← Shader files
-└── boxid_metadata_.yaml   ← Metadata files
-```
-
-### Best Practices
-
-**Good box IDs:**
-- `particle-system`, `shader-utils`, `physics-engine`
-- Use lowercase with hyphens
-- Descriptive and meaningful
-
-**Avoid:**
-- Spaces in IDs (use hyphens instead)
-- Generic names like `box1`, `test`, `temp`
-- Special characters except `-` and `_`
-
-### Common Tasks
-
-**Add a shader to a box:**
-```bash
-echo 'void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }' > my-box_fragment_.glsl
-```
-
-**Add metadata/tags:**
-```bash
-cat > my-box_metadata_.yaml << 'EOF'
-tags:
-  - graphics
-  - demo
-description: My awesome box
-EOF
-```
-
-**Create multiple related boxes:**
-```bash
-for i in {1..3}; do
-  echo "println(\"Box $i\")" > demo-$i_code_.kt
-done
+info,file-watch: FileWatchManager started with self-healing enabled
+info,file-watch: Found orphaned sidecar file: agent-test_code_.kt
+info,file-watch: Auto-created box: Agent Test (agent-test)
 ```
 
 ### Troubleshooting
 
 **Box not appearing?**
 - Check filename format: `boxid_property_.extension`
-- Verify extension is supported (see table above)
+- Verify extension is supported
 - Wait 5-10 seconds for detection
-- Check Field's console for errors
 
 **Changes not syncing?**
 - Ensure Field is running
-- Check file completed writing
+- Check file write completed
 - Look for errors in Field's console
-- Verify the 15-second grace period hasn't triggered
 
-### Full Documentation
+### More Information
 
-For complete documentation, see:
-- **AGENT_GUIDE.md** - Comprehensive guide (in this directory or repository root)
-- **AGENT_QUICK_REF.md** - Quick reference card (in repository root)
-- **Field4 Console** - Check logs for real-time feedback
+- **AGENT_QUICK_REF.md** - Quick reference (in this directory)
+- **Full documentation** - See repository root
 
-### Need Help?
+## Cleanup
 
-- Check Field's console output for detailed logs
-- Look for messages like: `info,file-watch: Auto-created box...`
-- Review the full AGENT_GUIDE.md for advanced usage
-- Check the FileWatchManager.kt source code for implementation details
+To remove test files:
+```bash
+rm agent-test_code_.kt rainbow-shader_fragment_.glsl my-test_* particle-*
+```
 
 ---
 
-**Auto-Management Features:**
-- ✅ Orphan file detection (every 5 seconds)
-- ✅ Auto-box creation with smart naming
-- ✅ Non-overlapping frame positioning
-- ✅ Live file synchronization
-- ✅ Metadata reconciliation
-- ✅ 15-second grace period for safety
-
-Happy coding! 🚀
+**Happy Experimenting!** 🚀
