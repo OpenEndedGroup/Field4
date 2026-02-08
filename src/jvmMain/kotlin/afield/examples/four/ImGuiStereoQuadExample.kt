@@ -1,4 +1,4 @@
-package afield.four.examples
+package afield.examples.four
 
 import afield.four.Renderer
 import afield.four.imgui.ImGuiRenderToTexture

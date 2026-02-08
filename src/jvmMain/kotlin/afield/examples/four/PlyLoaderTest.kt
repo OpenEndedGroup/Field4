@@ -1,4 +1,4 @@
-package afield.four.examples
+package afield.examples.four
 
 import afield.four.modules.PlySupport
 import java.io.File
