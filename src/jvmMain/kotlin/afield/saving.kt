@@ -28,6 +28,8 @@ private data class FileInline(val path: String, val inline: String)
 
 class SavingContext {
 
+    private object SkipRef
+
     fun exportEdnPackage(boxes: Set<Box>, directory: String): String {
         val transfers = toTransferInline(boxes, directory)
         val payloadBoxes = transfers.map { transfer ->
@@ -473,7 +475,8 @@ class SavingContext {
         value: Any?,
         directory: String,
         filterId: (String) -> String,
-        createBoxes: Boolean
+        createBoxes: Boolean,
+        allowedRefIds: Set<String>? = null
     ): Any? = when (value) {
         null -> null
         is FileRef -> File(directory, value.path).readText()
@@ -482,7 +485,9 @@ class SavingContext {
             if (file.exists()) file.readText() else value.inline
         }
         is BoxRef -> {
-            if (!createBoxes) {
+            if (allowedRefIds != null && value.id !in allowedRefIds) {
+                SkipRef
+            } else if (!createBoxes) {
                 value
             } else {
                 val sourceId = value.id
@@ -494,13 +499,34 @@ class SavingContext {
                 v
             }
         }
-        is List<*> -> value.map { resolveValue(it, directory, filterId, createBoxes) }.toMutableList()
-        is Set<*> -> value.mapTo(LinkedHashSet()) { resolveValue(it, directory, filterId, createBoxes) }
+        is List<*> -> {
+            val resolved = mutableListOf<Any?>()
+            value.forEach { item ->
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds)
+                if (result !== SkipRef) {
+                    resolved.add(result)
+                }
+            }
+            resolved
+        }
+        is Set<*> -> {
+            val resolved = LinkedHashSet<Any?>()
+            value.forEach { item ->
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds)
+                if (result !== SkipRef) {
+                    resolved.add(result)
+                }
+            }
+            resolved
+        }
         is Map<*, *> -> {
             val mapped = LinkedHashMap<Any?, Any?>()
             for ((k, v) in value) {
-                mapped[resolveValue(k, directory, filterId, createBoxes)] =
-                    resolveValue(v, directory, filterId, createBoxes)
+                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds)
+                if (keyResolved === SkipRef) continue
+                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds)
+                if (valueResolved === SkipRef) continue
+                mapped[keyResolved] = valueResolved
             }
             mapped
         }
@@ -520,13 +546,20 @@ class SavingContext {
         transfers: List<BoxTransferEdn>,
         root: String,
         filterId: (String) -> String,
-        createBoxes: Boolean
+        createBoxes: Boolean,
+        allowedRefIds: Set<String>? = null
     ): Set<Box> {
         return transfers.map { transfer ->
             val id = filterId(transfer.id)
             val b = box(id, createIfMissing = createBoxes)
             transfer.properties.forEach { (name, value) ->
-                val v = resolveValue(value, root, filterId, createBoxes = createBoxes)
+                val v = resolveValue(
+                    value,
+                    root,
+                    filterId,
+                    createBoxes = createBoxes,
+                    allowedRefIds = allowedRefIds
+                )
                 if (v != null) {
                     b.setPropertyRaw(name, v)
                 }
@@ -541,10 +574,17 @@ class SavingContext {
     fun loadFromEdnText(
         ednText: String,
         directory: String,
-        filterId: (String) -> String = { it }
+        filterId: (String) -> String = { it },
+        allowedRefIds: Set<String>? = null
     ): Set<Box> {
         val transfers = readEdnTransfersFromString(ednText)
-        return instantiateTransfers(transfers, directory, filterId, createBoxes = true)
+        return instantiateTransfers(
+            transfers,
+            directory,
+            filterId,
+            createBoxes = true,
+            allowedRefIds = allowedRefIds
+        )
     }
 
     private fun loadJson(root: String, filterId: (String) -> String): Set<Box> {

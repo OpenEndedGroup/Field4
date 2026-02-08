@@ -644,6 +644,8 @@ class Server {
                 val req = Json.decodeFromJsonElement<PasteBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()
                 val usedIds = info.boxes.keys
+                val ctx = SavingContext()
+                val allowedRefIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet() + "root"
                 val idMap = mutableMapOf<String, String>()
                 val filter: (String) -> String = { source ->
                     idMap.getOrPut(source) {
@@ -652,7 +654,7 @@ class Server {
                     }
                 }
 
-                val newBoxes = SavingContext().loadFromEdnText(req.edn, info.filename, filter)
+                val newBoxes = ctx.loadFromEdnText(req.edn, info.filename, filter, allowedRefIds)
 
                 // Only translate top-level boxes, not nested children. Nested boxes have frames that are
                 // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).

@@ -119,7 +119,7 @@ function installNumberCommands(ed) {
         ed.addAction({
                 id: 'dec-number',
                 label: 'Decrement number under cursor and rerun',
-                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Digit1],
+                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ],
                 run: ed => {
                         adjustNumberAtCursor(ed, false)
                         ed.trigger('keyboard', 'execute-fragment')
@@ -128,7 +128,7 @@ function installNumberCommands(ed) {
         ed.addAction({
                 id: 'inc-number',
                 label: 'Increment number under cursor and rerun',
-                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Digit2],
+                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyK],
                 run: ed => {
                         adjustNumberAtCursor(ed, true)
                         ed.trigger('keyboard', 'execute-fragment')
