@@ -60,38 +60,114 @@ object CodeChecker {
     }
     
     /**
-     * Check Python code for syntax errors using py_compile
+     * Check Python code for syntax errors using py_compile via Jep
      */
     fun checkPython(code: String): CheckCodeResult {
         return try {
-            // Use Python's compile() built-in to check syntax
-            val checkScript = """
+            // Check if Python/Jep is initialized
+            if (!afield.python.PythonInterface.inited) {
+                lprintln("warning,code_checker", "Python/Jep not initialized, attempting to initialize...")
+                try {
+                    afield.python.PythonExecution().interpreter(null)
+                } catch (e: Exception) {
+                    return CheckCodeResult(
+                        success = false,
+                        errors = listOf(
+                            CodeError(
+                                message = "Python interpreter not available: ${e.message}",
+                                severity = "error"
+                            )
+                        )
+                    )
+                }
+            }
+            
+            // Use Jep's SharedInterpreter to run py_compile
+            val errors = mutableListOf<CodeError>()
+            var success = true
+            
+            jep.SharedInterpreter().use { interp ->
+                try {
+                    // Set the code as a variable in Python
+                    interp.set("_pycheck_code", code)
+                    
+                    // Use compile() built-in to check syntax (simpler than py_compile)
+                    val checkScript = """
 import sys
-import traceback
+from io import StringIO
 
-code = '''${code.replace("'", "\\'")}'''
+_pycheck_output = StringIO()
+sys.stdout = _pycheck_output
 
 try:
-    compile(code, '<string>', 'exec')
-    print('SUCCESS')
+    compile(_pycheck_code, '<string>', 'exec')
+    print('PYCHECK_SUCCESS')
 except SyntaxError as e:
-    print(f'ERROR|{e.lineno}|{e.offset}|{e.msg}')
+    print(f'PYCHECK_ERROR|{e.lineno or ""}|{e.offset or ""}|{e.msg}')
 except Exception as e:
-    print(f'ERROR|||{str(e)}')
+    print(f'PYCHECK_ERROR|||{str(e)}')
+finally:
+    sys.stdout = sys.__stdout__
 """
-            
-            // For now, return a placeholder result since we need Jep integration
-            // This would require access to a Python interpreter
-            lprintln("info,code_checker", "Python code check requested (implementation pending)")
-            CheckCodeResult(
-                success = false,
-                errors = listOf(
-                    CodeError(
-                        message = "Python code checking not yet fully implemented - requires Python interpreter integration",
-                        severity = "warning"
+                    
+                    // Execute the check script
+                    interp.exec(checkScript)
+                    
+                    // Get the output
+                    val result = interp.getValue("_pycheck_output.getvalue()") as String
+                    
+                    // Parse the result
+                    if (result.contains("PYCHECK_SUCCESS")) {
+                        success = true
+                    } else if (result.contains("PYCHECK_ERROR")) {
+                        success = false
+                        val errorLine = result.lines().firstOrNull { it.startsWith("PYCHECK_ERROR") }
+                        if (errorLine != null) {
+                            val parts = errorLine.split("|")
+                            if (parts.size >= 4) {
+                                val line = parts[1].toIntOrNull()
+                                val column = parts[2].toIntOrNull()
+                                val message = parts.drop(3).joinToString("|")
+                                errors.add(
+                                    CodeError(
+                                        line = line,
+                                        column = column,
+                                        message = message,
+                                        severity = "error"
+                                    )
+                                )
+                            } else {
+                                errors.add(
+                                    CodeError(
+                                        message = errorLine.substringAfter("PYCHECK_ERROR|"),
+                                        severity = "error"
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } catch (je: jep.JepException) {
+                    success = false
+                    // Parse Jep exception for Python errors
+                    val message = je.message ?: "Unknown Python error"
+                    
+                    // Try to extract line number from exception message
+                    val linePattern = Regex("""line (\d+)""")
+                    val lineMatch = linePattern.find(message)
+                    val line = lineMatch?.groupValues?.get(1)?.toIntOrNull()
+                    
+                    errors.add(
+                        CodeError(
+                            line = line,
+                            message = message,
+                            severity = "error"
+                        )
                     )
-                )
-            )
+                }
+            }
+            
+            CheckCodeResult(success = success, errors = errors)
+            
         } catch (e: Exception) {
             lprintln("error,code_checker", "Python syntax check failed: ${e.message}")
             CheckCodeResult(
