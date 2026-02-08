@@ -1,5 +1,9 @@
 package afield.examples.video
 
+import afield.four.texture.video.AudioClock
+import afield.four.texture.video.AudioDecoder
+import afield.four.texture.video.AudioPlayer
+
 /**
  * AudioVideoExample demonstrates synchronized audio/video playback with clock integration.
  */

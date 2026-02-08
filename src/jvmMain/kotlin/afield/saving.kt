@@ -2,6 +2,7 @@
 
 package afield
 
+import afield.logger.SaveReloadLog
 import afield.logger.lprintln
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -248,10 +249,16 @@ class SavingContext {
             BoxTransferEdn(box.id, properties)
         }
         
+        val watchManager = try {
+            thisSessionInfo.get()?.fileWatchManager
+        } catch (e: Exception) {
+            null
+        } ?: boxes.firstOrNull { it.isInsideInitialized() }?.inside?.fileWatchManager
+
         return SaveSnapshot(
             transfers = boxSnapshots,
             persistentProperties = Box.ioPersistentProperties.toList(),
-            fileWatchManager = try { thisSessionInfo.get()?.fileWatchManager } catch (e: Exception) { null }
+            fileWatchManager = watchManager
         )
     }
     
@@ -264,6 +271,8 @@ class SavingContext {
         GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             try {
                 var altered = false
+                val touched = mutableListOf<String>()
+                val alteredFiles = mutableListOf<String>()
                 val root = ensureDirectory(fn)
                 ensureRepository(fn)
 
@@ -271,8 +280,11 @@ class SavingContext {
                 snapshot.transfers.forEach { transfer ->
                     transfer.properties.forEach { (name, value) ->
                         if (value is FileInline) {
-                            val cd = checkDifference(File(root, value.path).path, value.inline)
+                            val target = File(root, value.path).path
+                            touched.add(target)
+                            val cd = checkDifference(target, value.inline)
                             altered = altered || cd
+                            if (cd) alteredFiles.add(target)
                         }
                     }
                 }
@@ -290,8 +302,16 @@ class SavingContext {
                     "persistentProperties" to snapshot.persistentProperties
                 )
                 val ednText = Edn.write(payload, ednCustom)
-                val cd = checkDifference(File(root, METADATA_EDN).path, ednText)
+                val metadataPath = File(root, METADATA_EDN).path
+                touched.add(metadataPath)
+                val cd = checkDifference(metadataPath, ednText)
                 altered = altered || cd
+                if (cd) alteredFiles.add(metadataPath)
+
+                SaveReloadLog.log(
+                    "save",
+                    "doc=$fn altered=$altered touched=${touched.size} changed=${alteredFiles.size} message=${message ?: ""} files=[${touched.joinToString(",")}], changed=[${alteredFiles.joinToString(",")}]"
+                )
 
                 if (altered) {
                     // Notify history manager about the new version
@@ -305,17 +325,26 @@ class SavingContext {
                     inMain {
                         notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
                         
-                        snapshot.fileWatchManager?.let { watchManager ->
+                        val watchManager = snapshot.fileWatchManager
+                        if (watchManager == null) {
+                            SaveReloadLog.log("save-warning", "doc=$fn missing-watch-manager")
+                        }
+                        watchManager?.let {
+                            val metadataFile = File(root, METADATA_EDN)
+                            if (metadataFile.exists()) {
+                                it.markInternalSave(metadataFile)
+                            }
                             File(root).listFiles()?.forEach { file ->
                                 if (file.isFile && file.name.contains("_") &&
                                     Box.ioSeparateProperties.values.contains(file.extension)) {
-                                    watchManager.markInternalSave(file)
+                                    it.markInternalSave(file)
                                 }
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
+                SaveReloadLog.log("save-error", "doc=$fn error=${e.message}")
                 lprintln("error,save", "Error during background save: ${e.message}")
                 e.printStackTrace()
             }
@@ -380,6 +409,23 @@ class SavingContext {
 
     fun resolveStoredValue(value: Any?, directory: String): Any? {
         return resolveValue(value, directory, { it }, createBoxes = false)
+    }
+
+    fun resolveStoredValueWithBoxes(
+        value: Any?,
+        directory: String,
+        filterId: (String) -> String = { it },
+        allowedRefIds: Set<String>? = null,
+        root: SessionInformation? = null
+    ): Any? {
+        return resolveValue(
+            value,
+            directory,
+            filterId,
+            createBoxes = true,
+            allowedRefIds = allowedRefIds,
+            root = root
+        )
     }
 
     /**
@@ -476,7 +522,8 @@ class SavingContext {
         directory: String,
         filterId: (String) -> String,
         createBoxes: Boolean,
-        allowedRefIds: Set<String>? = null
+        allowedRefIds: Set<String>? = null,
+        root: SessionInformation? = null
     ): Any? = when (value) {
         null -> null
         is FileRef -> File(directory, value.path).readText()
@@ -492,17 +539,26 @@ class SavingContext {
             } else {
                 val sourceId = value.id
                 val id = filterId(sourceId)
-                val v = box(id, createIfMissing = true)
-                if (id != sourceId) {
-                    v.setPropertyRaw("source_id", sourceId)
+                val resolvedRoot = root ?: thisSessionInfo.get()
+                if (resolvedRoot == null) {
+                    SaveReloadLog.log(
+                        "resolve-boxref-missing-root",
+                        "id=$id source=$sourceId directory=$directory"
+                    )
+                    SkipRef
+                } else {
+                    val v = box(id, createIfMissing = true, root = resolvedRoot)
+                    if (id != sourceId) {
+                        v.setPropertyRaw("source_id", sourceId)
+                    }
+                    v
                 }
-                v
             }
         }
         is List<*> -> {
             val resolved = mutableListOf<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds)
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -512,7 +568,7 @@ class SavingContext {
         is Set<*> -> {
             val resolved = LinkedHashSet<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds)
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -522,9 +578,9 @@ class SavingContext {
         is Map<*, *> -> {
             val mapped = LinkedHashMap<Any?, Any?>()
             for ((k, v) in value) {
-                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds)
+                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root)
                 if (keyResolved === SkipRef) continue
-                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds)
+                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root)
                 if (valueResolved === SkipRef) continue
                 mapped[keyResolved] = valueResolved
             }

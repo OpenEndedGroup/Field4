@@ -390,40 +390,45 @@ fun doResync() {
             }
 
             "children" -> {
-                message =
-                    Message("set-topology").payload(
-                        Set_topology(
-                            box.id,
-                            kind = "box_children",
-                            (value as Collection<Box>).mapNotNull {
-                                if (it.properties.get("_tombstone").isTrue()) null else it.id
-                            })
+                val children = (value as? Collection<*>)
+                    ?.mapNotNull { it as? Box }
+                    .orEmpty()
+                message = Message("set-topology").payload(
+                    Set_topology(
+                        box.id,
+                        kind = "box_children",
+                        children.mapNotNull {
+                            if (it.properties.get("_tombstone").isTrue()) null else it.id
+                        }
                     )
+                )
             }
 
             "nested" -> {
-                message =
-                    Message("set-topology").payload(
-                        Set_topology(
-                            box.id,
-                            kind = "box_nested",
-                            (value as Collection<Box>).mapNotNull {
-                                if (it.properties.get("_tombstone").isTrue()) null else it.id
-                            })
+                val nested = (value as? Collection<*>)
+                    ?.mapNotNull { it as? Box }
+                    .orEmpty()
+                message = Message("set-topology").payload(
+                    Set_topology(
+                        box.id,
+                        kind = "box_nested",
+                        nested.mapNotNull {
+                            if (it.properties.get("_tombstone").isTrue()) null else it.id
+                        }
                     )
+                )
             }
 
             "nestedIn" -> {
                 val parent = value as? Box
                 if (parent != null && !parent.properties.get("_tombstone").isTrue()) {
-                    message =
-                        Message("set-topology").payload(
-                            Set_topology(
-                                box.id,
-                                kind = "box_nestedIn",
-                                listOf(parent.id)
-                            )
+                    message = Message("set-topology").payload(
+                        Set_topology(
+                            box.id,
+                            kind = "box_nestedIn",
+                            listOf(parent.id)
                         )
+                    )
                 }
             }
 

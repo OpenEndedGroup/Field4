@@ -1,5 +1,15 @@
 package afield.examples.stdlib
 
+import afield.stdlib.SmileGpOptions
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
+import afield.stdlib.VecNNBuildOptions
+import afield.stdlib.VecNNMode
+import afield.stdlib.smileCubicSpline
+import afield.stdlib.smileGaussianProcess
+import afield.stdlib.vec
+import afield.stdlib.vec2NN
+import afield.stdlib.vec3NN
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos

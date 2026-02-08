@@ -1,7 +1,11 @@
 package afield.examples
 
 import afield.Box
+import afield.autorun
 import afield.logger.lprintln
+import afield.markdownNote
+import afield.notify
+import afield.slideShow
 import afield.stdlib.action
 import afield.stdlib.actions
 import kotlinx.coroutines.GlobalScope
@@ -441,6 +445,7 @@ fun Box.advancedSlideShowExample() {
  * without writing raw HTML.
  */
 fun Box.interactiveGuideExample() {
+    val hostBox = this
     // Set up some properties and variables that can be referenced in templates
     var clickCount = 0
     var userChoice = "none"

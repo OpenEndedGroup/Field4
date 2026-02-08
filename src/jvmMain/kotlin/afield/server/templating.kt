@@ -313,9 +313,13 @@ fun templating() {
                             // Use same ID transformation as cloneInto to generate new UUIDs
                             @OptIn(ExperimentalUuidApi::class)
                             val seen = mutableMapOf<String, String>("root" to "root")
-                            boxes = SavingContext().loadFromEdnText(ednContent, si.filename) { id ->
-                                seen.computeIfAbsent(id) { Uuid.random().toString() }
-                            }
+                            boxes = SavingContext().loadFromEdnText(
+                                ednContent,
+                                si.filename,
+                                filterId = { id ->
+                                    seen.computeIfAbsent(id) { Uuid.random().toString() }
+                                }
+                            )
                             lprintln("info,template", "Imported template '$templateName' from remote server $serverUrl")
                             break
                         }
