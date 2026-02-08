@@ -33,6 +33,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     
     // Track metadata.edn timestamp to detect external changes
     private var metadataTimestamp: Long = 0
+    
+    // Dedicated coroutine scope for file watching with proper lifecycle management
+    private val watchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
      * Start watching the workspace directory for external file changes
@@ -56,12 +59,12 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         }
 
         // Start the watch loop
-        watchJob = GlobalScope.launch(Dispatchers.IO) {
+        watchJob = watchScope.launch {
             watchLoop()
         }
         
         // Start periodic orphan check (every 5 seconds)
-        orphanCheckJob = GlobalScope.launch(Dispatchers.IO) {
+        orphanCheckJob = watchScope.launch {
             delay(5000.milliseconds) // Initial delay
             while (isRunning) {
                 try {
@@ -85,6 +88,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         isRunning = false
         watchJob?.cancel()
         orphanCheckJob?.cancel()
+        watchScope.cancel() // Cancel the entire scope to clean up all coroutines
         watchKeys.keys.forEach { it.cancel() }
         watchKeys.clear()
         fileTimestamps.clear()
@@ -430,18 +434,27 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val box = box(boxId, createIfMissing = true, initIfCreated = true, root = sessionInfo)
             
             // Generate a sensible name from the filename
-            val baseName = file.nameWithoutExtension.replace("_", " ").trim()
-            val displayName = if (baseName.contains(boxId)) {
-                // Extract meaningful part after box ID
-                baseName.substringAfter(boxId).replace("_", " ").trim().ifEmpty { "Box $boxId" }
+            // 1. Start with filename without extension
+            val baseName = file.nameWithoutExtension
+            // 2. Replace underscores with spaces
+            val withSpaces = baseName.replace("_", " ").trim()
+            // 3. Extract meaningful part: if it contains box ID, take the part after
+            val meaningfulPart = if (withSpaces.contains(boxId, ignoreCase = true)) {
+                withSpaces.substringAfter(boxId, "").trim()
             } else {
-                baseName
-            }.replaceFirstChar { it.uppercase() }
+                withSpaces
+            }
+            // 4. Use a default if empty, otherwise capitalize first letter
+            val displayName = if (meaningfulPart.isEmpty()) {
+                "Box $boxId"
+            } else {
+                meaningfulPart.replaceFirstChar { it.uppercase() }
+            }
             
             box.name = displayName
             
             // Calculate a non-overlapping frame position
-            val frame = calculateNewBoxFrame()
+            val frame = calculateNewBoxFrame(boxId)
             box.frame = frame
             
             // Read and set the file content
@@ -480,8 +493,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     /**
      * Calculate a non-overlapping frame for a new box
      * Uses a simple grid layout starting at (50, 50) with 350x250 boxes
+     * @param boxId The box ID to use for deterministic fallback positioning
      */
-    private fun calculateNewBoxFrame(): Rect {
+    private fun calculateNewBoxFrame(boxId: String): Rect {
         val startX = 50.0
         val startY = 50.0
         val boxWidth = 350.0
@@ -494,7 +508,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             .filter { it.id != "root" && !it.properties["_tombstone"].isTrue() }
             .mapNotNull { it.frame }
         
-        // Try to find a non-overlapping position
+        // Try to find a non-overlapping position in grid
         var row = 0
         var col = 0
         var maxAttempts = 100
@@ -522,8 +536,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             maxAttempts--
         }
         
-        // Fallback: just use a random offset if we couldn't find a good spot
-        val randomOffset = (Math.random() * 100).toInt()
-        return Rect(startX + randomOffset, startY + randomOffset, boxWidth, boxHeight)
+        // Fallback: use deterministic offset based on box ID hash
+        // This ensures boxes created simultaneously get unique positions
+        val hashOffset = (boxId.hashCode().toLong() and 0x7FFFFFFF) % 200 // 0-199 pixel offset
+        return Rect(startX + hashOffset, startY + hashOffset, boxWidth, boxHeight)
     }
 }
