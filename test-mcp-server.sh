@@ -63,6 +63,24 @@ curl -s -X POST "$MCP_URL" \
   python3 -m json.tool 2>/dev/null || echo "Server not responding"
 echo ""
 
+# Test 7: Call check_code tool (Python - valid)
+echo "Test 7: Check Python code (valid)"
+echo "-----------------------------------"
+curl -s -X POST "$MCP_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"check_code","arguments":{"code":"x = 42\nprint(x)","language":"Python"}}}' | \
+  python3 -m json.tool 2>/dev/null || echo "Server not responding"
+echo ""
+
+# Test 8: Call check_code tool (Python - invalid)
+echo "Test 8: Check Python code (with error)"
+echo "----------------------------------------"
+curl -s -X POST "$MCP_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"check_code","arguments":{"code":"def foo(\nprint(x)","language":"Python"}}}' | \
+  python3 -m json.tool 2>/dev/null || echo "Server not responding"
+echo ""
+
 echo "==============================================="
 echo "Tests completed!"
 echo "==============================================="

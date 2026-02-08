@@ -45,7 +45,7 @@ Implementation:
 
 **Language Support:**
 - **Kotlin**: Uses `KotlinInterface.compile()` for full compilation checking
-- **Python**: Syntax validation (placeholder - requires Jep integration)
+- **Python**: Uses Jep (Java Embedded Python) with `compile()` built-in for syntax validation ✅
 - **Clojure**: Uses `ClojureHost.compileOnly()` for compilation checking
 - **GLSL**: Uses `ShaderSPIRVUtils.compileShader()` with detailed error parsing
 

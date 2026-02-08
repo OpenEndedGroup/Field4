@@ -51,7 +51,7 @@ Check code for compilation/syntax errors without executing it. Supports multiple
 - **Returns**: Success status and list of errors with line numbers and messages
 - **Supported Languages**:
   - **Kotlin**: Full compilation checking via KotlinInterface
-  - **Python**: Syntax validation (implementation in progress)
+  - **Python**: Syntax validation via Jep (Java Embedded Python) using compile() built-in ✅
   - **Clojure**: Compilation checking via ClojureHost
   - **GLSL**: Shader compilation via shaderc with detailed error reporting
 
