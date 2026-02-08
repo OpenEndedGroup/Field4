@@ -361,4 +361,4 @@ slideShow {
 - [Quick Reference](SLIDESHOW_ANNOTATIONS_QUICKREF.md)
 - [Full Documentation](SLIDESHOW_ANNOTATIONS.md)
 - [Implementation Details](DEEP_SLIDESHOW_IMPLEMENTATION.md)
-- [Example Code](src/jvmMain/kotlin/afield/slideshow_example.kt)
+- [Example Code](src/jvmMain/kotlin/afield/examples/slideshow_example.kt)

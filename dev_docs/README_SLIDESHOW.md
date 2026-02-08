@@ -208,7 +208,7 @@ N/A - No migration needed. Existing documents continue to work unchanged.
 ### New Files (8)
 ```
 src/jvmMain/kotlin/afield/SlideShow.kt
-src/jvmMain/kotlin/afield/slideshow_example.kt
+src/jvmMain/kotlin/afield/examples/slideshow_example.kt
 src/jsMain/resources/slideshow.css
 SLIDESHOW_FEATURE.md
 SLIDESHOW_QUICKSTART.md

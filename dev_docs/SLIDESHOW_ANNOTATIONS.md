@@ -406,4 +406,4 @@ Potential future additions:
 - [Slideshow Quickstart](SLIDESHOW_QUICKSTART.md)
 - [Slideshow Feature Guide](SLIDESHOW_FEATURE.md)
 - [Slideshow Architecture](SLIDESHOW_ARCHITECTURE.md)
-- [Example Code](src/jvmMain/kotlin/afield/slideshow_example.kt)
+- [Example Code](src/jvmMain/kotlin/afield/examples/slideshow_example.kt)

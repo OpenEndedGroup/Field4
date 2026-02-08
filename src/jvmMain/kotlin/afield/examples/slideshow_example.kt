@@ -1,5 +1,6 @@
 package afield.examples
 
+import afield.Box
 import afield.logger.lprintln
 import afield.stdlib.action
 import afield.stdlib.actions

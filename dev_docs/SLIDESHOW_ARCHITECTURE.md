@@ -254,7 +254,8 @@ Field4/
 │   │   └── rpc.kt                    [Message types]
 │   ├── jvmMain/kotlin/afield/
 │   │   ├── SlideShow.kt              [DSL & Logic]
-│   │   ├── slideshow_example.kt      [Examples]
+│   │   ├── examples/
+│   │   │   └── slideshow_example.kt  [Examples]
 │   │   ├── Server.kt                 [Command handler]
 │   │   └── Boxes.kt                  [Property persistence]
 │   ├── jsMain/kotlin/afield/

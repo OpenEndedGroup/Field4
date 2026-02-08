@@ -47,7 +47,7 @@ kotlinx.coroutines.GlobalScope.launch {
 
 ### Full Example
 
-See `src/jvmMain/kotlin/afield/slideshow_example.kt` for comprehensive examples including:
+See `src/jvmMain/kotlin/afield/examples/slideshow_example.kt` for comprehensive examples including:
 - Multi-step tours
 - Interactive navigation
 - Lifecycle callbacks

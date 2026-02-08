@@ -470,6 +470,127 @@ class KotlinInterface(
         }
     }
 
+    /**
+     * CompiledSnippet represents a pre-compiled code snippet that can be evaluated multiple times.
+     * This is useful for code that needs to be executed repeatedly without the compilation overhead.
+     *
+     * Example usage:
+     * ```
+     * val snippet = ki.compileSnippet("println(\"Hello \${x}\")")
+     * snippet.eval { println("x = 1") }  // prints "Hello 1"
+     * snippet.eval { println("x = 2") }  // prints "Hello 2"
+     * ```
+     */
+    inner class CompiledSnippet internal constructor(
+        private val compiled: LinkedSnippet<KJvmCompiledScript>,
+        private val defaultImplicits: List<Any>
+    ) {
+        /**
+         * Evaluates the compiled snippet with optional implicit receivers and context update.
+         * 
+         * @param updateContext Whether to update the KotlinInterface context with new variables/functions
+         * @param implicits Optional list of implicit receiver objects for this evaluation
+         * @param onEvalError Callback for evaluation errors
+         * @param onEvalException Callback for evaluation exceptions
+         * @return The result value or null on error
+         */
+        suspend fun eval(
+            updateContext: Boolean = false,
+            implicits: List<Any> = defaultImplicits,
+            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
+            onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it"); throw it }
+        ): ResultValue? {
+            return when (val r = evaluate(compiled, updateContext, implicits)) {
+                is ResultWithDiagnostics.Success -> {
+                    when (val e = r.value.get().result) {
+                        is ResultValue.Error -> {
+                            lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
+                            onEvalException(e.error)
+                            e
+                        }
+
+                        is ResultValue.NotEvaluated -> {
+                            lprintln("warning,kotlin", "not evaluated for ${r.reports}")
+                            onEvalError(r.reports)
+                            e
+                        }
+
+                        else -> {
+                            execNumber++
+                            e
+                        }
+                    }
+                }
+
+                is ResultWithDiagnostics.Failure -> {
+                    lprintln("error,kotlin", "evaluator error ${r}")
+                    onEvalError(r.reports)
+                    null
+                }
+            }
+        }
+
+        /**
+         * Synchronous version of eval() that blocks until evaluation completes.
+         * 
+         * Note: Unlike the async eval(), this version uses empty default error handlers
+         * to avoid throwing exceptions, providing a simpler API for synchronous use cases.
+         */
+        @JvmOverloads
+        fun evalAndWait(
+            updateContext: Boolean = false,
+            implicits: List<Any> = defaultImplicits,
+            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
+            onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it") }
+        ): ResultValue? {
+            return runBlocking {
+                eval(updateContext, implicits, onEvalError, onEvalException)
+            }
+        }
+    }
+
+    /**
+     * Compiles a code snippet that can be evaluated multiple times.
+     * This is more efficient than calling exec() repeatedly for the same code,
+     * as compilation happens only once.
+     *
+     * @param s The code to compile
+     * @param implicits Default implicit receiver objects (e.g., Box instances)
+     * @param onCompileError Callback for compilation errors
+     * @return A CompiledSnippet that can be evaluated multiple times, or null on error
+     */
+    suspend fun compileSnippet(
+        s: String,
+        implicits: List<Any> = emptyList(),
+        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onCompileError default handler $it") }
+    ): CompiledSnippet? {
+        return when (val r = compile(s)) {
+            is ResultWithDiagnostics.Success -> {
+                CompiledSnippet(r.value, implicits)
+            }
+
+            is ResultWithDiagnostics.Failure -> {
+                lprintln("error,kotlin", "compiler error ${r}")
+                onCompileError(r.reports)
+                null
+            }
+        }
+    }
+
+    /**
+     * Synchronous version of compileSnippet() that blocks until compilation completes.
+     */
+    @JvmOverloads
+    fun compileSnippetAndWait(
+        s: String,
+        implicits: List<Any> = emptyList(),
+        onCompileError: (List<ScriptDiagnostic>) -> Unit = {}
+    ): CompiledSnippet? {
+        return runBlocking {
+            compileSnippet(s, implicits, onCompileError)
+        }
+    }
+
 
     enum class CompletionStatus(private val value: String) {
         OK("ok"), ERROR("error");

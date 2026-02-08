@@ -89,7 +89,7 @@ step("System Overview") {
 - Enhanced show-slide-note handler
 - Enhanced hide-slide-note handler with cleanup
 
-### 4. `src/jvmMain/kotlin/afield/slideshow_example.kt`
+### 4. `src/jvmMain/kotlin/afield/examples/slideshow_example.kt`
 - Added `advancedSlideShowExample()` - Comprehensive demonstration
 - Shows all new features in context
 
@@ -354,7 +354,7 @@ The features are production-ready and provide significant value for creating eng
 
 - [SLIDESHOW_ANNOTATIONS.md](SLIDESHOW_ANNOTATIONS.md) - Full documentation
 - [SLIDESHOW_ANNOTATIONS_QUICKREF.md](SLIDESHOW_ANNOTATIONS_QUICKREF.md) - Quick reference
-- [slideshow_example.kt](src/jvmMain/kotlin/afield/slideshow_example.kt) - Working examples
+- [slideshow_example.kt](src/jvmMain/kotlin/afield/examples/slideshow_example.kt) - Working examples
 - [SLIDESHOW_FEATURE.md](SLIDESHOW_FEATURE.md) - Base slideshow features
 - [SLIDESHOW_QUICKSTART.md](SLIDESHOW_QUICKSTART.md) - Getting started guide
 
