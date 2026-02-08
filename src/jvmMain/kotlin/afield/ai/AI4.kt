@@ -74,3 +74,7 @@ val Ai4CompletionDoc get() = afield.ai.core.completion.Ai4CompletionDoc
 
 @RunsAt(installHandlers)
 fun ai4_install() = installAi4()
+
+// MCP Server -----------------------------------------------------------------
+
+typealias McpServer = afield.ai.mcp.McpServer
