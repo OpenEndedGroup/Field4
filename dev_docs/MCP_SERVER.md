@@ -44,12 +44,42 @@ Looks up symbols in the IDE workspace index.
 
 ## Running the MCP Server
 
-### Using Gradle
+### Automatic Start (Default)
 
-The easiest way to run the MCP server is using the Gradle task:
+**The MCP server starts automatically when you run Field4!**
+
+When you start the main Field4 application with:
+
+```bash
+./gradlew jvmRun
+```
+
+The server automatically checks if an MCP server is running on port 3000. If not, it launches one in the background. You'll see a log message:
+
+```
+info,mcp: MCP server not detected, starting automatically...
+info,mcp: Starting MCP server on 127.0.0.1:3000
+```
+
+If an MCP server is already running (e.g., you started it separately), you'll see:
+
+```
+info,mcp: MCP server already running on port 3000
+```
+
+### Manual Start (Standalone)
+
+You can also run the MCP server standalone using the Gradle task:
 
 ```bash
 ./gradlew runmcp
+```
+
+Or using the convenience scripts:
+
+```bash
+./mcp-server.sh      # Unix/Mac/Linux
+mcp-server.bat       # Windows
 ```
 
 This will start the MCP server on `http://127.0.0.1:3000/mcp`

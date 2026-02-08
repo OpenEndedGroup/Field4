@@ -22,7 +22,20 @@ A complete MCP server implementation featuring:
   6. `edit_file` - Edit files by name
   7. `workspace_symbol_search` - Search workspace symbols
 
-### 2. Integration Updates
+### 2. Auto-Start Integration (`src/jvmMain/kotlin/afield/Server.kt`)
+
+**NEW: Automatic MCP Server Launch**
+- Main Field4 server now checks if MCP server is running on port 3000 during startup
+- Automatically launches MCP server in daemon thread if not running
+- Logs MCP server status during startup
+- Preserves standalone MCP server functionality
+
+Implementation:
+- `isMcpServerRunning()` - Checks port 3000 availability
+- `startMcpServer()` - Launches server in background daemon thread
+- Added to `server()` initialization function
+
+### 3. Integration Updates
 
 - **AI4.kt**: Added `McpServer` type alias for easy access
 - **build.gradle.kts**: Updated `runmcp` task to use new server
@@ -30,23 +43,23 @@ A complete MCP server implementation featuring:
   - `mcp-server.sh` (Unix/macOS/Linux)
   - `mcp-server.bat` (Windows)
 
-### 3. Testing Tools
+### 4. Testing Tools
 
 - **test-mcp-server.py**: Comprehensive Python test client
 - **test-mcp-server.sh**: Quick curl-based testing script
 
-### 4. Documentation
+### 5. Documentation
 
-- **README.md**: Main project documentation with MCP quick start
-- **dev_docs/MCP_SERVER.md**: Complete MCP server reference (6.7 KB)
-- **dev_docs/CLAUDE_INTEGRATION.md**: Claude Desktop integration guide (4.9 KB)
-- **dev_docs/MCP_ARCHITECTURE.md**: System architecture documentation (9.2 KB)
+- **README.md**: Main project documentation with MCP quick start (updated with auto-start info)
+- **dev_docs/MCP_SERVER.md**: Complete MCP server reference (updated with auto-start section)
+- **dev_docs/CLAUDE_INTEGRATION.md**: Claude Desktop integration guide
+- **dev_docs/MCP_ARCHITECTURE.md**: System architecture documentation
 
 ## File Changes Summary
 
 ```
 New Files Created (13):
-├── README.md                                  (1.9 KB)
+├── README.md                                  (updated)
 ├── mcp-server.sh                             (315 B)
 ├── mcp-server.bat                            (311 B)
 ├── test-mcp-server.py                        (4.3 KB)
@@ -54,19 +67,28 @@ New Files Created (13):
 ├── src/jvmMain/kotlin/afield/ai/mcp/
 │   └── McpServer.kt                          (24.1 KB)
 └── dev_docs/
-    ├── MCP_SERVER.md                         (6.7 KB)
+    ├── MCP_SERVER.md                         (updated)
     ├── CLAUDE_INTEGRATION.md                 (4.9 KB)
     └── MCP_ARCHITECTURE.md                   (9.2 KB)
 
-Modified Files (2):
+Modified Files (4):
+├── src/jvmMain/kotlin/afield/Server.kt       (+43 lines - auto-start)
 ├── src/jvmMain/kotlin/afield/ai/AI4.kt       (+3 lines)
-└── build.gradle.kts                          (+2 lines)
+├── build.gradle.kts                          (+2 lines)
+└── README.md                                 (updated with auto-start)
 
-Total: 13 new files, 2 modified files
-Total new code: ~53 KB of documentation and implementation
+Total: 13 new files, 4 modified files
+Total new code: ~54 KB of documentation and implementation
 ```
 
 ## Key Features
+
+### Auto-Start (NEW)
+- ✅ MCP server starts automatically with Field4
+- ✅ Checks if server already running (prevents conflicts)
+- ✅ Runs in daemon thread (doesn't block shutdown)
+- ✅ Logs startup status
+- ✅ 500ms initialization delay
 
 ### Security
 - ✅ Localhost-only binding (127.0.0.1)
@@ -89,14 +111,25 @@ Total new code: ~53 KB of documentation and implementation
 
 ## How to Use
 
-### Starting the Server
+### Starting Field4 (Auto-start)
+
+**Easiest Method:**
 
 ```bash
-# Using the shell script (easiest)
-./mcp-server.sh
+./gradlew jvmRun
+```
 
-# Using Gradle
-./gradlew runmcp
+The MCP server now starts automatically! You'll see:
+```
+info,mcp: MCP server not detected, starting automatically...
+info,mcp: Starting MCP server on 127.0.0.1:3000
+```
+
+### Starting the Server Manually (Optional)
+
+```bash
+# Using the shell script
+./mcp-server.sh
 
 # Using batch file (Windows)
 mcp-server.bat

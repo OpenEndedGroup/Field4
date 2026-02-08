@@ -10,11 +10,19 @@ Field4 is a sophisticated live coding environment that combines high-performance
 ./gradlew jvmRun
 ```
 
-This will start the Field4 application with the browser UI.
+This will start the Field4 application with the browser UI. **The MCP server starts automatically** on port 3000, making AI tools available to external assistants like Claude Desktop.
 
-### Running the MCP Server
+### MCP Server
 
-Field4 includes a Model Context Protocol (MCP) server that exposes AI tools to external AI assistants:
+Field4 includes a Model Context Protocol (MCP) server that exposes AI tools to external AI assistants.
+
+**Automatic Start (Default)**
+
+The MCP server starts automatically when you run `./gradlew jvmRun`. If it's already running on port 3000, Field4 will detect it and use the existing server.
+
+**Manual Start (Optional)**
+
+You can also run the MCP server standalone:
 
 ```bash
 # Unix/macOS/Linux
@@ -38,7 +46,7 @@ See [dev_docs/MCP_SERVER.md](dev_docs/MCP_SERVER.md) for complete MCP server doc
 - **High-Performance Graphics**: Vulkan-based graphics system
 - **AI Integration**: Deep integration with AI tools for code completion and generation
 - **Visual Programming**: Box-based visual programming interface with Monaco editor
-- **MCP Server**: Expose AI tools to external assistants like Claude and Codex
+- **MCP Server**: Expose AI tools to external assistants like Claude and Codex (auto-starts)
 
 ## Building
 
