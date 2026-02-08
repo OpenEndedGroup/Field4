@@ -51,12 +51,35 @@ stroke(255f)
 strokeWeight(2f)
 ```
 
-### Run Every Frame (Launch)
+### Run Every Frame (Launch) - New Syntax!
 
-Use the "Launch" command to add code to the render loop. This code will run every frame:
+Use the **`animate { }`** block to clearly separate setup from animation:
 
 ```kotlin
-// Clear and draw animated circle
+// Setup - runs once
+val speed = 5f
+stroke(255f)
+
+// Animation - runs every frame
+animate {
+    background(0f)
+    fill(255f, map(mouseX.toFloat(), 0f, width.toFloat(), 0f, 255f), 0f)
+    ellipse(mouseX.toFloat(), mouseY.toFloat(), 50f, 50f)
+}
+```
+
+**Why use `animate`?**
+- Clearer separation between setup and animation code
+- More formal and readable syntax
+- The code outside `animate` runs once, inside runs every frame
+- See `ANIMATE_BLOCK_SYNTAX.md` for more details
+
+### Run Every Frame (Launch) - Old Style
+
+You can still use the launch command without `animate` - all code runs every frame:
+
+```kotlin
+// All of this runs every frame
 background(0f)
 fill(255f, map(mouseX.toFloat(), 0f, width.toFloat(), 0f, 255f), 0f)
 ellipse(mouseX.toFloat(), mouseY.toFloat(), 50f, 50f)
@@ -68,33 +91,52 @@ Use the "Stop" command to remove all launched code from a box.
 
 ## Examples
 
-### Example 1: Simple Animation
+### Example 1: Simple Animation with animate
 
 ```kotlin
-// Clear the screen
-background(0f)
+// Setup (runs once)
+val speed = 5f
 
-// Draw a circle that follows the mouse
-fill(255f, 100f, 100f)
-ellipse(mouseX.toFloat(), mouseY.toFloat(), 50f, 50f)
+// Animation (runs every frame)
+animate {
+    // Clear the screen
+    background(0f)
+    
+    // Draw a circle that follows the mouse
+    fill(255f, 100f, 100f)
+    ellipse(mouseX.toFloat(), mouseY.toFloat(), 50f, 50f)
+}
 ```
 
 ### Example 2: Rotating Shapes
 
 ```kotlin
-background(0f)
-translate(width / 2f, height / 2f)
-rotate(frameCount * 0.01f)
-fill(100f, 200f, 255f)
-rect(-50f, -50f, 100f, 100f)
+// Setup variables
+val size = 100f
+
+// Animate
+animate {
+    background(0f)
+    translate(width / 2f, height / 2f)
+    rotate(frameCount * 0.01f)
+    fill(100f, 200f, 255f)
+    rect(-size/2, -size/2, size, size)
+}
 ```
 
 ### Example 3: Interactive Drawing
 
 ```kotlin
-if (mousePressed) {
-    line(pmouseX.toFloat(), pmouseY.toFloat(), 
-         mouseX.toFloat(), mouseY.toFloat())
+// Setup
+strokeWeight(2f)
+stroke(255f)
+
+// Animate
+animate {
+    if (mousePressed) {
+        line(pmouseX.toFloat(), pmouseY.toFloat(), 
+             mouseX.toFloat(), mouseY.toFloat())
+    }
 }
 ```
 

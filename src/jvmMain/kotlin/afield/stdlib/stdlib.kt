@@ -146,6 +146,25 @@ fun start(a: suspend () -> Unit): Frames {
     }
 }
 
+/**
+ * Creates an animation loop from a lambda.
+ * The lambda will be executed every frame when this function is launched.
+ * 
+ * Usage:
+ * ```
+ * foo()
+ * bar(10.0)
+ * 
+ * animate {
+ *     gux()
+ * }
+ * ```
+ * This calls foo() and bar() once, then calls gux() every frame.
+ */
+fun animate(block: suspend Frames.() -> Unit): Frames {
+    return eachFrame(block)
+}
+
 // matrix help
 
 private fun Matrix4f.duplicate(): Matrix4f {
