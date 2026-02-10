@@ -19,6 +19,7 @@ class Runloop {
     companion object {
         val runLoop = Runloop()
         val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
+        @Volatile var mainThread: Thread? = null
     }
 
     var frame = 0L
@@ -29,6 +30,9 @@ class Runloop {
     var limiter = RateLimiter(10.0, 0.2)
 
     fun start() {
+        if (mainThread == null) {
+            mainThread = Thread.currentThread()
+        }
         while (true) {
             lprintln("debug,runloop", "run loop anybody? ${Thread.currentThread()}/${Thread.currentThread().name}")
             main.frame()

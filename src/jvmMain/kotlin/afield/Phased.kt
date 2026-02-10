@@ -282,7 +282,7 @@ class Generator<In, Out> internal constructor(
  * Inside the block you can:
  *   val input: In = yield(out)
  */
-@JvmName("generator_2") fun <In, Out> generator(
+@JvmName("generator_2") fun <In, Out> generator2(
     block: suspend GeneratorScope<In, Out>.() -> Unit
 ): Generator<In, Out> = Generator(block)
 
@@ -316,7 +316,7 @@ fun <In> gather(
  */
 operator fun <In, Out> Generator<In, Out>.plus(
     other: Generator<In, Out>
-): Generator<In, Out> = generator<In, Out> {
+): Generator<In, Out> = generator2<In, Out> {
     // First, run the left generator
     var out = this@plus.start()
     while (out != null) {
@@ -343,7 +343,7 @@ operator fun <In, Out> Generator<In, Out>.plus(
  */
 operator fun <In, A, B> Generator<In, A>.rem(
     other: Generator<In, B>
-): Generator<In, Pair<A, B>> = generator<In, Pair<A, B>> {
+): Generator<In, Pair<A, B>> = generator2<In, Pair<A, B>> {
     var outA = this@rem.start()
     var outB = other.start()
 
@@ -357,16 +357,16 @@ operator fun <In, A, B> Generator<In, A>.rem(
     }
 }
 
-fun <In, Out, Out2> Generator<In, Out>.map(m: (Out) -> (Out2)) = generator<In, Out2> {
+fun <In, Out, Out2> Generator<In, Out>.map(m: (Out) -> (Out2)) = generator2<In, Out2> {
     var a = this@map.start()
     while (a != null) {
         a = this@map.next(yield(m(a)))
     }
 }
 
-infix fun <In, Out, Out2> Generator<In, Out>.pipe(g : Generator<Out, Out2>) = generator<In, Out2> {
-    var a: Out? = this@pipe.start() ?: return@generator
-    val b: Out2 = g.start() ?: return@generator
+infix fun <In, Out, Out2> Generator<In, Out>.pipe(g : Generator<Out, Out2>) = generator2<In, Out2> {
+    var a: Out? = this@pipe.start() ?: return@generator2
+    val b: Out2 = g.start() ?: return@generator2
 
     while (a != null) {
         val o = g.next(a) ?: break

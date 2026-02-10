@@ -8,6 +8,7 @@ import afield.four.util.Options
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
+import afield.processing.getSharedHost
 import afield.stdlib.begin
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.Browser
@@ -40,6 +41,7 @@ import org.joml.Vector2f
 import org.joml.Vector4f
 import org.lwjgl.system.Configuration
 import java.awt.Desktop
+import java.awt.Toolkit
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URI
@@ -1269,7 +1271,34 @@ class Server {
 
         @JvmStatic
         fun main(args: Array<String>) {
-            System.setProperty("java.awt.headless", "true")
+            if (System.getProperty("java.awt.headless") == null) {
+                val envHeadless = System.getenv("AFIELD_HEADLESS")?.lowercase()
+                val shouldBeHeadless = envHeadless == "1" || envHeadless == "true" || envHeadless == "yes"
+                System.setProperty("java.awt.headless", if (shouldBeHeadless) "true" else "false")
+            }
+
+            if (System.getProperty("java.awt.headless") != "true") {
+                try {
+                    Toolkit.getDefaultToolkit()
+                    lprintln("info,server", "AWT toolkit initialized on main thread")
+                } catch (e: Throwable) {
+                    lprintln("warn,server", "AWT init failed: ${e.message}")
+                }
+            }
+
+            val bootProcessing = System.getenv("AFIELD_PROCESSING_BOOT")?.lowercase() in listOf("1", "true", "yes")
+            if (bootProcessing) {
+                lprintln("info,server", "Booting Processing on main thread")
+                getSharedHost().getApplet()
+            }
+
+            val logEawt = System.getenv("AFIELD_LOG_EAWT")?.lowercase() in listOf("1", "true", "yes")
+            if (logEawt) {
+                val loader = Thread.currentThread().contextClassLoader
+                val eawtResource = loader?.getResource("com/apple/eawt/QuitHandler.class")
+                lprintln("info,server", "eawt QuitHandler resource: ${eawtResource ?: "<missing>"}")
+                lprintln("info,server", "context classloader: ${loader ?: "<null>"}")
+            }
 
             Configuration.GLFW_CHECK_THREAD0.set(false)
 

@@ -43,7 +43,7 @@ The first time you run Field·4, it will work _very hard_ for a while, downloadi
 
 Eventually you'll be greeted with the boot-screen:
 
-    ![working](assets/screenshot_22.png)
+![working](assets/screenshot_22.png)
 
 Go ahead and and open [that url](https://localhost:9092/index.html?file=firstDocument) in a webrowser. You can press the `?` for help, or consult the [survival guide](survivalGuide.md).
 

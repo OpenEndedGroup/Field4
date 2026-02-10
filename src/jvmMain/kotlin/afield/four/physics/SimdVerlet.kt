@@ -2,6 +2,9 @@
 
 package afield.four.physics
 
+import afield.Generator
+import afield.four.util.MapOfGenerators
+import afield.generator2
 import jdk.incubator.vector.FloatVector
 import jdk.incubator.vector.VectorMask
 import jdk.incubator.vector.VectorOperators.SQRT
@@ -19,39 +22,459 @@ import kotlin.math.sqrt
  * Runtime requirement:
  *   --add-modules jdk.incubator.vector
  */
-object SimdVerlet {
+class SimdVerlet(
+    val state: State3,
+    var constraints: DirectedConstraints3? = null
+) {
+
+    class ForceContext(
+        val state: State3,
+        var index: Int,
+        var dt: Float
+    )
+
+    val size: Int
+        get() = state.size
+
+    fun addZeroed(count: Int = 1): Int = state.addZeroed(count)
+
+    fun addParticle(
+        x0: Float = 0f,
+        y0: Float = 0f,
+        z0: Float = 0f,
+        px0: Float = x0,
+        py0: Float = y0,
+        pz0: Float = z0,
+        ax0: Float = 0f,
+        ay0: Float = 0f,
+        az0: Float = 0f,
+        invMass0: Float = 1f
+    ): Int = state.addParticle(x0, y0, z0, px0, py0, pz0, ax0, ay0, az0, invMass0)
+
+    fun addForceGenerator(index: Int, name: String, generator: Generator<ForceContext, Unit>) {
+        require(index in 0 until state.size) { "index out of bounds" }
+        state.forceGenerators[index][name] = generator
+    }
+
+    fun addPidPositionController(
+        index: Int,
+        name: String,
+        targetX: () -> Float,
+        targetY: () -> Float,
+        targetZ: () -> Float,
+        kp: Float = 5f,
+        ki: Float = 0.1f,
+        kd: Float = 1.5f,
+        integralLimit: Float = 10f,
+        maxForce: Float = 1000f,
+    ) {
+        addForceGenerator(
+            index = index,
+            name = name,
+            generator = generator2 {
+                var ix = 0f
+                var iy = 0f
+                var iz = 0f
+                var prevEx = 0f
+                var prevEy = 0f
+                var prevEz = 0f
+
+                while (true) {
+                    val ctx = yield()
+                    val dt = ctx.dt
+                    if (dt <= 0f) continue
+
+                    val i = ctx.index
+                    val sx = ctx.state.x[i]
+                    val sy = ctx.state.y[i]
+                    val sz = ctx.state.z[i]
+
+                    val ex = targetX() - sx
+                    val ey = targetY() - sy
+                    val ez = targetZ() - sz
+
+                    ix += ex * dt
+                    iy += ey * dt
+                    iz += ez * dt
+
+                    if (integralLimit.isFinite()) {
+                        if (ix > integralLimit) ix = integralLimit else if (ix < -integralLimit) ix = -integralLimit
+                        if (iy > integralLimit) iy = integralLimit else if (iy < -integralLimit) iy = -integralLimit
+                        if (iz > integralLimit) iz = integralLimit else if (iz < -integralLimit) iz = -integralLimit
+                    }
+
+                    val dx = (ex - prevEx) / dt
+                    val dy = (ey - prevEy) / dt
+                    val dz = (ez - prevEz) / dt
+                    prevEx = ex
+                    prevEy = ey
+                    prevEz = ez
+
+                    var fx = kp * ex + ki * ix + kd * dx
+                    var fy = kp * ey + ki * iy + kd * dy
+                    var fz = kp * ez + ki * iz + kd * dz
+
+                    if (maxForce.isFinite()) {
+                        if (fx > maxForce) fx = maxForce else if (fx < -maxForce) fx = -maxForce
+                        if (fy > maxForce) fy = maxForce else if (fy < -maxForce) fy = -maxForce
+                        if (fz > maxForce) fz = maxForce else if (fz < -maxForce) fz = -maxForce
+                    }
+
+                    ctx.state.ax[i] += fx
+                    ctx.state.ay[i] += fy
+                    ctx.state.az[i] += fz
+                }
+            }
+        )
+    }
+
+    fun resize(newSize: Int, zeroNew: Boolean = true) {
+        state.resize(newSize, zeroNew)
+    }
+
+    fun queueRemove(index: Int) {
+        state.queueRemove(index)
+    }
+
+    fun queueRemoveRange(start: Int, count: Int) {
+        state.queueRemoveRange(start, count)
+    }
+
+    fun applyQueuedRemovalsSwap() {
+        state.applyQueuedRemovalsSwap(constraints)
+    }
+
+    fun step(
+        dt: Float,
+        damping: Float,
+        gravity: Float,
+        iterations: Int,
+        constraints: DirectedConstraints3? = this.constraints
+    ) {
+        state.applyQueuedRemovalsSwap(constraints)
+        zero3(state)
+
+        if (gravity != 0f) {
+            val ay = state.ay
+            val n = state.size
+            for (i in 0 until n) {
+                ay[i] += gravity
+            }
+        }
+
+        val forceGenerators = state.forceGenerators
+        val forceContexts = state.forceContexts
+        for (i in 0 until state.size) {
+            val ctx = forceContexts[i]
+            ctx.index = i
+            ctx.dt = dt
+            forceGenerators[i].updateNoCollect(ctx)
+        }
+
+        if (constraints != null && iterations > 0) {
+            solveDirectedDist3InPlace(
+                state = state,
+                constraints = constraints,
+                iterations = iterations
+            )
+        }
+
+        integrateVerlet3(state, dt = dt, damping = damping)
+    }
 
     /**
      * Particle state in SoA form. `invMass` is optional.
      * If present, integration treats ax/ay/az as forces and scales by invMass.
      * If absent, ax/ay/az are treated as accelerations.
+     *
+     * `size` is the active particle count; `limit` is the backing array capacity.
      */
     class State3(
-        val x: FloatArray,
-        val y: FloatArray,
-        val z: FloatArray,
-        val px: FloatArray,
-        val py: FloatArray,
-        val pz: FloatArray,
-        val ax: FloatArray,
-        val ay: FloatArray,
-        val az: FloatArray,
-        val invMass: FloatArray? = null
+        var x: FloatArray,
+        var y: FloatArray,
+        var z: FloatArray,
+        var px: FloatArray,
+        var py: FloatArray,
+        var pz: FloatArray,
+        var ax: FloatArray,
+        var ay: FloatArray,
+        var az: FloatArray,
+        var invMass: FloatArray? = null
     ) {
-        val size: Int = x.size
+        var size: Int = x.size
+            private set
+
+        var limit: Int = x.size
+            private set
+
+        private var pendingRemovals = IntArray(16)
+        private var pendingRemovalCount = 0
+        internal var forceGenerators: Array<MapOfGenerators<ForceContext, Unit>> =
+            Array(limit) { MapOfGenerators() }
+        internal var forceContexts: Array<ForceContext>
 
         init {
             require(y.size == size && z.size == size) { "x/y/z size mismatch" }
             require(px.size == size && py.size == size && pz.size == size) { "prev position size mismatch" }
             require(ax.size == size && ay.size == size && az.size == size) { "accumulator size mismatch" }
-            require(invMass == null || invMass.size == size) { "invMass size mismatch" }
+            require(invMass == null || invMass!!.size == size) { "invMass size mismatch" }
+            forceContexts = Array(limit) { ForceContext(this, it, 0f) }
+        }
+
+        fun ensureCapacity(minCapacity: Int) {
+            if (minCapacity <= limit) return
+
+            val grown = limit + max(1, limit / 2)
+            val newLimit = max(minCapacity, grown)
+
+            fun grow(src: FloatArray): FloatArray {
+                val dst = FloatArray(newLimit)
+                System.arraycopy(src, 0, dst, 0, size)
+                return dst
+            }
+
+            x = grow(x)
+            y = grow(y)
+            z = grow(z)
+            px = grow(px)
+            py = grow(py)
+            pz = grow(pz)
+            ax = grow(ax)
+            ay = grow(ay)
+            az = grow(az)
+            invMass = invMass?.let { grow(it) }
+            if (forceGenerators.size < newLimit) {
+                val next = arrayOfNulls<MapOfGenerators<ForceContext, Unit>>(newLimit)
+                System.arraycopy(forceGenerators, 0, next, 0, forceGenerators.size)
+                for (i in forceGenerators.size until newLimit) {
+                    next[i] = MapOfGenerators()
+                }
+                @Suppress("UNCHECKED_CAST")
+                val updated = next as Array<MapOfGenerators<ForceContext, Unit>>
+                forceGenerators = updated
+            }
+            if (forceContexts.size < newLimit) {
+                val next = arrayOfNulls<ForceContext>(newLimit)
+                System.arraycopy(forceContexts, 0, next, 0, forceContexts.size)
+                for (i in forceContexts.size until newLimit) {
+                    next[i] = ForceContext(this, i, 0f)
+                }
+                @Suppress("UNCHECKED_CAST")
+                val updated = next as Array<ForceContext>
+                forceContexts = updated
+            }
+            limit = newLimit
+        }
+
+        fun resize(newSize: Int, zeroNew: Boolean = true) {
+            require(newSize >= 0) { "size must be >= 0" }
+            if (newSize > limit) {
+                ensureCapacity(newSize)
+            }
+
+            if (zeroNew && newSize > size) {
+                for (i in size until newSize) {
+                    x[i] = 0f
+                    y[i] = 0f
+                    z[i] = 0f
+                    px[i] = 0f
+                    py[i] = 0f
+                    pz[i] = 0f
+                    ax[i] = 0f
+                    ay[i] = 0f
+                    az[i] = 0f
+                    invMass?.let { it[i] = 1f }
+                }
+            }
+
+            size = newSize
+        }
+
+        fun addZeroed(count: Int = 1): Int {
+            require(count >= 0) { "count must be >= 0" }
+            if (count == 0) return size
+            val start = size
+            resize(size + count, zeroNew = true)
+            return start
+        }
+
+        fun addParticle(
+            x0: Float = 0f,
+            y0: Float = 0f,
+            z0: Float = 0f,
+            px0: Float = x0,
+            py0: Float = y0,
+            pz0: Float = z0,
+            ax0: Float = 0f,
+            ay0: Float = 0f,
+            az0: Float = 0f,
+            invMass0: Float = 1f
+        ): Int {
+            val index = addZeroed(1)
+            x[index] = x0
+            y[index] = y0
+            z[index] = z0
+            px[index] = px0
+            py[index] = py0
+            pz[index] = pz0
+            ax[index] = ax0
+            ay[index] = ay0
+            az[index] = az0
+            invMass?.let { it[index] = invMass0 }
+            return index
+        }
+
+        fun removeAt(index: Int, count: Int = 1, preserveOrder: Boolean = true) {
+            require(index >= 0 && count >= 0 && index + count <= size) {
+                "remove range out of bounds"
+            }
+            if (count == 0) return
+
+            if (preserveOrder) {
+                val tailStart = index + count
+                val tailCount = size - tailStart
+                if (tailCount > 0) {
+                    System.arraycopy(x, tailStart, x, index, tailCount)
+                    System.arraycopy(y, tailStart, y, index, tailCount)
+                    System.arraycopy(z, tailStart, z, index, tailCount)
+                    System.arraycopy(px, tailStart, px, index, tailCount)
+                    System.arraycopy(py, tailStart, py, index, tailCount)
+                    System.arraycopy(pz, tailStart, pz, index, tailCount)
+                    System.arraycopy(ax, tailStart, ax, index, tailCount)
+                    System.arraycopy(ay, tailStart, ay, index, tailCount)
+                    System.arraycopy(az, tailStart, az, index, tailCount)
+                    System.arraycopy(forceGenerators, tailStart, forceGenerators, index, tailCount)
+                    invMass?.let { System.arraycopy(it, tailStart, it, index, tailCount) }
+                }
+            } else {
+                var dst = index
+                var src = size - 1
+                var remaining = count
+                while (remaining > 0 && dst <= src) {
+                    if (dst != src) {
+                        x[dst] = x[src]
+                        y[dst] = y[src]
+                        z[dst] = z[src]
+                        px[dst] = px[src]
+                        py[dst] = py[src]
+                        pz[dst] = pz[src]
+                        ax[dst] = ax[src]
+                        ay[dst] = ay[src]
+                        az[dst] = az[src]
+                        forceGenerators[dst] = forceGenerators[src]
+                        invMass?.let { it[dst] = it[src] }
+                    }
+                    dst++
+                    src--
+                    remaining--
+                }
+            }
+
+            size -= count
+        }
+
+        fun queueRemove(index: Int) {
+            require(index in 0 until size) { "remove index out of bounds" }
+            ensureRemovalCapacity(pendingRemovalCount + 1)
+            pendingRemovals[pendingRemovalCount] = index
+            pendingRemovalCount++
+        }
+
+        fun queueRemoveRange(start: Int, count: Int) {
+            require(count >= 0) { "count must be >= 0" }
+            require(start >= 0 && start + count <= size) { "remove range out of bounds" }
+            if (count == 0) return
+            ensureRemovalCapacity(pendingRemovalCount + count)
+            for (i in 0 until count) {
+                pendingRemovals[pendingRemovalCount + i] = start + i
+            }
+            pendingRemovalCount += count
+        }
+
+        fun applyQueuedRemovalsSwap(constraints: DirectedConstraints3? = null) {
+            if (pendingRemovalCount == 0) return
+
+            val oldSize = size
+            val deleted = BooleanArray(oldSize)
+            for (i in 0 until pendingRemovalCount) {
+                val idx = pendingRemovals[i]
+                if (idx in 0 until oldSize) {
+                    deleted[idx] = true
+                }
+            }
+
+            val indexMap = IntArray(oldSize) { it }
+            var last = oldSize - 1
+            var i = 0
+            while (i <= last) {
+                if (!deleted[i]) {
+                    i++
+                    continue
+                }
+
+                while (last >= i && deleted[last]) {
+                    last--
+                }
+                if (last < i) {
+                    break
+                }
+
+                swapParticles(i, last)
+                constraints?.swapConstraints(i, last)
+                val tmp = indexMap[i]
+                indexMap[i] = indexMap[last]
+                indexMap[last] = tmp
+                deleted[i] = false
+                last--
+                i++
+            }
+
+            while (last >= 0 && deleted[last]) {
+                last--
+            }
+
+            val newSize = last + 1
+            val remap = IntArray(oldSize) { -1 }
+            for (pos in 0 until newSize) {
+                remap[indexMap[pos]] = pos
+            }
+
+            constraints?.remapNeighbors(remap, newSize)
+            size = newSize
+            pendingRemovalCount = 0
+        }
+
+        private fun ensureRemovalCapacity(minCapacity: Int) {
+            if (minCapacity <= pendingRemovals.size) return
+            var newCap = pendingRemovals.size
+            while (newCap < minCapacity) {
+                newCap = max(1, newCap * 2)
+            }
+            val next = IntArray(newCap)
+            System.arraycopy(pendingRemovals, 0, next, 0, pendingRemovalCount)
+            pendingRemovals = next
+        }
+
+        private fun swapParticles(i: Int, j: Int) {
+            if (i == j) return
+            swap(x, i, j)
+            swap(y, i, j)
+            swap(z, i, j)
+            swap(px, i, j)
+            swap(py, i, j)
+            swap(pz, i, j)
+            swap(ax, i, j)
+            swap(ay, i, j)
+            swap(az, i, j)
+            swap(forceGenerators, i, j)
+            invMass?.let { swap(it, i, j) }
         }
     }
 
     /**
      * Directed 3-slot constraint layout:
      *   i -> n0[i], i -> n1[i], i -> n2[i]
-     * Unused slot: neighbor = -1 or amount = 0.
+      * Unused slot: neighbor = -1 or stiffness = 0.
      */
     class DirectedConstraints3(
         val n0: IntArray,
@@ -60,16 +483,68 @@ object SimdVerlet {
         val r0: FloatArray,
         val r1: FloatArray,
         val r2: FloatArray,
-        val a0: FloatArray,
-        val a1: FloatArray,
-        val a2: FloatArray
+        val s0: FloatArray,
+        val s1: FloatArray,
+        val s2: FloatArray
     ) {
         val size: Int = n0.size
 
         init {
             require(n1.size == size && n2.size == size) { "neighbor slot size mismatch" }
             require(r0.size == size && r1.size == size && r2.size == size) { "rest-length slot size mismatch" }
-            require(a0.size == size && a1.size == size && a2.size == size) { "amount slot size mismatch" }
+            require(s0.size == size && s1.size == size && s2.size == size) { "stiffness slot size mismatch" }
+        }
+
+        internal fun swapConstraints(i: Int, j: Int) {
+            if (i == j) return
+            swap(n0, i, j)
+            swap(n1, i, j)
+            swap(n2, i, j)
+            swap(r0, i, j)
+            swap(r1, i, j)
+            swap(r2, i, j)
+            swap(s0, i, j)
+            swap(s1, i, j)
+            swap(s2, i, j)
+        }
+
+        internal fun remapNeighbors(remap: IntArray, newSize: Int) {
+            for (i in 0 until newSize) {
+                val j0 = n0[i]
+                n0[i] = if (j0 in remap.indices) remap[j0] else -1
+                val j1 = n1[i]
+                n1[i] = if (j1 in remap.indices) remap[j1] else -1
+                val j2 = n2[i]
+                n2[i] = if (j2 in remap.indices) remap[j2] else -1
+            }
+        }
+
+        fun setSlot(
+            index: Int,
+            slot: Int,
+            neighbor: Int,
+            restLength: Float,
+            stiffness: Float
+        ) {
+            require(index in 0 until size) { "index out of bounds" }
+            when (slot) {
+                0 -> {
+                    n0[index] = neighbor
+                    r0[index] = restLength
+                    s0[index] = stiffness
+                }
+                1 -> {
+                    n1[index] = neighbor
+                    r1[index] = restLength
+                    s1[index] = stiffness
+                }
+                2 -> {
+                    n2[index] = neighbor
+                    r2[index] = restLength
+                    s2[index] = stiffness
+                }
+                else -> error("slot must be 0, 1, or 2")
+            }
         }
     }
 
@@ -83,20 +558,21 @@ object SimdVerlet {
         internal val map2 = IntArray(species.length())
     }
 
-    // Best default for contiguous, non-gather passes.
-    private val SP: VectorSpecies<Float> = FloatVector.SPECIES_PREFERRED
+    companion object {
+        // Best default for contiguous, non-gather passes.
+        private val SP: VectorSpecies<Float> = FloatVector.SPECIES_PREFERRED
 
-    // Gather-heavy constraints are often better with fixed 128-bit vectors.
-    private val SG: VectorSpecies<Float> = FloatVector.SPECIES_128
+        // Gather-heavy constraints are often better with fixed 128-bit vectors.
+        private val SG: VectorSpecies<Float> = FloatVector.SPECIES_128
 
-    private val scratchTLS = ThreadLocal.withInitial { ConstraintScratch(SG) }
+        private val scratchTLS = ThreadLocal.withInitial { ConstraintScratch(SG) }
 
-    fun createConstraintScratch(): ConstraintScratch = ConstraintScratch(SG)
+        fun createConstraintScratch(): ConstraintScratch = ConstraintScratch(SG)
 
     // ----------------------------
     // 1) Zero accumulators (SIMD)
     // ----------------------------
-    fun zero3(state: State3) = zero3(state.ax, state.ay, state.az)
+    fun zero3(state: State3) = zero3Range(state.ax, state.ay, state.az, 0, state.size)
 
     fun zero3(ax: FloatArray, ay: FloatArray, az: FloatArray) {
         require(ay.size == ax.size && az.size == ax.size) { "accumulator size mismatch" }
@@ -133,11 +609,15 @@ object SimdVerlet {
     // px = old x
     // ------------------------------------
     fun integrateVerlet3(state: State3, dt: Float, damping: Float) {
-        integrateVerlet3(
+        integrateVerlet3Range(
             x = state.x, y = state.y, z = state.z,
             px = state.px, py = state.py, pz = state.pz,
             ax = state.ax, ay = state.ay, az = state.az,
-            dt = dt, damping = damping, invMass = state.invMass
+            start = 0,
+            endExclusive = state.size,
+            dt = dt,
+            damping = damping,
+            invMass = state.invMass
         )
     }
 
@@ -303,25 +783,24 @@ object SimdVerlet {
     }
 
     // -----------------------------------------------------------
-    // 3) Directed 3-slot distance constraints (SIMD, in-place)
+    // 3) Directed 3-slot distance constraints (SIMD, force accumulation)
     // Each i has up to 3 outgoing constraints to neighbor j.
-    // We update only i (no scatter), so range-parallel calls are safe.
+    // We update only i's accumulators (no scatter), so range-parallel calls are safe.
     // -----------------------------------------------------------
     fun solveDirectedDist3InPlace(
         state: State3,
         constraints: DirectedConstraints3,
-        globalStiffness: Float,
         iterations: Int,
         scratch: ConstraintScratch = scratchTLS.get()
     ) {
         solveDirectedDist3InPlaceRange(
             x = state.x, y = state.y, z = state.z,
+            ax = state.ax, ay = state.ay, az = state.az,
             n0 = constraints.n0, n1 = constraints.n1, n2 = constraints.n2,
             r0 = constraints.r0, r1 = constraints.r1, r2 = constraints.r2,
-            a0 = constraints.a0, a1 = constraints.a1, a2 = constraints.a2,
+            s0 = constraints.s0, s1 = constraints.s1, s2 = constraints.s2,
             start = 0,
             endExclusive = state.size,
-            globalStiffness = globalStiffness,
             iterations = iterations,
             scratch = scratch
         )
@@ -329,21 +808,21 @@ object SimdVerlet {
 
     fun solveDirectedDist3InPlace(
         x: FloatArray, y: FloatArray, z: FloatArray,
+        ax: FloatArray, ay: FloatArray, az: FloatArray,
         n0: IntArray, n1: IntArray, n2: IntArray,
         r0: FloatArray, r1: FloatArray, r2: FloatArray,
-        a0: FloatArray, a1: FloatArray, a2: FloatArray,
-        globalStiffness: Float,
+        s0: FloatArray, s1: FloatArray, s2: FloatArray,
         iterations: Int,
         scratch: ConstraintScratch = scratchTLS.get()
     ) {
         solveDirectedDist3InPlaceRange(
             x, y, z,
+            ax, ay, az,
             n0, n1, n2,
             r0, r1, r2,
-            a0, a1, a2,
+            s0, s1, s2,
             start = 0,
             endExclusive = x.size,
-            globalStiffness = globalStiffness,
             iterations = iterations,
             scratch = scratch
         )
@@ -351,12 +830,12 @@ object SimdVerlet {
 
     fun solveDirectedDist3InPlaceRange(
         x: FloatArray, y: FloatArray, z: FloatArray,
+        ax: FloatArray, ay: FloatArray, az: FloatArray,
         n0: IntArray, n1: IntArray, n2: IntArray,
         r0: FloatArray, r1: FloatArray, r2: FloatArray,
-        a0: FloatArray, a1: FloatArray, a2: FloatArray,
+        s0: FloatArray, s1: FloatArray, s2: FloatArray,
         start: Int,
         endExclusive: Int,
-        globalStiffness: Float,
         iterations: Int,
         scratch: ConstraintScratch = scratchTLS.get()
     ) {
@@ -365,19 +844,26 @@ object SimdVerlet {
 
         val n = x.size
         require(y.size == n && z.size == n) { "position size mismatch" }
-        require(n0.size == n && n1.size == n && n2.size == n) { "neighbor size mismatch" }
-        require(r0.size == n && r1.size == n && r2.size == n) { "rest size mismatch" }
-        require(a0.size == n && a1.size == n && a2.size == n) { "amount size mismatch" }
+        require(ax.size == n && ay.size == n && az.size == n) { "accumulator size mismatch" }
+        require(endExclusive <= n) { "endExclusive exceeds position size" }
+        require(n0.size >= endExclusive && n1.size >= endExclusive && n2.size >= endExclusive) {
+            "neighbor size mismatch"
+        }
+        require(r0.size >= endExclusive && r1.size >= endExclusive && r2.size >= endExclusive) {
+            "rest size mismatch"
+        }
+        require(s0.size >= endExclusive && s1.size >= endExclusive && s2.size >= endExclusive) {
+            "stiffness size mismatch"
+        }
 
-        val startIdx = start.coerceIn(0, n)
-        val endIdx = endExclusive.coerceIn(startIdx, n)
+        val startIdx = start.coerceIn(0, endExclusive)
+        val endIdx = endExclusive.coerceIn(startIdx, endExclusive)
 
         val lanes = SG.length()
         val zero = FloatVector.zero(SG)
         val eps = 1.0e-8f
         val vEps = FloatVector.broadcast(SG, eps)
         val vOne = FloatVector.broadcast(SG, 1f)
-        val vStiffness = FloatVector.broadcast(SG, globalStiffness)
 
         val map0 = scratch.map0
         val map1 = scratch.map1
@@ -441,9 +927,9 @@ object SimdVerlet {
                     val dist = d2.lanewise(SQRT)
 
                     val rest = FloatVector.fromArray(SG, r0, i)
-                    val amt = FloatVector.fromArray(SG, a0, i).mul(vStiffness)
+                    val stiff = FloatVector.fromArray(SG, s0, i)
                     val invDist = vOne.div(dist.add(vEps))
-                    val s = dist.sub(rest).mul(invDist).mul(amt)
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
 
                     cx = cx.add(dx.mul(s).blend(zero, m0.not()))
                     cy = cy.add(dy.mul(s).blend(zero, m0.not()))
@@ -464,9 +950,9 @@ object SimdVerlet {
                     val dist = d2.lanewise(SQRT)
 
                     val rest = FloatVector.fromArray(SG, r1, i)
-                    val amt = FloatVector.fromArray(SG, a1, i).mul(vStiffness)
+                    val stiff = FloatVector.fromArray(SG, s1, i)
                     val invDist = vOne.div(dist.add(vEps))
-                    val s = dist.sub(rest).mul(invDist).mul(amt)
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
 
                     cx = cx.add(dx.mul(s).blend(zero, m1.not()))
                     cy = cy.add(dy.mul(s).blend(zero, m1.not()))
@@ -487,87 +973,93 @@ object SimdVerlet {
                     val dist = d2.lanewise(SQRT)
 
                     val rest = FloatVector.fromArray(SG, r2, i)
-                    val amt = FloatVector.fromArray(SG, a2, i).mul(vStiffness)
+                    val stiff = FloatVector.fromArray(SG, s2, i)
                     val invDist = vOne.div(dist.add(vEps))
-                    val s = dist.sub(rest).mul(invDist).mul(amt)
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
 
                     cx = cx.add(dx.mul(s).blend(zero, m2.not()))
                     cy = cy.add(dy.mul(s).blend(zero, m2.not()))
                     cz = cz.add(dz.mul(s).blend(zero, m2.not()))
                 }
 
-                xi = xi.add(cx)
-                yi = yi.add(cy)
-                zi = zi.add(cz)
+                val vax = FloatVector.fromArray(SG, ax, i).add(cx)
+                val vay = FloatVector.fromArray(SG, ay, i).add(cy)
+                val vaz = FloatVector.fromArray(SG, az, i).add(cz)
 
-                xi.intoArray(x, i)
-                yi.intoArray(y, i)
-                zi.intoArray(z, i)
+                vax.intoArray(ax, i)
+                vay.intoArray(ay, i)
+                vaz.intoArray(az, i)
 
                 i += lanes
             }
 
             while (i < endIdx) {
-                var xiS = x[i]
-                var yiS = y[i]
-                var ziS = z[i]
+                val xiS = x[i]
+                val yiS = y[i]
+                val ziS = z[i]
+
+                var fx = 0f
+                var fy = 0f
+                var fz = 0f
 
                 val j0 = n0[i]
                 if (j0 in 0 until n) {
-                    val w = a0[i] * globalStiffness
+                    val w = s0[i]
                     if (w != 0f) {
                         val dx = x[j0] - xiS
                         val dy = y[j0] - yiS
                         val dz = z[j0] - ziS
                         val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
                         val s = (dist - r0[i]) / dist * w
-                        xiS += dx * s
-                        yiS += dy * s
-                        ziS += dz * s
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
                     }
                 }
 
                 val j1 = n1[i]
                 if (j1 in 0 until n) {
-                    val w = a1[i] * globalStiffness
+                    val w = s1[i]
                     if (w != 0f) {
                         val dx = x[j1] - xiS
                         val dy = y[j1] - yiS
                         val dz = z[j1] - ziS
                         val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
                         val s = (dist - r1[i]) / dist * w
-                        xiS += dx * s
-                        yiS += dy * s
-                        ziS += dz * s
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
                     }
                 }
 
                 val j2 = n2[i]
                 if (j2 in 0 until n) {
-                    val w = a2[i] * globalStiffness
+                    val w = s2[i]
                     if (w != 0f) {
                         val dx = x[j2] - xiS
                         val dy = y[j2] - yiS
                         val dz = z[j2] - ziS
                         val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
                         val s = (dist - r2[i]) / dist * w
-                        xiS += dx * s
-                        yiS += dy * s
-                        ziS += dz * s
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
                     }
                 }
 
-                x[i] = xiS
-                y[i] = yiS
-                z[i] = ziS
+                ax[i] += fx
+                ay[i] += fy
+                az[i] += fz
                 i++
             }
         }
     }
 
-    // ---------------------------------------------------------
-    // 4) Parallel range execution with coarse chunking
-    // ---------------------------------------------------------
+        // ---------------------------------------------------------
+        // 4) Parallel range execution with coarse chunking
+        // ---------------------------------------------------------
+    }
+
     class ForceExecutor(threads: Int) : AutoCloseable {
         private val workerCount = max(1, threads)
         private val pool: ExecutorService = Executors.newFixedThreadPool(workerCount)
@@ -619,4 +1111,22 @@ object SimdVerlet {
             pool.shutdown()
         }
     }
+}
+
+private fun swap(a: FloatArray, i: Int, j: Int) {
+    val tmp = a[i]
+    a[i] = a[j]
+    a[j] = tmp
+}
+
+private fun swap(a: IntArray, i: Int, j: Int) {
+    val tmp = a[i]
+    a[i] = a[j]
+    a[j] = tmp
+}
+
+private fun swap(a: Array<MapOfGenerators<SimdVerlet.ForceContext, Unit>>, i: Int, j: Int) {
+    val tmp = a[i]
+    a[i] = a[j]
+    a[j] = tmp
 }

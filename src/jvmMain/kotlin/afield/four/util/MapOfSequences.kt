@@ -47,6 +47,28 @@ class MapOfGenerators<O, T> {
         return collected
     }
 
+    fun updateNoCollect(input: O) {
+        val ongoingIterator = ongoings.values.iterator()
+        while (ongoingIterator.hasNext()) {
+            val gen = ongoingIterator.next()
+            gen.next(input)
+            if (gen.isCompleted) {
+                ongoingIterator.remove()
+            }
+        }
+
+        val startIterator = starts.entries.iterator()
+        while (startIterator.hasNext()) {
+            val entry = startIterator.next()
+            val gen = entry.value
+            gen.start()
+            if (!gen.isCompleted) {
+                ongoings[entry.key] = gen
+            }
+            startIterator.remove()
+        }
+    }
+
     operator fun set(t: String, g: Generator<O, T>) {
         starts[t] = g
     }

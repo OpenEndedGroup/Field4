@@ -76,6 +76,7 @@ repositories {
     maven("https://central.sonatype.com/repository/maven-snapshots")
     maven("https://repo.kotlin.link")
     maven(url = "https://repo.clojars.org/")
+    maven("https://jogamp.org/deployment/maven")
 
 }
 
@@ -320,9 +321,32 @@ kotlin {
                 implementation("org.clojure:tools.reader:1.5.1")
                 implementation("compliment:compliment:0.5.5")
                 implementation("org.clojure:data.json:2.5.0")
-                
+
                 // Processing support
-                implementation("org.processing:core:3.3.7")
+                val jogampVersion = "2.5.0"
+                val osName = System.getProperty("os.name").lowercase()
+                val osArch = System.getProperty("os.arch").lowercase()
+                val jogampClassifier = when {
+                    osName.contains("mac") -> "natives-macosx-universal"
+                    osName.contains("linux") -> if (osArch.contains("aarch64") || osArch.contains("arm64")) {
+                        "natives-linux-aarch64"
+                    } else {
+                        "natives-linux-amd64"
+                    }
+                    osName.contains("windows") -> "natives-windows-amd64"
+                    else -> null
+                }
+
+                implementation("org.processing:core:4.3.1")
+                implementation("org.jogamp.jogl:jogl-all:$jogampVersion")
+                implementation("org.jogamp.jogl:nativewindow:$jogampVersion")
+                implementation("org.jogamp.jogl:nativewindow-main:$jogampVersion")
+                implementation("org.jogamp.gluegen:gluegen-rt:$jogampVersion")
+                if (jogampClassifier != null) {
+                    runtimeOnly("org.jogamp.jogl:jogl-all:$jogampVersion:$jogampClassifier")
+                    runtimeOnly("org.jogamp.jogl:nativewindow:$jogampVersion:$jogampClassifier")
+                    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$jogampVersion:$jogampClassifier")
+                }
 
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
@@ -366,8 +390,9 @@ tasks.named<Jar>("jvmJar").configure {
 
     val webpackTask = tasks.named<KotlinWebpack>(taskName)
     dependsOn(webpackTask)
-    from(webpackTask.map { it.mainOutputFile.get().asFile }) // bring output file along into the JAR
-    into("static")
+    from(webpackTask.map { it.mainOutputFile.get().asFile }) {
+        into("static")
+    }
 }
 
 
@@ -382,9 +407,6 @@ tasks {
     }
 }
 
-tasks.withType<Test>().configureEach {
-    jvmArgs("--add-modules", "jdk.incubator.vector")
-}
 
 
 tasks.named<JavaExec>("runJvm").configure {

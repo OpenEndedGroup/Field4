@@ -1,8 +1,8 @@
-# Kotlin Syntax Overview (for Python + JavaScript folks)
+# Kotlin Syntax Overview <span style="font-size: 70%;">(for Python + JavaScript folks)</span>
 
-Field uses _Kotlin_, which is a language that might be new to you. Promoted by Google as the "official" language for Android app development, Kotlin was initiated by (and is still maintained by) Jetbrains — a company that is primarily responsible for a really good Java development environment. Kotlin has emerged over the last decade as the winner of an attempt to invent a "better Java" through a cunning combination of interoperability (which means the ecosystem is _huge_), a terser syntax (which means it's much more fun to write), and quality of life improvements like operator overloading (which means that doing the kind of math that computer graphics wants us to do is bareable).
+Field uses _Kotlin_, which is a language that might be new to you. Promoted by Google as the "official" language for Android app development, Kotlin was initiated by (and is still maintained by) Jetbrains — a company that is primarily responsible for a really good Java development environment. Kotlin has emerged over the last decade as the winner of an attempt to invent a "better Java" through a cunning combination of interoperability (which means the ecosystem is _huge_), a terser syntax (which means it's much more fun to write), and quality of life improvements like operator overloading (which means that doing the kind of math that computer graphics wants us to do is tolerable).
  
-All in all, 'live-coding' Kotlin is a fairly pleasant experience — safer than JS or Python (there's a compiler that checks your code before it runs), quicker than JS or Python (there's a real type system that can offer real help) and yet still understandable by LLMs.
+All in all, 'live-coding' Kotlin is a fairly pleasant experience — safer than JS or Python (there's a compiler that checks your code before it runs), quicker than JS or Python (there's a real type system that can offer real help) and yet still understandable by LLMs. This document is to get you oriented towards 'live coding' in Kotlin.
 
 ## Basics
 
@@ -143,7 +143,7 @@ Yields:
 
 ![](assets/screenshot_25.png)
 
-In Python you use `print(...)` and, in Jupyter there's a very simpler protocol for embedding interactive widgets and showing pixel and SVG based output. In JavaScript you typically use `console.log(...)` (or conspire to put HTML into the DOM). Swift uses `print(...)`. C# uses `Console.WriteLine(...)` (or `Console.Write(...)`).
+In Python you use `print(...)` and, in Jupyter there's a protocol for embedding interactive widgets and showing pixel and SVG based output. In JavaScript you typically use `console.log(...)` (or conspire to put HTML into the DOM). Swift uses `print(...)`. C# uses `Console.WriteLine(...)` (or `Console.Write(...)`).
 
 Python:
 
