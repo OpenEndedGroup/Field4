@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Three.js Geometry Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        @import url("/iosevka.css");
+
+        :root {
+            --bg: #0f0f10;
+            --ink: #e8f0fb;
+            --muted: rgba(232, 240, 251, 0.65);
+            --accent: #5de4c7;
+            --panel: rgba(8, 12, 18, 0.7);
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: "Iosevka Web", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: var(--ink);
+            background: var(--bg);
+        }
+
+        #canvas-wrap {
+            position: absolute;
+            inset: 0;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 10;
+            padding: 0;
+            pointer-events: none;
+        }
+
+        #hud .meta {
+            font-size: 12px;
+            color: var(--muted);
+            text-rendering: geometricPrecision;
+        }
+
+        #hud .status {
+            font-size: 11px;
+            color: var(--muted);
+        }
+        #hud .meta b {
+            color: var(--ink);
+            font-weight: 700;
+        }
+        #hud .meta span {
+            font-weight: 100;
+            letter-spacing: 0.04em;
+        }
+    </style>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+<div id="hud">
+    <div class="meta" id="meta">waiting for data...</div>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+</script>
+<script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const container = document.getElementById('canvas-wrap');
+        const metaEl = document.getElementById('meta');
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            powerPreference: 'high-performance'
+        });
+        function getDpr() {
+            const override = parseFloat(urlParams.get('dpr'));
+            if (Number.isFinite(override) && override > 0) return override;
+            return Math.max(2, window.devicePixelRatio || 1);
+        }
+        renderer.setPixelRatio(getDpr());
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setClearColor(0x000000, 0);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        container.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.01, 10000);
+        camera.position.set(1.4, 1.2, 2.3);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.rotateSpeed = 0.7;
+        controls.zoomSpeed = 0.9;
+        controls.panSpeed = 0.6;
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambient);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        keyLight.position.set(5, 8, 6);
+        scene.add(keyLight);
+        const rimLight = new THREE.DirectionalLight(0x88ccff, 0.3);
+        rimLight.position.set(-6, -3, 4);
+        scene.add(rimLight);
+
+        const grid = new THREE.GridHelper(10, 20, 0x3a4d66, 0x273447);
+        grid.rotation.x = Math.PI / 2;
+        if (Array.isArray(grid.material)) {
+            grid.material.forEach((mat) => {
+                mat.opacity = 0.55;
+                mat.transparent = true;
+            });
+        } else {
+            grid.material.opacity = 0.55;
+            grid.material.transparent = true;
+        }
+        scene.add(grid);
+
+        const axes = new THREE.AxesHelper(0.9);
+        axes.material.depthTest = false;
+        axes.renderOrder = 1;
+        scene.add(axes);
+
+        const geometryRoot = new THREE.Group();
+        scene.add(geometryRoot);
+
+        let pointMaterial = null;
+
+        function disposeObject(obj) {
+            obj.traverse((child) => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) child.material.forEach((mat) => mat.dispose());
+                    else child.material.dispose();
+                }
+            });
+        }
+
+        function clearGeometry() {
+            geometryRoot.children.forEach((child) => disposeObject(child));
+            geometryRoot.clear();
+        }
+
+        function buildGeometry(data) {
+            if (!data || !data.attributes || !data.attributes.position) return null;
+            const geometry = new THREE.BufferGeometry();
+            const pos = data.attributes.position;
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos.array, pos.itemSize));
+
+            const col = data.attributes.color;
+            if (col) geometry.setAttribute('color', new THREE.Float32BufferAttribute(col.array, col.itemSize));
+
+            const alpha = data.attributes.alpha;
+            if (alpha) geometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alpha.array, alpha.itemSize));
+
+            const size = data.attributes.size;
+            if (size) geometry.setAttribute('size', new THREE.Float32BufferAttribute(size.array, size.itemSize));
+
+            if (data.index && data.index.array && data.index.array.length) {
+                geometry.setIndex(data.index.array);
+            }
+            geometry.computeBoundingSphere();
+            return geometry;
+        }
+
+        function ensureAttribute(geometry, name, itemSize, fillValue) {
+            if (geometry.getAttribute(name)) return;
+            const count = geometry.getAttribute('position').count;
+            const array = new Float32Array(count * itemSize);
+            if (Array.isArray(fillValue)) {
+                for (let i = 0; i < count; i += 1) {
+                    for (let c = 0; c < itemSize; c += 1) {
+                        array[i * itemSize + c] = fillValue[Math.min(c, fillValue.length - 1)];
+                    }
+                }
+            } else {
+                array.fill(fillValue);
+            }
+            geometry.setAttribute(name, new THREE.BufferAttribute(array, itemSize));
+        }
+
+        function addLines(data) {
+            const geometry = buildGeometry(data);
+            if (!geometry) return;
+            ensureAttribute(geometry, 'color', 3, 1);
+            ensureAttribute(geometry, 'alpha', 1, 1);
+            const material = new THREE.ShaderMaterial({
+                vertexShader: `
+                    attribute vec3 color;
+                    attribute float alpha;
+                    varying vec4 vColor;
+                    void main() {
+                        vColor = vec4(color, alpha);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec4 vColor;
+                    void main() {
+                        gl_FragColor = vColor;
+                    }
+                `,
+                transparent: true,
+                depthWrite: false
+            });
+            const lines = new THREE.LineSegments(geometry, material);
+            geometryRoot.add(lines);
+        }
+
+        function addFills(data) {
+            const geometry = buildGeometry(data);
+            if (!geometry) return;
+            geometry.computeVertexNormals();
+            ensureAttribute(geometry, 'color', 3, 1);
+            ensureAttribute(geometry, 'alpha', 1, 1);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                vertexColors: true,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 1.0,
+                roughness: 0.6,
+                metalness: 0.1,
+                polygonOffset: true,
+                polygonOffsetFactor: 1,
+                polygonOffsetUnits: 1
+            });
+            material.depthWrite = false;
+            material.onBeforeCompile = (shader) => {
+                shader.vertexShader = shader.vertexShader
+                    .replace(
+                        '#include <color_pars_vertex>',
+                        '#include <color_pars_vertex>\nattribute float alpha;\nvarying float vAlpha;'
+                    )
+                    .replace(
+                        '#include <color_vertex>',
+                        '#include <color_vertex>\nvAlpha = alpha;'
+                    );
+                shader.fragmentShader = shader.fragmentShader
+                    .replace(
+                        '#include <color_pars_fragment>',
+                        '#include <color_pars_fragment>\nvarying float vAlpha;'
+                    )
+                    .replace(
+                        'vec4 diffuseColor = vec4( diffuse, opacity );',
+                        'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );'
+                    );
+            };
+            material.customProgramCacheKey = () => 'vertex-alpha-v1';
+            const mesh = new THREE.Mesh(geometry, material);
+            geometryRoot.add(mesh);
+        }
+
+        function addPoints(data) {
+            const geometry = buildGeometry(data);
+            if (!geometry) return;
+            ensureAttribute(geometry, 'color', 3, 1);
+            ensureAttribute(geometry, 'alpha', 1, 1);
+            ensureAttribute(geometry, 'size', 1, 3);
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    uPixelRatio: { value: getDpr() }
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute vec3 color;
+                    attribute float alpha;
+                    varying vec4 vColor;
+                    uniform float uPixelRatio;
+                    void main() {
+                        vColor = vec4(color, alpha);
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = max(size * uPixelRatio, 1.0);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec4 vColor;
+                    void main() {
+                        vec2 uv = gl_PointCoord - vec2(0.5);
+                        float dist = dot(uv, uv);
+                        if (dist > 0.25) discard;
+                        float shapeAlpha = smoothstep(0.25, 0.02, dist);
+                        gl_FragColor = vec4(vColor.rgb, vColor.a * shapeAlpha);
+                    }
+                `,
+                transparent: true,
+                depthWrite: false
+            });
+            pointMaterial = material;
+            const points = new THREE.Points(geometry, material);
+            geometryRoot.add(points);
+        }
+
+        function frameBounds(bounds, pad = 1.25) {
+            if (!bounds || !bounds.min || !bounds.max) return;
+            const minV = new THREE.Vector3(...bounds.min);
+            const maxV = new THREE.Vector3(...bounds.max);
+            const size = new THREE.Vector3().subVectors(maxV, minV);
+            const center = new THREE.Vector3().addVectors(minV, maxV).multiplyScalar(0.5);
+            const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+            const fov = THREE.MathUtils.degToRad(camera.fov);
+            const distance = (maxDim / (2 * Math.tan(fov / 2))) * pad;
+            const direction = new THREE.Vector3(0.8, 0.9, 1.1).normalize();
+
+            camera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
+            camera.near = Math.max(distance / 100, 0.001);
+            camera.far = Math.max(distance * 100, camera.near + 1);
+            camera.updateProjectionMatrix();
+            controls.target.copy(center);
+            controls.update();
+        }
+
+        function updateMeta(meta) {
+            if (!meta) {
+                metaEl.textContent = 'no geometry';
+                return;
+            }
+            metaEl.innerHTML = `<b>${meta.lineSegments}</b><span> ln</span> | <b>${meta.triangles}</b><span> tri</span> | <b>${meta.points}</b><span> p</span>`;
+        }
+
+        function applyGeometry(payload) {
+            if (!payload || payload.type !== 'three/geometry') return;
+            clearGeometry();
+            if (payload.lines) addLines(payload.lines);
+            if (payload.fills) addFills(payload.fills);
+            if (payload.points) addPoints(payload.points);
+            updateMeta(payload.meta);
+            if (payload.bounds && payload.autoFrame !== false) {
+                frameBounds(payload.bounds);
+            }
+        }
+
+        function onResize() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            renderer.setPixelRatio(getDpr());
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            if (pointMaterial) {
+                pointMaterial.uniforms.uPixelRatio.value = getDpr();
+            }
+        }
+        window.addEventListener('resize', onResize);
+
+        function render() {
+            controls.update();
+            renderer.render(scene, camera);
+            requestAnimationFrame(render);
+        }
+        render();
+
+        const clientUid = (urlParams.get('uid') || '').trim() || `three-${Math.random().toString(36).slice(2)}`;
+
+        const wsState = {
+            ws: null,
+            reconnectTimer: null
+        };
+
+        function buildWsUrl() {
+            const override = urlParams.get('ws');
+            if (override) return override;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const overrideHost = urlParams.get('wsHost');
+            const hostBase = overrideHost ?? window.location.host;
+            const needsPort = !hostBase.includes(':') && window.location.port;
+            const host = needsPort ? `${hostBase}:${window.location.port}` : hostBase;
+            const path = urlParams.get('wsPath') ?? '/ws';
+            return `${protocol}//${host}${path}`;
+        }
+
+        function sendMessage(payload) {
+            if (!wsState.ws || wsState.ws.readyState !== WebSocket.OPEN) return;
+            const message = { channel: "__threejs__", debug_uid: clientUid, ...payload };
+            wsState.ws.send(JSON.stringify(message));
+        }
+
+        function connectWs() {
+            const ws = new WebSocket(buildWsUrl());
+            wsState.ws = ws;
+
+            ws.addEventListener('open', () => {
+                sendMessage({ type: 'hello' });
+            });
+
+            ws.addEventListener('message', (event) => {
+                let message = null;
+                try {
+                    message = JSON.parse(event.data);
+                } catch (error) {
+                    return;
+                }
+                applyGeometry(message);
+            });
+
+            ws.addEventListener('close', () => {
+                if (!wsState.reconnectTimer) {
+                    wsState.reconnectTimer = window.setTimeout(() => {
+                        wsState.reconnectTimer = null;
+                        connectWs();
+                    }, 1200);
+                }
+            });
+
+            ws.addEventListener('error', () => {
+                ws.close();
+            });
+        }
+
+        connectWs();
+</script>
+</body>
+</html>
