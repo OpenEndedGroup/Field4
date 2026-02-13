@@ -86,7 +86,8 @@ class SavingContext {
                 if (!patterns.any { name.matches(it) }) return@forEach
                 if (value == null) return@forEach
 
-                if (Box.ioSeparateProperties.containsKey(name)) {
+                val shouldUseSidecar = box.id != "root" && Box.ioSeparateProperties.containsKey(name)
+                if (shouldUseSidecar) {
                     val extension = Box.ioSeparateProperties[name]!!
                     val contents = value as? String ?: value.toString()
                     properties[name] = toFile(box.id, name, extension, directory, contents)
@@ -109,7 +110,8 @@ class SavingContext {
                 if (!patterns.any { name.matches(it) }) return@forEach
                 if (value == null) return@forEach
 
-                if (Box.ioSeparateProperties.containsKey(name)) {
+                val shouldUseSidecar = box.id != "root" && Box.ioSeparateProperties.containsKey(name)
+                if (shouldUseSidecar) {
                     val extension = Box.ioSeparateProperties[name]!!
                     val contents = value as? String ?: value.toString()
                     properties[name] = FileInline(filenameFor(box.id, name, extension), contents)
@@ -235,7 +237,8 @@ class SavingContext {
                 if (value == null) return@forEach
 
                 // For separate properties, capture the content now
-                if (Box.ioSeparateProperties.containsKey(name)) {
+                val shouldUseSidecar = box.id != "root" && Box.ioSeparateProperties.containsKey(name)
+                if (shouldUseSidecar) {
                     val extension = Box.ioSeparateProperties[name]!!
                     val contents = value as? String ?: value.toString()
                     properties[name] = FileInline(filenameFor(box.id, name, extension), contents)

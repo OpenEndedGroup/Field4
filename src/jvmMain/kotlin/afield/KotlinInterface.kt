@@ -3,6 +3,7 @@ package afield
 import afield.logger.lblock
 import afield.logger.lprintln
 import afield.macros.MacroRegistry
+import afield.stdlib.applyInsertToPreamble
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -278,7 +279,6 @@ class KotlinInterface(
     }
 
     fun applyMacros(box: Box, _s: String): String {
-
         var s = _s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {
@@ -294,12 +294,8 @@ class KotlinInterface(
                 val edits = mutableListOf<Pair<Pair<Int, Int>, String>>()
 
                 instance.forEachDescendantOfType<PsiElement> { expression ->
-
-//                    for (i in expression.parents) print("$i, ")
                     when (expression) {
-
                         is KtCallExpression -> {
-//                            lprintln(" -- call expression, calling -- ${expression.name} ${expression.startOffset} -> ${expression.endOffset}")
                             expression.children.forEach {
                                 when (it) {
                                     is KtNameReferenceExpression -> {
@@ -311,10 +307,8 @@ class KotlinInterface(
                                             t.add(ns.text)
                                             ns = ns.nextSibling
                                         }
-//                                        lprintln("accumulated arguments $t")
 
                                         val e = MacroRegistry.rewrite(box, it.text, t)
-//                                        lprintln("rewrite got ${e}")
                                         if (e != null) {
                                                 if (e.start.length > 0) {
                                                     edits.add((0 to 0) to e.preamble)
@@ -326,14 +320,8 @@ class KotlinInterface(
 
                                             edits.add((expression.startOffset to expression.endOffset) to e.here)
 
-                                            (e.target ?: box).let {box ->
-                                                if (e.preamble.length > 0) {
-                                                    box.preamble = "\n" + e.preamble.trim() + "\n" + box.preamble
-                                                }
-                                                if (e.preambleAfterImports.length > 0) {
-                                                    box.preamble =
-                                                        box.preamble + "\n" + e.preambleAfterImports.trim() + "\n"
-                                                }
+                                            if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {
+                                                applyInsertToPreamble(box, e)
                                             }
                                         }
                                     }
@@ -487,7 +475,7 @@ class KotlinInterface(
     ) {
         /**
          * Evaluates the compiled snippet with optional implicit receivers and context update.
-         * 
+         *
          * @param updateContext Whether to update the KotlinInterface context with new variables/functions
          * @param implicits Optional list of implicit receiver objects for this evaluation
          * @param onEvalError Callback for evaluation errors
@@ -532,7 +520,7 @@ class KotlinInterface(
 
         /**
          * Synchronous version of eval() that blocks until evaluation completes.
-         * 
+         *
          * Note: Unlike the async eval(), this version uses empty default error handlers
          * to avoid throwing exceptions, providing a simpler API for synchronous use cases.
          */

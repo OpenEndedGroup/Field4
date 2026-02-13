@@ -111,19 +111,58 @@ private fun compileStage(
 /**
  * Applies an Insert’s preamble(s) into the target box.
  */
+private val preamblePrefixRegex = Regex("^\\s*/\\*(.*?)\\*/\\s*")
+
+private fun preambleLineKey(line: String): String {
+    val normalized = line.trimEnd()
+    if (normalized.isBlank()) return ""
+    val prefix = preamblePrefixRegex.find(normalized)?.groupValues?.getOrNull(1)?.trim()
+    return if (prefix.isNullOrEmpty()) normalized else prefix
+}
+
+private fun isImportLine(line: String): Boolean {
+    val withoutPrefix = line.replaceFirst(preamblePrefixRegex, "")
+    return withoutPrefix.trimStart().startsWith("import ")
+}
+
+private fun prefixed(prefix: String, code: String): String = "/*$prefix*/ $code"
+
+private fun mergePreambleLines(existing: List<String>, incoming: List<String>): List<String> {
+    val merged = LinkedHashMap<String, String>()
+
+    existing.forEach { line ->
+        val key = preambleLineKey(line)
+        if (key.isNotEmpty() && !merged.containsKey(key)) {
+            merged[key] = line.trimEnd()
+        }
+    }
+
+    incoming.forEach { line ->
+        val normalized = line.trimEnd()
+        val key = preambleLineKey(normalized)
+        if (key.isNotEmpty()) {
+            // New insertions should win so reloads replace generated bindings in-place.
+            merged[key] = normalized
+        }
+    }
+
+    return merged.values.toList()
+}
+
 fun applyInsertToPreamble(box: Box, e: Insert) {
     val b = e.target ?: box
-    if (e.preamble.isNotEmpty()) {
-        b.preamble = "\n" + e.preamble.trim() + "\n" + b.preamble
-    }
-    if (e.preambleAfterImports.isNotEmpty()) {
-        b.preamble = b.preamble + "\n" + e.preambleAfterImports.trim() + "\n"
-    }
-    val pieces = b.preamble.split("\n")
-    val part1 = pieces.filter { it.startsWith("import ") }
-    val part2 = pieces.filter { !it.startsWith("import ") }
+    val incomingLines = buildList {
+        if (e.preamble.isNotBlank()) addAll(e.preamble.trim().lines())
+        if (e.preambleAfterImports.isNotBlank()) addAll(e.preambleAfterImports.trim().lines())
+    }.map { it.trimEnd() }.filter { it.isNotBlank() }
 
-    b.preamble = (part1 + part2).joinToString(separator = "\n") { it }
+    if (incomingLines.isEmpty()) return
+
+    val existingLines = b.preamble.lines().map { it.trimEnd() }.filter { it.isNotBlank() }
+    val merged = mergePreambleLines(existingLines, incomingLines)
+    val imports = merged.filter(::isImportLine)
+    val nonImports = merged.filterNot(::isImportLine)
+    b.preamble = (imports + nonImports).joinToString(separator = "\n")
 
 }
 
@@ -166,27 +205,45 @@ private fun buildComputeInsert(ci: Introspection): Insert {
     // Push constants
     ci.pushConstants.forEach { pc ->
         pc.members.forEach { member ->
-            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>()\n"
+            postImport += prefixed(
+                "compute-pc-structure:${member.name}",
+                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+            ) + "\n"
             val ty = member.type.fold({ it.kotlinTypeName }) {
                 if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
             }
-            postImport += "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()\n"
+            postImport += prefixed(
+                "compute-pc-binding:${member.name}",
+                "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
     // UBOs
     ci.ubos.forEach { ubo ->
-        postImport += "val ModulePointer.${ubo.name} by FromUniform()\n"
-        postImport += "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>()\n"
+        postImport += prefixed(
+            "compute-ubo:${ubo.name}",
+            "val ModulePointer.${ubo.name} by FromUniform()"
+        ) + "\n"
+        postImport += prefixed(
+            "compute-ubo-mesh:${ubo.name}",
+            "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>()"
+        ) + "\n"
         ubo.members.forEach { m ->
             val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
-            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>()\n"
+            postImport += prefixed(
+                "compute-ubo-member:${ubo.name}:${m.name}",
+                "var Structure.${m.name} by Structure.FromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
     // SSBOs
     ci.ssbo.forEach { ssbo ->
-        postImport += "val ComputeModulePointer.${ssbo.name} by ComputeMesh.FromUniform()\n"
+        postImport += prefixed(
+            "compute-ssbo:${ssbo.name}",
+            "val ComputeModulePointer.${ssbo.name} by ComputeMesh.FromUniform()"
+        ) + "\n"
         // Arrays / headers would need special handling if you decide to expose members
     }
 
@@ -230,27 +287,45 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
     // Push constants across task+mesh+fragment
     (ti.pushConstants + mi.pushConstants + fi.pushConstants).forEach { pc ->
         pc.members.forEach { member ->
-            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>()\n"
+            postImport += prefixed(
+                "mesh-pc-structure:${member.name}",
+                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+            ) + "\n"
             val ty = member.type.fold({ it.kotlinTypeName }) {
                 if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
             }
-            postImport += "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()\n"
+            postImport += prefixed(
+                "mesh-pc-binding:${member.name}",
+                "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
     // UBOs across task+mesh+fragment
     (ti.ubos + mi.ubos + fi.ubos).forEach { ubo ->
-        postImport += "val MeshModulePointer.${ubo.name} by FromUniform()\n"
-        postImport += "var MeshMesh.${ubo.name} by MeshMesh.FromStructure<Structure>()\n"
+        postImport += prefixed(
+            "mesh-ubo:${ubo.name}",
+            "val MeshModulePointer.${ubo.name} by FromUniform()"
+        ) + "\n"
+        postImport += prefixed(
+            "mesh-ubo-mesh:${ubo.name}",
+            "var MeshMesh.${ubo.name} by MeshMesh.FromStructure<Structure>()"
+        ) + "\n"
         ubo.members.forEach { m ->
             val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
-            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>()\n"
+            postImport += prefixed(
+                "mesh-ubo-member:${ubo.name}:${m.name}",
+                "var Structure.${m.name} by Structure.FromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
     // SSBOs across task+mesh+fragment
     (ti.ssbo + mi.ssbo + fi.ssbo).forEach { ssbo ->
-        postImport += "val MeshModulePointer.${ssbo.name} by MeshMesh.FromUniform()\n"
+        postImport += prefixed(
+            "mesh-ssbo:${ssbo.name}",
+            "val MeshModulePointer.${ssbo.name} by MeshMesh.FromUniform()"
+        ) + "\n"
     }
 
     return Insert(
@@ -392,31 +467,49 @@ fun insertForShader(
 ): Insert {
     var postImport = ""
     vi.inputs.forEach {
-        postImport += "val Mesh.${it.name} by FromInput()\n"
+        postImport += prefixed(
+            "graphics-input:${it.name}",
+            "val Mesh.${it.name} by FromInput()"
+        ) + "\n"
     }
 
     postImport += writeSuperMap(vi.inputs) + "\n"
 
     (vi.pushConstants + fi.pushConstants).forEach {
         it.members.forEach { member ->
-            postImport += "var Structure.${member.name} by Structure.FromStructure<Any>()\n"
+            postImport += prefixed(
+                "graphics-pc-structure:${member.name}",
+                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+            ) + "\n"
             val ty = member.type.fold({ it.kotlinTypeName }, {
                 if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
             })
-            postImport += "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()\n"
+            postImport += prefixed(
+                "graphics-pc-binding:${member.name}",
+                "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
     (fi.ubos + vi.ubos).forEach {
-        postImport += "val ModulePointer.${it.name} by FromUniform()\n"
+        postImport += prefixed(
+            "graphics-ubo:${it.name}",
+            "val ModulePointer.${it.name} by FromUniform()"
+        ) + "\n"
         it.members.forEach { m ->
             val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
-            postImport += "var Structure.${m.name} by Structure.FromStructure<$ty>()\n"
+            postImport += prefixed(
+                "graphics-ubo-member:${it.name}:${m.name}",
+                "var Structure.${m.name} by Structure.FromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
     (fi.ssbo + vi.ssbo).forEach {
-        postImport += "val ModulePointer.${it.name} by FromUniform()\n"
+        postImport += prefixed(
+            "graphics-ssbo:${it.name}",
+            "val ModulePointer.${it.name} by FromUniform()"
+        ) + "\n"
     }
 
     var here = "$resolvesToCall${args[0]}"

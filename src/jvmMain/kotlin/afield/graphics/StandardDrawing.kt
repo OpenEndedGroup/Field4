@@ -2,9 +2,7 @@ package afield.graphics
 
 import afield.Named
 import afield.four.buffers.DynamicallyWriteable
-import afield.stdlib.f
-import afield.stdlib.pointSize
-import afield.stdlib.vec
+import afield.stdlib.*
 
 /**
  * Ordered map of named [FLine]s with a lightweight revision hash.
@@ -37,16 +35,15 @@ class FLineMap : LinkedHashMap<String, FLine>() {
 }
 
 
-
 /**
  * Convenience overload of [pointsOut] for an [FLineMap].
  *
- * Note: [colorData] holds point sizes (one float per point), not colors.
  */
 fun pointsOut(
     m: FLineMap, vertexData: DynamicallyWriteable,
+    pointData: DynamicallyWriteable,
     colorData: DynamicallyWriteable
-) = pointsOut(m.values, vertexData, colorData)
+) = pointsOut(m.values, vertexData, pointData, colorData)
 
 /**
  * Write point positions and sizes for a collection of [FLine]s.
@@ -57,19 +54,29 @@ fun pointsOut(
  * @return number of points written.
  */
 fun pointsOut(
-    m: Collection<FLine>, vertexData: DynamicallyWriteable, pointSizeData: DynamicallyWriteable
+    m: Collection<FLine>,
+    vertexData: DynamicallyWriteable,
+    colorData: DynamicallyWriteable,
+    pointSizeData: DynamicallyWriteable
 ): Int {
 
     var num = 0
-    pointSizeData.write {
+    colorData.write {
         val cd = this
-        vertexData.write {
+        pointSizeData.write {
+            val pointd = this
+            vertexData.write {
 
-            m.forEachIndexed { i, f ->
-                f.nodes.forEach { node ->
-                    put(node.to)
-                    cd.put((node.properties["pointSize"] as? Number ?: f.pointSize).f)
-                    num++
+                m.forEachIndexed { i, f ->
+                    val fallback = f.pointSize
+                    val fallbackColor = f.color
+                    f.nodes.forEach { node ->
+                        put(node.to)
+                        val q = (node.properties["pointSize"] as? Number ?: fallback).f
+                        pointd.put(q)
+                        cd.put((node.properties["color"] as? Vec4 ?: fallbackColor))
+                        num++
+                    }
                 }
             }
         }
@@ -90,8 +97,6 @@ fun trianglesOut(
 /**
  * Tessellate filled [FLine]s into triangles and write positions and colors.
  *
- * @param samplesPerCubic Sampling density for cubic curves.
- * Note: currently ignored; tessellation uses a fixed value of 10.
  * @return number of vertices written.
  */
 fun trianglesOut(
@@ -112,7 +117,7 @@ fun trianglesOut(
         vertexData.write {
 
             m.forEachIndexed { i, f ->
-                f.tessellate(10) { verts, index ->
+                f.tessellate(samplesPerCubic) { verts, index ->
                     index.forEach {
                         val at = vec(verts[3 * it + 0], verts[3 * it + 1], verts[3 * it + 2])
                         put(at)
@@ -120,7 +125,7 @@ fun trianglesOut(
                         // this can't possibly work with cubic interpolations, we need to map index back to drawing instruction
                         cd.put(splits[i].second[4 * it + 0])
                         cd.put(splits[i].second[4 * it + 1])
-                        cd.put(splits[i].second[4 * it + 2 ])
+                        cd.put(splits[i].second[4 * it + 2])
                         cd.put(splits[i].second[4 * it + 3])
                         num++
                     }

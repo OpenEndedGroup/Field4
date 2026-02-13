@@ -453,6 +453,9 @@ fun Box.viz(channel: String = "viz", value: Any?) {
     display(channel, ValueVisualizer.visualize(value))
 }
 
+val Any?.h : String
+    get() = ValueVisualizer.visualize(this)
+
 /**
  * Register a custom printer for a type
  */

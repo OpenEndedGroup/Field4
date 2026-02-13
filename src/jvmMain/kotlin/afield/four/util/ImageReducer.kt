@@ -17,11 +17,11 @@ import org.lwjgl.vulkan.VK10
 import kotlin.math.ceil
 
 /**
- * ImageReducer - A utility class for reducing an image to min, average, and max values using compute shaders.
+ * ImageReducer - A utility class for reducing an image to global summary statistics using compute shaders.
  *
  * This class takes a HasImageView and uses a two-pass reduction strategy:
- * 1. First pass: Each workgroup processes a tile of the image and computes local min/avg/max
- * 2. Second pass: Reduces all local results to final min/avg/max values
+ * 1. First pass: Each workgroup processes a tile of the image and computes local accumulators
+ * 2. Second pass: Reduces all local accumulators to final values
  *
  * The workgroup sizes are automatically calculated for good performance.
  * Results can be read back asynchronously.
@@ -29,9 +29,10 @@ import kotlin.math.ceil
  * Usage:
  * ```
  * val reducer = ImageReducer(renderer, imageView)
- * val results = reducer.reduce(commandBuffer)
+ * reducer.reduce(commandBuffer)
  * // Later, after GPU execution:
- * val (min, avg, max) = reducer.readResults()
+ * val stats = reducer.readResults()
+ * println(stats.contrastMichelson)
  * ```
  */
 class ImageReducer(
@@ -44,8 +45,13 @@ class ImageReducer(
         private const val LOCAL_SIZE_X = WORKGROUP_SIZE
         private const val LOCAL_SIZE_Y = WORKGROUP_SIZE
 
-        // Number of values per result (min, avg, max for RGBA = 12 floats)
-        private const val VALUES_PER_RESULT = 12
+        // Number of values per workgroup in the intermediate pass.
+        // Layout: min.rgba + avgSum.rgba + max.rgba + lowLumaSum + lowCount + highLumaSum + highCount + midSatSum + midCount
+        private const val INTERMEDIATE_VALUES_PER_RESULT = 18
+
+        // Number of values in the final result.
+        // Layout: min.rgba + avg.rgba + max.rgba + lowAvgLuma + highAvgLuma + midSatAvg + contrastRange + contrastMichelson + lowFrac + highFrac + midFrac
+        private const val FINAL_VALUES_PER_RESULT = 20
     }
 
 
@@ -66,6 +72,12 @@ class ImageReducer(
     private var workgroupCountX: Int = 0
     private var workgroupCountY: Int = 0
 
+    // Previous-frame luminance stats (used to gate pseudo-quartile style buckets on the next frame)
+    private var hasPreviousLumaStats: Boolean = false
+    private var previousMinLuma: Float = 0f
+    private var previousAvgLuma: Float = 0.5f
+    private var previousMaxLuma: Float = 1f
+
     // Track per-swapchain-image readiness so we can fire callbacks one frame later (after the fence signals).
     private var pendingCallbacksPerImage: BooleanArray? = null
 
@@ -83,10 +95,21 @@ class ImageReducer(
     data class ReductionResult(
         val min: FloatArray,  // RGBA minimum values
         val avg: FloatArray,  // RGBA average values
-        val max: FloatArray   // RGBA maximum values
+        val max: FloatArray,  // RGBA maximum values
+        val lowAvgLuma: Float,       // average luminance of pixels below previous-frame average luminance
+        val highAvgLuma: Float,      // average luminance of pixels at/above previous-frame average luminance
+        val midSatAvg: Float,        // average saturation inside previous-frame pseudo quartile band
+        val contrastRange: Float,    // highAvgLuma - lowAvgLuma
+        val contrastMichelson: Float,// (high-low)/(high+low)
+        val lowFraction: Float,      // fraction of pixels in low bucket
+        val highFraction: Float,     // fraction of pixels in high bucket
+        val midFraction: Float       // fraction of pixels in pseudo quartile band
     ) {
         override fun toString(): String {
-            return "ReductionResult(min=[${min.joinToString()}], avg=[${avg.joinToString()}], max=[${max.joinToString()}])"
+            return "ReductionResult(min=[${min.joinToString()}], avg=[${avg.joinToString()}], max=[${max.joinToString()}], " +
+                "lowAvgLuma=$lowAvgLuma, highAvgLuma=$highAvgLuma, midSatAvg=$midSatAvg, " +
+                "contrastRange=$contrastRange, contrastMichelson=$contrastMichelson, " +
+                "lowFraction=$lowFraction, highFraction=$highFraction, midFraction=$midFraction)"
         }
 
         override fun equals(other: Any?): Boolean {
@@ -96,6 +119,14 @@ class ImageReducer(
             if (!min.contentEquals(other.min)) return false
             if (!avg.contentEquals(other.avg)) return false
             if (!max.contentEquals(other.max)) return false
+            if (lowAvgLuma != other.lowAvgLuma) return false
+            if (highAvgLuma != other.highAvgLuma) return false
+            if (midSatAvg != other.midSatAvg) return false
+            if (contrastRange != other.contrastRange) return false
+            if (contrastMichelson != other.contrastMichelson) return false
+            if (lowFraction != other.lowFraction) return false
+            if (highFraction != other.highFraction) return false
+            if (midFraction != other.midFraction) return false
             return true
         }
 
@@ -103,6 +134,14 @@ class ImageReducer(
             var result = min.contentHashCode()
             result = 31 * result + avg.contentHashCode()
             result = 31 * result + max.contentHashCode()
+            result = 31 * result + lowAvgLuma.hashCode()
+            result = 31 * result + highAvgLuma.hashCode()
+            result = 31 * result + midSatAvg.hashCode()
+            result = 31 * result + contrastRange.hashCode()
+            result = 31 * result + contrastMichelson.hashCode()
+            result = 31 * result + lowFraction.hashCode()
+            result = 31 * result + highFraction.hashCode()
+            result = 31 * result + midFraction.hashCode()
             return result
         }
     }
@@ -140,7 +179,7 @@ class ImageReducer(
         val totalWorkgroups = workgroupCountX * workgroupCountY
 
         // Create intermediate buffer (one result per workgroup)
-        val intermediateSize = totalWorkgroups * VALUES_PER_RESULT * 4L // 4 bytes per float
+        val intermediateSize = totalWorkgroups * INTERMEDIATE_VALUES_PER_RESULT * 4L // 4 bytes per float
         intermediateBuffer?.cleanup()
 
         intermediateBufferParameters = buffer {
@@ -153,7 +192,7 @@ class ImageReducer(
         intermediateBuffer = intermediateBufferParameters?.toBuffer(renderer)?.buffers[0]
 
         // Create result buffer (final min, avg, max)
-        val resultSize = VALUES_PER_RESULT * 4L // 4 bytes per float
+        val resultSize = FINAL_VALUES_PER_RESULT * 4L // 4 bytes per float
         resultBuffer?.cleanup()
         resultBufferParameters = buffer {
             size = resultSize
@@ -184,12 +223,21 @@ class ImageReducer(
                 int imageDimensionsX;
                 int imageDimensionsY;
                 int workgroupCountX;
+                float prevAvgLuma;
+                float prevPseudoQ1;
+                float prevPseudoQ3;
             } pc;
 
             // Shared memory for workgroup-local reduction
             shared vec4 localMin[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
             shared vec4 localAvg[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
             shared vec4 localMax[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
+            shared float localLowLumaSum[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
+            shared float localLowCount[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
+            shared float localHighLumaSum[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
+            shared float localHighCount[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
+            shared float localMidSatSum[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
+            shared float localMidCount[$LOCAL_SIZE_X * $LOCAL_SIZE_Y];
 
             void main() {
                 ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -208,10 +256,34 @@ class ImageReducer(
                     localMin[localIndex] = pixel;
                     localAvg[localIndex] = pixel;
                     localMax[localIndex] = pixel;
+
+                    float luma = dot(pixel.rgb, vec3(0.2126, 0.7152, 0.0722));
+                    float maxC = max(max(pixel.r, pixel.g), pixel.b);
+                    float minC = min(min(pixel.r, pixel.g), pixel.b);
+                    float sat = (maxC > 1e-6) ? ((maxC - minC) / maxC) : 0.0;
+
+                    bool isLow = luma < pc.prevAvgLuma;
+                    bool isHigh = !isLow;
+                    float q1 = min(pc.prevPseudoQ1, pc.prevPseudoQ3);
+                    float q3 = max(pc.prevPseudoQ1, pc.prevPseudoQ3);
+                    bool isMid = (luma >= q1) && (luma <= q3);
+
+                    localLowLumaSum[localIndex] = isLow ? luma : 0.0;
+                    localLowCount[localIndex] = isLow ? 1.0 : 0.0;
+                    localHighLumaSum[localIndex] = isHigh ? luma : 0.0;
+                    localHighCount[localIndex] = isHigh ? 1.0 : 0.0;
+                    localMidSatSum[localIndex] = isMid ? sat : 0.0;
+                    localMidCount[localIndex] = isMid ? 1.0 : 0.0;
                 } else {
                     localMin[localIndex] = vec4(1e10); // Very large value for min
                     localAvg[localIndex] = vec4(0.0);
                     localMax[localIndex] = vec4(-1e10); // Very small value for max
+                    localLowLumaSum[localIndex] = 0.0;
+                    localLowCount[localIndex] = 0.0;
+                    localHighLumaSum[localIndex] = 0.0;
+                    localHighCount[localIndex] = 0.0;
+                    localMidSatSum[localIndex] = 0.0;
+                    localMidCount[localIndex] = 0.0;
                 }
 
                 barrier();
@@ -222,15 +294,21 @@ class ImageReducer(
                         localMin[localIndex] = min(localMin[localIndex], localMin[localIndex + stride]);
                         localAvg[localIndex] += localAvg[localIndex + stride];
                         localMax[localIndex] = max(localMax[localIndex], localMax[localIndex + stride]);
+                        localLowLumaSum[localIndex] += localLowLumaSum[localIndex + stride];
+                        localLowCount[localIndex] += localLowCount[localIndex + stride];
+                        localHighLumaSum[localIndex] += localHighLumaSum[localIndex + stride];
+                        localHighCount[localIndex] += localHighCount[localIndex + stride];
+                        localMidSatSum[localIndex] += localMidSatSum[localIndex + stride];
+                        localMidCount[localIndex] += localMidCount[localIndex + stride];
                     }
                     barrier();
                 }
 
                 // Write results to intermediate buffer
-                // Layout: [min.rgba, avg.rgba, max.rgba] per workgroup
+                // Layout: [min.rgba, avgSum.rgba, max.rgba, lowLumaSum, lowCount, highLumaSum, highCount, midSatSum, midCount] per workgroup
                 if (localIndex == 0) {
                     uint workgroupIndex = gl_WorkGroupID.y * pc.workgroupCountX + gl_WorkGroupID.x;
-                    uint baseOffset = workgroupIndex * 12;
+                    uint baseOffset = workgroupIndex * ${INTERMEDIATE_VALUES_PER_RESULT};
 
                     // Write min
                     intermediate.values[baseOffset + 0] = localMin[0].r;
@@ -249,6 +327,14 @@ class ImageReducer(
                     intermediate.values[baseOffset + 9] = localMax[0].g;
                     intermediate.values[baseOffset + 10] = localMax[0].b;
                     intermediate.values[baseOffset + 11] = localMax[0].a;
+
+                    // Write pseudo-quartile accumulators
+                    intermediate.values[baseOffset + 12] = localLowLumaSum[0];
+                    intermediate.values[baseOffset + 13] = localLowCount[0];
+                    intermediate.values[baseOffset + 14] = localHighLumaSum[0];
+                    intermediate.values[baseOffset + 15] = localHighCount[0];
+                    intermediate.values[baseOffset + 16] = localMidSatSum[0];
+                    intermediate.values[baseOffset + 17] = localMidCount[0];
                 }
             }
         """.trimIndent()
@@ -297,6 +383,12 @@ class ImageReducer(
             shared vec4 localMin[256];
             shared vec4 localAvg[256];
             shared vec4 localMax[256];
+            shared float localLowLumaSum[256];
+            shared float localLowCount[256];
+            shared float localHighLumaSum[256];
+            shared float localHighCount[256];
+            shared float localMidSatSum[256];
+            shared float localMidCount[256];
 
             void main() {
                 uint localIndex = gl_LocalInvocationID.x;
@@ -305,9 +397,15 @@ class ImageReducer(
                 vec4 minVal = vec4(1e10);
                 vec4 avgVal = vec4(0.0);
                 vec4 maxVal = vec4(-1e10);
+                float lowLumaSumVal = 0.0;
+                float lowCountVal = 0.0;
+                float highLumaSumVal = 0.0;
+                float highCountVal = 0.0;
+                float midSatSumVal = 0.0;
+                float midCountVal = 0.0;
 
                 for (uint idx = localIndex; idx < uint(pc.totalWorkgroups); idx += 256) {
-                    uint baseOffset = idx * 12;
+                    uint baseOffset = idx * ${INTERMEDIATE_VALUES_PER_RESULT};
                     vec4 minIn = vec4(
                         intermediate.values[baseOffset + 0],
                         intermediate.values[baseOffset + 1],
@@ -330,11 +428,23 @@ class ImageReducer(
                     minVal = min(minVal, minIn);
                     avgVal += avgIn;
                     maxVal = max(maxVal, maxIn);
+                    lowLumaSumVal += intermediate.values[baseOffset + 12];
+                    lowCountVal += intermediate.values[baseOffset + 13];
+                    highLumaSumVal += intermediate.values[baseOffset + 14];
+                    highCountVal += intermediate.values[baseOffset + 15];
+                    midSatSumVal += intermediate.values[baseOffset + 16];
+                    midCountVal += intermediate.values[baseOffset + 17];
                 }
 
                 localMin[localIndex] = minVal;
                 localAvg[localIndex] = avgVal;
                 localMax[localIndex] = maxVal;
+                localLowLumaSum[localIndex] = lowLumaSumVal;
+                localLowCount[localIndex] = lowCountVal;
+                localHighLumaSum[localIndex] = highLumaSumVal;
+                localHighCount[localIndex] = highCountVal;
+                localMidSatSum[localIndex] = midSatSumVal;
+                localMidCount[localIndex] = midCountVal;
 
                 barrier();
 
@@ -344,6 +454,12 @@ class ImageReducer(
                         localMin[localIndex] = min(localMin[localIndex], localMin[localIndex + stride]);
                         localAvg[localIndex] += localAvg[localIndex + stride];
                         localMax[localIndex] = max(localMax[localIndex], localMax[localIndex + stride]);
+                        localLowLumaSum[localIndex] += localLowLumaSum[localIndex + stride];
+                        localLowCount[localIndex] += localLowCount[localIndex + stride];
+                        localHighLumaSum[localIndex] += localHighLumaSum[localIndex + stride];
+                        localHighCount[localIndex] += localHighCount[localIndex + stride];
+                        localMidSatSum[localIndex] += localMidSatSum[localIndex + stride];
+                        localMidCount[localIndex] += localMidCount[localIndex + stride];
                     }
                     barrier();
                 }
@@ -353,6 +469,16 @@ class ImageReducer(
                     vec4 finalMin = localMin[0];
                     vec4 finalAvg = localAvg[0] / float(pc.totalPixels);
                     vec4 finalMax = localMax[0];
+                    float finalAvgLuma = dot(finalAvg.rgb, vec3(0.2126, 0.7152, 0.0722));
+                    float lowAvgLuma = (localLowCount[0] > 0.0) ? (localLowLumaSum[0] / localLowCount[0]) : finalAvgLuma;
+                    float highAvgLuma = (localHighCount[0] > 0.0) ? (localHighLumaSum[0] / localHighCount[0]) : finalAvgLuma;
+                    float midSatAvg = (localMidCount[0] > 0.0) ? (localMidSatSum[0] / localMidCount[0]) : 0.0;
+                    float contrastRange = highAvgLuma - lowAvgLuma;
+                    float contrastMichelson = contrastRange / max(highAvgLuma + lowAvgLuma, 1e-6);
+                    float totalPx = max(float(pc.totalPixels), 1.0);
+                    float lowFrac = localLowCount[0] / totalPx;
+                    float highFrac = localHighCount[0] / totalPx;
+                    float midFrac = localMidCount[0] / totalPx;
 
                     results.values[0] = finalMin.r;
                     results.values[1] = finalMin.g;
@@ -368,6 +494,15 @@ class ImageReducer(
                     results.values[9] = finalMax.g;
                     results.values[10] = finalMax.b;
                     results.values[11] = finalMax.a;
+
+                    results.values[12] = lowAvgLuma;
+                    results.values[13] = highAvgLuma;
+                    results.values[14] = midSatAvg;
+                    results.values[15] = contrastRange;
+                    results.values[16] = contrastMichelson;
+                    results.values[17] = lowFrac;
+                    results.values[18] = highFrac;
+                    results.values[19] = midFrac;
                 }
             }
         """.trimIndent()
@@ -409,6 +544,14 @@ class ImageReducer(
         firstPassMesh.push.set("imageDimensionsX", cachedWidth)
         firstPassMesh.push.set("imageDimensionsY", cachedHeight)
         firstPassMesh.push.set("workgroupCountX", workgroupCountX)
+        val prevMinLuma = if (hasPreviousLumaStats) previousMinLuma else 0f
+        val prevAvgLuma = if (hasPreviousLumaStats) previousAvgLuma else 0.5f
+        val prevMaxLuma = if (hasPreviousLumaStats) previousMaxLuma else 1f
+        val prevPseudoQ1 = 0.5f * (prevMinLuma + prevAvgLuma)
+        val prevPseudoQ3 = 0.5f * (prevAvgLuma + prevMaxLuma)
+        firstPassMesh.push.set("prevAvgLuma", prevAvgLuma)
+        firstPassMesh.push.set("prevPseudoQ1", kotlin.math.min(prevPseudoQ1, prevPseudoQ3))
+        firstPassMesh.push.set("prevPseudoQ3", kotlin.math.max(prevPseudoQ1, prevPseudoQ3))
 
         // Execute first pass (bind pipeline and dispatch through the module's render)
         firstPass += "reduce" to firstPassMesh
@@ -438,6 +581,13 @@ class ImageReducer(
         hostReadBarrier(commandBuffer, resultBuffer)
     }
 
+    private fun luminance(rgba: FloatArray): Float {
+        val r = rgba.getOrElse(0) { 0f }
+        val g = rgba.getOrElse(1) { 0f }
+        val b = rgba.getOrElse(2) { 0f }
+        return (0.2126f * r) + (0.7152f * g) + (0.0722f * b)
+    }
+
     /**
      * Read back the results from the GPU.
      * This should be called after GPU execution has completed (e.g., after fence wait).
@@ -448,14 +598,35 @@ class ImageReducer(
         val min = FloatArray(4)
         val avg = FloatArray(4)
         val max = FloatArray(4)
+        val extras = FloatArray(8)
 
         buffer.mapAndRead {
             get(min)
             get(avg)
             get(max)
+            get(extras)
         }
 
-        return ReductionResult(min, avg, max)
+        val result = ReductionResult(
+            min = min,
+            avg = avg,
+            max = max,
+            lowAvgLuma = extras[0],
+            highAvgLuma = extras[1],
+            midSatAvg = extras[2],
+            contrastRange = extras[3],
+            contrastMichelson = extras[4],
+            lowFraction = extras[5],
+            highFraction = extras[6],
+            midFraction = extras[7]
+        )
+
+        previousMinLuma = luminance(result.min)
+        previousAvgLuma = luminance(result.avg)
+        previousMaxLuma = luminance(result.max)
+        hasPreviousLumaStats = true
+
+        return result
     }
 
     /**
@@ -474,6 +645,10 @@ class ImageReducer(
         secondPassModule = null
         textureSampler = null
         pendingCallbacksPerImage = null
+        hasPreviousLumaStats = false
+        previousMinLuma = 0f
+        previousAvgLuma = 0.5f
+        previousMaxLuma = 1f
     }
 
     /**

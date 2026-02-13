@@ -43,8 +43,11 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private val watchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private companion object {
+        const val ROOT_BOX_ID = "root"
         val TOPOLOGY_KEYS = setOf("children", "parents", "nested", "nestedIn")
     }
+
+    private fun isReservedBoxId(boxId: String): Boolean = boxId == ROOT_BOX_ID
 
     /**
      * Start watching the workspace directory for external file changes
@@ -286,6 +289,15 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val boxId = parts[0]
             val propertyName = parts[1]
 
+            // Root is a reserved box and is never sourced from sidecar files.
+            if (isReservedBoxId(boxId)) {
+                SaveReloadLog.log(
+                    "watch-skip-reserved-sidecar",
+                    "doc=${sessionInfo.filename} path=${file.absolutePath} box=$boxId property=$propertyName"
+                )
+                return
+            }
+
             // Find the box - if not found, try to create it
             var box = sessionInfo.boxes[boxId]
             if (box == null) {
@@ -394,15 +406,15 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val savingContext = SavingContext()
             val transfers = savingContext.readEdnTransfers(workspaceDir.absolutePath)
             
-            val metadataBoxIds = transfers.map { it.id }.toSet()
+            val metadataBoxIds = transfers.map { it.id }.filterNot(::isReservedBoxId).toSet()
             val tombstonedIds = transfers.mapNotNull { transfer ->
                 val raw = transfer.properties["_tombstone"] ?: return@mapNotNull null
                 val resolved = savingContext.resolveStoredValue(raw, workspaceDir.absolutePath)
                 if (resolved == true) transfer.id else null
-            }.toSet()
+            }.filterNot(::isReservedBoxId).toSet()
             val activeMetadataBoxIds = metadataBoxIds - tombstonedIds
-            val allowedRefIds = activeMetadataBoxIds + "root"
-            val currentBoxIds = sessionInfo.boxes.keys.filter { it != "root" }.toSet()
+            val allowedRefIds = activeMetadataBoxIds + ROOT_BOX_ID
+            val currentBoxIds = sessionInfo.boxes.keys.filterNot(::isReservedBoxId).toSet()
             
             // Find boxes in metadata but not in current session (newly added externally)
             val newBoxIds = activeMetadataBoxIds - currentBoxIds
@@ -507,6 +519,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 
                 val boxId = parts[0]
                 val propertyName = parts[1]
+
+                if (isReservedBoxId(boxId)) continue
                 
                 // Check if box exists
                 if (!sessionInfo.boxes.containsKey(boxId)) {
@@ -529,6 +543,10 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     @OptIn(ExperimentalUuidApi::class)
     private fun autoCreateBoxForSidecarFile(file: File, boxId: String, propertyName: String): Box? {
         try {
+            if (isReservedBoxId(boxId)) {
+                return null
+            }
+
             // Create the box
             val box = box(boxId, createIfMissing = true, initIfCreated = true, root = sessionInfo)
             

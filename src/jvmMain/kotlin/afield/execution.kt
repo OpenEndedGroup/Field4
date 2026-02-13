@@ -140,6 +140,8 @@ class KotlinExecution : BoxExecution {
 
     override fun launchAll(box: Box, exec: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
 
+        box.preamble = "" // still controversial
+
         val generation = box.runGeneration.incrementAndGet("default")
         send(Message("is-running").payload(IsRunning(exec.uid, true, generation, strand)))
 
@@ -748,7 +750,7 @@ class KotlinExecution : BoxExecution {
                 val descriptor = it.extraInfo.getOrDefault("original", null)
                 var mainText = it.displayText
                 var symbolName: String? = null
-                
+
                 descriptor?.let {
                     if (descriptor is DeclarationDescriptor) {
 //                                                mainText = DescriptorRenderer.HTML.render(descriptor as DeclarationDescriptor)
@@ -768,7 +770,7 @@ class KotlinExecution : BoxExecution {
                         }
                     }
                 }
-                
+
                 // Try to get KDoc from the source index for afield symbols
                 if (extraDoc.isEmpty() && symbolName != null) {
                     val kdoc = KotlinSourceIndex.getKDocForSymbol(symbolName)
@@ -776,7 +778,7 @@ class KotlinExecution : BoxExecution {
                         extraDoc = kdoc
                     }
                 }
-                
+
                 Metadata(
                     icon = it.icon,
                     tail = it.tail,
