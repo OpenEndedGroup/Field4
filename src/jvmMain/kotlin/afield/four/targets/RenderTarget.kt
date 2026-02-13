@@ -165,6 +165,9 @@ class RenderTarget(
                         )
                     )
 
+            val recorded = preRecordedInsideRendering
+            val useSecondaryInsideRendering = !recorded.isNullOrEmpty()
+
             // Rendering info (KHR)
             val renderInfo = VkRenderingInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_RENDERING_INFO_KHR)
@@ -173,7 +176,7 @@ class RenderTarget(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
-                .flags(0)
+                .flags(if (useSecondaryInsideRendering) VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT else 0)
                 .layerCount(1)
                 .pColorAttachments(colorAttachment)
                 .pDepthAttachment(depthAttachment.get(0))
@@ -192,7 +195,6 @@ class RenderTarget(
 
             val fullRect = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
 
-            val recorded = preRecordedInsideRendering
             if (recorded.isNullOrEmpty()) {
                 modules.forEach { (_, mp) ->
                     setViewportAndScissor(command.vkCommandBuffer, mp.current.parameters.viewport ?: fullRect, stack)

@@ -152,6 +152,8 @@ class KotlinExecution : BoxExecution {
         inMain {
 
             box.resetStdlibRandom()
+            box.preamble = ""
+
 
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}
             // this is just the field2 design

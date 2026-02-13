@@ -56,6 +56,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
 
     @JvmOverloads
     fun beginRecording(inheritanceInfo: SecondaryInheritance? = null) {
+        inRenderPassInstance = false
         MemoryStack.stackPush().use { stack ->
             val cmdBufInfo = VkCommandBufferBeginInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
@@ -92,6 +93,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
                 if (flags != 0) {
                     cmdBufInfo.flags(cmdBufInfo.flags() or flags)
                 }
+                inRenderPassInstance = (flags and VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) != 0
                 cmdBufInfo.pInheritanceInfo(vkInheritanceInfo)
             }
             vkCheck(
@@ -112,9 +114,11 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
 
     fun endRecording() {
         vkCheck(VK10.vkEndCommandBuffer(vkCommandBuffer), "Failed to end command buffer")
+        inRenderPassInstance = false
     }
 
     fun reset() {
         VK10.vkResetCommandBuffer(vkCommandBuffer, VK10.VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)
+        inRenderPassInstance = false
     }
 }

@@ -76,7 +76,7 @@ open class RenderToTexture(
     val colorImageRefs: MutableList<Image?>          // null when external view has no underlying Image
     val colorImageHandles: MutableList<Long>         // always the underlying VkImage handle
     protected val mutableImageViewArray: MutableList<HasImageView>
-    private val attachmentImageViews: MutableList<ImageView>
+    protected val attachmentImageViews: MutableList<ImageView>
     override val imageViewArray: List<HasImageView>
         get() = mutableImageViewArray
     val colorFormats: List<Int>
