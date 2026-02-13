@@ -603,14 +603,15 @@ fun makeKI(box: Box): KotlinInterface {
                     ki.exec(
                         intro, implicits = listOf(box)
                     )
-                    lprintln("info,ki", "$box executing preamble")
-                    try {
-                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
-                    } catch (t: Throwable) {
-                        lprintln("error,ki", "preamble threw an exception, clearing it")
-                        t.printStackTrace()
-                        box.preamble = ""
-                    }
+                    lprintln("info,ki", "$box clearing preamble")
+                    box.preamble = ""
+//                    try {
+//                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
+//                    } catch (t: Throwable) {
+//                        lprintln("error,ki", "preamble threw an exception, clearing it")
+//                        t.printStackTrace()
+//                        box.preamble = ""
+//                    }
                     lprintln("info,ki", "$box box is no longer offline")
                     box.offline = false
                     si?.topologyGeneration++
