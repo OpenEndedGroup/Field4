@@ -264,7 +264,7 @@ class KotlinExecution : BoxExecution {
                 }
             }, { evalException ->
                 hasError = true
-                lprintln("error,execution", "exception thrown in fragment")
+                lprintln("error,execution", "exception thrown in fragment inside box $box")
                 lprintln("error,execution", evalException.stackTraceToString())
 
                 var fallbackFirstLine = -1

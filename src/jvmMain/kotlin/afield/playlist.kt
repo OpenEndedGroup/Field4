@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.lprintln
 import afield.stdlib.begin
 
 /**
@@ -72,17 +73,27 @@ fun Box.executePlaylist(strand: String = "default"): Frames {
         
         // Execute each box in order
         for (box in sorted) {
-            // Call begin() on the box
-            box.begin(strand)
-            
-            // Get the number of frames to wait (pauseList or default 1)
-            // Use getPropertyRaw to safely check if pauseList is set
-            val pauseValue = box.getPropertyRaw("pauseList") as? Number
-            val framesToWait = pauseValue?.toInt() ?: 1
-            
-            // Wait for the specified number of frames
-            repeat(framesToWait) {
-                frame()
+
+            lprintln("playlist,execution", "\n\n\n\n -- `${box.name}` begins (playlist)")
+            try {
+                // Call begin() on the box
+                box.begin(strand)
+
+                // Get the number of frames to wait (pauseList or default 1)
+                // Use getPropertyRaw to safely check if pauseList is set
+                val pauseValue = box.getPropertyRaw("pauseList") as? Number
+                var framesToWait = pauseValue?.toInt() ?: 1
+                framesToWait = Math.max(300, framesToWait)
+
+                // Wait for the specified number of frames
+                repeat(framesToWait) {
+                    lprintln("playlist,execution", "-- `${box.name}` waiting")
+                    frame()
+                }
+            }
+            catch (e: Exception) {
+                lprintln("playlist,execution", "-- `${box.name}` (playlist) threw:")
+                e.printStackTrace()
             }
         }
     }
