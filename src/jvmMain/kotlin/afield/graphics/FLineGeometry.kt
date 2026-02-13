@@ -225,8 +225,12 @@ fun FLine.byCreatingParallelCurves(distance: Float, samples: Int = 50): Pair<FLi
  * @param sigma smoothing strength (larger = smoother)
  * @param samples number of samples to use
  */
-fun FLine.byGaussianSmoothing(sigma: Float, samples: Int = 100): FLine {
-    val points = this.sampleByNumber(samples)
+fun FLine.byGaussianSmoothing(
+    sigma: Float,
+    samples: Int = 100,
+    sampler: FLineSampler? = null
+): FLine {
+    val points = this.samplePoints(samples, sampler = sampler)
     val smoothed = mutableListOf<Vec3>()
     val radius = (3 * sigma).toInt().coerceAtLeast(1)
 
@@ -911,10 +915,16 @@ fun concatenate(vararg lines: FLine): FLine {
  * Blend between two curves.
  * @param t blend factor (0 = line1, 1 = line2)
  */
-fun FLine.byBlendingWith(other: FLine, t: Float): FLine {
+fun FLine.byBlendingWith(
+    other: FLine,
+    t: Float,
+    sampler: FLineSampler? = null,
+    otherSampler: FLineSampler? = sampler
+): FLine {
     val samples = maxOf(this.nodes.size, other.nodes.size)
-    val points1 = this.sampleByNumber(samples)
-    val points2 = other.sampleByNumber(samples)
+    val points1 = this.samplePoints(samples, sampler = sampler)
+    val points2 = other.samplePoints(samples, sampler = otherSampler)
+    if (points1.isEmpty() || points2.isEmpty()) return FLine()
 
     val result = FLine()
 
@@ -958,8 +968,8 @@ fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine {
  * @param samples number of points to sample
  * @return Triple of (center, radius, error)
  */
-fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float> {
-    val points = this.sampleByNumber(samples).map { Vec2(it.x, it.y) }
+fun FLine.fitCircle(samples: Int = 20, sampler: FLineSampler? = null): Triple<Vec2, Float, Float> {
+    val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
 
     // Use least squares circle fitting
     var sumX = 0f
@@ -2128,9 +2138,14 @@ fun FLine.byAppendingArcByTangent(
  * @param seed random seed for reproducibility
  * @param samples number of points to sample and reconstruct
  */
-fun FLine.byGaussianNoising(amplitude: Float, seed: Long = System.currentTimeMillis(), samples: Int = 100): FLine {
+fun FLine.byGaussianNoising(
+    amplitude: Float,
+    seed: Long = System.currentTimeMillis(),
+    samples: Int = 100,
+    sampler: FLineSampler? = null
+): FLine {
     val random = java.util.Random(seed)
-    val points = this.sampleByNumber(samples)
+    val points = this.samplePoints(samples, sampler = sampler)
 
     val result = FLine()
     points.forEachIndexed { i, point ->
@@ -2360,9 +2375,15 @@ private class PerlinNoise(seed: Long) {
  * Add two curves point-wise.
  * Samples both curves and adds corresponding points.
  */
-fun FLine.byAddingWith(other: FLine, samples: Int = 100): FLine {
-    val points1 = this.sampleByNumber(samples)
-    val points2 = other.sampleByNumber(samples)
+fun FLine.byAddingWith(
+    other: FLine,
+    samples: Int = 100,
+    sampler: FLineSampler? = null,
+    otherSampler: FLineSampler? = sampler
+): FLine {
+    val points1 = this.samplePoints(samples, sampler = sampler)
+    val points2 = other.samplePoints(samples, sampler = otherSampler)
+    if (points1.isEmpty() || points2.isEmpty()) return FLine()
 
     val result = FLine()
     for (i in points1.indices) {
@@ -2383,9 +2404,15 @@ fun FLine.byAddingWith(other: FLine, samples: Int = 100): FLine {
 /**
  * Subtract one curve from another point-wise.
  */
-fun FLine.bySubtractingWith(other: FLine, samples: Int = 100): FLine {
-    val points1 = this.sampleByNumber(samples)
-    val points2 = other.sampleByNumber(samples)
+fun FLine.bySubtractingWith(
+    other: FLine,
+    samples: Int = 100,
+    sampler: FLineSampler? = null,
+    otherSampler: FLineSampler? = sampler
+): FLine {
+    val points1 = this.samplePoints(samples, sampler = sampler)
+    val points2 = other.samplePoints(samples, sampler = otherSampler)
+    if (points1.isEmpty() || points2.isEmpty()) return FLine()
 
     val result = FLine()
     for (i in points1.indices) {
@@ -2407,8 +2434,12 @@ fun FLine.bySubtractingWith(other: FLine, samples: Int = 100): FLine {
  * Project one curve onto another.
  * For each point on line1, finds the closest point on line2.
  */
-fun FLine.byProjectingOnto(other: FLine, samples: Int = 100): FLine {
-    val points1 = this.sampleByNumber(samples)
+fun FLine.byProjectingOnto(
+    other: FLine,
+    samples: Int = 100,
+    sampler: FLineSampler? = null
+): FLine {
+    val points1 = this.samplePoints(samples, sampler = sampler)
 
     val result = FLine()
     points1.forEachIndexed { i, point ->
@@ -2428,8 +2459,13 @@ fun FLine.byProjectingOnto(other: FLine, samples: Int = 100): FLine {
  * Invert a curve through a point (geometric inversion).
  * Each point is inverted through a circle centered at 'center' with given 'radius'.
  */
-fun FLine.byInverting(center: Vec2 = vec(0f, 0f), radius: Float = 100f, samples: Int = 100): FLine {
-    val points = this.sampleByNumber(samples)
+fun FLine.byInverting(
+    center: Vec2 = vec(0f, 0f),
+    radius: Float = 100f,
+    samples: Int = 100,
+    sampler: FLineSampler? = null
+): FLine {
+    val points = this.samplePoints(samples, sampler = sampler)
     val radiusSq = radius * radius
 
     val result = FLine()
@@ -2463,9 +2499,15 @@ fun FLine.byInverting(center: Vec2 = vec(0f, 0f), radius: Float = 100f, samples:
 /**
  * Multiply two curves point-wise (component-wise multiplication of coordinates).
  */
-fun FLine.byMultiplyingWith(other: FLine, samples: Int = 100): FLine {
-    val points1 = this.sampleByNumber(samples)
-    val points2 = other.sampleByNumber(samples)
+fun FLine.byMultiplyingWith(
+    other: FLine,
+    samples: Int = 100,
+    sampler: FLineSampler? = null,
+    otherSampler: FLineSampler? = sampler
+): FLine {
+    val points1 = this.samplePoints(samples, sampler = sampler)
+    val points2 = other.samplePoints(samples, sampler = otherSampler)
+    if (points1.isEmpty() || points2.isEmpty()) return FLine()
 
     val result = FLine()
     for (i in points1.indices) {
@@ -2667,13 +2709,16 @@ fun FLine.byNoisingParameterized(
 fun FLine.byScalingParameterized(
     scaleFunc: ParameterFunction,
     center: Vec2 = vec(0f, 0f),
-    samples: Int = 100
+    samples: Int = 100,
+    sampler: FLineSampler? = null
 ): FLine {
-    val points = this.sampleByNumber(samples)
+    val series = this.sampleSeries(samples, sampler = sampler)
+    if (series.isEmpty()) return this.copy()
     val result = FLine()
 
-    points.forEachIndexed { i, point ->
-        val t = i.toFloat() / (samples - 1)
+    series.forEachIndexed { i, sample ->
+        val point = sample.point
+        val t = sample.t
         val scale = scaleFunc.evaluate(t, point)
 
         val scaled = vec(
@@ -2840,12 +2885,16 @@ fun FLine.byBSplineSmoothed(
     samples: Int = 200,
     dryWet: Float = 1f,
     wetModulator: ParameterFunction? = null,
-    closed: Boolean = false
+    closed: Boolean = false,
+    controlSampler: FLineSampler? = null,
+    outputSampler: FLineSampler? = null
 ): FLine {
-    val cps = this.sampleByNumber(controlSampleCount)
+    val cps = this.samplePoints(controlSampleCount, sampler = controlSampler)
     if (cps.isEmpty()) return this.copy()
     val spline = bsplineFrom(cps, degree, samples, closed)
-    val blended = mixSamples(this.sampleByNumber(samples), spline.sampleByNumber(samples), dryWet, wetModulator)
+    val base = this.samplePoints(samples, sampler = outputSampler)
+    val processed = spline.samplePoints(samples, sampler = outputSampler)
+    val blended = mixSamples(base, processed, dryWet, wetModulator)
     return blended.toFLine()
 }
 
@@ -3150,9 +3199,10 @@ fun FLine.byCurvatureFlow(
     samples: Int = 200,
     anchorEnds: Boolean = true,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    sampler: FLineSampler? = null
 ): FLine {
-    val base = this.sampleByNumber(samples).toMutableList()
+    val base = this.samplePoints(samples, sampler = sampler).toMutableList()
     if (base.size < 3) return this.copy()
 
     var pts = base
@@ -3241,9 +3291,11 @@ fun FLine.byGaussianProcessInterpolating(
     dryWet: Float = 1f,
     wetModulator: ParameterFunction? = null,
     drawSamples: Boolean = false,
-    seed: Long? = null
+    seed: Long? = null,
+    trainingSampler: FLineSampler? = null,
+    outputSampler: FLineSampler? = null
 ): FLine {
-    val obs = this.sampleByNumber(trainingSamples)
+    val obs = this.samplePoints(trainingSamples, sampler = trainingSampler)
     if (obs.isEmpty()) return this.copy()
 
     val tObs = normalizedArcLengthParams(obs)
@@ -3275,9 +3327,12 @@ fun FLine.byGaussianProcessInterpolating(
 
     val rng = if (drawSamples) java.util.Random(seed ?: System.nanoTime()) else null
 
-    val query = ArrayList<Vec3>(samples)
-    for (i in 0 until samples) {
-        val t = if (samples == 1) 0.0 else i.toDouble() / (samples - 1)
+    val base = this.samplePoints(samples, sampler = outputSampler)
+    if (base.isEmpty()) return this.copy()
+    val tQuery = normalizedArcLengthParams(base)
+    val query = ArrayList<Vec3>(base.size)
+    for (i in tQuery.indices) {
+        val t = tQuery[i]
         val kStar = DoubleArray(n) { idx -> k(t, tObs[idx]) }
         val meanX = kStar.indices.sumOf { idx -> kStar[idx] * alphaX[idx] }
         val meanY = kStar.indices.sumOf { idx -> kStar[idx] * alphaY[idx] }
@@ -3292,7 +3347,7 @@ fun FLine.byGaussianProcessInterpolating(
         query.add(vec(meanX.toFloat() + jitter.toFloat(), meanY.toFloat() + jitter.toFloat(), meanZ.toFloat() + jitter.toFloat()))
     }
 
-    val blended = mixSamples(this.sampleByNumber(samples), query, dryWet, wetModulator)
+    val blended = mixSamples(base, query, dryWet, wetModulator)
     return blended.toFLine()
 }
 
@@ -3305,9 +3360,10 @@ fun FLine.byEmaFiltering(
     alpha: Float = 0.18f,
     samples: Int = 200,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    sampler: FLineSampler? = null
 ): FLine {
-    val points = this.sampleByNumber(samples)
+    val points = this.samplePoints(samples, sampler = sampler)
     if (points.isEmpty()) return this.copy()
     val filtered = MutableList(points.size) { Vec3() }
     var ema = Vec3(points.first())
@@ -3335,9 +3391,10 @@ fun FLine.byOneEuroFiltering(
     fpsHint: Float = 60f,
     samples: Int = 200,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    sampler: FLineSampler? = null
 ): FLine {
-    val points = this.sampleByNumber(samples)
+    val points = this.samplePoints(samples, sampler = sampler)
     if (points.isEmpty()) return this.copy()
     val dt = (1f / fpsHint.coerceAtLeast(1e-3f)).toDouble()
     var dxHat = vec(0f, 0f, 0f)
@@ -3378,9 +3435,10 @@ fun FLine.byAlphaBetaFiltering(
     fpsHint: Float = 90f,
     samples: Int = 200,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    sampler: FLineSampler? = null
 ): FLine {
-    val points = this.sampleByNumber(samples)
+    val points = this.samplePoints(samples, sampler = sampler)
     if (points.isEmpty()) return this.copy()
     val dt = (1f / fpsHint.coerceAtLeast(1e-3f))
     var x = Vec3(points.first())
@@ -3407,9 +3465,10 @@ fun FLine.byOneDollarFiltering(
     targetSize: Float = 200f,
     rotateToZero: Boolean = true,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    sampler: FLineSampler? = null
 ): FLine {
-    val points = this.sampleByNumber(targetSamples)
+    val points = this.samplePoints(targetSamples, sampler = sampler)
     if (points.isEmpty()) return this.copy()
 
     val centroid = points.fold(Vec3()) { acc, p -> acc.add(p) }.div(points.size.toFloat())
@@ -3435,6 +3494,6 @@ fun FLine.byOneDollarFiltering(
     val scale = targetSize / scaleDenom
     normed = normed.map { vec(it.x * scale, it.y * scale, it.z) }
 
-    val blended = mixSamples(this.sampleByNumber(normed.size), normed, dryWet, wetModulator)
+    val blended = mixSamples(points, normed, dryWet, wetModulator)
     return blended.toFLine()
 }

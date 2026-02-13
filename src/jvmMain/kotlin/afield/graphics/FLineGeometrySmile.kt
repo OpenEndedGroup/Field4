@@ -10,9 +10,11 @@ fun FLine.bySmileSplineInterpolating(
     trainingSamples: Int = 48,
     samples: Int = 200,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    trainingSampler: FLineSampler? = null,
+    outputSampler: FLineSampler? = null
 ): FLine {
-    val obs = this.sampleByNumber(trainingSamples.coerceAtLeast(2))
+    val obs = this.samplePoints(trainingSamples.coerceAtLeast(2), sampler = trainingSampler)
     if (obs.size < 2) return this.copy()
 
     val (tObs, pObs) = prepareArcLengthTrainingData(obs) ?: return this.copy()
@@ -22,9 +24,12 @@ fun FLine.bySmileSplineInterpolating(
         val zModel = smileCubicSpline(tObs, DoubleArray(pObs.size) { i -> pObs[i].z.toDouble() })
 
         val outCount = samples.coerceAtLeast(1)
-        val predicted = ArrayList<Vec3>(outCount)
-        for (i in 0 until outCount) {
-            val t = if (outCount == 1) 0.0 else i.toDouble() / (outCount - 1).toDouble()
+        val base = this.samplePoints(outCount, sampler = outputSampler)
+        if (base.isEmpty()) return this.copy()
+        val tQuery = normalizedArcLengthParamsSmile(base)
+        val predicted = ArrayList<Vec3>(base.size)
+        for (i in base.indices) {
+            val t = tQuery[i]
             predicted += vec(
                 xModel.predict(t).toFloat(),
                 yModel.predict(t).toFloat(),
@@ -32,7 +37,6 @@ fun FLine.bySmileSplineInterpolating(
             )
         }
 
-        val base = this.sampleByNumber(outCount)
         mixSamplesSmile(base, predicted, dryWet, wetModulator).toFLineSmile()
     } catch (_: Throwable) {
         this.copy()
@@ -51,9 +55,11 @@ fun FLine.bySmileGaussianProcessInterpolating(
     tol: Float = 1e-4f,
     maxIter: Int = 500,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    trainingSampler: FLineSampler? = null,
+    outputSampler: FLineSampler? = null
 ): FLine {
-    val obs = this.sampleByNumber(trainingSamples.coerceAtLeast(2))
+    val obs = this.samplePoints(trainingSamples.coerceAtLeast(2), sampler = trainingSampler)
     if (obs.size < 2) return this.copy()
 
     val (tObs, pObs) = prepareArcLengthTrainingData(obs) ?: return this.copy()
@@ -71,9 +77,12 @@ fun FLine.bySmileGaussianProcessInterpolating(
         val zModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].z.toDouble() }, options)
 
         val outCount = samples.coerceAtLeast(1)
-        val predicted = ArrayList<Vec3>(outCount)
-        for (i in 0 until outCount) {
-            val t = if (outCount == 1) 0.0 else i.toDouble() / (outCount - 1).toDouble()
+        val base = this.samplePoints(outCount, sampler = outputSampler)
+        if (base.isEmpty()) return this.copy()
+        val tQuery = normalizedArcLengthParamsSmile(base)
+        val predicted = ArrayList<Vec3>(base.size)
+        for (i in base.indices) {
+            val t = tQuery[i]
             predicted += vec(
                 xModel.predict(t).toFloat(),
                 yModel.predict(t).toFloat(),
@@ -81,7 +90,6 @@ fun FLine.bySmileGaussianProcessInterpolating(
             )
         }
 
-        val base = this.sampleByNumber(outCount)
         mixSamplesSmile(base, predicted, dryWet, wetModulator).toFLineSmile()
     } catch (_: Throwable) {
         this.copy()
@@ -95,9 +103,11 @@ fun FLine.byAkimaInterpolating(
     trainingSamples: Int = 48,
     samples: Int = 200,
     dryWet: Float = 1f,
-    wetModulator: ParameterFunction? = null
+    wetModulator: ParameterFunction? = null,
+    trainingSampler: FLineSampler? = null,
+    outputSampler: FLineSampler? = null
 ): FLine {
-    val obs = this.sampleByNumber(trainingSamples.coerceAtLeast(2))
+    val obs = this.samplePoints(trainingSamples.coerceAtLeast(2), sampler = trainingSampler)
     if (obs.size < 2) return this.copy()
 
     val (tObs, pObs) = prepareArcLengthTrainingData(obs) ?: return this.copy()
@@ -107,9 +117,12 @@ fun FLine.byAkimaInterpolating(
         val zModel = akimaOrFallback(tObs, DoubleArray(pObs.size) { i -> pObs[i].z.toDouble() })
 
         val outCount = samples.coerceAtLeast(1)
-        val predicted = ArrayList<Vec3>(outCount)
-        for (i in 0 until outCount) {
-            val t = if (outCount == 1) 0.0 else i.toDouble() / (outCount - 1).toDouble()
+        val base = this.samplePoints(outCount, sampler = outputSampler)
+        if (base.isEmpty()) return this.copy()
+        val tQuery = normalizedArcLengthParamsSmile(base)
+        val predicted = ArrayList<Vec3>(base.size)
+        for (i in base.indices) {
+            val t = tQuery[i]
             predicted += vec(
                 xModel.predict(t).toFloat(),
                 yModel.predict(t).toFloat(),
@@ -117,7 +130,6 @@ fun FLine.byAkimaInterpolating(
             )
         }
 
-        val base = this.sampleByNumber(outCount)
         mixSamplesSmile(base, predicted, dryWet, wetModulator).toFLineSmile()
     } catch (_: Throwable) {
         this.copy()
