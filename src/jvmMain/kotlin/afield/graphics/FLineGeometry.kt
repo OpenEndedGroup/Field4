@@ -1222,6 +1222,10 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
         Pair(coeffs, error)
     } catch (e: Exception) {
         // Fallback to zero coefficients if Smile fitting fails
+        // Log for debugging but don't fail the operation
+        if (System.getProperty("field.debug") != null) {
+            System.err.println("FLineGeometry.fitPolynomial: Smile OLS failed, using fallback: ${e.message}")
+        }
         Pair(FloatArray(degree + 1) { 0f }, Float.POSITIVE_INFINITY)
     }
 }
@@ -1439,6 +1443,10 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
         
     } catch (e: Exception) {
         // Fallback: use simple interpolation for control points
+        // Log for debugging but don't fail the operation
+        if (System.getProperty("field.debug") != null) {
+            System.err.println("FLineGeometry.fitBezierCubic: Smile OLS failed, using fallback: ${e.message}")
+        }
         val p1 = Vec3(p0).lerp(p3, 0.33f)
         val p2 = Vec3(p0).lerp(p3, 0.67f)
         
