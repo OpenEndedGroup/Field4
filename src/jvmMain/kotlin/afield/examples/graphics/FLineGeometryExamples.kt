@@ -868,25 +868,128 @@ object FLineGeometryExamples {
     }
 
     /**
-     * Example 23: Fitting and resampling operations
+     * Example 23: Comprehensive curve and line fitting operations
      */
     fun curveFittingExample(): Map<String, List<FLine>> {
+        // Circle fitting
         val noisyCircle = createCircle(vec(0f, 0f), 30f, 32).byGaussianNoising(
             amplitude = 2f,
             seed = 1234L,
             samples = 64
         )
-
-        val (fitCenter, fitRadius, _) = noisyCircle.fitCircle(32)
+        val (fitCenter, fitRadius, circleError) = noisyCircle.fitCircle(32)
         val fittedCircle = createCircle(fitCenter, fitRadius, 64)
-
+        
+        // Line fitting in 2D
+        val noisyLine = FLine().apply {
+            moveTo(-50f, -20f)
+            for (i in 1..20) {
+                val x = -50f + i * 5f
+                val y = -20f + i * 2f + (kotlin.random.Random.nextFloat() - 0.5f) * 5f
+                lineTo(x, y)
+            }
+        }
+        val (lineStart, lineEnd, lineError) = noisyLine.fitLine2D(samples = 20)
+        val fittedLine = FLine().apply {
+            moveTo(lineStart.x, lineStart.y)
+            lineTo(lineEnd.x, lineEnd.y)
+        }
+        
+        // Polynomial fitting
+        val curvedPath = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..20) {
+                val x = i * 3f
+                val y = 0.01f * x * x - 0.5f * x + 10f + (kotlin.random.Random.nextFloat() - 0.5f) * 2f
+                lineTo(x, y)
+            }
+        }
+        val (polyCoeffs, polyError) = curvedPath.fitPolynomial(degree = 2, samples = 20)
+        val fittedPoly = FLine().apply {
+            moveTo(0f, polyCoeffs[0])
+            for (i in 1..60) {
+                val x = i.toFloat()
+                val y = polyCoeffs[0] + polyCoeffs[1] * x + polyCoeffs[2] * x * x
+                lineTo(x, y)
+            }
+        }
+        
+        // Ellipse fitting
+        val noisyEllipse = FLine().apply {
+            for (i in 0..40) {
+                val angle = i / 40f * 2 * PI.toFloat()
+                val x = 40f * kotlin.math.cos(angle) + (kotlin.random.Random.nextFloat() - 0.5f) * 3f
+                val y = 20f * kotlin.math.sin(angle) + (kotlin.random.Random.nextFloat() - 0.5f) * 3f
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
+        }
+        val ellipseFit = noisyEllipse.fitEllipse(samples = 40)
+        // Draw fitted ellipse
+        val fittedEllipse = FLine().apply {
+            for (i in 0..64) {
+                val angle = i / 64f * 2 * PI.toFloat()
+                val localX = ellipseFit.semiMajorAxis * kotlin.math.cos(angle)
+                val localY = ellipseFit.semiMinorAxis * kotlin.math.sin(angle)
+                // Rotate and translate
+                val rotCos = kotlin.math.cos(ellipseFit.rotationAngle)
+                val rotSin = kotlin.math.sin(ellipseFit.rotationAngle)
+                val x = ellipseFit.center.x + localX * rotCos - localY * rotSin
+                val y = ellipseFit.center.y + localX * rotSin + localY * rotCos
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
+        }
+        
+        // Bezier curve fitting
+        val wavyPath = FLine().apply {
+            moveTo(0f, 50f)
+            for (i in 1..10) {
+                val x = i * 12f
+                val y = 50f + kotlin.math.sin(i / 2f) * 20f
+                lineTo(x, y)
+            }
+        }
+        val (bezierPoints, bezierError) = wavyPath.fitBezierCubic(samples = 10)
+        val fittedBezier = FLine().apply {
+            moveTo(bezierPoints[0])
+            cubicTo(bezierPoints[1], bezierPoints[2], bezierPoints[3])
+        }
+        
+        // Piecewise linear fitting
+        val complexCurve = FLine().apply {
+            moveTo(0f, 0f)
+            for (i in 1..50) {
+                val x = i * 3f
+                val y = kotlin.math.sin(i / 5f) * 15f + kotlin.math.cos(i / 10f) * 8f
+                lineTo(x, y)
+            }
+        }
+        val piecewiseSegments = complexCurve.fitPiecewiseLinear(
+            maxSegments = 8,
+            curvatureThreshold = 0.08f,
+            samples = 50
+        )
+        
+        // Points to FLine conversion with different strategies
+        val points = listOf(
+            vec(0f, 0f, 0f),
+            vec(20f, 30f, 0f),
+            vec(40f, 35f, 0f),
+            vec(60f, 25f, 0f),
+            vec(80f, 35f, 0f),
+            vec(100f, 20f, 0f)
+        )
+        val linearFit = pointsToFLine(points, "linear")
+        val quadraticFit = pointsToFLine(points, "quadratic")
+        val bezierFit = pointsToFLine(points, "bezier")
+        val adaptiveFit = pointsToFLine(points, "adaptive")
+        
+        // Subdivide and arc-length parameterization
         val polyline = FLine().apply {
             moveTo(0f, 0f)
             for (i in 1..12) {
                 lineTo(i * 10f, kotlin.math.sin(i / 2f) * 15f)
             }
         }
-
         val subdivided = polyline.bySubdividing(2)
         val arcLength = polyline.byArcLengthParameterizing(5f)
 
@@ -894,6 +997,22 @@ object FLineGeometryExamples {
             "noisy_circle" to listOf(noisyCircle),
             "fitted_circle" to listOf(fittedCircle),
             "fit_center" to listOf(pointMarker(fitCenter.x, fitCenter.y)),
+            "noisy_line" to listOf(noisyLine),
+            "fitted_line" to listOf(fittedLine),
+            "curved_path" to listOf(curvedPath),
+            "fitted_polynomial" to listOf(fittedPoly),
+            "noisy_ellipse" to listOf(noisyEllipse),
+            "fitted_ellipse" to listOf(fittedEllipse),
+            "ellipse_center" to listOf(pointMarker(ellipseFit.center.x, ellipseFit.center.y)),
+            "wavy_path" to listOf(wavyPath),
+            "fitted_bezier" to listOf(fittedBezier),
+            "complex_curve" to listOf(complexCurve),
+            "piecewise_segments" to piecewiseSegments,
+            "input_points" to points.map { pointMarker(it.x, it.y, it.z) },
+            "linear_fit" to listOf(linearFit),
+            "quadratic_fit" to listOf(quadraticFit),
+            "bezier_fit" to listOf(bezierFit),
+            "adaptive_fit" to listOf(adaptiveFit),
             "polyline" to listOf(polyline),
             "subdivided" to listOf(subdivided),
             "arc_length_param" to listOf(arcLength)
@@ -1313,6 +1432,35 @@ object FLineGeometryExamples {
             // ===== Advanced Curve Fitting =====
             println("  Testing advanced curve fitting...")
             testCircle.fitCircle(20)
+            testLine.fitLine2D(20)
+            testLine.fitLine3D(20)
+            testLine.fitPolynomial(degree = 2, samples = 20)
+            testLine.fitPolynomial(degree = 3, samples = 20)
+            testCircle.fitEllipse(samples = 30)
+            testLine.fitBezierCubic(samples = 20)
+            testLine.fitPiecewiseLinear(maxSegments = 5, curvatureThreshold = 0.05f, samples = 50)
+            
+            // Test pointsToFLine with various strategies
+            val testPoints = listOf(
+                vec(0f, 0f, 0f),
+                vec(10f, 5f, 0f),
+                vec(20f, 8f, 0f),
+                vec(30f, 6f, 0f),
+                vec(40f, 10f, 0f)
+            )
+            val testPoints2D = listOf(
+                vec(0f, 0f),
+                vec(10f, 5f),
+                vec(20f, 8f),
+                vec(30f, 6f)
+            )
+            pointsToFLine(testPoints, "linear")
+            pointsToFLine(testPoints, "quadratic")
+            pointsToFLine(testPoints, "cubic")
+            pointsToFLine(testPoints, "bezier")
+            pointsToFLine(testPoints, "adaptive")
+            pointsToFLine(testPoints2D, "linear")  // Test Vec2 overload
+            
             testLine.bySubdividing(2)
             testLine.byArcLengthParameterizing(5f)
             println("    ✓ Advanced curve fitting passed")

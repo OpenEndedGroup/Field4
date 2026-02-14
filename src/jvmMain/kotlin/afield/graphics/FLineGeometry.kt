@@ -1015,6 +1015,656 @@ fun FLine.fitCircle(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
 }
 
 /**
+ * Fit a line to points on the curve using least squares in 2D.
+ * Returns the line as two points (start and end) that best fit the sampled points,
+ * along with the RMS error.
+ * @param samples number of points to sample from the curve
+ * @return Triple of (start point, end point, RMS error)
+ */
+fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Vec2, Vec2, Float> {
+    val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
+    
+    if (points.size < 2) {
+        // Degenerate case
+        val p = points.firstOrNull() ?: vec(0f, 0f)
+        return Triple(p, p, 0f)
+    }
+    
+    // Calculate centroid
+    val n = points.size.toFloat()
+    val cx = points.sumOf { it.x.toDouble() }.toFloat() / n
+    val cy = points.sumOf { it.y.toDouble() }.toFloat() / n
+    val centroid = vec(cx, cy)
+    
+    // Calculate covariance matrix elements
+    var sxx = 0f
+    var sxy = 0f
+    var syy = 0f
+    
+    points.forEach { p ->
+        val dx = p.x - cx
+        val dy = p.y - cy
+        sxx += dx * dx
+        sxy += dx * dy
+        syy += dy * dy
+    }
+    
+    // Find principal direction using eigenvalue decomposition
+    // For 2x2 symmetric matrix, we can solve analytically
+    val trace = sxx + syy
+    val det = sxx * syy - sxy * sxy
+    val lambda1 = trace / 2 + sqrt((trace * trace / 4 - det).coerceAtLeast(0f))
+    
+    // Eigenvector for largest eigenvalue gives line direction
+    val dirX: Float
+    val dirY: Float
+    if (abs(sxy) > 1e-6f) {
+        dirX = lambda1 - syy
+        dirY = sxy
+    } else if (sxx > syy) {
+        dirX = 1f
+        dirY = 0f
+    } else {
+        dirX = 0f
+        dirY = 1f
+    }
+    
+    // Normalize direction
+    val dirLen = sqrt(dirX * dirX + dirY * dirY)
+    val dx = dirX / dirLen
+    val dy = dirY / dirLen
+    
+    // Project all points onto the line and find extent
+    var minT = Float.POSITIVE_INFINITY
+    var maxT = Float.NEGATIVE_INFINITY
+    
+    points.forEach { p ->
+        val t = (p.x - cx) * dx + (p.y - cy) * dy
+        minT = min(minT, t)
+        maxT = max(maxT, t)
+    }
+    
+    // Compute line endpoints
+    val start = vec(cx + minT * dx, cy + minT * dy)
+    val end = vec(cx + maxT * dx, cy + maxT * dy)
+    
+    // Calculate RMS error (perpendicular distance to line)
+    val error = sqrt(points.sumOf { p ->
+        val t = (p.x - cx) * dx + (p.y - cy) * dy
+        val projX = cx + t * dx
+        val projY = cy + t * dy
+        val distSq = (p.x - projX) * (p.x - projX) + (p.y - projY) * (p.y - projY)
+        distSq.toDouble()
+    }.toFloat() / n)
+    
+    return Triple(start, end, error)
+}
+
+/**
+ * Fit a line to points on the curve using power iteration in 3D.
+ * Uses power iteration on the covariance matrix to find the principal eigenvector,
+ * which gives the best-fit line direction.
+ * Returns the line as a point (centroid) and direction vector, along with the RMS error.
+ * @param samples number of points to sample from the curve
+ * @return Triple of (point on line, direction vector, RMS error)
+ */
+fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Vec3, Vec3, Float> {
+    val points = this.samplePoints(samples, sampler = sampler)
+    
+    if (points.size < 2) {
+        val p = points.firstOrNull() ?: vec(0f, 0f, 0f)
+        return Triple(p, vec(1f, 0f, 0f), 0f)
+    }
+    
+    // Calculate centroid
+    val n = points.size.toFloat()
+    val cx = points.sumOf { it.x.toDouble() }.toFloat() / n
+    val cy = points.sumOf { it.y.toDouble() }.toFloat() / n
+    val cz = points.sumOf { it.z.toDouble() }.toFloat() / n
+    val centroid = vec(cx, cy, cz)
+    
+    // Build covariance matrix
+    var sxx = 0f
+    var sxy = 0f
+    var sxz = 0f
+    var syy = 0f
+    var syz = 0f
+    var szz = 0f
+    
+    points.forEach { p ->
+        val dx = p.x - cx
+        val dy = p.y - cy
+        val dz = p.z - cz
+        sxx += dx * dx
+        sxy += dx * dy
+        sxz += dx * dz
+        syy += dy * dy
+        syz += dy * dz
+        szz += dz * dz
+    }
+    
+    // Simple power iteration to find principal eigenvector
+    var vx = 1f; var vy = 1f; var vz = 1f
+    repeat(20) {
+        val newX = sxx * vx + sxy * vy + sxz * vz
+        val newY = sxy * vx + syy * vy + syz * vz
+        val newZ = sxz * vx + syz * vy + szz * vz
+        val len = sqrt(newX * newX + newY * newY + newZ * newZ)
+        if (len > 1e-6f) {
+            vx = newX / len
+            vy = newY / len
+            vz = newZ / len
+        }
+    }
+    
+    val direction = vec(vx, vy, vz)
+    
+    // Calculate RMS error
+    val error = sqrt(points.sumOf { p ->
+        val v = Vec3(p).sub(centroid)
+        val proj = v.dot(direction)
+        val perpDistSq = Vec3(v).sub(Vec3(direction).mul(proj)).lengthSquared()
+        perpDistSq.toDouble()
+    }.toFloat() / n)
+    
+    return Triple(centroid, direction, error)
+}
+
+/**
+ * Fit a polynomial of given degree to the curve in 2D.
+ * Uses Smile's OLS (Ordinary Least Squares) for robust fitting.
+ * Fits y = a0 + a1*x + a2*x^2 + ... + an*x^n
+ * @param degree degree of polynomial (1=linear, 2=quadratic, 3=cubic, etc.)
+ * @param samples number of points to sample
+ * @return Pair of (coefficients array [a0, a1, ..., an], RMS error)
+ */
+fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? = null): Pair<FloatArray, Float> {
+    require(degree >= 1) { "Polynomial degree must be at least 1" }
+    
+    val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
+    val n = points.size
+    
+    if (n < degree + 1) {
+        // Not enough points for the degree
+        return Pair(FloatArray(degree + 1) { 0f }, Float.POSITIVE_INFINITY)
+    }
+    
+    return try {
+        // Build design matrix (Vandermonde matrix) for polynomial fitting
+        val designMatrix = smile.math.matrix.Matrix(n, degree + 1)
+        val yVector = DoubleArray(n)
+        
+        points.forEachIndexed { idx, p ->
+            var xPow = 1.0
+            for (j in 0..degree) {
+                designMatrix[idx, j] = xPow
+                xPow *= p.x.toDouble()
+            }
+            yVector[idx] = p.y.toDouble()
+        }
+        
+        // Use Smile's OLS for robust least squares fitting
+        val model = smile.regression.OLS.fit(designMatrix, yVector)
+        val coeffs = FloatArray(degree + 1) { i -> model.coefficients()[i].toFloat() }
+        
+        // Calculate RMS error
+        val error = sqrt(points.sumOf { p ->
+            var yPred = 0f
+            var xPow = 1f
+            for (i in 0..degree) {
+                yPred += coeffs[i] * xPow
+                xPow *= p.x
+            }
+            val residual = p.y - yPred
+            (residual * residual).toDouble()
+        }.toFloat() / n)
+        
+        Pair(coeffs, error)
+    } catch (e: Exception) {
+        // Fallback to zero coefficients if Smile fitting fails
+        // Log for debugging but don't fail the operation
+        if (System.getProperty("field.debug") != null) {
+            System.err.println("FLineGeometry.fitPolynomial: Smile OLS failed, using fallback: ${e.message}")
+        }
+        Pair(FloatArray(degree + 1) { 0f }, Float.POSITIVE_INFINITY)
+    }
+}
+
+/**
+ * Fit an ellipse to points on the curve using moment-based approximation.
+ * Note: This uses a simplified moment-based method rather than full algebraic distance
+ * minimization. It provides good approximations for well-behaved elliptical data.
+ * 
+ * Returns ellipse parameters: center, semi-major axis length, semi-minor axis length, 
+ * rotation angle, and fitting error.
+ * 
+ * @param samples number of points to sample
+ * @return data class containing ellipse parameters and error (note: error is approximate)
+ */
+data class EllipseFit(
+    val center: Vec2,
+    val semiMajorAxis: Float,
+    val semiMinorAxis: Float,
+    val rotationAngle: Float,
+    val error: Float
+)
+
+fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseFit {
+    val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
+    
+    if (points.size < 5) {
+        // Need at least 5 points for an ellipse
+        val center = points.firstOrNull() ?: vec(0f, 0f)
+        return EllipseFit(center, 0f, 0f, 0f, Float.POSITIVE_INFINITY)
+    }
+    
+    val n = points.size
+    
+    // Direct least squares fitting of ellipse
+    // Fit: a*x^2 + b*x*y + c*y^2 + d*x + e*y + f = 0
+    // with constraint: b^2 - 4*a*c < 0 (ellipse constraint)
+    
+    // Build design matrix for quadratic curve
+    val d = Array(n) { FloatArray(6) }
+    points.forEachIndexed { i, p ->
+        val x = p.x
+        val y = p.y
+        d[i][0] = x * x
+        d[i][1] = x * y
+        d[i][2] = y * y
+        d[i][3] = x
+        d[i][4] = y
+        d[i][5] = 1f
+    }
+    
+    // Build scatter matrix: D^T * D
+    val s = Array(6) { FloatArray(6) { 0f } }
+    for (i in 0 until 6) {
+        for (j in 0 until 6) {
+            for (k in 0 until n) {
+                s[i][j] += d[k][i] * d[k][j]
+            }
+        }
+    }
+    
+    // Use simplified algebraic fit (assuming b^2-4ac constraint)
+    // This is a simplified version - full implementation would use eigenvalue method
+    // For robustness, we normalize and solve approximately
+    
+    // Normalize points
+    val meanX = points.sumOf { it.x.toDouble() }.toFloat() / n
+    val meanY = points.sumOf { it.y.toDouble() }.toFloat() / n
+    val stdX = sqrt(points.sumOf { ((it.x - meanX) * (it.x - meanX)).toDouble() }.toFloat() / n)
+    val stdY = sqrt(points.sumOf { ((it.y - meanY) * (it.y - meanY)).toDouble() }.toFloat() / n)
+    
+    // Use a simple moment-based approximation for ellipse
+    var m20 = 0f; var m02 = 0f; var m11 = 0f
+    points.forEach { p ->
+        val dx = p.x - meanX
+        val dy = p.y - meanY
+        m20 += dx * dx
+        m02 += dy * dy
+        m11 += dx * dy
+    }
+    m20 /= n; m02 /= n; m11 /= n
+    
+    // Eigenvalues of moment matrix
+    val trace = m20 + m02
+    val det = m20 * m02 - m11 * m11
+    val lambda1 = trace / 2 + sqrt((trace * trace / 4 - det).coerceAtLeast(0f))
+    val lambda2 = trace / 2 - sqrt((trace * trace / 4 - det).coerceAtLeast(0f))
+    
+    val semiMajor = 2 * sqrt(lambda1.coerceAtLeast(0f))
+    val semiMinor = 2 * sqrt(lambda2.coerceAtLeast(0f))
+    
+    // Rotation angle from eigenvector
+    val angle = if (abs(m11) > 1e-6f) {
+        atan2(lambda1 - m02, m11)
+    } else if (m20 > m02) {
+        0f
+    } else {
+        (PI / 2).toFloat()
+    }
+    
+    // Calculate error as average approximate distance from ellipse
+    // Note: This uses a simplified distance metric for performance
+    val error = points.sumOf { p ->
+        val dx = p.x - meanX
+        val dy = p.y - meanY
+        // Approximate distance to ellipse by comparing radial distance to average radius
+        val dist = sqrt(dx * dx + dy * dy)
+        abs(dist - (semiMajor + semiMinor) / 2).toDouble()
+    }.toFloat() / n
+    
+    return EllipseFit(vec(meanX, meanY), semiMajor, semiMinor, angle, error)
+}
+
+/**
+ * Fit a cubic Bezier curve to the sampled points.
+ * Uses least squares to find control points that best approximate the curve.
+ * Can fit any number of points >= 2.
+ * @param samples number of points to sample
+ * @return Quad of (start point, control point 1, control point 2, end point) and error
+ */
+fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair<Array<Vec3>, Float> {
+    val points = this.samplePoints(samples, sampler = sampler)
+    
+    if (points.size < 2) {
+        // Not enough points
+        val p = points.firstOrNull() ?: vec(0f, 0f, 0f)
+        return Pair(arrayOf(p, p, p, p), Float.POSITIVE_INFINITY)
+    }
+    
+    // Fix endpoints to first and last sampled points
+    val p0 = points.first()
+    val p3 = points.last()
+    
+    // Parameterize points by chord length
+    val params = FloatArray(points.size)
+    params[0] = 0f
+    var totalLength = 0f
+    for (i in 1 until points.size) {
+        val dist = Vec3(points[i]).sub(points[i - 1]).length()
+        totalLength += dist
+        params[i] = totalLength
+    }
+    if (totalLength > 1e-6f) {
+        for (i in 0 until points.size) {
+            params[i] /= totalLength
+        }
+    }
+    
+    return try {
+        // Use Smile OLS to solve for control points
+        // For each interior point: B(t) = (1-t)³p0 + 3(1-t)²t*p1 + 3(1-t)t²*p2 + t³p3
+        // Rearranging: points[i] - ((1-t)³p0 + t³p3) = 3(1-t)²t*p1 + 3(1-t)t²*p2
+        
+        // Build design matrix [basis1, basis2] for least squares
+        val n = points.size
+        val designMatrix = smile.math.matrix.Matrix(n, 2)
+        val targetX = DoubleArray(n)
+        val targetY = DoubleArray(n)
+        val targetZ = DoubleArray(n)
+        
+        for (i in points.indices) {
+            val t = params[i].toDouble()
+            val t2 = t * t
+            val t3 = t2 * t
+            val mt = 1.0 - t
+            val mt2 = mt * mt
+            val mt3 = mt2 * mt
+            
+            val basis1 = 3.0 * mt2 * t
+            val basis2 = 3.0 * mt * t2
+            
+            designMatrix[i, 0] = basis1
+            designMatrix[i, 1] = basis2
+            
+            val fixedContribution = Vec3(p0).mul(mt3.toFloat()).add(Vec3(p3).mul(t3.toFloat()))
+            targetX[i] = (points[i].x - fixedContribution.x).toDouble()
+            targetY[i] = (points[i].y - fixedContribution.y).toDouble()
+            targetZ[i] = (points[i].z - fixedContribution.z).toDouble()
+        }
+        
+        // Solve for p1 and p2 using OLS for each coordinate
+        val xModel = smile.regression.OLS.fit(designMatrix, targetX)
+        val yModel = smile.regression.OLS.fit(designMatrix, targetY)
+        val zModel = smile.regression.OLS.fit(designMatrix, targetZ)
+        
+        val p1 = vec(
+            xModel.coefficients()[0].toFloat(),
+            yModel.coefficients()[0].toFloat(),
+            zModel.coefficients()[0].toFloat()
+        )
+        val p2 = vec(
+            xModel.coefficients()[1].toFloat(),
+            yModel.coefficients()[1].toFloat(),
+            zModel.coefficients()[1].toFloat()
+        )
+        
+        // Calculate error
+        val error = points.withIndex().sumOf { (i, p) ->
+            val t = params[i]
+            val t2 = t * t
+            val t3 = t2 * t
+            val mt = 1 - t
+            val mt2 = mt * mt
+            val mt3 = mt2 * mt
+            
+            val bezierPt = Vec3(p0).mul(mt3)
+                .add(Vec3(p1).mul(3 * mt2 * t))
+                .add(Vec3(p2).mul(3 * mt * t2))
+                .add(Vec3(p3).mul(t3))
+            
+            Vec3(p).sub(bezierPt).lengthSquared().toDouble()
+        }.toFloat() / points.size
+        
+        Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
+        
+    } catch (e: Exception) {
+        // Fallback: use simple interpolation for control points
+        // Log for debugging but don't fail the operation
+        if (System.getProperty("field.debug") != null) {
+            System.err.println("FLineGeometry.fitBezierCubic: Smile OLS failed, using fallback: ${e.message}")
+        }
+        val p1 = Vec3(p0).lerp(p3, 0.33f)
+        val p2 = Vec3(p0).lerp(p3, 0.67f)
+        
+        // Calculate error with fallback curve
+        val error = points.withIndex().sumOf { (i, p) ->
+            val t = params[i]
+            val t2 = t * t
+            val t3 = t2 * t
+            val mt = 1 - t
+            val mt2 = mt * mt
+            val mt3 = mt2 * mt
+            
+            val bezierPt = Vec3(p0).mul(mt3)
+                .add(Vec3(p1).mul(3 * mt2 * t))
+                .add(Vec3(p2).mul(3 * mt * t2))
+                .add(Vec3(p3).mul(t3))
+            
+            Vec3(p).sub(bezierPt).lengthSquared().toDouble()
+        }.toFloat() / points.size
+        
+        Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
+    }
+}
+
+/**
+ * Fit piecewise linear segments to the curve adaptively based on curvature.
+ * High curvature areas get more segments. Returns a list of line segments.
+ * @param maxSegments maximum number of segments
+ * @param curvatureThreshold minimum curvature to force a segment break
+ * @return List of FLines, each representing a line segment
+ */
+fun FLine.fitPiecewiseLinear(
+    maxSegments: Int = 10,
+    curvatureThreshold: Float = 0.05f,
+    samples: Int = 100,
+    sampler: FLineSampler? = null
+): List<FLine> {
+    val points = this.samplePoints(samples, sampler = sampler)
+    if (points.size < 2) return emptyList()
+    
+    // Analyze curvature to find break points
+    val curvatures = this.curvatureAnalysis(samples = samples)
+    val breakIndices = mutableListOf(0)
+    
+    // Find high curvature points
+    curvatures.forEachIndexed { i, (_, k) ->
+        if (abs(k) > curvatureThreshold && i > breakIndices.last() + samples / maxSegments) {
+            breakIndices.add(i)
+        }
+    }
+    
+    // Ensure we don't exceed maxSegments
+    while (breakIndices.size > maxSegments) {
+        // Remove breaks at lowest curvature
+        val toRemove = breakIndices
+            .drop(1)
+            .minByOrNull { i -> abs(curvatures.getOrNull(i)?.second ?: 0f) }
+        if (toRemove != null) breakIndices.remove(toRemove)
+        else break
+    }
+    
+    breakIndices.add(points.size - 1)
+    
+    // Create line segments
+    val segments = mutableListOf<FLine>()
+    for (i in 0 until breakIndices.size - 1) {
+        val start = breakIndices[i]
+        val end = breakIndices[i + 1]
+        
+        if (start < points.size && end < points.size) {
+            val line = FLine()
+            line.moveTo(points[start])
+            line.lineTo(points[end])
+            segments.add(line)
+        }
+    }
+    
+    return segments
+}
+
+/**
+ * Create an FLine from a list of points with automatic curve fitting.
+ * @param points list of points to fit
+ * @param strategy fitting strategy: "linear", "quadratic", "cubic", "bezier", or "adaptive"
+ * @return new FLine fitted to the points
+ */
+fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
+    if (points.isEmpty()) return FLine()
+    if (points.size == 1) return FLine().also { it.moveTo(points[0]) }
+    
+    val line = FLine()
+    
+    when (strategy.lowercase()) {
+        "linear" -> {
+            // Simple linear interpolation
+            line.moveTo(points[0])
+            points.drop(1).forEach { line.lineTo(it) }
+        }
+        
+        "quadratic", "cubic" -> {
+            // Polynomial fit
+            val tempLine = FLine().also { fl ->
+                fl.moveTo(points[0])
+                points.drop(1).forEach { fl.lineTo(it) }
+            }
+            val degree = if (strategy == "quadratic") 2 else 3
+            val (coeffs, _) = tempLine.fitPolynomial(degree, samples = points.size)
+            
+            // Create smooth curve from polynomial
+            line.moveTo(points.first())
+            val xMin = points.minOf { it.x }
+            val xMax = points.maxOf { it.x }
+            val steps = (points.size * 2).coerceAtLeast(20)
+            for (i in 1..steps) {
+                val x = xMin + (xMax - xMin) * i / steps
+                var y = 0f
+                var xPow = 1f
+                coeffs.forEach { coeff ->
+                    y += coeff * xPow
+                    xPow *= x
+                }
+                line.lineTo(x, y, points.first().z)
+            }
+        }
+        
+        "bezier" -> {
+            // Fit cubic Bezier segments
+            line.moveTo(points[0])
+            
+            // Process points in groups of 4 (or less for the last segment)
+            var i = 0
+            while (i < points.size - 1) {
+                val segmentEnd = min(i + 4, points.size)
+                val segmentPoints = points.subList(i, segmentEnd)
+                
+                val tempLine = FLine().also { fl ->
+                    fl.moveTo(segmentPoints[0])
+                    segmentPoints.drop(1).forEach { fl.lineTo(it) }
+                }
+                
+                if (segmentPoints.size >= 4) {
+                    val (bezier, _) = tempLine.fitBezierCubic(samples = segmentPoints.size)
+                    line.cubicTo(bezier[1], bezier[2], bezier[3])
+                } else {
+                    // Not enough points, just draw lines
+                    segmentPoints.drop(1).forEach { line.lineTo(it) }
+                }
+                
+                i += 3 // Move forward 3 points (from 4-point group) to maintain 1-point overlap
+            }
+        }
+        
+        "adaptive" -> {
+            // Adaptive fitting based on point spacing
+            // Strategy: Use Bezier curves for areas with consistent point spacing (likely from smooth curves),
+            // and straight lines for areas with irregular spacing (likely from corners or complex features)
+            line.moveTo(points[0])
+            
+            // Calculate average distance between consecutive points
+            val distances = points.zipWithNext().map { (a, b) -> Vec3(a).sub(b).length() }
+            val avgDist = distances.average().toFloat()
+            val stdDist = sqrt(distances.sumOf { (it - avgDist) * (it - avgDist).toDouble() }.toFloat() / distances.size)
+            
+            // Process points in groups
+            var i = 0
+            while (i < points.size - 1) {
+                val segmentStart = i
+                var segmentEnd = min(i + 4, points.size - 1)
+                
+                // Check if next few points have consistent spacing (suggesting a smooth curve section)
+                // Note: This is about point distribution, not the curve parameterization.
+                // Cubic splines/Bezier can fit any points, but consistent spacing indicates
+                // the points likely came from a smooth section worth representing with a curve.
+                val hasConsistentSpacing = if (segmentEnd - segmentStart >= 2) {
+                    val localDists = (segmentStart until segmentEnd).map { idx ->
+                        if (idx + 1 < points.size) Vec3(points[idx]).sub(points[idx + 1]).length() else 0f
+                    }
+                    localDists.all { abs(it - avgDist) < stdDist * 2 }
+                } else false
+                
+                if (hasConsistentSpacing && segmentEnd - segmentStart >= 3) {
+                    // Use Bezier curve - can fit any number of points >= 2
+                    val segmentPoints = points.subList(segmentStart, segmentEnd + 1)
+                    val tempLine = FLine().also { fl ->
+                        fl.moveTo(segmentPoints[0])
+                        segmentPoints.drop(1).forEach { fl.lineTo(it) }
+                    }
+                    val (bezier, _) = tempLine.fitBezierCubic(samples = segmentPoints.size)
+                    line.cubicTo(bezier[1], bezier[2], bezier[3])
+                    i += 3
+                } else {
+                    // Use straight line for irregular spacing
+                    line.lineTo(points[i + 1])
+                    i += 1
+                }
+            }
+        }
+        
+        else -> {
+            // Default to linear
+            line.moveTo(points[0])
+            points.drop(1).forEach { line.lineTo(it) }
+        }
+    }
+    
+    return line
+}
+
+/**
+ * Create an FLine from a list of 2D points.
+ * Convenience function that converts Vec2 to Vec3 with z=0.
+ */
+@JvmName("pointsToFLineVec2")
+fun pointsToFLine(points: List<Vec2>, strategy: String = "adaptive"): FLine {
+    return pointsToFLine(points.map { vec(it.x, it.y, 0f) }, strategy)
+}
+
+/**
  * Subdivide a curve using De Casteljau's algorithm.
  * This creates a smoother approximation with more control points.
  */

@@ -367,6 +367,162 @@ Returns:
 - `radius`: radius of fitted circle
 - `error`: average fitting error
 
+### Line Fitting in 2D
+
+Fit a line to points using least squares in 2D:
+
+```kotlin
+val (startPoint, endPoint, error) = myLine.fitLine2D( samples = 20)
+```
+
+Returns:
+- `startPoint`: start point of the best-fit line
+- `endPoint`: end point of the best-fit line
+- `error`: RMS error (perpendicular distance to line)
+
+Uses principal component analysis (PCA) to find the best-fit line through sampled points.
+
+### Line Fitting in 3D
+
+Fit a line to points in 3D space:
+
+```kotlin
+val (pointOnLine, direction, error) = myLine.fitLine3D( samples = 20)
+```
+
+Returns:
+- `pointOnLine`: a point on the line (centroid)
+- `direction`: normalized direction vector of the line
+- `error`: RMS error (perpendicular distance to line)
+
+Uses power iteration to find the principal eigenvector of the covariance matrix.
+
+### Polynomial Fitting
+
+Fit a polynomial of arbitrary degree to the curve:
+
+```kotlin
+val (coefficients, error) = myLine.fitPolynomial( 
+    degree = 2,  // 1=linear, 2=quadratic, 3=cubic, etc.
+    samples = 50
+)
+```
+
+Returns:
+- `coefficients`: array [a0, a1, ..., an] where y = a0 + a1*x + a2*x^2 + ... + an*x^n
+- `error`: RMS fitting error
+
+Example with quadratic (parabola):
+```kotlin
+val (coeffs, error) = myLine.fitPolynomial(degree = 2, samples = 30)
+// coeffs[0] = constant term, coeffs[1] = linear term, coeffs[2] = quadratic term
+
+// Create smooth curve from fitted polynomial
+val fitted = FLine()
+val xMin = points.minOf { it.x }
+val xMax = points.maxOf { it.x }
+fitted.moveTo(xMin, coeffs[0] + coeffs[1] * xMin + coeffs[2] * xMin * xMin)
+for (i in 1..100) {
+    val x = xMin + (xMax - xMin) * i / 100f
+    val y = coeffs[0] + coeffs[1] * x + coeffs[2] * x * x
+    fitted.lineTo(x, y)
+}
+```
+
+### Ellipse Fitting
+
+Fit an ellipse to points using moment-based approximation:
+
+```kotlin
+val ellipseFit = myLine.fitEllipse( samples = 30)
+```
+
+Returns an `EllipseFit` data class with:
+- `center`: center point of the ellipse
+- `semiMajorAxis`: length of semi-major axis
+- `semiMinorAxis`: length of semi-minor axis  
+- `rotationAngle`: rotation angle in radians
+- `error`: average fitting error
+
+Example:
+```kotlin
+val fit = myLine.fitEllipse(samples = 40)
+println("Ellipse center: ${fit.center}")
+println("Semi-major axis: ${fit.semiMajorAxis}")
+println("Semi-minor axis: ${fit.semiMinorAxis}")
+println("Rotation: ${fit.rotationAngle} radians")
+println("Fitting error: ${fit.error}")
+```
+
+### Cubic Bezier Fitting
+
+Fit a cubic Bezier curve to sampled points:
+
+```kotlin
+val (controlPoints, error) = myLine.fitBezierCubic( samples = 20)
+```
+
+Returns:
+- `controlPoints`: array of 4 Vec3 points [P0, P1, P2, P3] where P0 and P3 are endpoints
+- `error`: RMS fitting error
+
+The endpoints (P0, P3) are fixed to the first and last sampled points, and the two control points (P1, P2) are optimized using least squares.
+
+Example:
+```kotlin
+val (bezier, error) = myLine.fitBezierCubic(samples = 15)
+val fitted = FLine()
+fitted.moveTo(bezier[0])
+fitted.cubicTo(bezier[1], bezier[2], bezier[3])
+```
+
+### Piecewise Linear Fitting
+
+Fit multiple line segments adaptively based on curvature:
+
+```kotlin
+val segments = myLine.fitPiecewiseLinear(
+    maxSegments = 10,
+    curvatureThreshold = 0.05f,
+    samples = 100
+)
+```
+
+Returns a list of FLine objects, each representing a line segment. High curvature areas automatically get more segments.
+
+Parameters:
+- `maxSegments`: maximum number of segments to create
+- `curvatureThreshold`: minimum curvature to force a segment break
+- `samples`: number of points to sample for analysis
+
+### Points to FLine Conversion
+
+Create an FLine from a list of points with automatic curve fitting:
+
+```kotlin
+val points = listOf(
+    vec(0f, 0f, 0f),
+    vec(20f, 30f, 0f),
+    vec(40f, 35f, 0f),
+    vec(60f, 25f, 0f)
+)
+
+// Various fitting strategies:
+val linear = pointsToFLine(points, "linear")       // Simple linear interpolation
+val quad = pointsToFLine(points, "quadratic")      // Quadratic polynomial fit
+val cubic = pointsToFLine(points, "cubic")         // Cubic polynomial fit
+val bezier = pointsToFLine(points, "bezier")       // Cubic Bezier segments
+val adaptive = pointsToFLine(points, "adaptive")   // Adaptive (default, recommended)
+```
+
+The `"adaptive"` strategy automatically chooses between Bezier curves and straight lines based on point spacing and local curvature, producing the most natural-looking results.
+
+Also works with 2D points:
+```kotlin
+val points2D = listOf(vec(0f, 0f), vec(10f, 5f), vec(20f, 8f))
+val line = pointsToFLine(points2D, "adaptive")  // z coordinate set to 0
+```
+
 ### Subdivision
 
 Subdivide using De Casteljau's algorithm:
