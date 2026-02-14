@@ -61,9 +61,12 @@ Created comprehensive documentation covering:
 3. **Context Update Phase**: ContextUpdater.refreshMethods() scans all methods
 4. **Detection**: Finds methods with @exported annotation using reflection
 5. **Signature Generation**: Creates a typed property declaration using Kotlin reflection
-   - Format: `val functionName: (ParamType1, ParamType2) -> ReturnType`
-6. **Preamble Update**: Adds the declaration to Box.preamble using HasProperties interface
-7. **Duplicate Prevention**: 
+   - Format: `val functionName: (ParamType1, ParamType2) -> ReturnType /**/`
+6. **Type Simplification**: Types are checked against whitelist; non-whitelisted types simplified
+   - Whitelisted: `kotlin.*`, `afield.*`, `org.joml.*`, built-in types
+   - Others: Simplified to generic supertypes (List<*>, Any?, etc.)
+7. **Preamble Update**: Adds the declaration with inherit marker to Box.preamble
+8. **Duplicate Prevention**: 
    - Tracks processed functions in `exportedFunctions` set
    - Checks if signature already exists in preamble
 
@@ -81,8 +84,10 @@ fun calculateDistance(x1: Double, y1: Double, x2: Double, y2: Double): Double {
 
 After execution, the box's preamble will contain:
 ```kotlin
-val calculateDistance: (kotlin.Double, kotlin.Double, kotlin.Double, kotlin.Double) -> kotlin.Double
+val calculateDistance: (kotlin.Double, kotlin.Double, kotlin.Double, kotlin.Double) -> kotlin.Double /**/
 ```
+
+The `/**/` marker indicates this declaration should be inherited by child boxes.
 
 ## Key Design Decisions
 

@@ -809,9 +809,9 @@ class KotlinInterface(
             val name = function.name
             val params = function.parameters.filter { it.kind != kotlin.reflect.KParameter.Kind.INSTANCE }
             val paramTypes = params.joinToString(", ") { param ->
-                param.type.toString()
+                simplifyTypeForExport(param.type.toString())
             }
-            val returnType = function.returnType.toString()
+            val returnType = simplifyTypeForExport(function.returnType.toString())
             
             val functionType = if (params.isEmpty()) {
                 "() -> $returnType"
@@ -819,7 +819,44 @@ class KotlinInterface(
                 "($paramTypes) -> $returnType"
             }
             
-            return "val $name: $functionType"
+            // Add the inherit marker /**/ at the end
+            return "val $name: $functionType /**/"
+        }
+        
+        private fun simplifyTypeForExport(typeName: String): String {
+            // Whitelist of types that are known to be imported in other code boxes
+            val whitelistedPrefixes = setOf(
+                "kotlin.",
+                "afield.",
+                "org.joml.",
+                // Common Kotlin types
+                "Int", "Long", "Short", "Byte",
+                "Float", "Double",
+                "Boolean", "Char", "String",
+                "Unit", "Any", "Nothing",
+                // Collections
+                "List", "Set", "Map", "Array",
+                "MutableList", "MutableSet", "MutableMap",
+                "Sequence", "Iterable", "Collection",
+                // Common function types are already in format (A, B) -> C
+            )
+            
+            // Check if the type is whitelisted
+            if (whitelistedPrefixes.any { typeName.startsWith(it) }) {
+                return typeName
+            }
+            
+            // For non-whitelisted types, try to find a generic supertype
+            // This is a simplified approach - we'll look for common patterns
+            return when {
+                typeName.contains("List") -> "List<*>"
+                typeName.contains("Set") -> "Set<*>"
+                typeName.contains("Map") -> "Map<*, *>"
+                typeName.contains("Collection") -> "Collection<*>"
+                typeName.contains("Iterable") -> "Iterable<*>"
+                typeName.contains("Sequence") -> "Sequence<*>"
+                else -> "Any?" // Fallback to the most generic type
+            }
         }
 
         @Throws(ReflectiveOperationException::class)

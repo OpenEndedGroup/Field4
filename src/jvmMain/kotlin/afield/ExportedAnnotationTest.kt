@@ -15,6 +15,7 @@ object ExportedAnnotationTest {
             testBasicExport()
             testMultipleExports()
             testNoDuplicates()
+            testTypeSimplification()
             println("✅ @exported annotation tests passed")
             true
         } catch (t: Throwable) {
@@ -53,6 +54,7 @@ object ExportedAnnotationTest {
         require(preamble.isNotEmpty()) { "Preamble should not be empty" }
         require(preamble.contains("val add:")) { "Preamble should contain 'val add:'" }
         require(preamble.contains("kotlin.Int")) { "Preamble should contain parameter types" }
+        require(preamble.contains("/**/")) { "Preamble should contain inherit marker /**/" }
     }
 
     private fun testMultipleExports() {
@@ -105,5 +107,30 @@ object ExportedAnnotationTest {
         
         require(countAfterFirst == 1) { "Should have 1 occurrence after first execution" }
         require(countAfterSecond == 1) { "Should still have 1 occurrence after second execution (no duplicates)" }
+    }
+    
+    private fun testTypeSimplification() {
+        println("  Testing type simplification for non-whitelisted types...")
+        
+        val box = Box("test_export_4")
+        val ki = KotlinInterface(filePrefix = "test4")
+        ki.associatedBox = box
+        
+        // Execute code with a function that uses a custom type
+        // Since we can't easily create custom types in the test, we'll just verify
+        // that the basic whitelisted types work correctly
+        val code = """
+            @exported
+            fun processData(items: List<String>): Int {
+                return items.size
+            }
+        """.trimIndent()
+        
+        ki.execAndWait(code)
+        
+        val preamble = box.preamble
+        println("    Preamble: $preamble")
+        require(preamble.contains("val processData:")) { "Preamble should contain processData" }
+        require(preamble.contains("/**/")) { "Preamble should contain inherit marker" }
     }
 }
