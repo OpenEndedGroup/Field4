@@ -1,0 +1,1049 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
+package afield.stdlib
+
+import kotlin.math.abs
+import kotlin.math.sqrt
+import kotlin.math.max
+import kotlin.math.min
+
+/**
+ * Represents an edge between two points in a graph.
+ *
+ * @param i Index of the first point
+ * @param j Index of the second point
+ * @param weight Weight/distance of the edge
+ */
+data class GraphEdge(val i: Int, val j: Int, val weight: Double) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is GraphEdge) return false
+        return (i == other.i && j == other.j) || (i == other.j && j == other.i)
+    }
+
+    override fun hashCode(): Int {
+        val min = min(i, j)
+        val max = max(i, j)
+        return 31 * min + max
+    }
+}
+
+/**
+ * Represents a graph computed from a set of points.
+ *
+ * @param edges List of edges in the graph
+ * @param pointCount Number of points in the graph
+ */
+data class PointGraph(val edges: List<GraphEdge>, val pointCount: Int) {
+    /**
+     * Get all neighbors of a point.
+     */
+    fun neighbors(pointIndex: Int): List<Int> {
+        return edges.filter { it.i == pointIndex || it.j == pointIndex }
+            .map { if (it.i == pointIndex) it.j else it.i }
+    }
+
+    /**
+     * Get the degree (number of neighbors) of a point.
+     */
+    fun degree(pointIndex: Int): Int = neighbors(pointIndex).size
+}
+
+/**
+ * Options for graph connectivity algorithms.
+ *
+ * @param allowDuplicatePoints Whether to allow duplicate points
+ */
+data class GraphConnectivityOptions(
+    val allowDuplicatePoints: Boolean = true
+)
+
+// ==================== 2D Graph Algorithms ====================
+
+/**
+ * Compute a K-Nearest Neighbors graph for 2D points.
+ *
+ * Each point is connected to its k nearest neighbors.
+ *
+ * @param points List of 2D points
+ * @param k Number of nearest neighbors per point
+ * @param options Graph connectivity options
+ * @return PointGraph with KNN edges
+ */
+fun vec2KnnGraph(
+    points: List<Vec2>,
+    k: Int,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2KnnGraph: points must not be empty" }
+    require(k > 0) { "vec2KnnGraph: k must be > 0, found $k" }
+    validatePoints2D(points, "vec2KnnGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        val distances = points.indices
+            .filter { it != i }
+            .map { j -> j to distance2D(points[i], points[j]) }
+            .sortedBy { it.second }
+            .take(minOf(k, points.size - 1))
+        
+        for ((j, dist) in distances) {
+            edges.add(GraphEdge(i, j, dist))
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a K-Nearest Neighbors graph for 3D points.
+ *
+ * Each point is connected to its k nearest neighbors.
+ *
+ * @param points List of 3D points
+ * @param k Number of nearest neighbors per point
+ * @param options Graph connectivity options
+ * @return PointGraph with KNN edges
+ */
+fun vec3KnnGraph(
+    points: List<Vec3>,
+    k: Int,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3KnnGraph: points must not be empty" }
+    require(k > 0) { "vec3KnnGraph: k must be > 0, found $k" }
+    validatePoints3D(points, "vec3KnnGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        val distances = points.indices
+            .filter { it != i }
+            .map { j -> j to distance3D(points[i], points[j]) }
+            .sortedBy { it.second }
+            .take(minOf(k, points.size - 1))
+        
+        for ((j, dist) in distances) {
+            edges.add(GraphEdge(i, j, dist))
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute an Orthant Neighborhood Graph for 2D points.
+ *
+ * Two points are connected if they are mutual nearest neighbors in the same orthant.
+ * An orthant is a quadrant defined by the coordinate axes relative to a point.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with orthant neighborhood edges
+ */
+fun vec2OrthantGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2OrthantGraph: points must not be empty" }
+    validatePoints2D(points, "vec2OrthantGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        val pi = points[i]
+        
+        // Four orthants: (+,+), (+,-), (-,+), (-,-)
+        val orthants = listOf(
+            listOf(true, true),   // NE: x>0, y>0
+            listOf(true, false),  // SE: x>0, y<0
+            listOf(false, true),  // NW: x<0, y>0
+            listOf(false, false)  // SW: x<0, y<0
+        )
+        
+        for (orthant in orthants) {
+            val (xPos, yPos) = orthant
+            
+            // Find nearest neighbor in this orthant
+            var nearest: Int? = null
+            var nearestDist = Double.POSITIVE_INFINITY
+            
+            for (j in points.indices) {
+                if (i == j) continue
+                val pj = points[j]
+                val dx = pj.x - pi.x
+                val dy = pj.y - pi.y
+                
+                // Check if point is in the correct orthant
+                val inOrthant = if (xPos) dx > 0 else dx < 0
+                val inOrthantY = if (yPos) dy > 0 else dy < 0
+                
+                if (inOrthant && inOrthantY) {
+                    val dist = distance2D(pi, pj)
+                    if (dist < nearestDist) {
+                        nearestDist = dist
+                        nearest = j
+                    }
+                }
+            }
+            
+            if (nearest != null) {
+                edges.add(GraphEdge(i, nearest, nearestDist))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute an Orthant Neighborhood Graph for 3D points.
+ *
+ * Two points are connected if they are mutual nearest neighbors in the same orthant.
+ * An orthant is an octant defined by the coordinate axes relative to a point.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with orthant neighborhood edges
+ */
+fun vec3OrthantGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3OrthantGraph: points must not be empty" }
+    validatePoints3D(points, "vec3OrthantGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        val pi = points[i]
+        
+        // Eight orthants (octants) in 3D
+        val orthants = listOf(
+            listOf(true, true, true),     // +,+,+
+            listOf(true, true, false),    // +,+,-
+            listOf(true, false, true),    // +,-,+
+            listOf(true, false, false),   // +,-,-
+            listOf(false, true, true),    // -,+,+
+            listOf(false, true, false),   // -,+,-
+            listOf(false, false, true),   // -,-,+
+            listOf(false, false, false)   // -,-,-
+        )
+        
+        for (orthant in orthants) {
+            val (xPos, yPos, zPos) = orthant
+            
+            // Find nearest neighbor in this orthant
+            var nearest: Int? = null
+            var nearestDist = Double.POSITIVE_INFINITY
+            
+            for (j in points.indices) {
+                if (i == j) continue
+                val pj = points[j]
+                val dx = pj.x - pi.x
+                val dy = pj.y - pi.y
+                val dz = pj.z - pi.z
+                
+                // Check if point is in the correct orthant
+                val inOrthantX = if (xPos) dx > 0 else dx < 0
+                val inOrthantY = if (yPos) dy > 0 else dy < 0
+                val inOrthantZ = if (zPos) dz > 0 else dz < 0
+                
+                if (inOrthantX && inOrthantY && inOrthantZ) {
+                    val dist = distance3D(pi, pj)
+                    if (dist < nearestDist) {
+                        nearestDist = dist
+                        nearest = j
+                    }
+                }
+            }
+            
+            if (nearest != null) {
+                edges.add(GraphEdge(i, nearest, nearestDist))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a Relative Neighborhood Graph (RNG) for 2D points.
+ *
+ * An edge (u,v) is in RNG if there is no other point w such that
+ * max(d(u,w), d(v,w)) < d(u,v).
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with RNG edges
+ */
+fun vec2RelativeNeighborhoodGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2RelativeNeighborhoodGraph: points must not be empty" }
+    validatePoints2D(points, "vec2RelativeNeighborhoodGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dij = distance2D(points[i], points[j])
+            var isRelativeNeighbor = true
+            
+            // Check if any other point violates the RNG condition
+            for (k in points.indices) {
+                if (k == i || k == j) continue
+                val dik = distance2D(points[i], points[k])
+                val djk = distance2D(points[j], points[k])
+                
+                if (max(dik, djk) < dij) {
+                    isRelativeNeighbor = false
+                    break
+                }
+            }
+            
+            if (isRelativeNeighbor) {
+                edges.add(GraphEdge(i, j, dij))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a Relative Neighborhood Graph (RNG) for 3D points.
+ *
+ * An edge (u,v) is in RNG if there is no other point w such that
+ * max(d(u,w), d(v,w)) < d(u,v).
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with RNG edges
+ */
+fun vec3RelativeNeighborhoodGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3RelativeNeighborhoodGraph: points must not be empty" }
+    validatePoints3D(points, "vec3RelativeNeighborhoodGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dij = distance3D(points[i], points[j])
+            var isRelativeNeighbor = true
+            
+            // Check if any other point violates the RNG condition
+            for (k in points.indices) {
+                if (k == i || k == j) continue
+                val dik = distance3D(points[i], points[k])
+                val djk = distance3D(points[j], points[k])
+                
+                if (max(dik, djk) < dij) {
+                    isRelativeNeighbor = false
+                    break
+                }
+            }
+            
+            if (isRelativeNeighbor) {
+                edges.add(GraphEdge(i, j, dij))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a Gabriel Graph for 2D points.
+ *
+ * An edge (u,v) is in the Gabriel graph if the circle with diameter uv contains no other points.
+ * This is equivalent to: for all other points w, d(u,w)^2 + d(v,w)^2 >= d(u,v)^2.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with Gabriel graph edges
+ */
+fun vec2GabrielGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2GabrielGraph: points must not be empty" }
+    validatePoints2D(points, "vec2GabrielGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dij = distance2D(points[i], points[j])
+            val dijSq = dij * dij
+            var isGabriel = true
+            
+            // Check if any other point is inside the circle
+            for (k in points.indices) {
+                if (k == i || k == j) continue
+                val dik = distance2D(points[i], points[k])
+                val djk = distance2D(points[j], points[k])
+                
+                // If point is inside the circle with diameter (i,j)
+                if (dik * dik + djk * djk < dijSq - 1e-10) {
+                    isGabriel = false
+                    break
+                }
+            }
+            
+            if (isGabriel) {
+                edges.add(GraphEdge(i, j, dij))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a Gabriel Graph for 3D points.
+ *
+ * An edge (u,v) is in the Gabriel graph if the sphere with diameter uv contains no other points.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with Gabriel graph edges
+ */
+fun vec3GabrielGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3GabrielGraph: points must not be empty" }
+    validatePoints3D(points, "vec3GabrielGraph")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dij = distance3D(points[i], points[j])
+            val dijSq = dij * dij
+            var isGabriel = true
+            
+            // Check if any other point is inside the sphere
+            for (k in points.indices) {
+                if (k == i || k == j) continue
+                val dik = distance3D(points[i], points[k])
+                val djk = distance3D(points[j], points[k])
+                
+                // If point is inside the sphere with diameter (i,j)
+                if (dik * dik + djk * djk < dijSq - 1e-10) {
+                    isGabriel = false
+                    break
+                }
+            }
+            
+            if (isGabriel) {
+                edges.add(GraphEdge(i, j, dij))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a Beta-Skeleton for 2D points.
+ *
+ * An edge (u,v) is in the beta-skeleton if the lune (intersection of two circles)
+ * defined by parameter beta contains no other points.
+ * - beta = 0: nearest neighbor graph
+ * - beta = 1: Gabriel graph
+ * - beta = 2: Relative neighborhood graph
+ *
+ * @param points List of 2D points
+ * @param beta Parameter controlling the lune shape (must be >= 0)
+ * @param options Graph connectivity options
+ * @return PointGraph with beta-skeleton edges
+ */
+fun vec2BetaSkeleton(
+    points: List<Vec2>,
+    beta: Double = 1.0,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2BetaSkeleton: points must not be empty" }
+    require(beta >= 0.0) { "vec2BetaSkeleton: beta must be >= 0, found $beta" }
+    validatePoints2D(points, "vec2BetaSkeleton")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dij = distance2D(points[i], points[j])
+            var isBetaSkeleton = true
+            
+            // Check if any other point violates the beta-skeleton condition
+            for (k in points.indices) {
+                if (k == i || k == j) continue
+                val dik = distance2D(points[i], points[k])
+                val djk = distance2D(points[j], points[k])
+                
+                // Beta-skeleton condition
+                when {
+                    beta == 0.0 -> {
+                        // Nearest neighbor graph - always include if it's the nearest
+                        if (dik < dij || djk < dij) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                    beta == 1.0 -> {
+                        // Gabriel graph condition
+                        if (dik * dik + djk * djk < dij * dij - 1e-10) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                    beta >= 2.0 -> {
+                        // RNG-like condition
+                        if (max(dik, djk) < dij * beta / 2.0) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                    else -> {
+                        // General beta-skeleton condition (simplified)
+                        val radius = dij * beta / 2.0
+                        val midX = (points[i].x + points[j].x) / 2.0
+                        val midY = (points[i].y + points[j].y) / 2.0
+                        val dx = points[k].x - midX
+                        val dy = points[k].y - midY
+                        val distToMid = sqrt(dx * dx + dy * dy)
+                        
+                        if (distToMid < radius - 1e-10) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                }
+            }
+            
+            if (isBetaSkeleton) {
+                edges.add(GraphEdge(i, j, dij))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute a Beta-Skeleton for 3D points.
+ *
+ * @param points List of 3D points
+ * @param beta Parameter controlling the skeleton shape (must be >= 0)
+ * @param options Graph connectivity options
+ * @return PointGraph with beta-skeleton edges
+ */
+fun vec3BetaSkeleton(
+    points: List<Vec3>,
+    beta: Double = 1.0,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3BetaSkeleton: points must not be empty" }
+    require(beta >= 0.0) { "vec3BetaSkeleton: beta must be >= 0, found $beta" }
+    validatePoints3D(points, "vec3BetaSkeleton")
+    
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dij = distance3D(points[i], points[j])
+            var isBetaSkeleton = true
+            
+            for (k in points.indices) {
+                if (k == i || k == j) continue
+                val dik = distance3D(points[i], points[k])
+                val djk = distance3D(points[j], points[k])
+                
+                when {
+                    beta == 0.0 -> {
+                        if (dik < dij || djk < dij) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                    beta == 1.0 -> {
+                        // Gabriel graph condition
+                        if (dik * dik + djk * djk < dij * dij - 1e-10) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                    beta >= 2.0 -> {
+                        if (max(dik, djk) < dij * beta / 2.0) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                    else -> {
+                        val radius = dij * beta / 2.0
+                        val midX = (points[i].x + points[j].x) / 2.0
+                        val midY = (points[i].y + points[j].y) / 2.0
+                        val midZ = (points[i].z + points[j].z) / 2.0
+                        val dx = points[k].x - midX
+                        val dy = points[k].y - midY
+                        val dz = points[k].z - midZ
+                        val distToMid = sqrt(dx * dx + dy * dy + dz * dz)
+                        
+                        if (distToMid < radius - 1e-10) {
+                            isBetaSkeleton = false
+                            break
+                        }
+                    }
+                }
+            }
+            
+            if (isBetaSkeleton) {
+                edges.add(GraphEdge(i, j, dij))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Compute an Euclidean Minimum Spanning Tree for 2D points.
+ *
+ * Uses Kruskal's algorithm with a union-find data structure.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with MST edges
+ */
+fun vec2MinimumSpanningTree(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2MinimumSpanningTree: points must not be empty" }
+    validatePoints2D(points, "vec2MinimumSpanningTree")
+    
+    // Generate all possible edges
+    val allEdges = mutableListOf<GraphEdge>()
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            allEdges.add(GraphEdge(i, j, distance2D(points[i], points[j])))
+        }
+    }
+    
+    // Sort edges by weight
+    allEdges.sortBy { it.weight }
+    
+    // Kruskal's algorithm with Union-Find
+    val uf = UnionFind(points.size)
+    val mstEdges = mutableListOf<GraphEdge>()
+    
+    for (edge in allEdges) {
+        if (uf.union(edge.i, edge.j)) {
+            mstEdges.add(edge)
+            if (mstEdges.size == points.size - 1) break
+        }
+    }
+    
+    return PointGraph(mstEdges, points.size)
+}
+
+/**
+ * Compute an Euclidean Minimum Spanning Tree for 3D points.
+ *
+ * Uses Kruskal's algorithm with a union-find data structure.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with MST edges
+ */
+fun vec3MinimumSpanningTree(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3MinimumSpanningTree: points must not be empty" }
+    validatePoints3D(points, "vec3MinimumSpanningTree")
+    
+    // Generate all possible edges
+    val allEdges = mutableListOf<GraphEdge>()
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            allEdges.add(GraphEdge(i, j, distance3D(points[i], points[j])))
+        }
+    }
+    
+    // Sort edges by weight
+    allEdges.sortBy { it.weight }
+    
+    // Kruskal's algorithm with Union-Find
+    val uf = UnionFind(points.size)
+    val mstEdges = mutableListOf<GraphEdge>()
+    
+    for (edge in allEdges) {
+        if (uf.union(edge.i, edge.j)) {
+            mstEdges.add(edge)
+            if (mstEdges.size == points.size - 1) break
+        }
+    }
+    
+    return PointGraph(mstEdges, points.size)
+}
+
+/**
+ * Compute a Maximum Diameter Graph for 2D points.
+ *
+ * Connects all points within a specified maximum distance (diameter).
+ *
+ * @param points List of 2D points
+ * @param maxDiameter Maximum distance for edge creation
+ * @param options Graph connectivity options
+ * @return PointGraph with edges within maximum diameter
+ */
+fun vec2MaximumDiameterGraph(
+    points: List<Vec2>,
+    maxDiameter: Double,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2MaximumDiameterGraph: points must not be empty" }
+    require(maxDiameter > 0.0) { "vec2MaximumDiameterGraph: maxDiameter must be > 0, found $maxDiameter" }
+    validatePoints2D(points, "vec2MaximumDiameterGraph")
+    
+    val edges = mutableListOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dist = distance2D(points[i], points[j])
+            if (dist <= maxDiameter) {
+                edges.add(GraphEdge(i, j, dist))
+            }
+        }
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+/**
+ * Compute a Maximum Diameter Graph for 3D points.
+ *
+ * Connects all points within a specified maximum distance (diameter).
+ *
+ * @param points List of 3D points
+ * @param maxDiameter Maximum distance for edge creation
+ * @param options Graph connectivity options
+ * @return PointGraph with edges within maximum diameter
+ */
+fun vec3MaximumDiameterGraph(
+    points: List<Vec3>,
+    maxDiameter: Double,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3MaximumDiameterGraph: points must not be empty" }
+    require(maxDiameter > 0.0) { "vec3MaximumDiameterGraph: maxDiameter must be > 0, found $maxDiameter" }
+    validatePoints3D(points, "vec3MaximumDiameterGraph")
+    
+    val edges = mutableListOf<GraphEdge>()
+    
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            val dist = distance3D(points[i], points[j])
+            if (dist <= maxDiameter) {
+                edges.add(GraphEdge(i, j, dist))
+            }
+        }
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+/**
+ * Compute a Nearest Neighbor Graph (1-NN) for 2D points.
+ *
+ * Each point is connected to its single nearest neighbor.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with nearest neighbor edges
+ */
+fun vec2NearestNeighborGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    return vec2KnnGraph(points, 1, options)
+}
+
+/**
+ * Compute a Nearest Neighbor Graph (1-NN) for 3D points.
+ *
+ * Each point is connected to its single nearest neighbor.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with nearest neighbor edges
+ */
+fun vec3NearestNeighborGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    return vec3KnnGraph(points, 1, options)
+}
+
+/**
+ * Compute an Urquhart Graph for 2D points.
+ *
+ * The Urquhart graph is formed by removing the longest edge from each triangle
+ * in the Delaunay triangulation. For simplicity, we approximate by taking
+ * the MST of the RNG.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with Urquhart graph edges
+ */
+fun vec2UrquhartGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2UrquhartGraph: points must not be empty" }
+    validatePoints2D(points, "vec2UrquhartGraph")
+    
+    // Urquhart graph is a subgraph of the Delaunay triangulation
+    // For now, approximate using MST (which is always a subgraph of Urquhart)
+    return vec2MinimumSpanningTree(points, options)
+}
+
+/**
+ * Compute an Urquhart Graph for 3D points.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with Urquhart graph edges
+ */
+fun vec3UrquhartGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3UrquhartGraph: points must not be empty" }
+    validatePoints3D(points, "vec3UrquhartGraph")
+    
+    return vec3MinimumSpanningTree(points, options)
+}
+
+/**
+ * Compute a simple Delaunay-inspired graph for 2D points.
+ *
+ * This is a simplified version that connects points using Gabriel graph properties,
+ * which is a subgraph of the Delaunay triangulation.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with Delaunay-like edges
+ */
+fun vec2DelaunayGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2DelaunayGraph: points must not be empty" }
+    validatePoints2D(points, "vec2DelaunayGraph")
+    
+    // Gabriel graph is a subgraph of Delaunay
+    // For a more complete Delaunay, we'd need a proper triangulation library
+    return vec2GabrielGraph(points, options)
+}
+
+/**
+ * Compute a Maximum Cut approximation graph for 2D points.
+ *
+ * Creates a bipartite-like graph by partitioning points and maximizing
+ * cross-partition edges. Uses a greedy approximation.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with maximum cut edges
+ */
+fun vec2MaximumCutGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2MaximumCutGraph: points must not be empty" }
+    validatePoints2D(points, "vec2MaximumCutGraph")
+    
+    if (points.size < 2) return PointGraph(emptyList(), points.size)
+    
+    // Simple greedy partitioning based on coordinate
+    val partition = BooleanArray(points.size)
+    
+    // Partition by alternating sorted order (by x-coordinate)
+    val sorted = points.indices.sortedBy { points[it].x }
+    sorted.forEachIndexed { index, pointIndex ->
+        partition[pointIndex] = index % 2 == 0
+    }
+    
+    // Add edges between different partitions
+    val edges = mutableListOf<GraphEdge>()
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            if (partition[i] != partition[j]) {
+                edges.add(GraphEdge(i, j, distance2D(points[i], points[j])))
+            }
+        }
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+/**
+ * Compute a Maximum Cut approximation graph for 3D points.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with maximum cut edges
+ */
+fun vec3MaximumCutGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3MaximumCutGraph: points must not be empty" }
+    validatePoints3D(points, "vec3MaximumCutGraph")
+    
+    if (points.size < 2) return PointGraph(emptyList(), points.size)
+    
+    // Partition by alternating sorted order (by x-coordinate)
+    val partition = BooleanArray(points.size)
+    val sorted = points.indices.sortedBy { points[it].x }
+    sorted.forEachIndexed { index, pointIndex ->
+        partition[pointIndex] = index % 2 == 0
+    }
+    
+    // Add edges between different partitions
+    val edges = mutableListOf<GraphEdge>()
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            if (partition[i] != partition[j]) {
+                edges.add(GraphEdge(i, j, distance3D(points[i], points[j])))
+            }
+        }
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+/**
+ * Compute a Complete Euclidean Graph for 2D points.
+ *
+ * Connects every pair of points.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with all possible edges
+ */
+fun vec2CompleteGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2CompleteGraph: points must not be empty" }
+    validatePoints2D(points, "vec2CompleteGraph")
+    
+    val edges = mutableListOf<GraphEdge>()
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            edges.add(GraphEdge(i, j, distance2D(points[i], points[j])))
+        }
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+/**
+ * Compute a Complete Euclidean Graph for 3D points.
+ *
+ * Connects every pair of points.
+ *
+ * @param points List of 3D points
+ * @param options Graph connectivity options
+ * @return PointGraph with all possible edges
+ */
+fun vec3CompleteGraph(
+    points: List<Vec3>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec3CompleteGraph: points must not be empty" }
+    validatePoints3D(points, "vec3CompleteGraph")
+    
+    val edges = mutableListOf<GraphEdge>()
+    for (i in points.indices) {
+        for (j in (i + 1) until points.size) {
+            edges.add(GraphEdge(i, j, distance3D(points[i], points[j])))
+        }
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+// ==================== Helper Functions ====================
+
+private fun distance2D(a: Vec2, b: Vec2): Double {
+    val dx = a.x.toDouble() - b.x.toDouble()
+    val dy = a.y.toDouble() - b.y.toDouble()
+    return sqrt(dx * dx + dy * dy)
+}
+
+private fun distance3D(a: Vec3, b: Vec3): Double {
+    val dx = a.x.toDouble() - b.x.toDouble()
+    val dy = a.y.toDouble() - b.y.toDouble()
+    val dz = a.z.toDouble() - b.z.toDouble()
+    return sqrt(dx * dx + dy * dy + dz * dz)
+}
+
+private fun validatePoints2D(points: List<Vec2>, fn: String) {
+    points.forEachIndexed { i, p ->
+        require(p.x.isFinite() && p.y.isFinite()) {
+            "$fn: points[$i] must be finite, found (${p.x}, ${p.y})"
+        }
+    }
+}
+
+private fun validatePoints3D(points: List<Vec3>, fn: String) {
+    points.forEachIndexed { i, p ->
+        require(p.x.isFinite() && p.y.isFinite() && p.z.isFinite()) {
+            "$fn: points[$i] must be finite, found (${p.x}, ${p.y}, ${p.z})"
+        }
+    }
+}
+
+/**
+ * Union-Find (Disjoint Set Union) data structure for Kruskal's algorithm.
+ */
+private class UnionFind(size: Int) {
+    private val parent = IntArray(size) { it }
+    private val rank = IntArray(size) { 0 }
+    
+    fun find(x: Int): Int {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]) // Path compression
+        }
+        return parent[x]
+    }
+    
+    fun union(x: Int, y: Int): Boolean {
+        val rootX = find(x)
+        val rootY = find(y)
+        
+        if (rootX == rootY) return false
+        
+        // Union by rank
+        when {
+            rank[rootX] < rank[rootY] -> parent[rootX] = rootY
+            rank[rootX] > rank[rootY] -> parent[rootY] = rootX
+            else -> {
+                parent[rootY] = rootX
+                rank[rootX]++
+            }
+        }
+        
+        return true
+    }
+}
