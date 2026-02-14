@@ -1093,8 +1093,8 @@ fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
         val t = (p.x - cx) * dx + (p.y - cy) * dy
         val projX = cx + t * dx
         val projY = cy + t * dy
-        val dist = sqrt((p.x - projX) * (p.x - projX) + (p.y - projY) * (p.y - projY))
-        (dist * dist).toDouble()
+        val distSq = (p.x - projX) * (p.x - projX) + (p.y - projY) * (p.y - projY)
+        distSq.toDouble()
     }.toFloat() / n)
     
     return Triple(start, end, error)
@@ -1122,15 +1122,23 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
     val centroid = vec(cx, cy, cz)
     
     // Build covariance matrix
-    var sxx = 0f; var sxy = 0f; var sxz = 0f
-    var syy = 0f; var syz = 0f; var szz = 0f
+    var sxx = 0f
+    var sxy = 0f
+    var sxz = 0f
+    var syy = 0f
+    var syz = 0f
+    var szz = 0f
     
     points.forEach { p ->
         val dx = p.x - cx
         val dy = p.y - cy
         val dz = p.z - cz
-        sxx += dx * dx; sxy += dx * dy; sxz += dx * dz
-        syy += dy * dy; syz += dy * dy; szz += dz * dz
+        sxx += dx * dx
+        sxy += dx * dy
+        sxz += dx * dz
+        syy += dy * dy
+        syz += dy * dz
+        szz += dz * dz
     }
     
     // Simple power iteration to find principal eigenvector
@@ -1153,8 +1161,8 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
     val error = sqrt(points.sumOf { p ->
         val v = Vec3(p).sub(centroid)
         val proj = v.dot(direction)
-        val perpDist = Vec3(v).sub(Vec3(direction).mul(proj)).length()
-        (perpDist * perpDist).toDouble()
+        val perpDistSq = Vec3(v).sub(Vec3(direction).mul(proj)).lengthSquared()
+        perpDistSq.toDouble()
     }.toFloat() / n)
     
     return Triple(centroid, direction, error)
