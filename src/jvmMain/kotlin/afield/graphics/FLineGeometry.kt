@@ -1172,7 +1172,8 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
 
 /**
  * Fit a polynomial of given degree to the curve in 2D.
- * Uses least squares to fit y = a0 + a1*x + a2*x^2 + ... + an*x^n
+ * Uses Smile's OLS (Ordinary Least Squares) for robust fitting.
+ * Fits y = a0 + a1*x + a2*x^2 + ... + an*x^n
  * @param degree degree of polynomial (1=linear, 2=quadratic, 3=cubic, etc.)
  * @param samples number of points to sample
  * @return Pair of (coefficients array [a0, a1, ..., an], RMS error)
@@ -1188,81 +1189,41 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
         return Pair(FloatArray(degree + 1) { 0f }, Float.POSITIVE_INFINITY)
     }
     
-    // Build the normal equations: A^T * A * x = A^T * b
-    // where A is the Vandermonde matrix
-    val m = degree + 1
-    val ata = Array(m) { FloatArray(m) { 0f } }
-    val atb = FloatArray(m) { 0f }
-    
-    points.forEach { p ->
-        var xPow = 1f
-        for (i in 0..degree) {
-            atb[i] += xPow * p.y
-            var xPow2 = 1f
+    return try {
+        // Build design matrix (Vandermonde matrix) for polynomial fitting
+        val designMatrix = smile.math.matrix.Matrix(n, degree + 1)
+        val yVector = DoubleArray(n)
+        
+        points.forEachIndexed { idx, p ->
+            var xPow = 1.0
             for (j in 0..degree) {
-                ata[i][j] += xPow * xPow2
-                xPow2 *= p.x
+                designMatrix[idx, j] = xPow
+                xPow *= p.x.toDouble()
             }
-            xPow *= p.x
-        }
-    }
-    
-    // Solve using Gaussian elimination with partial pivoting
-    val coeffs = FloatArray(m)
-    val augmented = Array(m) { i -> ata[i].copyOf(m + 1).also { it[m] = atb[i] } }
-    
-    // Forward elimination
-    for (i in 0 until m) {
-        // Find pivot
-        var maxRow = i
-        for (k in i + 1 until m) {
-            if (abs(augmented[k][i]) > abs(augmented[maxRow][i])) {
-                maxRow = k
-            }
+            yVector[idx] = p.y.toDouble()
         }
         
-        // Swap rows
-        val temp = augmented[i]
-        augmented[i] = augmented[maxRow]
-        augmented[maxRow] = temp
+        // Use Smile's OLS for robust least squares fitting
+        val model = smile.regression.OLS.fit(designMatrix, yVector)
+        val coeffs = FloatArray(degree + 1) { i -> model.coefficients()[i].toFloat() }
         
-        // Check for singular matrix - if pivot is too small, use identity for this coefficient
-        if (abs(augmented[i][i]) < 1e-10f) {
-            // Matrix is singular or nearly singular - set diagonal to 1 and continue
-            augmented[i][i] = 1f
-        }
-        
-        // Eliminate
-        for (k in i + 1 until m) {
-            val factor = augmented[k][i] / augmented[i][i]
-            for (j in i until m + 1) {
-                augmented[k][j] -= factor * augmented[i][j]
+        // Calculate RMS error
+        val error = sqrt(points.sumOf { p ->
+            var yPred = 0f
+            var xPow = 1f
+            for (i in 0..degree) {
+                yPred += coeffs[i] * xPow
+                xPow *= p.x
             }
-        }
+            val residual = p.y - yPred
+            (residual * residual).toDouble()
+        }.toFloat() / n)
+        
+        Pair(coeffs, error)
+    } catch (e: Exception) {
+        // Fallback to zero coefficients if Smile fitting fails
+        Pair(FloatArray(degree + 1) { 0f }, Float.POSITIVE_INFINITY)
     }
-    
-    // Back substitution
-    for (i in m - 1 downTo 0) {
-        var sum = augmented[i][m]
-        for (j in i + 1 until m) {
-            sum -= augmented[i][j] * coeffs[j]
-        }
-        coeffs[i] = if (abs(augmented[i][i]) > 1e-10f) sum / augmented[i][i] else 0f
-    }
-    
-    // Calculate RMS error
-    val error = sqrt(points.sumOf { p ->
-        var yPred = 0f
-        var xPow = 1f
-        for (i in 0..degree) {
-            yPred += coeffs[i] * xPow
-            xPow *= p.x
-        }
-        val residual = p.y - yPred
-        (residual * residual).toDouble()
-    }.toFloat() / n)
-    
-    return Pair(coeffs, error)
 }
 
 /**
@@ -1377,16 +1338,17 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
 /**
  * Fit a cubic Bezier curve to the sampled points.
  * Uses least squares to find control points that best approximate the curve.
+ * Can fit any number of points >= 2.
  * @param samples number of points to sample
  * @return Quad of (start point, control point 1, control point 2, end point) and error
  */
 fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair<Array<Vec3>, Float> {
     val points = this.samplePoints(samples, sampler = sampler)
     
-    if (points.size < 4) {
+    if (points.size < 2) {
         // Not enough points
-        val defaultPoints = Array(4) { points.getOrNull(it) ?: vec(0f, 0f, 0f) }
-        return Pair(defaultPoints, Float.POSITIVE_INFINITY)
+        val p = points.firstOrNull() ?: vec(0f, 0f, 0f)
+        return Pair(arrayOf(p, p, p, p), Float.POSITIVE_INFINITY)
     }
     
     // Fix endpoints to first and last sampled points
@@ -1408,75 +1370,97 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
         }
     }
     
-    // Least squares to find p1 and p2
-    // Bezier: B(t) = (1-t)^3*p0 + 3*(1-t)^2*t*p1 + 3*(1-t)*t^2*p2 + t^3*p3
-    // Rearrange: points[i] - bezier_fixed[i] = 3*(1-t)^2*t*p1 + 3*(1-t)*t^2*p2
-    
-    var a00 = 0f; var a01 = 0f; var a11 = 0f
-    var bx0 = 0f; var bx1 = 0f; var by0 = 0f; var by1 = 0f; var bz0 = 0f; var bz1 = 0f
-    
-    for (i in 1 until points.size - 1) {
-        val t = params[i]
-        val t2 = t * t
-        val t3 = t2 * t
-        val mt = 1 - t
-        val mt2 = mt * mt
-        val mt3 = mt2 * mt
+    return try {
+        // Use Smile OLS to solve for control points
+        // For each interior point: B(t) = (1-t)³p0 + 3(1-t)²t*p1 + 3(1-t)t²*p2 + t³p3
+        // Rearranging: points[i] - ((1-t)³p0 + t³p3) = 3(1-t)²t*p1 + 3(1-t)t²*p2
         
-        val b1 = 3 * mt2 * t
-        val b2 = 3 * mt * t2
+        // Build design matrix [basis1, basis2] for least squares
+        val n = points.size
+        val designMatrix = smile.math.matrix.Matrix(n, 2)
+        val targetX = DoubleArray(n)
+        val targetY = DoubleArray(n)
+        val targetZ = DoubleArray(n)
         
-        val target = Vec3(points[i])
-            .sub(Vec3(p0).mul(mt3))
-            .sub(Vec3(p3).mul(t3))
+        for (i in points.indices) {
+            val t = params[i].toDouble()
+            val t2 = t * t
+            val t3 = t2 * t
+            val mt = 1.0 - t
+            val mt2 = mt * mt
+            val mt3 = mt2 * mt
+            
+            val basis1 = 3.0 * mt2 * t
+            val basis2 = 3.0 * mt * t2
+            
+            designMatrix[i, 0] = basis1
+            designMatrix[i, 1] = basis2
+            
+            val fixedContribution = Vec3(p0).mul(mt3.toFloat()).add(Vec3(p3).mul(t3.toFloat()))
+            targetX[i] = (points[i].x - fixedContribution.x).toDouble()
+            targetY[i] = (points[i].y - fixedContribution.y).toDouble()
+            targetZ[i] = (points[i].z - fixedContribution.z).toDouble()
+        }
         
-        a00 += b1 * b1
-        a01 += b1 * b2
-        a11 += b2 * b2
+        // Solve for p1 and p2 using OLS for each coordinate
+        val xModel = smile.regression.OLS.fit(designMatrix, targetX)
+        val yModel = smile.regression.OLS.fit(designMatrix, targetY)
+        val zModel = smile.regression.OLS.fit(designMatrix, targetZ)
         
-        bx0 += b1 * target.x; bx1 += b2 * target.x
-        by0 += b1 * target.y; by1 += b2 * target.y
-        bz0 += b1 * target.z; bz1 += b2 * target.z
+        val p1 = vec(
+            xModel.coefficients()[0].toFloat(),
+            yModel.coefficients()[0].toFloat(),
+            zModel.coefficients()[0].toFloat()
+        )
+        val p2 = vec(
+            xModel.coefficients()[1].toFloat(),
+            yModel.coefficients()[1].toFloat(),
+            zModel.coefficients()[1].toFloat()
+        )
+        
+        // Calculate error
+        val error = points.withIndex().sumOf { (i, p) ->
+            val t = params[i]
+            val t2 = t * t
+            val t3 = t2 * t
+            val mt = 1 - t
+            val mt2 = mt * mt
+            val mt3 = mt2 * mt
+            
+            val bezierPt = Vec3(p0).mul(mt3)
+                .add(Vec3(p1).mul(3 * mt2 * t))
+                .add(Vec3(p2).mul(3 * mt * t2))
+                .add(Vec3(p3).mul(t3))
+            
+            Vec3(p).sub(bezierPt).lengthSquared().toDouble()
+        }.toFloat() / points.size
+        
+        Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
+        
+    } catch (e: Exception) {
+        // Fallback: use simple interpolation for control points
+        val p1 = Vec3(p0).lerp(p3, 0.33f)
+        val p2 = Vec3(p0).lerp(p3, 0.67f)
+        
+        // Calculate error with fallback curve
+        val error = points.withIndex().sumOf { (i, p) ->
+            val t = params[i]
+            val t2 = t * t
+            val t3 = t2 * t
+            val mt = 1 - t
+            val mt2 = mt * mt
+            val mt3 = mt2 * mt
+            
+            val bezierPt = Vec3(p0).mul(mt3)
+                .add(Vec3(p1).mul(3 * mt2 * t))
+                .add(Vec3(p2).mul(3 * mt * t2))
+                .add(Vec3(p3).mul(t3))
+            
+            Vec3(p).sub(bezierPt).lengthSquared().toDouble()
+        }.toFloat() / points.size
+        
+        Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
     }
-    
-    // Solve 2x2 system for each coordinate
-    val det = a00 * a11 - a01 * a01
-    val p1: Vec3
-    val p2: Vec3
-    
-    if (abs(det) > 1e-6f) {
-        val p1x = (a11 * bx0 - a01 * bx1) / det
-        val p1y = (a11 * by0 - a01 * by1) / det
-        val p1z = (a11 * bz0 - a01 * bz1) / det
-        val p2x = (a00 * bx1 - a01 * bx0) / det
-        val p2y = (a00 * by1 - a01 * by0) / det
-        val p2z = (a00 * bz1 - a01 * bz0) / det
-        p1 = vec(p1x, p1y, p1z)
-        p2 = vec(p2x, p2y, p2z)
-    } else {
-        // Fallback: use approximate control points
-        p1 = Vec3(p0).lerp(p3, 0.33f)
-        p2 = Vec3(p0).lerp(p3, 0.67f)
-    }
-    
-    // Calculate error
-    val error = points.withIndex().sumOf { (i, p) ->
-        val t = params[i]
-        val t2 = t * t
-        val t3 = t2 * t
-        val mt = 1 - t
-        val mt2 = mt * mt
-        val mt3 = mt2 * mt
-        
-        val bezierPt = Vec3(p0).mul(mt3)
-            .add(Vec3(p1).mul(3 * mt2 * t))
-            .add(Vec3(p2).mul(3 * mt * t2))
-            .add(Vec3(p3).mul(t3))
-        
-        Vec3(p).sub(bezierPt).lengthSquared().toDouble()
-    }.toFloat() / points.size
-    
-    return Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
 }
 
 /**
@@ -1608,7 +1592,9 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
         }
         
         "adaptive" -> {
-            // Adaptive fitting based on point density and curvature
+            // Adaptive fitting based on point spacing
+            // Strategy: Use Bezier curves for areas with consistent point spacing (likely from smooth curves),
+            // and straight lines for areas with irregular spacing (likely from corners or complex features)
             line.moveTo(points[0])
             
             // Calculate average distance between consecutive points
@@ -1616,22 +1602,25 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
             val avgDist = distances.average().toFloat()
             val stdDist = sqrt(distances.sumOf { (it - avgDist) * (it - avgDist).toDouble() }.toFloat() / distances.size)
             
-            // Use cubic Bezier for smooth sections, lines for sharp changes
+            // Process points in groups
             var i = 0
             while (i < points.size - 1) {
                 val segmentStart = i
                 var segmentEnd = min(i + 4, points.size - 1)
                 
-                // Check if next few points are roughly equally spaced (smooth curve)
-                val isSmooth = if (segmentEnd - segmentStart >= 2) {
+                // Check if next few points have consistent spacing (suggesting a smooth curve section)
+                // Note: This is about point distribution, not the curve parameterization.
+                // Cubic splines/Bezier can fit any points, but consistent spacing indicates
+                // the points likely came from a smooth section worth representing with a curve.
+                val hasConsistentSpacing = if (segmentEnd - segmentStart >= 2) {
                     val localDists = (segmentStart until segmentEnd).map { idx ->
                         if (idx + 1 < points.size) Vec3(points[idx]).sub(points[idx + 1]).length() else 0f
                     }
                     localDists.all { abs(it - avgDist) < stdDist * 2 }
                 } else false
                 
-                if (isSmooth && segmentEnd - segmentStart >= 3) {
-                    // Use Bezier curve
+                if (hasConsistentSpacing && segmentEnd - segmentStart >= 3) {
+                    // Use Bezier curve - can fit any number of points >= 2
                     val segmentPoints = points.subList(segmentStart, segmentEnd + 1)
                     val tempLine = FLine().also { fl ->
                         fl.moveTo(segmentPoints[0])
@@ -1641,7 +1630,7 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
                     line.cubicTo(bezier[1], bezier[2], bezier[3])
                     i += 3
                 } else {
-                    // Use straight line
+                    // Use straight line for irregular spacing
                     line.lineTo(points[i + 1])
                     i += 1
                 }
