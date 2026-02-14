@@ -1646,6 +1646,7 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
  * Create an FLine from a list of 2D points.
  * Convenience function that converts Vec2 to Vec3 with z=0.
  */
+@JvmName("pointsToFLineVec2")
 fun pointsToFLine(points: List<Vec2>, strategy: String = "adaptive"): FLine {
     return pointsToFLine(points.map { vec(it.x, it.y, 0f) }, strategy)
 }
