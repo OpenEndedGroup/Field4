@@ -1101,8 +1101,10 @@ fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
 }
 
 /**
- * Fit a line to points on the curve using SVD in 3D.
- * Returns the line as a start point and direction vector, along with the RMS error.
+ * Fit a line to points on the curve using power iteration in 3D.
+ * Uses power iteration on the covariance matrix to find the principal eigenvector,
+ * which gives the best-fit line direction.
+ * Returns the line as a point (centroid) and direction vector, along with the RMS error.
  * @param samples number of points to sample from the curve
  * @return Triple of (point on line, direction vector, RMS error)
  */
@@ -1224,9 +1226,10 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
         augmented[i] = augmented[maxRow]
         augmented[maxRow] = temp
         
-        // Check for singular matrix
+        // Check for singular matrix - if pivot is too small, use identity for this coefficient
         if (abs(augmented[i][i]) < 1e-10f) {
-            continue
+            // Matrix is singular or nearly singular - set diagonal to 1 and continue
+            augmented[i][i] = 1f
         }
         
         // Eliminate
@@ -1263,11 +1266,15 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
 }
 
 /**
- * Fit an ellipse to points on the curve using algebraic distance minimization.
+ * Fit an ellipse to points on the curve using moment-based approximation.
+ * Note: This uses a simplified moment-based method rather than full algebraic distance
+ * minimization. It provides good approximations for well-behaved elliptical data.
+ * 
  * Returns ellipse parameters: center, semi-major axis length, semi-minor axis length, 
  * rotation angle, and fitting error.
+ * 
  * @param samples number of points to sample
- * @return data class containing ellipse parameters and error
+ * @return data class containing ellipse parameters and error (note: error is approximate)
  */
 data class EllipseFit(
     val center: Vec2,
@@ -1354,11 +1361,12 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
         (PI / 2).toFloat()
     }
     
-    // Calculate error as average distance from ellipse
+    // Calculate error as average approximate distance from ellipse
+    // Note: This uses a simplified distance metric for performance
     val error = points.sumOf { p ->
         val dx = p.x - meanX
         val dy = p.y - meanY
-        // Approximate distance to ellipse (simplified)
+        // Approximate distance to ellipse by comparing radial distance to average radius
         val dist = sqrt(dx * dx + dy * dy)
         abs(dist - (semiMajor + semiMinor) / 2).toDouble()
     }.toFloat() / n
@@ -1595,7 +1603,7 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
                     segmentPoints.drop(1).forEach { line.lineTo(it) }
                 }
                 
-                i += 3 // Overlap by 1 point for continuity
+                i += 3 // Move forward 3 points (from 4-point group) to maintain 1-point overlap
             }
         }
         
