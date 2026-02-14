@@ -1,6 +1,6 @@
 # Graph Connectivity Library for Field4
 
-A comprehensive self-contained graph library for computing different connectivities over 2D and 3D point sets using JOML Vector2f and Vector3f.
+A comprehensive self-contained graph library for computing different connectivities over 2D and 3D point sets using JOML Vector2f and Vector3f. Includes full JTS (Java Topology Suite) integration for Delaunay triangulation, Voronoi diagrams, and convex hull operations.
 
 ## Location
 
@@ -9,7 +9,7 @@ A comprehensive self-contained graph library for computing different connectivit
 
 ## Overview
 
-This library provides 23 different graph connectivity algorithms for spatial point sets, enabling various computational geometry and graph theory operations.
+This library provides 29+ different graph connectivity algorithms and computational geometry operations for spatial point sets, with support for custom distance metrics.
 
 ## Core Data Structures
 
@@ -380,3 +380,163 @@ Possible additions:
 ## License
 
 Part of the Field4 project.
+
+## JTS Integration Features
+
+### Voronoi Diagrams
+
+```kotlin
+fun vec2VoronoiDiagram(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): VoronoiDiagram
+```
+
+Computes the Voronoi diagram using JTS. The Voronoi diagram divides the plane into regions where each region contains all points closer to one site than to any other.
+
+**Data Structures:**
+- `VoronoiDiagram`: Contains cells for each site point
+- `VoronoiCell`: Represents a single Voronoi cell with vertices and site index
+
+**Example:**
+```kotlin
+val points = listOf(vec(0.0, 0.0), vec(1.0, 0.0), vec(0.5, 1.0))
+val voronoi = vec2VoronoiDiagram(points)
+
+for (cell in voronoi.cells) {
+    println("Site ${cell.siteIndex} has ${cell.vertices.size} vertices")
+}
+```
+
+### Full Delaunay Triangulation
+
+```kotlin
+fun vec2DelaunayGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph
+fun vec2DelaunayTriangles(points: List<Vec2>): List<Triple<Int, Int, Int>>
+```
+
+Full Delaunay triangulation using JTS, not just an approximation. The triangulation ensures no point is inside the circumcircle of any triangle.
+
+**`vec2DelaunayTriangles`** returns actual triangles as triples of point indices, useful for mesh generation and rendering.
+
+**Example:**
+```kotlin
+val points = listOf(vec(0.0, 0.0), vec(1.0, 0.0), vec(0.5, 1.0))
+val delaunay = vec2DelaunayGraph(points)
+val triangles = vec2DelaunayTriangles(points)
+
+for ((i, j, k) in triangles) {
+    println("Triangle: [$i, $j, $k]")
+}
+```
+
+### Convex Hull
+
+```kotlin
+fun vec2ConvexHull(points: List<Vec2>): ConvexHull2D
+fun vec2ConvexHullGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph
+```
+
+Computes the convex hull (smallest convex polygon containing all points) using JTS.
+
+**Data Structure:**
+- `ConvexHull2D`: Contains hull vertices and their indices in the original point list
+
+**Example:**
+```kotlin
+val points = listOf(vec(0.0, 0.0), vec(1.0, 0.0), vec(1.0, 1.0), vec(0.0, 1.0), vec(0.5, 0.5))
+val hull = vec2ConvexHull(points)
+
+println("Hull has ${hull.hullPoints.size} vertices")
+println("Hull point indices: ${hull.hullIndices}")
+```
+
+### Hull Projection Graph
+
+```kotlin
+fun vec2HullProjectionGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph
+```
+
+Connects each interior point to its nearest point on the convex hull. Useful for boundary-interior relationships.
+
+### Voronoi Dual Graph
+
+```kotlin
+fun vec2VoronoiDualGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph
+```
+
+Computes the dual graph of the Voronoi diagram, which is equivalent to the Delaunay triangulation. Two sites are connected if their Voronoi cells share an edge.
+
+## Custom Distance Metrics
+
+All graph algorithms now support custom distance metrics through the `GraphConnectivityOptions` parameter.
+
+### Options Configuration
+
+```kotlin
+data class GraphConnectivityOptions(
+    val allowDuplicatePoints: Boolean = true,
+    val customDistanceMetric: ((Int, Int, List<*>) -> Double)? = null
+)
+```
+
+The `customDistanceMetric` parameter accepts a function that takes:
+- Two point indices (i and j)
+- The list of points
+- Returns the distance between the points
+
+### Example: Manhattan Distance
+
+```kotlin
+val points = listOf(vec(0.0, 0.0), vec(1.0, 0.0), vec(0.0, 1.0))
+
+// Define Manhattan distance metric
+val manhattanMetric: (Int, Int, List<*>) -> Double = { i, j, pts ->
+    val p = pts as List<Vec2>
+    abs(p[i].x - p[j].x).toDouble() + abs(p[i].y - p[j].y).toDouble()
+}
+
+val options = GraphConnectivityOptions(customDistanceMetric = manhattanMetric)
+val knn = vec2KnnGraph(points, k = 2, options)
+
+// KNN graph now uses Manhattan distance instead of Euclidean
+```
+
+### Example: Weighted Distance
+
+```kotlin
+// Distance metric that weights x and y differently
+val weightedMetric: (Int, Int, List<*>) -> Double = { i, j, pts ->
+    val p = pts as List<Vec2>
+    val dx = (p[i].x - p[j].x).toDouble()
+    val dy = (p[i].y - p[j].y).toDouble()
+    sqrt(2.0 * dx * dx + dy * dy)  // Weight x-axis more heavily
+}
+
+val options = GraphConnectivityOptions(customDistanceMetric = weightedMetric)
+val mst = vec2MinimumSpanningTree(points, options)
+```
+
+### Example: Index-Based Distance
+
+```kotlin
+// Distance that depends on point indices (e.g., for graph-structured data)
+val indexAwareMetric: (Int, Int, List<*>) -> Double = { i, j, pts ->
+    val p = pts as List<Vec2>
+    val euclidean = sqrt(
+        (p[i].x - p[j].x).toDouble().pow(2) + 
+        (p[i].y - p[j].y).toDouble().pow(2)
+    )
+    // Penalize connections between distant indices
+    euclidean * (1.0 + 0.1 * abs(i - j))
+}
+
+val options = GraphConnectivityOptions(customDistanceMetric = indexAwareMetric)
+val gabriel = vec2GabrielGraph(points, options)
+```
+
+### Applications of Custom Metrics
+
+1. **Non-Euclidean Spaces**: Manhattan, Chebyshev, or other Lp norms
+2. **Anisotropic Distances**: Different weights for different dimensions
+3. **Graph-Structured Data**: Incorporate graph distances or connectivity
+4. **Feature Spaces**: Domain-specific distance functions (e.g., color spaces, semantic similarity)
+5. **Constrained Spaces**: Geodesic distances on surfaces or manifolds
+

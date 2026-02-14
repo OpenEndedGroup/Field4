@@ -38,6 +38,13 @@ object GraphConnectivitySmokeTest {
             test3DCompleteGraph()
             testGraphStructure()
             testEdgeSymmetry()
+            testVoronoiDiagram()
+            testDelaunayTriangulation()
+            testDelaunayTriangles()
+            testConvexHull()
+            testConvexHullGraph()
+            testHullProjectionGraph()
+            testCustomDistanceMetric()
             println("✅ Graph Connectivity smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -528,3 +535,155 @@ object GraphConnectivitySmokeTest {
         println("  ✓ Edge symmetry test passed")
     }
 }
+
+    private fun testVoronoiDiagram() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(0.5, 1.0),
+            vec(0.5, 0.5)
+        )
+        
+        val voronoi = vec2VoronoiDiagram(points)
+        
+        require(voronoi.pointCount == 4) { "Expected 4 points" }
+        require(voronoi.cells.isNotEmpty()) { "Voronoi diagram should have cells" }
+        
+        // Each cell should have vertices
+        for (cell in voronoi.cells) {
+            require(cell.vertices.isNotEmpty()) { "Cell should have vertices" }
+            require(cell.siteIndex in 0 until points.size) { "Site index should be valid" }
+        }
+        
+        println("  ✓ Voronoi diagram test passed")
+    }
+
+    private fun testDelaunayTriangulation() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(0.0, 1.0),
+            vec(1.0, 1.0)
+        )
+        
+        val delaunay = vec2DelaunayGraph(points)
+        
+        require(delaunay.pointCount == 4) { "Expected 4 points" }
+        require(delaunay.edges.isNotEmpty()) { "Delaunay graph should have edges" }
+        
+        // Delaunay should have more edges than MST but fewer than complete
+        val mst = vec2MinimumSpanningTree(points)
+        require(delaunay.edges.size >= mst.edges.size) {
+            "Delaunay should have at least as many edges as MST"
+        }
+        
+        println("  ✓ Delaunay triangulation test passed")
+    }
+
+    private fun testDelaunayTriangles() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(0.0, 1.0),
+            vec(1.0, 1.0)
+        )
+        
+        val triangles = vec2DelaunayTriangles(points)
+        
+        require(triangles.isNotEmpty()) { "Should have triangles" }
+        
+        // Verify triangle indices are valid
+        for ((i, j, k) in triangles) {
+            require(i in 0 until points.size) { "Triangle vertex i out of bounds" }
+            require(j in 0 until points.size) { "Triangle vertex j out of bounds" }
+            require(k in 0 until points.size) { "Triangle vertex k out of bounds" }
+            require(i != j && j != k && i != k) { "Triangle vertices should be distinct" }
+        }
+        
+        println("  ✓ Delaunay triangles test passed")
+    }
+
+    private fun testConvexHull() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(1.0, 1.0),
+            vec(0.0, 1.0),
+            vec(0.5, 0.5)  // Interior point
+        )
+        
+        val hull = vec2ConvexHull(points)
+        
+        require(hull.hullPoints.size == 4) { "Square hull should have 4 vertices" }
+        require(hull.hullIndices.size == 4) { "Should have 4 hull indices" }
+        require(4 !in hull.hullIndices) { "Interior point should not be on hull" }
+        
+        println("  ✓ Convex hull test passed")
+    }
+
+    private fun testConvexHullGraph() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(1.0, 1.0),
+            vec(0.0, 1.0),
+            vec(0.5, 0.5)
+        )
+        
+        val hullGraph = vec2ConvexHullGraph(points)
+        
+        require(hullGraph.pointCount == 5) { "Expected 5 points" }
+        require(hullGraph.edges.size == 4) { "Square hull should have 4 edges" }
+        
+        println("  ✓ Convex hull graph test passed")
+    }
+
+    private fun testHullProjectionGraph() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(1.0, 1.0),
+            vec(0.0, 1.0),
+            vec(0.5, 0.5)  // Interior point
+        )
+        
+        val projection = vec2HullProjectionGraph(points)
+        
+        require(projection.pointCount == 5) { "Expected 5 points" }
+        require(projection.edges.size == 1) { "Should have 1 edge from interior to hull" }
+        
+        // The edge should connect point 4 (interior) to a hull point
+        val edge = projection.edges[0]
+        require(edge.i == 4 || edge.j == 4) { "Edge should involve interior point" }
+        
+        println("  ✓ Hull projection graph test passed")
+    }
+
+    private fun testCustomDistanceMetric() {
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(0.0, 1.0)
+        )
+        
+        // Manhattan distance metric
+        val manhattanMetric: (Int, Int, List<*>) -> Double = { i, j, pts ->
+            val p = pts as List<Vec2>
+            abs(p[i].x - p[j].x).toDouble() + abs(p[i].y - p[j].y).toDouble()
+        }
+        
+        val options = GraphConnectivityOptions(customDistanceMetric = manhattanMetric)
+        val knn = vec2KnnGraph(points, k = 1, options)
+        
+        require(knn.edges.isNotEmpty()) { "KNN with custom metric should have edges" }
+        
+        // With Manhattan distance, distances should match
+        for (edge in knn.edges) {
+            val p1 = points[edge.i]
+            val p2 = points[edge.j]
+            val expectedDist = abs(p1.x - p2.x).toDouble() + abs(p1.y - p2.y).toDouble()
+            assertClose("Custom metric distance", edge.weight, expectedDist, 1e-9)
+        }
+        
+        println("  ✓ Custom distance metric test passed")
+    }

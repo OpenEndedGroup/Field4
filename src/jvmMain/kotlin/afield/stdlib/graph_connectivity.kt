@@ -6,6 +6,10 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.math.max
 import kotlin.math.min
+import org.locationtech.jts.geom.Coordinate
+import org.locationtech.jts.geom.GeometryFactory
+import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder
+import org.locationtech.jts.triangulate.VoronoiDiagramBuilder
 
 /**
  * Represents an edge between two points in a graph.
@@ -53,9 +57,12 @@ data class PointGraph(val edges: List<GraphEdge>, val pointCount: Int) {
  * Options for graph connectivity algorithms.
  *
  * @param allowDuplicatePoints Whether to allow duplicate points
+ * @param customDistanceMetric Custom distance function taking two point indices and the point list.
+ *                             If null, uses standard Euclidean distance.
  */
 data class GraphConnectivityOptions(
-    val allowDuplicatePoints: Boolean = true
+    val allowDuplicatePoints: Boolean = true,
+    val customDistanceMetric: ((Int, Int, List<*>) -> Double)? = null
 )
 
 // ==================== 2D Graph Algorithms ====================
@@ -84,7 +91,7 @@ fun vec2KnnGraph(
     for (i in points.indices) {
         val distances = points.indices
             .filter { it != i }
-            .map { j -> j to distance2D(points[i], points[j]) }
+            .map { j -> j to computeDistance2D(points[i], points[j], options, i, j, points) }
             .sortedBy { it.second }
             .take(minOf(k, points.size - 1))
         
@@ -120,7 +127,7 @@ fun vec3KnnGraph(
     for (i in points.indices) {
         val distances = points.indices
             .filter { it != i }
-            .map { j -> j to distance3D(points[i], points[j]) }
+            .map { j -> j to computeDistance3D(points[i], points[j], options, i, j, points) }
             .sortedBy { it.second }
             .take(minOf(k, points.size - 1))
         
@@ -289,14 +296,14 @@ fun vec2RelativeNeighborhoodGraph(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dij = distance2D(points[i], points[j])
+            val dij = computeDistance2D(points[i], points[j], options, i, j, points)
             var isRelativeNeighbor = true
             
             // Check if any other point violates the RNG condition
             for (k in points.indices) {
                 if (k == i || k == j) continue
-                val dik = distance2D(points[i], points[k])
-                val djk = distance2D(points[j], points[k])
+                val dik = computeDistance2D(points[i], points[k], options, i, k, points)
+                val djk = computeDistance2D(points[j], points[k], options, j, k, points)
                 
                 if (max(dik, djk) < dij) {
                     isRelativeNeighbor = false
@@ -334,14 +341,14 @@ fun vec3RelativeNeighborhoodGraph(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dij = distance3D(points[i], points[j])
+            val dij = computeDistance3D(points[i], points[j], options, i, j, points)
             var isRelativeNeighbor = true
             
             // Check if any other point violates the RNG condition
             for (k in points.indices) {
                 if (k == i || k == j) continue
-                val dik = distance3D(points[i], points[k])
-                val djk = distance3D(points[j], points[k])
+                val dik = computeDistance3D(points[i], points[k], options, i, k, points)
+                val djk = computeDistance3D(points[j], points[k], options, j, k, points)
                 
                 if (max(dik, djk) < dij) {
                     isRelativeNeighbor = false
@@ -379,15 +386,15 @@ fun vec2GabrielGraph(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dij = distance2D(points[i], points[j])
+            val dij = computeDistance2D(points[i], points[j], options, i, j, points)
             val dijSq = dij * dij
             var isGabriel = true
             
             // Check if any other point is inside the circle
             for (k in points.indices) {
                 if (k == i || k == j) continue
-                val dik = distance2D(points[i], points[k])
-                val djk = distance2D(points[j], points[k])
+                val dik = computeDistance2D(points[i], points[k], options, i, k, points)
+                val djk = computeDistance2D(points[j], points[k], options, j, k, points)
                 
                 // If point is inside the circle with diameter (i,j)
                 if (dik * dik + djk * djk < dijSq - 1e-10) {
@@ -425,15 +432,15 @@ fun vec3GabrielGraph(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dij = distance3D(points[i], points[j])
+            val dij = computeDistance3D(points[i], points[j], options, i, j, points)
             val dijSq = dij * dij
             var isGabriel = true
             
             // Check if any other point is inside the sphere
             for (k in points.indices) {
                 if (k == i || k == j) continue
-                val dik = distance3D(points[i], points[k])
-                val djk = distance3D(points[j], points[k])
+                val dik = computeDistance3D(points[i], points[k], options, i, k, points)
+                val djk = computeDistance3D(points[j], points[k], options, j, k, points)
                 
                 // If point is inside the sphere with diameter (i,j)
                 if (dik * dik + djk * djk < dijSq - 1e-10) {
@@ -478,14 +485,14 @@ fun vec2BetaSkeleton(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dij = distance2D(points[i], points[j])
+            val dij = computeDistance2D(points[i], points[j], options, i, j, points)
             var isBetaSkeleton = true
             
             // Check if any other point violates the beta-skeleton condition
             for (k in points.indices) {
                 if (k == i || k == j) continue
-                val dik = distance2D(points[i], points[k])
-                val djk = distance2D(points[j], points[k])
+                val dik = computeDistance2D(points[i], points[k], options, i, k, points)
+                val djk = computeDistance2D(points[j], points[k], options, j, k, points)
                 
                 // Beta-skeleton condition
                 when {
@@ -557,13 +564,13 @@ fun vec3BetaSkeleton(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dij = distance3D(points[i], points[j])
+            val dij = computeDistance3D(points[i], points[j], options, i, j, points)
             var isBetaSkeleton = true
             
             for (k in points.indices) {
                 if (k == i || k == j) continue
-                val dik = distance3D(points[i], points[k])
-                val djk = distance3D(points[j], points[k])
+                val dik = computeDistance3D(points[i], points[k], options, i, k, points)
+                val djk = computeDistance3D(points[j], points[k], options, j, k, points)
                 
                 when {
                     beta == 0.0 -> {
@@ -632,7 +639,7 @@ fun vec2MinimumSpanningTree(
     val allEdges = mutableListOf<GraphEdge>()
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            allEdges.add(GraphEdge(i, j, distance2D(points[i], points[j])))
+            allEdges.add(GraphEdge(i, j, computeDistance2D(points[i], points[j], options, i, j, points)))
         }
     }
     
@@ -673,7 +680,7 @@ fun vec3MinimumSpanningTree(
     val allEdges = mutableListOf<GraphEdge>()
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            allEdges.add(GraphEdge(i, j, distance3D(points[i], points[j])))
+            allEdges.add(GraphEdge(i, j, computeDistance3D(points[i], points[j], options, i, j, points)))
         }
     }
     
@@ -717,7 +724,7 @@ fun vec2MaximumDiameterGraph(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dist = distance2D(points[i], points[j])
+            val dist = computeDistance2D(points[i], points[j], options, i, j, points)
             if (dist <= maxDiameter) {
                 edges.add(GraphEdge(i, j, dist))
             }
@@ -750,7 +757,7 @@ fun vec3MaximumDiameterGraph(
     
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            val dist = distance3D(points[i], points[j])
+            val dist = computeDistance3D(points[i], points[j], options, i, j, points)
             if (dist <= maxDiameter) {
                 edges.add(GraphEdge(i, j, dist))
             }
@@ -833,14 +840,14 @@ fun vec3UrquhartGraph(
 }
 
 /**
- * Compute a simple Delaunay-inspired graph for 2D points.
+ * Compute a full Delaunay triangulation for 2D points using JTS.
  *
- * This is a simplified version that connects points using Gabriel graph properties,
- * which is a subgraph of the Delaunay triangulation.
+ * The Delaunay triangulation is a triangulation where no point is inside
+ * the circumcircle of any triangle.
  *
  * @param points List of 2D points
  * @param options Graph connectivity options
- * @return PointGraph with Delaunay-like edges
+ * @return PointGraph with Delaunay triangulation edges
  */
 fun vec2DelaunayGraph(
     points: List<Vec2>,
@@ -849,9 +856,144 @@ fun vec2DelaunayGraph(
     require(points.isNotEmpty()) { "vec2DelaunayGraph: points must not be empty" }
     validatePoints2D(points, "vec2DelaunayGraph")
     
-    // Gabriel graph is a subgraph of Delaunay
-    // For a more complete Delaunay, we'd need a proper triangulation library
-    return vec2GabrielGraph(points, options)
+    if (points.size < 2) return PointGraph(emptyList(), points.size)
+    
+    // Convert to JTS coordinates
+    val coords = points.map { Coordinate(it.x.toDouble(), it.y.toDouble()) }
+    
+    // Build Delaunay triangulation
+    val builder = DelaunayTriangulationBuilder()
+    builder.setSites(coords)
+    val triangulation = builder.getEdges(GeometryFactory())
+    
+    // Extract edges and map back to point indices
+    val edges = mutableSetOf<GraphEdge>()
+    
+    for (i in 0 until triangulation.numGeometries) {
+        val edge = triangulation.getGeometryN(i)
+        val edgeCoords = edge.coordinates
+        
+        if (edgeCoords.size >= 2) {
+            val c0 = edgeCoords[0]
+            val c1 = edgeCoords[1]
+            
+            // Find indices of these coordinates in original points
+            val idx0 = coords.indexOfFirst { it.equals2D(c0) }
+            val idx1 = coords.indexOfFirst { it.equals2D(c1) }
+            
+            if (idx0 >= 0 && idx1 >= 0) {
+                val dist = computeDistance2D(points[idx0], points[idx1], options, idx0, idx1, points)
+                edges.add(GraphEdge(idx0, idx1, dist))
+            }
+        }
+    }
+    
+    return PointGraph(edges.toList(), points.size)
+}
+
+/**
+ * Represents a Voronoi cell in the Voronoi diagram.
+ *
+ * @param siteIndex Index of the site point that generated this cell
+ * @param vertices List of vertex coordinates defining the cell boundary
+ */
+data class VoronoiCell(
+    val siteIndex: Int,
+    val vertices: List<Vec2>
+)
+
+/**
+ * Represents a Voronoi diagram computed from a set of points.
+ *
+ * @param cells List of Voronoi cells
+ * @param pointCount Number of input points
+ */
+data class VoronoiDiagram(
+    val cells: List<VoronoiCell>,
+    val pointCount: Int
+) {
+    /**
+     * Get the Voronoi cell for a specific site point.
+     */
+    fun cellForSite(siteIndex: Int): VoronoiCell? {
+        return cells.find { it.siteIndex == siteIndex }
+    }
+}
+
+/**
+ * Compute a Voronoi diagram for 2D points using JTS.
+ *
+ * The Voronoi diagram divides the plane into regions, where each region
+ * contains all points closer to one site than to any other site.
+ *
+ * @param points List of 2D points (sites)
+ * @param options Graph connectivity options
+ * @return VoronoiDiagram with cells for each site
+ */
+fun vec2VoronoiDiagram(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): VoronoiDiagram {
+    require(points.isNotEmpty()) { "vec2VoronoiDiagram: points must not be empty" }
+    validatePoints2D(points, "vec2VoronoiDiagram")
+    
+    if (points.size < 2) {
+        return VoronoiDiagram(emptyList(), points.size)
+    }
+    
+    // Convert to JTS coordinates
+    val coords = points.map { Coordinate(it.x.toDouble(), it.y.toDouble()) }
+    
+    // Build Voronoi diagram
+    val builder = VoronoiDiagramBuilder()
+    builder.setSites(coords)
+    val voronoi = builder.getDiagram(GeometryFactory())
+    
+    // Extract cells
+    val cells = mutableListOf<VoronoiCell>()
+    
+    for (i in 0 until voronoi.numGeometries) {
+        val polygon = voronoi.getGeometryN(i)
+        
+        // Find which site this cell corresponds to
+        val centroid = polygon.centroid
+        var closestSite = 0
+        var minDist = Double.POSITIVE_INFINITY
+        
+        for (j in coords.indices) {
+            val dist = centroid.distance(org.locationtech.jts.geom.Point(coords[j], GeometryFactory()))
+            if (dist < minDist) {
+                minDist = dist
+                closestSite = j
+            }
+        }
+        
+        // Extract vertices
+        val vertices = polygon.coordinates.map { 
+            vec(it.x.toFloat(), it.y.toFloat())
+        }
+        
+        cells.add(VoronoiCell(closestSite, vertices))
+    }
+    
+    return VoronoiDiagram(cells, points.size)
+}
+
+/**
+ * Compute the dual graph of a Voronoi diagram (equivalent to Delaunay triangulation).
+ *
+ * Two sites are connected if their Voronoi cells share an edge.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with edges connecting adjacent Voronoi cells
+ */
+fun vec2VoronoiDualGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    // The dual of Voronoi is the Delaunay triangulation
+    return vec2DelaunayGraph(points, options)
 }
 
 /**
@@ -887,7 +1029,7 @@ fun vec2MaximumCutGraph(
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
             if (partition[i] != partition[j]) {
-                edges.add(GraphEdge(i, j, distance2D(points[i], points[j])))
+                edges.add(GraphEdge(i, j, computeDistance2D(points[i], points[j], options, i, j, points)))
             }
         }
     }
@@ -923,7 +1065,7 @@ fun vec3MaximumCutGraph(
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
             if (partition[i] != partition[j]) {
-                edges.add(GraphEdge(i, j, distance3D(points[i], points[j])))
+                edges.add(GraphEdge(i, j, computeDistance3D(points[i], points[j], options, i, j, points)))
             }
         }
     }
@@ -950,7 +1092,7 @@ fun vec2CompleteGraph(
     val edges = mutableListOf<GraphEdge>()
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            edges.add(GraphEdge(i, j, distance2D(points[i], points[j])))
+            edges.add(GraphEdge(i, j, computeDistance2D(points[i], points[j], options, i, j, points)))
         }
     }
     
@@ -976,7 +1118,7 @@ fun vec3CompleteGraph(
     val edges = mutableListOf<GraphEdge>()
     for (i in points.indices) {
         for (j in (i + 1) until points.size) {
-            edges.add(GraphEdge(i, j, distance3D(points[i], points[j])))
+            edges.add(GraphEdge(i, j, computeDistance3D(points[i], points[j], options, i, j, points)))
         }
     }
     
@@ -996,6 +1138,34 @@ private fun distance3D(a: Vec3, b: Vec3): Double {
     val dy = a.y.toDouble() - b.y.toDouble()
     val dz = a.z.toDouble() - b.z.toDouble()
     return sqrt(dx * dx + dy * dy + dz * dz)
+}
+
+/**
+ * Compute distance between two 2D points, using custom metric if provided.
+ */
+private fun computeDistance2D(
+    a: Vec2, 
+    b: Vec2, 
+    options: GraphConnectivityOptions,
+    idxA: Int,
+    idxB: Int,
+    points: List<Vec2>
+): Double {
+    return options.customDistanceMetric?.invoke(idxA, idxB, points) ?: distance2D(a, b)
+}
+
+/**
+ * Compute distance between two 3D points, using custom metric if provided.
+ */
+private fun computeDistance3D(
+    a: Vec3, 
+    b: Vec3, 
+    options: GraphConnectivityOptions,
+    idxA: Int,
+    idxB: Int,
+    points: List<Vec3>
+): Double {
+    return options.customDistanceMetric?.invoke(idxA, idxB, points) ?: distance3D(a, b)
 }
 
 private fun validatePoints2D(points: List<Vec2>, fn: String) {
@@ -1046,4 +1216,188 @@ private class UnionFind(size: Int) {
         
         return true
     }
+}
+
+// ==================== Additional JTS Wrappers ====================
+
+/**
+ * Represents a convex hull of a point set.
+ *
+ * @param hullPoints List of points forming the convex hull in counter-clockwise order
+ * @param hullIndices Indices of hull points in the original point list
+ */
+data class ConvexHull2D(
+    val hullPoints: List<Vec2>,
+    val hullIndices: List<Int>
+)
+
+/**
+ * Compute the convex hull of 2D points using JTS.
+ *
+ * The convex hull is the smallest convex polygon containing all points.
+ *
+ * @param points List of 2D points
+ * @return ConvexHull2D with hull vertices
+ */
+fun vec2ConvexHull(points: List<Vec2>): ConvexHull2D {
+    require(points.isNotEmpty()) { "vec2ConvexHull: points must not be empty" }
+    validatePoints2D(points, "vec2ConvexHull")
+    
+    if (points.size < 3) {
+        return ConvexHull2D(points.toList(), points.indices.toList())
+    }
+    
+    // Convert to JTS coordinates
+    val coords = points.map { Coordinate(it.x.toDouble(), it.y.toDouble()) }
+    
+    // Compute convex hull
+    val geomFactory = GeometryFactory()
+    val multiPoint = geomFactory.createMultiPointFromCoords(coords.toTypedArray())
+    val hull = multiPoint.convexHull()
+    
+    // Extract hull vertices and find their indices
+    val hullCoords = hull.coordinates
+    val hullPoints = mutableListOf<Vec2>()
+    val hullIndices = mutableListOf<Int>()
+    
+    for (hullCoord in hullCoords) {
+        // Skip the duplicate closing point
+        if (hullPoints.isNotEmpty() && 
+            hullCoord.equals2D(hullCoords[0])) {
+            continue
+        }
+        
+        val idx = coords.indexOfFirst { it.equals2D(hullCoord) }
+        if (idx >= 0) {
+            hullPoints.add(points[idx])
+            hullIndices.add(idx)
+        }
+    }
+    
+    return ConvexHull2D(hullPoints, hullIndices)
+}
+
+/**
+ * Compute a graph connecting convex hull points in order.
+ *
+ * Creates edges along the boundary of the convex hull.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph with convex hull boundary edges
+ */
+fun vec2ConvexHullGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2ConvexHullGraph: points must not be empty" }
+    validatePoints2D(points, "vec2ConvexHullGraph")
+    
+    val hull = vec2ConvexHull(points)
+    val edges = mutableListOf<GraphEdge>()
+    
+    // Connect consecutive hull points
+    for (i in hull.hullIndices.indices) {
+        val curr = hull.hullIndices[i]
+        val next = hull.hullIndices[(i + 1) % hull.hullIndices.size]
+        
+        val dist = computeDistance2D(
+            points[curr], 
+            points[next], 
+            options, 
+            curr, 
+            next, 
+            points
+        )
+        edges.add(GraphEdge(curr, next, dist))
+    }
+    
+    return PointGraph(edges, points.size)
+}
+
+/**
+ * Compute triangles from Delaunay triangulation.
+ *
+ * @param points List of 2D points
+ * @return List of triangles, where each triangle is a triple of point indices
+ */
+fun vec2DelaunayTriangles(points: List<Vec2>): List<Triple<Int, Int, Int>> {
+    require(points.isNotEmpty()) { "vec2DelaunayTriangles: points must not be empty" }
+    validatePoints2D(points, "vec2DelaunayTriangles")
+    
+    if (points.size < 3) return emptyList()
+    
+    // Convert to JTS coordinates
+    val coords = points.map { Coordinate(it.x.toDouble(), it.y.toDouble()) }
+    
+    // Build Delaunay triangulation
+    val builder = DelaunayTriangulationBuilder()
+    builder.setSites(coords)
+    val triangles = builder.getTriangles(GeometryFactory())
+    
+    // Extract triangles
+    val result = mutableListOf<Triple<Int, Int, Int>>()
+    
+    for (i in 0 until triangles.numGeometries) {
+        val triangle = triangles.getGeometryN(i)
+        val triCoords = triangle.coordinates
+        
+        if (triCoords.size >= 4) {  // Triangle has 4 coords (last = first)
+            val idx0 = coords.indexOfFirst { it.equals2D(triCoords[0]) }
+            val idx1 = coords.indexOfFirst { it.equals2D(triCoords[1]) }
+            val idx2 = coords.indexOfFirst { it.equals2D(triCoords[2]) }
+            
+            if (idx0 >= 0 && idx1 >= 0 && idx2 >= 0) {
+                result.add(Triple(idx0, idx1, idx2))
+            }
+        }
+    }
+    
+    return result
+}
+
+/**
+ * Compute the nearest point on the convex hull for each interior point.
+ *
+ * @param points List of 2D points
+ * @param options Graph connectivity options
+ * @return PointGraph connecting each interior point to its nearest hull point
+ */
+fun vec2HullProjectionGraph(
+    points: List<Vec2>,
+    options: GraphConnectivityOptions = GraphConnectivityOptions()
+): PointGraph {
+    require(points.isNotEmpty()) { "vec2HullProjectionGraph: points must not be empty" }
+    validatePoints2D(points, "vec2HullProjectionGraph")
+    
+    val hull = vec2ConvexHull(points)
+    val hullSet = hull.hullIndices.toSet()
+    val edges = mutableListOf<GraphEdge>()
+    
+    // For each non-hull point, connect to nearest hull point
+    for (i in points.indices) {
+        if (i in hullSet) continue
+        
+        var nearestHullIdx = hull.hullIndices[0]
+        var minDist = Double.POSITIVE_INFINITY
+        
+        for (hullIdx in hull.hullIndices) {
+            val dist = computeDistance2D(
+                points[i], 
+                points[hullIdx], 
+                options, 
+                i, 
+                hullIdx, 
+                points
+            )
+            if (dist < minDist) {
+                minDist = dist
+                nearestHullIdx = hullIdx
+            }
+        }
+        
+        edges.add(GraphEdge(i, nearestHullIdx, minDist))
+    }
+    
+    return PointGraph(edges, points.size)
 }

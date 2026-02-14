@@ -177,3 +177,87 @@ object GraphConnectivityExample {
         println("  Higher beta → sparser graph")
     }
 }
+    
+    private fun example7_VoronoiAndDelaunay() {
+        println("\n--- Example 7: Voronoi Diagrams and Full Delaunay ---")
+        
+        val rnd = Random(789)
+        val points = List(8) { 
+            vec(rnd.nextDouble(0.0, 5.0), rnd.nextDouble(0.0, 5.0))
+        }
+        
+        // Compute Voronoi diagram
+        val voronoi = vec2VoronoiDiagram(points)
+        println("Voronoi diagram with ${voronoi.cells.size} cells")
+        
+        // Compute full Delaunay triangulation
+        val delaunay = vec2DelaunayGraph(points)
+        val triangles = vec2DelaunayTriangles(points)
+        
+        println("Delaunay triangulation:")
+        println("  Edges: ${delaunay.edges.size}")
+        println("  Triangles: ${triangles.size}")
+        
+        // Convex hull
+        val hull = vec2ConvexHull(points)
+        println("  Hull vertices: ${hull.hullPoints.size}")
+    }
+    
+    private fun example8_CustomDistanceMetric() {
+        println("\n--- Example 8: Custom Distance Metrics ---")
+        
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(0.0, 1.0),
+            vec(1.0, 1.0)
+        )
+        
+        // Standard Euclidean distance
+        val euclideanKnn = vec2KnnGraph(points, k = 2)
+        println("Euclidean KNN edges: ${euclideanKnn.edges.size}")
+        
+        // Manhattan distance
+        val manhattanMetric: (Int, Int, List<*>) -> Double = { i, j, pts ->
+            val p = pts as List<Vec2>
+            abs(p[i].x - p[j].x).toDouble() + abs(p[i].y - p[j].y).toDouble()
+        }
+        
+        val manhattanOptions = GraphConnectivityOptions(customDistanceMetric = manhattanMetric)
+        val manhattanKnn = vec2KnnGraph(points, k = 2, manhattanOptions)
+        
+        println("Manhattan KNN edges: ${manhattanKnn.edges.size}")
+        
+        println("\nEuclidean vs Manhattan edge weights:")
+        for ((eucEdge, manhEdge) in euclideanKnn.edges.zip(manhattanKnn.edges)) {
+            println("  Edge (${eucEdge.i},${eucEdge.j}): Euclidean=${"%.3f".format(eucEdge.weight)}, Manhattan=${"%.3f".format(manhEdge.weight)}")
+        }
+    }
+    
+    private fun example9_ConvexHullOperations() {
+        println("\n--- Example 9: Convex Hull Operations ---")
+        
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(2.0, 0.0),
+            vec(2.0, 2.0),
+            vec(0.0, 2.0),
+            vec(1.0, 1.0),  // Interior
+            vec(0.8, 0.9)   // Interior
+        )
+        
+        val hull = vec2ConvexHull(points)
+        println("Convex hull has ${hull.hullPoints.size} vertices")
+        println("Hull indices: ${hull.hullIndices}")
+        
+        val hullGraph = vec2ConvexHullGraph(points)
+        println("Hull boundary edges: ${hullGraph.edges.size}")
+        
+        val projection = vec2HullProjectionGraph(points)
+        println("Interior-to-hull connections: ${projection.edges.size}")
+        
+        // Show which interior points connect to which hull points
+        for (edge in projection.edges) {
+            println("  Interior point ${edge.i} → Hull point ${edge.j} (distance: ${"%.3f".format(edge.weight)})")
+        }
+    }

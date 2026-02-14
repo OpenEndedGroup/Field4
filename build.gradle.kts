@@ -46,20 +46,18 @@ plugins {
     kotlin("multiplatform") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
     id("org.jetbrains.dokka") version "2.1.0"
-    // Temporarily disabled due to network issues
-    // id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
+    id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
 }
 
-// Temporarily disabled due to network issues
-// jvmWrapper {
-//     unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
-//     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
-//     linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
-//     linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
-//     macAarch64JvmUrl = "https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz"
-//     macX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-macos-jdk.tar.gz"
-//     windowsX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-windows-jdk.zip"
-// }
+jvmWrapper {
+    unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
+    winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
+    linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
+    linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
+    macAarch64JvmUrl = "https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz"
+    macX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-macos-jdk.tar.gz"
+    windowsX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-windows-jdk.zip"
+}
 
 java {
     toolchain {
