@@ -42,6 +42,15 @@ import kotlin.script.experimental.jvm.util.toSourceCodePosition
 import kotlin.script.experimental.util.LinkedSnippet
 import kotlin.system.measureNanoTime
 
+/**
+ * Annotation to mark functions that should be automatically exported to the box's preamble.
+ * When a function is annotated with @exported, its fully-typed signature will be added to
+ * the box's preamble after execution, making it available as a declared property.
+ */
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class exported
+
 class KotlinInterface(
     val propertyClasses: Map<String, KClass<*>> = emptyMap(), val properties: Map<String, Any?> = emptyMap(),
 
@@ -71,6 +80,9 @@ class KotlinInterface(
     var compilerConfig: ScriptCompilationConfiguration
     val contextUpdater: ContextUpdater
     val context: KotlinContext
+    
+    // Reference to the box this KotlinInterface is associated with (for @exported support)
+    var associatedBox: Any? = null
 
     private val resolver = CompoundDependenciesResolver(FileSystemDependenciesResolver(), MavenDependenciesResolver())
 
@@ -118,7 +130,7 @@ class KotlinInterface(
         evaluator = BasicJvmReplEvaluator()
 
         context = KotlinContext()
-        contextUpdater = ContextUpdater(context, evaluator)
+        contextUpdater = ContextUpdater(context, evaluator, this)
     }
 
     fun configureMavenDepsOnAnnotations(context: ScriptConfigurationRefinementContext): ResultWithDiagnostics<ScriptCompilationConfiguration> {
@@ -709,9 +721,12 @@ class KotlinInterface(
         }
     }
 
-    class ContextUpdater(val context: KotlinContext, private val evaluator: BasicJvmReplEvaluator) {
+    class ContextUpdater(val context: KotlinContext, private val evaluator: BasicJvmReplEvaluator, private val ki: KotlinInterface) {
 
         private var lastProcessedSnippet: LinkedSnippet<KJvmEvaluatedSnippet>? = null
+        
+        // Track exported functions to avoid duplicates
+        private val exportedFunctions = mutableSetOf<String>()
 
         fun update() {
             try {
@@ -743,7 +758,104 @@ class KotlinInterface(
                     }
                     val function = method.kotlinFunction ?: continue
                     context.functions[function.name] = KotlinFunctionInfo(function, line)
+                    
+                    // Check for @exported annotation
+                    if (method.isAnnotationPresent(exported::class.java)) {
+                        processExportedFunction(function)
+                    }
                 }
+            }
+        }
+        
+        private fun processExportedFunction(function: KFunction<*>) {
+            try {
+                val signature = generateFunctionDeclaration(function)
+                
+                // Avoid duplicates
+                if (exportedFunctions.contains(signature)) {
+                    return
+                }
+                exportedFunctions.add(signature)
+                
+                // Add to box preamble if box is available
+                val box = ki.associatedBox
+                if (box != null && box is HasProperties) {
+                    try {
+                        val currentPreamble = box.getPropertyRaw("preamble", "") as? String ?: ""
+                        
+                        // Add the function declaration to preamble if not already there
+                        if (!currentPreamble.contains(signature)) {
+                            val newPreamble = if (currentPreamble.isEmpty()) {
+                                signature
+                            } else {
+                                "$currentPreamble\n$signature"
+                            }
+                            box.setPropertyRaw("preamble", newPreamble, doResync = false)
+                            lprintln("info,kotlin", "Added @exported function to preamble: $signature")
+                        }
+                    } catch (e: Exception) {
+                        lprintln("error,kotlin", "Failed to add @exported function to preamble: ${e.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                lprintln("error,kotlin", "Failed to process @exported function: ${e.message}")
+            }
+        }
+        
+        private fun generateFunctionDeclaration(function: KFunction<*>): String {
+            // Generate a property declaration with function type
+            // e.g., "val myFunc: (Int, String) -> Double"
+            
+            val name = function.name
+            val params = function.parameters.filter { it.kind != kotlin.reflect.KParameter.Kind.INSTANCE }
+            val paramTypes = params.joinToString(", ") { param ->
+                simplifyTypeForExport(param.type.toString())
+            }
+            val returnType = simplifyTypeForExport(function.returnType.toString())
+            
+            val functionType = if (params.isEmpty()) {
+                "() -> $returnType"
+            } else {
+                "($paramTypes) -> $returnType"
+            }
+            
+            // Add the inherit marker /**/ at the end
+            return "val $name: $functionType /**/"
+        }
+        
+        private fun simplifyTypeForExport(typeName: String): String {
+            // Whitelist of types that are known to be imported in other code boxes
+            val whitelistedPrefixes = setOf(
+                "kotlin.",
+                "afield.",
+                "org.joml.",
+                // Common Kotlin types
+                "Int", "Long", "Short", "Byte",
+                "Float", "Double",
+                "Boolean", "Char", "String",
+                "Unit", "Any", "Nothing",
+                // Collections
+                "List", "Set", "Map", "Array",
+                "MutableList", "MutableSet", "MutableMap",
+                "Sequence", "Iterable", "Collection",
+                // Common function types are already in format (A, B) -> C
+            )
+            
+            // Check if the type is whitelisted
+            if (whitelistedPrefixes.any { typeName.startsWith(it) }) {
+                return typeName
+            }
+            
+            // For non-whitelisted types, try to find a generic supertype
+            // This is a simplified approach - we'll look for common patterns
+            return when {
+                typeName.contains("List") -> "List<*>"
+                typeName.contains("Set") -> "Set<*>"
+                typeName.contains("Map") -> "Map<*, *>"
+                typeName.contains("Collection") -> "Collection<*>"
+                typeName.contains("Iterable") -> "Iterable<*>"
+                typeName.contains("Sequence") -> "Sequence<*>"
+                else -> "Any?" // Fallback to the most generic type
             }
         }
 

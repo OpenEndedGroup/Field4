@@ -589,6 +589,7 @@ fun makeKI(box: Box): KotlinInterface {
 
     logTime("ki_standardlib") {
         val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        ki.associatedBox = box  // Set the box reference for @exported support
         val si = thisSessionInfo.get()
         inMain {
 //        if (box.properties["_tombstone"].isTrue()) return@inMain
@@ -624,6 +625,7 @@ fun makeKI(box: Box): KotlinInterface {
 
 suspend fun makeKIHere(box: Box): KotlinInterface {
     val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
     if (box.properties["_tombstone"].isTrue()) return box.ki
 
