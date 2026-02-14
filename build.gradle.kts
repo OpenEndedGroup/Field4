@@ -243,6 +243,7 @@ kotlin {
 
                 implementation("org.apache.commons:commons-math4-core:4.0-beta1")
                 implementation("org.apache.commons:commons-math4-legacy:4.0-beta1")
+                implementation("org.dyn4j:dyn4j:5.0.2")
                 implementation("ai.koog:koog-agents:0.5.0")
 
                 implementation("com.microsoft.playwright:playwright:1.57.0")

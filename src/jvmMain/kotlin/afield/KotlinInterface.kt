@@ -60,7 +60,7 @@ class KotlinInterface(
 ) {
 
     internal inner class SourceCodeImpl(number: Int, override val text: String) : SourceCode {
-        override val name: String? = "$filePrefix\$$number"
+        override val name: String? = "${filePrefix}_\$$number"
         override val locationId: String? = "LOCATION_$number"
 
         override fun equals(other: Any?): Boolean {
