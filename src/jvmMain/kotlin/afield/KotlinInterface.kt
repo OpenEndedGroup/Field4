@@ -1,5 +1,6 @@
 package afield
 
+//import org.jetbrains.kotlin.scripting.ide_services.compiler.KJvmReplCompilerWithIdeServices
 import afield.logger.lblock
 import afield.logger.lprintln
 import afield.macros.MacroRegistry
@@ -18,16 +19,14 @@ import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.scripting.ide_services.compiler.KJvmReplCompilerWithIdeServices
-//import org.jetbrains.kotlin.scripting.ide_services.compiler.KJvmReplCompilerWithIdeServices
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.lang.reflect.Field
+import java.lang.reflect.Proxy
 import java.net.URL
 import java.net.URLClassLoader
 import java.util.concurrent.Executors
-import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
-import kotlin.reflect.KProperty
+import kotlin.reflect.*
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.reflect.jvm.kotlinProperty
 import kotlin.script.experimental.api.*
@@ -43,11 +42,16 @@ import kotlin.script.experimental.util.LinkedSnippet
 import kotlin.system.measureNanoTime
 
 /**
- * Annotation to mark functions that should be automatically exported to the box's preamble.
- * When a function is annotated with @exported, its fully-typed signature will be added to
+ * Annotation to mark functions/values that should be automatically exported to the box's preamble.
+ * When a declaration is annotated with @exported, its fully-typed signature will be added to
  * the box's preamble after execution, making it available as a declared property.
  */
-@Target(AnnotationTarget.FUNCTION)
+@Target(
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.PROPERTY,
+    AnnotationTarget.FIELD,
+    AnnotationTarget.PROPERTY_GETTER
+)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class exported
 
@@ -80,7 +84,7 @@ class KotlinInterface(
     var compilerConfig: ScriptCompilationConfiguration
     val contextUpdater: ContextUpdater
     val context: KotlinContext
-    
+
     // Reference to the box this KotlinInterface is associated with (for @exported support)
     var associatedBox: Any? = null
 
@@ -724,9 +728,9 @@ class KotlinInterface(
     class ContextUpdater(val context: KotlinContext, private val evaluator: BasicJvmReplEvaluator, private val ki: KotlinInterface) {
 
         private var lastProcessedSnippet: LinkedSnippet<KJvmEvaluatedSnippet>? = null
-        
-        // Track exported functions to avoid duplicates
-        private val exportedFunctions = mutableSetOf<String>()
+
+        // Track exported declarations by alias for idempotent preamble updates
+        private val exportedDeclarations = mutableMapOf<String, String>()
 
         fun update() {
             try {
@@ -758,71 +762,192 @@ class KotlinInterface(
                     }
                     val function = method.kotlinFunction ?: continue
                     context.functions[function.name] = KotlinFunctionInfo(function, line)
-                    
+
                     // Check for @exported annotation
                     if (method.isAnnotationPresent(exported::class.java)) {
-                        processExportedFunction(function)
+                        processExportedFunction(function, line)
                     }
                 }
             }
         }
-        
-        private fun processExportedFunction(function: KFunction<*>) {
+
+        private fun processExportedFunction(function: KFunction<*>, line: Any) {
             try {
-                val signature = generateFunctionDeclaration(function)
-                
-                // Avoid duplicates
-                if (exportedFunctions.contains(signature)) {
-                    return
-                }
-                exportedFunctions.add(signature)
-                
+                val exportedName = exportedAlias(function.name)
+                val declaration = generateFunctionDeclaration(function, exportedName)
+
                 // Add to box preamble if box is available
                 val box = ki.associatedBox
                 if (box != null && box is HasProperties) {
                     try {
-                        val currentPreamble = box.getPropertyRaw("preamble", "") as? String ?: ""
-                        
-                        // Add the function declaration to preamble if not already there
-                        if (!currentPreamble.contains(signature)) {
-                            val newPreamble = if (currentPreamble.isEmpty()) {
-                                signature
-                            } else {
-                                "$currentPreamble\n$signature"
-                            }
-                            box.setPropertyRaw("preamble", newPreamble, doResync = false)
-                            lprintln("info,kotlin", "Added @exported function to preamble: $signature")
-                        }
+                        val functionReference = createBoundFunctionReference(function, line)
+                        box.setPropertyRaw(exportedName, functionReference, doResync = false)
+                        upsertExportedDeclaration(box, exportedName, declaration)
                     } catch (e: Exception) {
-                        lprintln("error,kotlin", "Failed to add @exported function to preamble: ${e.message}")
+                        lprintln("error,kotlin", "Failed to export @exported function '${function.name}': ${e.message}")
                     }
                 }
             } catch (e: Exception) {
                 lprintln("error,kotlin", "Failed to process @exported function: ${e.message}")
             }
         }
-        
-        private fun generateFunctionDeclaration(function: KFunction<*>): String {
+
+        private fun generateFunctionDeclaration(function: KFunction<*>, exportedName: String): String {
             // Generate a property declaration with function type
-            // e.g., "val myFunc: (Int, String) -> Double"
-            
-            val name = function.name
+            // e.g., "val Box._myFunc by InheritanceFromContext<(Int, String) -> Double>()"
+
             val params = function.parameters.filter { it.kind != kotlin.reflect.KParameter.Kind.INSTANCE }
             val paramTypes = params.joinToString(", ") { param ->
                 simplifyTypeForExport(param.type.toString())
             }
             val returnType = simplifyTypeForExport(function.returnType.toString())
-            
+
             val functionType = if (params.isEmpty()) {
                 "() -> $returnType"
             } else {
                 "($paramTypes) -> $returnType"
             }
-            
+
             // Add the inherit marker /**/ at the end
-            return "val $name: $functionType /**/"
+            return "val Box.$exportedName by InheritanceFromContext<$functionType>() /**/"
         }
-        
+
+        private fun processExportedProperty(name: String, descriptor: KProperty<*>, value: Any?) {
+            try {
+                val exportedName = exportedAlias(name)
+                val declaration = generatePropertyDeclaration(descriptor, exportedName)
+
+                val box = ki.associatedBox
+                if (box != null && box is HasProperties) {
+                    try {
+                        if (value != null) {
+                            box.setPropertyRaw(exportedName, value, doResync = true)
+                        }
+                        upsertExportedDeclaration(box, exportedName, declaration)
+                    } catch (e: Exception) {
+                        lprintln("error,kotlin", "Failed to export @exported property '$name': ${e.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                lprintln("error,kotlin", "Failed to process @exported property '$name': ${e.message}")
+            }
+        }
+
+        private fun generatePropertyDeclaration(property: KProperty<*>, exportedName: String): String {
+            val keyword = if (property is KMutableProperty<*>) "var" else "val"
+            val typeName = simplifyTypeForExport(property.returnType.toString())
+            return "$keyword Box.$exportedName by InheritanceFromContext<$typeName>() /**/"
+        }
+
+        private fun exportedAlias(name: String): String {
+            return if (name.startsWith("_")) name else "_$name"
+        }
+
+        private fun upsertExportedDeclaration(box: HasProperties, exportedName: String, declaration: String) {
+            val currentPreamble = box.getPropertyRaw("preamble", "") as? String ?: ""
+            val currentLines = currentPreamble
+                .lines()
+                .map { it.trimEnd() }
+                .filter { it.isNotBlank() }
+
+            val filteredLines = currentLines.filterNot {
+                isExportedDeclarationLineFor(it, exportedName)
+            }
+            val nextLines = filteredLines + declaration
+            val newPreamble = nextLines.joinToString("\n")
+
+            val previous = exportedDeclarations[exportedName]
+            if (newPreamble != currentPreamble || previous != declaration) {
+                box.setPropertyRaw("preamble", newPreamble, doResync = true)
+                exportedDeclarations[exportedName] = declaration
+                lprintln("info,kotlin", "Added @exported declaration to preamble: $declaration")
+            }
+        }
+
+        private fun isExportedDeclarationLineFor(line: String, exportedName: String): Boolean {
+            val withoutPrefixComment = line.trim()
+                .replaceFirst(Regex("""^\s*/\*.*?\*/\s*"""), "")
+                .trim()
+            if (!withoutPrefixComment.endsWith("/**/")) return false
+
+            val nameEscaped = Regex.escape(exportedName)
+            val patterns = listOf(
+                // Current form: val/var Box._name by ...
+                Regex("""^(val|var)\s+Box\.$nameEscaped\b.*\bby\b.*$"""),
+                // Legacy form: val/var _name by ...
+                Regex("""^(val|var)\s+$nameEscaped\b.*\bby\b.*$"""),
+                // Legacy typed forms: val/var Box._name : ...
+                Regex("""^(val|var)\s+Box\.$nameEscaped\b\s*:\s*.*$"""),
+                // Legacy typed forms: val/var _name : ...
+                Regex("""^(val|var)\s+$nameEscaped\b\s*:\s*.*$""")
+            )
+            return patterns.any { it.matches(withoutPrefixComment) }
+        }
+
+        private fun createBoundFunctionReference(function: KFunction<*>, line: Any): Any {
+            val arity = function.parameters.count { it.kind != KParameter.Kind.INSTANCE }
+            val functionInterface = when (arity) {
+                0 -> kotlin.jvm.functions.Function0::class.java
+                1 -> kotlin.jvm.functions.Function1::class.java
+                2 -> kotlin.jvm.functions.Function2::class.java
+                3 -> kotlin.jvm.functions.Function3::class.java
+                4 -> kotlin.jvm.functions.Function4::class.java
+                5 -> kotlin.jvm.functions.Function5::class.java
+                6 -> kotlin.jvm.functions.Function6::class.java
+                7 -> kotlin.jvm.functions.Function7::class.java
+                8 -> kotlin.jvm.functions.Function8::class.java
+                9 -> kotlin.jvm.functions.Function9::class.java
+                10 -> kotlin.jvm.functions.Function10::class.java
+                11 -> kotlin.jvm.functions.Function11::class.java
+                12 -> kotlin.jvm.functions.Function12::class.java
+                13 -> kotlin.jvm.functions.Function13::class.java
+                14 -> kotlin.jvm.functions.Function14::class.java
+                15 -> kotlin.jvm.functions.Function15::class.java
+                16 -> kotlin.jvm.functions.Function16::class.java
+                17 -> kotlin.jvm.functions.Function17::class.java
+                18 -> kotlin.jvm.functions.Function18::class.java
+                19 -> kotlin.jvm.functions.Function19::class.java
+                20 -> kotlin.jvm.functions.Function20::class.java
+                21 -> kotlin.jvm.functions.Function21::class.java
+                22 -> kotlin.jvm.functions.Function22::class.java
+                else -> throw IllegalArgumentException("Cannot export function '${function.name}': arity $arity is not supported")
+            }
+
+            return Proxy.newProxyInstance(
+                line.javaClass.classLoader,
+                arrayOf(functionInterface)
+            ) { proxy, method, args ->
+                when (method.name) {
+                    "invoke" -> {
+                        val values = args?.toList() ?: emptyList()
+                        val callArgs = ArrayList<Any?>(function.parameters.size)
+                        var valueIndex = 0
+                        for (parameter in function.parameters) {
+                            when (parameter.kind) {
+                                KParameter.Kind.INSTANCE -> callArgs.add(line)
+                                else -> {
+                                    if (valueIndex >= values.size) {
+                                        throw IllegalArgumentException(
+                                            "Missing argument ${valueIndex + 1} for @exported function '${function.name}'"
+                                        )
+                                    }
+                                    callArgs.add(values[valueIndex++])
+                                }
+                            }
+                        }
+                        function.call(*callArgs.toTypedArray())
+                    }
+
+                    "toString" -> functionSignature(function)
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "equals" -> proxy === args?.getOrNull(0)
+                    else -> throw UnsupportedOperationException(
+                        "Unsupported proxy method '${method.name}' for @exported function '${function.name}'"
+                    )
+                }
+            }
+        }
+
         private fun simplifyTypeForExport(typeName: String): String {
             // Whitelist of types that are known to be imported in other code boxes
             val whitelistedPrefixes = setOf(
@@ -840,12 +965,12 @@ class KotlinInterface(
                 "Sequence", "Iterable", "Collection",
                 // Common function types are already in format (A, B) -> C
             )
-            
+
             // Check if the type is whitelisted
             if (whitelistedPrefixes.any { typeName.startsWith(it) }) {
                 return typeName
             }
-            
+
             // For non-whitelisted types, try to find a generic supertype
             // This is a simplified approach - we'll look for common patterns
             return when {
@@ -871,7 +996,7 @@ class KotlinInterface(
         private fun findVariables(fields: Array<Field>, o: Any) {
             for (field in fields) {
                 val fieldName = field.name
-                if (fieldName.contains("$\$implicitReceiver") || fieldName.contains("script$")) {
+                if (fieldName.contains("$\$implicitReceiver") || fieldName.contains("script$") || fieldName.endsWith("\$delegate")) {
                     continue
                 }
 
@@ -879,7 +1004,13 @@ class KotlinInterface(
                 val value = field.get(o)
                 val descriptor = field.kotlinProperty
                 if (descriptor != null) {
-                    context.vars[fieldName] = KotlinVariableInfo(value, descriptor, o)
+                    context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
+                    val isExported = field.isAnnotationPresent(exported::class.java) ||
+                        descriptor.annotations.any { it.annotationClass == exported::class } ||
+                        descriptor.getter.annotations.any { it.annotationClass == exported::class }
+                    if (isExported) {
+                        processExportedProperty(descriptor.name, descriptor, value)
+                    }
                 }
             }
         }

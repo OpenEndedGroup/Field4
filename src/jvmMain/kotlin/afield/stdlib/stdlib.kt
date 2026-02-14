@@ -107,6 +107,57 @@ class Inheritance<T>(val defaultValue: T? = null) {
     operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) = f.setPropertyRaw(property.name, v as Any)
 }
 
+class InheritanceFromContext<T>(val defaultValue: T? = null) {
+    operator fun getValue(f: Box, property: KProperty<*>): T {
+        val candidateNames = contextCandidateNames(property.name)
+        val local = findInBox(f, property.name, candidateNames)
+        if (local.first) return local.second as T
+
+        val seen = mutableSetOf<Box>()
+        seen.add(f)
+        var fringe = setOf(f)
+        while (fringe.isNotEmpty()) {
+            val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
+            seen.addAll(nextFringe)
+
+            nextFringe.forEach { parent ->
+                val found = findInBox(parent, property.name, candidateNames)
+                if (found.first) return found.second as T
+            }
+            fringe = nextFringe
+        }
+
+        if (defaultValue != null) return defaultValue as T
+        return null as T
+    }
+
+    operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) = f.setPropertyRaw(property.name, v as Any)
+
+    private fun contextCandidateNames(propertyName: String): List<String> {
+        val names = linkedSetOf(propertyName)
+        if (propertyName.startsWith("_")) names.add(propertyName.substring(1))
+        return names.toList()
+    }
+
+    private fun findInBox(box: Box, propertyName: String, names: List<String>): Pair<Boolean, Any?> {
+        // First prefer live KotlinContext values from this box.
+        names.forEach { name ->
+            val info = box.ki.context.vars[name]
+            if (info != null) return true to info.value
+        }
+
+        // Fallback to raw properties for compatibility and function exports.
+        val direct = box.getPropertyRaw(propertyName)
+        if (direct != null) return true to direct
+        names.forEach { name ->
+            val value = box.getPropertyRaw(name)
+            if (value != null) return true to value
+        }
+
+        return false to null
+    }
+}
+
 inline operator fun <T> IntRange.invoke(to: (Int) -> T): List<T> = this.map { to(it) }
 inline operator fun <T> Int.invoke(to: (Int) -> T): List<T> = (0 until this).map { to(it) }
 inline infix fun <T> Int.alphas(to: (Double) -> T): List<T> = (0 until this).map { to(it / (this - 1.0)) }

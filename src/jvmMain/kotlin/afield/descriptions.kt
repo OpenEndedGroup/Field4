@@ -9,10 +9,10 @@ fun findDefinition(a: Any?, search: Collection<*>?): String {
         ?.mapNotNull { it as? Box }
         ?.firstNotNullOfOrNull { box ->
         box.properties.entries.firstNotNullOfOrNull {
-            if (it.value === a) "'${it.key}' of box '${box.name}"
+            if (it.value === a) "'${it.key}' of box '${box.name}'"
             else null
         } ?: box.ki.context.vars.entries.firstNotNullOfOrNull {
-            if (it.value.value === a) "variable '${it.key}' of box ${box.name}"
+            if (it.value.value === a) "variable '${it.key}' of box '${box.name}'"
             else null
         }
         }
