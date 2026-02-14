@@ -779,26 +779,19 @@ class KotlinInterface(
                 
                 // Add to box preamble if box is available
                 val box = ki.associatedBox
-                if (box != null) {
+                if (box != null && box is HasProperties) {
                     try {
-                        // Use reflection to access Box.preamble property
-                        val boxClass = box.javaClass
-                        val preambleField = findPreambleField(boxClass)
+                        val currentPreamble = box.getPropertyRaw("preamble", "") as? String ?: ""
                         
-                        if (preambleField != null) {
-                            preambleField.isAccessible = true
-                            val currentPreamble = preambleField.get(box) as? String ?: ""
-                            
-                            // Add the function declaration to preamble if not already there
-                            if (!currentPreamble.contains(signature)) {
-                                val newPreamble = if (currentPreamble.isEmpty()) {
-                                    signature
-                                } else {
-                                    "$currentPreamble\n$signature"
-                                }
-                                preambleField.set(box, newPreamble)
-                                lprintln("info,kotlin", "Added @exported function to preamble: $signature")
+                        // Add the function declaration to preamble if not already there
+                        if (!currentPreamble.contains(signature)) {
+                            val newPreamble = if (currentPreamble.isEmpty()) {
+                                signature
+                            } else {
+                                "$currentPreamble\n$signature"
                             }
+                            box.setPropertyRaw("preamble", newPreamble, doResync = false)
+                            lprintln("info,kotlin", "Added @exported function to preamble: $signature")
                         }
                     } catch (e: Exception) {
                         lprintln("error,kotlin", "Failed to add @exported function to preamble: ${e.message}")
@@ -807,18 +800,6 @@ class KotlinInterface(
             } catch (e: Exception) {
                 lprintln("error,kotlin", "Failed to process @exported function: ${e.message}")
             }
-        }
-        
-        private fun findPreambleField(clazz: Class<*>): Field? {
-            var currentClass: Class<*>? = clazz
-            while (currentClass != null) {
-                try {
-                    return currentClass.getDeclaredField("preamble")
-                } catch (e: NoSuchFieldException) {
-                    currentClass = currentClass.superclass
-                }
-            }
-            return null
         }
         
         private fun generateFunctionDeclaration(function: KFunction<*>): String {
