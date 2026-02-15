@@ -181,7 +181,7 @@ private fun formatInlineMarkdown(text: String): String {
  */
 private fun formatCodeBlock(code: String, language: String): String {
     val escapedCode = escapeHtml(code.trimEnd())
-    val codeId = "code_${System.currentTimeMillis()}_${(Math.random() * 10000).toInt()}"
+    val codeId = "code_${java.util.UUID.randomUUID()}"
     
     return buildString {
         append("<div class='code-block-container' style='position: relative; margin: 10px 0;'>")

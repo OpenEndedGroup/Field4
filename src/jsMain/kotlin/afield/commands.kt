@@ -13,6 +13,10 @@ import kotlin.js.Date
 
 var lastMouse = 0.0 to 0.0
 
+// Window dimensions for documentation search popup
+private const val DOCS_SEARCH_WINDOW_WIDTH = 1000
+private const val DOCS_SEARCH_WINDOW_HEIGHT = 800
+
 external fun showPickMenu_custom(options: dynamic): dynamic
 
 private fun downloadEdnFile(filename: String, edn: String) {
@@ -370,15 +374,13 @@ fun insertFromWorkspace() {
 
 fun openDocsSearch() {
     // Open docs search page in a new window or tab
-    val width = 1000
-    val height = 800
-    val left = (window.screen.width - width) / 2
-    val top = (window.screen.height - height) / 2
+    val left = (window.screen.width - DOCS_SEARCH_WINDOW_WIDTH) / 2
+    val top = (window.screen.height - DOCS_SEARCH_WINDOW_HEIGHT) / 2
     
     window.open(
         "/docs-search.html",
         "Field4_Docs_Search",
-        "width=$width,height=$height,left=$left,top=$top,resizable=yes,scrollbars=yes"
+        "width=$DOCS_SEARCH_WINDOW_WIDTH,height=$DOCS_SEARCH_WINDOW_HEIGHT,left=$left,top=$top,resizable=yes,scrollbars=yes"
     )
 }
 
