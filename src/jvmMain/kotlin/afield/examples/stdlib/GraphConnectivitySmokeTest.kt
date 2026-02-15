@@ -45,6 +45,9 @@ object GraphConnectivitySmokeTest {
             testConvexHullGraph()
             testHullProjectionGraph()
             testCustomDistanceMetric()
+            testSearchAlgorithms()
+            testEdgeVisitStateAndGreedyPaths()
+            testGraphDiameterDecomposition()
             println("✅ Graph Connectivity smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -534,7 +537,6 @@ object GraphConnectivitySmokeTest {
         
         println("  ✓ Edge symmetry test passed")
     }
-}
 
     private fun testVoronoiDiagram() {
         val points = listOf(
@@ -687,3 +689,124 @@ object GraphConnectivitySmokeTest {
         
         println("  ✓ Custom distance metric test passed")
     }
+
+    private fun testSearchAlgorithms() {
+        val graph = PointGraph(
+            edges = listOf(
+                GraphEdge(0, 1, 1.0),
+                GraphEdge(1, 2, 1.0),
+                GraphEdge(0, 2, 5.0),
+                GraphEdge(2, 3, 1.0),
+                GraphEdge(1, 3, 4.0)
+            ),
+            pointCount = 4
+        )
+
+        val bfs = graphBfsPath(graph, start = 0, goal = 3)
+        require(bfs != null) { "BFS should find a path from 0 to 3" }
+        require(bfs.start == 0 && bfs.end == 3) { "BFS path endpoints are incorrect" }
+        require(bfs.nodes.size == 3) { "BFS should find a minimum-hop path of length 2 edges" }
+
+        val dfs = graphDfsPath(graph, start = 0, goal = 3)
+        require(dfs != null) { "DFS should find a path from 0 to 3" }
+        require(dfs.start == 0 && dfs.end == 3) { "DFS path endpoints are incorrect" }
+        require(dfs.edges.isNotEmpty()) { "DFS path should contain edges" }
+
+        val aStar = graphAStarPath(graph, start = 0, goal = 3)
+        require(aStar != null) { "A* should find a path from 0 to 3" }
+        assertClose("A* total weight", aStar.totalWeight, 3.0, 1e-9)
+        require(aStar.nodes == listOf(0, 1, 2, 3)) {
+            "A* should return the weighted-shortest path [0,1,2,3], got ${aStar.nodes}"
+        }
+
+        val points = listOf(
+            vec(0.0, 0.0),
+            vec(1.0, 0.0),
+            vec(2.0, 0.0),
+            vec(3.0, 0.0)
+        )
+        val aStarVec2 = vec2AStarPath(graph, points, start = 0, goal = 3)
+        require(aStarVec2 != null) { "vec2AStarPath should find a path from 0 to 3" }
+        assertClose("vec2 A* total weight", aStarVec2.totalWeight, 3.0, 1e-9)
+
+        println("  ✓ Graph search algorithms test passed")
+    }
+
+    private fun testEdgeVisitStateAndGreedyPaths() {
+        val graph = PointGraph(
+            edges = listOf(
+                GraphEdge(0, 1, 1.0),
+                GraphEdge(1, 2, 1.0),
+                GraphEdge(0, 3, 2.0),
+                GraphEdge(3, 4, 2.0)
+            ),
+            pointCount = 5
+        )
+
+        val initialState = graph.edgeVisitState()
+        require(initialState.visitedEdges.isEmpty()) { "Initial state should have no visited edges" }
+        require(initialState.unvisitedEdges.size == graph.edges.size) {
+            "Initial unvisited edges should match graph edges"
+        }
+
+        val greedy = graphGreedyClosestUnvisitedPaths(graph, anchor = 0, edgeState = initialState)
+        require(greedy.paths.isNotEmpty()) { "Greedy anchored search should produce at least one path" }
+        require(greedy.edgeState.visitedEdges.isNotEmpty()) { "Greedy anchored search should visit edges" }
+        require(greedy.edgeState.unvisitedEdges.isNotEmpty()) {
+            "Expected disconnected leftovers from anchor-based unvisited traversal"
+        }
+        require(greedy.paths.all { it.start == 0 }) { "All greedy paths should be anchored at node 0" }
+
+        val combined = graphAnchoredGreedyThenDiameterCover(graph, anchor = 0, edgeState = initialState)
+        require(combined.edgeState.unvisitedEdges.isEmpty()) {
+            "Combined anchored+diameter cover should consume all edges"
+        }
+        val covered = combined.paths.flatMap { it.edges }.toSet()
+        require(covered == graph.edges.toSet()) { "Combined cover should include every graph edge exactly once" }
+
+        println("  ✓ Edge visit state and greedy path cover test passed")
+    }
+
+    private fun testGraphDiameterDecomposition() {
+        val graph = PointGraph(
+            edges = listOf(
+                GraphEdge(0, 1, 1.0),
+                GraphEdge(1, 2, 1.0),
+                GraphEdge(2, 3, 1.0),
+                GraphEdge(3, 4, 1.0),
+                GraphEdge(2, 5, 1.0)
+            ),
+            pointCount = 6
+        )
+
+        val diameter = graphDiameterPath(graph)
+        require(diameter != null) { "Diameter path should exist for non-empty graph" }
+        assertClose("Diameter length", diameter.totalWeight, 4.0, 1e-9)
+        require(diameter.nodes.first() in listOf(0, 4) && diameter.nodes.last() in listOf(0, 4)) {
+            "Diameter path should connect endpoints of the long chain, got ${diameter.nodes}"
+        }
+
+        val decomposition = graphDiameterPathDecomposition(graph)
+        require(decomposition.paths.isNotEmpty()) { "Diameter decomposition should return paths" }
+        require(decomposition.edgeState.unvisitedEdges.isEmpty()) {
+            "Diameter decomposition should consume all edges"
+        }
+
+        val covered = decomposition.paths.flatMap { it.edges }.toSet()
+        require(covered == graph.edges.toSet()) { "Diameter decomposition should cover all edges" }
+
+        for (i in 0 until decomposition.paths.lastIndex) {
+            require(decomposition.paths[i].totalWeight + 1e-9 >= decomposition.paths[i + 1].totalWeight) {
+                "Diameter decomposition should produce long-to-short paths"
+            }
+        }
+
+        println("  ✓ Graph diameter decomposition test passed")
+    }
+
+    private fun assertClose(label: String, got: Double, expected: Double, eps: Double) {
+        require(abs(got - expected) <= eps) {
+            "$label mismatch: got=$got expected=$expected eps=$eps"
+        }
+    }
+}

@@ -2,6 +2,7 @@ package afield
 
 
 import afield.logger.lprintln
+import afield.four.util.MapOfSequences
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 import kotlin.math.max
@@ -25,6 +26,8 @@ class Runloop {
     var frame = 0L
 
     val main = Framer()
+    val preRun = MapOfSequences<String>()
+    val postRun = MapOfSequences<String>()
     var shouldSleep = true
 
     var limiter = RateLimiter(10.0, 0.2)
@@ -35,7 +38,9 @@ class Runloop {
         }
         while (true) {
             lprintln("debug,runloop", "run loop anybody? ${Thread.currentThread()}/${Thread.currentThread().name}")
+            preRun.update()
             main.frame()
+            postRun.update()
             frame++
 
             if (shouldSleep) {

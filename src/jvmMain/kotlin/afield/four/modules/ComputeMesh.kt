@@ -249,13 +249,20 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
         update.update()
 
         MemoryStack.stackPush().use { _ ->
-            if (pushConstantBuffer.limit() > 0) {
+            fun pushConstantsForCurrentDispatch(): Boolean {
+                if (pushConstantBuffer.limit() <= 0) return true
                 for (pc in inside.ci.pushConstants) {
                     push.setMembers(pc.members)
                 }
                 pushConstantBuffer.clear()
-                push.writeToBuffer(pushConstantBuffer, cmd) {
-                    throw MissingRefException("risk of GPU null ref `$it`")
+                try {
+                    push.writeToBuffer(pushConstantBuffer, cmd) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                } catch (e: Exception) {
+                    inside.parameters.errorHandler(e.message ?: "push constant error", e)
+                    lprintln("error,graphics", "push constant error, not dispatching compute mesh : ${e.message}")
+                    return false
                 }
                 pushConstantBuffer.clear()
 
@@ -266,12 +273,42 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
                     0,
                     pushConstantBuffer
                 )
+                return true
             }
 
-            if (x * y * z > 0) {
-                vkCmdDispatch(cmd.vkCommandBuffer, x, y, z)
-            } else {
-                lprintln("warning,graphics", "ComputeMesh has no work to do $x $y $z")
+            fun dispatchForCurrentWriter(dispatchX: Int?, dispatchY: Int?, dispatchZ: Int?) {
+                val xx = dispatchX ?: x
+                val yy = dispatchY ?: y
+                val zz = dispatchZ ?: z
+                if (xx * yy * zz > 0) {
+                    vkCmdDispatch(cmd.vkCommandBuffer, xx, yy, zz)
+                } else {
+                    lprintln("warning,graphics", "ComputeMesh has no work to do $xx $yy $zz")
+                }
+            }
+
+            try {
+                forEachFanOutDispatch(
+                    renderer = renderer,
+                    push = push,
+                    onNoFanOut = {
+                        if (pushConstantsForCurrentDispatch()) {
+                            dispatchForCurrentWriter(null, null, null)
+                        }
+                    },
+                    onWriter = { writer ->
+                        if (pushConstantsForCurrentDispatch()) {
+                            dispatchForCurrentWriter(
+                                dispatchX = writer.publication.dispatchX,
+                                dispatchY = writer.publication.dispatchY,
+                                dispatchZ = writer.publication.dispatchZ
+                            )
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                inside.parameters.errorHandler(e.message ?: "fan-out dispatch error", e)
+                lprintln("error,graphics", "fan-out dispatch error, not dispatching compute mesh : ${e.message}")
             }
         }
     }

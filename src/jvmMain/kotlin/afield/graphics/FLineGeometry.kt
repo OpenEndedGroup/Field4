@@ -5,6 +5,9 @@ import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
 import org.joml.Quaternionf
 import org.joml.plus
+import smile.data.DataFrame
+import smile.data.formula.Formula
+import smile.regression.OLS
 import java.awt.geom.Area
 import kotlin.math.*
 
@@ -1190,22 +1193,30 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
     }
     
     return try {
-        // Build design matrix (Vandermonde matrix) for polynomial fitting
-        val designMatrix = smile.math.matrix.Matrix(n, degree + 1)
-        val yVector = DoubleArray(n)
-        
+        val predictorNames = Array(degree) { i -> "x${i + 1}" }
+        val columnNames = predictorNames + "y"
+        val data = Array(n) { DoubleArray(degree + 1) }
+
         points.forEachIndexed { idx, p ->
-            var xPow = 1.0
-            for (j in 0..degree) {
-                designMatrix[idx, j] = xPow
+            var xPow = p.x.toDouble()
+            for (j in 0 until degree) {
+                data[idx][j] = xPow
                 xPow *= p.x.toDouble()
             }
-            yVector[idx] = p.y.toDouble()
+            data[idx][degree] = p.y.toDouble()
         }
-        
-        // Use Smile's OLS for robust least squares fitting
-        val model = smile.regression.OLS.fit(designMatrix, yVector)
-        val coeffs = FloatArray(degree + 1) { i -> model.coefficients()[i].toFloat() }
+
+        // Fit y = a0 + a1*x + ... + an*x^n with intercept included as a0.
+        val model = OLS.fit(
+            Formula.of("y", *predictorNames),
+            DataFrame.of(data, *columnNames)
+        )
+        val coeffs = FloatArray(degree + 1)
+        coeffs[0] = model.intercept().toFloat()
+        val learned = model.coefficients()
+        for (i in 1..degree) {
+            coeffs[i] = learned.get(i - 1).toFloat()
+        }
         
         // Calculate RMS error
         val error = sqrt(points.sumOf { p ->
@@ -1375,17 +1386,15 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
     }
     
     return try {
-        // Use Smile OLS to solve for control points
-        // For each interior point: B(t) = (1-t)³p0 + 3(1-t)²t*p1 + 3(1-t)t²*p2 + t³p3
-        // Rearranging: points[i] - ((1-t)³p0 + t³p3) = 3(1-t)²t*p1 + 3(1-t)t²*p2
-        
-        // Build design matrix [basis1, basis2] for least squares
+        // For each point: points[i] - ((1-t)^3 p0 + t^3 p3) = b1(t)*p1 + b2(t)*p2
+        // where b1 = 3(1-t)^2 t and b2 = 3(1-t)t^2.
         val n = points.size
-        val designMatrix = smile.math.matrix.Matrix(n, 2)
+        val basis1 = DoubleArray(n)
+        val basis2 = DoubleArray(n)
         val targetX = DoubleArray(n)
         val targetY = DoubleArray(n)
         val targetZ = DoubleArray(n)
-        
+
         for (i in points.indices) {
             val t = params[i].toDouble()
             val t2 = t * t
@@ -1393,33 +1402,41 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
             val mt = 1.0 - t
             val mt2 = mt * mt
             val mt3 = mt2 * mt
-            
-            val basis1 = 3.0 * mt2 * t
-            val basis2 = 3.0 * mt * t2
-            
-            designMatrix[i, 0] = basis1
-            designMatrix[i, 1] = basis2
-            
+
+            basis1[i] = 3.0 * mt2 * t
+            basis2[i] = 3.0 * mt * t2
+
             val fixedContribution = Vec3(p0).mul(mt3.toFloat()).add(Vec3(p3).mul(t3.toFloat()))
             targetX[i] = (points[i].x - fixedContribution.x).toDouble()
             targetY[i] = (points[i].y - fixedContribution.y).toDouble()
             targetZ[i] = (points[i].z - fixedContribution.z).toDouble()
         }
-        
-        // Solve for p1 and p2 using OLS for each coordinate
-        val xModel = smile.regression.OLS.fit(designMatrix, targetX)
-        val yModel = smile.regression.OLS.fit(designMatrix, targetY)
-        val zModel = smile.regression.OLS.fit(designMatrix, targetZ)
-        
+
+        fun solveCoordinate(target: DoubleArray): DoubleArray {
+            val data = Array(n) { i ->
+                doubleArrayOf(basis1[i], basis2[i], target[i])
+            }
+            val model = OLS.fit(
+                Formula.of("y", "b1", "b2", "0"),
+                DataFrame.of(data, "b1", "b2", "y")
+            )
+            val coeffs = model.coefficients()
+            return doubleArrayOf(coeffs.get(0), coeffs.get(1))
+        }
+
+        val xCoeffs = solveCoordinate(targetX)
+        val yCoeffs = solveCoordinate(targetY)
+        val zCoeffs = solveCoordinate(targetZ)
+
         val p1 = vec(
-            xModel.coefficients()[0].toFloat(),
-            yModel.coefficients()[0].toFloat(),
-            zModel.coefficients()[0].toFloat()
+            xCoeffs[0].toFloat(),
+            yCoeffs[0].toFloat(),
+            zCoeffs[0].toFloat()
         )
         val p2 = vec(
-            xModel.coefficients()[1].toFloat(),
-            yModel.coefficients()[1].toFloat(),
-            zModel.coefficients()[1].toFloat()
+            xCoeffs[1].toFloat(),
+            yCoeffs[1].toFloat(),
+            zCoeffs[1].toFloat()
         )
         
         // Calculate error

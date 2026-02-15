@@ -12,12 +12,16 @@ class FrameBufferGroup(
     val buffers: MutableList<VulkanBuffer> = mutableListOf()
 ) : HasBuffer, DynamicallyWriteable {
 
+    @Volatile
     var lastWritten = -1
 
     fun get(write : Boolean = false): VulkanBuffer {
-        if (write) markAsWritten()
-        var b = buffers[renderer.currentImage % buffers.size]
-        return b
+        return getAt(renderer.currentImage, write)
+    }
+
+    fun getAt(imageIndex: Int, write: Boolean = false): VulkanBuffer {
+        if (write) markAsWritten(imageIndex)
+        return buffers[imageIndex % buffers.size]
     }
 
     fun read(builder: FloatBuffer.() -> Unit) {
@@ -31,8 +35,8 @@ class FrameBufferGroup(
 
     fun getLastWritten() = if (lastWritten == -1) get() else buffers[lastWritten % buffers.size]
 
-    fun markAsWritten() {
-        lastWritten = renderer.currentImage % buffers.size
+    fun markAsWritten(imageIndex: Int = renderer.currentImage) {
+        lastWritten = imageIndex % buffers.size
     }
 
     fun build(builder: (Int) -> VulkanBuffer) {

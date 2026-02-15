@@ -1,5 +1,7 @@
 package afield.four.modules
 
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksEXT
 import afield.four.Renderer
 import afield.four.buffers.MissingRefException
@@ -110,8 +112,9 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
         if (inside != this.inside.current) lprintln("warning,graphics", "MeshMesh built in a different module ${inside}!=${this.inside.current}")
         update.update()
 
-        MemoryStack.stackPush().use { stack ->
-            if (pushConstantBuffer.limit() > 0) {
+        MemoryStack.stackPush().use { _ ->
+            fun pushConstantsForCurrentDispatch(): Boolean {
+                if (pushConstantBuffer.limit() <= 0) return true
                 for (pc in inside.mi.pushConstants) {
                     push.setMembers(pc.members)
                 }
@@ -119,25 +122,60 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
                     push.setMembers(pc.members)
                 }
                 pushConstantBuffer.clear()
-                push.writeToBuffer(pushConstantBuffer, cmd) {
-                    throw MissingRefException("risk of GPU null ref `$it`")
+                try {
+                    push.writeToBuffer(pushConstantBuffer, cmd) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                } catch (e: Exception) {
+                    inside.parameters.errorHandler(e.message ?: "push constant error", e)
+                    lprintln("error,graphics", "push constant error, not dispatching mesh task : ${e.message}")
+                    return false
                 }
                 pushConstantBuffer.clear()
 
                 VK10.vkCmdPushConstants(
                     cmd.vkCommandBuffer,
                     inside.pipelineLayout,
-                    VK10.VK_SHADER_STAGE_COMPUTE_BIT,
+                    VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT,
                     0,
                     pushConstantBuffer
                 )
-            } else {
+                return true
             }
 
-            if (x * y * z > 0) {
-                vkCmdDrawMeshTasksEXT(cmd.vkCommandBuffer, x, y, z);
-            } else {
-                lprintln("warning,graphics", "MeshMesh has no work to do $x $y $z")
+            fun dispatchForCurrentWriter(dispatchX: Int?, dispatchY: Int?, dispatchZ: Int?) {
+                val xx = dispatchX ?: x
+                val yy = dispatchY ?: y
+                val zz = dispatchZ ?: z
+                if (xx * yy * zz > 0) {
+                    vkCmdDrawMeshTasksEXT(cmd.vkCommandBuffer, xx, yy, zz)
+                } else {
+                    lprintln("warning,graphics", "MeshMesh has no work to do $xx $yy $zz")
+                }
+            }
+
+            try {
+                forEachFanOutDispatch(
+                    renderer = renderer,
+                    push = push,
+                    onNoFanOut = {
+                        if (pushConstantsForCurrentDispatch()) {
+                            dispatchForCurrentWriter(null, null, null)
+                        }
+                    },
+                    onWriter = { writer ->
+                        if (pushConstantsForCurrentDispatch()) {
+                            dispatchForCurrentWriter(
+                                dispatchX = writer.publication.dispatchX,
+                                dispatchY = writer.publication.dispatchY,
+                                dispatchZ = writer.publication.dispatchZ
+                            )
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                inside.parameters.errorHandler(e.message ?: "fan-out dispatch error", e)
+                lprintln("error,graphics", "fan-out dispatch error, not dispatching mesh task : ${e.message}")
             }
         }
     }

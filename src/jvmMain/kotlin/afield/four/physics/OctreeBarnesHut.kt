@@ -7,9 +7,13 @@ import kotlin.math.sqrt
 
 /**
  * Octree + Barnes-Hut utilities for SoA x/y/z particle data.
- * Designed to minimize per-step allocations; not thread-safe.
+ * Designed to minimize per-step allocations.
+ * Mutating operations (`build`, `clear`) are not thread-safe.
  */
-class OctreeBarnesHut(initialCapacity: Int = 1024) {
+class OctreeBarnesHut(
+    initialCapacity: Int = 1024,
+    private val allowParallelBuild: Boolean = true
+) {
 
     private var capacity = max(1, initialCapacity)
 
@@ -28,6 +32,8 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
 
     private var stack = IntArray(capacity)
     private var stackVisited = IntArray(capacity)
+    private val forceStackTLS = ThreadLocal.withInitial { IntArray(max(1, capacity)) }
+    private var parallelScratchTrees: Array<OctreeBarnesHut>? = null
 
     var nodeCount: Int = 0
         private set
@@ -42,7 +48,9 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
         z: FloatArray,
         massIn: FloatArray?,
         invMass: FloatArray?,
-        count: Int
+        count: Int,
+        buildExecutor: SimdVerlet.ForceExecutor? = null,
+        minParallelCount: Int = 8192
     ) {
         if (count <= 0) {
             nodeCount = 0
@@ -88,11 +96,184 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
         leafIndex[0] = -1
         zeroChildren(0)
 
+        val executor = buildExecutor
+        if (!allowParallelBuild || executor == null || count < minParallelCount) {
+            buildFromContiguousRange(x, y, z, massIn, invMass, count)
+            return
+        }
+
+        val bucketCounts = IntArray(8)
+        for (i in 0 until count) {
+            val slot =
+                (if (x[i] >= centerX) 1 else 0) or
+                    ((if (y[i] >= centerY) 1 else 0) shl 1) or
+                    ((if (z[i] >= centerZ) 1 else 0) shl 2)
+            bucketCounts[slot]++
+        }
+
+        val bucketIndices = Array(8) { IntArray(bucketCounts[it]) }
+        val bucketWrite = IntArray(8)
+        for (i in 0 until count) {
+            val slot =
+                (if (x[i] >= centerX) 1 else 0) or
+                    ((if (y[i] >= centerY) 1 else 0) shl 1) or
+                    ((if (z[i] >= centerZ) 1 else 0) shl 2)
+            bucketIndices[slot][bucketWrite[slot]++] = i
+        }
+
+        val scratchTrees = ensureParallelScratchTrees()
+        val childHalf = rootHalf * 0.5f
+        executor.runRanges(n = 8, minChunk = 1) { start, endExclusive ->
+            for (slot in start until endExclusive) {
+                val bucketSize = bucketCounts[slot]
+                if (bucketSize == 0) continue
+                val sx = if ((slot and 1) != 0) 1f else -1f
+                val sy = if ((slot and 2) != 0) 1f else -1f
+                val sz = if ((slot and 4) != 0) 1f else -1f
+                val subtree = scratchTrees[slot]
+                subtree.buildFromIndices(
+                    x = x,
+                    y = y,
+                    z = z,
+                    massIn = massIn,
+                    invMass = invMass,
+                    indices = bucketIndices[slot],
+                    indexCount = bucketSize,
+                    rootCenterX = centerX + sx * childHalf,
+                    rootCenterY = centerY + sy * childHalf,
+                    rootCenterZ = centerZ + sz * childHalf,
+                    rootHalf = childHalf
+                )
+            }
+        }
+
+        zeroChildren(0)
+        leafIndex[0] = -1
+        var nextNode = 1
+        for (slot in 0 until 8) {
+            val bucketSize = bucketCounts[slot]
+            if (bucketSize == 0) continue
+            val subtree = scratchTrees[slot]
+            val subtreeNodeCount = subtree.nodeCount
+            if (subtreeNodeCount == 0) continue
+
+            ensureCapacity(nextNode + subtreeNodeCount)
+            val offset = nextNode
+            copySubtreeInto(subtree, offset)
+            children[slot] = offset
+            nextNode += subtreeNodeCount
+        }
+        nodeCount = nextNode
+        computeRootMassAndCenter(centerX, centerY, centerZ)
+    }
+
+    private fun buildFromContiguousRange(
+        x: FloatArray,
+        y: FloatArray,
+        z: FloatArray,
+        massIn: FloatArray?,
+        invMass: FloatArray?,
+        count: Int
+    ) {
         for (i in 0 until count) {
             insert(0, i, x, y, z)
         }
+        computeMassAndCenter(x, y, z, massIn, invMass)
+    }
+
+    private fun buildFromIndices(
+        x: FloatArray,
+        y: FloatArray,
+        z: FloatArray,
+        massIn: FloatArray?,
+        invMass: FloatArray?,
+        indices: IntArray,
+        indexCount: Int,
+        rootCenterX: Float,
+        rootCenterY: Float,
+        rootCenterZ: Float,
+        rootHalf: Float
+    ) {
+        if (indexCount <= 0) {
+            nodeCount = 0
+            return
+        }
+
+        ensureCapacity(max(1, indexCount * 2))
+        nodeCount = 1
+        cx[0] = rootCenterX
+        cy[0] = rootCenterY
+        cz[0] = rootCenterZ
+        half[0] = rootHalf
+        leafIndex[0] = -1
+        zeroChildren(0)
+
+        for (k in 0 until indexCount) {
+            insert(0, indices[k], x, y, z)
+        }
 
         computeMassAndCenter(x, y, z, massIn, invMass)
+    }
+
+    private fun copySubtreeInto(subtree: OctreeBarnesHut, dstOffset: Int) {
+        val subCount = subtree.nodeCount
+        for (local in 0 until subCount) {
+            val dst = dstOffset + local
+            cx[dst] = subtree.cx[local]
+            cy[dst] = subtree.cy[local]
+            cz[dst] = subtree.cz[local]
+            half[dst] = subtree.half[local]
+            mass[dst] = subtree.mass[local]
+            comx[dst] = subtree.comx[local]
+            comy[dst] = subtree.comy[local]
+            comz[dst] = subtree.comz[local]
+            leafIndex[dst] = subtree.leafIndex[local]
+
+            val srcBase = local * 8
+            val dstBase = dst * 8
+            for (c in 0 until 8) {
+                val child = subtree.children[srcBase + c]
+                children[dstBase + c] = if (child >= 0) child + dstOffset else -1
+            }
+        }
+    }
+
+    private fun computeRootMassAndCenter(defaultCx: Float, defaultCy: Float, defaultCz: Float) {
+        var m = 0f
+        var cxAcc = 0f
+        var cyAcc = 0f
+        var czAcc = 0f
+        for (slot in 0 until 8) {
+            val child = children[slot]
+            if (child < 0) continue
+            val mc = mass[child]
+            if (mc == 0f) continue
+            m += mc
+            cxAcc += comx[child] * mc
+            cyAcc += comy[child] * mc
+            czAcc += comz[child] * mc
+        }
+        mass[0] = m
+        if (m != 0f) {
+            val inv = 1f / m
+            comx[0] = cxAcc * inv
+            comy[0] = cyAcc * inv
+            comz[0] = czAcc * inv
+        } else {
+            comx[0] = defaultCx
+            comy[0] = defaultCy
+            comz[0] = defaultCz
+        }
+    }
+
+    private fun ensureParallelScratchTrees(): Array<OctreeBarnesHut> {
+        val existing = parallelScratchTrees
+        if (existing != null) return existing
+        val created = Array(8) {
+            OctreeBarnesHut(initialCapacity = max(32, capacity / 4), allowParallelBuild = false)
+        }
+        parallelScratchTrees = created
+        return created
     }
 
     fun applyForces(
@@ -107,18 +288,70 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
         count: Int,
         theta: Float,
         softening: Float,
-        g: Float
+        g: Float,
+        forceExecutor: SimdVerlet.ForceExecutor? = null,
+        minChunk: Int = 512
     ) {
         if (nodeCount == 0 || count == 0) return
 
         val theta2 = theta * theta
         val eps2 = softening * softening
 
-        ensureStackCapacity(nodeCount)
+        if (forceExecutor == null || count <= minChunk) {
+            ensureStackCapacity(nodeCount)
+            applyForcesRange(
+                x = x,
+                y = y,
+                z = z,
+                ax = ax,
+                ay = ay,
+                az = az,
+                theta2 = theta2,
+                eps2 = eps2,
+                g = g,
+                start = 0,
+                endExclusive = count,
+                stackLocal = stack
+            )
+            return
+        }
 
-        for (i in 0 until count) {
+        forceExecutor.runForces(n = count, minChunk = minChunk) { start, endExclusive ->
+            val stackLocal = threadLocalForceStack(nodeCount)
+            applyForcesRange(
+                x = x,
+                y = y,
+                z = z,
+                ax = ax,
+                ay = ay,
+                az = az,
+                theta2 = theta2,
+                eps2 = eps2,
+                g = g,
+                start = start,
+                endExclusive = endExclusive,
+                stackLocal = stackLocal
+            )
+        }
+    }
+
+    private fun applyForcesRange(
+        x: FloatArray,
+        y: FloatArray,
+        z: FloatArray,
+        ax: FloatArray,
+        ay: FloatArray,
+        az: FloatArray,
+        theta2: Float,
+        eps2: Float,
+        g: Float,
+        start: Int,
+        endExclusive: Int,
+        stackLocal: IntArray
+    ) {
+        for (i in start until endExclusive) {
             var sp = 0
-            stack[sp++] = 0
+            stackLocal[sp++] = 0
 
             val xi = x[i]
             val yi = y[i]
@@ -129,7 +362,7 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
             var fz = 0f
 
             while (sp > 0) {
-                val node = stack[--sp]
+                val node = stackLocal[--sp]
                 val m = mass[node]
                 if (m == 0f) continue
 
@@ -157,7 +390,7 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
                     for (c in 0 until 8) {
                         val child = children[base + c]
                         if (child >= 0) {
-                            stack[sp++] = child
+                            stackLocal[sp++] = child
                         }
                     }
                 }
@@ -167,6 +400,15 @@ class OctreeBarnesHut(initialCapacity: Int = 1024) {
             ay[i] += fy
             az[i] += fz
         }
+    }
+
+    private fun threadLocalForceStack(minCapacity: Int): IntArray {
+        var local = forceStackTLS.get()
+        if (local.size < minCapacity) {
+            local = IntArray(minCapacity)
+            forceStackTLS.set(local)
+        }
+        return local
     }
 
     fun forEachCuboid(depthLimit: Int = Int.MAX_VALUE, consumer: (cx: Float, cy: Float, cz: Float, half: Float) -> Unit) {

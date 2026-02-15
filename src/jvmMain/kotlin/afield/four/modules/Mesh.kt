@@ -302,6 +302,10 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
 
     fun prepareForDraw(cmd: CommandBuffer) {
+        val frameId = renderer.frameCounter
+        val imageIndex = renderer.currentImage
+        if (lastPreparedFrameId == frameId && lastPreparedImageIndex == imageIndex) return
+
         if (builder.isOpen) {
             builder.closeAndApply()
         }
@@ -316,9 +320,13 @@ class Mesh(var renderer: Renderer = fromContext()) {
         }
 
         t?.clean(false, cmd)
+        lastPreparedFrameId = frameId
+        lastPreparedImageIndex = imageIndex
     }
 
     private var tick = 0
+    private var lastPreparedFrameId = Long.MIN_VALUE
+    private var lastPreparedImageIndex = -1
     fun draw(inside: Module, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer) {
         if (inside != this.inside.current)
             lprintln("warning,graphics", "mesh was built in a different module ${inside}!=${this.inside.current}")
@@ -361,7 +369,8 @@ class Mesh(var renderer: Renderer = fromContext()) {
             if (v.size > 0)
                 vkCmdBindVertexBuffers(cmd.vkCommandBuffer, 0, vertexBuffer, offsets)
 
-            if (pushConstantBuffer.limit() > 0) {
+            fun pushConstantsForCurrentDispatch(): Boolean {
+                if (pushConstantBuffer.limit() <= 0) return true
 
                 // todo: this needs to be the unification of both otherwise vertex wins
                 for (pc in inside.fi.pushConstants) {
@@ -376,10 +385,10 @@ class Mesh(var renderer: Renderer = fromContext()) {
                     push.writeToBuffer(pushConstantBuffer, cmd) {
                         throw MissingRefException("risk of GPU null ref `$it`")
                     }
-                } catch (mre: MissingRefException) {
-                    inside.parameters.errorHandler(mre.message, mre)
-                    lprintln("error,graphics", "missing ref in PushConstants, not rendering mesh : ${mre.message}")
-                    return
+                } catch (mre: Exception) {
+                    inside.parameters.errorHandler(mre.message ?: "push constant error", mre)
+                    lprintln("error,graphics", "push constant error, not rendering mesh : ${mre.message}")
+                    return false
                 }
                 pushConstantBuffer.clear()
 
@@ -390,32 +399,64 @@ class Mesh(var renderer: Renderer = fromContext()) {
                     0,
                     pushConstantBuffer
                 )
-            } else {
+                return true
             }
 
-            val tt = t
-            if (tt != null) {
-                if (numTriangle > 0) {
-                    vkCmdBindIndexBuffer(cmd.vkCommandBuffer, tt.dest.buffer, 0, VK_INDEX_TYPE_UINT32)
-                    vkCmdDrawIndexed(
-                        cmd.vkCommandBuffer,
-                        numTriangle * primitiveSize(),
-                        instanceCount,
-                        0,
-                        0,
-                        0
-                    )
+            fun drawForCurrentDispatch(vertexCountOverride: Int?, indexCountOverride: Int?) {
+                val tt = t
+                if (tt != null) {
+                    val indexCount = indexCountOverride ?: (if (numTriangle > 0) numTriangle * primitiveSize() else 0)
+                    if (indexCount > 0) {
+                        vkCmdBindIndexBuffer(cmd.vkCommandBuffer, tt.dest.buffer, 0, VK_INDEX_TYPE_UINT32)
+                        vkCmdDrawIndexed(
+                            cmd.vkCommandBuffer,
+                            indexCount,
+                            instanceCount,
+                            0,
+                            0,
+                            0
+                        )
+                    } else {
+                        if (tick++ % 100 == 0) {
+                            lprintln(
+                                "warning,graphics",
+                                "mesh has no triangles in it, but still has a triangle buffer? skipping drawIndexed call"
+                            )
+                        }
+                    }
                 } else {
-                    if (tick++%100==0)
-                    lprintln("warning,graphics", "mesh has no triangles in it, but still has a triangle buffer? skipping drawIndexed call")
+                    val vertexCount = vertexCountOverride ?: numVert
+                    if (vertexCount > 0) {
+                        vkCmdDraw(cmd.vkCommandBuffer, vertexCount, instanceCount, 0, 0)
+                    } else {
+                        if (tick++ % 100 == 0) {
+                            lprintln("warning,graphics", "mesh has no verts in it, skipping draw call")
+                        }
+                    }
                 }
-            } else {
-                if (numVert > 0) {
-                    vkCmdDraw(cmd.vkCommandBuffer, numVert, instanceCount, 0, 0)
-                } else {
-                    if (tick++%100==0)
-                    lprintln("warning,graphics", "mesh has no verts in it, skipping draw call")
-                }
+            }
+
+            try {
+                forEachFanOutDispatch(
+                    renderer = renderer,
+                    push = push,
+                    onNoFanOut = {
+                        if (pushConstantsForCurrentDispatch()) {
+                            drawForCurrentDispatch(null, null)
+                        }
+                    },
+                    onWriter = { writer ->
+                        if (pushConstantsForCurrentDispatch()) {
+                            drawForCurrentDispatch(
+                                vertexCountOverride = writer.publication.vertexCount,
+                                indexCountOverride = writer.publication.indexCount
+                            )
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                inside.parameters.errorHandler(e.message ?: "fan-out dispatch error", e)
+                lprintln("error,graphics", "fan-out dispatch error, not rendering mesh : ${e.message}")
             }
 
             if (profiler != null && marks != null) {

@@ -2,6 +2,7 @@
 
 package afield.stdlib
 
+import java.util.PriorityQueue
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.math.max
@@ -64,6 +65,470 @@ data class GraphConnectivityOptions(
     val allowDuplicatePoints: Boolean = true,
     val customDistanceMetric: ((Int, Int, List<*>) -> Double)? = null
 )
+
+/**
+ * Represents a path through a [PointGraph].
+ *
+ * @param nodes Ordered sequence of node indices in the path
+ * @param edges Ordered sequence of edges traversed by the path
+ * @param totalWeight Sum of traversed edge weights
+ */
+data class GraphPath(
+    val nodes: List<Int>,
+    val edges: List<GraphEdge>,
+    val totalWeight: Double
+) {
+    init {
+        require(nodes.isNotEmpty()) { "GraphPath.nodes must not be empty" }
+        require(nodes.size == edges.size + 1) {
+            "GraphPath requires nodes.size == edges.size + 1, found ${nodes.size} and ${edges.size}"
+        }
+    }
+
+    val start: Int get() = nodes.first()
+    val end: Int get() = nodes.last()
+}
+
+/**
+ * Tracks visited and unvisited edges for path cover generation.
+ *
+ * Edges are always treated as undirected according to [GraphEdge.equals].
+ */
+data class GraphEdgeVisitState(
+    val pointCount: Int,
+    val visitedEdges: Set<GraphEdge>,
+    val unvisitedEdges: Set<GraphEdge>
+) {
+    init {
+        require(pointCount >= 0) { "GraphEdgeVisitState.pointCount must be >= 0, found $pointCount" }
+        require((visitedEdges intersect unvisitedEdges).isEmpty()) {
+            "GraphEdgeVisitState: visited and unvisited sets must be disjoint"
+        }
+
+        val allEdges = visitedEdges + unvisitedEdges
+        allEdges.forEachIndexed { idx, edge ->
+            require(edge.i in 0 until pointCount) {
+                "GraphEdgeVisitState: edge[$idx].i=${edge.i} is out of range for pointCount=$pointCount"
+            }
+            require(edge.j in 0 until pointCount) {
+                "GraphEdgeVisitState: edge[$idx].j=${edge.j} is out of range for pointCount=$pointCount"
+            }
+            require(edge.weight.isFinite()) {
+                "GraphEdgeVisitState: edge[$idx] weight must be finite, found ${edge.weight}"
+            }
+        }
+    }
+
+    val allEdges: Set<GraphEdge>
+        get() = visitedEdges + unvisitedEdges
+
+    fun isVisited(edge: GraphEdge): Boolean = edge in visitedEdges
+
+    fun isUnvisited(edge: GraphEdge): Boolean = edge in unvisitedEdges
+
+    fun markVisited(edges: Iterable<GraphEdge>): GraphEdgeVisitState {
+        val moved = edges.filter { it in unvisitedEdges }.toSet()
+        if (moved.isEmpty()) return this
+        return copy(
+            visitedEdges = visitedEdges + moved,
+            unvisitedEdges = unvisitedEdges - moved
+        )
+    }
+
+    fun markVisited(edge: GraphEdge): GraphEdgeVisitState = markVisited(listOf(edge))
+
+    fun markUnvisited(edges: Iterable<GraphEdge>): GraphEdgeVisitState {
+        val moved = edges.filter { it in visitedEdges }.toSet()
+        if (moved.isEmpty()) return this
+        return copy(
+            visitedEdges = visitedEdges - moved,
+            unvisitedEdges = unvisitedEdges + moved
+        )
+    }
+
+    fun markUnvisited(edge: GraphEdge): GraphEdgeVisitState = markUnvisited(listOf(edge))
+
+    fun visitedGraph(): PointGraph = PointGraph(visitedEdges.toList(), pointCount)
+
+    fun unvisitedGraph(): PointGraph = PointGraph(unvisitedEdges.toList(), pointCount)
+}
+
+/**
+ * Result containing a list of paths and the updated edge-visit state.
+ */
+data class GraphPathSetResult(
+    val paths: List<GraphPath>,
+    val edgeState: GraphEdgeVisitState
+)
+
+/**
+ * Build a [GraphEdgeVisitState] from a [PointGraph].
+ */
+fun pointGraphEdgeVisitState(
+    graph: PointGraph,
+    initiallyVisited: Collection<GraphEdge> = emptyList()
+): GraphEdgeVisitState {
+    validatePointGraph(graph, "pointGraphEdgeVisitState")
+    val allEdges = graph.edges.toSet()
+    val visited = initiallyVisited.filter { it in allEdges }.toSet()
+    return GraphEdgeVisitState(
+        pointCount = graph.pointCount,
+        visitedEdges = visited,
+        unvisitedEdges = allEdges - visited
+    )
+}
+
+/**
+ * Convenience extension for [pointGraphEdgeVisitState].
+ */
+fun PointGraph.edgeVisitState(
+    initiallyVisited: Collection<GraphEdge> = emptyList()
+): GraphEdgeVisitState = pointGraphEdgeVisitState(this, initiallyVisited)
+
+/**
+ * Find an unweighted shortest path from [start] to [goal] using breadth-first search.
+ *
+ * @param graph Graph to traverse
+ * @param start Start node index
+ * @param goal Goal node index
+ * @param allowedEdges Optional edge subset constraint
+ * @return Path if reachable, else null
+ */
+fun graphBfsPath(
+    graph: PointGraph,
+    start: Int,
+    goal: Int,
+    allowedEdges: Set<GraphEdge>? = null
+): GraphPath? {
+    validatePointGraph(graph, "graphBfsPath")
+    validatePointIndex(start, graph.pointCount, "graphBfsPath", "start")
+    validatePointIndex(goal, graph.pointCount, "graphBfsPath", "goal")
+
+    if (start == goal) return GraphPath(listOf(start), emptyList(), 0.0)
+
+    val filteredEdges = filterGraphEdges(graph, allowedEdges)
+    val adjacency = buildAdjacency(graph.pointCount, filteredEdges)
+    val previous = IntArray(graph.pointCount) { -1 }
+    val discovered = BooleanArray(graph.pointCount)
+    val queue = ArrayDeque<Int>()
+
+    discovered[start] = true
+    queue.addLast(start)
+
+    while (queue.isNotEmpty()) {
+        val current = queue.removeFirst()
+        if (current == goal) break
+
+        for (entry in adjacency[current]) {
+            if (discovered[entry.to]) continue
+            discovered[entry.to] = true
+            previous[entry.to] = current
+            queue.addLast(entry.to)
+        }
+    }
+
+    if (!discovered[goal]) return null
+    val nodes = reconstructPathNodes(previous, start, goal) ?: return null
+    return pathFromNodes(nodes, buildEdgeLookup(filteredEdges))
+}
+
+/**
+ * Find a depth-first path from [start] to [goal].
+ *
+ * @param graph Graph to traverse
+ * @param start Start node index
+ * @param goal Goal node index
+ * @param allowedEdges Optional edge subset constraint
+ * @return Path if reachable, else null
+ */
+fun graphDfsPath(
+    graph: PointGraph,
+    start: Int,
+    goal: Int,
+    allowedEdges: Set<GraphEdge>? = null
+): GraphPath? {
+    validatePointGraph(graph, "graphDfsPath")
+    validatePointIndex(start, graph.pointCount, "graphDfsPath", "start")
+    validatePointIndex(goal, graph.pointCount, "graphDfsPath", "goal")
+
+    if (start == goal) return GraphPath(listOf(start), emptyList(), 0.0)
+
+    val filteredEdges = filterGraphEdges(graph, allowedEdges)
+    val adjacency = buildAdjacency(graph.pointCount, filteredEdges)
+    val previous = IntArray(graph.pointCount) { -1 }
+    val discovered = BooleanArray(graph.pointCount)
+    val stack = ArrayDeque<Int>()
+
+    discovered[start] = true
+    stack.addLast(start)
+
+    while (stack.isNotEmpty()) {
+        val current = stack.removeLast()
+        if (current == goal) break
+
+        for (idx in adjacency[current].lastIndex downTo 0) {
+            val entry = adjacency[current][idx]
+            if (discovered[entry.to]) continue
+            discovered[entry.to] = true
+            previous[entry.to] = current
+            stack.addLast(entry.to)
+        }
+    }
+
+    if (!discovered[goal]) return null
+    val nodes = reconstructPathNodes(previous, start, goal) ?: return null
+    return pathFromNodes(nodes, buildEdgeLookup(filteredEdges))
+}
+
+/**
+ * Find a weighted path from [start] to [goal] using A*.
+ *
+ * @param graph Graph to traverse
+ * @param start Start node index
+ * @param goal Goal node index
+ * @param heuristic Heuristic estimate from current node to goal
+ * @param allowedEdges Optional edge subset constraint
+ * @return Path if reachable, else null
+ */
+fun graphAStarPath(
+    graph: PointGraph,
+    start: Int,
+    goal: Int,
+    heuristic: (Int, Int) -> Double = { _, _ -> 0.0 },
+    allowedEdges: Set<GraphEdge>? = null
+): GraphPath? {
+    validatePointGraph(graph, "graphAStarPath")
+    validatePointIndex(start, graph.pointCount, "graphAStarPath", "start")
+    validatePointIndex(goal, graph.pointCount, "graphAStarPath", "goal")
+
+    if (start == goal) return GraphPath(listOf(start), emptyList(), 0.0)
+
+    val filteredEdges = filterGraphEdges(graph, allowedEdges)
+    requireNonNegativeEdgeWeights(filteredEdges, "graphAStarPath")
+
+    val adjacency = buildAdjacency(graph.pointCount, filteredEdges)
+    val edgeLookup = buildEdgeLookup(filteredEdges)
+    val gScore = DoubleArray(graph.pointCount) { Double.POSITIVE_INFINITY }
+    val fScore = DoubleArray(graph.pointCount) { Double.POSITIVE_INFINITY }
+    val previous = IntArray(graph.pointCount) { -1 }
+    val queue = PriorityQueue<PriorityNode>(compareBy<PriorityNode> { it.priority }.thenBy { it.node })
+
+    gScore[start] = 0.0
+    fScore[start] = heuristic(start, goal)
+    queue.add(PriorityNode(start, fScore[start]))
+
+    while (queue.isNotEmpty()) {
+        val current = queue.poll()
+        if (current.priority > fScore[current.node] + GRAPH_SEARCH_EPSILON) continue
+        if (current.node == goal) break
+
+        for (entry in adjacency[current.node]) {
+            val tentative = gScore[current.node] + entry.edge.weight
+            if (tentative + GRAPH_SEARCH_EPSILON < gScore[entry.to]) {
+                previous[entry.to] = current.node
+                gScore[entry.to] = tentative
+                fScore[entry.to] = tentative + heuristic(entry.to, goal)
+                queue.add(PriorityNode(entry.to, fScore[entry.to]))
+            }
+        }
+    }
+
+    if (gScore[goal].isInfinite()) return null
+    val nodes = reconstructPathNodes(previous, start, goal) ?: return null
+    val path = pathFromNodes(nodes, edgeLookup)
+    return path.copy(totalWeight = gScore[goal])
+}
+
+/**
+ * A* path helper using Euclidean distance on 2D points as the heuristic.
+ */
+fun vec2AStarPath(
+    graph: PointGraph,
+    points: List<Vec2>,
+    start: Int,
+    goal: Int,
+    allowedEdges: Set<GraphEdge>? = null
+): GraphPath? {
+    require(points.size >= graph.pointCount) {
+        "vec2AStarPath: points must contain at least graph.pointCount values (${graph.pointCount}), found ${points.size}"
+    }
+    validatePoints2D(points.take(graph.pointCount), "vec2AStarPath")
+
+    return graphAStarPath(
+        graph = graph,
+        start = start,
+        goal = goal,
+        heuristic = { a, b -> distance2D(points[a], points[b]) },
+        allowedEdges = allowedEdges
+    )
+}
+
+/**
+ * A* path helper using Euclidean distance on 3D points as the heuristic.
+ */
+fun vec3AStarPath(
+    graph: PointGraph,
+    points: List<Vec3>,
+    start: Int,
+    goal: Int,
+    allowedEdges: Set<GraphEdge>? = null
+): GraphPath? {
+    require(points.size >= graph.pointCount) {
+        "vec3AStarPath: points must contain at least graph.pointCount values (${graph.pointCount}), found ${points.size}"
+    }
+    validatePoints3D(points.take(graph.pointCount), "vec3AStarPath")
+
+    return graphAStarPath(
+        graph = graph,
+        start = start,
+        goal = goal,
+        heuristic = { a, b -> distance3D(points[a], points[b]) },
+        allowedEdges = allowedEdges
+    )
+}
+
+/**
+ * Build a set of paths from [anchor] by repeatedly choosing the closest reachable point
+ * that is incident to at least one unvisited edge.
+ *
+ * Paths are computed on the current unvisited subgraph, so each selected path always
+ * contributes newly visited edges.
+ */
+fun graphGreedyClosestUnvisitedPaths(
+    graph: PointGraph,
+    anchor: Int,
+    edgeState: GraphEdgeVisitState = graph.edgeVisitState()
+): GraphPathSetResult {
+    validatePointGraph(graph, "graphGreedyClosestUnvisitedPaths")
+    validatePointIndex(anchor, graph.pointCount, "graphGreedyClosestUnvisitedPaths", "anchor")
+    var normalizedState = normalizeEdgeVisitState(graph, edgeState, "graphGreedyClosestUnvisitedPaths")
+
+    val paths = mutableListOf<GraphPath>()
+
+    while (normalizedState.unvisitedEdges.isNotEmpty()) {
+        requireNonNegativeEdgeWeights(normalizedState.unvisitedEdges, "graphGreedyClosestUnvisitedPaths")
+
+        val adjacency = buildAdjacency(graph.pointCount, normalizedState.unvisitedEdges)
+        val dijkstra = runDijkstra(adjacency, anchor)
+        val edgeLookup = buildEdgeLookup(normalizedState.unvisitedEdges)
+        val candidates = normalizedState.unvisitedEdges.asSequence()
+            .flatMap { sequenceOf(it.i, it.j) }
+            .toSet()
+
+        var bestTarget = -1
+        var bestDistance = Double.POSITIVE_INFINITY
+
+        for (candidate in candidates) {
+            if (candidate == anchor) continue
+            val distance = dijkstra.distances[candidate]
+            if (distance.isInfinite()) continue
+
+            val isBetterDistance = distance < bestDistance - GRAPH_SEARCH_EPSILON
+            val isTieBreak = abs(distance - bestDistance) <= GRAPH_SEARCH_EPSILON && (bestTarget < 0 || candidate < bestTarget)
+            if (bestTarget < 0 || isBetterDistance || isTieBreak) {
+                bestTarget = candidate
+                bestDistance = distance
+            }
+        }
+
+        if (bestTarget < 0) break
+
+        val nodes = reconstructPathNodes(dijkstra.previous, anchor, bestTarget) ?: break
+        val path = pathFromNodes(nodes, edgeLookup)
+        if (path.edges.isEmpty()) break
+
+        paths += path
+        normalizedState = normalizedState.markVisited(path.edges)
+    }
+
+    return GraphPathSetResult(paths, normalizedState)
+}
+
+/**
+ * Compute a weighted graph diameter path (the shortest path between the farthest pair of nodes).
+ *
+ * This is the "longest shortest path" over the provided graph/edge subset.
+ */
+fun graphDiameterPath(
+    graph: PointGraph,
+    allowedEdges: Set<GraphEdge>? = null
+): GraphPath? {
+    validatePointGraph(graph, "graphDiameterPath")
+    val filteredEdges = filterGraphEdges(graph, allowedEdges)
+    if (filteredEdges.isEmpty()) return null
+    requireNonNegativeEdgeWeights(filteredEdges, "graphDiameterPath")
+
+    val adjacency = buildAdjacency(graph.pointCount, filteredEdges)
+    val edgeLookup = buildEdgeLookup(filteredEdges)
+    val activeNodes = adjacency.indices.filter { adjacency[it].isNotEmpty() }
+    if (activeNodes.isEmpty()) return null
+
+    var bestDistance = Double.NEGATIVE_INFINITY
+    var bestPath: GraphPath? = null
+
+    for (source in activeNodes) {
+        val dijkstra = runDijkstra(adjacency, source)
+        for (target in activeNodes) {
+            if (target == source) continue
+            val distance = dijkstra.distances[target]
+            if (distance.isInfinite()) continue
+            if (distance <= bestDistance + GRAPH_SEARCH_EPSILON) continue
+
+            val nodes = reconstructPathNodes(dijkstra.previous, source, target) ?: continue
+            val path = pathFromNodes(nodes, edgeLookup)
+            if (path.edges.isEmpty()) continue
+
+            bestDistance = distance
+            bestPath = path.copy(totalWeight = distance)
+        }
+    }
+
+    return bestPath ?: edgeToPath(filteredEdges.first())
+}
+
+/**
+ * Iteratively removes diameter paths from the unvisited edge set until all reachable
+ * edges are consumed, producing a long-to-short path decomposition.
+ */
+fun graphDiameterPathDecomposition(
+    graph: PointGraph,
+    edgeState: GraphEdgeVisitState = graph.edgeVisitState()
+): GraphPathSetResult {
+    validatePointGraph(graph, "graphDiameterPathDecomposition")
+    var normalizedState = normalizeEdgeVisitState(graph, edgeState, "graphDiameterPathDecomposition")
+    val paths = mutableListOf<GraphPath>()
+
+    while (normalizedState.unvisitedEdges.isNotEmpty()) {
+        val path = graphDiameterPath(graph, normalizedState.unvisitedEdges)
+            ?: edgeToPath(normalizedState.unvisitedEdges.first())
+        if (path.edges.isEmpty()) break
+
+        paths += path
+        normalizedState = normalizedState.markVisited(path.edges)
+    }
+
+    return GraphPathSetResult(paths, normalizedState)
+}
+
+/**
+ * Build an anchored cover by combining:
+ * 1) Greedy closest-unvisited anchored paths
+ * 2) Diameter decomposition for any disconnected leftovers
+ */
+fun graphAnchoredGreedyThenDiameterCover(
+    graph: PointGraph,
+    anchor: Int,
+    edgeState: GraphEdgeVisitState = graph.edgeVisitState()
+): GraphPathSetResult {
+    val greedy = graphGreedyClosestUnvisitedPaths(graph, anchor, edgeState)
+    if (greedy.edgeState.unvisitedEdges.isEmpty()) return greedy
+
+    val remainder = graphDiameterPathDecomposition(graph, greedy.edgeState)
+    return GraphPathSetResult(
+        paths = greedy.paths + remainder.paths,
+        edgeState = remainder.edgeState
+    )
+}
 
 // ==================== 2D Graph Algorithms ====================
 
@@ -961,7 +1426,7 @@ fun vec2VoronoiDiagram(
         var minDist = Double.POSITIVE_INFINITY
         
         for (j in coords.indices) {
-            val dist = centroid.distance(org.locationtech.jts.geom.Point(coords[j], GeometryFactory()))
+            val dist = centroid.coordinate.distance(coords[j])
             if (dist < minDist) {
                 minDist = dist
                 closestSite = j
@@ -1126,6 +1591,191 @@ fun vec3CompleteGraph(
 }
 
 // ==================== Helper Functions ====================
+
+private const val GRAPH_SEARCH_EPSILON = 1e-12
+
+private data class GraphAdjacencyEntry(
+    val to: Int,
+    val edge: GraphEdge
+)
+
+private data class DijkstraResult(
+    val distances: DoubleArray,
+    val previous: IntArray
+)
+
+private data class PriorityNode(
+    val node: Int,
+    val priority: Double
+)
+
+private fun buildAdjacency(
+    pointCount: Int,
+    edges: Collection<GraphEdge>
+): Array<List<GraphAdjacencyEntry>> {
+    val adjacency = Array(pointCount) { mutableListOf<GraphAdjacencyEntry>() }
+    for (edge in edges) {
+        adjacency[edge.i].add(GraphAdjacencyEntry(edge.j, edge))
+        adjacency[edge.j].add(GraphAdjacencyEntry(edge.i, edge))
+    }
+    return Array(pointCount) { index -> adjacency[index].sortedBy { it.to } }
+}
+
+private fun filterGraphEdges(graph: PointGraph, allowedEdges: Set<GraphEdge>?): List<GraphEdge> {
+    if (allowedEdges == null) return graph.edges
+    if (allowedEdges.isEmpty()) return emptyList()
+    return graph.edges.filter { it in allowedEdges }
+}
+
+private fun buildEdgeLookup(edges: Collection<GraphEdge>): Map<Long, GraphEdge> {
+    val lookup = mutableMapOf<Long, GraphEdge>()
+    edges.forEach { edge ->
+        lookup[edgeKey(edge.i, edge.j)] = edge
+    }
+    return lookup
+}
+
+private fun edgeKey(a: Int, b: Int): Long {
+    val lo = min(a, b).toLong() and 0xffffffffL
+    val hi = max(a, b).toLong() and 0xffffffffL
+    return (lo shl 32) or hi
+}
+
+private fun reconstructPathNodes(
+    previous: IntArray,
+    start: Int,
+    goal: Int
+): List<Int>? {
+    if (start == goal) return listOf(start)
+    if (previous[goal] == -1) return null
+
+    val reversePath = mutableListOf<Int>()
+    var current = goal
+
+    while (current != -1) {
+        reversePath += current
+        if (current == start) break
+        current = previous[current]
+    }
+
+    if (reversePath.lastOrNull() != start) return null
+    reversePath.reverse()
+    return reversePath
+}
+
+private fun pathFromNodes(
+    nodes: List<Int>,
+    edgeLookup: Map<Long, GraphEdge>
+): GraphPath {
+    if (nodes.size == 1) return GraphPath(nodes, emptyList(), 0.0)
+
+    val edges = mutableListOf<GraphEdge>()
+    var totalWeight = 0.0
+    for (i in 0 until nodes.lastIndex) {
+        val a = nodes[i]
+        val b = nodes[i + 1]
+        val edge = requireNotNull(edgeLookup[edgeKey(a, b)]) {
+            "Internal graph path error: missing edge between $a and $b"
+        }
+        edges += edge
+        totalWeight += edge.weight
+    }
+    return GraphPath(nodes, edges, totalWeight)
+}
+
+private fun edgeToPath(edge: GraphEdge): GraphPath {
+    return GraphPath(
+        nodes = listOf(edge.i, edge.j),
+        edges = listOf(edge),
+        totalWeight = edge.weight
+    )
+}
+
+private fun runDijkstra(
+    adjacency: Array<List<GraphAdjacencyEntry>>,
+    source: Int
+): DijkstraResult {
+    val distance = DoubleArray(adjacency.size) { Double.POSITIVE_INFINITY }
+    val previous = IntArray(adjacency.size) { -1 }
+    val queue = PriorityQueue<PriorityNode>(compareBy<PriorityNode> { it.priority }.thenBy { it.node })
+
+    distance[source] = 0.0
+    queue.add(PriorityNode(source, 0.0))
+
+    while (queue.isNotEmpty()) {
+        val current = queue.poll()
+        if (current.priority > distance[current.node] + GRAPH_SEARCH_EPSILON) continue
+
+        for (entry in adjacency[current.node]) {
+            val tentative = distance[current.node] + entry.edge.weight
+            if (tentative + GRAPH_SEARCH_EPSILON < distance[entry.to]) {
+                distance[entry.to] = tentative
+                previous[entry.to] = current.node
+                queue.add(PriorityNode(entry.to, tentative))
+            }
+        }
+    }
+
+    return DijkstraResult(distance, previous)
+}
+
+private fun validatePointIndex(
+    index: Int,
+    pointCount: Int,
+    fn: String,
+    argument: String
+) {
+    require(index in 0 until pointCount) {
+        "$fn: $argument must be in [0, ${pointCount - 1}], found $index"
+    }
+}
+
+private fun validatePointGraph(graph: PointGraph, fn: String) {
+    require(graph.pointCount >= 0) {
+        "$fn: graph.pointCount must be >= 0, found ${graph.pointCount}"
+    }
+
+    graph.edges.forEachIndexed { idx, edge ->
+        require(edge.i in 0 until graph.pointCount) {
+            "$fn: edges[$idx].i=${edge.i} is out of range [0, ${graph.pointCount - 1}]"
+        }
+        require(edge.j in 0 until graph.pointCount) {
+            "$fn: edges[$idx].j=${edge.j} is out of range [0, ${graph.pointCount - 1}]"
+        }
+        require(edge.weight.isFinite()) {
+            "$fn: edges[$idx] weight must be finite, found ${edge.weight}"
+        }
+    }
+}
+
+private fun requireNonNegativeEdgeWeights(edges: Collection<GraphEdge>, fn: String) {
+    edges.forEachIndexed { idx, edge ->
+        require(edge.weight >= 0.0) {
+            "$fn: edge weights must be >= 0, found edges[$idx].weight=${edge.weight}"
+        }
+    }
+}
+
+private fun normalizeEdgeVisitState(
+    graph: PointGraph,
+    edgeState: GraphEdgeVisitState,
+    fn: String
+): GraphEdgeVisitState {
+    require(edgeState.pointCount == graph.pointCount) {
+        "$fn: edgeState.pointCount (${edgeState.pointCount}) must equal graph.pointCount (${graph.pointCount})"
+    }
+
+    val allEdges = graph.edges.toSet()
+    val visited = edgeState.visitedEdges.filter { it in allEdges }.toSet()
+    val explicitlyUnvisited = edgeState.unvisitedEdges.filter { it in allEdges }.toSet() - visited
+    val missing = allEdges - visited - explicitlyUnvisited
+
+    return GraphEdgeVisitState(
+        pointCount = graph.pointCount,
+        visitedEdges = visited,
+        unvisitedEdges = explicitlyUnvisited + missing
+    )
+}
 
 private fun distance2D(a: Vec2, b: Vec2): Double {
     val dx = a.x.toDouble() - b.x.toDouble()

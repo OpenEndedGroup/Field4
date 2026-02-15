@@ -23,6 +23,11 @@ class MapOfSequences<T> {
     operator fun set(t: T, sequence: Sequence<Any?>) {
         starts[t] = sequence
     }
+
+    fun remove(t: T) {
+        starts.remove(t)
+        ongoings.remove(t)
+    }
 }
 
 class MapOfGenerators<O, T> {

@@ -1,6 +1,7 @@
 package afield.examples.stdlib
 
 import afield.stdlib.*
+import kotlin.math.abs
 import kotlin.random.Random
 
 /**

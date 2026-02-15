@@ -2,6 +2,8 @@ package afield.four
 
 import afield.Named
 import afield.Rect
+import afield.Runloop
+import afield.four.buffers.ParallelGeometryPool
 import afield.four.device.*
 import afield.four.device.Queue
 import afield.four.device.Queue.GraphicsQueue
@@ -231,6 +233,250 @@ class Renderer(
     var renderEnd = MapOfSequences<String>()
     var currentCommandBuffer: CommandBuffer? = null
 
+    data class GeometryFrameToken(
+        val frameId: Long,
+        val imageIndex: Int,
+        val windowIndex: Int
+    )
+
+    class GeometryPhaseScope(val token: GeometryFrameToken) {
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        private val jobs = Collections.synchronizedList(mutableListOf<Job>())
+
+        fun submit(block: () -> Unit): Job {
+            val job = scope.launch { block() }
+            jobs += job
+            return job
+        }
+
+        fun <T> submitValue(block: () -> T): Deferred<T> {
+            val deferred = scope.async { block() }
+            jobs += deferred
+            return deferred
+        }
+
+        internal fun awaitCompletion() {
+            runBlocking {
+                jobs.toList().joinAll()
+            }
+        }
+
+        internal fun close() {
+            scope.cancel()
+        }
+    }
+
+    val geometryProducers = linkedMapOf<String, (GeometryPhaseScope) -> Unit>()
+    private val geometryPoolsLock = Any()
+    private val geometryPools = LinkedHashSet<ParallelGeometryPool>()
+    private val geometryPhaseStateLock = Any()
+
+    private data class ExternalGeometryPhase(val token: GeometryFrameToken)
+    private data class PreAcquiredImage(val frameId: Long, val imageIndex: Int)
+
+    @Volatile
+    private var openGeometryPhase: ExternalGeometryPhase? = null
+
+    @Volatile
+    private var preAcquiredPrimaryImage: PreAcquiredImage? = null
+
+    @Volatile
+    private var runloopGeometryHookKey: String? = null
+
+    internal fun registerParallelGeometryPool(pool: ParallelGeometryPool) {
+        synchronized(geometryPoolsLock) {
+            geometryPools += pool
+        }
+    }
+
+    internal fun unregisterParallelGeometryPool(pool: ParallelGeometryPool) {
+        synchronized(geometryPoolsLock) {
+            geometryPools.remove(pool)
+        }
+    }
+
+    private fun geometryPoolsSnapshot(): List<ParallelGeometryPool> {
+        return synchronized(geometryPoolsLock) { geometryPools.toList() }
+    }
+
+    private fun beginGeometryPools(token: GeometryFrameToken) {
+        val pools = geometryPoolsSnapshot()
+        pools.forEach { it.beginFrame(token) }
+    }
+
+    private fun sealGeometryPools(token: GeometryFrameToken) {
+        val pools = geometryPoolsSnapshot()
+        pools.forEach { it.sealFrame(token) }
+    }
+
+    private fun runGeometryProducers(token: GeometryFrameToken) {
+        val scope = GeometryPhaseScope(token)
+        try {
+            geometryProducers.forEach { (_, producer) ->
+                producer(scope)
+            }
+            scope.awaitCompletion()
+        } finally {
+            scope.close()
+        }
+    }
+
+    private fun runGeometryPhase(token: GeometryFrameToken) {
+        beginGeometryPools(token)
+        try {
+            runGeometryProducers(token)
+        } finally {
+            sealGeometryPools(token)
+        }
+    }
+
+    private fun acquireFrameImage(windowIndex: Int): Int {
+        val ctx = windowContexts[windowIndex]
+        val w = ctx.window
+
+        // Keeps swapchain pipeline moving; left as-is from the main render path.
+        ctx.fences[ctx.swapChain.currentFrame].fenceWait()
+
+        var imageIndex = 0
+        CPUSpan.time("acquire[$windowIndex]") {
+            imageIndex = runOnQueueThread {
+                var idx = ctx.swapChain.acquireNextImage()
+                if (w.isResized || idx < 0) {
+                    w.resetResized()
+                    resize(ctx)
+                    idx = ctx.swapChain.acquireNextImage()
+                }
+                idx
+            }
+        }
+
+        ctx.currentImage = imageIndex
+        if (windowIndex == 0) currentImage = imageIndex
+        return imageIndex
+    }
+
+    /**
+     * Opens a geometry-write window for the current frame and returns the token used by pools.
+     *
+     * Use this to run geometry generation from anywhere in the Runloop before [render], then either:
+     * - call [endGeometryWrites], or
+     * - let [render] auto-close it at frame start.
+     */
+    fun beginGeometryWrites(windowIndex: Int = 0): GeometryFrameToken {
+        require(windowIndex == 0) {
+            "beginGeometryWrites currently supports windowIndex=0 only"
+        }
+
+        synchronized(geometryPhaseStateLock) {
+            val frameId = frameCounter
+            val existing = openGeometryPhase
+            if (existing != null) {
+                if (existing.token.frameId == frameId && existing.token.windowIndex == windowIndex) {
+                    return existing.token
+                }
+                throw IllegalStateException(
+                    "Geometry writes already open for frame ${existing.token.frameId}, window ${existing.token.windowIndex}"
+                )
+            }
+            if (preAcquiredPrimaryImage?.frameId == frameId) {
+                throw IllegalStateException("Geometry writes already prepared for frame $frameId")
+            }
+
+            val imageIndex = acquireFrameImage(windowIndex)
+            val token = GeometryFrameToken(
+                frameId = frameId,
+                imageIndex = imageIndex,
+                windowIndex = windowIndex
+            )
+
+            beginGeometryPools(token)
+            openGeometryPhase = ExternalGeometryPhase(token)
+            if (windowIndex == 0) {
+                preAcquiredPrimaryImage = PreAcquiredImage(frameId = frameId, imageIndex = imageIndex)
+            }
+            return token
+        }
+    }
+
+    /**
+     * Explicitly closes a previously opened geometry-write window.
+     *
+     * If not called, [render] closes any still-open window for the current frame automatically.
+     */
+    fun endGeometryWrites(windowIndex: Int = 0) {
+        val token = synchronized(geometryPhaseStateLock) {
+            val phase = openGeometryPhase ?: return
+            require(phase.token.windowIndex == windowIndex) {
+                "Geometry writes open for window ${phase.token.windowIndex}, not window $windowIndex"
+            }
+            openGeometryPhase = null
+            phase.token
+        }
+        try {
+            runGeometryProducers(token)
+        } finally {
+            sealGeometryPools(token)
+        }
+    }
+
+    private fun takeOpenGeometryPhaseTokenForFrame(frameId: Long): GeometryFrameToken? {
+        synchronized(geometryPhaseStateLock) {
+            val phase = openGeometryPhase ?: return null
+            if (phase.token.frameId != frameId) return null
+            openGeometryPhase = null
+            return phase.token
+        }
+    }
+
+    private fun peekPreAcquiredPrimaryImageForFrame(frameId: Long): Int? {
+        return synchronized(geometryPhaseStateLock) {
+            preAcquiredPrimaryImage?.takeIf { it.frameId == frameId }?.imageIndex
+        }
+    }
+
+    private fun clearPreAcquiredPrimaryImageForFrame(frameId: Long) {
+        synchronized(geometryPhaseStateLock) {
+            val pending = preAcquiredPrimaryImage ?: return
+            if (pending.frameId == frameId) {
+                preAcquiredPrimaryImage = null
+            }
+        }
+    }
+
+    /**
+     * Installs a Runloop pre-frame hook that opens geometry writes every runloop tick.
+     *
+     * This is useful when geometry workers are launched from arbitrary runloop code before render.
+     */
+    fun installRunloopGeometryBeginHook(
+        runloop: Runloop = Runloop.runLoop,
+        key: String = "renderer:${System.identityHashCode(this)}:beginGeometryWrites"
+    ) {
+        runloop.preRun[key] = sequence {
+            while (true) {
+                try {
+                    beginGeometryWrites()
+                } catch (_: ImageNotAvailable) {
+                    // Skip this runloop tick; render() handles this case too.
+                } catch (ise: IllegalStateException) {
+                    // If a frame is already pre-acquired and sealed for this frame, skip quietly.
+                    if (ise.message?.contains("already prepared for frame") != true) {
+                        lprintln("warning,graphics", "runloop geometry preRun failed: ${ise.message}")
+                    }
+                } catch (t: Throwable) {
+                    lprintln("warning,graphics", "runloop geometry preRun failed: ${t.message}")
+                }
+                yield(null)
+            }
+        }
+        runloopGeometryHookKey = key
+    }
+
+    fun uninstallRunloopGeometryBeginHook(runloop: Runloop = Runloop.runLoop) {
+        runloopGeometryHookKey?.let { runloop.preRun.remove(it) }
+        runloopGeometryHookKey = null
+    }
+
     /** Optional OpenXR HMD target rendered once per frame (after window presents). */
     var openXRHmdTarget: afield.four.targets.OpenXRHmdTarget? = null
 
@@ -302,6 +548,8 @@ class Renderer(
     }
 
     fun cleanup() {
+        uninstallRunloopGeometryBeginHook()
+
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
@@ -341,6 +589,15 @@ class Renderer(
         val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
         val frameId = frameCounter
 
+        // If geometry writes were opened earlier in this runloop frame, close them now.
+        takeOpenGeometryPhaseTokenForFrame(frameId)?.let { token ->
+            try {
+                runGeometryProducers(token)
+            } finally {
+                sealGeometryPools(token)
+            }
+        }
+
         // Drain ready frames (no stalls) per window.
         windowContexts.forEach { ctx ->
             val ps = ctx.profilerState ?: return@forEach
@@ -361,25 +618,24 @@ class Renderer(
             if (w.width <= 0 && w.height <= 0) return@forEachIndexed
 
             var imageIndex = 0
-
-            // Keeps swapchain pipeline moving; left as-is from original code.
-            ctx.fences[ctx.swapChain.currentFrame].fenceWait()
+            val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
 
             try {
-                CPUSpan.time("acquire[$ctxIndex]") {
-                    imageIndex = runOnQueueThread {
-                        var idx = ctx.swapChain.acquireNextImage()
-                        if (w.isResized || idx < 0) {
-                            w.resetResized()
-                            resize(ctx)
-                            idx = ctx.swapChain.acquireNextImage()
-                        }
-                        idx
-                    }
-                }
+                imageIndex = preAcquiredImage ?: acquireFrameImage(ctxIndex)
 
                 ctx.currentImage = imageIndex
-                if (ctxIndex == 0) currentImage = imageIndex
+                if (ctxIndex == 0) {
+                    currentImage = imageIndex
+                    if (preAcquiredImage == null) {
+                        runGeometryPhase(
+                            GeometryFrameToken(
+                                frameId = frameId,
+                                imageIndex = imageIndex,
+                                windowIndex = ctxIndex
+                            )
+                        )
+                    }
+                }
                 ctx.profilerState?.let { ps ->
                     synchronized(ps.lock) {
                         ps.profiler.beginFrame(imageIndex)
@@ -432,6 +688,7 @@ class Renderer(
 
         // Render to OpenXR HMD once per frame.
         openXRHmdTarget?.renderFrame()
+        clearPreAcquiredPrimaryImageForFrame(frameId)
 
         // Deferred cleanup queue (use max frames-in-flight across all contexts)
         cleanupStack.add(frameCounter to cleanup)
@@ -949,7 +1206,7 @@ class Renderer(
         numImages: Int,
         imageIndex: Int
     ): CommandBuffer {
-        val threadId = Thread.currentThread().id
+        val threadId = Thread.currentThread().threadId()
         val threadKey = "$key@$threadId"
         val pool = synchronized(poolMap) {
             poolMap.getOrPut(threadId) { CommandPool(basePool.device, basePool.queueFamilyIndex) }

@@ -953,6 +953,15 @@ class FLine : HasProperties {
         return result
     }
 
+
+    /**
+     * Remove all of the contents of this line
+     */
+    fun clear() {
+        this.nodes.clear()
+        rev++
+    }
+
 }
 
 

@@ -94,6 +94,7 @@ class VulkanBuffer(
 ) : HasBuffer, BufferWriteable, BufferReadable, DynamicallyWriteable {
 
     var gpuAddress: Long = -1
+    private val writeLock = Any()
 
     /** VMA-managed */
     private var allocationSize: Long = 0
@@ -193,24 +194,26 @@ class VulkanBuffer(
 
     /** Grow-resize with deferred destruction of the old buffer/allocation. */
     fun realloc(bytes: Long) {
-        val oldBuffer = buffer
-        val oldAlloc  = allocation
-        val oldHost   = hostBuffer
+        synchronized(writeLock) {
+            val oldBuffer = buffer
+            val oldAlloc = allocation
+            val oldHost = hostBuffer
 
-        // Clear live handles
-        buffer = 0L
-        allocation = 0L
-        mappedMemory = 0L
-        hostBuffer = null
+            // Clear live handles
+            buffer = 0L
+            allocation = 0L
+            mappedMemory = 0L
+            hostBuffer = null
 
-        requestedSize = bytes
-        allocate()
-        autoDisposeToken.updateCleanup(snapshotCleanup())
+            requestedSize = bytes
+            allocate()
+            autoDisposeToken.updateCleanup(snapshotCleanup())
 
-        renderer.cleanup.add {
-            if (oldHost != null) MemoryUtil.memFree(oldHost)
-            if (oldBuffer != VK_NULL_HANDLE && oldAlloc != 0L) {
-                vmaDestroyBuffer(allocatorForRenderer(renderer), oldBuffer, oldAlloc)
+            renderer.cleanup.add {
+                if (oldHost != null) MemoryUtil.memFree(oldHost)
+                if (oldBuffer != VK_NULL_HANDLE && oldAlloc != 0L) {
+                    vmaDestroyBuffer(allocatorForRenderer(renderer), oldBuffer, oldAlloc)
+                }
             }
         }
     }
@@ -292,13 +295,15 @@ class VulkanBuffer(
     }
 
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VulkanBuffer {
-        hint_write = true
-        writeWatermark++
-        val m = map()
-        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-        builder.invoke(data)
-        unmap(0, requestedSize)
-        return this
+        synchronized(writeLock) {
+            hint_write = true
+            writeWatermark++
+            val m = map()
+            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+            builder.invoke(data)
+            unmap(0, requestedSize)
+            return this
+        }
     }
 
     // dynamic write helpers
@@ -307,48 +312,56 @@ class VulkanBuffer(
     override val cursor: Int get() = writePosition
 
     override fun write(builder: DynamicBuffer.() -> Unit): VulkanBuffer {
-        hint_write = true
-        writeWatermark++
-        val m = map()
-        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-        val db = DynamicBuffer(data, dynamicResizer())
-        builder.invoke(db)
-        writePosition = db.target.position()
-        unmap(0, (writePosition * 4L).coerceAtMost(requestedSize))
-        return this
+        synchronized(writeLock) {
+            hint_write = true
+            writeWatermark++
+            val m = map()
+            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+            val db = DynamicBuffer(data, dynamicResizer())
+            builder.invoke(db)
+            writePosition = db.target.position()
+            unmap(0, (writePosition * 4L).coerceAtMost(requestedSize))
+            return this
+        }
     }
 
     override fun append(builder: DynamicBuffer.() -> Unit): VulkanBuffer {
-        hint_write = true
-        writeWatermark++
-        val m = map()
-        val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
-        val db = DynamicBuffer(data, dynamicResizer())
-        db.target.position(writePosition)
-        builder.invoke(db)
-        writePosition = db.target.position()
-        unmap(0, (writePosition * 4L).coerceAtMost(requestedSize))
-        return this
+        synchronized(writeLock) {
+            hint_write = true
+            writeWatermark++
+            val m = map()
+            val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
+            val db = DynamicBuffer(data, dynamicResizer())
+            db.target.position(writePosition)
+            builder.invoke(db)
+            writePosition = db.target.position()
+            unmap(0, (writePosition * 4L).coerceAtMost(requestedSize))
+            return this
+        }
     }
 
     override fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): VulkanBuffer {
-        hint_write = true
-        writeWatermark++
-        val m = map()
-        val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
-        builder.invoke(data)
-        unmap(0, requestedSize)
-        return this
+        synchronized(writeLock) {
+            hint_write = true
+            writeWatermark++
+            val m = map()
+            val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
+            builder.invoke(data)
+            unmap(0, requestedSize)
+            return this
+        }
     }
 
     override fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): VulkanBuffer {
-        hint_write = true
-        writeWatermark++
-        val m = map()
-        val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
-        builder.invoke(data)
-        unmap(0, requestedSize)
-        return this
+        synchronized(writeLock) {
+            hint_write = true
+            writeWatermark++
+            val m = map()
+            val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
+            builder.invoke(data)
+            unmap(0, requestedSize)
+            return this
+        }
     }
 
     override fun mapAndRead(builder: FloatBuffer.() -> Unit): VulkanBuffer {
