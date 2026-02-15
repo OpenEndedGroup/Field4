@@ -368,6 +368,20 @@ fun insertFromWorkspace() {
     }
 }
 
+fun openDocsSearch() {
+    // Open docs search page in a new window or tab
+    val width = 1000
+    val height = 800
+    val left = (window.screen.width - width) / 2
+    val top = (window.screen.height - height) / 2
+    
+    window.open(
+        "/docs-search.html",
+        "Field4_Docs_Search",
+        "width=$width,height=$height,left=$left,top=$top,resizable=yes,scrollbars=yes"
+    )
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport()
 fun saveAsTemplate() {
@@ -766,6 +780,15 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='t') && (event.ctrlKey || event.metaKey),
             run: () => {
                 insertFromWorkspace()
+            }
+        },{
+            id:'search-docs-and-code',
+            label:"Search Documentation & Code",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D] : [],
+            detail:"Search Field4 documentation, code examples, and API references using AI",
+            canvasKeybinding: (event) => (event.key=='D') && (event.ctrlKey || event.metaKey) && event.shiftKey,
+            run: () => {
+                openDocsSearch()
             }
         },{
             id:'edit-hashtag',

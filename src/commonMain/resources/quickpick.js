@@ -88,6 +88,7 @@ function ensureBuiltinKeybindings() {
                 "copy-selection": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_C],
                 "paste-selection": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_V],
                 "insert-from-workspace": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_T],
+                "search-docs-and-code": [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D],
                 "edit-hashtag": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_H],
         }
         allActions.builtin.forEach(a => {
