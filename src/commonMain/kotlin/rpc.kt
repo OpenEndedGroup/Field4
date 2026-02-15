@@ -117,6 +117,9 @@ data class AiAssist(
 data class Chat_input(val value: String, val phase: Int, val images: List<String> = emptyList())
 
 @Serializable
+data class DocsSearch_input(val value: String, val phase: Int)
+
+@Serializable
 data class LocalEval(val uid: String, val prompt: String, val kind: String)
 
 @Serializable

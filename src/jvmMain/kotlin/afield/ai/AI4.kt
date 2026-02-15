@@ -5,6 +5,7 @@ package afield.ai
 import afield.RunsAt
 import afield.installHandlers
 import afield.ai.core.installAi4
+import afield.ai.core.installDocsSearch
 
 // Logging --------------------------------------------------------------------
 
@@ -74,3 +75,6 @@ val Ai4CompletionDoc get() = afield.ai.core.completion.Ai4CompletionDoc
 
 @RunsAt(installHandlers)
 fun ai4_install() = installAi4()
+
+@RunsAt(installHandlers)
+fun docs_search_install() = installDocsSearch()

@@ -368,6 +368,11 @@ fun insertFromWorkspace() {
     }
 }
 
+fun openDocsSearch() {
+    // Switch to documentation browser and load the search page
+    window.switchToDocsIframe("/docs-search.html")
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport()
 fun saveAsTemplate() {
@@ -766,6 +771,15 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='t') && (event.ctrlKey || event.metaKey),
             run: () => {
                 insertFromWorkspace()
+            }
+        },{
+            id:'search-docs-and-code',
+            label:"Search Documentation & Code",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D] : [],
+            detail:"Search Field4 documentation, code examples, and API references using AI",
+            canvasKeybinding: (event) => (event.key=='D') && (event.ctrlKey || event.metaKey) && event.shiftKey,
+            run: () => {
+                openDocsSearch()
             }
         },{
             id:'edit-hashtag',
