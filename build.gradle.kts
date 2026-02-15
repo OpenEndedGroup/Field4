@@ -469,11 +469,11 @@ tasks.register<JavaExec>("runmcp") {
         languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     })
     group = "application"
-    description = "Runs ai2 tests"
+    description = "Runs Field4 MCP server to expose AI4 tools via Model Context Protocol"
 
     classpath = sourceSets["jvmMain"].runtimeClasspath
 
-    mainClass.set("afield.ai.SimpleMCP2Kt") // adjust to match your file/class
+    mainClass.set("afield.ai.mcp.McpServerKt")
     standardInput = System.`in`
 }
 

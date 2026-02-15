@@ -4,6 +4,7 @@ package afield
 
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.completion.Ai4KotlinAutocomplete
+import afield.ai.mcp.McpServer
 import afield.four.util.Options
 import afield.logger.lblock
 import afield.logger.lprint
@@ -41,6 +42,7 @@ import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
 import java.io.FileNotFoundException
+import java.net.Socket
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.file.Paths
@@ -49,6 +51,37 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.seconds
+
+
+/***
+ * MCP Server Management
+ */
+
+/**
+ * Check if MCP server is already running on the specified port
+ */
+private fun isMcpServerRunning(host: String = "127.0.0.1", port: Int = 3000): Boolean {
+    return try {
+        Socket(host, port).use { true }
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * Start the MCP server in a background daemon thread
+ */
+private fun startMcpServer(host: String = "127.0.0.1", port: Int = 3000) {
+    thread(isDaemon = true, name = "mcp-server") {
+        try {
+            lprintln("info,mcp", "Starting MCP server on $host:$port")
+            McpServer(host = host, port = port).start(wait = true)
+        } catch (e: Exception) {
+            lprintln("error,mcp", "Failed to start MCP server: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+}
 
 
 /***
@@ -257,6 +290,16 @@ class Server {
 
             lprintln("info,server", "app directory is $app")
             System.setProperty("joml.format", "false")
+
+            // Check if MCP server is running and start it if not
+            if (!isMcpServerRunning()) {
+                lprintln("info,mcp", "MCP server not detected, starting automatically...")
+                startMcpServer()
+                // Give it a moment to start up
+                Thread.sleep(500)
+            } else {
+                lprintln("info,mcp", "MCP server already running on port 3000")
+            }
 
             initializeClassCache()
 

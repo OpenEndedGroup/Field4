@@ -48,6 +48,9 @@ typealias EditFileResponse = afield.ai.core.EditFileResponse
 typealias WorkspaceSymbolSearch = afield.ai.core.WorkspaceSymbolSearch
 typealias WorkspaceSymbolSearchResult = afield.ai.core.WorkspaceSymbolSearchResult
 typealias WorkspaceSymbolMatch = afield.ai.core.WorkspaceSymbolMatch
+typealias CheckCodeRequest = afield.ai.core.CheckCodeRequest
+typealias CheckCodeResult = afield.ai.core.CheckCodeResult
+typealias CodeError = afield.ai.core.CodeError
 typealias GetUtcTime = afield.ai.core.GetUtcTime
 typealias Remember = afield.ai.core.Remember
 typealias Recall = afield.ai.core.Recall
@@ -74,3 +77,7 @@ val Ai4CompletionDoc get() = afield.ai.core.completion.Ai4CompletionDoc
 
 @RunsAt(installHandlers)
 fun ai4_install() = installAi4()
+
+// MCP Server -----------------------------------------------------------------
+
+typealias McpServer = afield.ai.mcp.McpServer

@@ -379,6 +379,49 @@ fun installAi4() {
             WorkspaceSymbolSearchResult(matches)
         }
 
+        val checkCode: (CheckCodeRequest) -> CheckCodeResult = checkCode@{ req ->
+            try {
+                when (req.language.lowercase()) {
+                    "kotlin" -> {
+                        CodeChecker.checkKotlin(req.code, box.ki)
+                    }
+                    "python" -> {
+                        CodeChecker.checkPython(req.code)
+                    }
+                    "clojure" -> {
+                        // Get or create ClojureHost for this box
+                        val clojureHost = box.ce?.clj ?: afield.clojure.ClojureHost()
+                        CodeChecker.checkClojure(req.code, clojureHost)
+                    }
+                    "glsl" -> {
+                        CodeChecker.checkGLSL(req.code, req.property)
+                    }
+                    else -> {
+                        CheckCodeResult(
+                            success = false,
+                            errors = listOf(
+                                CodeError(
+                                    message = "Unsupported language: ${req.language}. Supported: Kotlin, Python, Clojure, GLSL",
+                                    severity = "error"
+                                )
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                lprintln("error,code_checker", "Code check failed: ${e.message}")
+                CheckCodeResult(
+                    success = false,
+                    errors = listOf(
+                        CodeError(
+                            message = "Code check failed: ${e.message}",
+                            severity = "error"
+                        )
+                    )
+                )
+            }
+        }
+
         val vectorStoreIds = KotlinSourceIndex.currentVectorStoreId()?.let { listOf(it) } ?: emptyList()
 
         if (exec.kind == "chat" || exec.kind == "cursor" || exec.kind == "rewrite" || exec.kind == "error") {
@@ -423,6 +466,7 @@ fun installAi4() {
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            checkCode = checkCode,
                             vectorStoreIds = vectorStoreIds
                         )
                     }
@@ -468,6 +512,7 @@ fun installAi4() {
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            checkCode = checkCode,
                             vectorStoreIds = vectorStoreIds,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
@@ -499,7 +544,8 @@ fun installAi4() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            checkCode = checkCode
                         )
                     }
 
@@ -514,7 +560,8 @@ fun installAi4() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            checkCode = checkCode
                         )
                     }
 
@@ -530,6 +577,7 @@ fun installAi4() {
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            checkCode = checkCode,
                             vectorStoreIds = vectorStoreIds
                         )
                     }
