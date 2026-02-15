@@ -42,6 +42,8 @@ There are two ways to open the documentation search:
    - Search for "Search Documentation & Code"
    - Press Enter
 
+The search interface appears in the documentation browser (the same view used when pressing `Ctrl+/` or `Cmd+/`), replacing any existing documentation content. This provides a seamless, integrated experience within Field4's main window.
+
 ### Example Queries
 
 Here are some example queries to get you started:
@@ -101,6 +103,16 @@ The documentation search feature consists of three main components:
   - Example queries for quick start
   - Responsive design
   - WebSocket integration
+  - Displayed in documentation browser iframe
+
+### Integration with Documentation Browser
+
+The search interface integrates seamlessly with Field4's existing documentation browser:
+
+- Uses `switchToDocsIframe("/docs-search.html")` to display search in the same iframe used for documentation (Ctrl+/)
+- Provides consistent navigation experience with other browser views (history, documentation)
+- Allows easy switching between search and other documentation views
+- No separate window management required
 
 ### Message Protocol
 
@@ -159,8 +171,8 @@ The model can be customized via environment variables or configuration.
 ### Optional Configuration
 
 - **Model Selection**: Change AI model in `DocsSearchBridge` constructor
-- **Window Size**: Modify `DOCS_SEARCH_WINDOW_WIDTH/HEIGHT` constants
 - **System Instructions**: Customize prompts in `DocsSearchBridge.systemInstructions`
+- **Documentation Browser**: Search appears in the documentation iframe (same as Ctrl+/)
 
 ## Keyboard Shortcuts
 
@@ -191,15 +203,16 @@ The model can be customized via environment variables or configuration.
 
 - First query may be slower (initializing AI bridge)
 - Subsequent queries in same session are faster (conversation context)
-- Close and reopen window to start fresh conversation
+- Switch to Monaco editor and back to start fresh conversation
 - Complex queries may take 10-30 seconds
 
 ## Troubleshooting
 
-### Search Window Doesn't Open
+### Search Interface Doesn't Appear
 - Check JavaScript console for errors
 - Verify Field4 server is running
 - Try refreshing main Field4 window
+- Ensure documentation browser is functioning (test with Ctrl+/)
 
 ### No Results or Errors
 - Verify `OPENAI_API_KEY` is set correctly
@@ -216,8 +229,13 @@ The model can be customized via environment variables or configuration.
 ### Formatting Issues
 - Code blocks should have copy buttons
 - If not rendering, check browser console
-- Try refreshing the search window
+- Try switching back to Monaco editor and reopening search
 - Ensure using modern browser (Chrome/Edge recommended)
+
+### Switching Views
+- Press Ctrl+/ (Cmd+/) to toggle to default documentation
+- Use "Switch to Monaco Editor" action to return to code editing
+- Search interface replaces current browser content (this is expected behavior)
 
 ## Development
 
@@ -246,6 +264,8 @@ CSS variables are defined in `docs-search.html`:
 }
 ```
 
+Note: The search interface appears within the documentation browser iframe, so styling is self-contained within the HTML file.
+
 ### Extending Markdown Support
 
 The markdown formatter is in `DocsSearchInstaller.kt`:
@@ -257,6 +277,12 @@ private fun formatMarkdownResponse(markdown: String): String {
 ```
 
 ## Integration with Other Features
+
+### Documentation Browser
+- Seamlessly integrates with existing documentation browser (Ctrl+/)
+- Same iframe used for mkdocs documentation and history views
+- Consistent navigation experience
+- No additional window management
 
 ### Filestore Mirror
 - Automatically uses indexed codebase
