@@ -370,7 +370,7 @@ fun insertFromWorkspace() {
 
 fun openDocsSearch() {
     // Switch to documentation browser and load the search page
-    window.switchToDocsIframe("/docs-search.html")
+    switchToDocsIframe("/docs-search.html")
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -820,8 +820,7 @@ fun registerBuiltinCommands() {
             detail:"Switch to the documentation mode",
             canvasKeybinding: (event) => false,
             run: () => {
-                // Toggle into docs; default URL is handled by switchToDocsIframe/ensureDocsIframeHasContent
-                window.switchToDocsIframe(null);
+                window.switchToDefaultDocs();
             }
         },{
             id:'show-document-history',

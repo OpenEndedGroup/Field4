@@ -517,6 +517,8 @@ const docsIframeKeydownHandler = (e) => {
 const wireDocsIframeKeyForwarding = () => {
         const iframe = document.getElementById('docs-iframe')
         if (!iframe) return
+        if (iframe.dataset.keyForwardingWired === "true") return
+        iframe.dataset.keyForwardingWired = "true"
 
         const attach = () => {
                 try {
@@ -573,8 +575,17 @@ window.launchAll = monacoLaunchAll
 // Documentation iframe support
 let docsIframeAnimationGeneration = 0
 
-const defaultDocsIframeUrl = "http://localhost:8000/field4/index.html"
-const historyBaseUrl = "http://localhost:9092/history"
+const defaultDocsIframeUrl = "https://openendedgroup.com/field4/"
+const historyBaseUrl = new URL("/history", window.location.href).toString()
+
+const normalizeIframeUrl = (url) => {
+	if (!url) return null
+	try {
+		return new URL(url, window.location.href).toString()
+	} catch (_) {
+		return url
+	}
+}
 
 const historyUrlForFile = (filename) => {
 	const filePart = filename ? encodeURIComponent(filename) : "default"
@@ -584,16 +595,18 @@ const historyUrlForFile = (filename) => {
 const ensureDocsIframeHasContent = () => {
 	const iframe = document.getElementById('docs-iframe')
 	if (!iframe) return
+	wireDocsIframeKeyForwarding()
 	const dataset = iframe.dataset || {}
 	if (dataset.docsLoadedOnce === "true") return
 
 	const currentSrc = iframe.getAttribute("src") || ""
 	const isBlank = !currentSrc || currentSrc === "about:blank" || currentSrc === window.location.href
 	if (isBlank) {
-		iframe.src = defaultDocsIframeUrl
+		setDocsIframeContent(defaultDocsIframeUrl)
 	}
-	iframe.dataset.docsLoadedOnce = "true"
-	wireDocsIframeKeyForwarding()
+	if (iframe.dataset.docsLoadedOnce !== "true") {
+		iframe.dataset.docsLoadedOnce = "true"
+	}
 }
 
 const showDocsIframe = () => {
@@ -626,13 +639,15 @@ const hideDocsIframe = () => {
 const setDocsIframeContent = (url) => {
 	const iframe = document.getElementById('docs-iframe')
 	if (iframe) {
+		const normalizedUrl = normalizeIframeUrl(url)
+		if (!normalizedUrl) return
 		const alreadyLoaded = iframe.dataset.docsLoadedOnce === "true"
-		const currentSrc = iframe.getAttribute("src") || ""
-		const shouldChange = !alreadyLoaded || (url && url !== currentSrc)
-		if (shouldChange && url) {
-			iframe.src = url
+		const currentSrc = normalizeIframeUrl(iframe.getAttribute("src") || "") || ""
+		const shouldChange = !alreadyLoaded || normalizedUrl !== currentSrc
+		if (shouldChange) {
+			iframe.src = normalizedUrl
 		}
-		if (url || !alreadyLoaded) {
+		if (!alreadyLoaded || shouldChange) {
 			iframe.dataset.docsLoadedOnce = "true"
 		}
 	}
@@ -666,6 +681,10 @@ const switchToDocsIframe = (url) => {
 	showDocsIframe()
 }
 
+const switchToDefaultDocs = () => {
+	switchToDocsIframe(defaultDocsIframeUrl)
+}
+
 const switchToHistoryForFile = (filename) => {
 	const url = historyUrlForFile(filename)
 	switchToDocsIframe(url)
@@ -677,7 +696,9 @@ window.setDocsIframeContent = setDocsIframeContent
 window.getDocsIframeElement = getDocsIframeElement
 window.switchToMonaco = switchToMonaco
 window.switchToDocsIframe = switchToDocsIframe
+window.switchToDefaultDocs = switchToDefaultDocs
 window.switchToHistoryForFile = switchToHistoryForFile
+window.defaultDocsIframeUrl = defaultDocsIframeUrl
 window.hideDocsIframeOnly = () => {
 	hideDocsIframe()
 }

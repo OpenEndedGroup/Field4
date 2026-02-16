@@ -46,9 +46,10 @@ external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
 external fun showDocsIframe(): dynamic
 external fun hideDocsIframe(): dynamic
-external fun setDocsIframeContent(url: String): dynamic
+external fun setDocsIframeContent(url: String?): dynamic
 external fun switchToMonaco(): dynamic
 external fun switchToDocsIframe(url: String?): dynamic
+external fun switchToDefaultDocs(): dynamic
 external fun initMenuSupport(): dynamic
 
 

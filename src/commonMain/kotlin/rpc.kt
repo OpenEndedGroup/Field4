@@ -414,13 +414,13 @@ data class ChatMessagePosted(
 
 // Documentation iframe control messages
 @Serializable
-data class ShowDocsIframe(val url: String)
+data class ShowDocsIframe(val url: String? = null)
 
 @Serializable
 data class HideDocsIframe(val dummy: String = "")
 
 @Serializable
-data class SwitchToDocsIframe(val url: String)
+data class SwitchToDocsIframe(val url: String? = null)
 
 @Serializable
 data class SwitchToMonacoEditor(val dummy: String = "")

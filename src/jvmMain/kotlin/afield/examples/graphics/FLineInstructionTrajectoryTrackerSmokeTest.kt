@@ -14,6 +14,8 @@ object FLineInstructionTrajectoryTrackerSmokeTest {
     fun runTests(): Boolean {
         return try {
             testStableTopologyAccumulates()
+            testStableTopologyFastPathKeepsInstructionIdentityWhenClose()
+            testStableTopologyFastPathFallsBackWhenAboveThreshold()
             testDroppedIntermediateInstructionDoesNotShiftEverything()
             testDisappearAndReappearCreatesGap()
             testEffectiveInstructionColorIsCopied()
@@ -61,6 +63,54 @@ object FLineInstructionTrajectoryTrackerSmokeTest {
 
         require(abs(x2End - 2f) < 1e-5f) { "Expected x=2 trajectory to remain at x=2, got $x2End" }
         require(abs(x3End - 3f) < 1e-5f) { "Expected x=3 trajectory to remain at x=3, got $x3End" }
+    }
+
+    private fun testStableTopologyFastPathKeepsInstructionIdentityWhenClose() {
+        val tracker = FLineSideways(
+            maxMatchDistance = 2f,
+            stableTopologyDistanceThreshold = 1f,
+            instructionIndexWeight = 0.0
+        )
+
+        tracker.update(listOf(polyline(0f, 1f)))
+        tracker.update(listOf(polyline(0.9f, 0.1f)))
+
+        val trajectories = tracker.trajectories()
+        val firstTrack = findTrajectoryStartingNear(trajectories, 0f)
+        val secondTrack = findTrajectoryStartingNear(trajectories, 1f)
+
+        val firstEnd = firstTrack.nodes.last().to.x
+        val secondEnd = secondTrack.nodes.last().to.x
+        require(abs(firstEnd - 0.9f) < 1e-5f) {
+            "Expected first instruction track to stay with instruction index 0, got $firstEnd"
+        }
+        require(abs(secondEnd - 0.1f) < 1e-5f) {
+            "Expected second instruction track to stay with instruction index 1, got $secondEnd"
+        }
+    }
+
+    private fun testStableTopologyFastPathFallsBackWhenAboveThreshold() {
+        val tracker = FLineSideways(
+            maxMatchDistance = 2f,
+            stableTopologyDistanceThreshold = 0.5f,
+            instructionIndexWeight = 0.0
+        )
+
+        tracker.update(listOf(polyline(0f, 1f)))
+        tracker.update(listOf(polyline(0.9f, 0.1f)))
+
+        val trajectories = tracker.trajectories()
+        val firstTrack = findTrajectoryStartingNear(trajectories, 0f)
+        val secondTrack = findTrajectoryStartingNear(trajectories, 1f)
+
+        val firstEnd = firstTrack.nodes.last().to.x
+        val secondEnd = secondTrack.nodes.last().to.x
+        require(abs(firstEnd - 0.1f) < 1e-5f) {
+            "Expected fallback matching to choose nearest point for first track, got $firstEnd"
+        }
+        require(abs(secondEnd - 0.9f) < 1e-5f) {
+            "Expected fallback matching to choose nearest point for second track, got $secondEnd"
+        }
     }
 
     private fun testDisappearAndReappearCreatesGap() {

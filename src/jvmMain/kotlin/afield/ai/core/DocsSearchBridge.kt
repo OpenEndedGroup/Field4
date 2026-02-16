@@ -1,18 +1,15 @@
 package afield.ai.core
 
 import afield.ai.KotlinSourceIndex
-import afield.logger.lprintln
 import com.openai.client.OpenAIClient
 import com.openai.client.okhttp.OpenAIOkHttpClient
+import com.openai.helpers.ResponseAccumulator
 import com.openai.models.ChatModel
-import com.openai.models.Reasoning
-import com.openai.models.ReasoningEffort
 import com.openai.models.ResponseFormatText
 import com.openai.models.conversations.ConversationCreateParams
 import com.openai.models.conversations.items.ItemCreateParams
 import com.openai.models.responses.*
 import com.openai.core.JsonValue
-import com.openai.helpers.ResponseAccumulator
 import java.util.*
 
 /**
@@ -26,6 +23,8 @@ class DocsSearchBridge(
 ) {
     private val chatModel: ChatModel = ChatModel.of(model)
     private val trace: TraceLogger? = TraceLogger.fromEnv()
+    private val textConfig: ResponseTextConfig =
+        ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build()
     
     private fun info(message: String) = log.log("info,docs.search", message)
     private fun warn(message: String) = log.log("warning,docs.search", message)
@@ -95,19 +94,8 @@ class DocsSearchBridge(
             .build()
         
         val conversationId = client.conversations().create(convParams).id()
-        
-        // Add system instructions
-        val instructionItem = ItemCreateParams.builder()
-            .type(ItemCreateParams.Type.MESSAGE)
-            .message(
-                ItemCreateParams.Message.builder()
-                    .role(ItemCreateParams.Message.Role.SYSTEM)
-                    .addTextContent(systemInstructions)
-                    .build()
-            )
-            .build()
-        
-        client.conversations().items().create(conversationId, instructionItem)
+
+        appendMessage(conversationId, ResponseInputItem.Message.Role.SYSTEM, systemInstructions)
         
         val ms = (System.nanoTime() - t0) / 1_000_000
         info("startConversation(): conversationId=$conversationId (${ms}ms)")
@@ -134,19 +122,8 @@ class DocsSearchBridge(
                 appendLine("query=$query")
             }
         )
-        
-        // Add user message with query
-        val userItem = ItemCreateParams.builder()
-            .type(ItemCreateParams.Type.MESSAGE)
-            .message(
-                ItemCreateParams.Message.builder()
-                    .role(ItemCreateParams.Message.Role.USER)
-                    .addTextContent(query)
-                    .build()
-            )
-            .build()
-        
-        client.conversations().items().create(state.conversationId, userItem)
+
+        appendMessage(state.conversationId, ResponseInputItem.Message.Role.USER, query)
         
         // Get vector store IDs from KotlinSourceIndex if available
         val vectorStoreIds = mutableListOf<String>()
@@ -159,66 +136,38 @@ class DocsSearchBridge(
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(16384L)
-        
-        if (state.previousResponseId != null) {
+
+        if (state.previousResponseId == null) {
+            paramsBuilder.conversation(state.conversationId)
+        } else {
             paramsBuilder.previousResponseId(state.previousResponseId)
         }
-        
+
         if (vectorStoreIds.isNotEmpty()) {
-            paramsBuilder.tools(
-                ResponseCreateParams.Tool.ofFileSearch(
-                    ResponseCreateParams.Tool.FileSearch.builder()
-                        .vectorStoreIds(vectorStoreIds)
-                        .build()
-                )
-            )
+            paramsBuilder.addFileSearchTool(vectorStoreIds)
         }
-        
-        paramsBuilder.modalities(ResponseCreateParams.Modality.TEXT)
-        paramsBuilder.text(
-            ResponseTextConfig.builder()
-                .format(ResponseFormatText.builder().build())
-                .build()
-        )
-        
+
+        paramsBuilder.text(textConfig)
+
         val params = paramsBuilder.build()
-        
-        val accum = ResponseAccumulator()
-        val textDelta = StringBuilder()
-        
+
         try {
-            client.conversations()
-                .responses()
-                .create(state.conversationId, params)
-                .stream()
-                .forEach { event ->
-                    accum.accumulate(event)
-                    
-                    when (event) {
-                        is ResponseStreamEvent.ResponseTextDelta -> {
-                            val delta = event.delta()
-                            textDelta.append(delta)
-                            onTextDelta?.invoke(delta)
-                        }
-                        is ResponseStreamEvent.ResponseTextDone -> {
-                            info("Response text done")
-                        }
-                        is ResponseStreamEvent.ResponseDone -> {
-                            info("Response complete")
-                        }
-                        else -> {
-                            // Ignore other events
-                        }
-                    }
-                }
-            
-            val response = accum.response()
+            val streamedText = StringBuilder()
+            val response = createResponse(params) { delta ->
+                streamedText.append(delta)
+                onTextDelta?.invoke(delta)
+            }
             val newResponseId = response.id()
-            val fullText = textDelta.toString()
-            
+            val fullText = streamedText.toString().ifBlank {
+                extractOutputTextWithNewlines(response)
+            }
+            if (fullText.isBlank()) {
+                warn("search(): response had no output_text")
+            }
+
             val ms = (System.nanoTime() - t0) / 1_000_000
             info("search() complete: chars=${fullText.length} time=${ms}ms")
-            
+
             trace?.log(
                 "DOCS_SEARCH_RESPONSE",
                 buildString {
@@ -229,13 +178,13 @@ class DocsSearchBridge(
                     append(fullText)
                 }
             )
-            
+
             return SearchResult(
                 success = true,
                 text = fullText,
                 newState = state.copy(previousResponseId = newResponseId)
             )
-            
+
         } catch (e: Exception) {
             error("search() failed: ${e.message}")
             e.printStackTrace()
@@ -245,6 +194,47 @@ class DocsSearchBridge(
                 newState = state
             )
         }
+    }
+
+    private fun appendMessage(conversationId: String, role: ResponseInputItem.Message.Role, text: String) {
+        val message = ResponseInputItem.Message.builder()
+            .role(role)
+            .addInputTextContent(text)
+            .build()
+
+        val params = ItemCreateParams.builder()
+            .conversationId(conversationId)
+            .addItem(message)
+            .build()
+
+        client.conversations().items().create(conversationId, params)
+    }
+
+    private fun createResponse(params: ResponseCreateParams, onTextDelta: (String) -> Unit): Response {
+        val acc = ResponseAccumulator.create()
+        client.async().responses().createStreaming(params).subscribe({ event ->
+            acc.accumulate(event)
+            event.outputTextDelta().ifPresent { delta ->
+                val chunk = delta.delta()
+                if (chunk.isNotEmpty()) onTextDelta(chunk)
+            }
+        }).onCompleteFuture().join()
+
+        return acc.response()
+    }
+
+    private fun extractOutputTextWithNewlines(response: Response): String {
+        val parts = mutableListOf<String>()
+        response.output().forEach { item ->
+            if (item.isMessage()) {
+                val msg = item.message().orElse(null)
+                msg?.content()?.forEach { content ->
+                    val outText = content.outputText().orElse(null)
+                    if (outText != null) parts += outText.text()
+                }
+            }
+        }
+        return parts.joinToString(separator = "\n").trimEnd()
     }
     
     data class SearchResult(

@@ -9,10 +9,12 @@ import kotlin.math.max
  *
  * Call [update] every frame with the current line(s). Matching is done with a small Hungarian assignment
  * solver, which is robust to topology changes where points appear, disappear, or intermediate instructions
- * get dropped.
+ * get dropped. For stable topology, a fast path can skip Hungarian and match by instruction index when all
+ * point deltas are under [stableTopologyDistanceThreshold].
  */
 class FLineSideways(
     val maxMatchDistance: Float = Float.POSITIVE_INFINITY,
+    val stableTopologyDistanceThreshold: Float = if (maxMatchDistance.isFinite()) maxMatchDistance else 0f,
     val maxMissedFrames: Int = 8,
     val breakOnGap: Boolean = true,
     val includeCloseInstructions: Boolean = false,
@@ -23,6 +25,7 @@ class FLineSideways(
     init {
         require(maxMissedFrames >= 0) { "maxMissedFrames must be >= 0" }
         require(instructionIndexWeight >= 0.0) { "instructionIndexWeight must be >= 0" }
+        require(stableTopologyDistanceThreshold >= 0f) { "stableTopologyDistanceThreshold must be >= 0" }
     }
 
     private data class Observation(
@@ -45,6 +48,13 @@ class FLineSideways(
     private val activeTracks = LinkedHashMap<Long, Track>()
     private val archivedTracks = LinkedHashMap<Long, Track>()
     private var nextTrackId = 1L
+    private val maxMatchDistanceSq = if (maxMatchDistance.isFinite()) {
+        val d = maxMatchDistance.toDouble()
+        d * d
+    } else {
+        null
+    }
+    private val stableTopologyDistanceThresholdSq = stableTopologyDistanceThreshold.squaredPositiveOrNull()
 
     /**
      * Number of currently active tracks.
@@ -162,6 +172,7 @@ class FLineSideways(
             return
         }
         if (observations.isEmpty()) return
+        if (tryStableTopologyFastPath(tracks, observations, matchedTrackIds)) return
 
         val n = max(tracks.size, observations.size)
         val unmatchedCost = unmatchedCost()
@@ -206,6 +217,43 @@ class FLineSideways(
                 spawnTrack(observations[col])
             }
         }
+    }
+
+    private fun tryStableTopologyFastPath(
+        tracks: List<Track>,
+        observations: List<Observation>,
+        matchedTrackIds: MutableSet<Long>
+    ): Boolean {
+        val thresholdSq = stableTopologyDistanceThresholdSq ?: return false
+        if (tracks.size != observations.size || tracks.isEmpty()) return false
+
+        val observationByInstructionIndex = HashMap<Int, Observation>(observations.size * 2)
+        for (observation in observations) {
+            if (observationByInstructionIndex.put(observation.instructionIndex, observation) != null) {
+                return false
+            }
+        }
+
+        val matchedObservations = ArrayList<Observation>(tracks.size)
+        for (track in tracks) {
+            if (track.missedFrames != 0) return false
+
+            val observation = observationByInstructionIndex.remove(track.lastInstructionIndex) ?: return false
+            val spatial = squaredDistance(track.lastPoint, observation.position)
+            if (spatial > thresholdSq) return false
+            if (maxMatchDistanceSq != null && spatial > maxMatchDistanceSq) return false
+            matchedObservations.add(observation)
+        }
+
+        if (observationByInstructionIndex.isNotEmpty()) return false
+
+        for (i in tracks.indices) {
+            val track = tracks[i]
+            val observation = matchedObservations[i]
+            applyMatch(track, observation)
+            matchedTrackIds.add(track.id)
+        }
+        return true
     }
 
     private fun applyMatch(track: Track, observation: Observation) {
@@ -284,9 +332,8 @@ class FLineSideways(
     ): Double {
         val spatial = squaredDistance(track.lastPoint, observation.position)
 
-        if (maxMatchDistance.isFinite()) {
-            val maxSq = maxMatchDistance.toDouble() * maxMatchDistance.toDouble()
-            if (spatial > maxSq) return disallowCost
+        if (maxMatchDistanceSq != null) {
+            if (spatial > maxMatchDistanceSq) return disallowCost
         }
 
         val idxDelta = (track.lastInstructionIndex - observation.instructionIndex).toDouble()
@@ -322,6 +369,13 @@ class FLineSideways(
         val dy = (a.y - b.y).toDouble()
         val dz = (a.z - b.z).toDouble()
         return (dx * dx) + (dy * dy) + (dz * dz)
+    }
+
+    private fun Float.squaredPositiveOrNull(): Double? {
+        if (!isFinite()) return null
+        if (this <= 0f) return null
+        val d = toDouble()
+        return d * d
     }
 }
 
