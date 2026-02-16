@@ -3,11 +3,15 @@ package afield.four.buffers
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.device.Fence
+import afield.logger.lprintln
 import org.lwjgl.BufferUtils
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkBufferCopy
+import org.lwjgl.vulkan.VkBufferMemoryBarrier2
+import org.lwjgl.vulkan.VkDependencyInfo
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
@@ -97,16 +101,60 @@ class VertexBuffer(
         return this
     }
 
+    private fun recordTransferToInputBarrier(cmd: CommandBuffer) {
+        var dstAccessMask = 0L
+        if ((usage and VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0) {
+            dstAccessMask = dstAccessMask or VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT
+        }
+        if ((usage and VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0) {
+            dstAccessMask = dstAccessMask or VK_ACCESS_2_INDEX_READ_BIT
+        }
+        if (dstAccessMask == 0L || neededSize <= 0) return
+
+        MemoryStack.stackPush().use { stack ->
+            val barriers = VkBufferMemoryBarrier2.calloc(1, stack)
+            barriers[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
+                .srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT)
+                .dstAccessMask(dstAccessMask)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(dest.buffer)
+                .offset(0L)
+                .size(neededSize)
+
+            val dep = VkDependencyInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+                .pBufferMemoryBarriers(barriers)
+            vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+        }
+
+        if (debugTransferInputBarrier) {
+            val accessKinds = buildList {
+                if ((dstAccessMask and VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT) != 0L) add("vertex")
+                if ((dstAccessMask and VK_ACCESS_2_INDEX_READ_BIT) != 0L) add("index")
+            }.joinToString("+")
+            lprintln(
+                "debug,vulkan,sync",
+                "transfer->vertex-input barrier recorded buf=0x${dest.buffer.toULong().toString(16)} size=$neededSize access=$accessKinds usage=0x${usage.toUInt().toString(16)} cmd=0x${cmd.vkCommandBuffer.address().toULong().toString(16)}"
+            )
+        }
+    }
+
     fun transfer(cmd: CommandBuffer) {
 
         if (transferWatermark != watermark) {
-            if (neededSize > 0)
+            if (neededSize > 0) {
                 MemoryStack.stackPush().use { stack ->
                     val copyRegion = VkBufferCopy.calloc(1, stack).srcOffset(0).dstOffset(0).size(neededSize)
                     VK10.vkCmdCopyBuffer(
                         cmd.vkCommandBuffer, src.buffer, dest.buffer, copyRegion
                     )
                 }
+                recordTransferToInputBarrier(cmd)
+            }
             transferWatermark = watermark
         }
     }
@@ -133,7 +181,20 @@ class VertexBuffer(
 
     companion object {
         var fence : Fence? = null
+        @JvmStatic
+        var debugTransferInputBarrier: Boolean = parseDebugFlag(
+            System.getenv("AFIELD_DEBUG_TRANSFER_INPUT_BARRIER"),
+            System.getProperty("afield.debugTransferInputBarrier")
+        )
 
+        private fun parseDebugFlag(vararg raw: String?): Boolean {
+            return raw.any {
+                when (it?.trim()?.lowercase()) {
+                    "1", "true", "yes", "on" -> true
+                    else -> false
+                }
+            }
+        }
     }
 
     fun cleanup() {

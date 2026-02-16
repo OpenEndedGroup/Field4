@@ -389,25 +389,32 @@ open class RenderToTexture(
         MemoryStack.stackPush().use { stack ->
             // COLOR subresource range for mip 0 ONLY (we don't touch other mips during the attachment phase)
         // Initial COLOR transition for mip 0 based on tracked layout + ops
-        colorImageHandles.forEachIndexed { idx, img ->
-            val imgRef = colorImageRefs.getOrNull(idx)
-            val colorBaseRange = VkImageSubresourceRange.calloc(stack)
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .baseMipLevel(0)
-                .levelCount(1)
-                .baseArrayLayer(0)
+            colorImageHandles.forEachIndexed { idx, img ->
+                val imgRef = colorImageRefs.getOrNull(idx)
+                val colorBaseRange = VkImageSubresourceRange.calloc(stack)
+                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .baseMipLevel(0)
+                    .levelCount(1)
+                    .baseArrayLayer(0)
                     .layerCount(colorLayerCount.coerceAtLeast(1))
 
-            val layout = colorLayout[idx]
-            if (!parameters.clearFirst) {
+                val layout = colorLayout[idx]
                 val (srcStage, srcAccess) = when (layout) {
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                        // Include CA/depth test stages to chain with broad read barriers on strict validators (MoltenVK/macOS).
+                        (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
+                                VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT or
+                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) to VK_ACCESS_2_SHADER_READ_BIT
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_READ_BIT
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_WRITE_BIT
                     else ->
                         VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
                 }
+
                 if (imgRef != null) {
                     image_layout_transition(
                         command.vkCommandBuffer,
@@ -429,41 +436,12 @@ open class RenderToTexture(
                         srcAccess,
                         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                         layout,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        colorBaseRange
-                    )
-                }
-                colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-            } else {
-                // CLEAR path
-                if (imgRef != null) {
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        imgRef,
-                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        0L,
-                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        colorBaseRange
-                    )
-                } else {
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        img,
-                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        0L,
-                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         colorBaseRange
                     )
                 }
                 colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
             }
-        }
 
             // DEPTH (optional) subresource range + transition
             var depthRange: VkImageSubresourceRange? = null
@@ -476,41 +454,27 @@ open class RenderToTexture(
                     .baseArrayLayer(0)
                     .layerCount(1)
 
-                if (parameters.depthLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
-                    val (srcStage, srcAccess) = when (depthLayout) {
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
-                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT to VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                        else ->
-                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
-                    }
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        depthImage!!,
-                        srcStage,
-                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-                        srcAccess,
-                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                        depthLayout,
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        depthRange
-                    )
-                    depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                } else {
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        depthImage!!,
-                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-                        0,
-                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        depthRange
-                    )
-                    depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                val (srcStage, srcAccess) = when (depthLayout) {
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
+                        (VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT or VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT) to
+                                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                    else ->
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
                 }
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    depthImage!!,
+                    srcStage,
+                    VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+                    srcAccess,
+                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                    depthLayout,
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    depthRange
+                )
+                depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
             }
 
             // COLOR attachment info (KHR)
