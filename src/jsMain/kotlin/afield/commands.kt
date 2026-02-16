@@ -779,7 +779,7 @@ fun registerBuiltinCommands() {
             detail:"Search Field4 documentation, code examples, and API references using AI",
             canvasKeybinding: (event) => (event.key=='D') && (event.ctrlKey || event.metaKey) && event.shiftKey,
             run: () => {
-                openDocsSearch()
+                window.switchToDocsIframe("/docs-search.html");
             }
         },{
             id:'edit-hashtag',

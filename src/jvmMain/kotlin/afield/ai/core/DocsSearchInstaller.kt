@@ -38,7 +38,7 @@ fun installDocsSearch() {
                 // Send intermediate "thinking" response
                 inMain {
                     reply(Message("docs_search_input").payload(DocsSearch_input(
-                        value = "<div style='opacity: 0.5; font-style: italic;'>Searching documentation and code...</div>",
+                        value = "<div class='status-message status-message--searching'><span class='loading-spinner' aria-hidden='true'></span><span>Searching documentation and code...</span></div>",
                         phase = 1
                     )))
                 }

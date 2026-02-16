@@ -5,6 +5,8 @@ import com.openai.client.OpenAIClient
 import com.openai.client.okhttp.OpenAIOkHttpClient
 import com.openai.helpers.ResponseAccumulator
 import com.openai.models.ChatModel
+import com.openai.models.Reasoning
+import com.openai.models.ReasoningEffort
 import com.openai.models.ResponseFormatText
 import com.openai.models.conversations.ConversationCreateParams
 import com.openai.models.conversations.items.ItemCreateParams
@@ -18,20 +20,30 @@ import java.util.*
  */
 class DocsSearchBridge(
     private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
-    model: String = ChatModel.GPT_5_2.toString(),
-    private val log: LogSink = StdoutLog
+    model: String = System.getenv("AFIELD_DOCS_SEARCH_MODEL")?.takeIf { it.isNotBlank() } ?: ChatModel.GPT_5_2.toString(),
+    private val log: LogSink = StdoutLog,
+    private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
-    private val chatModel: ChatModel = ChatModel.of(model)
+    private val fallbackModel: ChatModel = ChatModel.of(
+        System.getenv("AFIELD_DOCS_SEARCH_FALLBACK_MODEL")?.takeIf { it.isNotBlank() } ?: ChatModel.GPT_5_2.toString()
+    )
+    @Volatile
+    private var activeModel: ChatModel = ChatModel.of(model)
     private val trace: TraceLogger? = TraceLogger.fromEnv()
     private val textConfig: ResponseTextConfig =
         ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build()
+    private val reasoningConfig: Reasoning =
+        Reasoning.builder()
+            .effort(reasoningEffort)
+            .summary(Reasoning.Summary.DETAILED)
+            .build()
     
     private fun info(message: String) = log.log("info,docs.search", message)
     private fun warn(message: String) = log.log("warning,docs.search", message)
     private fun error(message: String) = log.log("error,docs.search", message)
     
     init {
-        info("Initialized DocsSearchBridge(model=$chatModel)")
+        info("Initialized DocsSearchBridge(model=$activeModel fallback=$fallbackModel)")
     }
     
     data class SearchState(
@@ -44,40 +56,24 @@ class DocsSearchBridge(
      */
     private val systemInstructions = """
         You are a specialized Field4 documentation and code search assistant.
-        
-        Your primary role is to help users discover and understand:
-        - Field4 API documentation and usage examples
-        - Code implementations in the Field4 codebase
-        - KDoc comments and inline documentation
-        - Best practices and patterns used in Field4
-        
-        When responding:
-        1. Prioritize showing relevant code examples with syntax highlighting
-        2. Include KDoc comments when available
-        3. Explain how to use the code in practical scenarios
-        4. Reference file paths when discussing specific implementations
-        5. Format code blocks properly with language annotations
-        6. Be concise but thorough
-        
-        You have access to the Field4 codebase through a vector store that includes:
-        - All Kotlin source files from src/jvmMain/kotlin
-        - KDoc comments and inline documentation
-        - Code structure and patterns
-        
-        When the user asks about code or documentation:
-        - Search the codebase for relevant examples
-        - Show actual implementations when possible
-        - Explain the context and usage
-        - Suggest related functionality
-        
-        Format your responses in markdown with:
-        - Clear headings (## for sections, ### for subsections)
-        - Code blocks with language annotations (```kotlin, ```glsl, etc.)
-        - Inline code with `backticks`
-        - Lists for multiple items
-        - Bold for emphasis
-        
-        Be helpful and educational. If you can write example code to demonstrate a concept, do so.
+
+        Grounding requirements:
+        - For Field4 API, behavior, or implementation questions, use file_search results from the vector store first.
+        - Prefer retrieved code and docs over prior knowledge.
+        - If retrieval is weak or missing, explicitly say what you could not verify.
+        - Include concrete file paths for referenced implementations.
+
+        Response quality requirements:
+        1. Prioritize relevant real code examples from the indexed codebase
+        2. Include KDoc or inline documentation context when available
+        3. Explain practical usage and caveats
+        4. Suggest related APIs only when supported by retrieved context
+        5. Be concise but complete
+
+        Output format:
+        - Use markdown with clear headings
+        - Use language-tagged code blocks
+        - End with a short Sources section listing referenced file paths
     """.trimIndent()
     
     fun startConversation(): SearchState {
@@ -123,39 +119,68 @@ class DocsSearchBridge(
             }
         )
 
-        appendMessage(state.conversationId, ResponseInputItem.Message.Role.USER, query)
-        
         // Get vector store IDs from KotlinSourceIndex if available
         val vectorStoreIds = mutableListOf<String>()
         KotlinSourceIndex.latestIndex?.vectorStoreId?.let { vsId ->
             vectorStoreIds.add(vsId)
             info("Using vector store: $vsId")
         }
+        if (vectorStoreIds.isEmpty()) {
+            warn("No vector store available; docs search is running ungrounded")
+        }
+
+        val groundedQuery =
+            if (vectorStoreIds.isNotEmpty()) {
+                buildString {
+                    appendLine("Use file_search against the indexed Field4 codebase for this request.")
+                    appendLine("If retrieval does not support a claim, state that clearly.")
+                    appendLine()
+                    append(query)
+                }
+            } else {
+                query
+            }
         
-        // Create response request
-        val paramsBuilder = ResponseCreateParams.builder()
-            .model(chatModel)
-            .maxOutputTokens(16384L)
+        fun buildParams(modelToUse: ChatModel): ResponseCreateParams {
+            val paramsBuilder = ResponseCreateParams.builder()
+                .model(modelToUse)
+                .maxOutputTokens(16384L)
+                .input(groundedQuery)
 
-        if (state.previousResponseId == null) {
-            paramsBuilder.conversation(state.conversationId)
-        } else {
-            paramsBuilder.previousResponseId(state.previousResponseId)
+            if (state.previousResponseId == null) {
+                paramsBuilder.conversation(state.conversationId)
+            } else {
+                paramsBuilder.previousResponseId(state.previousResponseId)
+            }
+
+            if (vectorStoreIds.isNotEmpty()) {
+                paramsBuilder.addFileSearchTool(vectorStoreIds)
+            }
+
+            paramsBuilder.text(textConfig)
+            paramsBuilder.reasoning(reasoningConfig)
+            return paramsBuilder.build()
         }
-
-        if (vectorStoreIds.isNotEmpty()) {
-            paramsBuilder.addFileSearchTool(vectorStoreIds)
-        }
-
-        paramsBuilder.text(textConfig)
-
-        val params = paramsBuilder.build()
 
         try {
             val streamedText = StringBuilder()
-            val response = createResponse(params) { delta ->
-                streamedText.append(delta)
-                onTextDelta?.invoke(delta)
+            val response = try {
+                createResponse(buildParams(activeModel)) { delta ->
+                    streamedText.append(delta)
+                    onTextDelta?.invoke(delta)
+                }
+            } catch (e: Exception) {
+                if (isMissingModelError(e) && activeModel != fallbackModel) {
+                    warn("Model '$activeModel' unavailable; retrying with '$fallbackModel'")
+                    activeModel = fallbackModel
+                    streamedText.setLength(0)
+                    createResponse(buildParams(activeModel)) { delta ->
+                        streamedText.append(delta)
+                        onTextDelta?.invoke(delta)
+                    }
+                } else {
+                    throw e
+                }
             }
             val newResponseId = response.id()
             val fullText = streamedText.toString().ifBlank {
@@ -221,6 +246,20 @@ class DocsSearchBridge(
         }).onCompleteFuture().join()
 
         return acc.response()
+    }
+
+    private fun isMissingModelError(error: Throwable): Boolean {
+        var cursor: Throwable? = error
+        while (cursor != null) {
+            val message = cursor.message?.lowercase(Locale.US) ?: ""
+            if ((message.contains("requested model") && message.contains("does not exist")) ||
+                message.contains("model_not_found")
+            ) {
+                return true
+            }
+            cursor = cursor.cause
+        }
+        return false
     }
 
     private fun extractOutputTextWithNewlines(response: Response): String {

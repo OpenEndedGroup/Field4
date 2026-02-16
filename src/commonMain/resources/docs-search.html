@@ -23,6 +23,7 @@
 
         body {
             font-family: "Iosevka Web", "Fira Code", "Consolas", monospace;
+            font-size: 80%;
             background: var(--field-bg);
             color: var(--field-text);
             padding: 0;
@@ -90,10 +91,12 @@
         .user-input {
             background: rgba(0, 0, 0, 0.3);
             padding: 15px 20px;
-            margin: 10px 0;
+            margin: 10px 0 10px auto;
             border-radius: 8px;
-            border-left: 4px solid var(--field-cyan);
+            border-right: 4px solid var(--field-cyan);
             color: var(--field-text);
+            text-align: right;
+            max-width: min(72%, 980px);
         }
 
         .ai-response {
@@ -220,10 +223,12 @@
             flex-shrink: 0;
             display: flex;
             gap: 10px;
-            padding: 15px;
-            background: var(--header-bg);
+            padding: 0;
+            background: transparent;
             border-radius: 8px;
-            border: 1px solid var(--border-color);
+            border: none;
+            width: calc(100% - 176px);
+            margin: 22px 0 0 auto;
         }
 
         #search-input {
@@ -235,6 +240,7 @@
             padding: 12px 15px;
             font-family: inherit;
             font-size: 1em;
+            text-align: right;
             resize: vertical;
             min-height: 50px;
             max-height: 200px;
@@ -243,35 +249,7 @@
         #search-input:focus {
             outline: none;
             border-color: var(--field-cyan);
-            box-shadow: 0 0 10px rgba(72, 201, 255, 0.3);
-        }
-
-        #send-button {
-            background: rgba(72, 201, 255, 0.2);
-            border: 1px solid var(--field-cyan);
-            color: var(--field-cyan);
-            padding: 12px 24px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 1em;
-            font-weight: 650;
-            transition: all 0.2s;
-            align-self: flex-end;
-        }
-
-        #send-button:hover:not(:disabled) {
-            background: rgba(72, 201, 255, 0.3);
-            box-shadow: 0 0 15px rgba(72, 201, 255, 0.5);
-        }
-
-        #send-button:active:not(:disabled) {
-            transform: scale(0.98);
-        }
-
-        #send-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+            box-shadow: none;
         }
 
         .status-message {
@@ -280,6 +258,31 @@
             font-style: italic;
             color: var(--field-text-dim);
             opacity: 0.7;
+        }
+
+        .status-message--searching {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            text-align: left;
+            opacity: 0.85;
+        }
+
+        .loading-spinner {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(72, 201, 255, 0.25);
+            border-top-color: var(--field-cyan);
+            animation: docs-search-spin 0.8s linear infinite;
+            flex: 0 0 auto;
+        }
+
+        @keyframes docs-search-spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .error-message {
@@ -293,7 +296,7 @@
 
         /* Welcome message */
         .welcome {
-            text-align: center;
+            text-align: left;
             padding: 40px 20px;
             color: var(--field-text-dim);
         }
@@ -329,8 +332,7 @@
 </head>
 <body>
     <div id="header">
-        <h1>🔍 Documentation & Code Search</h1>
-        <p>Search Field4 documentation, code examples, and API references using AI</p>
+        <h1 style="text-align: right;">Documentation & Code Search</h1>
     </div>
 
     <div id="main">
@@ -339,15 +341,15 @@
                 <h2>Welcome to Field4 Documentation Search</h2>
                 <p>Ask questions about the Field4 API, search for code examples, or explore documentation.</p>
                 <p>This AI assistant has access to the entire Field4 codebase, including KDoc comments and inline documentation.</p>
-                
+
                 <div class="example-queries">
                     <p><strong>Try asking:</strong></p>
                     <ul>
-                        <li onclick="askExample('How do I create a box programmatically?')">• How do I create a box programmatically?</li>
-                        <li onclick="askExample('Show me examples of GLSL shaders in Field4')">• Show me examples of GLSL shaders in Field4</li>
-                        <li onclick="askExample('How does the animation system work?')">• How does the animation system work?</li>
-                        <li onclick="askExample('What are the available drawing functions?')">• What are the available drawing functions?</li>
-                        <li onclick="askExample('How do I use the Python integration?')">• How do I use the Python integration?</li>
+                        <li data-example-query="How do I create a box programmatically?">• How do I create a box programmatically?</li>
+                        <li data-example-query="Show me examples of GLSL shaders in Field4">• Show me examples of GLSL shaders in Field4</li>
+                        <li data-example-query="How does the animation system work?">• How does the animation system work?</li>
+                        <li data-example-query="What are the available drawing functions?">• What are the available drawing functions?</li>
+                        <li data-example-query="How do I use the Python integration?">• How do I use the Python integration?</li>
                     </ul>
                 </div>
             </div>
@@ -355,49 +357,74 @@
 
         <div id="entry">
             <textarea id="search-input" placeholder="Ask about Field4 code, documentation, or API..."></textarea>
-            <button id="send-button">Search</button>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeClient, send, sendWithReply, Message, handlers, Handled } from './afield.mjs';
-
+    <script>
         const conversationDiv = document.getElementById('conversation');
         const searchInput = document.getElementById('search-input');
-        const sendButton = document.getElementById('send-button');
+        const exampleItems = document.querySelectorAll('[data-example-query]');
+
+        const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${document.location.host}/ws`;
+        let ws = null;
+        const searchSessionId = `docssearch-${Math.random().toString(36).slice(2, 10)}`;
+        let outboundCounter = 0;
 
         let isSearching = false;
         let currentResponseDiv = null;
+        const defaultPlaceholder = searchInput.placeholder;
 
-        // Initialize WebSocket connection
-        initializeClient();
+        function setSearchingState(active) {
+            isSearching = active;
+            searchInput.disabled = active;
+            searchInput.placeholder = active ? 'Searching...' : defaultPlaceholder;
+            if (!active) {
+                searchInput.focus();
+            }
+        }
 
-        // Handle docs search responses
-        handlers["docs_search_input"] = new Set([
-            (message, payload) => {
-                const data = payload;
-                
+        function connect() {
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                setSearchingState(false);
+            };
+
+            ws.onmessage = (event) => {
+                let message;
+                try {
+                    message = JSON.parse(event.data);
+                } catch (_) {
+                    return;
+                }
+
+                if (message.name !== 'docs_search_input' || !message.payload) return;
+                const data = message.payload;
+
                 if (data.phase === 1) {
-                    // Streaming update
                     if (currentResponseDiv) {
                         currentResponseDiv.innerHTML = data.value;
                         scrollToBottom();
                     }
                 } else if (data.phase === 20) {
-                    // Final response
                     if (currentResponseDiv) {
                         currentResponseDiv.innerHTML = data.value;
                         currentResponseDiv = null;
-                        isSearching = false;
-                        sendButton.disabled = false;
-                        sendButton.textContent = 'Search';
-                        scrollToBottom();
                     }
+                    setSearchingState(false);
+                    scrollToBottom();
                 }
-                
-                return Handled.yes;
-            }
-        ]);
+            };
+
+            ws.onclose = () => {
+                setSearchingState(false);
+                setTimeout(connect, 1000);
+            };
+
+            ws.onerror = () => {
+                setSearchingState(false);
+            };
+        }
 
         function scrollToBottom() {
             conversationDiv.scrollTop = conversationDiv.scrollHeight;
@@ -414,7 +441,7 @@
         function addAiResponse() {
             const div = document.createElement('div');
             div.className = 'ai-response';
-            div.innerHTML = '<div style="opacity: 0.5; font-style: italic;">Searching...</div>';
+            div.innerHTML = "<div class='status-message status-message--searching'><span class='loading-spinner' aria-hidden='true'></span><span>Searching documentation and code...</span></div>";
             conversationDiv.appendChild(div);
             currentResponseDiv = div;
             scrollToBottom();
@@ -437,21 +464,28 @@
             addAiResponse();
 
             isSearching = true;
-            sendButton.disabled = true;
-            sendButton.textContent = 'Searching...';
+            setSearchingState(true);
 
             // Send search request
-            send(new Message("docs_search_input", undefined, undefined, undefined, {
-                value: query,
-                phase: 0
-            }));
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    name: "docs_search_input",
+                    uid: `${searchSessionId}_${outboundCounter++}`,
+                    payload: { value: query, phase: 0 }
+                }));
+            } else {
+                if (currentResponseDiv) {
+                    currentResponseDiv.innerHTML = '<div class="error-message">Not connected to server. Retrying…</div>';
+                    currentResponseDiv = null;
+                }
+                setSearchingState(false);
+            }
 
             searchInput.value = '';
+            searchInput.style.height = 'auto';
         }
 
         // Event listeners
-        sendButton.addEventListener('click', performSearch);
-
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -465,14 +499,19 @@
             searchInput.style.height = Math.min(searchInput.scrollHeight, 200) + 'px';
         });
 
-        // Example query handler (called from welcome examples)
-        window.askExample = function(query) {
-            searchInput.value = query;
-            performSearch();
-        };
+        exampleItems.forEach((item) => {
+            item.addEventListener('click', () => {
+                const query = item.getAttribute('data-example-query');
+                if (!query) return;
+                searchInput.value = query;
+                performSearch();
+            });
+        });
 
         // Focus input on load
         searchInput.focus();
+        setSearchingState(false);
+        connect();
     </script>
 </body>
 </html>
