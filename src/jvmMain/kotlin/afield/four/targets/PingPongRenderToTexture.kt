@@ -47,6 +47,8 @@ class PingPongRenderToTexture(
     private val pingImageViews: List<HasImageView>
     private val pingAttachmentViews: List<ImageView>
     private val pingImageHandles: List<Long>
+    // DEPRECATED: Use renderer.stateTracker instead
+    @Deprecated("Use renderer.stateTracker for layout tracking", ReplaceWith(""))
     private val pingLayouts = intArrayOf(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED)
     private val pingMipsInitialized = booleanArrayOf(false, false)
     private var writeIndex = 0
@@ -123,6 +125,11 @@ class PingPongRenderToTexture(
         pingAttachmentViews = listOf(attachmentImageViews[0], pingAttachmentView)
         pingImageHandles = listOf(colorImageHandles[0], pingImage.vkImage)
 
+        // Initialize both images in the state tracker
+        renderer.stateTracker.initImageState(baseImage.vkImage, colorLayout.getOrElse(0) { VK_IMAGE_LAYOUT_UNDEFINED })
+        renderer.stateTracker.initImageState(pingImage.vkImage, idleLayout)
+        
+        // Keep the deprecated pingLayouts for backward compatibility
         pingLayouts[0] = colorLayout.getOrElse(0) { VK_IMAGE_LAYOUT_UNDEFINED }
         pingLayouts[1] = idleLayout
         pingMipsInitialized[0] = colorMipsInitialized.getOrElse(0) { false }
@@ -154,7 +161,8 @@ class PingPongRenderToTexture(
                         VK_ACCESS_2_TRANSFER_WRITE_BIT,
                         VK_IMAGE_LAYOUT_UNDEFINED,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        fullRange
+                        fullRange,
+                        renderer.stateTracker
                     )
 
                     val clearColor = VkClearColorValue.calloc(stack)
@@ -186,7 +194,8 @@ class PingPongRenderToTexture(
                         dstAccess,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         finalLayout,
-                        fullRange
+                        fullRange,
+                        renderer.stateTracker
                     )
                 } else {
                     val (dstStage, dstAccess) =
@@ -204,7 +213,8 @@ class PingPongRenderToTexture(
                         dstAccess,
                         VK_IMAGE_LAYOUT_UNDEFINED,
                         finalLayout,
-                        fullRange
+                        fullRange,
+                        renderer.stateTracker
                     )
                 }
             }
@@ -226,13 +236,23 @@ class PingPongRenderToTexture(
         colorImageHandles[0] = pingImageHandles[write]
         mutableImageViewArray[0] = pingImageViews[write]
         attachmentImageViews[0] = pingAttachmentViews[write]
-        colorLayout[0] = pingLayouts[write]
+        
+        // Get layout from state tracker (it's the source of truth)
+        val currentLayout = renderer.stateTracker.getImageLayout(pingImageHandles[write])
+        colorLayout[0] = currentLayout
+        pingLayouts[write] = currentLayout
+        
         colorMipsInitialized[0] = pingMipsInitialized[write]
     }
 
     override fun afterRender(index: Int) {
         val write = writeIndex
-        pingLayouts[write] = colorLayout[0]
+        
+        // Sync layout back from state tracker
+        val currentLayout = renderer.stateTracker.getImageLayout(pingImageHandles[write])
+        pingLayouts[write] = currentLayout
+        colorLayout[0] = currentLayout
+        
         pingMipsInitialized[write] = colorMipsInitialized[0]
         writeIndex = otherIndex
     }
