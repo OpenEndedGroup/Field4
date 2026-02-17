@@ -549,6 +549,96 @@ class SimdVerlet(
     }
 
     /**
+     * Directed 4-slot constraint layout:
+     *   i -> n0[i], i -> n1[i], i -> n2[i], i -> n3[i]
+     * Unused slot: neighbor = -1 or stiffness = 0.
+     */
+    class DirectedConstraints4(
+        val n0: IntArray,
+        val n1: IntArray,
+        val n2: IntArray,
+        val n3: IntArray,
+        val r0: FloatArray,
+        val r1: FloatArray,
+        val r2: FloatArray,
+        val r3: FloatArray,
+        val s0: FloatArray,
+        val s1: FloatArray,
+        val s2: FloatArray,
+        val s3: FloatArray
+    ) {
+        val size: Int = n0.size
+
+        init {
+            require(n1.size == size && n2.size == size && n3.size == size) { "neighbor slot size mismatch" }
+            require(r0.size == size && r1.size == size && r2.size == size && r3.size == size) { "rest-length slot size mismatch" }
+            require(s0.size == size && s1.size == size && s2.size == size && s3.size == size) { "stiffness slot size mismatch" }
+        }
+
+        internal fun swapConstraints(i: Int, j: Int) {
+            if (i == j) return
+            swap(n0, i, j)
+            swap(n1, i, j)
+            swap(n2, i, j)
+            swap(n3, i, j)
+            swap(r0, i, j)
+            swap(r1, i, j)
+            swap(r2, i, j)
+            swap(r3, i, j)
+            swap(s0, i, j)
+            swap(s1, i, j)
+            swap(s2, i, j)
+            swap(s3, i, j)
+        }
+
+        internal fun remapNeighbors(remap: IntArray, newSize: Int) {
+            for (i in 0 until newSize) {
+                val j0 = n0[i]
+                n0[i] = if (j0 in remap.indices) remap[j0] else -1
+                val j1 = n1[i]
+                n1[i] = if (j1 in remap.indices) remap[j1] else -1
+                val j2 = n2[i]
+                n2[i] = if (j2 in remap.indices) remap[j2] else -1
+                val j3 = n3[i]
+                n3[i] = if (j3 in remap.indices) remap[j3] else -1
+            }
+        }
+
+        fun setSlot(
+            index: Int,
+            slot: Int,
+            neighbor: Int,
+            restLength: Float,
+            stiffness: Float
+        ) {
+            require(index in 0 until size) { "index out of bounds" }
+            when (slot) {
+                0 -> {
+                    n0[index] = neighbor
+                    r0[index] = restLength
+                    s0[index] = stiffness
+                }
+                1 -> {
+                    n1[index] = neighbor
+                    r1[index] = restLength
+                    s1[index] = stiffness
+                }
+                2 -> {
+                    n2[index] = neighbor
+                    r2[index] = restLength
+                    s2[index] = stiffness
+                }
+                3 -> {
+                    n3[index] = neighbor
+                    r3[index] = restLength
+                    s3[index] = stiffness
+                }
+                else -> error("slot must be 0, 1, 2, or 3")
+            }
+        }
+    }
+
+    /**
      * Scratch buffers for constraint gather maps, reusable across frames.
      * Keep one per worker thread to avoid allocations in the hot loop.
      */
@@ -556,6 +646,7 @@ class SimdVerlet(
         internal val map0 = IntArray(species.length())
         internal val map1 = IntArray(species.length())
         internal val map2 = IntArray(species.length())
+        internal val map3 = IntArray(species.length())
     }
 
     companion object {
@@ -1041,6 +1132,326 @@ class SimdVerlet(
                         val dz = z[j2] - ziS
                         val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
                         val s = (dist - r2[i]) / dist * w
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
+                    }
+                }
+
+                ax[i] += fx
+                ay[i] += fy
+                az[i] += fz
+                i++
+            }
+        }
+    }
+
+    // -----------------------------------------------------------
+    // 3b) Directed 4-slot distance constraints (SIMD, force accumulation)
+    // Each i has up to 4 outgoing constraints to neighbor j.
+    // We update only i's accumulators (no scatter), so range-parallel calls are safe.
+    // -----------------------------------------------------------
+    fun solveDirectedDist4InPlace(
+        state: State3,
+        constraints: DirectedConstraints4,
+        iterations: Int,
+        scratch: ConstraintScratch = scratchTLS.get()
+    ) {
+        solveDirectedDist4InPlaceRange(
+            x = state.x, y = state.y, z = state.z,
+            ax = state.ax, ay = state.ay, az = state.az,
+            n0 = constraints.n0, n1 = constraints.n1, n2 = constraints.n2, n3 = constraints.n3,
+            r0 = constraints.r0, r1 = constraints.r1, r2 = constraints.r2, r3 = constraints.r3,
+            s0 = constraints.s0, s1 = constraints.s1, s2 = constraints.s2, s3 = constraints.s3,
+            start = 0,
+            endExclusive = state.size,
+            iterations = iterations,
+            scratch = scratch
+        )
+    }
+
+    fun solveDirectedDist4InPlace(
+        x: FloatArray, y: FloatArray, z: FloatArray,
+        ax: FloatArray, ay: FloatArray, az: FloatArray,
+        n0: IntArray, n1: IntArray, n2: IntArray, n3: IntArray,
+        r0: FloatArray, r1: FloatArray, r2: FloatArray, r3: FloatArray,
+        s0: FloatArray, s1: FloatArray, s2: FloatArray, s3: FloatArray,
+        iterations: Int,
+        scratch: ConstraintScratch = scratchTLS.get()
+    ) {
+        solveDirectedDist4InPlaceRange(
+            x, y, z,
+            ax, ay, az,
+            n0, n1, n2, n3,
+            r0, r1, r2, r3,
+            s0, s1, s2, s3,
+            start = 0,
+            endExclusive = x.size,
+            iterations = iterations,
+            scratch = scratch
+        )
+    }
+
+    fun solveDirectedDist4InPlaceRange(
+        x: FloatArray, y: FloatArray, z: FloatArray,
+        ax: FloatArray, ay: FloatArray, az: FloatArray,
+        n0: IntArray, n1: IntArray, n2: IntArray, n3: IntArray,
+        r0: FloatArray, r1: FloatArray, r2: FloatArray, r3: FloatArray,
+        s0: FloatArray, s1: FloatArray, s2: FloatArray, s3: FloatArray,
+        start: Int,
+        endExclusive: Int,
+        iterations: Int,
+        scratch: ConstraintScratch = scratchTLS.get()
+    ) {
+        require(iterations >= 0) { "iterations must be >= 0" }
+        if (iterations == 0) return
+
+        val n = x.size
+        require(y.size == n && z.size == n) { "position size mismatch" }
+        require(ax.size == n && ay.size == n && az.size == n) { "accumulator size mismatch" }
+        require(endExclusive <= n) { "endExclusive exceeds position size" }
+        require(n0.size >= endExclusive && n1.size >= endExclusive && n2.size >= endExclusive && n3.size >= endExclusive) {
+            "neighbor size mismatch"
+        }
+        require(r0.size >= endExclusive && r1.size >= endExclusive && r2.size >= endExclusive && r3.size >= endExclusive) {
+            "rest size mismatch"
+        }
+        require(s0.size >= endExclusive && s1.size >= endExclusive && s2.size >= endExclusive && s3.size >= endExclusive) {
+            "stiffness size mismatch"
+        }
+
+        val startIdx = start.coerceIn(0, endExclusive)
+        val endIdx = endExclusive.coerceIn(startIdx, endExclusive)
+
+        val lanes = SG.length()
+        val zero = FloatVector.zero(SG)
+        val eps = 1.0e-8f
+        val vEps = FloatVector.broadcast(SG, eps)
+        val vOne = FloatVector.broadcast(SG, 1f)
+
+        val map0 = scratch.map0
+        val map1 = scratch.map1
+        val map2 = scratch.map2
+        val map3 = scratch.map3
+        require(map0.size == lanes && map1.size == lanes && map2.size == lanes && map3.size == lanes) {
+            "ConstraintScratch species mismatch: expected lane count $lanes"
+        }
+
+        repeat(iterations) {
+            var i = startIdx
+            while (i + lanes <= endIdx) {
+                var xi = FloatVector.fromArray(SG, x, i)
+                var yi = FloatVector.fromArray(SG, y, i)
+                var zi = FloatVector.fromArray(SG, z, i)
+
+                var bits0 = 0L
+                var bits1 = 0L
+                var bits2 = 0L
+                var bits3 = 0L
+
+                for (lane in 0 until lanes) {
+                    val idx = i + lane
+                    val j0 = n0[idx]
+                    val j1 = n1[idx]
+                    val j2 = n2[idx]
+                    val j3 = n3[idx]
+
+                    if (j0 in 0 until n) {
+                        bits0 = bits0 or (1L shl lane)
+                        map0[lane] = j0
+                    } else {
+                        map0[lane] = 0
+                    }
+                    if (j1 in 0 until n) {
+                        bits1 = bits1 or (1L shl lane)
+                        map1[lane] = j1
+                    } else {
+                        map1[lane] = 0
+                    }
+                    if (j2 in 0 until n) {
+                        bits2 = bits2 or (1L shl lane)
+                        map2[lane] = j2
+                    } else {
+                        map2[lane] = 0
+                    }
+                    if (j3 in 0 until n) {
+                        bits3 = bits3 or (1L shl lane)
+                        map3[lane] = j3
+                    } else {
+                        map3[lane] = 0
+                    }
+                }
+
+                var cx = FloatVector.zero(SG)
+                var cy = FloatVector.zero(SG)
+                var cz = FloatVector.zero(SG)
+
+                if (bits0 != 0L) {
+                    val m0 = VectorMask.fromLong(SG, bits0)
+                    val xj = FloatVector.fromArray(SG, x, 0, map0, 0)
+                    val yj = FloatVector.fromArray(SG, y, 0, map0, 0)
+                    val zj = FloatVector.fromArray(SG, z, 0, map0, 0)
+
+                    val dx = xj.sub(xi)
+                    val dy = yj.sub(yi)
+                    val dz = zj.sub(zi)
+
+                    val d2 = dx.fma(dx, dy.fma(dy, dz.mul(dz)))
+                    val dist = d2.lanewise(SQRT)
+
+                    val rest = FloatVector.fromArray(SG, r0, i)
+                    val stiff = FloatVector.fromArray(SG, s0, i)
+                    val invDist = vOne.div(dist.add(vEps))
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
+
+                    cx = cx.add(dx.mul(s).blend(zero, m0.not()))
+                    cy = cy.add(dy.mul(s).blend(zero, m0.not()))
+                    cz = cz.add(dz.mul(s).blend(zero, m0.not()))
+                }
+
+                if (bits1 != 0L) {
+                    val m1 = VectorMask.fromLong(SG, bits1)
+                    val xj = FloatVector.fromArray(SG, x, 0, map1, 0)
+                    val yj = FloatVector.fromArray(SG, y, 0, map1, 0)
+                    val zj = FloatVector.fromArray(SG, z, 0, map1, 0)
+
+                    val dx = xj.sub(xi)
+                    val dy = yj.sub(yi)
+                    val dz = zj.sub(zi)
+
+                    val d2 = dx.fma(dx, dy.fma(dy, dz.mul(dz)))
+                    val dist = d2.lanewise(SQRT)
+
+                    val rest = FloatVector.fromArray(SG, r1, i)
+                    val stiff = FloatVector.fromArray(SG, s1, i)
+                    val invDist = vOne.div(dist.add(vEps))
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
+
+                    cx = cx.add(dx.mul(s).blend(zero, m1.not()))
+                    cy = cy.add(dy.mul(s).blend(zero, m1.not()))
+                    cz = cz.add(dz.mul(s).blend(zero, m1.not()))
+                }
+
+                if (bits2 != 0L) {
+                    val m2 = VectorMask.fromLong(SG, bits2)
+                    val xj = FloatVector.fromArray(SG, x, 0, map2, 0)
+                    val yj = FloatVector.fromArray(SG, y, 0, map2, 0)
+                    val zj = FloatVector.fromArray(SG, z, 0, map2, 0)
+
+                    val dx = xj.sub(xi)
+                    val dy = yj.sub(yi)
+                    val dz = zj.sub(zi)
+
+                    val d2 = dx.fma(dx, dy.fma(dy, dz.mul(dz)))
+                    val dist = d2.lanewise(SQRT)
+
+                    val rest = FloatVector.fromArray(SG, r2, i)
+                    val stiff = FloatVector.fromArray(SG, s2, i)
+                    val invDist = vOne.div(dist.add(vEps))
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
+
+                    cx = cx.add(dx.mul(s).blend(zero, m2.not()))
+                    cy = cy.add(dy.mul(s).blend(zero, m2.not()))
+                    cz = cz.add(dz.mul(s).blend(zero, m2.not()))
+                }
+
+                if (bits3 != 0L) {
+                    val m3 = VectorMask.fromLong(SG, bits3)
+                    val xj = FloatVector.fromArray(SG, x, 0, map3, 0)
+                    val yj = FloatVector.fromArray(SG, y, 0, map3, 0)
+                    val zj = FloatVector.fromArray(SG, z, 0, map3, 0)
+
+                    val dx = xj.sub(xi)
+                    val dy = yj.sub(yi)
+                    val dz = zj.sub(zi)
+
+                    val d2 = dx.fma(dx, dy.fma(dy, dz.mul(dz)))
+                    val dist = d2.lanewise(SQRT)
+
+                    val rest = FloatVector.fromArray(SG, r3, i)
+                    val stiff = FloatVector.fromArray(SG, s3, i)
+                    val invDist = vOne.div(dist.add(vEps))
+                    val s = dist.sub(rest).mul(invDist).mul(stiff)
+
+                    cx = cx.add(dx.mul(s).blend(zero, m3.not()))
+                    cy = cy.add(dy.mul(s).blend(zero, m3.not()))
+                    cz = cz.add(dz.mul(s).blend(zero, m3.not()))
+                }
+
+                val vax = FloatVector.fromArray(SG, ax, i).add(cx)
+                val vay = FloatVector.fromArray(SG, ay, i).add(cy)
+                val vaz = FloatVector.fromArray(SG, az, i).add(cz)
+
+                vax.intoArray(ax, i)
+                vay.intoArray(ay, i)
+                vaz.intoArray(az, i)
+
+                i += lanes
+            }
+
+            while (i < endIdx) {
+                val xiS = x[i]
+                val yiS = y[i]
+                val ziS = z[i]
+
+                var fx = 0f
+                var fy = 0f
+                var fz = 0f
+
+                val j0 = n0[i]
+                if (j0 in 0 until n) {
+                    val w = s0[i]
+                    if (w != 0f) {
+                        val dx = x[j0] - xiS
+                        val dy = y[j0] - yiS
+                        val dz = z[j0] - ziS
+                        val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
+                        val s = (dist - r0[i]) / dist * w
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
+                    }
+                }
+
+                val j1 = n1[i]
+                if (j1 in 0 until n) {
+                    val w = s1[i]
+                    if (w != 0f) {
+                        val dx = x[j1] - xiS
+                        val dy = y[j1] - yiS
+                        val dz = z[j1] - ziS
+                        val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
+                        val s = (dist - r1[i]) / dist * w
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
+                    }
+                }
+
+                val j2 = n2[i]
+                if (j2 in 0 until n) {
+                    val w = s2[i]
+                    if (w != 0f) {
+                        val dx = x[j2] - xiS
+                        val dy = y[j2] - yiS
+                        val dz = z[j2] - ziS
+                        val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
+                        val s = (dist - r2[i]) / dist * w
+                        fx += dx * s
+                        fy += dy * s
+                        fz += dz * s
+                    }
+                }
+
+                val j3 = n3[i]
+                if (j3 in 0 until n) {
+                    val w = s3[i]
+                    if (w != 0f) {
+                        val dx = x[j3] - xiS
+                        val dy = y[j3] - yiS
+                        val dz = z[j3] - ziS
+                        val dist = sqrt(dx * dx + dy * dy + dz * dz + eps)
+                        val s = (dist - r3[i]) / dist * w
                         fx += dx * s
                         fy += dy * s
                         fz += dz * s
