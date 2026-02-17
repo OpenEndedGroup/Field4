@@ -3,6 +3,7 @@ package afield.four.texture
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import afield.four.device.Device
+import afield.four.device.ResourceStateTracker
 import afield.four.util.memoryTypeFromProperties
 import afield.four.util.vkCheck
 import afield.four.util.AutoDisposer
@@ -78,6 +79,8 @@ class Image(private val device: Device, val imageData: ImageData) {
 
     fun cleanup() {
         autoDisposeToken.disable()
+        // Unregister from state tracker if available
+        device.renderer?.stateTracker?.unregisterImage(vkImage)
         VK10.vkDestroyImage(device.vkDevice, vkImage, null)
         VK10.vkFreeMemory(device.vkDevice, vkMemory, null)
     }
@@ -179,7 +182,8 @@ fun image_layout_transition(
     dst_access_mask: Long,
     old_layout: Int,
     new_layout: Int,
-    sub_resource_range: VkImageSubresourceRange
+    sub_resource_range: VkImageSubresourceRange,
+    stateTracker: ResourceStateTracker? = null
 ) {
     MemoryStack.stackPush().use { stack ->
         val barrier2 = VkImageMemoryBarrier2.calloc(1, stack)
@@ -201,6 +205,9 @@ fun image_layout_transition(
             .pImageMemoryBarriers(barrier2)
 
         vkCmdPipelineBarrier2(command_buffer, dep)
+        
+        // Update state tracker if provided
+        stateTracker?.updateImageState(image, new_layout, dst_access_mask, dst_stage_mask)
     }
 }
 
@@ -213,7 +220,8 @@ fun image_layout_transition(
     dst_access_mask: Long,
     old_layout: Int,
     new_layout: Int,
-    sub_resource_range: VkImageSubresourceRange
+    sub_resource_range: VkImageSubresourceRange,
+    stateTracker: ResourceStateTracker? = null
 ) {
     image_layout_transition(
         command_buffer,
@@ -224,7 +232,40 @@ fun image_layout_transition(
         dst_access_mask,
         old_layout,
         new_layout,
-        sub_resource_range
+        sub_resource_range,
+        stateTracker
     )
     image.setLayoutFor(command_buffer.address(), new_layout)
+}
+
+/**
+ * Smart image layout transition that automatically determines the old layout from the state tracker.
+ * Falls back to VK_IMAGE_LAYOUT_UNDEFINED if not tracked.
+ */
+fun image_layout_transition_auto(
+    command_buffer: VkCommandBuffer,
+    image: Image,
+    dst_stage_mask: Long,
+    dst_access_mask: Long,
+    new_layout: Int,
+    sub_resource_range: VkImageSubresourceRange,
+    stateTracker: ResourceStateTracker
+) {
+    val old_layout = stateTracker.getImageLayout(image.vkImage)
+    val (src_stage_mask, src_access_mask) = stateTracker.let { tracker ->
+        tracker.getImageStage(image.vkImage) to tracker.getImageAccess(image.vkImage)
+    }
+    
+    image_layout_transition(
+        command_buffer,
+        image,
+        src_stage_mask,
+        dst_stage_mask,
+        src_access_mask,
+        dst_access_mask,
+        old_layout,
+        new_layout,
+        sub_resource_range,
+        stateTracker
+    )
 }

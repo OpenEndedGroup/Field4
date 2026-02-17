@@ -174,6 +174,9 @@ class Renderer(
     val presentQueue: PresentQueue
     val surface: Surface get() = defaultContext.surface
     val swapChain: SwapChain get() = defaultContext.swapChain
+    
+    // Centralized resource state tracking
+    val stateTracker: ResourceStateTracker = ResourceStateTracker(debug = Options.validate)
 
     var computeList: ComputeTarget = ComputeTarget(this)
 

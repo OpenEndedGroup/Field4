@@ -93,26 +93,38 @@ class RenderTarget(
                 .layerCount(VK_REMAINING_ARRAY_LAYERS)
 
             // Initial layout transition for the swapchain image to COLOR_ATTACHMENT_OPTIMAL.
-            // If we've presented this image before, oldLayout is PRESENT; otherwise UNDEFINED.
+            // Use state tracker to determine the correct old layout.
             run {
-                val (srcStage, srcAccess, oldLayout) =
+                val swapchainImage = ctx.swapChain.imageViews[index].image
+                val tracker = renderer.stateTracker
+                val oldLayout = tracker.getImageLayout(swapchainImage.vkImage)
+                
+                // If not tracked or UNDEFINED, infer from whether we've seen this image before
+                val (srcStage, srcAccess, inferredOldLayout) = if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
                     if (seenBefore.contains(index))
                         Triple(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0L, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                     else
                         // Note: Use COLOR_ATTACHMENT_OUTPUT so this transition is synchronized by the
                         // swapchain acquire semaphore wait (sync validation on MoltenVK).
                         Triple(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0L, VK_IMAGE_LAYOUT_UNDEFINED)
+                } else {
+                    // Use tracked state
+                    Triple(tracker.getImageStage(swapchainImage.vkImage), 
+                           tracker.getImageAccess(swapchainImage.vkImage),
+                           oldLayout)
+                }
 
                 image_layout_transition(
                     command.vkCommandBuffer,
-                    ctx.swapChain.imageViews[index].image,
+                    swapchainImage,
                     srcStage,
                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                     srcAccess,
                     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    oldLayout,
+                    inferredOldLayout,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    colorRange
+                    colorRange,
+                    tracker
                 )
             }
 
@@ -126,7 +138,8 @@ class RenderTarget(
                 VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                depthRange
+                depthRange,
+                renderer.stateTracker
             )
             seenBefore.add(index)
 
@@ -230,7 +243,8 @@ class RenderTarget(
                 0,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                colorRange
+                colorRange,
+                renderer.stateTracker
             )
         }
 
