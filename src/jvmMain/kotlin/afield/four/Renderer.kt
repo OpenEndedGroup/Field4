@@ -1049,7 +1049,7 @@ class Renderer(
     private fun createDepthImages(swapChain: SwapChain): MutableList<Attachment> {
         val count = swapChain.numImages
         val extent = swapChain.swapChainExtent
-        return MutableList(count) {
+        val attachments = MutableList(count) {
             Attachment(
                 device,
                 extent.width(),
@@ -1058,6 +1058,13 @@ class Renderer(
                 VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
             )
         }
+        
+        // Initialize all depth images in the state tracker
+        attachments.forEach { attachment ->
+            stateTracker.initImageState(attachment.image.vkImage, VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+        }
+        
+        return attachments
     }
 
     private fun createProfilerState(numImages: Int): ProfilerState {
@@ -1101,6 +1108,11 @@ class Renderer(
         val depthAttachments = createDepthImages(swapChain)
         val profilerState = if (Options.profiling) createProfilerState(numImages) else null
         val renderTarget = RenderTarget(this, ctxProvider, index)
+        
+        // Initialize all swapchain images in the state tracker
+        swapChain.imageViews.forEach { imageView ->
+            stateTracker.initImageState(imageView.image.vkImage, VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+        }
 
         ctxRef = WindowContext(
             window = window,
@@ -1159,6 +1171,11 @@ class Renderer(
 
         context.depthAttachments.forEach { it.cleanup() }
         context.depthAttachments = createDepthImages(context.swapChain)
+        
+        // Re-initialize swapchain images in state tracker after resize
+        context.swapChain.imageViews.forEach { imageView ->
+            stateTracker.initImageState(imageView.image.vkImage, VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+        }
 
         context.commandBuffers.forEach { it.cleanup() }
         context.computeCommandBuffers.forEach { it.cleanup() }
