@@ -86,8 +86,11 @@ open class RenderToTexture(
     var depthImageView: ImageView? = null
     var depthImage: Image? = null
 
-    // Track current layouts across frames (base color level and depth).
+    // DEPRECATED: Use renderer.stateTracker instead of these manual arrays
+    // Kept for backward compatibility during transition
+    @Deprecated("Use renderer.stateTracker.getImageLayout() instead", ReplaceWith("renderer.stateTracker.getImageLayout(imageHandle)"))
     protected var colorLayout: IntArray = intArrayOf()   // tracks mip level 0 per attachment
+    @Deprecated("Use renderer.stateTracker.getImageLayout() instead", ReplaceWith("renderer.stateTracker.getImageLayout(depthImage!!.vkImage)"))
     private var depthLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
 
     // Track whether mips (levels 1..N-1) have ever been initialized (affects oldLayout for barriers)
@@ -101,6 +104,48 @@ open class RenderToTexture(
     val width: Int get() = parameters.width
     val height: Int get() = parameters.height
     val mipLevels: Int get() = parameters.mipLevels
+    
+    /**
+     * Get the current layout of a color attachment from the state tracker.
+     * Falls back to the manual tracking array if not found in the tracker.
+     */
+    private fun getColorLayout(index: Int): Int {
+        val imageHandle = colorImageHandles.getOrNull(index) ?: return VK_IMAGE_LAYOUT_UNDEFINED
+        val trackedLayout = renderer.stateTracker.getImageLayout(imageHandle)
+        // If not tracked yet, use the manual array
+        return if (trackedLayout == VK_IMAGE_LAYOUT_UNDEFINED && index < colorLayout.size) {
+            colorLayout[index]
+        } else {
+            trackedLayout
+        }
+    }
+    
+    /**
+     * Update color layout in both tracker and manual array (for backward compat).
+     */
+    private fun setColorLayout(index: Int, layout: Int) {
+        if (index < colorLayout.size) {
+            colorLayout[index] = layout
+        }
+        // State tracker is updated by the transition functions
+    }
+    
+    /**
+     * Get the current depth layout from the state tracker.
+     */
+    private fun getDepthLayout(): Int {
+        val depthImg = depthImage ?: return VK_IMAGE_LAYOUT_UNDEFINED
+        val trackedLayout = renderer.stateTracker.getImageLayout(depthImg.vkImage)
+        return if (trackedLayout == VK_IMAGE_LAYOUT_UNDEFINED) depthLayout else trackedLayout
+    }
+    
+    /**
+     * Update depth layout in both tracker and manual variable (for backward compat).
+     */
+    private fun setDepthLayout(layout: Int) {
+        depthLayout = layout
+        // State tracker is updated by the transition functions
+    }
 
     var modules = mutableMapOf<String, ModulePointer>()
 
@@ -235,6 +280,11 @@ open class RenderToTexture(
         colorImageHandles = tmpImageHandles
         colorLayout = IntArray(colorImageHandles.size) { VK_IMAGE_LAYOUT_UNDEFINED }
         colorMipsInitialized = BooleanArray(colorImageHandles.size) { false }
+        
+        // Initialize state tracker for all color attachments
+        colorImageHandles.forEachIndexed { idx, handle ->
+            renderer.stateTracker.initImageState(handle, VK_IMAGE_LAYOUT_UNDEFINED)
+        }
 
         // DEPTH+STENCIL (optional)
         if (this.parameters.useDepth) {
@@ -259,6 +309,9 @@ open class RenderToTexture(
                 .mipLevels(1)
 
             depthImageView = ImageView(renderer.device, depthImage!!, depthViewData)
+            
+            // Initialize depth image in state tracker
+            renderer.stateTracker.initImageState(depthImage!!.vkImage, VK_IMAGE_LAYOUT_UNDEFINED)
         }
 
         // per-swapchain command buffers & fences
@@ -398,7 +451,7 @@ open class RenderToTexture(
                     .baseArrayLayer(0)
                     .layerCount(colorLayerCount.coerceAtLeast(1))
 
-                val layout = colorLayout[idx]
+                val layout = getColorLayout(idx)
                 val (srcStage, srcAccess) = when (layout) {
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
                         // Include CA/depth test stages to chain with broad read barriers on strict validators (MoltenVK/macOS).
@@ -425,7 +478,8 @@ open class RenderToTexture(
                         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                         layout,
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        colorBaseRange
+                        colorBaseRange,
+                        renderer.stateTracker
                     )
                 } else {
                     image_layout_transition(
@@ -437,10 +491,11 @@ open class RenderToTexture(
                         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                         layout,
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        colorBaseRange
+                        colorBaseRange,
+                        renderer.stateTracker
                     )
                 }
-                colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                setColorLayout(idx, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             }
 
             // DEPTH (optional) subresource range + transition
@@ -454,7 +509,8 @@ open class RenderToTexture(
                     .baseArrayLayer(0)
                     .layerCount(1)
 
-                val (srcStage, srcAccess) = when (depthLayout) {
+                val currentDepthLayout = getDepthLayout()
+                val (srcStage, srcAccess) = when (currentDepthLayout) {
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
                         VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
@@ -470,11 +526,12 @@ open class RenderToTexture(
                     VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                     srcAccess,
                     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                    depthLayout,
+                    currentDepthLayout,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    depthRange
+                    depthRange,
+                    renderer.stateTracker
                 )
-                depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                setDepthLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             }
 
             // COLOR attachment info (KHR)
@@ -602,7 +659,7 @@ open class RenderToTexture(
                         arrayLayers = colorLayerCount.coerceAtLeast(1)
                     )
                     colorMipsInitialized[idx] = true
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
+                    setColorLayout(idx, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) // after mipgen all mips are SRV
                 } else if (parameters.colorSampled) {
                     // No mip gen: transition ALL mips to SRV so samplers see a consistent layout
                     val allLevelsRange = MemoryStack.stackGet().let { st ->
@@ -625,7 +682,8 @@ open class RenderToTexture(
                             VK_ACCESS_2_SHADER_READ_BIT,
                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            allLevelsRange
+                            allLevelsRange,
+                            renderer.stateTracker
                         )
                     } else {
                         image_layout_transition(
@@ -637,13 +695,14 @@ open class RenderToTexture(
                             VK_ACCESS_2_SHADER_READ_BIT,
                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            allLevelsRange
+                            allLevelsRange,
+                            renderer.stateTracker
                         )
                     }
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    setColorLayout(idx, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 } else {
                     // Not sampling: keep mip 0 as color attachment
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    setColorLayout(idx, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 }
             }
 
@@ -658,11 +717,12 @@ open class RenderToTexture(
                     VK_ACCESS_2_SHADER_READ_BIT,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                    depthRange
+                    depthRange,
+                    renderer.stateTracker
                 )
-                depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                setDepthLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
             } else if (parameters.useDepth) {
-                depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                setDepthLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
             }
         } // MemoryStack.use
         afterRender(index)
