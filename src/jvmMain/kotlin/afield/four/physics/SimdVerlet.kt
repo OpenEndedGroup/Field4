@@ -182,6 +182,44 @@ class SimdVerlet(
         integrateVerlet3(state, dt = dt, damping = damping)
     }
 
+    fun step(
+        dt: Float,
+        damping: Float,
+        gravity: Float,
+        iterations: Int,
+        constraints: DirectedConstraints4?
+    ) {
+        state.applyQueuedRemovalsSwap(constraints)
+        zero3(state)
+
+        if (gravity != 0f) {
+            val ay = state.ay
+            val n = state.size
+            for (i in 0 until n) {
+                ay[i] += gravity
+            }
+        }
+
+        val forceGenerators = state.forceGenerators
+        val forceContexts = state.forceContexts
+        for (i in 0 until state.size) {
+            val ctx = forceContexts[i]
+            ctx.index = i
+            ctx.dt = dt
+            forceGenerators[i].updateNoCollect(ctx)
+        }
+
+        if (constraints != null && iterations > 0) {
+            solveDirectedDist4InPlace(
+                state = state,
+                constraints = constraints,
+                iterations = iterations
+            )
+        }
+
+        integrateVerlet3(state, dt = dt, damping = damping)
+    }
+
     /**
      * Particle state in SoA form. `invMass` is optional.
      * If present, integration treats ax/ay/az as forces and scales by invMass.
@@ -392,6 +430,59 @@ class SimdVerlet(
         }
 
         fun applyQueuedRemovalsSwap(constraints: DirectedConstraints3? = null) {
+            if (pendingRemovalCount == 0) return
+
+            val oldSize = size
+            val deleted = BooleanArray(oldSize)
+            for (i in 0 until pendingRemovalCount) {
+                val idx = pendingRemovals[i]
+                if (idx in 0 until oldSize) {
+                    deleted[idx] = true
+                }
+            }
+
+            val indexMap = IntArray(oldSize) { it }
+            var last = oldSize - 1
+            var i = 0
+            while (i <= last) {
+                if (!deleted[i]) {
+                    i++
+                    continue
+                }
+
+                while (last >= i && deleted[last]) {
+                    last--
+                }
+                if (last < i) {
+                    break
+                }
+
+                swapParticles(i, last)
+                constraints?.swapConstraints(i, last)
+                val tmp = indexMap[i]
+                indexMap[i] = indexMap[last]
+                indexMap[last] = tmp
+                deleted[i] = false
+                last--
+                i++
+            }
+
+            while (last >= 0 && deleted[last]) {
+                last--
+            }
+
+            val newSize = last + 1
+            val remap = IntArray(oldSize) { -1 }
+            for (pos in 0 until newSize) {
+                remap[indexMap[pos]] = pos
+            }
+
+            constraints?.remapNeighbors(remap, newSize)
+            size = newSize
+            pendingRemovalCount = 0
+        }
+
+        fun applyQueuedRemovalsSwap(constraints: DirectedConstraints4? = null) {
             if (pendingRemovalCount == 0) return
 
             val oldSize = size
