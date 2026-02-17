@@ -111,13 +111,13 @@ open class RenderToTexture(
      */
     private fun getColorLayout(index: Int): Int {
         val imageHandle = colorImageHandles.getOrNull(index) ?: return VK_IMAGE_LAYOUT_UNDEFINED
-        val trackedLayout = renderer.stateTracker.getImageLayout(imageHandle)
-        // If not tracked yet, use the manual array
-        return if (trackedLayout == VK_IMAGE_LAYOUT_UNDEFINED && index < colorLayout.size) {
-            colorLayout[index]
-        } else {
-            trackedLayout
+        
+        // Check if tracked - if not, use manual array fallback
+        if (!renderer.stateTracker.isImageTracked(imageHandle)) {
+            return if (index < colorLayout.size) colorLayout[index] else VK_IMAGE_LAYOUT_UNDEFINED
         }
+        
+        return renderer.stateTracker.getImageLayout(imageHandle)
     }
     
     /**
@@ -135,8 +135,13 @@ open class RenderToTexture(
      */
     private fun getDepthLayout(): Int {
         val depthImg = depthImage ?: return VK_IMAGE_LAYOUT_UNDEFINED
-        val trackedLayout = renderer.stateTracker.getImageLayout(depthImg.vkImage)
-        return if (trackedLayout == VK_IMAGE_LAYOUT_UNDEFINED) depthLayout else trackedLayout
+        
+        // Check if tracked - if not, use manual variable fallback
+        if (!renderer.stateTracker.isImageTracked(depthImg.vkImage)) {
+            return depthLayout
+        }
+        
+        return renderer.stateTracker.getImageLayout(depthImg.vkImage)
     }
     
     /**

@@ -126,11 +126,17 @@ class PingPongRenderToTexture(
         pingImageHandles = listOf(colorImageHandles[0], pingImage.vkImage)
 
         // Initialize both images in the state tracker
-        renderer.stateTracker.initImageState(baseImage.vkImage, colorLayout.getOrElse(0) { VK_IMAGE_LAYOUT_UNDEFINED })
+        // For baseImage: use tracked state if already initialized, else UNDEFINED
+        val baseLayout = if (renderer.stateTracker.isImageTracked(baseImage.vkImage)) {
+            renderer.stateTracker.getImageLayout(baseImage.vkImage)
+        } else {
+            VK_IMAGE_LAYOUT_UNDEFINED
+        }
+        renderer.stateTracker.initImageState(baseImage.vkImage, baseLayout)
         renderer.stateTracker.initImageState(pingImage.vkImage, idleLayout)
         
         // Keep the deprecated pingLayouts for backward compatibility
-        pingLayouts[0] = colorLayout.getOrElse(0) { VK_IMAGE_LAYOUT_UNDEFINED }
+        pingLayouts[0] = baseLayout
         pingLayouts[1] = idleLayout
         pingMipsInitialized[0] = colorMipsInitialized.getOrElse(0) { false }
         pingMipsInitialized[1] = true

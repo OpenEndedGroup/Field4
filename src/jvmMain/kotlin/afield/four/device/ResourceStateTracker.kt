@@ -60,6 +60,18 @@ class ResourceStateTracker(val debug: Boolean = false) {
     // === IMAGE STATE MANAGEMENT ===
     
     /**
+     * Check if an image is currently tracked.
+     */
+    fun isImageTracked(imageHandle: Long): Boolean {
+        return imageStates.containsKey(imageHandle)
+    }
+    
+    /**
+     * Check if an Image object is currently tracked.
+     */
+    fun isImageTracked(image: Image): Boolean = isImageTracked(image.vkImage)
+    
+    /**
      * Get the current layout of an image. Returns UNDEFINED if not tracked.
      */
     fun getImageLayout(imageHandle: Long): Int {
@@ -266,6 +278,20 @@ class ResourceStateTracker(val debug: Boolean = false) {
     
     /**
      * Get diagnostic information about tracked resources.
+     * 
+     * Returns a multi-line string with:
+     * - Number of tracked images and buffers
+     * - List of image states (up to 20) with their handles and current layouts
+     * 
+     * Format:
+     * ```
+     * ResourceStateTracker Diagnostics:
+     *   Images tracked: N
+     *   Buffers tracked: M
+     *   Image states:
+     *     0xHANDLE: LAYOUT_NAME
+     *     ...
+     * ```
      */
     fun getDiagnostics(): String = buildString {
         appendLine("ResourceStateTracker Diagnostics:")
@@ -280,6 +306,15 @@ class ResourceStateTracker(val debug: Boolean = false) {
     }
     
     companion object {
+        // VK_IMAGE_LAYOUT constants not exposed in older LWJGL versions
+        private const val VK_IMAGE_LAYOUT_PRESENT_SRC_KHR = 1000001002
+        private const val VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 1000117000
+        private const val VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL = 1000117001
+        private const val VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL = 1000241000
+        private const val VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL = 1000241001
+        private const val VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL = 1000241002
+        private const val VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL = 1000241003
+        
         /**
          * Human-readable name for a layout constant.
          */
@@ -293,13 +328,13 @@ class ResourceStateTracker(val debug: Boolean = false) {
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL -> "TRANSFER_SRC_OPTIMAL"
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> "TRANSFER_DST_OPTIMAL"
             VK_IMAGE_LAYOUT_PREINITIALIZED -> "PREINITIALIZED"
-            0x3B9D1B68 -> "PRESENT_SRC_KHR" // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-            0x3B9D1B69 -> "DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL"
-            0x3B9D1B6A -> "DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL"
-            0x3B9D1B6B -> "DEPTH_ATTACHMENT_OPTIMAL"
-            0x3B9D1B6C -> "DEPTH_READ_ONLY_OPTIMAL"
-            0x3B9D1B6D -> "STENCIL_ATTACHMENT_OPTIMAL"
-            0x3B9D1B6E -> "STENCIL_READ_ONLY_OPTIMAL"
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR -> "PRESENT_SRC_KHR"
+            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL -> "DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL"
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL -> "DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL"
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL -> "DEPTH_ATTACHMENT_OPTIMAL"
+            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL -> "DEPTH_READ_ONLY_OPTIMAL"
+            VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL -> "STENCIL_ATTACHMENT_OPTIMAL"
+            VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL -> "STENCIL_READ_ONLY_OPTIMAL"
             else -> "UNKNOWN(0x${layout.toString(16)})"
         }
     }

@@ -97,21 +97,23 @@ class RenderTarget(
             run {
                 val swapchainImage = ctx.swapChain.imageViews[index].image
                 val tracker = renderer.stateTracker
-                val oldLayout = tracker.getImageLayout(swapchainImage.vkImage)
                 
-                // If not tracked or UNDEFINED, infer from whether we've seen this image before
-                val (srcStage, srcAccess, inferredOldLayout) = if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+                // Determine old layout: check if tracked, else infer from seenBefore
+                val (srcStage, srcAccess, oldLayout) = if (tracker.isImageTracked(swapchainImage.vkImage)) {
+                    // Use tracked state
+                    Triple(
+                        tracker.getImageStage(swapchainImage.vkImage),
+                        tracker.getImageAccess(swapchainImage.vkImage),
+                        tracker.getImageLayout(swapchainImage.vkImage)
+                    )
+                } else {
+                    // Not tracked yet - infer from whether we've seen this image before
                     if (seenBefore.contains(index))
                         Triple(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0L, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                     else
                         // Note: Use COLOR_ATTACHMENT_OUTPUT so this transition is synchronized by the
                         // swapchain acquire semaphore wait (sync validation on MoltenVK).
                         Triple(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0L, VK_IMAGE_LAYOUT_UNDEFINED)
-                } else {
-                    // Use tracked state
-                    Triple(tracker.getImageStage(swapchainImage.vkImage), 
-                           tracker.getImageAccess(swapchainImage.vkImage),
-                           oldLayout)
                 }
 
                 image_layout_transition(
@@ -121,7 +123,7 @@ class RenderTarget(
                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                     srcAccess,
                     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    inferredOldLayout,
+                    oldLayout,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                     colorRange,
                     tracker
