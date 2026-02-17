@@ -136,14 +136,14 @@ A complete interactive cloth simulation example is provided in `ClothSimulationE
 
 **Key Features**:
 - Grid-based cloth with 4-way constraints (up, down, left, right)
-- Returns `Sequence<List<FLine>>` for visualization
+- Returns `Sequence<List<FLine>>` for visualization (via `createClothSimulation`)
 - Optional curvature force for cloth flattening
-- Interactive particle grabbing capability
+- Interactive particle grabbing capability exposed through `InteractiveClothSimulation`
 
 **Usage**:
 
 ```kotlin
-val simulation = ClothSimulationExample.createClothSimulation(
+val simulation = ClothSimulationExample.createInteractiveClothSimulation(
     clothWidth = 20,
     clothHeight = 20,
     spacing = 0.5f,
@@ -151,12 +151,30 @@ val simulation = ClothSimulationExample.createClothSimulation(
     curvatureStrength = 0.05f
 )
 
+// Optional external interaction (for mouse/VR controllers/etc.)
+simulation.grabNearest(worldX, worldY, worldZ)
+simulation.moveGrabbed(worldX, worldY, worldZ)
+simulation.releaseGrabbed()
+
+// Or, from external code without a local simulation reference:
+ClothSimulationExample.grabNearest(worldX, worldY, worldZ)
+ClothSimulationExample.moveGrabbed(worldX, worldY, worldZ)
+ClothSimulationExample.releaseGrabbed()
+
 // Iterate frames
-for (lines in simulation) {
+for (lines in simulation.frames) {
     // Render lines
     // lines is List<FLine> representing the cloth wireframe
 }
 ```
+
+Backward-compatible usage remains available:
+
+```kotlin
+val framesOnly: Sequence<List<FLine>> = ClothSimulationExample.createClothSimulation(...)
+```
+
+For compatibility, 2D overloads still exist (`grabNearest(x, y)` / `moveGrabbed(x, y)`) and default `z = 0f`.
 
 ## Curvature Force Implementation
 
@@ -187,17 +205,19 @@ sim.addForceGenerator(idx, "curvature", generator2 {
 
 ## Interactive Grabbing
 
-The cloth simulation provides functions for interactive particle manipulation:
+The cloth simulation exposes interactive particle manipulation on the returned `InteractiveClothSimulation`:
 
 ```kotlin
+val simulation = ClothSimulationExample.createInteractiveClothSimulation(...)
+
 // Grab nearest particle
-grabNearest(worldX, worldY)
+simulation.grabNearest(worldX, worldY, worldZ)
 
 // Move grabbed particle
-moveGrabbed(worldX, worldY)
+simulation.moveGrabbed(worldX, worldY, worldZ)
 
 // Release grabbed particle
-releaseGrabbed()
+simulation.releaseGrabbed()
 ```
 
 These use PID position controllers to smoothly move particles to target positions.

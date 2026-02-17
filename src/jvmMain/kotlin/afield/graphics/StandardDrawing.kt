@@ -186,6 +186,7 @@ fun linesOut(
                 num += 1
             }
             put(0f, 0f, 0f, -1f) // this is actually important
+            num += 1
             base += f.nodes.size
         }
     }

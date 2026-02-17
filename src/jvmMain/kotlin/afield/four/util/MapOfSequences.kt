@@ -77,4 +77,9 @@ class MapOfGenerators<O, T> {
     operator fun set(t: String, g: Generator<O, T>) {
         starts[t] = g
     }
+
+    fun remove(t : String) {
+        starts.remove(t)
+        ongoings.remove(t)
+    }
 }
