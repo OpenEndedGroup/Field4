@@ -28,9 +28,7 @@ class TopologyWatcher(
                 val current = entry.value.topologyGeneration
                 val prev = lastGeneration.put(entry.key, current)
                 if (prev == null || prev != current) {
-                    lblock("info,topology", "$label topology needs updating") {
-                        onTopologyChanged(entry.value.boxes.values)
-                    }
+                    onTopologyChanged(entry.value.boxes.values)
                 }
             }
             if (intervalMs <= 0) {

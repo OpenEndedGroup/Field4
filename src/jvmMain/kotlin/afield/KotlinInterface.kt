@@ -190,7 +190,7 @@ class KotlinInterface(
                 val ns = measureNanoTime {
                     r = compiler.compile(code, compilerConfig)
                 }
-                lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async), code = ${code.text}")
+                lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async)")
             }.await()
         }
 

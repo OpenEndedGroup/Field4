@@ -1,5 +1,6 @@
 package afield.four.util
 
+import afield.Runloop
 import org.lwjgl.vulkan.VK10
 import afield.four.device.PhysicalDevice
 import org.joml.*
@@ -48,7 +49,7 @@ fun memoryTypeFromProperties(physDevice: PhysicalDevice, _typeBits: Int, reqsMas
 
 fun vkCheck(err: Int, errMsg: String) {
     if (err != VK10.VK_SUCCESS) {
-        throw RuntimeException("$errMsg: $err")
+        throw RuntimeException("$errMsg: $err: thread is ${Thread.currentThread().name} ${Runloop.Companion.isMainThread}")
     }
 }
 

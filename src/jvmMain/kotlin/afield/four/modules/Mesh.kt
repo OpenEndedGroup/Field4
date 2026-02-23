@@ -312,8 +312,8 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
         update.update()
 
-        if (notInitialized)
-            lprintln("warning,graphics", "mesh has not been initialized yet. Call .resize(v,t) to build its buffers")
+//        if (notInitialized)
+//            lprintln("warning,graphics", "mesh has not been initialized yet. Call .resize(v,t) to build its buffers")
 
         v.entries.forEach { (_, buffer) ->
             buffer.clean(false, cmd)

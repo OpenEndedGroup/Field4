@@ -65,40 +65,47 @@ fun Box.findBoxesWithPlaylist(): List<Box> {
  */
 fun Box.executePlaylist(strand: String = "default"): Frames {
     return frames {
-        val boxes = findBoxesWithPlaylist()
-        
-        // Sort by playlist value (low to high)
-        // We know these boxes have the property set, so we can use the extension property
-        val sorted = boxes.sortedBy { it.playlist }
-        
-        // Execute each box in order
-        for (box in sorted) {
+            val boxes = findBoxesWithPlaylist()
 
-            lprintln("playlist,execution", "\n\n\n\n -- `${box.name}` begins (playlist) ------------------------------------- ")
+            // Sort by playlist value (low to high)
+            // We know these boxes have the property set, so we can use the extension property
+            val sorted = boxes.sortedBy { it.playlist }
+
+            // Execute each box in order
+            for (box in sorted) {
+
+                lprintln(
+                    "playlist,execution",
+                    "\n\n\n\n -- `${box.name}` begins (playlist) ------------------------------------- "
+                )
                 try {
-                        // Call begin() on the box
+                    // Call begin() on the box
+                    inMain {
                         box.begin(strand)
+                    }
 
-                        // Get the number of frames to wait (pauseList or default 1)
-                        // Use getPropertyRaw to safely check if pauseList is set
-                        val pauseValue = box.getPropertyRaw("pauseList") as? Number
-                        var framesToWait = pauseValue?.toInt() ?: 1
-                        framesToWait = Math.max(1000, framesToWait)
+                    // Get the number of frames to wait (pauseList or default 1)
+                    // Use getPropertyRaw to safely check if pauseList is set
+                    val pauseValue = box.getPropertyRaw("pauseList") as? Number
+                    var framesToWait = pauseValue?.toInt() ?: 1
+                    framesToWait = Math.max(200, framesToWait)
 
-                        // Wait for the specified number of frames
-                        lprintln("playlist,execution", "-- `${box.name}` waiting")
-                        repeat(framesToWait) {
-                            frame()
-                        }
-                        lprintln("playlist,execution", "-- `${box.name}` finished waiting")
-                }
-                catch (e: Exception) {
+                    // Wait for the specified number of frames
+                    lprintln("playlist,execution", "-- `${box.name}` waiting")
+                    kotlinx.coroutines.delay(2000)
+                    lprintln("playlist,execution", "-- `${box.name}` waiting phase 2")
+                    repeat(framesToWait) {
+                        frame()
+                    }
+                    kotlinx.coroutines.delay(2000)
+                    lprintln("playlist,execution", "-- `${box.name}` finished waiting")
+                } catch (e: Exception) {
                     lprintln("playlist,execution", "-- `${box.name}` (playlist) threw:")
                     e.printStackTrace()
                 }
+            }
         }
     }
-}
 
 /**
  * Helper function to execute playlist from root

@@ -2,7 +2,6 @@ package afield.four.targets
 
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
-import afield.four.device.Fence
 import afield.four.modules.fromContext
 import afield.four.texture.HasImageView
 import afield.four.texture.Image
@@ -50,6 +49,9 @@ class PingPongRenderToTexture(
     private val pingLayouts = intArrayOf(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED)
     private val pingMipsInitialized = booleanArrayOf(false, false)
     private var writeIndex = 0
+    private var idleImageInitPending = false
+    private lateinit var idleImageToInitialize: Image
+    private var idleImageFinalLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
 
     val otherImageView: HasImageView = object : HasImageView{
         override val imageView: ImageView
@@ -116,7 +118,9 @@ class PingPongRenderToTexture(
         val idleLayout =
             if (this.parameters.colorSampled) VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             else VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        initializeIdleImage(pingImage, idleLayout)
+        idleImageToInitialize = pingImage
+        idleImageFinalLayout = idleLayout
+        idleImageInitPending = true
 
         pingImages = listOf(baseImage, pingImage)
         pingImageViews = listOf(mutableImageViewArray[0], pingView)
@@ -129,95 +133,87 @@ class PingPongRenderToTexture(
         pingMipsInitialized[1] = true
     }
 
-    private fun initializeIdleImage(image: Image, finalLayout: Int) {
-        val command = CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true)
-        val fence = Fence(renderer.device, signaled = true)
-        try {
-            command.beginRecording()
-            MemoryStack.stackPush().use { stack ->
-                val rangeBuffer = VkImageSubresourceRange.calloc(1, stack)
-                val fullRange = rangeBuffer[0]
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0)
-                    .levelCount(mipLevels)
-                    .baseArrayLayer(0)
-                    .layerCount(colorLayerCount.coerceAtLeast(1))
+    private fun recordIdleImageInitialization(command: CommandBuffer, image: Image, finalLayout: Int) {
+        MemoryStack.stackPush().use { stack ->
+            val rangeBuffer = VkImageSubresourceRange.calloc(1, stack)
+            val fullRange = rangeBuffer[0]
+                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .baseMipLevel(0)
+                .levelCount(mipLevels)
+                .baseArrayLayer(0)
+                .layerCount(colorLayerCount.coerceAtLeast(1))
 
-                val canTransferClear = (image.imageData.usage and VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0
-                if (canTransferClear) {
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        image,
-                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                        0L,
-                        VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        fullRange
-                    )
+            val canTransferClear = (image.imageData.usage and VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0
+            if (canTransferClear) {
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    image,
+                    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                    0L,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    fullRange
+                )
 
-                    val clearColor = VkClearColorValue.calloc(stack)
-                        .float32(0, parameters.clearColor.x.f)
-                        .float32(1, parameters.clearColor.y.f)
-                        .float32(2, parameters.clearColor.z.f)
-                        .float32(3, parameters.clearColor.w.f)
+                val clearColor = VkClearColorValue.calloc(stack)
+                    .float32(0, parameters.clearColor.x.f)
+                    .float32(1, parameters.clearColor.y.f)
+                    .float32(2, parameters.clearColor.z.f)
+                    .float32(3, parameters.clearColor.w.f)
 
-                    vkCmdClearColorImage(
-                        command.vkCommandBuffer,
-                        image.vkImage,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        clearColor,
-                        rangeBuffer
-                    )
+                vkCmdClearColorImage(
+                    command.vkCommandBuffer,
+                    image.vkImage,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    clearColor,
+                    rangeBuffer
+                )
 
-                    val (dstStage, dstAccess) =
-                        if (finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
-                        else
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                val (dstStage, dstAccess) =
+                    if (finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                    else
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
 
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        image,
-                        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                        dstStage,
-                        VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                        dstAccess,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        finalLayout,
-                        fullRange
-                    )
-                } else {
-                    val (dstStage, dstAccess) =
-                        if (finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
-                        else
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    image,
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                    dstStage,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    dstAccess,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    finalLayout,
+                    fullRange
+                )
+            } else {
+                val (dstStage, dstAccess) =
+                    if (finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                    else
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
 
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        image,
-                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                        dstStage,
-                        0L,
-                        dstAccess,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        finalLayout,
-                        fullRange
-                    )
-                }
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    image,
+                    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                    dstStage,
+                    0L,
+                    dstAccess,
+                    VK_IMAGE_LAYOUT_UNDEFINED,
+                    finalLayout,
+                    fullRange
+                )
             }
-            command.endRecording()
-            fence.reset()
-            MemoryStack.stackPush().use { stack ->
-                renderer.graphQueue.submit(stack.pointers(command.vkCommandBuffer), null, null, null, fence)
-            }
-            fence.fenceWait()
-        } finally {
-            fence.cleanup()
-            command.cleanup()
         }
+    }
+
+    override fun prepareAdditionalResources(command: CommandBuffer, index: Int) {
+        if (!idleImageInitPending) return
+        recordIdleImageInitialization(command, idleImageToInitialize, idleImageFinalLayout)
+        idleImageInitPending = false
     }
 
     override fun beforeRender(index: Int) {

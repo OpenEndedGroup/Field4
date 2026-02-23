@@ -3,6 +3,7 @@ package afield.four
 import afield.Named
 import afield.Rect
 import afield.Runloop
+import afield.Runloop.Companion.isMainThread
 import afield.four.buffers.ParallelGeometryPool
 import afield.four.device.*
 import afield.four.device.Queue
@@ -28,6 +29,7 @@ import org.lwjgl.vulkan.VK13.*
 import java.lang.Runnable
 import java.util.*
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.coroutineContext
 
@@ -218,6 +220,15 @@ class Renderer(
     }
     private val queueDispatcher = queueExecutor.asCoroutineDispatcher()
 
+    // Dedicated workers for renderer-controlled parallel recording phases only.
+    private val workerExecutor = Executors.newFixedThreadPool(
+        Runtime.getRuntime().availableProcessors().coerceIn(2, 8)
+    ) { r ->
+        Thread(r, "renderer-worker").apply { isDaemon = true }
+    }
+    private val workerDispatcher = workerExecutor.asCoroutineDispatcher()
+    private val workerParallelDepth = AtomicInteger(0)
+
     private val windowContexts = mutableListOf<WindowContext>()
     private val defaultContext get() = windowContexts.first()
     fun windowContext(index: Int = 0): WindowContext = windowContexts[index]
@@ -251,24 +262,59 @@ class Renderer(
     var renderEnd = MapOfSequences<String>()
     var currentCommandBuffer: CommandBuffer? = null
 
+    private val workerParallelismActive: Boolean
+        get() = workerParallelDepth.get() > 0
+
+    private inline fun <T> withWorkerParallelism(block: () -> T): T {
+        workerParallelDepth.incrementAndGet()
+        try {
+            return block()
+        } finally {
+            workerParallelDepth.decrementAndGet()
+        }
+    }
+
+    private fun <T> CoroutineScope.asyncWorker(block: suspend CoroutineScope.() -> T): Deferred<T> {
+        check(workerParallelismActive) {
+            "Renderer worker parallelism is not active outside render() parallel sections"
+        }
+        return async(workerDispatcher, block = block)
+    }
+
     data class GeometryFrameToken(
         val frameId: Long,
         val imageIndex: Int,
         val windowIndex: Int
     )
 
-    class GeometryPhaseScope(val token: GeometryFrameToken) {
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    inner class GeometryPhaseScope(val token: GeometryFrameToken, private val parallelAllowed: Boolean) {
+        private val scope = if (parallelAllowed) CoroutineScope(SupervisorJob() + workerDispatcher) else null
         private val jobs = Collections.synchronizedList(mutableListOf<Job>())
 
         fun submit(block: () -> Unit): Job {
-            val job = scope.launch { block() }
+            val job: Job = if (parallelAllowed) {
+                scope!!.launch { block() }
+            } else {
+                val completed = CompletableDeferred<Unit>()
+                runCatching { block() }
+                    .onSuccess { completed.complete(Unit) }
+                    .onFailure { completed.completeExceptionally(it) }
+                completed
+            }
             jobs += job
             return job
         }
 
         fun <T> submitValue(block: () -> T): Deferred<T> {
-            val deferred = scope.async { block() }
+            val deferred: Deferred<T> = if (parallelAllowed) {
+                scope!!.async { block() }
+            } else {
+                val completed = CompletableDeferred<T>()
+                runCatching { block() }
+                    .onSuccess { completed.complete(it) }
+                    .onFailure { completed.completeExceptionally(it) }
+                completed
+            }
             jobs += deferred
             return deferred
         }
@@ -280,7 +326,7 @@ class Renderer(
         }
 
         internal fun close() {
-            scope.cancel()
+            scope?.cancel()
         }
     }
 
@@ -327,8 +373,8 @@ class Renderer(
         pools.forEach { it.sealFrame(token) }
     }
 
-    private fun runGeometryProducers(token: GeometryFrameToken) {
-        val scope = GeometryPhaseScope(token)
+    private fun runGeometryProducers(token: GeometryFrameToken, parallelAllowed: Boolean) {
+        val scope = GeometryPhaseScope(token, parallelAllowed)
         try {
             geometryProducers.forEach { (_, producer) ->
                 producer(scope)
@@ -342,7 +388,9 @@ class Renderer(
     private fun runGeometryPhase(token: GeometryFrameToken) {
         beginGeometryPools(token)
         try {
-            runGeometryProducers(token)
+            withWorkerParallelism {
+                runGeometryProducers(token, parallelAllowed = true)
+            }
         } finally {
             sealGeometryPools(token)
         }
@@ -431,7 +479,7 @@ class Renderer(
             phase.token
         }
         try {
-            runGeometryProducers(token)
+            runGeometryProducers(token, parallelAllowed = false)
         } finally {
             sealGeometryPools(token)
         }
@@ -596,6 +644,10 @@ class Renderer(
         pipelineCache.cleanup()
         commandPool.cleanup()
         computeCommandPool.cleanup()
+        workerDispatcher.close()
+        workerExecutor.shutdownNow()
+        queueDispatcher.close()
+        queueExecutor.shutdownNow()
         device.cleanup()
         physicalDevice.cleanup()
         instance.cleanup()
@@ -650,7 +702,9 @@ class Renderer(
         // If geometry writes were opened earlier in this runloop frame, close them now.
         takeOpenGeometryPhaseTokenForFrame(frameId)?.let { token ->
             try {
-                runGeometryProducers(token)
+                withWorkerParallelism {
+                    runGeometryProducers(token, parallelAllowed = true)
+                }
             } finally {
                 sealGeometryPools(token)
             }
@@ -701,34 +755,36 @@ class Renderer(
                     }
                 }
 
-                runBlocking {
-                    val computeRecording = async(Dispatchers.Default) {
-                        recordComputePass(ctx, ctxIndex, imageIndex, frameId)
-                    }
-                    val graphicsRecording = async(Dispatchers.Default) {
-                        recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
-                    }
+                withWorkerParallelism {
+                    runBlocking {
+                        val computeRecording = asyncWorker {
+                            recordComputePass(ctx, ctxIndex, imageIndex, frameId)
+                        }
+                        val graphicsRecording = asyncWorker {
+                            recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
+                        }
 
-                    computeRecording.await()
-                    CPUSpan.time("submit_cs[$ctxIndex]") {
-                        submitCompute(
-                            ctx,
-                            ctx.computeCommandBuffers[imageIndex],
-                            ctx.computeFences[imageIndex],
-                            ctx.computeFinishedSemaphores[imageIndex],
-                            graphQueue
-                        )
-                    }
+                        computeRecording.await()
+                        CPUSpan.time("submit_cs[$ctxIndex]") {
+                            submitCompute(
+                                ctx,
+                                ctx.computeCommandBuffers[imageIndex],
+                                ctx.computeFences[imageIndex],
+                                ctx.computeFinishedSemaphores[imageIndex],
+                                graphQueue
+                            )
+                        }
 
-                    graphicsRecording.await()
-                    CPUSpan.time("submit_gfx[$ctxIndex]") {
-                        submit(
-                            ctx,
-                            ctx.commandBuffers[imageIndex],
-                            ctx.fences[imageIndex],
-                            graphQueue,
-                            ctx.computeFinishedSemaphores[imageIndex]
-                        )
+                        graphicsRecording.await()
+                        CPUSpan.time("submit_gfx[$ctxIndex]") {
+                            submit(
+                                ctx,
+                                ctx.commandBuffers[imageIndex],
+                                ctx.fences[imageIndex],
+                                graphQueue,
+                                ctx.computeFinishedSemaphores[imageIndex]
+                            )
+                        }
                     }
                 }
 
@@ -797,7 +853,7 @@ class Renderer(
             val secondaryBuffers = arrayOfNulls<CommandBuffer>(computeElements.size)
             runBlocking {
                 val jobs = computeElements.mapIndexed { idx, (name, action) ->
-                    async(Dispatchers.Default) {
+                    asyncWorker {
                         val cb = getSecondaryCommandBuffer(
                             ctx.computeSecondary,
                             "compute:$name",
@@ -927,7 +983,7 @@ class Renderer(
                     val collected = arrayOfNulls<CommandBuffer>(moduleElements.size)
                     runBlocking {
                         val jobs = moduleElements.mapIndexed { idx, (name, action) ->
-                            async(Dispatchers.Default) {
+                            asyncWorker {
                         val cb = getSecondaryCommandBuffer(
                             ctx.graphicsSecondary,
                             "gfx:$name",
@@ -1337,7 +1393,7 @@ class Renderer(
             logTime("render") { render() }
             frame++
             if (frame % 100 == 0) {
-                lprintln("info,perf", "fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)}")
+                lprintln("info,perf", "fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)} Thread = ${Thread.currentThread().name} = ${System.identityHashCode(Thread.currentThread().name)} ${isMainThread}")
                 initialTime = System.currentTimeMillis()
             }
             logTime_("compute") { yield() }

@@ -158,3 +158,6 @@ server/__pycache__/
 ### Test files
 test_kdoc_*.kt
 test_kdoc_*.kts
+
+### Personal workspace files
+src/personal/

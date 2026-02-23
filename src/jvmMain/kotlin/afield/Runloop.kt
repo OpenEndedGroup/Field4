@@ -21,6 +21,9 @@ class Runloop {
         val runLoop = Runloop()
         val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
         @Volatile var mainThread: Thread? = null
+        
+        val isMainThread: Boolean
+            get() = mainThread == Thread.currentThread()
     }
 
     var frame = 0L
@@ -44,7 +47,7 @@ class Runloop {
             frame++
 
             if (shouldSleep) {
-                lprintln("debug,runloop", "framer has run out of work")
+                lprintln("debug,runloop", "framer has run out of work thread is ${Thread.currentThread().name}")
                 Thread.sleep(1)
             }
             shouldSleep = true
