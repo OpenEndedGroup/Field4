@@ -216,6 +216,10 @@ private fun buildComputeInsert(ci: Introspection): Insert {
                 "compute-pc-binding:${member.name}",
                 "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()"
             ) + "\n"
+            postImport += prefixed(
+                "compute-pc-binding-group:${member.name}",
+                "var ComputeMeshGroup.${member.name} by ComputeMeshGroup.BoundFromStructure<$ty>()"
+            ) + "\n"
         }
     }
 
@@ -297,6 +301,10 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
             postImport += prefixed(
                 "mesh-pc-binding:${member.name}",
                 "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()"
+            ) + "\n"
+            postImport += prefixed(
+                "mesh-pc-binding-group:${member.name}",
+                "var MeshMeshGroup.${member.name} by MeshMeshGroup.BoundFromStructure<$ty>()"
             ) + "\n"
         }
     }
@@ -487,6 +495,11 @@ fun insertForShader(
             postImport += prefixed(
                 "graphics-pc-binding:${member.name}",
                 "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()"
+            ) + "\n"
+
+            postImport += prefixed(
+                "graphics-pc-binding-group:${member.name}",
+                "var MeshGroup.${member.name} by MeshGroup.BoundFromStructure<$ty>()"
             ) + "\n"
         }
     }

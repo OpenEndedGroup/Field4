@@ -7,6 +7,7 @@ import afield.four.buffers.*
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Introspected.Bindable
+import afield.four.targets.MultiPingPongRenderToTexture
 import afield.four.targets.RenderToTexture
 import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
@@ -88,6 +89,14 @@ data class Parameters(
     fun RenderToTexture.apply() {
         this@Parameters.color = colorFormats.size
         this@Parameters.colorFormats = colorFormats
+        this@Parameters.depth = if (parameters.useDepth) 1 else 0
+        this@Parameters.depthFormat = parameters.depthFormat
+    }
+
+    fun MultiPingPongRenderToTexture.apply() {
+        val resolvedColorFormat = if (this.parameters.colorFormats.isNotEmpty()) this.parameters.colorFormats.first() else this.parameters.format
+        this@Parameters.color = 1
+        this@Parameters.colorFormats = listOf(resolvedColorFormat)
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
         this@Parameters.depthFormat = parameters.depthFormat
     }
