@@ -60,7 +60,7 @@ class VertexBuffer(
                         // Fall back to an immediate transfer on a separate command buffer to preserve correctness.
                         transferNow()
                     } else {
-                        transfer(cmd)
+                        transfer(cmd, immediate = false)
                     }
                 }
             }
@@ -143,7 +143,7 @@ class VertexBuffer(
         }
     }
 
-    fun transfer(cmd: CommandBuffer) {
+    fun transfer(cmd: CommandBuffer, immediate: Boolean = false) {
 
         if (transferWatermark != watermark) {
             if (neededSize > 0) {
@@ -154,6 +154,7 @@ class VertexBuffer(
                     )
                 }
                 recordTransferToInputBarrier(cmd)
+                renderer.recordVertexBufferUpload(neededSize, immediate)
             }
             transferWatermark = watermark
         }
@@ -163,7 +164,7 @@ class VertexBuffer(
         val cmd = CommandBuffer(renderer.commandPool, true, true)
 
         cmd.beginRecording()
-        transfer(cmd)
+        transfer(cmd, immediate = true)
         cmd.endRecording()
 
         // apparently we should be reusing a fence here
@@ -175,7 +176,6 @@ class VertexBuffer(
             renderer.graphQueue.submit(stack.pointers(cmd.vkCommandBuffer), null, null, null, fence)
         }
         fence!!.fenceWait()
-//        fence!!.cleanup()
         cmd.cleanup()
     }
 

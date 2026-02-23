@@ -4,6 +4,7 @@ import org.joml.*
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlin.reflect.full.memberProperties
 
 /**
  * Interface for objects that can provide their own HTML representation
@@ -111,7 +112,7 @@ object ValueVisualizer {
             is Quaternionfc, is Quaterniondc,
             is Matrix2fc, is Matrix3fc, is Matrix4fc,
             is Matrix2dc, is Matrix3dc, is Matrix4dc -> false
-            // Check collections and other objects
+            // Check data classes, collections and other objects
             else -> true
         }
     }
@@ -153,8 +154,13 @@ object ValueVisualizer {
         is FloatArray -> formatFloatArray(value)
         is DoubleArray -> formatDoubleArray(value)
 
-        // Fallback
-        else -> "<span style='color: #aaa;'>${escape(value.toString())}</span>"
+        // Data classes
+        else -> if (value::class.isData) {
+            formatDataClass(value, depth, visited)
+        } else {
+            // Fallback
+            "<span style='color: #aaa;'>${escape(value.toString())}</span>"
+        }
     }
 
     private fun formatNumber(n: Number): String {
@@ -396,6 +402,47 @@ object ValueVisualizer {
             append(" <span style='color: #666;'>(${arr.size})</span>")
         }
     }
+
+    private fun formatDataClass(obj: Any, depth: Int, visited: MutableSet<Int>): String {
+        val className = obj::class.simpleName ?: "DataClass"
+        
+        return try {
+            val properties = obj::class.memberProperties
+            if (properties.isEmpty()) {
+                return "<span style='color: #cc8;'>$className()</span>"
+            }
+
+            return buildString {
+                append("<div style='margin-left: ${depth * 10}px;'>")
+                append("<span style='color: #cc8;'>$className</span> <span style='color: #aaa;'>{</span>")
+
+                val entries = properties.toList()
+                entries.forEachIndexed { i, prop ->
+                    val needsComma = i < entries.lastIndex
+                    val propValue = try {
+                        prop.getter.call(obj)
+                    } catch (e: Exception) {
+                        "[error: ${e.message}]"
+                    }
+                    
+                    append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
+                    append("<div style='color: #aaf;'>${prop.name}</div>")
+                    append("<div style='color: #888; justify-self: center;'>→</div>")
+                    append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
+                    append(visualizeValue(propValue, depth + 1, visited))
+                    if (needsComma) append("<span style='color: #888;'>,</span>")
+                    append("</div>")
+                    append("</div>")
+                }
+
+                append("<span style='color: #aaa;'>}</span>")
+                append("</div>")
+            }
+        } catch (e: Exception) {
+            "<span style='color: #f88;'>$className [reflection failed: ${e.message}]</span>"
+        }
+    }
+
 
     private fun fmt(n: Float): String {
         return when {

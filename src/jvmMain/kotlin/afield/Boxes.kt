@@ -212,7 +212,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "remote_js" to "js",
             "metadata" to "yaml"
         )
-        val context = ThreadLocal<Box>()
+        val context = ThreadLocal<Box>() // this simply doesn't work in the slightest. It needs to be joined into the coroutine context.
 
         init {
 

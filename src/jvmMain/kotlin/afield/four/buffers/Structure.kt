@@ -174,6 +174,12 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
             is Matrix3f -> v.get(offset, f)
             is Matrix4f -> v.get(offset, f)
             is UInt -> f.putInt(offset, v.toInt())
+            is ByteBuffer -> {
+                var was = f.position()
+                f.position(offset)
+                f.put(v)
+                f.position(was)
+            }
             is HasUniform<*> -> writeToBuffer(offset, v.evaluateUniform()!!, f, cmd, name)
 
             is HasBuffer -> {

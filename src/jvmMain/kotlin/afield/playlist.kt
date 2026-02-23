@@ -74,27 +74,28 @@ fun Box.executePlaylist(strand: String = "default"): Frames {
         // Execute each box in order
         for (box in sorted) {
 
-            lprintln("playlist,execution", "\n\n\n\n -- `${box.name}` begins (playlist)")
-            try {
-                // Call begin() on the box
-                box.begin(strand)
+            lprintln("playlist,execution", "\n\n\n\n -- `${box.name}` begins (playlist) ------------------------------------- ")
+                try {
+                        // Call begin() on the box
+                        box.begin(strand)
 
-                // Get the number of frames to wait (pauseList or default 1)
-                // Use getPropertyRaw to safely check if pauseList is set
-                val pauseValue = box.getPropertyRaw("pauseList") as? Number
-                var framesToWait = pauseValue?.toInt() ?: 1
-                framesToWait = Math.max(300, framesToWait)
+                        // Get the number of frames to wait (pauseList or default 1)
+                        // Use getPropertyRaw to safely check if pauseList is set
+                        val pauseValue = box.getPropertyRaw("pauseList") as? Number
+                        var framesToWait = pauseValue?.toInt() ?: 1
+                        framesToWait = Math.max(1000, framesToWait)
 
-                // Wait for the specified number of frames
-                repeat(framesToWait) {
-                    lprintln("playlist,execution", "-- `${box.name}` waiting")
-                    frame()
+                        // Wait for the specified number of frames
+                        lprintln("playlist,execution", "-- `${box.name}` waiting")
+                        repeat(framesToWait) {
+                            frame()
+                        }
+                        lprintln("playlist,execution", "-- `${box.name}` finished waiting")
                 }
-            }
-            catch (e: Exception) {
-                lprintln("playlist,execution", "-- `${box.name}` (playlist) threw:")
-                e.printStackTrace()
-            }
+                catch (e: Exception) {
+                    lprintln("playlist,execution", "-- `${box.name}` (playlist) threw:")
+                    e.printStackTrace()
+                }
         }
     }
 }

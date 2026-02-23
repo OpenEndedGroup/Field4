@@ -27,10 +27,27 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
     currentFrameKeys += key
 
-    val color = if (selected.contains(a_box) || selected.contains(b_box)) SELECTED_CONNECTION_COLOR else UNSELECTED_CONNECTION_COLOR
+    val fromSelected = selected.contains(a_box)
+    val toSelected = selected.contains(b_box)
+    val isHighlighted = fromSelected || toSelected
+    val color = when {
+        fromSelected && !toSelected -> OUTGOING_CONNECTION_COLOR
+        toSelected && !fromSelected -> INCOMING_CONNECTION_COLOR
+        fromSelected && toSelected -> SELECTED_CONNECTION_COLOR
+        else -> UNSELECTED_CONNECTION_COLOR
+    }
+    val visibilityScale = if (isHighlighted) HIGHLIGHTED_CONNECTION_VISIBILITY else DIMMED_CONNECTION_VISIBILITY
+    val drawOpacity = (opacity * visibilityScale).coerceIn(0.0, 1.0)
+    val markerLayer = currentFrontMarkerLayer ?: svg
+    val markerPoint = Point(
+        b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET,
+        b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET
+    )
+
     val dubins = dubinsShortestPath(screenToStandard(startScreen), screenToStandard(endScreen), radius)
     if (dubins == null) {
-        drawFallbackBezier(a, b, svg, opacity, color)
+        drawFallbackBezier(a, b, svg, drawOpacity, color)
+        addTerminalMarker(markerLayer, key, markerPoint, b_rect, drawOpacity, color)
         return
     }
 
@@ -54,15 +71,23 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
         stroke = color
         strokeWidth = 1
         fill = "none"
-        this.path.setAttribute("opacity", opacity.toString())
+        this.path.setAttribute("opacity", drawOpacity.toString())
         appendTo(svg)
     }
 
-    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, opacity, color)
+    addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, drawOpacity, color)
+    addTerminalMarker(markerLayer, key, markerPoint, b_rect, drawOpacity, color)
 }
 
 private const val SELECTED_CONNECTION_COLOR = "var(--field-cyan)"
-private const val UNSELECTED_CONNECTION_COLOR = "rgba(255,255,255,0.5)"
+private const val INCOMING_CONNECTION_COLOR = "var(--field-cyan)"
+private const val OUTGOING_CONNECTION_COLOR = "rgba(235, 150, 70, 0.9)"
+private const val UNSELECTED_CONNECTION_COLOR = "rgba(255,255,255,1.0)"
+private const val HIGHLIGHTED_CONNECTION_VISIBILITY = 1.0
+private const val DIMMED_CONNECTION_VISIBILITY = 0.12
+private const val TERMINAL_MARKER_RADIUS = 3.25
+private const val TERMINAL_MARKER_OFFSET = 0.0
+private const val FRONT_CONNECTION_LAYER_ID = "overlaysvgfrontlayer"
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
 var dubinsMinRadius = 190.0 // ends up being length / 3
 
@@ -77,6 +102,75 @@ private val connectionFilterStates = mutableMapOf<String, ConnectionFilterState>
 private var needsFilterFrame = false
 private var filterFrameScheduled = false
 private val currentFrameKeys = mutableSetOf<String>()
+private var currentFrontMarkerLayer: SVGElement? = null
+private var currentFrontMarkerDefs: SVGElement? = null
+
+private fun ensureFrontConnectionLayer(): SVGSVGElement {
+    val existing = document.getElementById(FRONT_CONNECTION_LAYER_ID) as? SVGSVGElement
+    if (existing != null) return existing
+
+    val front = document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement
+    front.id = FRONT_CONNECTION_LAYER_ID
+    front.setAttribute("style", "position: absolute; top:0; bottom:0; left:0; right:0; z-index: 18; pointer-events: none")
+    front.setAttribute("height", "100%")
+    front.setAttribute("width", "100%")
+    document.body?.appendChild(front)
+    return front
+}
+
+private fun sanitizeSvgId(value: String): String = value.map {
+    if (it.isLetterOrDigit() || it == '_' || it == '-') it else '_'
+}.joinToString("")
+
+private fun ensureMarkerMask(maskId: String, trimRect: DOMRect) {
+    val defs = currentFrontMarkerDefs ?: return
+    val ownerSvg = defs.ownerSVGElement ?: return
+
+    val existing = document.getElementById(maskId)
+    if (existing != null) return
+
+    val mask = document.createElementNS("http://www.w3.org/2000/svg", "mask") as SVGElement
+    mask.setAttribute("id", maskId)
+    mask.setAttribute("maskUnits", "userSpaceOnUse")
+    mask.setAttribute("x", "-1000000")
+    mask.setAttribute("y", "-1000000")
+    mask.setAttribute("width", "2000000")
+    mask.setAttribute("height", "2000000")
+
+    val full = document.createElementNS("http://www.w3.org/2000/svg", "rect") as SVGElement
+    full.setAttribute("x", "-1000000")
+    full.setAttribute("y", "-1000000")
+    full.setAttribute("width", "2000000")
+    full.setAttribute("height", "2000000")
+    full.setAttribute("fill", "white")
+    mask.appendChild(full)
+
+    val cutout = document.createElementNS("http://www.w3.org/2000/svg", "rect") as SVGElement
+    cutout.setAttribute("x", trimRect.x.toString())
+    cutout.setAttribute("y", trimRect.y.toString())
+    cutout.setAttribute("width", trimRect.width.toString())
+    cutout.setAttribute("height", trimRect.height.toString())
+    cutout.setAttribute("fill", "black")
+    mask.appendChild(cutout)
+
+    defs.appendChild(mask)
+    ownerSvg.appendChild(defs)
+}
+
+private fun addTerminalMarker(layer: SVGElement, key: String, point: Point, trimRect: DOMRect, opacity: Double, color: String) {
+    val marker = document.createElementNS("http://www.w3.org/2000/svg", "circle") as SVGElement
+    marker.setAttribute("cx", point.x.toString())
+    marker.setAttribute("cy", point.y.toString())
+    marker.setAttribute("r", TERMINAL_MARKER_RADIUS.toString())
+    marker.setAttribute("fill", color)
+    marker.setAttribute("opacity", opacity.toString())
+
+    val maskId = "conn-end-mask-${sanitizeSvgId(key)}"
+    ensureMarkerMask(maskId, trimRect)
+    marker.setAttribute("mask", "url(#$maskId)")
+
+    layer.appendChild(marker)
+}
 
 private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double, color: String) {
     val sc = min(50.0, a.point.distance(b.point) / 3)
@@ -523,15 +617,27 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         needsFilterFrame = false
 
         val parent = document.getElementById("overlaysvglayer") as SVGSVGElement
+        val frontParent = ensureFrontConnectionLayer()
 
         val (vbw, vbh) = parent.getBoundingClientRect().let { it.width to it.height }
 
         parent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+        frontParent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
 
         val svg = getNamedSVGGroup("connections")
         svg.innerHTML = ""
         val hints = getNamedSVGGroup("offscreen-hints")
         hints.innerHTML = ""
+        val markers = frontParent.getGroupOrMake("connection-end-markers")
+        markers.innerHTML = ""
+        val markerDefs = (document.getElementById("connection-end-marker-defs") as? SVGElement)
+            ?: (document.createElementNS(svgNamespace, "defs") as SVGElement).also {
+                it.setAttribute("id", "connection-end-marker-defs")
+                frontParent.appendChild(it)
+            }
+        markerDefs.innerHTML = ""
+        currentFrontMarkerLayer = markers
+        currentFrontMarkerDefs = markerDefs
 
         // example of new box accessable drawing
 //        val circleLayer = getNamedSVGGroup("circleLayer")
@@ -635,6 +741,8 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
         val obsolete = connectionFilterStates.keys - currentFrameKeys
         obsolete.forEach { connectionFilterStates.remove(it) }
+        currentFrontMarkerLayer = null
+        currentFrontMarkerDefs = null
 
         if (needsFilterFrame && !filterFrameScheduled) {
             filterFrameScheduled = true

@@ -132,6 +132,14 @@ class Renderer(
     additionalWindows: List<Window> = emptyList()
 ) {
 
+    data class VertexUploadFrameStats(
+        val frameId: Long,
+        val recordedBytes: Long,
+        val immediateBytes: Long
+    ) {
+        val totalBytes: Long get() = recordedBytes + immediateBytes
+    }
+
     data class WindowContext(
         val window: Window,
         val surface: Surface,
@@ -162,6 +170,16 @@ class Renderer(
 
     val windows: List<Window> = listOf(mainWindow) + additionalWindows
     val window: Window get() = windows.first()
+
+    private val uploadStatsLock = Any()
+    private var currentUploadRecordedBytes = 0L
+    private var currentUploadImmediateBytes = 0L
+    @Volatile
+    var lastVertexUploadFrameStats: VertexUploadFrameStats = VertexUploadFrameStats(
+        frameId = -1L,
+        recordedBytes = 0L,
+        immediateBytes = 0L
+    )
 
     // --- Core Vulkan objects ---
     val commandPool: CommandPool
@@ -585,9 +603,49 @@ class Renderer(
 
     var frameCounter = 0L
 
+    private fun beginFrameUploadStats() {
+        synchronized(uploadStatsLock) {
+            currentUploadRecordedBytes = 0L
+            currentUploadImmediateBytes = 0L
+        }
+    }
+
+    fun recordVertexBufferUpload(bytes: Long, immediate: Boolean) {
+        if (bytes <= 0L) return
+        synchronized(uploadStatsLock) {
+            if (immediate) {
+                currentUploadImmediateBytes += bytes
+            } else {
+                currentUploadRecordedBytes += bytes
+            }
+        }
+    }
+
+    private fun endFrameUploadStats(frameId: Long): VertexUploadFrameStats {
+        return synchronized(uploadStatsLock) {
+            VertexUploadFrameStats(
+                frameId = frameId,
+                recordedBytes = currentUploadRecordedBytes,
+                immediateBytes = currentUploadImmediateBytes
+            ).also {
+                lastVertexUploadFrameStats = it
+            }
+        }
+    }
+
+    private fun maybeLogVertexUploadStats(frame: Long, stats: VertexUploadFrameStats, everyNFrames: Int = 120) {
+        if (frame % everyNFrames != 0L) return
+        fun mib(bytes: Long): Double = bytes.toDouble() / (1024.0 * 1024.0)
+        lprintln(
+            "info,perf",
+            "vertex_upload frame=${stats.frameId} total=${"%.3f".format(mib(stats.totalBytes))}MiB recorded=${"%.3f".format(mib(stats.recordedBytes))}MiB immediate=${"%.3f".format(mib(stats.immediateBytes))}MiB"
+        )
+    }
+
     fun render() {
         val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
         val frameId = frameCounter
+        beginFrameUploadStats()
 
         // If geometry writes were opened earlier in this runloop frame, close them now.
         takeOpenGeometryPhaseTokenForFrame(frameId)?.let { token ->
@@ -708,6 +766,7 @@ class Renderer(
 
         renderEnd.update()
         CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = frameCounter)
+        maybeLogVertexUploadStats(frameCounter, endFrameUploadStats(frameId))
 
         if (windowContexts.isNotEmpty()) {
             currentImage = (defaultContext.currentImage + 1) % defaultContext.numImages
@@ -822,6 +881,13 @@ class Renderer(
             ctx.fences[imageIndex].fenceWait()
             ctx.fences[imageIndex].reset()
 
+            val cmd = ctx.commandBuffers[imageIndex]
+            cmd.reset(); cmd.beginRecording()
+
+            // Upload dirty mesh buffers once on the primary command buffer before any
+            // secondary command buffers are recorded with render-pass inheritance.
+            prepareTargetMeshesForDraw(ctx.renderTarget, cmd)
+
             val swapChainExtent = ctx.swapChain.swapChainExtent
             val width = swapChainExtent.width()
             val height = swapChainExtent.height()
@@ -885,9 +951,6 @@ class Renderer(
                     }
                     collected.filterNotNull()
                 } else emptyList()
-
-            val cmd = ctx.commandBuffers[imageIndex]
-            cmd.reset(); cmd.beginRecording()
 
             // --- Label start (graphics frame) ---
             MemoryStack.stackPush().use { s ->
@@ -1218,6 +1281,14 @@ class Renderer(
         } else existing
         store[threadKey] = buffers
         return buffers[imageIndex]
+    }
+
+    private fun prepareTargetMeshesForDraw(target: RenderTarget, command: CommandBuffer) {
+        target.modules.forEach { (_, mp) ->
+            mp.current.meshes.values.forEach { mesh ->
+                mesh.prepareForDraw(command)
+            }
+        }
     }
 
     private fun setViewportAndScissor(cmd: VkCommandBuffer, rect: Rect, stack: MemoryStack) {

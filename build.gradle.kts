@@ -316,6 +316,7 @@ kotlin {
 
                 implementation("org.ejml:ejml-simple:0.43.1")
                 implementation("com.github.jelmerk:hnswlib-core:1.1.0")
+                implementation("com.github.quickhull3d:quickhull3d:1.0.0")
                 implementation("com.github.haifengl:smile-core:$smileVersion")
                 implementation("com.github.haifengl:smile-kotlin:$smileVersion")
                 implementation("org.clojure:clojure:1.11.3")

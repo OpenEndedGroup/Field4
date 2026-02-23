@@ -744,6 +744,19 @@ class SoundSource internal constructor(
         alSourcef(id, AL_ROLLOFF_FACTOR, max(0.0f, rolloffFactor))
     }
 
+    /**
+     * Gets the current playback position in seconds.
+     */
+    val currentTime: Float
+        get() = alGetSourcef(id, org.lwjgl.openal.AL11.AL_SEC_OFFSET)
+
+    /**
+     * Sets the current playback position in seconds.
+     */
+    fun seekTo(timeSeconds: Float) {
+        alSourcef(id, org.lwjgl.openal.AL11.AL_SEC_OFFSET, timeSeconds)
+    }
+
     fun play() {
         alSourcePlay(id)
     }
@@ -906,8 +919,8 @@ private object WavLoader {
 
         require(fmtFound) { "Invalid WAV (missing fmt chunk): $path" }
         require(dataFound) { "Invalid WAV (missing data chunk): $path" }
-        require(audioFormat == 1) { "Unsupported WAV format (only PCM supported): $path" }
-        require(bitsPerSample == 8 || bitsPerSample == 16) { "Unsupported WAV bit depth: $bitsPerSample" }
+        require(audioFormat == 1 || audioFormat == 3) { "Unsupported WAV format (only PCM and IEEE Float supported): $path" }
+        require(bitsPerSample == 8 || bitsPerSample == 16 || bitsPerSample == 32 || bitsPerSample == 64) { "Unsupported WAV bit depth: $bitsPerSample" }
         require(channels == 1 || channels == 2) { "Unsupported WAV channels: $channels" }
 
         require(dataOffset >= 0 && dataSize >= 0 && dataOffset + dataSize <= bytes.size) {
@@ -915,9 +928,9 @@ private object WavLoader {
         }
         val raw = bytes.copyOfRange(dataOffset, dataOffset + dataSize)
         val pcm = if (forceMono || channels == 1) {
-            toMono16(raw, channels, bitsPerSample)
+            toMono16(raw, channels, bitsPerSample, audioFormat)
         } else {
-            toStereo16(raw, channels, bitsPerSample)
+            toStereo16(raw, channels, bitsPerSample, audioFormat)
         }
 
         val outChannels = if (forceMono) 1 else channels
@@ -932,11 +945,35 @@ private object WavLoader {
         )
     }
 
-    private fun toMono16(raw: ByteArray, channels: Int, bitsPerSample: Int): ByteBuffer {
+    private fun toMono16(raw: ByteArray, channels: Int, bitsPerSample: Int, audioFormat: Int): ByteBuffer {
         val bytesPerSample = bitsPerSample / 8
         val frameSize = channels * bytesPerSample
         val frameCount = raw.size / frameSize
         val out = MemoryUtil.memAlloc(frameCount * 2).order(ByteOrder.LITTLE_ENDIAN)
+
+        if (audioFormat == 3 && bitsPerSample == 32) {
+            val bb = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+            for (i in 0 until frameCount) {
+                val l = bb.float
+                val r = if (channels == 2) bb.float else l
+                val mixed = if (channels == 2) (l + r) / 2.0f else l
+                out.putShort((mixed.coerceIn(-1.0f, 1.0f) * 32767).toInt().toShort())
+            }
+            out.flip()
+            return out
+        }
+
+        if (audioFormat == 3 && bitsPerSample == 64) {
+            val bb = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+            for (i in 0 until frameCount) {
+                val l = bb.double.toFloat()
+                val r = if (channels == 2) bb.double.toFloat() else l
+                val mixed = if (channels == 2) (l + r) / 2.0f else l
+                out.putShort((mixed.coerceIn(-1.0f, 1.0f) * 32767).toInt().toShort())
+            }
+            out.flip()
+            return out
+        }
 
         if (channels == 1 && bitsPerSample == 16) {
             out.put(raw, 0, frameCount * 2)
@@ -980,13 +1017,33 @@ private object WavLoader {
         }
 
         MemoryUtil.memFree(out)
-        error("Unsupported WAV format for mono conversion (channels=$channels, bits=$bitsPerSample)")
+        error("Unsupported WAV format for mono conversion (channels=$channels, bits=$bitsPerSample, format=$audioFormat)")
     }
 
-    private fun toStereo16(raw: ByteArray, channels: Int, bitsPerSample: Int): ByteBuffer {
+    private fun toStereo16(raw: ByteArray, channels: Int, bitsPerSample: Int, audioFormat: Int): ByteBuffer {
         require(channels == 2) { "Stereo output requires 2-channel input" }
         val frameCount = raw.size / (channels * (bitsPerSample / 8))
         val out = MemoryUtil.memAlloc(frameCount * 2 * channels).order(ByteOrder.LITTLE_ENDIAN)
+
+        if (audioFormat == 3 && bitsPerSample == 32) {
+            val bb = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+            for (i in 0 until frameCount * 2) {
+                val sample = bb.float
+                out.putShort((sample.coerceIn(-1.0f, 1.0f) * 32767).toInt().toShort())
+            }
+            out.flip()
+            return out
+        }
+
+        if (audioFormat == 3 && bitsPerSample == 64) {
+            val bb = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+            for (i in 0 until frameCount * 2) {
+                val sample = bb.double.toFloat()
+                out.putShort((sample.coerceIn(-1.0f, 1.0f) * 32767).toInt().toShort())
+            }
+            out.flip()
+            return out
+        }
 
         if (bitsPerSample == 16) {
             out.put(raw, 0, frameCount * 2 * channels)

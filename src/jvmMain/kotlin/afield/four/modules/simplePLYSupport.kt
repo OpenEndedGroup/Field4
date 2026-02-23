@@ -12,6 +12,7 @@ import afield.macroRegistration
 import afield.macros.Insert
 import afield.macros.MacroRegistry
 import afield.macros.MacroRegistry.callRewrite
+import afield.stdlib.Vec3
 import afield.stdlib._moduleHere
 import afield.stdlib.macro_moduleHereWithDefaultShaders
 import com.github.jelmerk.knn.DistanceFunctions
@@ -405,6 +406,28 @@ object PlySupport {
 
             output.flip()
             return output
+        }
+
+        /**
+         * Extract vertex positions from the mesh as a List<Vec3>.
+         *
+         * Returns all vertex positions in the order they appear in the mesh.
+         */
+        fun extractPositions(): List<Vec3> {
+            val positions = mutableListOf<Vec3>()
+            val vertexFloats = buffers.vertexData.asFloatBuffer()
+            val strideFloats = 10  // 10 floats per vertex: 3 pos + 3 normal + 4 color
+
+            for (i in 0 until buffers.vertexCount) {
+                val base = i * strideFloats
+                positions.add(Vec3(
+                    vertexFloats.get(base),
+                    vertexFloats.get(base + 1),
+                    vertexFloats.get(base + 2)
+                ))
+            }
+
+            return positions
         }
     }
 
