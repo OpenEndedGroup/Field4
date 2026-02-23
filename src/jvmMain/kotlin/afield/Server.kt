@@ -48,6 +48,7 @@ import java.security.KeyStore
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -948,7 +949,7 @@ class Server {
 
                 install(WebSockets) {
                     pingPeriod = 10.seconds
-                    timeout = 180.seconds
+                    timeout = 30.minutes
                     maxFrameSize = Long.MAX_VALUE
                     masking = false
                 }

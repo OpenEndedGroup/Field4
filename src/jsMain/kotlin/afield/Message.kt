@@ -23,8 +23,25 @@ val onOpen = mutableListOf<Message>()
 var clientOpen = false
 
 var reopen_backoff = 100L
+private val reopen_backoff_min = 100L
+private val reopen_backoff_max = 30_000L
+private var reconnectTimeoutHandle: Int? = null
+
+private fun clearReconnectTimeout() {
+    reconnectTimeoutHandle?.let { window.clearTimeout(it) }
+    reconnectTimeoutHandle = null
+}
+
+private fun scheduleReconnect(delayMillis: Long) {
+    if (reconnectTimeoutHandle != null) return
+    reconnectTimeoutHandle = window.setTimeout({
+        reconnectTimeoutHandle = null
+        reopen()
+    }, delayMillis.toInt())
+}
 
 fun reopen() {
+    clearReconnectTimeout()
     console.info("[ws] attempting reconnect")
     notify("Attempting reconnect...", "connectivity")
     client = WebSocket(wsUrl())
@@ -49,6 +66,8 @@ fun initializeClient() {
         }
         
         clientOpen = true
+        clearReconnectTimeout()
+        reopen_backoff = reopen_backoff_min
         onOpen.forEach {
             send(it)
         }
@@ -63,8 +82,8 @@ fun initializeClient() {
         notify("Disconnected (try reloading this window)", "connectivity")
         console.info("[ws] closed", it)
         clientOpen = false
-        reopen_backoff = (1.1*reopen_backoff).toLong()
-        setTimeout(reopen_backoff.toDuration(DurationUnit.MILLISECONDS), ::reopen)
+        reopen_backoff = (1.1 * reopen_backoff).toLong().coerceAtMost(reopen_backoff_max)
+        scheduleReconnect(reopen_backoff)
         (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = "blur(20px)"
     }
     client.onmessage = {
@@ -77,8 +96,8 @@ fun initializeClient() {
         notify("Disconnected (error)", "connectivity")
         console.info("[ws] error", it)
         clientOpen = false
-        reopen_backoff *= 2
-        setTimeout(reopen_backoff.toDuration(DurationUnit.MILLISECONDS), ::reopen)
+        reopen_backoff = (reopen_backoff * 2).coerceAtMost(reopen_backoff_max)
+        scheduleReconnect(reopen_backoff)
         (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = "blur(20px)"
     }
 }

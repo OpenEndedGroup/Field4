@@ -212,7 +212,28 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "remote_js" to "js",
             "metadata" to "yaml"
         )
-        val context = ThreadLocal<Box>() // this simply doesn't work in the slightest. It needs to be joined into the coroutine context.
+        val context = ThreadLocal<Box>()
+
+        @Suppress("UNCHECKED_CAST")
+        private fun nullableContext(): ThreadLocal<Box?> = context as ThreadLocal<Box?>
+
+        fun boxContextElement(box: Box?) = nullableContext().asContextElement(box)
+
+        suspend fun <T> withBoxContext(box: Box?, block: suspend () -> T): T {
+            return withContext(boxContextElement(box)) {
+                block()
+            }
+        }
+
+        fun <T> withBoxContextNow(box: Box?, block: () -> T): T {
+            val previous = nullableContext().get()
+            nullableContext().set(box)
+            return try {
+                block()
+            } finally {
+                nullableContext().set(previous)
+            }
+        }
 
         init {
 
@@ -595,7 +616,7 @@ fun makeKI(box: Box): KotlinInterface {
 //        if (box.properties["_tombstone"].isTrue()) return@inMain
             if (box.properties["_tombstone"].isTrue()) return@inMain
 
-            launch(Runloop.miscPool.asCoroutineDispatcher()) {
+            launch(Runloop.miscPool.asCoroutineDispatcher() + Box.boxContextElement(box)) {
 
                 lblock("info,ki", "executing stdlib import") {
 //                    if (box.properties["_tombstone"].isTrue()) return@launch
@@ -629,10 +650,12 @@ suspend fun makeKIHere(box: Box): KotlinInterface {
     val si = thisSessionInfo.get()
     if (box.properties["_tombstone"].isTrue()) return box.ki
 
-    ki.exec(
-        intro, implicits = listOf(box)
-    )
-    box.preamble.let { ki.exec(it, implicits = listOf(box)) }
+    Box.withBoxContext(box) {
+        ki.exec(
+            intro, implicits = listOf(box)
+        )
+        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
+    }
     si?.topologyGeneration++
     box.offline = false
     return ki

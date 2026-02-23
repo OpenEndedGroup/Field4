@@ -181,45 +181,45 @@ class KotlinExecution : BoxExecution {
         handleReturn: (Any?) -> Unit
     ) {
 
-        try {
-            var dur = code.split("\n").count()
-            var hasError = false
-            Box.context.set(box) // coroutine context?
-            var output = mutableListOf<String>("")
-            box.output.proxy = { content, nl, line ->
-                output[output.size - 1] = output[output.size - 1] + content.toString()
-                if (nl) output.add("")
+        Box.withBoxContext(box) {
+            try {
+                var dur = code.split("\n").count()
+                var hasError = false
+                var output = mutableListOf<String>("")
+                box.output.proxy = { content, nl, line ->
+                    output[output.size - 1] = output[output.size - 1] + content.toString()
+                    if (nl) output.add("")
 
-                lprintln("debug,execution", "out $content")
-                reply?.invoke(
-                    Message("output").payload(
-                        Output(
-                            line = line.i,
-                            kind = "normal",
-                            html = content.toString().trim()+(if(nl) "\n" else ""),
-                            frame = Runloop.runLoop.frame.toInt()
+                    lprintln("debug,execution", "out $content")
+                    reply?.invoke(
+                        Message("output").payload(
+                            Output(
+                                line = line.i,
+                                kind = "normal",
+                                html = content.toString().trim()+(if(nl) "\n" else ""),
+                                frame = Runloop.runLoop.frame.toInt()
+                            )
                         )
                     )
-                )
 
-            }
-            box.output.errorProxy = { content, property, line ->
-                hasError = hasError || content != null
-                reply?.invoke(
-                    Message("output").payload(
-                        Output(
-                            line = (line + ln).i,
-                            kind = "error",
-                            property = property,
-                            html = escapeForHtml(content?.toString()),
-                            frame = Runloop.runLoop.frame.toInt()
+                }
+                box.output.errorProxy = { content, property, line ->
+                    hasError = hasError || content != null
+                    reply?.invoke(
+                        Message("output").payload(
+                            Output(
+                                line = (line + ln).i,
+                                kind = "error",
+                                property = property,
+                                html = escapeForHtml(content?.toString()),
+                                frame = Runloop.runLoop.frame.toInt()
+                            )
                         )
                     )
-                )
-            }
-            box.output.displayProxy = { channel, content ->
-                send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, content.toString())))
-            }
+                }
+                box.output.displayProxy = { channel, content ->
+                    send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, content.toString())))
+                }
 
             val returnValues: List<ResultValue?> = standardExecutionPractice(box.ki, code, { compileError ->
                 hasError = true
@@ -389,8 +389,9 @@ class KotlinExecution : BoxExecution {
             } else {
                 lprintln("error,execution", "execution finished with errors")
             }
-        } finally {
-            finishedHandler()
+            } finally {
+                finishedHandler()
+            }
         }
 
     }

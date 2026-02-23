@@ -178,6 +178,15 @@ class KotlinInterface(
     var id = 0
 
     var cache = mutableMapOf<String, ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>?>()
+
+    private fun resolveBoxContext(implicits: List<Any> = emptyList()): Box? {
+        val fromImplicits = implicits.firstOrNull { it is Box } as? Box
+        if (fromImplicits != null) return fromImplicits
+        val fromAssociated = associatedBox as? Box
+        if (fromAssociated != null) return fromAssociated
+        return Box.context.get()
+    }
+
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>> {
         val code = SourceCodeImpl(id++, s)
         var r: ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>? = null
@@ -202,43 +211,47 @@ class KotlinInterface(
     suspend fun evaluate(
         e: LinkedSnippet<KJvmCompiledScript>, updateContext: Boolean = false
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
-        var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
-        val ns = measureNanoTime {
+        return Box.withBoxContext(resolveBoxContext()) {
+            var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
+            val ns = measureNanoTime {
 
-            val evalConfig = ScriptEvaluationConfiguration {
-                jvm {
-                    baseClassLoader(classLoader!!)
+                val evalConfig = ScriptEvaluationConfiguration {
+                    jvm {
+                        baseClassLoader(classLoader!!)
+                    }
+                    providedProperties(properties)
                 }
-                providedProperties(properties)
+
+
+                r = evaluator.eval(e, evalConfig)
+                if (updateContext) contextUpdater.update()
             }
-
-
-            r = evaluator.eval(e, evalConfig)
-            if (updateContext) contextUpdater.update()
+            lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            r
         }
-        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
-        return r
     }
 
     suspend fun evaluate(
         e: LinkedSnippet<KJvmCompiledScript>, updateContext: Boolean = true, implicits: List<Any>
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
-        var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
-        val ns = measureNanoTime {
+        return Box.withBoxContext(resolveBoxContext(implicits)) {
+            var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
+            val ns = measureNanoTime {
 
-            val evalConfig = ScriptEvaluationConfiguration {
-                implicits.forEach { implicitReceivers.append(it) }
-                jvm {
-                    baseClassLoader(classLoader!!)
+                val evalConfig = ScriptEvaluationConfiguration {
+                    implicits.forEach { implicitReceivers.append(it) }
+                    jvm {
+                        baseClassLoader(classLoader!!)
+                    }
+                    providedProperties(properties)
                 }
-                providedProperties(properties)
-            }
 
-            r = evaluator.eval(e, evalConfig)
-            if (updateContext) contextUpdater.update()
+                r = evaluator.eval(e, evalConfig)
+                if (updateContext) contextUpdater.update()
+            }
+            lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            r
         }
-        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
-        return r
     }
 
     fun String.findNthSubstring(s: String, n: Int, start: Int = 0): Int {
