@@ -260,6 +260,9 @@ data class ImportMetadata(val ednText: String)
 data class Set_rect(val uid: String, val property: String, val value: Rect)
 
 @Serializable
+data class Set_rects(val values: List<Set_rect>)
+
+@Serializable
 data class Set_null(val uid: String, val property: String)
 
 @Serializable

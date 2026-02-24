@@ -10,5 +10,7 @@
     </root>
 
     <logger name="io.netty" level="WARN"/>
+    <!-- Common noisy disconnect path when clients drop sockets mid-read. -->
+    <logger name="io.netty.channel.DefaultChannelPipeline" level="ERROR"/>
 
 </configuration>

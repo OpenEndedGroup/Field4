@@ -465,7 +465,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.contextMenuGroupId = "execution"
         action.contextMenuOrder = 1.5
         action.run = { ed: dynamic ->
-            monacoRunExecuteFragment(ed)
+            monacoRunExecuteFragmentOrShaderReload(ed)
         }
         addAction(action)
     }
@@ -562,6 +562,49 @@ fun monacoRunAiAssistError(editor: dynamic) {
     payload.prompt = allText
     payload.kind = "error"
     send("ai-assist", payload)
+}
+
+private fun shaderReloadActionForProperty(property: String): String? = when (property.lowercase()) {
+    "vertex", "fragment" -> "moduleHere_reload"
+    "compute" -> "computeModuleHere_reload"
+    "mesh", "task" -> "meshModuleHere_reload"
+    else -> null
+}
+
+private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
+    val w = js("window")
+    val property = (w.currentSelectedProperty as? String)?.trim()?.lowercase()
+    val actionId = property?.let(::shaderReloadActionForProperty)
+    if (actionId == null) {
+        monacoRunExecuteFragment(editor)
+        return
+    }
+
+    val current = w.currentSelectedCode
+    val currentLen = (current?.length as? Number)?.toInt() ?: 0
+    if (currentLen != 1) return
+    val selected = current[0] ?: return
+    val uid = selected.uid as? String ?: return
+
+    val model = editor.getModel()
+    if (model != null && model != undefined && property != null) {
+        val value = model.getValue() as? String ?: ""
+        selected[property] = value
+        val payload = js("{}")
+        payload.uid = uid
+        payload.property = property
+        payload.value = value
+        send("set-string", payload)
+    }
+
+    send(
+        Message("perform-action").payload(
+            Perform_action(
+                uid_currentSelection = listOf(uid),
+                uid_action = actionId
+            )
+        )
+    )
 }
 
 private fun extractSelectionOrScope(editor: dynamic): Triple<String, Int, Boolean> {

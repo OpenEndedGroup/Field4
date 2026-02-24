@@ -74,7 +74,7 @@ external val allActions: dynamic
 
 external var originatingMouseDown: MouseEvent
 
-lateinit var moveHandler: (dynamic) -> Unit
+lateinit var moveHandler: (dynamic) -> Set_rect?
 lateinit var resizeHandler: (dynamic) -> Unit
 lateinit var monacoResizeHandler: (dynamic) -> Unit
 var mainTranslation = listOf(0.0, 0.0)
@@ -225,7 +225,7 @@ private fun centerViewportOn(rect: Rect) {
         )
     )
 
-    canvasGestures.rebuildConnectionGroup()
+    canvasGestures.rebuildConnectionGroup(translationOnly = true)
     repositionSlideNoteOverlayIfVisible()
 }
 
@@ -851,7 +851,54 @@ fun getAllLayers(): Set<String> {
     return allLayers
 }
 
+private const val FRAME_VISIBILITY_EPSILON = 1e-6
+
+fun hasRenderableFrame(box: HTMLElement): Boolean {
+    val d = box.unsafeCast<dynamic>()
+    val w = (d.data_w as? Number)?.toDouble() ?: 0.0
+    val h = (d.data_h as? Number)?.toDouble() ?: 0.0
+    return w > FRAME_VISIBILITY_EPSILON || h > FRAME_VISIBILITY_EPSILON
+}
+
+private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
+    box.style.transform = "translate(${frame.x}px, ${frame.y}px)"
+    box.style.width = "${frame.w}px"
+    box.style.height = "${frame.h}px"
+
+    val d = box.unsafeCast<dynamic>()
+    d.data_x = frame.x
+    d.data_y = frame.y
+    d.data_w = frame.w
+    d.data_h = frame.h
+}
+
+private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boolean = false) {
+    val visible = isBoxVisible(box)
+
+    box.style.visibility = if (visible) "visible" else "hidden"
+    box.style.opacity = if (visible) "1" else "0"
+    box.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
+    if (visible) box.style.display = "flex" else box.style.display = "none"
+
+    if (!includeOutputArea) return
+
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
+    if (outputArea != null) {
+        outputArea.style.visibility = if (visible) "visible" else "hidden"
+        outputArea.style.opacity = if (visible) "1" else "0"
+        outputArea.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
+        if (visible) {
+            outputArea.style.removeProperty("display")
+        } else {
+            outputArea.style.display = "none"
+        }
+    }
+}
+
 fun isBoxVisible(box: HTMLElement): Boolean {
+    if (!hasRenderableFrame(box)) return false
+    if (((box.asDynamic().server_visible as? Boolean) ?: true).not()) return false
+    if (box.classList.contains("tombstoned")) return false
     val boxLayers = (box.asDynamic().box_layers as? String) ?: "default"
     val layers = boxLayers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
     return layers.any { layer -> visibleLayers.contains(layer) }
@@ -892,20 +939,7 @@ fun updateAllBoxVisibility(animated: Boolean = false, duration: Double = 250.0) 
                 applyFadeVisibility(outputArea, visible, duration)
             }
         } else {
-            box.style.visibility = if (visible) "visible" else "hidden"
-            box.style.opacity = if (visible) "1" else "0"
-            box.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
-            if (visible) box.style.display = "flex" else box.style.display = "none"
-            if (outputArea != null) {
-                outputArea.style.visibility = if (visible) "visible" else "hidden"
-                outputArea.style.opacity = if (visible) "1" else "0"
-                outputArea.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
-                if (visible) {
-                    outputArea.style.removeProperty("display")
-                } else {
-                    outputArea.style.display = "none"
-                }
-            }
+            applyBoxVisibilityImmediate(box, includeOutputArea = true)
         }
     }
 }
@@ -1495,13 +1529,10 @@ suspend fun main() {
         Handled.yes
     }
 
-    handlers.put("set-rect") { message, _ ->
-
-        val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
-        if (set.property !== "frame") return@put Handled.no
+    fun applyIncomingRect(set: Set_rect): Boolean {
+        if (set.property !== "frame") return false
 
         val u = set.uid
-
         val boxes = document.body!!.getElementsByClassName("box").asList()
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == u }
 
@@ -1510,21 +1541,34 @@ suspend fun main() {
                 createBox("", frame = set.value, uid = u, sendInitialSync = false)
             }
         } else {
-            (found as HTMLElement).style.transform = "translate(${set.value.x}px, ${set.value.y}px)"
-
-            found.style.width = "${set.value.w}px"
-            found.style.height = "${set.value.h}px"
-            found.style.visibility = if (set.value.w > 0.0 || set.value.h > 0.0) "visible" else "hidden"
-
-            found.unsafeCast<dynamic>().data_x = set.value.x
-            found.unsafeCast<dynamic>().data_y = set.value.y
-            found.unsafeCast<dynamic>().data_w = set.value.w
-            found.unsafeCast<dynamic>().data_h = set.value.h
+            val box = found as HTMLElement
+            applyFrameToBox(box, set.value)
+            applyBoxVisibilityImmediate(box)
         }
+        return true
+    }
+
+    handlers.put("set-rect") { message, _ ->
+        val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
+        if (!applyIncomingRect(set)) return@put Handled.no
         canvasGestures.rebuildConnectionGroup()
         repositionSlideNoteOverlayIfVisible()
 
         Handled.yes
+    }
+
+    handlers.put("set-rects") { message, _ ->
+        val set = Json.decodeFromJsonElement<Set_rects>(message.payload!!)
+        var changed = false
+        set.values.forEach { entry ->
+            if (applyIncomingRect(entry)) changed = true
+        }
+        if (changed) {
+            canvasGestures.rebuildConnectionGroup()
+            repositionSlideNoteOverlayIfVisible()
+            return@put Handled.yes
+        }
+        Handled.no
     }
 
     handlers.put("set-animated-rect") { message, _ ->
@@ -1540,15 +1584,8 @@ suspend fun main() {
             found.style.transition = "transform ${set.duration}ms ease-in-out, width ${set.duration}ms ease-in-out, height ${set.duration}ms ease-in-out"
 
             // Apply new position and size
-            found.style.transform = "translate(${set.value.x}px, ${set.value.y}px)"
-            found.style.width = "${set.value.w}px"
-            found.style.height = "${set.value.h}px"
-
-            // Update data attributes
-            found.unsafeCast<dynamic>().data_x = set.value.x
-            found.unsafeCast<dynamic>().data_y = set.value.y
-            found.unsafeCast<dynamic>().data_w = set.value.w
-            found.unsafeCast<dynamic>().data_h = set.value.h
+            applyFrameToBox(found, set.value)
+            applyBoxVisibilityImmediate(found)
 
             // Remove transition after animation completes
             window.setTimeout({
@@ -1570,8 +1607,17 @@ suspend fun main() {
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
 
         if (found != null) {
+            found.asDynamic().server_visible = visible
+
+            if (!hasRenderableFrame(found)) {
+                applyBoxVisibilityImmediate(found)
+                canvasGestures.rebuildConnectionGroup()
+                return@put Handled.yes
+            }
+
             if (visible) {
                 // Fade in: set visibility first with opacity 0, then animate to 1
+                found.style.display = "flex"
                 found.style.visibility = "visible"
                 found.style.opacity = "0"
                 found.style.transition = "opacity ${duration}ms ease-in-out"
@@ -1590,6 +1636,7 @@ suspend fun main() {
 
                 window.setTimeout({
                     found.style.visibility = "hidden"
+                    found.style.display = "none"
                     found.style.transition = ""
                     found.style.opacity = "1" // Reset for next show
                 }, duration.toInt())
@@ -1624,8 +1671,9 @@ suspend fun main() {
         when (set.property) {
             "visible" -> {
                 if (found != null) {
-                    if (!set.number) found.unsafeCast<dynamic>().style.visibility = "hidden"
-                    else found.unsafeCast<dynamic>().style.visibility = "visible"
+                    val box = found as HTMLElement
+                    box.asDynamic().server_visible = set.number
+                    applyBoxVisibilityImmediate(box)
                     canvasGestures.rebuildConnectionGroup()
                 }
             }
@@ -1660,8 +1708,8 @@ suspend fun main() {
                         }
                     } else {
                         boxEl.classList.remove("tombstoned")
-                        (boxEl as HTMLElement).style.display = "flex"
                         boxEl.asDynamic().tombstoned = false
+                        applyBoxVisibilityImmediate(boxEl as HTMLElement)
                     }
                     canvasGestures.rebuildConnectionGroup()
                 }
@@ -2320,7 +2368,7 @@ suspend fun main() {
 
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
-            canvasGestures.rebuildConnectionGroup()
+            canvasGestures.rebuildConnectionGroup(translationOnly = true)
             repositionSlideNoteOverlayIfVisible()
             if (spatialNavActive) {
                 refreshSpatialNavTargets()
@@ -2361,7 +2409,7 @@ suspend fun main() {
 
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
-            canvasGestures.rebuildConnectionGroup()
+            canvasGestures.rebuildConnectionGroup(translationOnly = true)
             repositionSlideNoteOverlayIfVisible()
             if (spatialNavActive) {
                 refreshSpatialNavTargets()
@@ -2534,27 +2582,21 @@ suspend fun main() {
 
     val interactable = interact(".box")
 
-    moveHandler = { event: dynamic ->
-
+    moveHandler = move@{ event: dynamic ->
         val target: dynamic = event.target
-        val x: Number = (target.data_x ?: 0.0) + event.dx
-        val y: Number = (target.data_y ?: 0.0) + event.dy
+        val uid = target.uid as? String ?: return@move null
 
         val tdx = (event.clientX - originatingMouseDown.clientX) as Number
         val tdy = (event.clientY - originatingMouseDown.clientY) as Number
         val odx = (target.originalFramePosition as List<Number>)[0].toDouble() + tdx.toDouble()
         val ody = (target.originalFramePosition as List<Number>)[1].toDouble() + tdy.toDouble()
 
-//        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round trip to server
-//        target.data_x = x
-//        target.data_y = y
-
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
 
         // Apply snapping if Caps Lock is enabled
         val targetElement = target as HTMLElement
-        val width = event.rect.width - t * 2
-        val height = event.rect.height - t * 2
+        val width = ((target.data_w as? Number)?.toDouble() ?: (event.rect?.width as? Number)?.toDouble() ?: 0.0) - t * 2
+        val height = ((target.data_h as? Number)?.toDouble() ?: (event.rect?.height as? Number)?.toDouble() ?: 0.0) - t * 2
 
         val (snappedX, snappedY) = boxSnappingSystem.applySnapping(
             targetElement,
@@ -2564,15 +2606,10 @@ suspend fun main() {
             height
         )
 
-        val uid = target.uid
-        send(
-            Message("set-rect").payload(
-                Set_rect(
-                    uid = uid,
-                    property = "frame",
-                    Rect(snappedX, snappedY, width, height)
-                )
-            )
+        Set_rect(
+            uid = uid,
+            property = "frame",
+            value = Rect(snappedX, snappedY, width, height)
         )
     }
 
@@ -2689,16 +2726,19 @@ suspend fun main() {
         if (event.altKey) {
         } else if (originatingMouseDown.altKey) {
         } else {
-            var targeted = false
+            val pending = mutableListOf<Set_rect>()
             selected.forEach {
                 event.target = reorient(it)
                 if (event.target) {
-                    moveHandler(event)
-                    targeted = true
+                    moveHandler(event)?.let { next ->
+                        pending.add(next)
+                    }
                 }
             }
-            if (targeted)
+            if (pending.isNotEmpty()) {
+                send(Message("set-rects").payload(Set_rects(pending)))
                 canvasGestures.rebuildConnectionGroup()
+            }
         }
     }))
 
@@ -2955,8 +2995,10 @@ fun TagConsumer<HTMLElement>.createBox(
     d1d.data_h = frame.h
     d1d.uid = uid
     d1d.name = name
+    d1d.server_visible = true
 
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement
+    applyBoxVisibilityImmediate(d1)
 
     if (sendInitialSync) {
         send(

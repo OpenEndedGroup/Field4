@@ -471,6 +471,40 @@ class Server {
                 Handled.yes
             })
 
+            handlers["set-rects"] = mutableSetOf({ message, reply ->
+                val set = Json.decodeFromJsonElement<Set_rects>(message.payload!!)
+
+                if (set.values.isEmpty()) return@mutableSetOf Handled.yes
+
+                val frameUpdates = mutableListOf<Set_rect>()
+                var hasNonFrameUpdates = false
+
+                set.values.forEach { update ->
+                    if (update.property == "frame") {
+                        val b = box(update.uid)
+                        b.frame = update.value
+                        needsResync.remove(b to "frame")
+                        frameUpdates += Set_rect(uid = update.uid, property = "frame", value = b.frame)
+                    } else {
+                        hasNonFrameUpdates = true
+                        box(update.uid).setPropertyRaw(update.property, update.value, doResync = true)
+                    }
+                }
+
+                if (frameUpdates.isNotEmpty()) {
+                    val messageOut = Message("set-rects").payload(Set_rects(frameUpdates))
+                    thisSessionInfo.get().sessions.forEach { _send(it, messageOut) }
+                }
+
+                if (hasNonFrameUpdates) {
+                    inMain {
+                        doResync()
+                    }
+                }
+
+                Handled.yes
+            })
+
             handlers["complete"] = mutableSetOf({ message, reply ->
 
                 val exec = Json.decodeFromJsonElement<CompletionRequest>(message.payload!!)

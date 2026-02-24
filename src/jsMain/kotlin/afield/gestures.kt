@@ -105,6 +105,8 @@ private val currentFrameKeys = mutableSetOf<String>()
 private var currentFrontMarkerLayer: SVGElement? = null
 private var currentFrontMarkerDefs: SVGElement? = null
 
+private fun DOMRect.copyRect(): DOMRect = DOMRect(x, y, width, height)
+
 private fun ensureFrontConnectionLayer(): SVGSVGElement {
     val existing = document.getElementById(FRONT_CONNECTION_LAYER_ID) as? SVGSVGElement
     if (existing != null) return existing
@@ -596,11 +598,51 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
     private var overlayContext: CanvasRenderingContext2D
     private var overlayCanvas: HTMLCanvasElement
+    private var cachedViewportWidth = 0.0
+    private var cachedViewportHeight = 0.0
+    private var cachedBoxes: List<HTMLElement> = emptyList()
+    private var cachedBoxByUid: Map<String, HTMLElement> = emptyMap()
+    private var cachedWorldRects: Map<HTMLElement, DOMRect> = emptyMap()
+    private var cachedDomBoxCount: Int = -1
 
     init {
         println("finding ${document.querySelector("#overlaycanvas")}")
         overlayCanvas = document.querySelector("#overlaycanvas")!! as HTMLCanvasElement
         overlayContext = overlayCanvas.getContext("2d") as CanvasRenderingContext2D
+    }
+
+    private fun uidOrNull(box: HTMLElement): String? {
+        val uid = box.unsafeCast<dynamic>().uid
+        if (uid == undefined || uid == null) return null
+        return uid.toString()
+    }
+
+    private fun captureLayoutSnapshot(parent: SVGSVGElement, ox: Double, oy: Double) {
+        val parentRect = parent.getBoundingClientRect()
+        val boxElements = boxes()
+        val screenRects = boxElements.associateWith { it.getBoundingClientRect() }
+        val worldRects = screenRects.mapValues { (_, rect) ->
+            DOMRect(rect.x - ox, rect.y - oy, rect.width, rect.height)
+        }
+        val boxByUid = boxElements.mapNotNull { box ->
+            uidOrNull(box)?.let { it to box }
+        }.toMap()
+
+        cachedViewportWidth = parentRect.width
+        cachedViewportHeight = parentRect.height
+        cachedBoxes = boxElements
+        cachedBoxByUid = boxByUid
+        cachedWorldRects = worldRects
+        cachedDomBoxCount = document.querySelectorAll(".box").length
+    }
+
+    private fun hasValidCachedLayoutForTranslation(): Boolean {
+        if (cachedBoxes.isEmpty()) return false
+        if (document.querySelectorAll(".box").length != cachedDomBoxCount) return false
+        if (abs(window.innerWidth.toDouble() - cachedViewportWidth) > 0.5) return false
+        if (abs(window.innerHeight.toDouble() - cachedViewportHeight) > 0.5) return false
+        if (cachedBoxes.any { it.asDynamic().isConnected != true }) return false
+        return true
     }
 
     fun getNamedSVGGroup(name: String) =
@@ -612,14 +654,22 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
     }
 
 
-    fun rebuildConnectionGroup() {
+    fun rebuildConnectionGroup(translationOnly: Boolean = false) {
         currentFrameKeys.clear()
         needsFilterFrame = false
 
         val parent = document.getElementById("overlaysvglayer") as SVGSVGElement
         val frontParent = ensureFrontConnectionLayer()
+        val ox = mainTranslation[0] * 1.0
+        val oy = mainTranslation[1] * 1.0
 
-        val (vbw, vbh) = parent.getBoundingClientRect().let { it.width to it.height }
+        val shouldCapture = !translationOnly || !hasValidCachedLayoutForTranslation()
+        if (shouldCapture) {
+            captureLayoutSnapshot(parent, ox, oy)
+        }
+
+        val vbw = cachedViewportWidth
+        val vbh = cachedViewportHeight
 
         parent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
         frontParent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
@@ -658,10 +708,6 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 //            }
 //        }
 
-        // because we're getting client rects we actually need to subtract this off
-        var ox = mainTranslation[0] * 1.0
-        var oy = mainTranslation[1] * 1.0
-
         fun clamp(v: Double, lo: Double, hi: Double) = max(lo, min(hi, v))
 
         fun addHintLine(x1: Double, y1: Double, x2: Double, y2: Double) {
@@ -677,21 +723,23 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         }
 
         fun traverse(connectionName: String, find: (HTMLElement) -> List<String>?) {
-            boxes().forEach { from ->
+            cachedBoxes.forEach { from ->
+                val worldRect = cachedWorldRects[from] ?: return@forEach
                 val c = find(from)
-                val screenRect = from.getBoundingClientRect()
+                val screenX = worldRect.x + ox
+                val screenY = worldRect.y + oy
 
-                if (from.style.visibility === "hidden") return@forEach
+                if (from.style.visibility === "hidden" || !hasRenderableFrame(from)) return@forEach
 
                 var o0 = 1.0
                 if (from.asDynamic().offline ) o0 = 0.25
 
-                val r1 = DOMRect(screenRect.x - ox, screenRect.y - oy, screenRect.width, screenRect.height)
+                val r1 = worldRect.copyRect()
 
-                val offLeft = screenRect.x + screenRect.width < 0
-                val offRight = screenRect.x > vbw
-                val offTop = screenRect.y + screenRect.height < 0
-                val offBottom = screenRect.y > vbh
+                val offLeft = screenX + worldRect.width < 0
+                val offRight = screenX > vbw
+                val offTop = screenY + worldRect.height < 0
+                val offBottom = screenY > vbh
 
                 if (offLeft || offRight || offTop || offBottom) {
                     val margin = 4.0
@@ -705,30 +753,27 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
                             addHintLine(edgeX, edgeY, edgeX, edgeY)
                         }
                         offLeft || offRight -> {
-                            val y1 = clamp(screenRect.y, 0.0, vbh) - oy
-                            val y2 = clamp(screenRect.y + screenRect.height, 0.0, vbh) - oy
+                            val y1 = clamp(screenY, 0.0, vbh) - oy
+                            val y2 = clamp(screenY + worldRect.height, 0.0, vbh) - oy
                             addHintLine(edgeX, y1, edgeX, y2)
                         }
                         offTop || offBottom -> {
-                            val x1 = clamp(screenRect.x, 0.0, vbw) - ox
-                            val x2 = clamp(screenRect.x + screenRect.width, 0.0, vbw) - ox
+                            val x1 = clamp(screenX, 0.0, vbw) - ox
+                            val x2 = clamp(screenX + worldRect.width, 0.0, vbw) - ox
                             addHintLine(x1, edgeY, x2, edgeY)
                         }
                     }
                 }
 
-                from.unsafeCast<dynamic>()
                 c?.let {
                     it.forEach { id ->
-                        find(id)?.let { to ->
-                            val r2 = to.getBoundingClientRect()
-                            if (to.style.visibility === "hidden") return@forEach
+                        cachedBoxByUid[id]?.let { to ->
+                            if (to.style.visibility === "hidden" || !hasRenderableFrame(to)) return@forEach
+                            val toWorldRect = cachedWorldRects[to] ?: return@forEach
                             var o1 = 1.0
                             if (to.asDynamic().offline ) o1 = 0.25
 
-                            r2.x -= ox
-                            r2.y -= oy
-                            knownConnections[connectionName]?.invoke(from, r1, to, r2, svg, o0*o1)
+                            knownConnections[connectionName]?.invoke(from, r1, to, toWorldRect.copyRect(), svg, o0 * o1)
                         }
                     }
                 }
@@ -748,7 +793,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             filterFrameScheduled = true
             window.requestAnimationFrame {
                 filterFrameScheduled = false
-                rebuildConnectionGroup()
+                rebuildConnectionGroup(translationOnly = translationOnly)
             }
         }
     }
@@ -758,6 +803,14 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         overlayContext.beginPath()
         overlayContext.arc(x, y, r, 0.0, 2 * PI)
         overlayContext.fill()
+    }
+
+    private fun clearOverlayCanvas() {
+        // Clear in raw canvas pixel space so browser zoom / DPR transforms cannot leave stale regions.
+        overlayContext.save()
+        overlayContext.setTransform(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        overlayContext.restore()
     }
 
     fun intersects(x: Double, y: Double): dynamic {
@@ -808,7 +861,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
     fun updateExecutionLine(start: Pair<Double, Double>, e: MouseEvent) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
         overlayContext.strokeStyle = "rgba(128,255,164,0.5)"
         overlayContext.lineWidth = 1.75
         overlayContext.beginPath()
@@ -827,7 +880,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
     fun updateMarquee(start: Pair<Double, Double>, e: MouseEvent) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
         overlayContext.strokeStyle = "rgba(128,255,164,0.5)"
         overlayContext.lineWidth = 1.75
         overlayContext.beginPath()
@@ -849,7 +902,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
     fun finalizeExecutionLine(start: Pair<Double, Double>, e: MouseEvent) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
 
         rects!!.filter { (element, rect) ->
             lineIntersectsDOMRect(e.x, e.y, start.first, start.second, rect)
@@ -860,7 +913,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
     fun finalizeSelectionLine(start: Pair<Double, Double>, e: MouseEvent) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
 
         if (!e.shiftKey) selected.copy().forEach {
             deselectBox(it)
