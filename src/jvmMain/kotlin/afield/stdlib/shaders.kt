@@ -583,6 +583,9 @@ fun fromViews(views: List<HasImageView>, name : String ="",sampler : TextureSamp
 }
 private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?): (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler> =
     { textureSpec ->
+
+        Box.context.set(this) // todo, should be a 'with'
+
         val cached: Pair<HasImageViewArray, TextureSampler>? = previousResolver.invoke(textureSpec)
         if (cached != null) cached else {
             lprintln("debug,graphics", "searching for texture ${textureSpec.name}")
