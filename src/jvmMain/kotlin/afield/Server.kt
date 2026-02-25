@@ -150,6 +150,11 @@ fun _send(message: Message, document: String = ".*") {
 
 
 var lastFn by PersistentString { "welcome" }
+var recentFns by PersistentString { "" }
+
+private fun recordRecentDocument(documentName: String) {
+    recentFns = updateRecentDocuments(recentFns, documentName)
+}
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(session: WebSocketSession?, message: Message) {
@@ -339,6 +344,9 @@ class Server {
                 val fn = home + "/" + hello.filename
 
                 lastFn = hello.filename
+                if (!hello.filename.isHttpUrl()) {
+                    recordRecentDocument(hello.filename)
+                }
 
                 val found = documents[fn]
 
@@ -992,6 +1000,30 @@ class Server {
                 install(AutoHeadResponse)
 
                 routing {
+                    get("/health") {
+                        call.respondText("ok", ContentType.Text.Plain)
+                    }
+
+                    get("/app-url") {
+                        call.respondText("https://localhost:${port}/welcome", ContentType.Text.Plain)
+                    }
+
+                    get("/api/welcome-docs") {
+                        val recentDocuments = parseRecentDocuments(recentFns)
+                        val docs = welcomeDir(home, recentDocuments)
+                        val fallback = lastFn ?: "welcome"
+                        val defaultDocument = docs.firstOrNull()?.filename ?: fallback
+                        call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument))
+                    }
+
+                    route("/welcome") {
+                        handle {
+                            val originalContent = File("./src/commonMain/resources/welcome.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+
                     post("/api/import-offline-doc") {
                         try {
                             val payload = call.receive<OfflineImportRequest>()
@@ -1259,7 +1291,8 @@ class Server {
                 val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
                 lprintln("info,server", asciiWelcome)
                 lprintln("info,server", "welcome to Field, ß-032")
-                lprintln("info,server", initialURL)
+                lprintln("info,server", "last document: $initialURL")
+                lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
                 lprintln("info,server", "---")
 
                 if (preferSystemBrowser) {

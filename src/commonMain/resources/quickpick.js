@@ -30,6 +30,7 @@ const initQuickPick = (is) => {
                 }
         })
 }
+window.initQuickPick = initQuickPick
 
 let allActions = {
         base: []
@@ -710,6 +711,7 @@ const globalPickMenu_custom = (options) => {
                 })
         })
 }
+window.globalPickMenu_custom = globalPickMenu_custom
 
 const globalPickMenu = () => {
         triggerQuickInput(() => {
@@ -725,3 +727,4 @@ const globalPickMenu = () => {
                 })
         })
 }
+window.globalPickMenu = globalPickMenu

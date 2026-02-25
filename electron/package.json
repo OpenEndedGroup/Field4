@@ -1,0 +1,14 @@
+{
+  "name": "field4-electron-wrapper",
+  "version": "0.1.0",
+  "private": true,
+  "productName": "Field4",
+  "description": "Minimal Electron wrapper for Field4",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^30.5.1"
+  }
+}

@@ -1,5 +1,17 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalDistributionDsl::class)
 
+import java.net.URL
+import java.io.InputStream
+import java.io.PrintStream
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
@@ -41,12 +53,33 @@ val javaToolchainVersion = 25
 val ffmpegVersion = "7.1-1.5.11"
 val javacppVersion = "1.5.11"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
+val electronDir = layout.projectDirectory.dir("electron")
+
+fun requiredRunJvmArgs(): List<String> {
+    val os = System.getProperty("os.name").lowercase()
+    val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
+
+    return buildList {
+        add("--add-opens=java.base/java.net=ALL-UNNAMED")
+        add("-Dorg.lwjgl.system.stackSize=256")
+        add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
+        if (!onWindowsOrLinux) {
+            add("-XstartOnFirstThread")
+            add("-Djoml.format=false")
+            add("-Dorg.lwjgl.util.Debug=true")
+            add("-Dorg.lwjgl.util.DebugLoader=true")
+        }
+        add("--add-modules")
+        add("jdk.incubator.vector")
+    }
+}
 
 plugins {
     kotlin("multiplatform") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
     id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
+    id("com.github.node-gradle.node") version "7.1.0"
 }
 
 jvmWrapper {
@@ -69,6 +102,13 @@ java {
 
 group = "afield"
 version = "1.1-SNAPSHOT"
+
+node {
+    download.set(true)
+    version.set("20.12.2")
+    npmVersion.set("10.5.0")
+    nodeProjectDir.set(electronDir.asFile)
+}
 
 repositories {
     mavenCentral()
@@ -412,22 +452,7 @@ tasks {
 
 
 tasks.named<JavaExec>("runJvm").configure {
-    val os = System.getProperty("os.name").lowercase()
-    val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
-
-    val requiredJvmArgs = mutableListOf(
-        "--add-opens=java.base/java.net=ALL-UNNAMED",
-        "-Dorg.lwjgl.system.stackSize=256",
-        "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
-    )
-    if (!onWindowsOrLinux) {
-        requiredJvmArgs += "-XstartOnFirstThread"
-        requiredJvmArgs += "-Djoml.format=false"
-        requiredJvmArgs += "-Dorg.lwjgl.util.Debug=true"
-        requiredJvmArgs += "-Dorg.lwjgl.util.DebugLoader=true"
-    }
-    requiredJvmArgs += "--add-modules"
-    requiredJvmArgs += "jdk.incubator.vector"
+    val requiredJvmArgs = requiredRunJvmArgs()
 
     doFirst {
         val merged = (jvmArgs ?: emptyList<Any>()).map { it.toString() }.toMutableList()
@@ -438,6 +463,282 @@ tasks.named<JavaExec>("runJvm").configure {
     }
 
     dependsOn(tasks.named("jvmJar"))
+}
+
+tasks.named("npmInstall") {
+    group = "application"
+    description = "Installs npm dependencies for the Electron wrapper."
+}
+
+val electronInstall = tasks.register("electronInstall") {
+    group = "application"
+    description = "Installs Electron wrapper dependencies in electron/."
+    dependsOn(tasks.named("npmInstall"))
+
+    doLast {
+        val isMac = System.getProperty("os.name").lowercase().contains("mac")
+        if (!isMac) return@doLast
+
+        val plistFile = electronDir.file("node_modules/electron/dist/Electron.app/Contents/Info.plist").asFile
+        if (!plistFile.exists()) {
+            logger.warn("Electron Info.plist not found at ${plistFile.absolutePath}; skipping app name patch.")
+            return@doLast
+        }
+
+        fun replacePlistString(source: String, key: String, value: String): String {
+            val pattern = Regex("""(<key>$key</key>\s*<string>)([^<]*)(</string>)""")
+            return source.replace(pattern, "$1$value$3")
+        }
+
+        val original = plistFile.readText()
+        var updated = original
+        updated = replacePlistString(updated, "CFBundleDisplayName", "Field4")
+        updated = replacePlistString(updated, "CFBundleName", "Field4")
+
+        if (updated != original) {
+            plistFile.writeText(updated)
+            logger.lifecycle("Patched macOS Electron app name to Field4 in Info.plist.")
+        }
+    }
+}
+
+tasks.register("runDesktop") {
+    group = "application"
+    description = "Runs backend and Electron together, then shuts both down cleanly. Use -PwithDevTools=true to open DevTools."
+
+    dependsOn(electronInstall)
+    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("generateLocalKeystore"))
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val runJvmTask = tasks.named<JavaExec>("runJvm").get()
+        val javaExecutable = runJvmTask.javaLauncher.get().executablePath.asFile.absolutePath
+        val backendMain = runJvmTask.mainClass.orNull
+            ?: throw GradleException("runJvm has no mainClass configured")
+
+        fun parseBooleanFlag(value: String?): Boolean = when (value?.trim()?.lowercase()) {
+            "1", "true", "yes", "on" -> true
+            else -> false
+        }
+
+        fun highlightImportantUrlLines(line: String): String {
+            val isTargetLine =
+                line.contains("last document: https://") ||
+                    line.contains("last document: http://") ||
+                    line.contains("welcome page: https://") ||
+                    line.contains("welcome page: http://")
+            if (!isTargetLine) return line
+
+            val green = "\u001B[32m"
+            val reset = "\u001B[0m"
+            val urlPattern = Regex("""https?://\S+""")
+            return line.replace(urlPattern) { matchResult ->
+                green + matchResult.value + reset
+            }
+        }
+
+        fun forwardProcessOutput(process: Process) {
+            fun pump(input: InputStream, sink: PrintStream): Thread {
+                val thread = Thread {
+                    input.use { source ->
+                        source.bufferedReader().useLines { lines ->
+                            for (line in lines) {
+                                val rendered = highlightImportantUrlLines(line)
+                                synchronized(sink) {
+                                    sink.println(rendered)
+                                    sink.flush()
+                                }
+                            }
+                        }
+                    }
+                }
+                thread.isDaemon = true
+                thread.start()
+                return thread
+            }
+
+            fun pumpRaw(input: InputStream, sink: PrintStream): Thread {
+                val thread = Thread {
+                    input.use { source ->
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val read = source.read(buffer)
+                            if (read < 0) break
+                            if (read == 0) continue
+                            synchronized(sink) {
+                                sink.write(buffer, 0, read)
+                                sink.flush()
+                            }
+                        }
+                    }
+                }
+                thread.isDaemon = true
+                thread.start()
+                return thread
+            }
+
+            pump(process.inputStream, System.out)
+            pumpRaw(process.errorStream, System.err)
+        }
+
+        val withDevTools = parseBooleanFlag(project.findProperty("withDevTools")?.toString()) ||
+            parseBooleanFlag(System.getenv("WITH_DEVTOOLS"))
+        if (withDevTools) {
+            logger.lifecycle("DevTools enabled for Electron this run.")
+        }
+
+        val backendJvmArgs = (runJvmTask.jvmArgs ?: emptyList()).map { it.toString() }.toMutableList()
+        requiredRunJvmArgs().forEach { arg ->
+            if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
+        }
+
+        val backendCommand = mutableListOf<String>()
+        backendCommand += javaExecutable
+        backendCommand += backendJvmArgs
+        backendCommand += "-cp"
+        backendCommand += runJvmTask.classpath.asPath
+        backendCommand += backendMain
+        backendCommand += (runJvmTask.args ?: emptyList()).map { it.toString() }
+
+        logger.lifecycle("Starting backend process via runJvm settings.")
+        val backendProcess = ProcessBuilder(backendCommand)
+            .directory(project.projectDir)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .start()
+        forwardProcessOutput(backendProcess)
+
+        val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+        val electronBinary = if (isWindows) {
+            electronDir.file("node_modules/.bin/electron.cmd").asFile
+        } else {
+            electronDir.file("node_modules/.bin/electron").asFile
+        }
+        if (!electronBinary.exists()) {
+            backendProcess.destroyForcibly()
+            throw GradleException("Electron binary not found at ${electronBinary.absolutePath}. Run ./gradlew electronInstall")
+        }
+
+        val port = System.getenv("PORT") ?: "9092"
+        val healthUrl = "https://localhost:${port}/health"
+        val appUrlEndpoint = "https://localhost:${port}/app-url"
+
+        val trustAll = object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+        }
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+        val socketFactory = sslContext.socketFactory
+        val hostnameVerifier = HostnameVerifier { _, _ -> true }
+
+        fun getHttps(url: String): Pair<Int, String> {
+            val connection = (URL(url).openConnection() as HttpsURLConnection).apply {
+                sslSocketFactory = socketFactory
+                this.hostnameVerifier = hostnameVerifier
+                requestMethod = "GET"
+                connectTimeout = 1500
+                readTimeout = 1500
+            }
+            return try {
+                val code = connection.responseCode
+                val body = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader()
+                    ?.use { reader -> reader.readText() }
+                    ?.trim()
+                    .orEmpty()
+                code to body
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        fun stopProcessTree(process: Process) {
+            if (!process.isAlive) return
+            process.toHandle().descendants().forEach { it.destroy() }
+            process.destroy()
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                process.toHandle().descendants().forEach { it.destroyForcibly() }
+                process.destroyForcibly()
+                process.waitFor(5, TimeUnit.SECONDS)
+            }
+        }
+
+        val deadline = System.currentTimeMillis() + 120_000
+        var backendReady = false
+        while (System.currentTimeMillis() < deadline) {
+            if (!backendProcess.isAlive) {
+                throw GradleException("Backend exited before becoming ready (exit code ${backendProcess.exitValue()}).")
+            }
+
+            val healthy = runCatching {
+                val (code, body) = getHttps(healthUrl)
+                code in 200..299 && body.contains("ok", ignoreCase = true)
+            }.getOrDefault(false)
+
+            if (healthy) {
+                backendReady = true
+                break
+            }
+
+            Thread.sleep(500)
+        }
+
+        if (!backendReady) {
+            stopProcessTree(backendProcess)
+            throw GradleException("Backend did not become reachable at ${healthUrl} within 120 seconds.")
+        }
+        logger.lifecycle("Backend is reachable at ${healthUrl}.")
+
+        val appUrl = runCatching {
+            val (code, body) = getHttps(appUrlEndpoint)
+            if (code in 200..299 && body.isNotBlank()) body else "https://localhost:${port}/index.html"
+        }.getOrDefault("https://localhost:${port}/index.html")
+        logger.lifecycle("Launching Electron with APP_URL=${appUrl}.")
+
+        val electronProcess = ProcessBuilder(electronBinary.absolutePath, ".")
+            .directory(electronDir.asFile)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .apply {
+                environment()["APP_URL"] = appUrl
+                environment()["WITH_DEVTOOLS"] = if (withDevTools) "1" else "0"
+            }
+            .start()
+        forwardProcessOutput(electronProcess)
+
+        val stopping = AtomicBoolean(false)
+
+        fun shutdownAll() {
+            if (!stopping.compareAndSet(false, true)) return
+            stopProcessTree(electronProcess)
+            stopProcessTree(backendProcess)
+        }
+
+        val shutdownHook = Thread { shutdownAll() }
+        Runtime.getRuntime().addShutdownHook(shutdownHook)
+
+        val backendWatcher = Thread {
+            val code = backendProcess.waitFor()
+            if (!stopping.get()) {
+                logger.warn("Backend exited with code ${code}; closing Electron.")
+                shutdownAll()
+            }
+        }
+        backendWatcher.isDaemon = true
+        backendWatcher.start()
+
+        val electronExit = try {
+            electronProcess.waitFor()
+        } finally {
+            shutdownAll()
+            runCatching { Runtime.getRuntime().removeShutdownHook(shutdownHook) }
+        }
+
+        if (electronExit != 0) {
+            throw GradleException("Electron exited with code ${electronExit}.")
+        }
+    }
 }
 
 tasks.register<JavaExec>("runai") {

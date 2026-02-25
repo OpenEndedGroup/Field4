@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Field·4</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+
+    <style>
+        :root {
+            --field-bg: rgba(20, 20, 20, 1);
+            --field-panel: rgba(0, 0, 0, 0.32);
+            --field-panel-strong: rgba(0, 0, 0, 0.52);
+            --field-border: rgba(72, 201, 255, 0.18);
+            --field-border-strong: rgba(72, 201, 255, 0.45);
+            --field-cyan: rgb(72, 201, 255);
+            --field-text: rgba(220, 235, 244, 0.95);
+            --field-text-soft: rgba(164, 193, 210, 0.95);
+            --field-danger: #ff6f6f;
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--field-bg);
+            color: var(--field-text);
+            font-family: "Iosevka Web", system-ui, sans-serif;
+            overflow: hidden;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dashed rgba(180, 220, 245, 0.42);
+        }
+
+        #welcome-root {
+            position: relative;
+            z-index: 1;
+            width: min(1100px, 96vw);
+            margin: 18px auto;
+            padding: 14px;
+            display: grid;
+            grid-template-rows: auto auto minmax(220px, 1fr);
+            gap: 12px;
+            height: calc(100vh - 36px);
+        }
+
+        .panel {
+            border: 5px solid black;
+            border-radius: var(--radius);
+            background: #222;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 14px 48px rgba(0, 0, 0, 0.35);
+            margin-top: -5px;
+            margin-bottom: -5px;
+        }
+
+        .hero {
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(18px, 2.4vw, 30px);
+            font-weight: 400;
+            color: var(--field-cyan);
+            /*letter-spacing: 0.3px;*/
+        }
+
+        .hero p {
+            margin: 6px 0 0;
+            color: var(--field-text-soft);
+            font-size: 13px;
+        }
+
+        .hero-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hero-logo {
+            margin: 0;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(72, 201, 255, 0.36);
+            background: rgba(0, 0, 0, 0.62);
+            color: var(--field-cyan);
+            font-family: "Iosevka Web", monospace;
+            font-size: 14px;
+            line-height: 0.95;
+            /*letter-spacing: 1px;*/
+            text-shadow: 0 0 9px rgba(72, 201, 255, 0.45);
+            min-width: 50px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        button,
+        .button-link {
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--field-text);
+            background: var(--field-panel-strong);
+            border: 1px solid var(--field-border);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: border-color 120ms ease, transform 120ms ease;
+        }
+
+        button:hover,
+        .button-link:hover {
+            border-color: var(--field-border-strong);
+            /*transform: translateY(-1px);*/
+        }
+
+        .button-link {
+            display: inline-flex;
+            align-items: center;
+            border-bottom-style: solid;
+        }
+
+        .new-doc {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .new-doc label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--field-text-soft);
+        }
+
+        .new-doc-controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #new-doc-name {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 8px 10px;
+            font: inherit;
+            text-align: left;
+        }
+
+        #new-doc-name::placeholder {
+            font-size: 12px;
+            color: rgba(164, 193, 210, 0.8);
+            text-align: right;
+        }
+
+        #new-doc-name:focus {
+            outline: none;
+            border-color: var(--field-cyan);
+            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
+        }
+
+        #create-status {
+            min-height: 1.2em;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            text-align: right;
+        }
+
+        #create-status.error {
+            color: var(--field-danger);
+        }
+
+        .list-panel {
+            padding: 10px;
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 8px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .list-header {
+            display: none;
+            justify-content: space-between;
+            align-items: baseline;
+            color: var(--field-text-soft);
+            font-size: 12px;
+            padding: 8px 8px 8px 4px;
+        }
+
+        #recent-list {
+            overflow: auto;
+            min-height: 0;
+            padding-right: 6px;
+            display: grid;
+            gap: 8px;
+            align-content: start;
+        }
+
+        .doc-entry {
+            border: none;
+            border-radius: 0px;
+            background: none;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2px;
+            align-items: center;
+            padding: 4px;
+            cursor: pointer;
+            text-align: left;
+            border-bottom: 1px solid black;
+        }
+
+        .doc-entry:hover {
+            border-color: rgba(72, 201, 255, 0.5);
+            color: white;
+            font-weight: 600;
+            font-family: "Iosevka Web", monospace;
+        }
+
+        .doc-entry.active {
+            /*border-color: rgba(72, 201, 255, 0.75);*/
+            /*box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.35) inset;*/
+        }
+
+        .doc-name {
+            font-size: 14px;
+            color: var(--field-text);
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .doc-meta {
+            font-size: 9px;
+            color: var(--field-text-soft);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .empty-state {
+            border: 1px dashed rgba(72, 201, 255, 0.35);
+            border-radius: 9px;
+            padding: 18px;
+            color: var(--field-text-soft);
+            background: rgba(0, 0, 0, 0.2);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        #recent-search {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 8px 10px;
+            font: inherit;
+            text-align: left;
+        }
+
+        #recent-search::placeholder {
+            font-size: 12px;
+            color: rgba(164, 193, 210, 0.8);
+            text-align: right;
+        }
+
+        #recent-search:focus {
+            outline: none;
+            border-color: var(--field-cyan);
+            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
+        }
+
+        #recent-search-status {
+            min-height: 1.2em;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        #recent-search-status.error {
+            color: var(--field-danger);
+        }
+
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: grid;
+            place-items: center;
+            background: var(--field-bg);
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity var(--splash-fade, 700ms) ease;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+        }
+
+        #splash-screen pre {
+            font-family: "Iosevka Web", monospace;
+            color: var(--field-cyan);
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            white-space: pre;
+            opacity: 0;
+            transition: opacity var(--splash-pre-fade, 200ms) ease-in;
+        }
+
+        #splash-screen pre.f4lit {
+            opacity: 1;
+        }
+
+        @media (max-width: 900px) {
+            #welcome-root {
+                grid-template-rows: auto auto minmax(240px, 1fr);
+                margin: 10px auto;
+                height: calc(100vh - 20px);
+            }
+
+            .hero {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .hero-brand {
+                align-items: flex-start;
+            }
+
+            .button-row {
+                justify-content: flex-start;
+            }
+
+            .new-doc {
+                grid-template-columns: 1fr;
+            }
+
+            #create-status {
+                text-align: left;
+            }
+
+            .search-row {
+                grid-template-columns: 1fr;
+            }
+
+            #recent-search-status {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="splash-screen">
+    <pre class="f4drift">
+          _____                    _____                    _____                    _____            _____
+         /\    \                  /\    \                  /\    \                  /\    \          /\    \
+        /::\    \                /::\    \                /::\    \                /::\____\        /::\    \
+       /::::\    \               \:::\    \              /::::\    \              /:::/    /       /::::\    \
+      /::::::\    \               \:::\    \            /::::::\    \            /:::/    /       /::::::\    \
+     /:::/\:::\    \               \:::\    \          /:::/\:::\    \          /:::/    /       /:::/\:::\    \
+    /:::/__\:::\    \               \:::\    \        /:::/__\:::\    \        /:::/    /       /:::/  \:::\    \
+   /::::\   \:::\    \              /::::\    \      /::::\   \:::\    \      /:::/    /       /:::/    \:::\    \
+  /::::::\   \:::\    \    ____    /::::::\    \    /::::::\   \:::\    \    /:::/    /       /:::/    / \:::\    \
+ /:::/\:::\   \:::\    \  /\   \  /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/    /       /:::/    /   \:::\ ___\
+/:::/  \:::\   \:::\____\/::\   \/:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/____/       /:::/____/     \:::|    |
+\::/    \:::\   \::/    /\:::\  /:::/    \::/    /\:::\   \:::\   \::/    /\:::\    \       \:::\    \     /:::|____|
+ \/____/ \:::\   \/____/  \:::\/:::/    / \/____/  \:::\   \:::\   \/____/  \:::\    \       \:::\    \   /:::/    /
+          \:::\    \       \::::::/    /            \:::\   \:::\    \       \:::\    \       \:::\    \ /:::/    /
+           \:::\____\       \::::/____/              \:::\   \:::\____\       \:::\    \       \:::\    /:::/    /
+            \::/    /        \:::\    \               \:::\   \::/    /        \:::\    \       \:::\  /:::/    /
+             \/____/          \:::\    \               \:::\   \/____/          \:::\    \       \:::\/:::/    /
+                               \:::\    \               \:::\    \               \:::\    \       \::::::/    /
+                                \:::\____\               \:::\____\               \:::\____\       \::::/    /
+                                 \::/    /                \::/    /                \::/    /        \::/____/
+                                  \/____/                  \/____/                  \/____/          ~~
+
+</pre>
+</div>
+
+<main id="welcome-root">
+    <section class="panel hero">
+        Field·4
+        <div class="button-row">
+            <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
+            <a class="button-link" href="/dir">/dir</a>
+            <a class="button-link" href="https://openendedgroup.com/field4">/docs</a>
+        </div>
+    </section>
+
+    <section class="panel new-doc">
+        <div>
+<!--            <label for="new-doc-name">Create new document</label>-->
+            <div class="new-doc-controls">
+                <input id="new-doc-name" type="text" autocomplete="off" placeholder="filename">
+                <button id="create-doc" type="button">Create</button>
+            </div>
+        </div>
+        <div id="create-status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel list-panel">
+        <div class="search-row">
+            <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search recent documents">
+            <div id="recent-search-status" aria-live="polite"></div>
+        </div>
+        <div class="list-header">
+            <span>Search</span>
+            <span id="doc-count">0</span>
+        </div>
+        <div id="recent-list"></div>
+    </section>
+</main>
+
+<script>
+    const state = {
+        documents: [],
+        searchQuery: "",
+        lastOpened: "welcome",
+        defaultDocument: "welcome"
+    };
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function formatDuration(ms) {
+        const abs = Math.max(0, Math.floor(ms));
+        if (abs < 1000) return "just now";
+        const minutes = Math.floor(abs / 60000);
+        if (minutes < 1) return `${Math.floor(abs / 1000)}s ago`;
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        const weeks = Math.floor(days / 7);
+        if (weeks < 6) return `${weeks}wk ago`;
+        const months = Math.floor(days / 30);
+        if (months < 24) return `${months}mo ago`;
+        const years = Math.floor(days / 365);
+        return `${years}y ago`;
+    }
+
+    function formatBytes(bytes) {
+        const value = Number(bytes) || 0;
+        if (value < 1024) return `${value} B`;
+        const units = ["KB", "MB", "GB", "TB"];
+        let n = value / 1024;
+        let index = 0;
+        while (n >= 1024 && index < units.length - 1) {
+            n /= 1024;
+            index += 1;
+        }
+        const rounded = n >= 100 ? n.toFixed(0) : n >= 10 ? n.toFixed(1) : n.toFixed(2);
+        return `${rounded} ${units[index]}`;
+    }
+
+    function openDocument(name) {
+        const target = encodeURIComponent(name);
+        window.location.href = `/index.html?file=${target}`;
+    }
+
+    function setCreateStatus(text, isError = false) {
+        const node = document.getElementById("create-status");
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+
+    function getFilteredDocuments() {
+        const query = state.searchQuery.trim().toLowerCase();
+        if (!query) return state.documents;
+        return state.documents.filter((doc) => (doc.filename || "").toLowerCase().includes(query));
+    }
+
+    function validateDocumentName(name) {
+        if (!name) return "Enter a document name.";
+        if (/[\/\\]/.test(name)) return "Document names cannot contain path separators.";
+        if (/\0/.test(name)) return "Document name contains invalid characters.";
+        if (/\.\./.test(name)) return "Document name cannot contain '..'.";
+        if (/^\./.test(name)) return "Document name cannot start with '.'.";
+        if (/\s$/.test(name)) return "Document name cannot end with whitespace.";
+
+        const reservedNames = new Set([
+            "con", "prn", "aux", "nul",
+            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+        ]);
+        if (reservedNames.has(name.toLowerCase())) return "That name is reserved by the OS.";
+
+        const duplicate = state.documents.find(d => d.filename.toLowerCase() === name.toLowerCase());
+        if (duplicate) return `Document '${name}' already exists.`;
+
+        return null;
+    }
+
+    function renderDocuments() {
+        const listNode = document.getElementById("recent-list");
+        const countNode = document.getElementById("doc-count");
+        const allDocs = state.documents;
+        const docs = getFilteredDocuments();
+        if (state.searchQuery.trim()) {
+            countNode.textContent = `${docs.length} of ${allDocs.length} documents`;
+        } else {
+            countNode.textContent = allDocs.length === 1 ? "1 document" : `${allDocs.length} documents`;
+        }
+
+        if (!docs.length) {
+            if (allDocs.length && state.searchQuery.trim()) {
+                listNode.innerHTML = `
+                    <div class="empty-state">
+                        No recent documents match <code>${escapeHtml(state.searchQuery.trim())}</code>.
+                    </div>
+                `;
+                return;
+            }
+            listNode.innerHTML = `
+                <div class="empty-state">
+                    No documents found in this workspace yet.<br><br>
+                    Start with <a href="/index.html?file=welcome"><code>welcome</code></a> or create one above.
+                </div>
+            `;
+            return;
+        }
+
+        listNode.innerHTML = docs.map((doc) => {
+            const activeClass = doc.filename === state.lastOpened ? "active" : "";
+            const when = formatDuration(doc.lastModifiedAgoMs);
+            const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+            const meta = `${boxes} · ${formatBytes(doc.sizeBytes)} · ${when}`;
+            return `
+                <button type="button" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                    <span class="doc-name">${escapeHtml(doc.filename)}</span>
+                    <span class="doc-meta">${escapeHtml(meta)}</span>
+                </button>
+            `;
+        }).join("");
+
+        listNode.querySelectorAll(".doc-entry").forEach((button) => {
+            button.addEventListener("click", () => {
+                const name = button.getAttribute("data-doc");
+                if (name) openDocument(name);
+            });
+        });
+    }
+
+    async function loadWelcomeDocs() {
+        try {
+            const response = await fetch("/api/welcome-docs", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.documents = Array.isArray(payload.documents) ? payload.documents : [];
+            state.lastOpened = payload.lastOpened || "welcome";
+            state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
+            renderDocuments();
+        } catch (error) {
+            console.error("Failed to load welcome docs", error);
+            state.documents = [];
+            renderDocuments();
+            setCreateStatus("Could not load workspace documents.", true);
+        }
+    }
+
+    function installHandlers() {
+        const createButton = document.getElementById("create-doc");
+        const nameInput = document.getElementById("new-doc-name");
+        const searchInput = document.getElementById("recent-search");
+
+        const runCreate = () => {
+            const name = nameInput.value.trim();
+            const error = validateDocumentName(name);
+            if (error) {
+                setCreateStatus(error, true);
+                return;
+            }
+            setCreateStatus("");
+            openDocument(name);
+        };
+
+        createButton.addEventListener("click", runCreate);
+        nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runCreate();
+            }
+        });
+
+        searchInput.addEventListener("input", () => {
+            state.searchQuery = searchInput.value;
+            renderDocuments();
+        });
+
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            const first = getFilteredDocuments()[0];
+            if (first && first.filename) {
+                openDocument(first.filename);
+                return;
+            }
+        });
+
+        requestAnimationFrame(() => {
+            searchInput.focus({ preventScroll: true });
+        });
+    }
+
+    function runSplashAnimation() {
+        const splash = document.querySelector("#splash-screen");
+        const pre = document.querySelector("#splash-screen pre");
+        if (!splash || !pre) return;
+
+        const text = pre.textContent || "";
+        let runId = 0;
+        let timers = [];
+
+        const TIMING = {
+            fadeIn: 200,
+            explodeDelay: 120,
+            driftDuration: 900,
+            maxDelay: 120,
+            settle: 80,
+            fadeOut: 700
+        };
+
+        const clearTimers = () => {
+            timers.forEach((id) => clearTimeout(id));
+            timers = [];
+        };
+
+        const schedule = (ms, fn) => {
+            const id = setTimeout(fn, ms);
+            timers.push(id);
+            return id;
+        };
+
+        const nextFrame = () => new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+
+        const mulberry32 = (seed) => () => {
+            let t = seed += 0x6D2B79F5;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+
+        const style = document.createElement("style");
+        style.textContent = `
+            #splash-screen pre.f4drift .f4ch {
+                display: inline-block;
+                will-change: transform;
+                transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0);
+            }
+        `;
+        document.head.appendChild(style);
+
+        const build = async () => {
+            runId += 1;
+            const myRun = runId;
+            clearTimers();
+
+            const previous = pre.__f4Animations || [];
+            previous.forEach((anim) => {
+                try { anim.cancel(); } catch (_) {}
+            });
+            pre.__f4Animations = [];
+
+            splash.classList.remove("hidden");
+            pre.classList.remove("f4lit");
+            pre.textContent = "";
+
+            splash.style.setProperty("--splash-fade", `${TIMING.fadeOut}ms`);
+            pre.style.setProperty("--splash-pre-fade", `${TIMING.fadeIn}ms`);
+
+            pre.setAttribute("aria-label", text);
+            pre.classList.add("f4drift");
+
+            const frag = document.createDocumentFragment();
+            const chars = Array.from(text);
+            const maxPx = 200.25;
+            const maxDelay = TIMING.maxDelay;
+
+            let printable = 0;
+            for (const ch of chars) if (ch !== "\n") printable++;
+
+            const rng = mulberry32(0xF4D1F7);
+            let i = 0;
+            for (const ch of chars) {
+                if (ch === "\n") {
+                    frag.appendChild(document.createTextNode("\n"));
+                    continue;
+                }
+
+                const span = document.createElement("span");
+                span.className = "f4ch";
+                span.setAttribute("aria-hidden", "true");
+                span.textContent = ch;
+
+                const dx = (rng() * 2 - 1) * maxPx;
+                const dy = (rng() * 2 - 1) * maxPx;
+                const dly = (i / Math.max(1, printable)) * maxDelay;
+
+                span.style.setProperty("--dx", `${dx.toFixed(3)}px`);
+                span.style.setProperty("--dy", `${dy.toFixed(3)}px`);
+                span.style.setProperty("--dly", `${dly.toFixed(1)}ms`);
+
+                frag.appendChild(span);
+                i += 1;
+            }
+
+            pre.appendChild(frag);
+
+            const fadeOutDelay = TIMING.explodeDelay + maxDelay + TIMING.driftDuration + TIMING.settle;
+            await nextFrame();
+            if (myRun !== runId) return;
+
+            pre.classList.add("f4lit");
+            schedule(TIMING.explodeDelay, () => {
+                if (myRun !== runId) return;
+                const animations = [];
+                const spans = pre.querySelectorAll(".f4ch");
+
+                spans.forEach((span) => {
+                    const dx = span.style.getPropertyValue("--dx") || "0px";
+                    const dy = span.style.getPropertyValue("--dy") || "0px";
+                    const dly = span.style.getPropertyValue("--dly") || "0ms";
+                    const anim = span.animate(
+                        [
+                            { transform: `translate3d(${dx}, ${dy}, 0)` },
+                            { transform: "translate3d(0, 0, 0)" }
+                        ],
+                        {
+                            duration: TIMING.driftDuration,
+                            delay: parseFloat(dly) || 0,
+                            easing: "cubic-bezier(.2,.8,.2,1)",
+                            fill: "both"
+                        }
+                    );
+                    animations.push(anim);
+                });
+
+                pre.__f4Animations = animations;
+                Promise.all(animations.map((anim) => anim.finished.catch(() => {}))).then(() => {
+                    if (myRun !== runId) return;
+                    schedule(TIMING.settle, () => {
+                        if (myRun !== runId) return;
+                        splash.classList.add("hidden");
+                    });
+                });
+            });
+
+            schedule(fadeOutDelay + TIMING.fadeOut + 200, () => {
+                if (myRun !== runId) return;
+                splash.classList.add("hidden");
+            });
+        };
+
+        if (document.fonts && document.fonts.ready) {
+            const fontReady = document.fonts.ready.catch(() => {});
+            const fallback = new Promise((resolve) => setTimeout(resolve, 500));
+            Promise.race([fontReady, fallback]).then(build);
+        } else {
+            build();
+        }
+    }
+
+    installHandlers();
+    loadWelcomeDocs();
+    runSplashAnimation();
+</script>
+
+</body>
+</html>
