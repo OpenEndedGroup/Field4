@@ -6,6 +6,7 @@ const APP_NAME = 'Field4';
 const APP_ICON_1024 = path.join(__dirname, 'icon-1024.png');
 const WITH_DEVTOOLS = ['1', 'true', 'yes', 'on'].includes(String(process.env.WITH_DEVTOOLS || '').toLowerCase());
 app.setName(APP_NAME);
+process.title = APP_NAME;
 
 app.commandLine.appendSwitch('ignore-certificate-errors');
 

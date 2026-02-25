@@ -3,6 +3,8 @@
 import java.net.URL
 import java.io.InputStream
 import java.io.PrintStream
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
@@ -479,7 +481,21 @@ val electronInstall = tasks.register("electronInstall") {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")
         if (!isMac) return@doLast
 
-        val plistFile = electronDir.file("node_modules/electron/dist/Electron.app/Contents/Info.plist").asFile
+        val distDir = electronDir.file("node_modules/electron/dist").asFile
+        val electronApp = File(distDir, "Electron.app")
+        val field4App = File(distDir, "Field4.app")
+
+        if (electronApp.exists() && !field4App.exists()) {
+            Files.move(electronApp.toPath(), field4App.toPath())
+            Files.createSymbolicLink(electronApp.toPath(), Paths.get("Field4.app"))
+            logger.lifecycle("Renamed Electron.app bundle to Field4.app and created Electron.app symlink.")
+        } else if (!electronApp.exists() && field4App.exists()) {
+            Files.createSymbolicLink(electronApp.toPath(), Paths.get("Field4.app"))
+            logger.lifecycle("Created Electron.app symlink to existing Field4.app bundle.")
+        }
+
+        val appBundle = if (field4App.exists()) field4App else electronApp
+        val plistFile = File(appBundle, "Contents/Info.plist")
         if (!plistFile.exists()) {
             logger.warn("Electron Info.plist not found at ${plistFile.absolutePath}; skipping app name patch.")
             return@doLast
@@ -494,10 +510,25 @@ val electronInstall = tasks.register("electronInstall") {
         var updated = original
         updated = replacePlistString(updated, "CFBundleDisplayName", "Field4")
         updated = replacePlistString(updated, "CFBundleName", "Field4")
+        updated = replacePlistString(updated, "CFBundleExecutable", "Field4")
+        updated = replacePlistString(updated, "CFBundleIdentifier", "com.field4.desktop")
 
         if (updated != original) {
             plistFile.writeText(updated)
             logger.lifecycle("Patched macOS Electron app name to Field4 in Info.plist.")
+        }
+
+        val macOsDir = File(appBundle, "Contents/MacOS")
+        val electronExecutable = File(macOsDir, "Electron")
+        val field4Executable = File(macOsDir, "Field4")
+        if (electronExecutable.exists() && !field4Executable.exists()) {
+            runCatching {
+                Files.createSymbolicLink(field4Executable.toPath(), Paths.get("Electron"))
+            }.onFailure {
+                electronExecutable.copyTo(field4Executable, overwrite = true)
+                field4Executable.setExecutable(true)
+            }
+            logger.lifecycle("Prepared macOS executable alias: ${field4Executable.absolutePath}")
         }
     }
 }
@@ -587,6 +618,7 @@ tasks.register("runDesktop") {
         if (withDevTools) {
             logger.lifecycle("DevTools enabled for Electron this run.")
         }
+        val port = System.getenv("PORT")?.trim()?.takeIf { it.isNotEmpty() } ?: "9092"
 
         val backendJvmArgs = (runJvmTask.jvmArgs ?: emptyList()).map { it.toString() }.toMutableList()
         requiredRunJvmArgs().forEach { arg ->
@@ -605,21 +637,36 @@ tasks.register("runDesktop") {
         val backendProcess = ProcessBuilder(backendCommand)
             .directory(project.projectDir)
             .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .apply {
+                environment()["PORT"] = port
+            }
             .start()
         forwardProcessOutput(backendProcess)
 
-        val isWindows = System.getProperty("os.name").lowercase().contains("windows")
-        val electronBinary = if (isWindows) {
-            electronDir.file("node_modules/.bin/electron.cmd").asFile
+        val os = System.getProperty("os.name").lowercase()
+        val isWindows = os.contains("windows")
+        val isMac = os.contains("mac")
+        val electronCommand = if (isWindows) {
+            listOf(electronDir.file("node_modules/.bin/electron.cmd").asFile.absolutePath, ".")
+        } else if (isMac) {
+            val field4Primary = electronDir.file("node_modules/electron/dist/Field4.app/Contents/MacOS/Field4").asFile
+            val field4Fallback = electronDir.file("node_modules/electron/dist/Electron.app/Contents/MacOS/Field4").asFile
+            val electronFallback = electronDir.file("node_modules/electron/dist/Electron.app/Contents/MacOS/Electron").asFile
+            val binary = when {
+                field4Primary.exists() -> field4Primary
+                field4Fallback.exists() -> field4Fallback
+                else -> electronFallback
+            }
+            listOf(binary.absolutePath, ".")
         } else {
-            electronDir.file("node_modules/.bin/electron").asFile
+            listOf(electronDir.file("node_modules/.bin/electron").asFile.absolutePath, ".")
         }
+        val electronBinary = File(electronCommand.first())
         if (!electronBinary.exists()) {
             backendProcess.destroyForcibly()
             throw GradleException("Electron binary not found at ${electronBinary.absolutePath}. Run ./gradlew electronInstall")
         }
 
-        val port = System.getenv("PORT") ?: "9092"
         val healthUrl = "https://localhost:${port}/health"
         val appUrlEndpoint = "https://localhost:${port}/app-url"
 
@@ -697,7 +744,7 @@ tasks.register("runDesktop") {
         }.getOrDefault("https://localhost:${port}/index.html")
         logger.lifecycle("Launching Electron with APP_URL=${appUrl}.")
 
-        val electronProcess = ProcessBuilder(electronBinary.absolutePath, ".")
+        val electronProcess = ProcessBuilder(electronCommand)
             .directory(electronDir.asFile)
             .redirectInput(ProcessBuilder.Redirect.INHERIT)
             .apply {

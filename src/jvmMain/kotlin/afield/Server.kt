@@ -952,7 +952,7 @@ class Server {
 
             registerTemplate(home)
 
-            val port = System.getenv("PORT")?.toInt() ?: 9092
+            val port = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
             val httpsHost = "0.0.0.0"
             val keystorePath = System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
             val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
