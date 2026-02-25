@@ -230,6 +230,27 @@ class ForthInterpreter {
                 // -------- leave --------
                 lw == "leave" -> throw LeaveException()
 
+                // -------- reflection bridge --------
+                // @? : ( arg1...argN obj -- result? ) next-token is member name
+                lw == "@?" -> {
+                    if (i + 1 >= end) throw ForthError("@? expects a member name after it", tok.line)
+                    val memberName = tokens[i + 1].text
+                    val obj = pop()
+                    reflectMember(obj, memberName)
+                    i + 2
+                }
+
+                // @?! : ( obj arg1...argN n -- result? ) explicit arg count, obj pushed first
+                lw == "@?!" -> {
+                    if (i + 1 >= end) throw ForthError("@?! expects a member name after it", tok.line)
+                    val memberName = tokens[i + 1].text
+                    val n = popInt()
+                    val args = (0 until n).map { pop() }.reversed()
+                    val obj = pop()
+                    reflectCallN(obj, memberName, args)
+                    i + 2
+                }
+
                 // -------- loop index words (only valid inside do/loop) --------
                 lw == "i" -> {
                     val ls = returnStack.lastOrNull() as? LoopState
@@ -452,8 +473,137 @@ class ForthInterpreter {
     }
 
     // -------------------------------------------------------------------------
-    // Built-in words
+    // JVM Reflection bridge
     // -------------------------------------------------------------------------
+
+    /**
+     * `@?` implementation: access a field, property, or method on [obj] by name.
+     *
+     * Stack convention: `( arg1 ... argN obj -- result? )` — [obj] is popped from TOS before
+     * this is called; remaining stack holds args (deepest = first arg, TOS = last arg).
+     *
+     * - Public fields and 0-arg methods: no args consumed.
+     * - Single non-vararg overload: auto-pops the required number of args.
+     * - Multiple overloads: picks the one whose param count best matches the current stack depth.
+     * - Static access: if [obj] is a [Class], searches static fields/methods.
+     */
+    fun reflectMember(obj: Any, memberName: String) {
+        val klass = if (obj is Class<*>) obj else obj::class.java
+        val instance = if (obj is Class<*>) null else obj
+        val isStatic = obj is Class<*>
+
+        // 1. Public fields (instance or static)
+        klass.fields.firstOrNull { it.name == memberName && (isStatic == java.lang.reflect.Modifier.isStatic(it.modifiers)) }
+            ?.let { field ->
+                val result = field.get(instance)
+                if (result != null) push(result)
+                return
+            }
+
+        // 2. Methods matching name (exclude bridge/synthetic/vararg)
+        val methods = klass.methods
+            .filter { it.name == memberName && !it.isBridge && !it.isSynthetic && !it.isVarArgs
+                && (isStatic == java.lang.reflect.Modifier.isStatic(it.modifiers)) }
+            .sortedBy { it.parameterCount }
+
+        if (methods.isNotEmpty()) {
+            val method = when {
+                methods.first().parameterCount == 0 -> methods.first()
+                methods.size == 1 -> methods.first()
+                else -> methods.firstOrNull { it.parameterCount <= stack.size } ?: methods.first()
+            }
+            val n = method.parameterCount
+            if (n > stack.size) throw ForthError(
+                "Not enough args for ${klass.simpleName}.$memberName (needs $n, have ${stack.size})")
+            val args = (0 until n).map { pop() }.reversed()
+            val coerced = args.zip(method.parameterTypes).map { (a, t) -> coerceArg(t, a) }
+            val result = method.invoke(instance, *coerced.toTypedArray())
+            if (method.returnType != Void.TYPE && result != null) push(result)
+            return
+        }
+
+        // 3. Kotlin property getter: getXxx()
+        klass.methods.firstOrNull { it.name == "get${memberName.replaceFirstChar { c -> c.uppercase() }}"
+            && it.parameterCount == 0 }
+            ?.let { getter ->
+                val result = getter.invoke(instance)
+                if (result != null) push(result)
+                return
+            }
+
+        // 4. Declared (possibly private) fields
+        generateSequence<Class<*>>(klass) { it.superclass }.forEach { c ->
+            try {
+                val field = c.getDeclaredField(memberName)
+                field.isAccessible = true
+                val result = field.get(instance)
+                if (result != null) push(result)
+                return
+            } catch (_: NoSuchFieldException) {}
+        }
+
+        throw ForthError("No member '$memberName' on ${klass.simpleName}")
+    }
+
+    /**
+     * `@?!` implementation: call a method on [obj] with an explicit argument list.
+     *
+     * Picks the first non-vararg overload of [memberName] with exactly [args].size params.
+     * For 0-arg calls, also falls back to Kotlin property getters (`getXxx()`) and fields.
+     */
+    fun reflectCallN(obj: Any, memberName: String, args: List<Any>) {
+        val klass = if (obj is Class<*>) obj else obj::class.java
+        val instance = if (obj is Class<*>) null else obj
+        val isStatic = obj is Class<*>
+        val n = args.size
+        val method = klass.methods.firstOrNull {
+            it.name == memberName && it.parameterCount == n && !it.isVarArgs
+                && (isStatic == java.lang.reflect.Modifier.isStatic(it.modifiers))
+        }
+        if (method != null) {
+            val coerced = args.zip(method.parameterTypes).map { (a, t) -> coerceArg(t, a) }
+            val result = method.invoke(instance, *coerced.toTypedArray())
+            if (method.returnType != Void.TYPE && result != null) push(result)
+            return
+        }
+        // For 0-arg: also try field access and Kotlin getter fallback (same as reflectMember)
+        if (n == 0) {
+            klass.fields.firstOrNull { it.name == memberName }?.let { field ->
+                val result = field.get(instance); if (result != null) push(result); return
+            }
+            klass.methods.firstOrNull { it.name == "get${memberName.replaceFirstChar { c -> c.uppercase() }}"
+                && it.parameterCount == 0 }?.let { getter ->
+                val result = getter.invoke(instance); if (result != null) push(result); return
+            }
+            generateSequence<Class<*>>(klass) { it.superclass }.forEach { c ->
+                try { val f = c.getDeclaredField(memberName); f.isAccessible = true
+                    val result = f.get(instance); if (result != null) push(result); return
+                } catch (_: NoSuchFieldException) {}
+            }
+        }
+        throw ForthError("No ${if (isStatic) "static " else ""}method '${klass.simpleName}.$memberName' with $n params")
+    }
+
+    private fun coerceArg(targetType: Class<*>, value: Any): Any? = when {
+        targetType == Float::class.java || targetType == java.lang.Float.TYPE ->
+            (value as? Number)?.toFloat() ?: value
+        targetType == Double::class.java || targetType == java.lang.Double.TYPE ->
+            (value as? Number)?.toDouble() ?: value
+        targetType == Int::class.java || targetType == java.lang.Integer.TYPE ->
+            (value as? Number)?.toInt() ?: (value as? Boolean)?.let { if (it) 1 else 0 } ?: value
+        targetType == Long::class.java || targetType == java.lang.Long.TYPE ->
+            (value as? Number)?.toLong() ?: value
+        targetType == Short::class.java || targetType == java.lang.Short.TYPE ->
+            (value as? Number)?.toShort() ?: value
+        targetType == Byte::class.java || targetType == java.lang.Byte.TYPE ->
+            (value as? Number)?.toByte() ?: value
+        targetType == Boolean::class.java || targetType == java.lang.Boolean.TYPE ->
+            anyToBool(value)
+        targetType == String::class.java -> value.toString()
+        targetType.isAssignableFrom(value.javaClass) -> value
+        else -> value
+    }
+
 
     private fun builtin(name: String, doc: String = "", impl: ForthInterpreter.() -> Unit) {
         dictionary[name.lowercase()] = ForthWord.Builtin(name, doc, impl)
@@ -478,6 +628,18 @@ class ForthInterpreter {
         builtin("depth", "( -- n ) Stack depth") { push(stack.size.toDouble()) }
         builtin("clear", "( ... -- ) Clear stack") { stack.clear() }
         builtin("?dup",  "( n -- n n | 0 ) Dup if nonzero") { val v = pop(); push(v); if (anyToBool(v)) push(v) }
+        builtin("pick",  "( n -- item ) Copy item at depth n to TOS (0=TOS copy=dup)") {
+            val n = popInt()
+            if (n < 0 || n >= stack.size) throw ForthError("pick: index $n out of range (stack depth ${stack.size})")
+            push(stack[stack.size - 1 - n])
+        }
+        builtin("roll",  "( n -- item ) Move item at depth n to TOS") {
+            val n = popInt()
+            if (n < 0 || n >= stack.size) throw ForthError("roll: index $n out of range (stack depth ${stack.size})")
+            val idx = stack.size - 1 - n
+            val item = stack.removeAt(idx)
+            push(item)
+        }
 
         // --- Arithmetic ---
         builtin("+",      "( a b -- a+b )") { val b = popNum(); push(popNum() + b) }
@@ -587,6 +749,19 @@ class ForthInterpreter {
         builtin("float",        "( n -- f )") { push(popNum()) }
         builtin("str",          "( n -- str )") { push(pop().toString()) }
         builtin("str+",         "( a b -- a++b )") { val b = pop().toString(); push(pop().toString() + b) }
+
+        // --- JVM reflection bridge (see also @? and @?! handled in execTokens) ---
+        builtin("class-for", "( className -- class ) Load a JVM Class by fully-qualified name") {
+            val name = pop().toString()
+            push(Class.forName(name))
+        }
+        // Placeholder entries so @? / @?! appear in completions; real logic is in execTokens.
+        builtin("@?",  "( arg1...argN obj memberName -- result? ) Reflection: field/method on obj") {
+            throw ForthError("@? must be followed by a member name token")
+        }
+        builtin("@?!", "( obj arg1...argN n memberName -- result? ) Reflection: explicit-N method call") {
+            throw ForthError("@?! must be followed by a method name token")
+        }
 
         // --- Vec2 ---
         builtin("vec2",     "( x y -- v )") { val y = popNum().toFloat(); push(Vec2(popNum().toFloat(), y)) }
