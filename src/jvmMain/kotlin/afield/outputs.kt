@@ -88,6 +88,54 @@ private fun escapeHtml(text: String): String {
     }
 }
 
+private fun buildInlineProgressBarHtml(value: Double, details: String? = null): String {
+    val clamped = value.coerceIn(0.0, 1.0)
+    val percent = String.format(Locale.US, "%.2f", clamped * 100.0)
+    val detailsHtml = details
+        ?.takeIf { it.isNotBlank() }
+        ?.let { """<span class="field-inline-progress-details">${escapeHtml(it)}</span>""" }
+        ?: ""
+    return """
+        <span class="field-inline-progress">
+            <span class="field-inline-progress-track">
+                <span class="field-inline-progress-fill" style="width:${percent}%;"></span>
+            </span>
+            $detailsHtml
+        </span>
+    """.trimIndent()
+}
+
+private fun formatProgressDuration(seconds: Double): String {
+    if (!seconds.isFinite()) return "--:--"
+    val total = seconds.coerceAtLeast(0.0).toLong()
+    val hours = total / 3600
+    val minutes = (total % 3600) / 60
+    val secs = total % 60
+    return if (hours > 0) {
+        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, secs)
+    } else {
+        String.format(Locale.US, "%02d:%02d", minutes, secs)
+    }
+}
+
+fun Box.progressBar(name: String, value: Double, details: String? = null) {
+    val channel = name.trim().ifEmpty { "progress" }
+    val inlineChannel = if (channel.startsWith("*")) channel else "*$channel"
+    display(inlineChannel, buildInlineProgressBarHtml(value, details))
+}
+
+interface SizedIterable<out T> : Iterable<T> {
+    val size: Int
+}
+
+fun <T> sizedIterable(size: Int, iteratorFactory: () -> Iterator<T>): SizedIterable<T> {
+    val safeSize = size.coerceAtLeast(0)
+    return object : SizedIterable<T> {
+        override val size: Int = safeSize
+        override fun iterator(): Iterator<T> = iteratorFactory()
+    }
+}
+
 private sealed interface ProcessStreamEvent {
     data class Line(val text: String, val isError: Boolean) : ProcessStreamEvent
     data class Exit(val code: Int) : ProcessStreamEvent
@@ -814,5 +862,74 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
         else -> {
             lprintln("warning,controls", "syncToProperty: unsupported type for property '$propertyName': ${initialValue::class}")
         }
+    }
+}
+
+fun <T> Box.tqdm(items: SizedIterable<T>, name: String = "progress"): Iterable<T> {
+    val totalCount = items.size
+    val startedAt = System.nanoTime()
+
+    fun stats(done: Int): String {
+        val elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000.0
+        val rate = done / elapsedSeconds.coerceAtLeast(1e-9)
+        val remaining = (totalCount - done).coerceAtLeast(0)
+        val etaSeconds = if (rate > 1e-9) remaining / rate else Double.POSITIVE_INFINITY
+        val rateText = String.format(Locale.US, "%.1f", rate)
+        return "$done/$totalCount $rateText it/s ${formatProgressDuration(elapsedSeconds)}<${formatProgressDuration(etaSeconds)}"
+    }
+
+    if (totalCount == 0) {
+        progressBar(name, 1.0, stats(0))
+        return items
+    }
+
+    progressBar(name, 0.0, stats(0))
+    val total = totalCount.toDouble()
+
+    return Iterable {
+        val base = items.iterator()
+        var index = 0
+        var finished = false
+
+        object : Iterator<T> {
+            override fun hasNext(): Boolean {
+                val has = base.hasNext()
+                if (!has && !finished) {
+                    finished = true
+                    progressBar(name, 1.0, stats(totalCount))
+                }
+                return has
+            }
+
+            override fun next(): T {
+                val value = base.next()
+                index++
+                progressBar(name, index / total, stats(index))
+                return value
+            }
+        }
+    }
+}
+
+fun <T> Box.tqdm(items: List<T>, name: String = "progress"): Iterable<T> {
+    return tqdm(sizedIterable(items.size) { items.iterator() }, name)
+}
+
+fun Box.tqdm(items: IntRange, name: String = "progress"): Iterable<Int> {
+    return tqdm(sizedIterable(items.count()) { items.iterator() }, name)
+}
+
+fun Box.tqdm(items: Int, name: String = "progress"): Iterable<Int> {
+    val range = 0 until items.coerceAtLeast(0)
+    return tqdm(range, name)
+}
+
+fun <T> Box.tqdm(items: Iterable<T>, name: String = "progress"): Iterable<T> {
+    @Suppress("UNCHECKED_CAST")
+    return when (items) {
+        is SizedIterable<*> -> tqdm(items as SizedIterable<T>, name)
+        is List<T> -> tqdm(items, name)
+        is Collection<T> -> tqdm(sizedIterable(items.size) { items.iterator() }, name)
+        else -> tqdm(items.toList(), name)
     }
 }

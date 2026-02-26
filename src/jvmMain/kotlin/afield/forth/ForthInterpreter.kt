@@ -1,28 +1,278 @@
 package afield.forth
 
+import afield.classesWithPrefix
+import afield.findClassesNamed
 import afield.graphics.FLine
+import afield.h
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import kotlin.math.*
 
 /**
- * A minimal, self-defining FORTH interpreter for Field4 creative coding.
+ * A compact, extensible FORTH interpreter used by Field4 for live coding.
  *
- * Supports:
- * - Standard FORTH stack operations (dup, drop, swap, over, rot, etc.)
- * - Arithmetic and logic
- * - Word definitions (`: name ... ;`)
- * - Variables and constants
- * - Control flow (if/else/then, begin/until/while/repeat, do/loop)
- * - String literals and output (." ... " and .)
- * - JOML vector support (vec2, vec3, vec4)
- * - FLine integration (fline, moveto, lineto, cubicto, etc.)
- * - Kotlin bridging via `defineWord`
+ * This class is intentionally small and host-driven:
+ * - it executes FORTH source and keeps its own data stack/dictionary
+ * - it ships with creative-coding oriented builtins (vectors + [FLine])
+ * - it can be extended at runtime from Kotlin via [defineWord]
+ * - it can interoperate with host objects using `@?` / `@?!` reflection calls
+ *
+ * Typical host loop:
+ * 1. Construct an interpreter once (`val forth = ForthInterpreter()`).
+ * 2. Register host bridge words with [defineWord] as needed.
+ * 3. Push host objects (buffers, context values, services) onto [stack].
+ * 4. Run `eval(...)`.
+ * 5. Pop resulting values (for example an [FLine]) and hand them to rendering/output code.
+ *
+ * Example: basic execution and stack access:
+ * ```kotlin
+ * val forth = ForthInterpreter()
+ * val diagnostics = forth.eval("2 3 +")
+ * check(diagnostics.isEmpty())
+ * println(forth.popNum()) // 5.0
+ * ```
+ *
+ * Example: defining words in FORTH:
+ * ```forth
+ * : sqr ( n -- n2 ) dup * ;
+ * : hypot2 ( x y -- d2 ) sqr swap sqr + ;
+ * 3 4 hypot2 .
+ * ```
+ *
+ * Example: create an [FLine] shape in FORTH:
+ * ```forth
+ * : stroke-ribbon ( -- f )
+ *   fline
+ *   0   0   moveto
+ *   120 20  lineto
+ *   160 90  210 90  260 20 cubicto
+ *   320 0   lineto
+ *   true  fline-stroked
+ *   false fline-filled
+ *   1.0 0.55 0.2 1.0 fline-color
+ *   2.5 fline-thickness ;
+ *
+ * stroke-ribbon
+ * ```
+ *
+ * Host-side consumption of the resulting [FLine]:
+ * ```kotlin
+ * val forth = ForthInterpreter()
+ * val source = """
+ *   : stroke-ribbon ( -- f )
+ *     fline
+ *     0 0 moveto
+ *     120 20 lineto
+ *     160 90 210 90 260 20 cubicto
+ *     true fline-stroked
+ *     1 0.55 0.2 1 fline-color
+ *     2.5 fline-thickness ;
+ *   stroke-ribbon
+ * """.trimIndent()
+ *
+ * val diagnostics = forth.eval(source)
+ * if (diagnostics.isEmpty()) {
+ *   val line = forth.pop() as FLine
+ *   // Forward `line` into your output channel / renderer.
+ * }
+ * ```
+ *
+ * Example: use vector helpers with FLine convenience words:
+ * ```forth
+ * : zig ( -- f )
+ *   fline
+ *   0   0   vec2 fline-moveto-v2
+ *   40  20  vec2 fline-lineto-v2
+ *   80 -10  vec2 fline-lineto-v2
+ *   120 25  vec2 fline-lineto-v2
+ *   1 0 0 1 fline-node-color ;
+ * zig
+ * ```
+ *
+ * Example: resolve classes without full FQNs.
+ * `class-for` consults Field's class cache (`importHelp.kt`) so short names usually work.
+ *
+ * ```forth
+ * s"FLine" class-for @? getName println
+ * s"Vec3"  class-for @? getName println
+ *
+ * s"Fli" class-matches print   \ returns a list of FQNs
+ * s"Fli" class-help            \ prints one-per-line suggestions
+ * ```
+ *
+ * Example: reflection bridge (`@?` / `@?!`) with [FLine], built entirely by class lookup.
+ * This demonstrates construction + method calls without using the `fline` helper.
+ *
+ * ```forth
+ * variable f
+ * s"FLine" class-for @? newInstance f !
+ *
+ * \ Explicit arity call: f.moveTo(Number, Number, Number)
+ * f @ 0   0   0   3 @?! moveTo drop
+ *
+ * \ Explicit arity call: f.lineTo(Number, Number, Number)
+ * f @ 120 30  0   3 @?! lineTo drop
+ * f @ 220 10  0   3 @?! lineTo drop
+ * f @ 260 80 0  320 80 0  380 20 0  9 @?! cubicTo drop
+ *
+ * \ Properties are just a map on FLine
+ * f @ @? properties  s"thickness" 2.5 2 @?! put
+ * f @ @? properties  s"stroked" true 2 @?! put
+ *
+ * \ Heuristic call for zero-arg methods works well with @?
+ * f @ @? close drop
+ *
+ * \ Leave the final FLine on the stack
+ * f @
+ * ```
+ *
+ * Example: `@?` reads data too (field/getter/method fallback):
+ * ```forth
+ * f @ @? nodes   \ push internal node list
+ * @? size .      \ call size() on that list and print node count
+ * ```
+ *
+ * Example: constructor with explicit args via `@?! new`:
+ * ```forth
+ * variable sb
+ * s"StringBuilder" class-for s"hello" 1 @?! new sb !
+ * sb @ @? toString println
+ * ```
+ *
+ * Example: extending FORTH with Kotlin bridge words.
+ * Here we expose a helper that appends a `vec4` worth of floats into any
+ * `DynamicallyWriteable` buffer (for example `VulkanBuffer` or `FrameBufferGroup`).
+ *
+ * ```kotlin
+ * import afield.four.buffers.DynamicallyWriteable
+ * import afield.stdlib.Vec4
+ *
+ * val forth = ForthInterpreter()
+ * forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
+ *   val w = popNum().toFloat()
+ *   val z = popNum().toFloat()
+ *   val y = popNum().toFloat()
+ *   val x = popNum().toFloat()
+ *   val buf = pop() as DynamicallyWriteable
+ *
+ *   buf.append {
+ *     put(Vec4(x, y, z, w))
+ *   }
+ *   push(buf)
+ * }
+ * ```
+ *
+ * Example: call that bridge word from FORTH after pushing a host buffer:
+ * ```kotlin
+ * forth.push(myDynamicBuffer) // host object: VulkanBuffer / FrameBufferGroup / similar
+ * forth.eval("""
+ *   0.0 1.0 0.0 1.0 append-vec4
+ *   1.0 0.0 0.0 1.0 append-vec4
+ *   0.0 0.0 1.0 1.0 append-vec4
+ * """.trimIndent())
+ * ```
+ *
+ * Example: long-form output areas from FORTH:
+ * ```forth
+ * s"<b>Inline-ish output area content</b>" display
+ * s"<pre>Detailed log text...</pre>" s"debug" display-channel
+ * ```
+ *
+ * Example: launchable animation with cooperative yielding via `frame`.
+ * Run this in Launch mode (or call `begin("default")` on the box), so `spinner` executes
+ * every RunLoop tick. `frame` yields immediately, letting the rest of Field proceed.
+ * Store evolving state in variables, because each strand tick re-enters the word from the top.
+ *
+ * ```forth
+ * variable tick
+ * variable line
+ * 0 tick !
+ *
+ * : spinner ( -- )
+ *   s"FLine" class-for @? newInstance line !
+ *
+ *   \ center point
+ *   line @ 0 0 0 3 @?! moveTo drop
+ *
+ *   \ animated endpoint (simple circular motion)
+ *   line @
+ *   tick @ 0.05 * dup cos 120 *          ( x )
+ *              swap sin 120 *            ( x y )
+ *   0 3 @?! lineTo drop
+ *
+ *   \ style via reflected property map
+ *   line @ @? properties s"thickness" 2.0 2 @?! put
+ *   line @ @? properties s"stroked" true 2 @?! put
+ *   line @ s"geom" display-channel
+ *
+ *   \ show a debug line in output area
+ *   s"tick=" tick @ str str+ s"debug" display-channel
+ *
+ *   1 tick +!
+ *   frame
+ * ;
+ *
+ * spinner
+ * ```
+ *
+ * Example: same pattern with an explicit FORTH loop.
+ * `frame` exits the current tick immediately; on next tick the word starts again.
+ *
+ * ```forth
+ * variable phase
+ * 0 phase !
+ *
+ * : pulse-loop ( -- )
+ *   begin
+ *     s"phase=" phase @ str str+ println
+ *     1 phase +!
+ *     frame
+ *   again ;
+ *
+ * pulse-loop
+ * ```
+ *
+ * Example: full overwrite of float data each tick (`write` resets payload intentionally):
+ * ```kotlin
+ * import afield.four.buffers.DynamicallyWriteable
+ *
+ * forth.defineWord("write-triangle", "( buf -- buf )") {
+ *   val buf = pop() as DynamicallyWriteable
+ *   buf.write {
+ *     // XYZW packed per vertex (3 vertices)
+ *     put(-0.5f); put(-0.5f); put(0f); put(1f)
+ *     put( 0.5f); put(-0.5f); put(0f); put(1f)
+ *     put( 0.0f); put( 0.5f); put(0f); put(1f)
+ *   }
+ *   push(buf)
+ * }
+ * ```
+ *
+ * Notes for dynamic-buffer bridging:
+ * - [defineWord] closures execute on the interpreter thread/context used by your host.
+ * - Prefer `write { ... }` when replacing the payload; `append { ... }` when accumulating.
+ * - `DynamicBuffer.put(Vec4)` follows std430-friendly alignment rules used by Field's buffer code.
+ * - If you need explicit control, call `putScalar(...)` repeatedly instead of vector helpers.
+ *
+ * Builtins included by default:
+ * - stack ops (`dup`, `swap`, `over`, `pick`, `roll`, ...)
+ * - math/logic/control flow (`if/else/then`, `begin/until`, `do/loop`, ...)
+ * - variables/constants (`variable`, `!`, `@`, `constant`)
+ * - strings/output (`."..."`, `s"..."`, `.`, `println`, ...)
+ * - vectors (`vec2`, `vec3`, `vec4` + arithmetic helpers)
+ * - [FLine] primitives (`fline`, `moveto`, `lineto`, `cubicto`, styling words)
+ * - frame/yield primitive (`frame`) for cooperative launch-mode animations
+ * - host reflection hooks (`@?`, `@?!`, `class-for`, `class-matches`, `class-help`)
  */
 class ForthInterpreter {
 
     data class Token(val text: String, val line: Int)
+
+    var currentLine: Int = -1
+        private set
+    var currentToken: String = ""
+        private set
 
     // Data stack
     val stack = ArrayDeque<Any>()
@@ -38,6 +288,8 @@ class ForthInterpreter {
 
     // Output callback
     var onOutput: (String) -> Unit = { print(it) }
+    var onDisplay: (String, Any?) -> Unit = { _, _ -> }
+    var onFrame: () -> Unit = { throw ForthError("'frame' is only available while a FORTH strand is running") }
 
     // Per-box run-loop strands: strandName -> word name to execute each frame
     val strands = HashMap<String, String>()
@@ -52,9 +304,9 @@ class ForthInterpreter {
 
     fun push(v: Any) = stack.addLast(v)
 
-    fun pop(): Any = stack.removeLastOrNull() ?: throw ForthError("Stack underflow")
+    fun pop(): Any = stack.removeLastOrNull() ?: throw ForthError("Stack underflow", currentLine)
 
-    fun peek(): Any = stack.lastOrNull() ?: throw ForthError("Stack underflow")
+    fun peek(): Any = stack.lastOrNull() ?: throw ForthError("Stack underflow", currentLine)
 
     fun popNum(): Double = anyToDouble(pop())
 
@@ -67,7 +319,7 @@ class ForthInterpreter {
         is Long -> v.toDouble()
         is Number -> v.toDouble()
         is Boolean -> if (v) -1.0 else 0.0
-        else -> throw ForthError("Expected number, got ${v::class.simpleName}: $v")
+        else -> throw ForthError("Expected number, got ${v::class.simpleName}: $v", currentLine)
     }
 
     fun anyToBool(v: Any): Boolean = when (v) {
@@ -93,13 +345,19 @@ class ForthInterpreter {
      */
     fun eval(source: String): List<ForthDiagnostic> {
         val diagnostics = mutableListOf<ForthDiagnostic>()
+        currentLine = -1
+        currentToken = ""
         try {
             val tokens = tokenize(source)
             execTokens(tokens, 0, tokens.size)
+        } catch (_: ForthFrameYield) {
+            // Cooperative yield from `frame` inside launch/strand execution.
         } catch (e: ForthError) {
             diagnostics += ForthDiagnostic(e.message ?: "Unknown error", e.line)
         } catch (e: Throwable) {
-            diagnostics += ForthDiagnostic(e.message ?: e.javaClass.name, -1)
+            val line = if (currentLine >= 0) currentLine else -1
+            val summary = e.message ?: e.javaClass.simpleName
+            diagnostics += ForthDiagnostic("${e.javaClass.simpleName}: $summary", line)
         }
         return diagnostics
     }
@@ -174,6 +432,8 @@ class ForthInterpreter {
             val word = tok.text
             val lw = word.lowercase()
             val line = tok.line
+            currentLine = line
+            currentToken = word
 
             i = when {
                 // -------- word definition --------
@@ -236,7 +496,7 @@ class ForthInterpreter {
                     if (i + 1 >= end) throw ForthError("@? expects a member name after it", tok.line)
                     val memberName = tokens[i + 1].text
                     val obj = pop()
-                    reflectMember(obj, memberName)
+                    reflectMember(obj, memberName, tok.line)
                     i + 2
                 }
 
@@ -247,7 +507,7 @@ class ForthInterpreter {
                     val n = popInt()
                     val args = (0 until n).map { pop() }.reversed()
                     val obj = pop()
-                    reflectCallN(obj, memberName, args)
+                    reflectCallN(obj, memberName, args, tok.line)
                     i + 2
                 }
 
@@ -415,6 +675,74 @@ class ForthInterpreter {
         return s.toDoubleOrNull() ?: throw ForthError("Not a number: '$s'")
     }
 
+    private fun classNameVariants(raw: String): List<String> {
+        val q = raw.trim()
+        if (q.isEmpty()) return emptyList()
+        val cased = q.replaceFirstChar { ch ->
+            if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+        }
+        return listOf(q, cased).distinct()
+    }
+
+    private fun classMatches(raw: String, limit: Int = 24): List<String> {
+        val variants = classNameVariants(raw)
+        if (variants.isEmpty()) return emptyList()
+
+        val exact = variants
+            .flatMap { findClassesNamed(it).orEmpty() }
+            .distinct()
+
+        val prefix = variants
+            .flatMap { classesWithPrefix(it).map { pair -> pair.second } }
+            .distinct()
+
+        return (exact + prefix)
+            .distinct()
+            .sorted()
+            .take(limit.coerceAtLeast(1))
+    }
+
+    private fun resolveClassByName(raw: String): Class<*> {
+        val variants = classNameVariants(raw)
+        if (variants.isEmpty()) throw ForthError("class-for: expected a class name")
+
+        // First allow direct FQNs (or direct binary names) as-is.
+        variants.forEach { candidate ->
+            try {
+                return Class.forName(candidate)
+            } catch (_: Throwable) {
+            }
+        }
+
+        // Then resolve short/simple names from importHelp cache.
+        val exactClasses = variants
+            .flatMap { findClassesNamed(it).orEmpty() }
+            .distinct()
+            .mapNotNull { fqn ->
+                try {
+                    Class.forName(fqn)
+                } catch (_: Throwable) {
+                    null
+                }
+            }
+            .distinctBy { it.name }
+
+        if (exactClasses.size == 1) return exactClasses.first()
+        if (exactClasses.size > 1) {
+            val matches = exactClasses.map { it.name }.sorted()
+            val shown = matches.take(8).joinToString(", ")
+            val suffix = if (matches.size > 8) ", ..." else ""
+            throw ForthError("class-for: '${variants.first()}' is ambiguous; use FQN ($shown$suffix)")
+        }
+
+        val suggestions = classMatches(variants.first(), limit = 8)
+        if (suggestions.isNotEmpty()) {
+            throw ForthError("class-for: no exact class '${variants.first()}'. Try: ${suggestions.joinToString(", ")}")
+        }
+
+        throw ForthError("class-for: no class '${variants.first()}'")
+    }
+
     // -------------------------------------------------------------------------
     // Completion support
     // -------------------------------------------------------------------------
@@ -487,7 +815,11 @@ class ForthInterpreter {
      * - Multiple overloads: picks the one whose param count best matches the current stack depth.
      * - Static access: if [obj] is a [Class], searches static fields/methods.
      */
-    fun reflectMember(obj: Any, memberName: String) {
+    fun reflectMember(obj: Any, memberName: String, line: Int = -1) {
+        if (obj is Class<*> && (memberName == "new" || memberName == "newInstance")) {
+            constructClass(obj, emptyList(), line)
+            return
+        }
         val klass = if (obj is Class<*>) obj else obj::class.java
         val instance = if (obj is Class<*>) null else obj
         val isStatic = obj is Class<*>
@@ -514,7 +846,7 @@ class ForthInterpreter {
             }
             val n = method.parameterCount
             if (n > stack.size) throw ForthError(
-                "Not enough args for ${klass.simpleName}.$memberName (needs $n, have ${stack.size})")
+                "Not enough args for ${klass.simpleName}.$memberName (needs $n, have ${stack.size})", line)
             val args = (0 until n).map { pop() }.reversed()
             val coerced = args.zip(method.parameterTypes).map { (a, t) -> coerceArg(t, a) }
             val result = method.invoke(instance, *coerced.toTypedArray())
@@ -542,7 +874,7 @@ class ForthInterpreter {
             } catch (_: NoSuchFieldException) {}
         }
 
-        throw ForthError("No member '$memberName' on ${klass.simpleName}")
+        throw ForthError("No member '$memberName' on ${klass.simpleName}", line)
     }
 
     /**
@@ -551,7 +883,11 @@ class ForthInterpreter {
      * Picks the first non-vararg overload of [memberName] with exactly [args].size params.
      * For 0-arg calls, also falls back to Kotlin property getters (`getXxx()`) and fields.
      */
-    fun reflectCallN(obj: Any, memberName: String, args: List<Any>) {
+    fun reflectCallN(obj: Any, memberName: String, args: List<Any>, line: Int = -1) {
+        if (obj is Class<*> && (memberName == "new" || memberName == "newInstance")) {
+            constructClass(obj, args, line)
+            return
+        }
         val klass = if (obj is Class<*>) obj else obj::class.java
         val instance = if (obj is Class<*>) null else obj
         val isStatic = obj is Class<*>
@@ -581,7 +917,38 @@ class ForthInterpreter {
                 } catch (_: NoSuchFieldException) {}
             }
         }
-        throw ForthError("No ${if (isStatic) "static " else ""}method '${klass.simpleName}.$memberName' with $n params")
+        throw ForthError(
+            "No ${if (isStatic) "static " else ""}method '${klass.simpleName}.$memberName' with $n params",
+            line
+        )
+    }
+
+    private fun constructClass(klass: Class<*>, args: List<Any>, line: Int = -1) {
+        val ctors = klass.constructors
+            .filter { it.parameterCount == args.size }
+            .sortedBy { it.parameterCount }
+        if (ctors.isEmpty()) throw ForthError(
+            "No constructor '${klass.simpleName}(${args.size} args)'",
+            line
+        )
+
+        var lastFailure: Throwable? = null
+        for (ctor in ctors) {
+            val coerced = args.zip(ctor.parameterTypes).map { (a, t) -> coerceArg(t, a) }.toTypedArray()
+            try {
+                val result = ctor.newInstance(*coerced)
+                if (result != null) push(result)
+                return
+            } catch (t: Throwable) {
+                lastFailure = t
+            }
+        }
+
+        val details = lastFailure?.cause?.message ?: lastFailure?.message
+        throw ForthError(
+            "Could not construct '${klass.simpleName}' with ${args.size} args" + (details?.let { ": $it" } ?: ""),
+            line
+        )
     }
 
     private fun coerceArg(targetType: Class<*>, value: Any): Any? = when {
@@ -714,14 +1081,20 @@ class ForthInterpreter {
 
         // --- Output ---
         builtin(".",       "( n -- ) Print number") { onOutput("${popNum()} ") }
-        builtin(".s",      "( -- ) Print stack") { onOutput("<${stack.size}> ${stack.joinToString(" ")} ") }
+        builtin(".s",      "( -- ) Print stack") { onOutput("${stack.h}") }
         builtin("cr",      "( -- ) Newline") { onOutput("\n") }
         builtin("space",   "( -- ) Space") { onOutput(" ") }
         builtin("spaces",  "( n -- ) N spaces") { onOutput(" ".repeat(popInt().coerceAtLeast(0))) }
         builtin("emit",    "( c -- ) Print char") { onOutput(popInt().toChar().toString()) }
         builtin("type",    "( str -- ) Print string") { onOutput(pop().toString()) }
-        builtin("print",   "( val -- ) Print") { onOutput("${pop()} ") }
-        builtin("println", "( val -- ) Print+newline") { onOutput("${pop()}\n") }
+        builtin("print",   "( val -- ) Print") { onOutput("${pop().h} ") }
+        builtin("println", "( val -- ) Print+newline") { onOutput("${pop().h}\n") }
+        builtin("display", "( val -- ) Send to output area channel 'output'") { onDisplay("output", pop().h) }
+        builtin("display-channel", "( val channel -- ) Send to output area channel") {
+            val channel = pop().toString()
+            val value = pop()
+            onDisplay(channel, value.h)
+        }
 
         // --- Control flow placeholders (only valid inside word bodies) ---
         for (cfWord in listOf("if", "else", "then", "begin", "until", "while", "repeat", "do", "loop", "+loop", "leave")) {
@@ -749,17 +1122,30 @@ class ForthInterpreter {
         builtin("float",        "( n -- f )") { push(popNum()) }
         builtin("str",          "( n -- str )") { push(pop().toString()) }
         builtin("str+",         "( a b -- a++b )") { val b = pop().toString(); push(pop().toString() + b) }
+        builtin("frame",        "( -- ) Yield until the next RunLoop tick (launch mode only)") { onFrame() }
 
         // --- JVM reflection bridge (see also @? and @?! handled in execTokens) ---
-        builtin("class-for", "( className -- class ) Load a JVM Class by fully-qualified name") {
+        builtin("class-for", "( className -- class ) Resolve a JVM Class (FQN or simple name via importHelp cache)") {
             val name = pop().toString()
-            push(Class.forName(name))
+            push(resolveClassByName(name))
+        }
+        builtin("class-matches", "( prefix -- matches ) List FQNs matching a class-name prefix") {
+            push(classMatches(pop().toString(), limit = 64))
+        }
+        builtin("class-help", "( prefix -- ) Print matching class FQNs, one per line") {
+            val prefix = pop().toString()
+            val matches = classMatches(prefix, limit = 24)
+            if (matches.isEmpty()) {
+                onOutput("(no class matches for '$prefix')\n")
+            } else {
+                onOutput(matches.joinToString(separator = "\n", postfix = "\n"))
+            }
         }
         // Placeholder entries so @? / @?! appear in completions; real logic is in execTokens.
-        builtin("@?",  "( arg1...argN obj memberName -- result? ) Reflection: field/method on obj") {
+        builtin("@?",  "( arg1...argN obj -- result? ) Reflection: next token is member name") {
             throw ForthError("@? must be followed by a member name token")
         }
-        builtin("@?!", "( obj arg1...argN n memberName -- result? ) Reflection: explicit-N method call") {
+        builtin("@?!", "( obj arg1...argN n -- result? ) Reflection: next token is member name, explicit arity") {
             throw ForthError("@?! must be followed by a method name token")
         }
 
@@ -877,6 +1263,7 @@ sealed class ForthWord {
 }
 
 class ForthError(message: String, val line: Int = -1) : RuntimeException(message)
+class ForthFrameYield : Throwable()
 
 data class ForthDiagnostic(val message: String, val line: Int)
 

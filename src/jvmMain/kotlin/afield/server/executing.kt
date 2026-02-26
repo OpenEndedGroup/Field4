@@ -45,8 +45,9 @@ fun executing() {
 
 
             inMain {
-                box.ki = makeKIHere(box)
                 // experimental
+                if (box.ke is KotlinExecution)
+                    box.ki = makeKIHere(box)
                 box.properties["_preamble"] = "" // remove record of previous preamble line execs
                 box.properties["_introduction"] = "" // ditto for introduction
                 box.ke.executeAll(box, exec, reply)

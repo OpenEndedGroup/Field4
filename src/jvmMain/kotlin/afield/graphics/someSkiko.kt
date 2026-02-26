@@ -144,13 +144,17 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
         he = r.h+r.y
     }
 
-    val s = SVGCanvas.make(Rect.makeWH(we.toFloat(), he.toFloat()), o, true, true)
+    var s: Canvas? = null
+    try {
+        s = SVGCanvas.make(Rect.makeWH(we.toFloat(), he.toFloat()), o, true, true)
 
-    n.forEach {
-        outputTo(it, s)
+        n.forEach {
+            outputTo(it, s)
+        }
+    } finally {
+        runCatching { s?.close() }
+        runCatching { o.close() }
     }
-    s.close()
-    o.close()
 
     val hack = "xmlns=\"http://www.w3.org/2000/svg\""
     return ba.toString().replace(hack, " style='overflow:visible' " + hack)
@@ -194,76 +198,80 @@ private fun FLine.applyFit(transform: FitTransform?): FLine {
  * Draw a single [FLine] to a Skia [Canvas], honoring stroke, fill, and point settings.
  */
 fun outputTo(f: FLine, s: Canvas) {
-    var p = Path()
-
-    var first = true
-    f.nodes.forEach {
-        when (it) {
-            is FLine.MoveTo -> p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
-            is FLine.LineTo -> {
-                if (first) {
-                    p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
-                } else
-                    p.lineTo(it.to.x.toFloat(), it.to.y.toFloat())
-            }
-
-            is FLine.CubicTo -> {
-                if (first) {
-                    p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
-                } else
-
-                    p.cubicTo(
-                        it.c1.x.toFloat(),
-                        it.c1.y.toFloat(),
-                        it.c2.x.toFloat(),
-                        it.c2.y.toFloat(),
-                        it.to.x.toFloat(),
-                        it.to.y.toFloat()
-                    )
-            }
-
-            is FLine.Close -> p.closePath()
-        }
-        first = false
-    }
-
+    val p = Path()
     val paint = Paint()
-    paint.strokeWidth = f.thickness?.toFloat() ?: 1.0f
-    val c = f.color
-    paint.color4f = Color4f(c.x.toFloat(), c.y.toFloat(), c.z.toFloat(), c.w.toFloat())
-    val mode =
-        if (f.stroked && f.filled)
-            PaintMode.STROKE_AND_FILL
-        else
-            if (f.stroked)
-                PaintMode.STROKE
-            else if (f.filled) PaintMode.FILL
-            else null
-
-    if (mode != null) {
-        paint.mode = mode
-        s.drawPath(p, paint)
-    }
-
-    fun radiusFor(f: FLine, it: FLine.Node) = (it.pointSize ?: f.pointSize)*3.0
-
-    if (f.pointed) {
-        var circ = Path()
-
+    var circ: Path? = null
+    try {
+        var first = true
         f.nodes.forEach {
             when (it) {
-                is FLine.MoveTo -> circ.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
-                is FLine.LineTo -> circ.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
-                is FLine.CubicTo -> circ.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
-                is FLine.Close -> {}
+                is FLine.MoveTo -> p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
+                is FLine.LineTo -> {
+                    if (first) {
+                        p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
+                    } else
+                        p.lineTo(it.to.x.toFloat(), it.to.y.toFloat())
+                }
+
+                is FLine.CubicTo -> {
+                    if (first) {
+                        p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
+                    } else
+
+                        p.cubicTo(
+                            it.c1.x.toFloat(),
+                            it.c1.y.toFloat(),
+                            it.c2.x.toFloat(),
+                            it.c2.y.toFloat(),
+                            it.to.x.toFloat(),
+                            it.to.y.toFloat()
+                        )
+                }
+
+                is FLine.Close -> p.closePath()
             }
+            first = false
         }
 
+        paint.strokeWidth = f.thickness?.toFloat() ?: 1.0f
+        val c = f.color
         paint.color4f = Color4f(c.x.toFloat(), c.y.toFloat(), c.z.toFloat(), c.w.toFloat())
-        paint.mode = PaintMode.FILL
-        s.drawPath(circ, paint)
-    }
+        val mode =
+            if (f.stroked && f.filled)
+                PaintMode.STROKE_AND_FILL
+            else
+                if (f.stroked)
+                    PaintMode.STROKE
+                else if (f.filled) PaintMode.FILL
+                else null
 
-    p.close()
+        if (mode != null) {
+            paint.mode = mode
+            s.drawPath(p, paint)
+        }
+
+        fun radiusFor(f: FLine, it: FLine.Node) = (it.pointSize ?: f.pointSize) * 3.0
+
+        if (f.pointed) {
+            circ = Path()
+
+            f.nodes.forEach {
+                when (it) {
+                    is FLine.MoveTo -> circ?.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
+                    is FLine.LineTo -> circ?.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
+                    is FLine.CubicTo -> circ?.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
+                    is FLine.Close -> {}
+                }
+            }
+
+            paint.color4f = Color4f(c.x.toFloat(), c.y.toFloat(), c.z.toFloat(), c.w.toFloat())
+            paint.mode = PaintMode.FILL
+            circ?.let { s.drawPath(it, paint) }
+        }
+    } finally {
+        runCatching { circ?.close() }
+        runCatching { paint.close() }
+        runCatching { p.close() }
+    }
 
 }

@@ -193,9 +193,11 @@ class KotlinInterface(
 //        val r2 = cache.get(s)
 //        if (r2!=null) return r2
 
+        lprintln("info,kotlin,perf", "\t\t compile code $s")
+
         coroutineScope {
-//            async(Runloop.miscPool.asCoroutineDispatcher()) { // Not until K2
-                async(compilationThread) {
+            print(" -- inside coroutineScope")
+            async(compilationThread) {
                 val ns = measureNanoTime {
                     r = compiler.compile(code, compilerConfig)
                 }
@@ -328,7 +330,10 @@ class KotlinInterface(
                             expression.children.forEach {
                                 when (it) {
                                     is KtNameReferenceExpression -> {
-                                        lprintln("debug,kotlin", "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}")
+                                        lprintln(
+                                            "debug,kotlin",
+                                            "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}"
+                                        )
 
                                         var ns = it.nextSibling
                                         val t = mutableListOf<String>()
@@ -339,13 +344,13 @@ class KotlinInterface(
 
                                         val e = MacroRegistry.rewrite(box, it.text, t)
                                         if (e != null) {
-                                                if (e.start.length > 0) {
-                                                    edits.add((0 to 0) to e.preamble)
-                                                }
-                                                if (e.afterImports.length > 0) {
-                                                    val a = findLastImport(s)
-                                                    edits.add((a to a) to e.afterImports)
-                                                }
+                                            if (e.start.length > 0) {
+                                                edits.add((0 to 0) to e.preamble)
+                                            }
+                                            if (e.afterImports.length > 0) {
+                                                val a = findLastImport(s)
+                                                edits.add((a to a) to e.afterImports)
+                                            }
 
                                             edits.add((expression.startOffset to expression.endOffset) to e.here)
 
@@ -425,9 +430,19 @@ class KotlinInterface(
     var execNumber = 0
     suspend fun exec(
         s: String,
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onCompileError default handler $it") },
+        onCompileError: (List<ScriptDiagnostic>) -> Unit = {
+            lprintln(
+                "error,kotlin",
+                "onCompileError default handler $it"
+            )
+        },
         onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
-        onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it"); throw it },
+        onEvalException: (Throwable) -> Unit = {
+            lprintln(
+                "error,kotlin",
+                "onEvalException default handler $it"
+            ); throw it
+        },
         implicits: List<Any> = emptyList(),
     ): ResultValue? {
 
@@ -514,8 +529,18 @@ class KotlinInterface(
         suspend fun eval(
             updateContext: Boolean = false,
             implicits: List<Any> = defaultImplicits,
-            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
-            onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it"); throw it }
+            onEvalError: (List<ScriptDiagnostic>) -> Unit = {
+                lprintln(
+                    "error,kotlin",
+                    "onEvalError default handler $it"
+                )
+            },
+            onEvalException: (Throwable) -> Unit = {
+                lprintln(
+                    "error,kotlin",
+                    "onEvalException default handler $it"
+                ); throw it
+            }
         ): ResultValue? {
             return when (val r = evaluate(compiled, updateContext, implicits)) {
                 is ResultWithDiagnostics.Success -> {
@@ -557,7 +582,12 @@ class KotlinInterface(
         fun evalAndWait(
             updateContext: Boolean = false,
             implicits: List<Any> = defaultImplicits,
-            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
+            onEvalError: (List<ScriptDiagnostic>) -> Unit = {
+                lprintln(
+                    "error,kotlin",
+                    "onEvalError default handler $it"
+                )
+            },
             onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it") }
         ): ResultValue? {
             return runBlocking {
@@ -579,7 +609,12 @@ class KotlinInterface(
     suspend fun compileSnippet(
         s: String,
         implicits: List<Any> = emptyList(),
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onCompileError default handler $it") }
+        onCompileError: (List<ScriptDiagnostic>) -> Unit = {
+            lprintln(
+                "error,kotlin",
+                "onCompileError default handler $it"
+            )
+        }
     ): CompiledSnippet? {
         return when (val r = compile(s)) {
             is ResultWithDiagnostics.Success -> {
@@ -674,9 +709,16 @@ class KotlinInterface(
         fun getResult(
             code: String, cursor: Int, completions: List<SourceCodeCompletionVariant>
         ): CompletionResult.Success {
-            val filteredCompletions = completions.filter { !it.text.contains("clojure", ignoreCase = true) }.filter { !it.text.contains("$", ignoreCase = true) }
+            val filteredCompletions = completions.filter { !it.text.contains("clojure", ignoreCase = true) }
+                .filter { !it.text.contains("$", ignoreCase = true) }
             val bounds = getTokenBounds(code, cursor)
-            return CompletionResult.Success(filteredCompletions.map { it.text }, bounds, filteredCompletions, code, cursor)
+            return CompletionResult.Success(
+                filteredCompletions.map { it.text },
+                bounds,
+                filteredCompletions,
+                code,
+                cursor
+            )
         }
     }
 
@@ -738,7 +780,11 @@ class KotlinInterface(
         }
     }
 
-    class ContextUpdater(val context: KotlinContext, private val evaluator: BasicJvmReplEvaluator, private val ki: KotlinInterface) {
+    class ContextUpdater(
+        val context: KotlinContext,
+        private val evaluator: BasicJvmReplEvaluator,
+        private val ki: KotlinInterface
+    ) {
 
         private var lastProcessedSnippet: LinkedSnippet<KJvmEvaluatedSnippet>? = null
 
@@ -1019,8 +1065,8 @@ class KotlinInterface(
                 if (descriptor != null) {
                     context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
                     val isExported = field.isAnnotationPresent(exported::class.java) ||
-                        descriptor.annotations.any { it.annotationClass == exported::class } ||
-                        descriptor.getter.annotations.any { it.annotationClass == exported::class }
+                            descriptor.annotations.any { it.annotationClass == exported::class } ||
+                            descriptor.getter.annotations.any { it.annotationClass == exported::class }
                     if (isExported) {
                         processExportedProperty(descriptor.name, descriptor, value)
                     }

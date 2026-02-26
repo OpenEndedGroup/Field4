@@ -3,6 +3,7 @@ import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send } from "./afield.mjs";
 const DEFAULT_W = 480;
 const DEFAULT_H = 240;
 const CLOSED_W = 200;
+const INLINE_CHANNEL_PREFIX = "*";
 
 // --- Disclosure handling (new behavior) ---
 function disclosureInterface(container) {
@@ -10,6 +11,16 @@ function disclosureInterface(container) {
 
         const disclosures = new Map(); // id -> { wrap, hdr, cw, arr }
         const states = new Map(); // id -> { open, width, height, scrollTop, scrollLeft }
+
+        function isInlineId(id) {
+                return typeof id === "string" && id.startsWith(INLINE_CHANNEL_PREFIX);
+        }
+
+        function inlineTitle(title) {
+                if (typeof title !== "string") return "";
+                const cleaned = title.replace(/^\*+/, "").trim();
+                return cleaned || title;
+        }
 
         function ensureState(id) {
             if (!states.has(id)) {
@@ -19,6 +30,7 @@ function disclosureInterface(container) {
         }
 
         function saveScroll(id, d) {
+                if (d.inline) return;
                 const st = ensureState(id);
                 st.scrollTop = d.cw.scrollTop;
                 st.scrollLeft = d.cw.scrollLeft;
@@ -26,6 +38,7 @@ function disclosureInterface(container) {
         }
 
         function rememberSize(id, d) {
+                if (d.inline) return;
                 if (d.cw.style.display === "none") return;
                 const st = ensureState(id);
                 const rect = d.cw.getBoundingClientRect();
@@ -36,6 +49,7 @@ function disclosureInterface(container) {
         }
 
         function applyClosed(d) {
+                if (d.inline) return;
                 d.wrap.classList.remove("open");
                 d.cw.style.display = "none";
                 d.cw.style.height = "0px";
@@ -44,6 +58,7 @@ function disclosureInterface(container) {
         }
 
         function applyOpen(id, d) {
+                if (d.inline) return;
                 const st = ensureState(id);
                 const w = st.width || DEFAULT_W;
                 const h = st.height || DEFAULT_H;
@@ -58,6 +73,7 @@ function disclosureInterface(container) {
         }
 
         function ensureBehaviors(id, d) {
+                if (d.inline) return;
                 d.cw.style.overflow = "auto";
                 d.cw.style.resize = "both";
                 d.cw.style.boxSizing = "border-box";
@@ -77,6 +93,12 @@ function disclosureInterface(container) {
         function open(id) {
                 const d = disclosures.get(id);
                 if (!d) return;
+                if (d.inline) {
+                        const st = ensureState(id);
+                        st.open = true;
+                        states.set(id, st);
+                        return;
+                }
                 const st = ensureState(id);
                 if (!st.width) st.width = DEFAULT_W;
                 if (!st.height) st.height = DEFAULT_H;
@@ -88,6 +110,12 @@ function disclosureInterface(container) {
         function close(id) {
                 const d = disclosures.get(id);
                 if (!d) return;
+                if (d.inline) {
+                        const st = ensureState(id);
+                        st.open = false;
+                        states.set(id, st);
+                        return;
+                }
                 rememberSize(id, d);
                 saveScroll(id, d);
                 const st = ensureState(id);
@@ -135,19 +163,24 @@ function disclosureInterface(container) {
 
         function clearRemoveIndicators() {
                 for (const d of disclosures.values()) {
+                        if (d.inline) continue;
                         d.arr.classList.remove("remove-mode");
                 }
         }
 
         function updateRemoveIndicators(id, event) {
+                const current = disclosures.get(id);
+                if (!current || current.inline) return;
                 if (event.altKey && event.shiftKey) {
                         for (const [otherId, d] of disclosures.entries()) {
+                                if (d.inline) continue;
                                 d.arr.classList.toggle("remove-mode", otherId !== id);
                         }
                         return;
                 }
                 if (event.altKey) {
                         for (const [otherId, d] of disclosures.entries()) {
+                                if (d.inline) continue;
                                 d.arr.classList.toggle("remove-mode", otherId === id);
                         }
                         return;
@@ -158,32 +191,48 @@ function disclosureInterface(container) {
         function upsertDisclosure(id, title, content) {
                 let d = disclosures.get(id);
                 if (!d) {
+                        const inline = isInlineId(id);
                         const wrap = document.createElement("div");
-                        wrap.className = "disclosure";
+                        wrap.className = inline ? "disclosure disclosure-inline" : "disclosure";
                         wrap.__disclosureId = id;
                         const hdr = document.createElement("div");
-                        hdr.className = "disclosure-header";
+                        hdr.className = inline ? "disclosure-header disclosure-header-inline no-hover" : "disclosure-header";
                         const arr = document.createElement("div");
-                        arr.className = "arrow";
+                        arr.className = inline ? "inline-channel" : "arrow";
                         const ttl = document.createElement("div");
-                        ttl.className = "title";
-                        ttl.textContent = title;
+                        ttl.className = inline ? "inline-value" : "title";
+                        if (inline) {
+                                arr.textContent = inlineTitle(title);
+                                ttl.innerHTML = content || "";
+                        } else {
+                                ttl.textContent = title;
+                        }
                         hdr.append(arr, ttl);
                         const cw = document.createElement("div");
                         cw.className = "disclosure-content";
                         cw.innerHTML = content || "";
 
-                        const updateIndicators = (e) => {
-                                updateRemoveIndicators(id, e);
-                        };
+                        if (!inline) {
+                                const updateIndicators = (e) => {
+                                        updateRemoveIndicators(id, e);
+                                };
 
-                        arr.addEventListener("mouseenter", updateIndicators);
-                        arr.addEventListener("mousemove", updateIndicators);
-                        arr.addEventListener("mousedown", updateIndicators);
-                        arr.addEventListener("mouseleave", () => clearRemoveIndicators());
+                                arr.addEventListener("mouseenter", updateIndicators);
+                                arr.addEventListener("mousemove", updateIndicators);
+                                arr.addEventListener("mousedown", updateIndicators);
+                                arr.addEventListener("mouseleave", () => clearRemoveIndicators());
+                        }
 
                         hdr.addEventListener("click", (e) => {
                                 if (!e.target.closest("input, label")) {
+                                        if (inline) {
+                                                if (e.altKey && e.shiftKey) {
+                                                        removeAllExcept(id);
+                                                } else if (e.altKey) {
+                                                        remove(id);
+                                                }
+                                                return;
+                                        }
                                         if (e.altKey && e.shiftKey) {
                                                 // Alt+Shift+click removes all other disclosures
                                                 removeAllExcept(id);
@@ -203,22 +252,34 @@ function disclosureInterface(container) {
 
                         wrap.append(hdr, cw);
                         container.appendChild(wrap);
-                        d = { wrap, hdr, cw, arr };
+                        d = { wrap, hdr, cw, arr, inline, inlineValue: ttl };
                         disclosures.set(id, d);
                         ensureBehaviors(id, d);
-                        applyClosed(d);
+                        if (!inline) {
+                                applyClosed(d);
+                        }
                 } else {
-                        const { hdr, cw } = d;
-                        hdr.querySelector(".title").textContent = title;
-                        cw.innerHTML = content || "";
+                        const { hdr, cw, inline, arr, inlineValue } = d;
+                        if (inline) {
+                                arr.textContent = inlineTitle(title);
+                                inlineValue.innerHTML = content || "";
+                        } else {
+                                hdr.querySelector(".title").textContent = title;
+                                cw.innerHTML = content || "";
+                        }
                 }
 
-                return disclosures.get(id).cw;
+                const current = disclosures.get(id);
+                return current.inline ? current.inlineValue : current.cw;
         }
 
         function setContent(id, content) {
                 const d = disclosures.get(id);
                 if (!d) return;
+                if (d.inline) {
+                        d.inlineValue.innerHTML = content || "";
+                        return;
+                }
                 d.cw.innerHTML = content || "";
                 const st = ensureState(id);
                 if (st.open) {

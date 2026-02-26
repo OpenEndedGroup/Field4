@@ -162,6 +162,23 @@ inline operator fun <T> IntRange.invoke(to: (Int) -> T): List<T> = this.map { to
 inline operator fun <T> Int.invoke(to: (Int) -> T): List<T> = (0 until this).map { to(it) }
 inline infix fun <T> Int.alphas(to: (Double) -> T): List<T> = (0 until this).map { to(it / (this - 1.0)) }
 
+fun Int.alphas(): SizedIterable<Double> {
+    val n = this.coerceAtLeast(0)
+    return sizedIterable(n) {
+        var i = 0
+        object : Iterator<Double> {
+            override fun hasNext(): Boolean = i < n
+
+            override fun next(): Double {
+                if (!hasNext()) throw NoSuchElementException("No more alpha values")
+                val value = if (n <= 1) 0.0 else i / (n - 1.0)
+                i++
+                return value
+            }
+        }
+    }
+}
+
 operator fun String.times(ln: Int): String {
 
     var s = StringBuilder(this.length * ln)

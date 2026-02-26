@@ -7,6 +7,7 @@ import kotlin.math.*
 // - Pearson correlation
 // - Spearman rank correlation (with average-rank ties)
 // - Kendall's tau-b (tie-adjusted, O(n^2))
+// - Chatterjee's xi rank dependence coefficient
 // - Distance correlation (Székely–Rizzo; O(n^2))
 // - A *naive* MIC/TIC-style grid mutual-information scan using equipartition bins
 //
@@ -153,6 +154,71 @@ object StatsDependence {
         if (denom == 0.0) return Double.NaN
         return num / denom
     }
+
+    // -------------------------
+    // Chatterjee's xi
+    //
+    // Tie-aware finite-sample form:
+    // xi_n = 1 - n * sum_{i=1}^{n-1} |R_{i+1} - R_i| / (2 * sum_i L_i (n - L_i))
+    // where:
+    // - observations are ordered by x (ties are broken deterministically by index)
+    // - R_i = #{j : y_j <= y_i}
+    // - L_i = #{j : y_j >= y_i}
+    //
+    // For continuous y (no ties), this reduces to:
+    // 1 - 3 * sum |rank(y_{i+1}) - rank(y_i)| / (n^2 - 1)
+    // -------------------------
+    fun chatterjeeXi(x: DoubleArray, y: DoubleArray): Double {
+        requireSameSize(x, y)
+        val n = x.size
+
+        val orderByX = (0 until n).sortedWith(
+            compareBy<Int>({ x[it] }, { it })
+        )
+        val orderByY = (0 until n).sortedWith(
+            compareBy<Int>({ y[it] }, { it })
+        )
+
+        // R_i = #<=, L_i = #>= (tie-aware)
+        val r = IntArray(n)
+        val l = IntArray(n)
+        var pos = 0
+        while (pos < n) {
+            var end = pos
+            val v = y[orderByY[pos]]
+            while (end + 1 < n && y[orderByY[end + 1]] == v) end++
+
+            val lessOrEqual = end + 1
+            val greaterOrEqual = n - pos
+            for (k in pos..end) {
+                val idx = orderByY[k]
+                r[idx] = lessOrEqual
+                l[idx] = greaterOrEqual
+            }
+            pos = end + 1
+        }
+
+        var sumAbsDiff = 0L
+        for (i in 0 until n - 1) {
+            val a = r[orderByX[i]]
+            val b = r[orderByX[i + 1]]
+            sumAbsDiff += abs(a - b).toLong()
+        }
+
+        var denomTerm = 0L
+        for (i in 0 until n) {
+            val li = l[i].toLong()
+            denomTerm += li * (n - li).toLong()
+        }
+
+        val denominator = 2.0 * denomTerm.toDouble()
+        if (denominator == 0.0) return 0.0 // e.g. all y identical
+
+        val numerator = n.toDouble() * sumAbsDiff.toDouble()
+        return 1.0 - (numerator / denominator)
+    }
+
+    fun xi(x: DoubleArray, y: DoubleArray): Double = chatterjeeXi(x, y)
 
     // -------------------------
     // Distance correlation (Székely–Rizzo)
@@ -374,6 +440,7 @@ fun main() {
     println("Pearson:  " + StatsDependence.pearson(x, yParabola))
     println("Spearman: " + StatsDependence.spearman(x, yParabola))
     println("Kendall:  " + StatsDependence.kendallTauB(x, yParabola))
+    println("Xi:       " + StatsDependence.chatterjeeXi(x, yParabola))
     println("dCor:     " + StatsDependence.distanceCorrelation(x, yParabola))
     val mine = StatsDependence.micTicNaive(x, yParabola)
     println("MIC~:     " + mine.mic + "  (best grid ${mine.bestXBins}x${mine.bestYBins})")
@@ -569,5 +636,50 @@ class RollingDistanceCorrelation(private val windowSize: Int) {
         // Advance tail, increase n
         n += 1
         tail = (tail + 1) % windowSize
+    }
+}
+
+class RollingXiCorrelation(private val windowSize: Int) {
+    init {
+        require(windowSize >= 2) { "windowSize must be >= 2" }
+    }
+
+    private val xBuf = DoubleArray(windowSize)
+    private val yBuf = DoubleArray(windowSize)
+    private var n = 0
+    private var head = 0
+    private var tail = 0
+
+    fun push(x: Double, y: Double): Double? {
+        if (n == windowSize) {
+            head = (head + 1) % windowSize
+            n -= 1
+        }
+
+        xBuf[tail] = x
+        yBuf[tail] = y
+        tail = (tail + 1) % windowSize
+        n += 1
+
+        return current()
+    }
+
+    fun current(): Double? {
+        if (n < 2) return null
+
+        val x = DoubleArray(n)
+        val y = DoubleArray(n)
+        for (i in 0 until n) {
+            val slot = (head + i) % windowSize
+            x[i] = xBuf[slot]
+            y[i] = yBuf[slot]
+        }
+        return StatsDependence.chatterjeeXi(x, y)
+    }
+
+    fun clear() {
+        n = 0
+        head = 0
+        tail = 0
     }
 }

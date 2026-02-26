@@ -495,8 +495,9 @@ fun addOutput(
             domNode.style.zIndex = "11"
 
             val domNodeControl = document.createElement("div") as HTMLElement
-            domNodeControl.style.borderLeft = "5px solid rgba(0, 0, 0, 1)"
+            domNodeControl.style.borderLeft = "5px solid rgba(255,255,255,0.3)"
             domNodeControl.style.marginLeft = "3px"
+            domNodeControl.style.opacity = "0.5"
             domNodeControl.classList.add("notselectable")
 
             domNode.onwheel = { wheel: dynamic ->

@@ -190,7 +190,7 @@ kotlin {
             else -> error("Unsupported arch: $osArch")
         }
 
-        val version = "0.8.9" // or any more recent version
+        val version = "0.9.47"
         val target = "${targetOs}-${targetArch}"
 
         // FFmpeg platform classifier for bytedeco (uses slightly different naming convention)

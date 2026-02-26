@@ -1,6 +1,7 @@
 package afield.forth
 
 import afield.*
+import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
@@ -22,17 +23,64 @@ class ForthExecution(val inside: Box) : BoxExecution {
     // Strand jobs: strandName -> Job (for run-loop integration)
     private val strandJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
 
+    private fun configureForthOutput(
+        inside: Box,
+        executeLine: Int,
+        reply: (Message) -> Unit,
+        allowFrameYield: Boolean
+    ): () -> Boolean {
+        var hadVisibleOutput = false
+        configureOutputProxies(inside, reply)
+        inside.output.displayProxy = { channel, content ->
+            hadVisibleOutput = true
+            send(Message("set-output").payload(Set_output(inside.id, "outputarea", channel, content.toString())))
+        }
+        forth.onOutput = { text ->
+            if (text.isNotBlank()) hadVisibleOutput = true
+            inside.output.proxy(text, text.endsWith("\n"), executeLine)
+        }
+        forth.onDisplay = { channel, content ->
+            hadVisibleOutput = true
+            inside.output.display(channel, content)
+        }
+        forth.onFrame = if (allowFrameYield) {
+            { throw ForthFrameYield() }
+        } else {
+            { throw ForthError("'frame' is only available in launch/strand execution") }
+        }
+        return { hadVisibleOutput }
+    }
+
+    private fun clearExecutionErrorStatus(reply: (Message) -> Unit) {
+        reply(
+            Message("output").payload(
+                Output(
+                    line = -1,
+                    kind = "err",
+                    property = "code",
+                    html = "",
+                    frame = Runloop.runLoop.frame.toInt()
+                )
+            )
+        )
+    }
+
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         inMain {
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
-            configureOutputProxies(inside, reply)
-            forth.onOutput = { text ->
-                inside.output.proxy(text, text.endsWith("\n"), execute.line)
-            }
+            val hadVisibleOutput = configureForthOutput(
+                inside = inside,
+                executeLine = execute.line,
+                reply = reply,
+                allowFrameYield = false
+            )
             try {
                 val diagnostics = forth.eval(execute.code)
                 if (diagnostics.isEmpty()) {
+                    clearExecutionErrorStatus(reply)
+                }
+                if (diagnostics.isEmpty() && !hadVisibleOutput()) {
                     reply(
                         Message("output").payload(
                             Output(
@@ -43,7 +91,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
                             )
                         )
                     )
-                } else {
+                } else if (diagnostics.isNotEmpty()) {
                     diagnostics.forEach { diag ->
                         val errLine = if (diag.line >= 0) execute.line + diag.line else execute.line
                         inside.error(diag.message, line = errLine, property = "code")
@@ -64,10 +112,12 @@ class ForthExecution(val inside: Box) : BoxExecution {
     ) {
         inMain {
             val wm = ++inside.fragmentGeneration
-            configureOutputProxies(inside, reply)
-            forth.onOutput = { text ->
-                inside.output.proxy(text, text.endsWith("\n"), execute.line)
-            }
+            configureForthOutput(
+                inside = inside,
+                executeLine = execute.line,
+                reply = reply,
+                allowFrameYield = true
+            )
 
             // First execute the code to define any words
             val setupDiags = forth.eval(code)
@@ -79,6 +129,8 @@ class ForthExecution(val inside: Box) : BoxExecution {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, strand)))
                 return@inMain
             }
+
+            clearExecutionErrorStatus(reply)
 
             // If code ends with a word call (last non-whitespace token), register it as a strand
             val tokens = forth.tokenize(code.trim())
@@ -102,21 +154,31 @@ class ForthExecution(val inside: Box) : BoxExecution {
 
                 val job = inMain {
                     forth.addStrand(strand, strandWord)
-                    while (inside.runGeneration[strand] == generation) {
-                        try {
-                            val fw = forth.dictionary[strandWord]
-                            if (fw != null) forth.execWord(fw)
-                        } catch (e: ForthError) {
-                            inside.error(e.message ?: "FORTH error", line = e.line, property = "code")
-                            break
-                        } catch (e: Throwable) {
-                            inside.error(e.message ?: e.javaClass.name, line = -1, property = "code")
-                            break
+                    try {
+                        while (inside.runGeneration[strand] == generation) {
+                            try {
+                                val fw = forth.dictionary[strandWord]
+                                if (fw != null) forth.execWord(fw)
+                            } catch (_: ForthFrameYield) {
+                                // Cooperative per-tick yield requested by `frame`.
+                            } catch (e: ForthError) {
+                                inside.error(e.message ?: "FORTH error", line = e.line, property = "code")
+                                break
+                            } catch (e: Throwable) {
+                                lprintln("error,forth", e.stackTraceToString())
+                                inside.error(
+                                    e.message ?: e.javaClass.simpleName,
+                                    line = if (forth.currentLine >= 0) forth.currentLine else -1,
+                                    property = "code"
+                                )
+                                break
+                            }
+                            kotlinx.coroutines.yield()
                         }
-                        kotlinx.coroutines.yield()
+                    } finally {
+                        forth.removeStrand(strand)
+                        send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                     }
-                    forth.removeStrand(strand)
-                    send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                 }
                 strandJobs[strand] = job
             } else {

@@ -95,6 +95,90 @@
 .disclosure.open .disclosure-header .arrow { transform: rotate(90deg); opacity:1; }
 .disclosure-header .title { flex:1; font-size: 70%; padding-left: 6px;}
 
+.disclosure.disclosure-inline {
+    width: 100%;
+    border-left: 0;
+    overflow: visible;
+}
+
+.disclosure-header.disclosure-header-inline {
+    cursor: default;
+    min-height: 18px;
+    padding: 2px 0;
+    font-style: normal;
+    gap: 0;
+    background: transparent;
+    overflow: visible;
+}
+
+.disclosure-header.disclosure-header-inline:hover {
+    background: transparent;
+}
+
+.disclosure-header.disclosure-header-inline .inline-channel {
+    flex: 0 0 96px;
+    margin-left: -96px;
+    padding-right: 4px;
+    text-align: right;
+    font-size: 65%;
+    opacity: 0.75;
+    background: transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.disclosure-header.disclosure-header-inline .inline-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 72%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 4px;
+    border-left: 3px solid black;
+}
+
+.field-inline-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.field-inline-progress-track {
+    display: inline-block;
+    width: 300px;
+    height: 10px;
+    background: #000;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.field-inline-progress-fill {
+    display: block;
+    height: 100%;
+    background: #7f7f7f;
+    animation: field-inline-progress-fill-flash 0.3s ease-out;
+}
+
+.field-inline-progress-details {
+    color: #a9a9a9;
+    font-size: 11px;
+    white-space: nowrap;
+    animation: field-inline-progress-text-flash 0.3s ease-out;
+}
+
+@keyframes field-inline-progress-fill-flash {
+    from { background: var(--field-cyan, rgb(72, 201, 255)); }
+    to { background: #7f7f7f; }
+}
+
+@keyframes field-inline-progress-text-flash {
+    from { color: var(--field-cyan, rgb(72, 201, 255)); }
+    to { color: #a9a9a9; }
+}
+
 .disclosure {
     width: 200px;
     transition: none;

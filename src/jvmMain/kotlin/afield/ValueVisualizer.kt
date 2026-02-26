@@ -1,7 +1,10 @@
 package afield
 
+import afield.graphics.FLine
 import org.joml.*
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.reflect.full.memberProperties
@@ -58,6 +61,19 @@ object ValueVisualizer {
     private const val MAX_STRING_LENGTH = 100
     private const val MAX_MAP_ENTRIES = 5
     private const val MAX_DEPTH = 3
+    private const val FLINE_THUMBNAIL_WIDTH = 136
+    private const val FLINE_THUMBNAIL_HEIGHT = 84
+    private const val FLINE_SIGNATURE_FULL_MAX_NODES = 80
+    private const val FLINE_SIGNATURE_PREVIEW_MAX_NODES = 900
+    private const val FLINE_THUMBNAIL_MAX_COMPLEXITY = 350
+    private const val FLINE_LENGTH_MAX_COMPLEXITY = 1200
+    private const val FLINE_SIGNATURE_HEAD = 42
+    private const val FLINE_SIGNATURE_TAIL = 22
+
+    private data class ThumbnailResult(
+        val svg: String?,
+        val reason: String? = null
+    )
 
     /**
      * Visualize any value and return compact HTML representation
@@ -153,6 +169,7 @@ object ValueVisualizer {
         is IntArray -> formatIntArray(value)
         is FloatArray -> formatFloatArray(value)
         is DoubleArray -> formatDoubleArray(value)
+        is FLine -> formatFLine(value)
 
         // Data classes
         else -> if (value::class.isData) {
@@ -188,46 +205,405 @@ object ValueVisualizer {
         return "<span style='color: #8cf;'>$formatted</span>"
     }
 
+    private data class FLineBounds(
+        val minX: Float,
+        val minY: Float,
+        val maxX: Float,
+        val maxY: Float
+    ) {
+        val width: Double get() = (maxX - minX).toDouble()
+        val height: Double get() = (maxY - minY).toDouble()
+    }
+
+    private fun formatFLine(line: FLine): String {
+        val nodes = line.nodes
+        if (nodes.isEmpty()) {
+            return "<span style='color: #9cf;'>FLine</span> <span style='color: #888;'>[empty]</span>"
+        }
+
+        var moveCount = 0
+        var lineCount = 0
+        var cubicCount = 0
+        var closeCount = 0
+        nodes.forEach { node ->
+            when (node) {
+                is FLine.MoveTo -> moveCount++
+                is FLine.LineTo -> lineCount++
+                is FLine.CubicTo -> cubicCount++
+                is FLine.Close -> closeCount++
+            }
+        }
+
+        val nodeCount = nodes.size
+        val complexity = moveCount + lineCount + closeCount + cubicCount * 4
+        val showThumbnail = complexity <= FLINE_THUMBNAIL_MAX_COMPLEXITY
+        val showLength = complexity <= FLINE_LENGTH_MAX_COMPLEXITY
+
+        val signature = if (nodeCount <= FLINE_SIGNATURE_PREVIEW_MAX_NODES) {
+            buildString(nodeCount) {
+                nodes.forEach { node ->
+                    append(
+                        when (node) {
+                            is FLine.MoveTo -> 'M'
+                            is FLine.LineTo -> 'L'
+                            is FLine.CubicTo -> 'C'
+                            is FLine.Close -> 'Z'
+                        }
+                    )
+                }
+            }
+        } else null
+
+        val shownSignature = signature?.let {
+            if (nodeCount <= FLINE_SIGNATURE_FULL_MAX_NODES) {
+                it
+            } else {
+                val head = it.take(FLINE_SIGNATURE_HEAD)
+                val tail = it.takeLast(FLINE_SIGNATURE_TAIL)
+                "$head … $tail"
+            }
+        }
+
+        val length = if (showLength) runCatching { line.cursor(0.5f).lengthD().toDouble() }.getOrNull() else null
+        val bounds = computeFLineBounds(line)
+        val thumbnail = if (showThumbnail) renderFLineThumbnail(line) else ThumbnailResult(
+            svg = null,
+            reason = "complex path"
+        )
+
+        return buildString {
+            append("<div style='display:inline-block; max-width: 320px;'>")
+            append("<div><span style='color: #9cf;'>FLine</span> <span style='color: #666;'>(</span>")
+            append(formatNumberToken(nodeCount))
+            append("<span style='color: #666;'> nodes)</span></div>")
+
+            append("<div style='color: #888;'>")
+            append("M=")
+            append(formatNumberToken(moveCount))
+            append(" L=")
+            append(formatNumberToken(lineCount))
+            append(" C=")
+            append(formatNumberToken(cubicCount))
+            if (closeCount > 0) {
+                append(" Z=")
+                append(formatNumberToken(closeCount))
+            }
+            if (bounds != null) {
+                append(" • b=")
+                append(formatNumericLiteral(bounds.width))
+                append("×")
+                append(formatNumericLiteral(bounds.height))
+            }
+            if (length != null) {
+                append(" • len=")
+                append(formatNumericLiteral(length))
+            }
+            append("</div>")
+
+            if (shownSignature != null) {
+                append("<div style='color: #9f9; letter-spacing: 0.04em;'>")
+                append(escape(shownSignature))
+                append("</div>")
+            }
+
+            if (thumbnail.svg != null) {
+                append("<div style='margin-top: 4px; border: 1px solid #333; border-radius: 4px; background: #111; width: ${FLINE_THUMBNAIL_WIDTH}px; height: ${FLINE_THUMBNAIL_HEIGHT}px; overflow: hidden;'>")
+                append(thumbnail.svg)
+                append("</div>")
+            } else if (thumbnail.reason != null) {
+                append("<div style='color: #666;'>thumbnail unavailable (${escape(thumbnail.reason)})</div>")
+            }
+
+            append("</div>")
+        }
+    }
+
+    private fun renderFLineThumbnail(line: FLine): ThumbnailResult {
+        val normalized = runCatching { normalizeFLineForThumbnail(line) }
+            .getOrElse { return ThumbnailResult(svg = null, reason = "normalize failed") }
+
+        val pathData = buildSvgPathData(normalized)
+        if (pathData.isBlank()) return ThumbnailResult(svg = null, reason = "no drawable segments")
+
+        val svg = buildString {
+            append("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $FLINE_THUMBNAIL_WIDTH $FLINE_THUMBNAIL_HEIGHT' width='$FLINE_THUMBNAIL_WIDTH' height='$FLINE_THUMBNAIL_HEIGHT'>")
+            append("<rect x='0' y='0' width='$FLINE_THUMBNAIL_WIDTH' height='$FLINE_THUMBNAIL_HEIGHT' fill='transparent'/>")
+            append("<path d='")
+            append(pathData)
+            append("' fill='none' stroke='#9cf' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/>")
+            append("</svg>")
+        }
+
+        return ThumbnailResult(svg = svg)
+    }
+
+    private fun buildSvgPathData(line: FLine): String {
+        if (line.nodes.isEmpty()) return ""
+
+        val out = StringBuilder(line.nodes.size * 12)
+        var hasDrawableSegment = false
+        var penIsDown = false
+
+        line.nodes.forEach { node ->
+            when (node) {
+                is FLine.MoveTo -> {
+                    val p = node.to
+                    if (!p.x.isFinite() || !p.y.isFinite()) return@forEach
+                    out.append('M').append(svgNum(p.x)).append(' ').append(svgNum(p.y)).append(' ')
+                    penIsDown = true
+                }
+                is FLine.LineTo -> {
+                    val p = node.to
+                    if (!p.x.isFinite() || !p.y.isFinite()) return@forEach
+                    if (!penIsDown) {
+                        out.append('M').append(svgNum(p.x)).append(' ').append(svgNum(p.y)).append(' ')
+                        penIsDown = true
+                    } else {
+                        out.append('L').append(svgNum(p.x)).append(' ').append(svgNum(p.y)).append(' ')
+                        hasDrawableSegment = true
+                    }
+                }
+                is FLine.CubicTo -> {
+                    val end = node.to
+                    val c1 = node.c1
+                    val c2 = node.c2
+                    if (!end.x.isFinite() || !end.y.isFinite() || !c1.x.isFinite() || !c1.y.isFinite() || !c2.x.isFinite() || !c2.y.isFinite()) return@forEach
+                    if (!penIsDown) {
+                        out.append('M').append(svgNum(end.x)).append(' ').append(svgNum(end.y)).append(' ')
+                        penIsDown = true
+                    } else {
+                        out.append('C')
+                            .append(svgNum(c1.x)).append(' ').append(svgNum(c1.y)).append(' ')
+                            .append(svgNum(c2.x)).append(' ').append(svgNum(c2.y)).append(' ')
+                            .append(svgNum(end.x)).append(' ').append(svgNum(end.y)).append(' ')
+                        hasDrawableSegment = true
+                    }
+                }
+                is FLine.Close -> {
+                    if (penIsDown) {
+                        out.append('Z').append(' ')
+                        hasDrawableSegment = true
+                    }
+                }
+            }
+        }
+
+        return if (hasDrawableSegment) out.toString().trim() else ""
+    }
+
+    private fun svgNum(n: Float): String {
+        return runCatching {
+            if (!n.isFinite()) "0"
+            else "%.3f".format(n).trimEnd('0').trimEnd('.')
+        }.getOrDefault("0")
+    }
+
+    private fun normalizeFLineForThumbnail(
+        line: FLine,
+        width: Float = FLINE_THUMBNAIL_WIDTH.toFloat(),
+        height: Float = FLINE_THUMBNAIL_HEIGHT.toFloat(),
+        padding: Float = 6f
+    ): FLine {
+        val b = computeFLineBounds(line) ?: return line.copy()
+
+        val sourceW = max((b.maxX - b.minX), 1f)
+        val sourceH = max((b.maxY - b.minY), 1f)
+        val contentW = max(width - padding * 2f, 1f)
+        val contentH = max(height - padding * 2f, 1f)
+        val scale = min(contentW / sourceW, contentH / sourceH)
+        val offsetX = (width - sourceW * scale) * 0.5f - b.minX * scale
+        val offsetY = (height - sourceH * scale) * 0.5f - b.minY * scale
+
+        return line.transform { p ->
+            Vector3f(
+                p.x * scale + offsetX,
+                p.y * scale + offsetY,
+                p.z
+            )
+        }
+    }
+
+    private fun computeFLineBounds(line: FLine): FLineBounds? {
+        var minX = Float.POSITIVE_INFINITY
+        var minY = Float.POSITIVE_INFINITY
+        var maxX = Float.NEGATIVE_INFINITY
+        var maxY = Float.NEGATIVE_INFINITY
+        var seen = false
+
+        line.nodes.forEach { node ->
+            node.storage.forEach { p ->
+                if (!p.x.isFinite() || !p.y.isFinite()) return@forEach
+                seen = true
+                minX = min(minX, p.x)
+                minY = min(minY, p.y)
+                maxX = max(maxX, p.x)
+                maxY = max(maxY, p.y)
+            }
+        }
+
+        if (!seen) return null
+        return FLineBounds(minX, minY, maxX, maxY)
+    }
+
     private fun formatString(s: String): String {
         val escaped = escape(s)
         return if (s.length > MAX_STRING_LENGTH) {
             val preview = escaped.substring(0, MAX_STRING_LENGTH)
-            "<span style='color: #8f8;'>\"$preview…\"</span> <span style='color: #888;'>(${s.length} chars)</span>"
+            """<span style='color: #8f8;'>"$preview…"</span> <span style='color: #888;'>(</span>${formatNumberToken(s.length)}<span style='color: #888;'> chars)</span>"""
         } else {
             "<span style='color: #8f8;'>\"$escaped\"</span>"
         }
     }
 
+    private fun formatTypeName(name: String, color: String): String =
+        "<span style='color: $color;'>${escape(name)}</span>"
+
+    private fun formatPunctuation(token: String): String =
+        "<span style='color: #777;'>${escape(token)}</span>"
+
+    private fun formatIdentifier(name: String): String =
+        "<span style='color: #bbb;'>${escape(name)}</span>"
+
+    private fun formatNumberToken(n: Int): String =
+        "<span style='color: #8cf;'>$n</span>"
+
+    private fun formatNumberToken(n: Long): String =
+        "<span style='color: #8cf;'>$n</span>"
+
+    private fun formatNumberToken(n: String): String =
+        "<span style='color: #8cf;'>${escape(n)}</span>"
+
+    private fun formatNumericLiteral(n: Float): String =
+        "<span style='color: #8cf;'>${fmt(n)}</span>"
+
+    private fun formatNumericLiteral(n: Double): String =
+        "<span style='color: #8cf;'>${fmt(n)}</span>"
+
+    private fun formatSizeSuffix(size: Int): String =
+        """ <span style='color: #666;'>(</span>${formatNumberToken(size)}<span style='color: #666;'>)</span>"""
+
+    private fun formatMoreSuffix(extra: Int, noun: String): String =
+        """ <span style='color: #888;'>… +</span>${formatNumberToken(extra)}<span style='color: #888;'> more $noun</span>"""
+
+    private fun formatStatsSummary(stats: Stats): String {
+        return buildString {
+            append(" <span style='color: #888;'>[μ=</span>")
+            append(formatNumericLiteral(stats.mean))
+            append("<span style='color: #888;'>, σ=</span>")
+            append(formatNumericLiteral(stats.stdDev))
+            append("<span style='color: #888;'>, range=</span>")
+            append(formatNumericLiteral(stats.min))
+            append("<span style='color: #888;'>…</span>")
+            append(formatNumericLiteral(stats.max))
+            append("<span style='color: #888;'>]</span>")
+        }
+    }
+
     private fun formatVec2(v: Vector2fc): String {
-        return "<span style='color: #fc8;'>vec2(${fmt(v.x())}, ${fmt(v.y())})</span>"
+        return buildString {
+            append(formatTypeName("vec2", "#fc8"))
+            append(formatPunctuation("("))
+            append(formatNumericLiteral(v.x()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(v.y()))
+            append(formatPunctuation(")"))
+        }
     }
 
     private fun formatVec3(v: Vector3fc): String {
-        return "<span style='color: #fc8;'>vec3(${fmt(v.x())}, ${fmt(v.y())}, ${fmt(v.z())})</span>"
+        return buildString {
+            append(formatTypeName("vec3", "#fc8"))
+            append(formatPunctuation("("))
+            append(formatNumericLiteral(v.x()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(v.y()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(v.z()))
+            append(formatPunctuation(")"))
+        }
     }
 
     private fun formatVec4(v: Vector4fc): String {
-        return "<span style='color: #fc8;'>vec4(${fmt(v.x())}, ${fmt(v.y())}, ${fmt(v.z())}, ${fmt(v.w())})</span>"
+        return buildString {
+            append(formatTypeName("vec4", "#fc8"))
+            append(formatPunctuation("("))
+            append(formatNumericLiteral(v.x()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(v.y()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(v.z()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(v.w()))
+            append(formatPunctuation(")"))
+        }
     }
 
     private fun formatQuat(q: Quaternionfc): String {
-        return "<span style='color: #f8c;'>quat(${fmt(q.x())}, ${fmt(q.y())}, ${fmt(q.z())}, ${fmt(q.w())})</span>"
+        return buildString {
+            append(formatTypeName("quat", "#f8c"))
+            append(formatPunctuation("("))
+            append(formatNumericLiteral(q.x()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(q.y()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(q.z()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(q.w()))
+            append(formatPunctuation(")"))
+        }
     }
 
     private fun formatMatrix(m: Matrix2fc): String {
-        return """<span style='color: #cf8;'>mat2</span> <span style='color: #888;'>[${fmt(m.m00())}, ${fmt(m.m10())} / ${fmt(m.m01())}, ${fmt(m.m11())}]</span>"""
+        return buildString {
+            append(formatTypeName("mat2", "#cf8"))
+            append(" ")
+            append(formatPunctuation("["))
+            append(formatNumericLiteral(m.m00()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(m.m10()))
+            append(formatPunctuation(" / "))
+            append(formatNumericLiteral(m.m01()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(m.m11()))
+            append(formatPunctuation("]"))
+        }
     }
 
     private fun formatMatrix(m: Matrix3fc): String {
         val det = m.determinant()
-        return """<span style='color: #cf8;'>mat3</span> <span style='color: #888;'>[det=${fmt(det)}]</span>"""
+        return buildString {
+            append(formatTypeName("mat3", "#cf8"))
+            append(" ")
+            append(formatPunctuation("["))
+            append(formatIdentifier("det"))
+            append(formatPunctuation("="))
+            append(formatNumericLiteral(det))
+            append(formatPunctuation("]"))
+        }
     }
 
     private fun formatMatrix(m: Matrix4fc): String {
         val det = m.determinant()
         val translation = Vector3f()
         m.getTranslation(translation)
-        return """<span style='color: #cf8;'>mat4</span> <span style='color: #888;'>[det=${fmt(det)}, t=(${fmt(translation.x)},${fmt(translation.y)},${fmt(translation.z)})]</span>"""
+        return buildString {
+            append(formatTypeName("mat4", "#cf8"))
+            append(" ")
+            append(formatPunctuation("["))
+            append(formatIdentifier("det"))
+            append(formatPunctuation("="))
+            append(formatNumericLiteral(det))
+            append(formatPunctuation(", "))
+            append(formatIdentifier("t"))
+            append(formatPunctuation("=("))
+            append(formatNumericLiteral(translation.x))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(translation.y))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(translation.z))
+            append(formatPunctuation(")"))
+            append(formatPunctuation("]"))
+        }
     }
 
     private fun formatList(list: List<*>, depth: Int, visited: MutableSet<Int>): String {
@@ -244,20 +620,19 @@ object ValueVisualizer {
             }
 
             if (size > MAX_LIST_PREVIEW) {
-                append(" <span style='color: #888;'>… +${size - MAX_LIST_PREVIEW} more</span>")
+                append(formatMoreSuffix(size - MAX_LIST_PREVIEW, "items"))
 
                 // Add summary stats if all numbers
                 if (list.all { it is Number }) {
                     @Suppress("UNCHECKED_CAST")
                     val numbers = list as List<Number>
                     val stats = calculateStats(numbers)
-                    append(" <span style='color: #888;'>[μ=${fmt(stats.mean)}, σ=${fmt(stats.stdDev)}, ")
-                    append("range=${fmt(stats.min)}…${fmt(stats.max)}]</span>")
+                    append(formatStatsSummary(stats))
                 }
             }
 
             append("<span style='color: #aaa;'>]</span>")
-            append(" <span style='color: #666;'>(${size})</span>")
+            append(formatSizeSuffix(size))
         }
     }
 
@@ -275,11 +650,11 @@ object ValueVisualizer {
             }
 
             if (size > MAX_LIST_PREVIEW) {
-                append(" <span style='color: #888;'>… +${size - MAX_LIST_PREVIEW} more</span>")
+                append(formatMoreSuffix(size - MAX_LIST_PREVIEW, "items"))
             }
 
             append("<span style='color: #aaa;'>}</span>")
-            append(" <span style='color: #666;'>(${size})</span>")
+            append(formatSizeSuffix(size))
         }
     }
 
@@ -309,11 +684,13 @@ object ValueVisualizer {
             }
 
             if (hasMore) {
-                append("<div style='margin-left: 10px;'><span style='color: #888;'>… +${size - MAX_MAP_ENTRIES} more entries</span></div>")
+                append("<div style='margin-left: 10px;'>")
+                append(formatMoreSuffix(size - MAX_MAP_ENTRIES, "entries"))
+                append("</div>")
             }
 
             append("<span style='color: #aaa;'>}</span>")
-            append(" <span style='color: #666;'>(${size})</span>")
+            append(formatSizeSuffix(size))
             append("</div>")
         }
     }
@@ -328,12 +705,12 @@ object ValueVisualizer {
         return buildString {
             append("<span style='color: #c8f;'>bytes[</span>")
             val preview = arr.take(8)
-            append(preview.joinToString(" ") { "%02x".format(it) })
+            append(preview.joinToString(" ") { formatNumberToken("%02x".format(it)) })
             if (arr.size > 8) {
                 append(" <span style='color: #888;'>…</span>")
             }
             append("<span style='color: #c8f;'>]</span>")
-            append(" <span style='color: #666;'>(${arr.size})</span>")
+            append(formatSizeSuffix(arr.size))
         }
     }
 
@@ -348,14 +725,13 @@ object ValueVisualizer {
             append("</span>")
 
             if (arr.size > MAX_LIST_PREVIEW) {
-                append(" <span style='color: #888;'>… +${arr.size - MAX_LIST_PREVIEW} more</span>")
+                append(formatMoreSuffix(arr.size - MAX_LIST_PREVIEW, "items"))
                 val stats = calculateStats(arr.map { it.toDouble() })
-                append(" <span style='color: #888;'>[μ=${fmt(stats.mean)}, σ=${fmt(stats.stdDev)}, ")
-                append("range=${fmt(stats.min)}…${fmt(stats.max)}]</span>")
+                append(formatStatsSummary(stats))
             }
 
             append("<span style='color: #aaa;'>]</span>")
-            append(" <span style='color: #666;'>(${arr.size})</span>")
+            append(formatSizeSuffix(arr.size))
         }
     }
 
@@ -370,14 +746,13 @@ object ValueVisualizer {
             append("</span>")
 
             if (arr.size > MAX_LIST_PREVIEW) {
-                append(" <span style='color: #888;'>… +${arr.size - MAX_LIST_PREVIEW} more</span>")
+                append(formatMoreSuffix(arr.size - MAX_LIST_PREVIEW, "items"))
                 val stats = calculateStats(arr.map { it.toDouble() })
-                append(" <span style='color: #888;'>[μ=${fmt(stats.mean)}, σ=${fmt(stats.stdDev)}, ")
-                append("range=${fmt(stats.min)}…${fmt(stats.max)}]</span>")
+                append(formatStatsSummary(stats))
             }
 
             append("<span style='color: #aaa;'>]</span>")
-            append(" <span style='color: #666;'>(${arr.size})</span>")
+            append(formatSizeSuffix(arr.size))
         }
     }
 
@@ -392,14 +767,13 @@ object ValueVisualizer {
             append("</span>")
 
             if (arr.size > MAX_LIST_PREVIEW) {
-                append(" <span style='color: #888;'>… +${arr.size - MAX_LIST_PREVIEW} more</span>")
+                append(formatMoreSuffix(arr.size - MAX_LIST_PREVIEW, "items"))
                 val stats = calculateStats(arr.toList())
-                append(" <span style='color: #888;'>[μ=${fmt(stats.mean)}, σ=${fmt(stats.stdDev)}, ")
-                append("range=${fmt(stats.min)}…${fmt(stats.max)}]</span>")
+                append(formatStatsSummary(stats))
             }
 
             append("<span style='color: #aaa;'>]</span>")
-            append(" <span style='color: #666;'>(${arr.size})</span>")
+            append(formatSizeSuffix(arr.size))
         }
     }
 

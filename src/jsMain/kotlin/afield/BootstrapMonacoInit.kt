@@ -180,6 +180,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.automaticLayout = true
     options.scrollBeyondLastLine = false
     options.lineNumbersMinChars = 2
+    options.lineDecorationsWidth = 12
+    options.padding = js("{ top: 2, bottom: 2 }")
     options.cursorStyle = "block"
     options.cursorBlinking = "blink"
     options.matchBrackets = "never"

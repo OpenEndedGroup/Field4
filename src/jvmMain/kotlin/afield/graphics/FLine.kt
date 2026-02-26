@@ -581,7 +581,7 @@ class FLine : HasProperties {
     override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
     override fun toString(): String {
-        return "FLine[{${nodes.size}n]"
+        return "FLine[${nodes.size}n]"
     }
 
     /**
