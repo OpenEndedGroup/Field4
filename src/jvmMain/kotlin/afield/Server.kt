@@ -125,6 +125,41 @@ private val aiKotlinNotifyThrottle = ConcurrentHashMap<String, Long>()
 
 var min_frame_delay = 1L
 
+/**
+ * Tracks per-session back pressure for output messages.
+ * When the frontend is slow to acknowledge outputs, the pending count rises.
+ * Once it reaches [maxPending], new outputs are skipped and counted.
+ * The accumulated skip count is delivered with the next successfully sent output.
+ */
+class OutputBackPressure(val maxPending: Int = 32) {
+    private val pending = java.util.concurrent.atomic.AtomicInteger(0)
+    private val skipped = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /**
+     * Try to acquire a send slot.
+     * Returns the number of previously skipped messages (≥ 0) if sending is allowed,
+     * or -1 if this message should be skipped due to back pressure.
+     */
+    fun tryAcquire(): Int {
+        // Atomically increment only if below the limit, avoiding a TOCTOU race.
+        val prev = pending.getAndUpdate { current -> if (current >= maxPending) current else current + 1 }
+        if (prev >= maxPending) {
+            skipped.incrementAndGet()
+            return -1
+        }
+        return skipped.getAndSet(0)
+    }
+
+    /** Release a pending slot — call when the frontend acknowledges receipt. */
+    fun release() {
+        // Guard against going negative if extra ACKs arrive (e.g., duplicate messages).
+        pending.updateAndGet { maxOf(0, it - 1) }
+    }
+}
+
+/** Per-WebSocketSession back pressure state for output messages. */
+val sessionOutputPressure = ConcurrentHashMap<WebSocketSession, OutputBackPressure>()
+
 val home = option("workspace") { System.getProperty("user.home") + "/Documents/AFieldWorkspace" }
 val app = option("app") { File(".").absolutePath }
 
@@ -139,11 +174,34 @@ actual fun _send(message: Message) {
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
-    val m = Json.encodeToString(message)
     val documentRegex = document.toRegex()
-    sessions.forEach {
-        GlobalScope.launch {
-            if (it.value.filename.matches(documentRegex)) it.key.send(m)
+    val isOutput = message.name == "set-output"
+    val m = Json.encodeToString(message)
+    sessions.forEach { (session, info) ->
+        if (!info.filename.matches(documentRegex)) return@forEach
+        if (isOutput) {
+            // Apply per-session back pressure for output messages.
+            val bp = sessionOutputPressure.getOrPut(session) { OutputBackPressure() }
+            val skipCount = bp.tryAcquire()
+            if (skipCount < 0) return@forEach  // back-pressured: skip this output
+            GlobalScope.launch {
+                try {
+                    if (skipCount > 0) {
+                        // Notify the client about outputs that were skipped before this one.
+                        session.send(Json.encodeToString(
+                            Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
+                        ))
+                    }
+                    session.send(m)
+                } catch (_: Exception) {
+                    // On send failure no ACK will arrive; release the slot now.
+                    bp.release()
+                }
+            }
+        } else {
+            GlobalScope.launch {
+                session.send(m)
+            }
         }
     }
 }
@@ -949,6 +1007,12 @@ class Server {
                 Handled.yes
             })
 
+            handlers["output-ack"] = mutableSetOf({ _, _ ->
+                // Release one pending output slot for this session (back pressure signal from frontend).
+                sessionOutputPressure[thisSession.get()]?.release()
+                Handled.yes
+            })
+
 
             registerTemplate(home)
 
@@ -1128,6 +1192,8 @@ class Server {
                                     info.cleanup()
                                 }
                             }
+                            // Clean up back pressure state for this session.
+                            sessionOutputPressure.remove(ts)
                         }
                     }
                     route("/dir") {
