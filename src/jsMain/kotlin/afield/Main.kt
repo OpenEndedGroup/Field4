@@ -2276,6 +2276,7 @@ suspend fun main() {
     val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
     val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
     window.asDynamic().currentDocumentFilename = filename
+    document.title = filename.substringAfterLast("/")
     val hello = Message("hello").payload(Hello(filename, username))
     onOpen.add(hello)
 
