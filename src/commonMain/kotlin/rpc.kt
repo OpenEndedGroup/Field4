@@ -82,7 +82,10 @@ data class Output(
     val kind: String,
     val property: String = "code",
     val annotation: String = "",
-    val frame: Int
+    val frame: Int,
+    val startColumn: Int = -1,
+    val endLine: Int = -1,
+    val endColumn: Int = -1
 )
 
 @Serializable

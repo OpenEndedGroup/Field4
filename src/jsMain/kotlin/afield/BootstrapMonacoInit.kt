@@ -220,6 +220,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     w.addOutput = w.addOutput
     w.clear = w.clear
 
+    installFragileErrorMarkerPruning(ed)
+
     monacoInstallPropertySwitchActions(monaco, ed)
 
     // Add Alt+DoubleClick handler for execute symbol feature

@@ -3,10 +3,13 @@ package afield.stdlib
 import afield.Box
 import afield.Runloop
 import afield.findWithNameOrNull
+import afield.notify
+import afield.visitParents
 import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
 import afield.four.texture.*
+import afield.four.util.IncludeResolver
 import afield.four.util.getShaderTemplateResolverForBox
 import afield.four.util.runTemplate
 import afield.logger.lprintln
@@ -73,10 +76,129 @@ fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
 // ------------------------------
 // Utilities
 // ------------------------------
-fun numberFromErrorMessage(m: String) = Regex(":(\\d+):").find(m)?.groupValues?.get(1)?.toIntOrNull()
+private val glslSourceLineRegex = Regex("""\b(?:ERROR|WARNING):\s*\d+:(\d+):""", RegexOption.IGNORE_CASE)
+private val fileLineRegex = Regex(""":[ \t]*(\d+):\s*(?:error|warning)\b""", RegexOption.IGNORE_CASE)
+private val anyColonLineRegex = Regex(""":(\d+):""")
+
+private data class ShaderIncludeRef(val boxName: String, val property: String) {
+    val key = "${boxName.trim()}.${property.trim()}"
+}
+
+fun numberFromErrorMessage(m: String): Int? {
+    glslSourceLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
+    fileLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
+    return anyColonLineRegex.findAll(m).mapNotNull { it.groupValues.getOrNull(1)?.toIntOrNull() }.lastOrNull()
+}
+
+private fun defaultShaderProperty(kind: ShaderKind): String = when (kind) {
+    ShaderKind.VERTEX_SHADER -> "vertex"
+    ShaderKind.FRAGMENT_SHADER -> "fragment"
+    ShaderKind.COMPUTE_SHADER -> "compute"
+    ShaderKind.TASK_SHADER -> "task"
+    ShaderKind.MESH_SHADER -> "mesh"
+    else -> "fragment"
+}
+
+private fun shaderKindForProperty(property: String, fallback: ShaderKind): ShaderKind = when (property.lowercase()) {
+    "vertex" -> ShaderKind.VERTEX_SHADER
+    "fragment" -> ShaderKind.FRAGMENT_SHADER
+    "compute" -> ShaderKind.COMPUTE_SHADER
+    "task" -> ShaderKind.TASK_SHADER
+    "mesh" -> ShaderKind.MESH_SHADER
+    else -> fallback
+}
+
+private fun parseShaderIncludeRef(path: String, fallbackKind: ShaderKind): ShaderIncludeRef {
+    val trimmed = path.trim()
+    require(trimmed.isNotEmpty()) { "Empty shader include path." }
+    val dot = trimmed.lastIndexOf('.')
+    if (dot >= 0) {
+        require(dot > 0 && dot < trimmed.lastIndex) {
+            "Invalid shader include path '$trimmed'. Use '<box>' or '<box>.<property>'."
+        }
+        val boxName = trimmed.substring(0, dot).trim()
+        val property = trimmed.substring(dot + 1).trim()
+        require(boxName.isNotEmpty() && property.isNotEmpty()) {
+            "Invalid shader include path '$trimmed'."
+        }
+        return ShaderIncludeRef(boxName, property)
+    }
+    return ShaderIncludeRef(trimmed, defaultShaderProperty(fallbackKind))
+}
+
+private fun findBoxByNameForInclude(inside: Box, requestedName: String): Box? {
+    val name = requestedName.trim()
+    if (name.isEmpty()) return null
+
+    var found: Box? = null
+    inside.visitParents {
+        if (found == null && it.name == name && !it.getPropertyRaw("_tombstone").isTrue()) found = it
+    }
+    if (found != null) return found
+
+    val fringe = ArrayDeque<Box>()
+    val seen = mutableSetOf<Box>()
+    fringe.add(inside.root)
+    while (fringe.isNotEmpty()) {
+        val next = fringe.removeFirst()
+        if (!seen.add(next)) continue
+        if (next.name == name && !next.getPropertyRaw("_tombstone").isTrue()) return next
+        fringe.addAll(next.children)
+    }
+    return null
+}
+
+private fun getIncludePropertyValue(box: Box, property: String): String? {
+    val normalized = property.trim()
+    return when (normalized.lowercase()) {
+        "vertex" -> box.vertex
+        "fragment" -> box.fragment
+        "compute" -> box.compute
+        "task" -> box.task
+        "mesh" -> box.mesh
+        else -> box.getPropertyRaw(normalized) as? String
+    }
+}
+
+private fun preprocess(
+    inside: Box,
+    source: String,
+    kind: ShaderKind,
+    includeStack: List<String> = emptyList()
+): String {
+    val includeResolver = IncludeResolver { includePath, line, _ ->
+        val includeRef = parseShaderIncludeRef(includePath, kind)
+        val includeKey = includeRef.key
+        if (includeStack.contains(includeKey)) {
+            val chain = (includeStack + includeKey).joinToString(" -> ")
+            throw IllegalArgumentException("Include cycle at line $line while resolving '$includePath': $chain")
+        }
+
+        val targetBox = findBoxByNameForInclude(inside, includeRef.boxName)
+            ?: throw IllegalArgumentException(
+                "Unable to resolve include '$includePath' at line $line: no box named '${includeRef.boxName}'."
+            )
+
+        val includeBody = getIncludePropertyValue(targetBox, includeRef.property)
+            ?.takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException(
+                "Unable to resolve include '$includePath' at line $line: '${includeRef.property}' on box '${targetBox.name}' is empty."
+            )
+
+        val nestedKind = shaderKindForProperty(includeRef.property, kind)
+        val expandedInclude = preprocess(inside, includeBody, nestedKind, includeStack + includeKey)
+        buildString {
+            append(expandedInclude)
+            if (!expandedInclude.endsWith('\n')) append('\n')
+            append("#line ${line + 2}\n")
+        }
+    }
+
+    return runTemplate(source, getShaderTemplateResolverForBox(inside), includeResolver)
+}
 
 fun preprocess(inside: Box, code: String, kind: ShaderKind): String {
-    return runTemplate(code, getShaderTemplateResolverForBox(inside))
+    return preprocess(inside, code, kind, emptyList())
 }
 
 /**
@@ -166,10 +288,39 @@ fun applyInsertToPreamble(box: Box, e: Insert) {
 
 }
 
+private fun clearShaderErrors(box: Box, vararg properties: String) {
+    properties.forEach { property ->
+        box.error(null, property, -1)
+    }
+}
+
+private fun runShaderReloadAction(
+    boxes: Iterable<Box>,
+    reloadingMessage: String,
+    reloadedMessage: String,
+    reload: (Box) -> Boolean
+) {
+    notify(reloadingMessage, "shader")
+    var ok = 0
+    var failed = 0
+    boxes.forEach { selected ->
+        val success = try {
+            reload(selected)
+        } catch (t: Throwable) {
+            lprintln("error,graphics", "unexpected error reloading shader in '${selected.name}' (${selected.id}): ${t.message}")
+            selected.error(t.message ?: "shader reload failed", "code", -1)
+            false
+        }
+        if (success) ok++ else failed++
+    }
+    val summary = if (failed == 0) "$reloadedMessage ($ok)" else "$reloadedMessage ($ok ok, $failed failed)"
+    notify(summary, "shader")
+}
+
 // ------------------------------
 // Graphics (vertex/fragment) reload path
 // ------------------------------
-fun reloadShader(box: Box) {
+fun reloadShader(box: Box): Boolean {
     box._fragment = preprocess(box, box.fragment!!, ShaderKind.FRAGMENT_SHADER)
     box._vertex = preprocess(box, box.vertex!!, ShaderKind.VERTEX_SHADER)
 
@@ -178,14 +329,12 @@ fun reloadShader(box: Box) {
 
     if (vErr || fErr) {
         lprintln("error,graphics", "shader compilation failed; skipping module reload.")
-        return
+        return false
     }
 
     // keep consistent with the Module path: build Insert and apply to preamble
     val insert = insertForShader(vi!!, fi!!, "_moduleHere", listOf("()"))
     applyInsertToPreamble(box, insert)
-
-    box.error(null, "fragment", -1)
 
     val p = box._shader!!.current.parameters.copy().apply {
         vertex = box._vertex!!
@@ -194,6 +343,8 @@ fun reloadShader(box: Box) {
 
     // todo: patch error handler if you need finer-grained feedback
     box._shader!!.reload(p, forceReresolve = true)
+    clearShaderErrors(box, "vertex", "fragment")
+    return true
 }
 
 // ------------------------------
@@ -260,26 +411,26 @@ private fun buildComputeInsert(ci: Introspection): Insert {
     )
 }
 
-fun reloadComputeShader(box: Box) {
+fun reloadComputeShader(box: Box): Boolean {
     box._compute = preprocess(box, box.compute!!, ShaderKind.COMPUTE_SHADER)
 
     val (ci, cErr) = compileStage(box, box._compute!!, ShaderKind.COMPUTE_SHADER, "compute")
     if (cErr) {
         lprintln("error,graphics", "compute shader compilation failed; skipping compute module reload.")
-        return
+        return false
     }
 
     // Rebuild/import bindings like graphics path
     val insert = buildComputeInsert(ci!!)
     applyInsertToPreamble(box, insert)
 
-    box.error(null, "compute", -1)
-
     val p = box._computeShader!!.current.parameters.copy().apply {
         compute = box._compute!!
     }
     // todo: patch error handler if you need finer-grained feedback
     box._computeShader!!.reload(p)
+    clearShaderErrors(box, "compute")
+    return true
 }
 
 // ------------------------------
@@ -345,7 +496,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
     )
 }
 
-fun reloadMeshShader(box: Box) {
+fun reloadMeshShader(box: Box): Boolean {
     box._task = preprocess(box, box.task!!, ShaderKind.TASK_SHADER)
     box._mesh = preprocess(box, box.mesh!!, ShaderKind.MESH_SHADER)
     box._fragment = preprocess(box, box.fragment!!, ShaderKind.FRAGMENT_SHADER)
@@ -356,14 +507,12 @@ fun reloadMeshShader(box: Box) {
 
     if (tErr || mErr || fErr) {
         lprintln("error,graphics", "mesh pipeline compilation failed; skipping mesh module reload.")
-        return
+        return false
     }
 
     // Rebuild/import bindings like graphics path
     val insert = buildMeshInsert(ti!!, mi!!, fi!!)
     applyInsertToPreamble(box, insert)
-
-    box.error(null, "mesh", -1)
 
     val p = box._meshShader!!.current.parameters.copy().apply {
         mesh = box._mesh!!
@@ -372,6 +521,8 @@ fun reloadMeshShader(box: Box) {
     }
     // todo: patch error handler if you need finer-grained feedback
     box._meshShader!!.reload(p)
+    clearShaderErrors(box, "task", "mesh", "fragment")
+    return true
 }
 
 // ------------------------------
@@ -416,8 +567,13 @@ fun Box.macro_moduleHereWithDefaultShaders(
     this.actions += "moduleHere_reload" to Action("Reload Shader|alt r", "Reloads the graphics shader in this box") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
-                val here = this@macro_moduleHereWithDefaultShaders
-                it.forEach { reloadShader(it) }
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadShader(selected)
+                }
             }
         }
     }
@@ -458,7 +614,7 @@ fun Box.macro_moduleHereWithDefaultShaders(
         if (args.size == 2) here += args[1]
         return Insert(here = "$resolvesToCall$here")
     } else {
-        this.error(null, "fragment", -1)
+        clearShaderErrors(this, "vertex", "fragment")
         return insertForShader(vi, fi, resolvesToCall, args)
     }
 }
@@ -625,7 +781,13 @@ fun Box.macro_computeModuleHere(args: List<String>): Insert {
     this.actions += "computeModuleHere_reload" to Action("Reload Compute Shader|alt r", "reloads the compute shader in this box") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
-                it.forEach { reloadComputeShader(it) }
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadComputeShader(selected)
+                }
             }
         }
     }
@@ -668,7 +830,7 @@ void main() {
     if (hasError) {
         return Insert(here = "_computeModuleHere${args[0]}")
     } else {
-        this.error(null, "fragment", -1) // preserves previous behavior
+        clearShaderErrors(this, "compute")
         val insert = buildComputeInsert(ci)
         return insert.copy(here = run {
             var here = "_computeModuleHere${args[0]}"
@@ -708,7 +870,13 @@ fun Box.macro_meshModuleHere(args: List<String>): Insert {
     this.actions += "meshModuleHere_reload" to Action("Reload Mesh Shader|alt r", "reloads the mesh shader in this box") {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
-                it.forEach { reloadMeshShader(it) }
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadMeshShader(selected)
+                }
             }
         }
     }
@@ -810,7 +978,7 @@ void main()
     if (hasError) {
         return Insert(here = "_meshModuleHere${args[0]}")
     } else {
-        this.error(null, "fragment", -1)
+        clearShaderErrors(this, "task", "mesh", "fragment")
         val insert = buildMeshInsert(ti, mi, fi)
         return insert.copy(here = run {
             var here = "_meshModuleHere${args[0]}"

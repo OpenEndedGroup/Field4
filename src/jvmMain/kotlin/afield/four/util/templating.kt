@@ -11,6 +11,7 @@ import afield.logger.lprintln
 // Features:
 // - {{ expr }} interpolation
 // - {% if expr %} ... {% else %} ... {% endif %} with nesting
+// - {% include "path" %} (requires include resolver)
 // - Dynamic, runtime resolver chaining with dot-path fallback rules
 // - Good runtime errors with line/col, line snippet, and a resolution trace
 //
@@ -38,15 +39,18 @@ fun interface Resolver {
 }
 
 typealias ResolverFn = (String) -> Any?
+fun interface IncludeResolver {
+    fun include(path: String, line: Int, col: Int): String
+}
 
 
 fun getShaderTemplateResolverForBox(b : Box) = b.gather<MutableMap<String, Any>>("shaderTemplate")
 
-fun runTemplate(template: String, resolver: Resolver): String =
-    TemplateEngine().run(template, listOf(resolver))
+fun runTemplate(template: String, resolver: Resolver, includeResolver: IncludeResolver? = null): String =
+    TemplateEngine().run(template, listOf(resolver), includeResolver)
 
-fun runTemplate(template: String, resolver: ResolverFn): String =
-    TemplateEngine().run(template, listOf(FnResolver(resolver)))
+fun runTemplate(template: String, resolver: ResolverFn, includeResolver: IncludeResolver? = null): String =
+    TemplateEngine().run(template, listOf(FnResolver(resolver)), includeResolver)
 
 /**
  * Most permissive entrypoint.
@@ -56,8 +60,8 @@ fun runTemplate(template: String, resolver: ResolverFn): String =
  *  - Iterable<*> of resolvers
  *  - Map<String, Any?> (will be wrapped with MapResolver)
  */
-fun runTemplate(template: String, resolver: Any?): String =
-    TemplateEngine().run(template, TemplateEngine.asResolverList(resolver))
+fun runTemplate(template: String, resolver: Any?, includeResolver: IncludeResolver? = null): String =
+    TemplateEngine().run(template, TemplateEngine.asResolverList(resolver), includeResolver)
 
 //////////////////////////////
 // Engine
@@ -65,11 +69,11 @@ fun runTemplate(template: String, resolver: Any?): String =
 
 private class TemplateEngine {
 
-    fun run(template: String, rootResolvers: List<Resolver>): String {
+    fun run(template: String, rootResolvers: List<Resolver>, includeResolver: IncludeResolver? = null): String {
         val lineIndex = LineIndex(template)
         val parser = Parser(template, lineIndex)
         val nodes = parser.parseTopLevel()
-        val evaluator = Evaluator(template, lineIndex, rootResolvers)
+        val evaluator = Evaluator(template, lineIndex, rootResolvers, includeResolver)
         return evaluator.render(nodes, rootResolvers)
     }
 
@@ -108,6 +112,7 @@ private class TemplateEngine {
 private sealed interface Node
 private data class TextNode(val text: String) : Node
 private data class ExprNode(val expr: String, val loc: Location) : Node
+private data class IncludeNode(val includeExpr: String, val loc: Location) : Node
 private data class IfNode(
     val condition: String,
     val thenBranch: List<Node>,
@@ -214,6 +219,13 @@ private class Parser(
                         }
                     }
                 }
+                raw.startsWith("include ") -> {
+                    val includeExpr = raw.removePrefix("include ").trim()
+                    if (includeExpr.isBlank()) {
+                        throw TemplateException("Missing include path at ${loc.format()}.")
+                    }
+                    nodes += IncludeNode(includeExpr, loc)
+                }
                 raw == "else" || raw == "endif" -> {
                     // If we see these here, they were not expected by any enclosing block.
                     throw TemplateException("Unexpected '{% $raw %}' at ${loc.format()}.")
@@ -247,7 +259,8 @@ private class Parser(
 private class Evaluator(
     private val template: String,
     private val index: LineIndex,
-    private val rootResolvers: List<Resolver>
+    private val rootResolvers: List<Resolver>,
+    private val includeResolver: IncludeResolver?
 ) {
 
     fun render(nodes: List<Node>, currentResolvers: List<Resolver>): String {
@@ -256,6 +269,7 @@ private class Evaluator(
             when (n) {
                 is TextNode -> sb.append(n.text)
                 is ExprNode -> sb.append(evalExprToString(n.expr, n.loc, currentResolvers))
+                is IncludeNode -> sb.append(evalIncludeToString(n.includeExpr, n.loc, currentResolvers))
                 is IfNode -> {
                     val truthy = evalCondition(n.condition, n.loc, currentResolvers)
                     val branch = if (truthy) n.thenBranch else (n.elseBranch ?: emptyList())
@@ -279,6 +293,36 @@ private class Evaluator(
         }
 
         return applyLineMagic(raw, loc.line)
+    }
+
+    private fun evalIncludeToString(expr: String, loc: Location, resolvers: List<Resolver>): String {
+        val includePath = evaluateIncludePath(expr, loc, resolvers)
+        val resolver = includeResolver
+            ?: throw TemplateException("Include tag used without include resolver at ${loc.format()}.")
+        return try {
+            resolver.include(includePath, loc.line, loc.col)
+        } catch (e: TemplateException) {
+            throw e
+        } catch (e: Exception) {
+            val msg = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName ?: "Unknown include error"
+            throw TemplateException("Failed to include '$includePath' at ${loc.format()}: $msg")
+        }
+    }
+
+    private fun evaluateIncludePath(expr: String, loc: Location, resolvers: List<Resolver>): String {
+        val trimmed = expr.trim()
+        if (trimmed.length >= 2) {
+            if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+                (trimmed.startsWith("'") && trimmed.endsWith("'"))
+            ) {
+                return trimmed.substring(1, trimmed.length - 1)
+            }
+        }
+
+        val trace = mutableListOf<String>()
+        val value = resolveExpression(trimmed, resolvers, trace, depth = 0)
+            ?: throw resolutionError(trimmed, loc, trace)
+        return if (value is String) value else value.toString()
     }
 
 

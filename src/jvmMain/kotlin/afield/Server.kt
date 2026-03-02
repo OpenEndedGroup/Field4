@@ -1152,6 +1152,14 @@ class Server {
                             call.respondText(modifiedContent, ContentType.Text.Html)
                         }
                     }
+                    route("/h2-explorer") {
+                        handle {
+                            val originalContent =
+                                File("./src/commonMain/resources/h2_explorer.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
                     route("/inspect") {
                         handle {
                             val originalContent =

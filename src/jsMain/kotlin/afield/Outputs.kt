@@ -2,10 +2,11 @@ package afield
 
 import kotlinx.browser.document
 import kotlinx.browser.window
+import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
+import org.w3c.dom.Node
+import org.w3c.dom.Text
+import kotlin.math.*
 
 private val knownOutputs = mutableListOf<dynamic>()
 private var decorationsCollection: dynamic = null
@@ -16,6 +17,11 @@ private val debounceTimers = mutableMapOf<String, Int>()
 
 private var orderCounter = 0
 private var addPromptBoxUid = 0
+
+private const val outputHeightFudgePx = 5.0
+private var outputMaxHeightPx = 500.0
+private var outputScrollTailExistingPx = 40.0
+private var outputScrollTailNewPx = 46.0
 
 private fun debounceTimeout(key: String, delay: Int, fn: () -> Unit) {
     debounceTimers[key]?.let { window.clearTimeout(it) }
@@ -46,16 +52,323 @@ private fun flash(node: dynamic) {
     }
 }
 
+private fun pulseOutput(node: dynamic) {
+    val element = node as? HTMLElement
+    if (element != null) {
+        val inErrorOutput = element.parentElement?.classList?.contains("error") == true
+        if (inErrorOutput) {
+            element.classList.remove("error-pulse")
+            window.requestAnimationFrame {
+                element.classList.add("error-pulse")
+                window.setTimeout({
+                    element.classList.remove("error-pulse")
+                }, 500)
+            }
+        }
+        element.classList.remove("flash-inverted")
+        window.requestAnimationFrame {
+            element.classList.add("flash-inverted")
+        }
+    }
+    flash(node)
+}
+
 private fun newRange(startLine: Int, startCol: Int, endLine: Int, endCol: Int): dynamic {
     val w = js("window")
     val ctor = w.globalMonaco.Range
     return js("Reflect.construct")(ctor, arrayOf(startLine, startCol, endLine, endCol))
 }
 
+private fun getMonacoLineHeightPx(editor: dynamic): Double {
+    val fallback = 20.0
+    return try {
+        val w = js("window")
+        val monaco = w.globalMonaco
+        val lineHeightOption = monaco?.editor?.EditorOption?.lineHeight
+        val value = if (lineHeightOption != null) editor.getOption(lineHeightOption) else null
+        val lineHeight = (value as? Number)?.toDouble()
+        if (lineHeight != null && lineHeight > 0.0) lineHeight else fallback
+    } catch (_: dynamic) {
+        fallback
+    }
+}
+
+private fun preferredOutputLines(editor: dynamic, domNode: HTMLElement?, domNodeInner: HTMLElement?): Int {
+    val innerScrollHeight = (domNodeInner?.scrollHeight as? Number)?.toDouble() ?: 0.0
+    val outerScrollHeight = (domNode?.scrollHeight as? Number)?.toDouble() ?: 0.0
+    // Prefer actual content height (inner). Using outer zone height can lock outputs
+    // into an oversized state after an initial over-estimate.
+    val measuredHeight = max(
+        0.0,
+        if (innerScrollHeight > 0.0) innerScrollHeight else outerScrollHeight
+    )
+    if (measuredHeight <= 0.0) return 2
+
+    val lineHeight = getMonacoLineHeightPx(editor)
+    val lines = max(2.0, ceil((measuredHeight + outputHeightFudgePx) / lineHeight)).toInt()
+    val maxLines = max(2.0, floor(outputMaxHeightPx / lineHeight)).toInt()
+    return min(lines, maxLines)
+}
+
+private fun updateOutputControlVisibility(output: dynamic) {
+    val zoneControl = output.zone?.marginDomNode as? HTMLElement
+    val domNodeControl = (output.domNodeControl as? HTMLElement) ?: zoneControl ?: return
+    output.domNodeControl = domNodeControl
+
+    val id = output.id?.toString() ?: return
+    val small = (output.small as? Number)?.toInt() ?: 0
+    val currentHeight = (output.zone?.heightInLines as? Number)?.toInt() ?: small
+    val isExpanded = currentHeight > small
+
+    val domNode = output.domNode as? HTMLElement
+    val scrollHeight = (domNode?.scrollHeight as? Number)?.toDouble() ?: 0.0
+    val clientHeight = (domNode?.clientHeight as? Number)?.toDouble() ?: 0.0
+    val overflowPx = max(0.0, scrollHeight - clientHeight)
+
+    val hasMeaningfulOverflow = overflowPx > 2.0
+    val showToggle = isExpanded || hasMeaningfulOverflow
+    val toggle = if (showToggle) {
+        "<div class='toggleBox hoverable' onclick='toggleArea(\"$id\")'>&varr;</div>"
+    } else {
+        ""
+    }
+    domNodeControl.innerHTML = "<div class='closeBox hoverable' onclick='removeArea(\"$id\")'>&#215;</div>$toggle"
+}
+
+private fun recomputeOutputHeight(editor: dynamic, output: dynamic) {
+    val zone = output.zone ?: return
+    val previousSmall = (output.small as? Number)?.toInt() ?: 2
+    val currentHeight = (zone.heightInLines as? Number)?.toInt() ?: previousSmall
+    val userCollapsed = output.userCollapsed as? Boolean ?: false
+
+    val preferredLines = preferredOutputLines(
+        editor,
+        output.domNode as? HTMLElement,
+        output.domNodeInner as? HTMLElement
+    )
+    output.big = preferredLines
+    output.small = min(2, preferredLines)
+
+    val targetHeight = if (userCollapsed) output.small else output.big
+    val targetHeightInt = (targetHeight as? Number)?.toInt() ?: output.small
+    if (targetHeightInt == currentHeight) {
+        updateOutputControlVisibility(output)
+        return
+    }
+
+    editor.changeViewZones { changeAccessor: dynamic ->
+        zone.heightInLines = targetHeight
+        changeAccessor.layoutZone(output.id)
+    }
+    window.requestAnimationFrame {
+        updateOutputControlVisibility(output)
+    }
+}
+
+private fun scheduleOutputHeightRecompute(editor: dynamic, output: dynamic) {
+    window.requestAnimationFrame {
+        recomputeOutputHeight(editor, output)
+        window.setTimeout({
+            recomputeOutputHeight(editor, output)
+        }, 35)
+    }
+}
+
+private fun scrollOutputToBottom(domNode: HTMLElement?, domNodeInner: HTMLElement?, tailPx: Double) {
+    if (domNode == null) return
+    val innerHeight = (domNodeInner?.scrollHeight as? Number)?.toDouble() ?: 0.0
+    val outerHeight = (domNode.scrollHeight as? Number)?.toDouble() ?: 0.0
+    val clientHeight = (domNode.clientHeight as? Number)?.toDouble() ?: 0.0
+    val contentHeight = max(innerHeight, outerHeight)
+    if (contentHeight <= 0.0 || clientHeight <= 0.0) return
+
+    val maxScrollTop = max(0.0, outerHeight - clientHeight)
+    val target = if (maxScrollTop <= 4.0) {
+        maxScrollTop
+    } else {
+        (contentHeight - tailPx).coerceIn(0.0, maxScrollTop)
+    }
+    domNode.scrollTo(0.0, target)
+}
+
+private fun applyScrollTailToKnownOutputs() {
+    knownOutputs.forEach { output ->
+        if (output.autoScroll as? Boolean == false) return@forEach
+        scrollOutputToBottom(
+            output.domNode as? HTMLElement,
+            output.domNodeInner as? HTMLElement,
+            outputScrollTailExistingPx
+        )
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun setOutputScrollTail(existingPx: Double, newPx: Double) {
+    val existingSafe = if (existingPx.isFinite()) existingPx else outputScrollTailExistingPx
+    val newSafe = if (newPx.isFinite()) newPx else outputScrollTailNewPx
+    outputScrollTailExistingPx = max(0.0, existingSafe)
+    outputScrollTailNewPx = max(0.0, newSafe)
+    applyScrollTailToKnownOutputs()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun nudgeOutputScrollTail(deltaPx: Double) {
+    if (!deltaPx.isFinite()) return
+    outputScrollTailExistingPx = max(0.0, outputScrollTailExistingPx + deltaPx)
+    outputScrollTailNewPx = max(0.0, outputScrollTailNewPx + deltaPx)
+    applyScrollTailToKnownOutputs()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun getOutputScrollTail(): String {
+    return "existing=$outputScrollTailExistingPx new=$outputScrollTailNewPx"
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun setOutputMaxHeight(px: Double) {
+    if (!px.isFinite()) return
+    outputMaxHeightPx = max(120.0, px)
+    val w = js("window")
+    val editor = w.globalMonacoEditor
+    if (editor != null) {
+        knownOutputs.forEach { output ->
+            recomputeOutputHeight(editor, output)
+        }
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun getOutputMaxHeight(): Double {
+    return outputMaxHeightPx
+}
+
+private fun clearOutputErrorMarkerDecoration(editor: dynamic, output: dynamic) {
+    output.errorMarkerOriginalText = null
+    val model = editor.getModel() ?: return
+    val id = output.errorMarkerDecorationId as? String ?: run {
+        output.errorMarkerDecorationId = null
+        return
+    }
+    model.deltaDecorations(arrayOf(id), emptyArray<Any>())
+    output.errorMarkerDecorationId = null
+}
+
+private fun resetOutputErrorMarkerState(editor: dynamic, output: dynamic) {
+    output.errorMarkerSuppressed = null
+    output.errorMarkerSuppressedColumn = null
+    output.errorMarkerBackendColumn = null
+    clearOutputErrorMarkerDecoration(editor, output)
+}
+
+private fun setOutputErrorMarkerDecoration(
+    editor: dynamic,
+    output: dynamic,
+    startLineInput: Int,
+    startColumnInput: Int,
+    _endLineInput: Int,
+    _endColumnInput: Int
+) {
+    val model = editor.getModel() ?: return
+    val lineCount = ((model.getLineCount() as? Number)?.toInt() ?: 1).coerceAtLeast(1)
+
+    val suppressed = output.errorMarkerSuppressed as? Boolean ?: false
+    val suppressedColumn = (output.errorMarkerSuppressedColumn as? Number)?.toInt()
+    if (suppressed && suppressedColumn != null && suppressedColumn == startColumnInput) {
+        clearOutputErrorMarkerDecoration(editor, output)
+        return
+    }
+
+    if (startLineInput < 1 || startColumnInput < 1) {
+        clearOutputErrorMarkerDecoration(editor, output)
+        return
+    }
+
+    val startLine = startLineInput.coerceIn(1, lineCount)
+    val startLineLength = (model.getLineLength(startLine) as? Number)?.toInt()?.coerceAtLeast(0) ?: 0
+    if (startLineLength == 0) {
+        clearOutputErrorMarkerDecoration(editor, output)
+        return
+    }
+
+    val startColumn = startColumnInput.coerceIn(1, startLineLength)
+    val endLine = startLine
+    val endColumn = (startColumn + 1).coerceAtMost(startLineLength + 1)
+
+    val options = js("{}")
+    options.inlineClassName = "kotlin-error-marker"
+    options.stickiness = 1
+
+    val entry = js("{}")
+    entry.range = newRange(startLine, startColumn, endLine, endColumn)
+    entry.options = options
+
+    val originalText = try {
+        model.getValueInRange(entry.range) as? String
+    } catch (_: dynamic) {
+        null
+    }
+    if (originalText == null || originalText.isEmpty()) {
+        clearOutputErrorMarkerDecoration(editor, output)
+        return
+    }
+
+    val existingId = output.errorMarkerDecorationId as? String
+    val oldIds = if (existingId != null) arrayOf(existingId) else emptyArray<String>()
+    val newIds = model.deltaDecorations(oldIds, arrayOf(entry)) as Array<String>
+    output.errorMarkerDecorationId = newIds.firstOrNull()
+    output.errorMarkerOriginalText = originalText
+    output.errorMarkerBackendColumn = startColumnInput
+    output.errorMarkerSuppressed = false
+    output.errorMarkerSuppressedColumn = null
+}
+
+private fun pruneFragileErrorMarkers(editor: dynamic) {
+    if (knownOutputs.isEmpty()) return
+    val model = editor.getModel() ?: return
+
+    knownOutputs.forEach { output ->
+        val id = output.errorMarkerDecorationId as? String ?: return@forEach
+        val original = output.errorMarkerOriginalText as? String ?: return@forEach
+        val range = model.getDecorationRange(id)
+        if (range == null) {
+            clearOutputErrorMarkerDecoration(editor, output)
+            return@forEach
+        }
+        val now = try {
+            model.getValueInRange(range) as? String
+        } catch (_: dynamic) {
+            null
+        }
+        if (now == null || now != original) {
+            output.errorMarkerSuppressed = true
+            output.errorMarkerSuppressedColumn = output.errorMarkerBackendColumn
+            clearOutputErrorMarkerDecoration(editor, output)
+        }
+    }
+}
+
+private var fragileErrorMarkerPruneInstalled = false
+
+fun installFragileErrorMarkerPruning(editor: dynamic) {
+    if (fragileErrorMarkerPruneInstalled) return
+    fragileErrorMarkerPruneInstalled = true
+    editor.onDidChangeModelContent { _: dynamic ->
+        debounceTimeout("prune-error-markers", 25) {
+            pruneFragileErrorMarkers(editor)
+        }
+    }
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun clear(editor: dynamic) {
     for (output in knownOutputs) {
+        resetOutputErrorMarkerState(editor, output)
         editor.changeViewZones { changeAccessor: dynamic ->
             changeAccessor.removeZone(output.id)
         }
@@ -74,6 +387,7 @@ fun clearErrors(editor: dynamic) {
     val toRemove = mutableListOf<dynamic>()
     for (output in knownOutputs) {
         if ((output.kind as? String) == "error") {
+            resetOutputErrorMarkerState(editor, output)
             editor.changeViewZones { changeAccessor: dynamic ->
                 changeAccessor.removeZone(output.id)
             }
@@ -99,6 +413,7 @@ fun removeNewestOutput() {
     }
     if (best != null) {
         val w = js("window")
+        resetOutputErrorMarkerState(w.globalMonacoEditor, best)
         w.globalMonacoEditor.changeViewZones { changeAccessor: dynamic ->
             changeAccessor.removeZone(best.id)
         }
@@ -113,6 +428,7 @@ fun removeArea(id: String) {
         output.id?.toString() == id
     } ?: return
     val w = js("window")
+    resetOutputErrorMarkerState(w.globalMonacoEditor, found)
     w.globalMonacoEditor.changeViewZones { changeAccessor: dynamic ->
         changeAccessor.removeZone(id)
     }
@@ -126,14 +442,26 @@ fun toggleArea(id: String) {
         output.id?.toString() == id
     } ?: return
     val w = js("window")
+    val zone = found.zone ?: return
+    val wasCollapsed = (zone.heightInLines as? Number)?.toInt() == (found.small as? Number)?.toInt()
+
+    val domNode = found.domNode as? HTMLElement
+    val domNodeInner = found.domNodeInner as? HTMLElement
+    val preferredLines = preferredOutputLines(w.globalMonacoEditor, domNode, domNodeInner)
+    found.big = preferredLines
+    found.small = min(2, preferredLines)
+    found.userCollapsed = !wasCollapsed
+
     w.globalMonacoEditor.changeViewZones { changeAccessor: dynamic ->
-        val zone = found.zone
-        zone.heightInLines = if (zone.heightInLines == found.big) found.small else found.big
+        zone.heightInLines = if (wasCollapsed) found.big else found.small
         changeAccessor.layoutZone(id)
         window.setTimeout({
             val domNode = found.domNode as? HTMLElement ?: return@setTimeout
             domNode.scrollTo(js("{ left: 0, top: 1000, behavior: 'smooth' }"))
         }, 100)
+    }
+    window.requestAnimationFrame {
+        updateOutputControlVisibility(found)
     }
 }
 
@@ -255,6 +583,106 @@ private fun looksLikeHTML(text: String): Boolean {
     return regex.containsMatchIn(trimmed)
 }
 
+private data class TypeParamsSegment(val text: String, val isTypeParams: Boolean)
+
+private fun splitTypeParamsSegments(text: String): List<TypeParamsSegment>? {
+    if (!text.contains('<') || !text.contains('>')) return null
+
+    val segments = mutableListOf<TypeParamsSegment>()
+    var plainStart = 0
+    var groupStart = -1
+    var depth = 0
+
+    var i = 0
+    while (i < text.length) {
+        when (text[i]) {
+            '<' -> {
+                if (groupStart == -1) {
+                    if (i > plainStart) {
+                        segments.add(TypeParamsSegment(text.substring(plainStart, i), isTypeParams = false))
+                    }
+                    groupStart = i
+                    depth = 1
+                } else {
+                    depth++
+                }
+            }
+
+            '>' -> {
+                if (groupStart != -1) {
+                    depth--
+                    if (depth <= 0) {
+                        val endExclusive = i + 1
+                        segments.add(TypeParamsSegment(text.substring(groupStart, endExclusive), isTypeParams = true))
+                        plainStart = endExclusive
+                        groupStart = -1
+                        depth = 0
+                    }
+                }
+            }
+        }
+        i++
+    }
+
+    if (groupStart != -1) return null
+    if (plainStart < text.length) {
+        segments.add(TypeParamsSegment(text.substring(plainStart), isTypeParams = false))
+    }
+    if (segments.none { it.isTypeParams }) return null
+    return segments
+}
+
+private fun decorateTypeParamsInTextNode(textNode: Text) {
+    val text = textNode.data
+    val segments = splitTypeParamsSegments(text) ?: return
+
+    val frag = document.createDocumentFragment()
+    segments.forEach { seg ->
+        if (seg.text.isEmpty()) return@forEach
+        if (seg.isTypeParams) {
+            val span = document.createElement("span") as HTMLElement
+            span.classList.add("kotlin-type-params")
+            span.textContent = seg.text
+            frag.appendChild(span)
+        } else {
+            frag.appendChild(document.createTextNode(seg.text))
+        }
+    }
+
+    textNode.parentNode?.replaceChild(frag, textNode)
+}
+
+private fun decorateTypeParamsRec(node: Node) {
+    val children = node.childNodes
+    if (children.length == 0) return
+
+    val snapshot = mutableListOf<Node>()
+    for (i in 0 until children.length) {
+        val child = children.item(i) ?: continue
+        snapshot.add(child)
+    }
+
+    snapshot.forEach { child ->
+        when (child.nodeType.toInt()) {
+            3 -> decorateTypeParamsInTextNode(child.unsafeCast<Text>())
+            1 -> {
+                val tag = (child as? Element)?.tagName?.lowercase()
+                if (tag != "script" && tag != "style") {
+                    decorateTypeParamsRec(child)
+                }
+            }
+        }
+    }
+}
+
+private fun decorateTypeParamsInHtml(html: String): String {
+    if (!html.contains('&') && !html.contains('<')) return html
+    val container = document.createElement("div") as HTMLElement
+    container.innerHTML = html
+    decorateTypeParamsRec(container)
+    return container.innerHTML
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun chatKeyboardCallback(event: dynamic, id: Int, input: dynamic): Boolean {
@@ -369,12 +797,20 @@ fun addOutput(
     belowLineInput: Int,
     extraClass: String,
     annotation: String?,
-    frameMarker: Int
+    frameMarker: Int,
+    markerStartColumn: Int,
+    markerEndLine: Int,
+    markerEndColumn: Int
 ) {
     var textClean = text
     val isHTML = looksLikeHTML(text)
-    if (!isHTML) {
+    val hasEmbeddedIframe = text.contains("<iframe", ignoreCase = true)
+    val richHtml = isHTML || hasEmbeddedIframe
+    if (!richHtml) {
         textClean = textClean.replace("\n", "<br>")
+    }
+    if (extraClass == "error") {
+        textClean = decorateTypeParamsInHtml(textClean)
     }
 
     var belowLine = belowLineInput
@@ -403,30 +839,33 @@ fun addOutput(
     }
 
     val found = knownOutputs.firstOrNull { output ->
-        (output.line as? Number)?.toInt() == belowLine
+        (output.line as? Number)?.toInt() == belowLine && (output.kind as? String) == extraClass
     }
     if (found != null) {
-        if (isHTML) {
+        found.autoScroll = !richHtml
+        if (richHtml) {
             found.domNodeInner.innerHTML = textClean
         } else {
             appendWithBadge(found.domNodeInner, textClean)
-            window.requestAnimationFrame {
-                val rect = found.domNodeInner.getBoundingClientRect()
-                val l = max(2.0, rect.height / 20.0)
-                found.big = l.toInt()
-                found.small = min(2, found.big)
-            }
+        }
+        scheduleOutputHeightRecompute(editor, found)
+
+        if (extraClass == "error") {
+            setOutputErrorMarkerDecoration(editor, found, belowLine, markerStartColumn, markerEndLine, markerEndColumn)
+        } else {
+            resetOutputErrorMarkerState(editor, found)
         }
 
         val domNode = found.domNode as HTMLElement
         domNode.className = ""
         domNode.classList.add("execution_output")
         domNode.classList.add(extraClass)
+        domNode.style.asDynamic().overflow = if (richHtml) "hidden" else "scroll"
         domNode.style.zIndex = "11"
-        if (!isHTML) {
-            flash(found.domNodeInner)
+        pulseOutput(found.domNodeInner)
+        if (found.autoScroll as? Boolean != false) {
             window.setTimeout({
-                domNode.scrollTo(0.0, (found.domNodeInner as HTMLElement).scrollHeight - 35.0)
+                scrollOutputToBottom(domNode, found.domNodeInner as? HTMLElement, outputScrollTailExistingPx)
             }, 10)
         }
         debounceTimeout("align", 50) {
@@ -461,20 +900,24 @@ fun addOutput(
     if (allowInline &&
         !textClean.contains("<br>") &&
         extraClass != "error" &&
-        !isHTML
+        !richHtml
     ) {
         addInlineOutput(editor, belowLine, textClean, extraClass, frameMarker)
     } else {
         editor.changeViewZones { changeAccessor: dynamic ->
             val domNode = document.createElement("div") as HTMLElement
-            domNode.style.asDynamic().overflow = "scroll"
+            domNode.style.asDynamic().overflow = if (richHtml) "hidden" else "scroll"
             domNode.classList.add(extraClass)
             domNode.classList.add("execution_output")
 
             val domNodeAnnotation = document.createElement("div") as HTMLElement
             val domNodeInner = document.createElement("div") as HTMLElement
             domNode.appendChild(domNodeInner)
-            appendWithBadge(domNodeInner, textClean)
+            if (richHtml) {
+                domNodeInner.innerHTML = textClean
+            } else {
+                appendWithBadge(domNodeInner, textClean)
+            }
 
             domNode.appendChild(domNodeAnnotation)
             domNodeAnnotation.innerHTML = annotation ?: ""
@@ -486,18 +929,26 @@ fun addOutput(
             domNodeInner.style.borderRadius = "8px"
             domNodeInner.style.marginBottom = "8px"
             domNodeInner.style.width = "calc( 100% - 8px )"
-            domNodeInner.style.padding = "4px"
+            domNodeInner.style.padding = "4px 4px 0px 4px"
             domNodeInner.style.marginTop = "3px"
             domNodeInner.style.marginLeft = "3px"
             domNodeInner.style.paddingLeft = "8px"
-            domNodeInner.style.asDynamic().overflowX = "scroll"
+            domNodeInner.style.asDynamic().overflowX = if (richHtml) "hidden" else "scroll"
 
             domNode.style.zIndex = "11"
 
             val domNodeControl = document.createElement("div") as HTMLElement
-            domNodeControl.style.borderLeft = "5px solid rgba(255,255,255,0.3)"
+            domNodeControl.style.borderLeft = "5px solid rgba(255,255,255,0.23)"
+            domNodeControl.style.borderTop = "5px solid rgba(255,255,255,0.23)"
+            domNodeControl.style.borderBottom = "5px solid rgba(255,255,255,0.23)"
             domNodeControl.style.marginLeft = "3px"
             domNodeControl.style.opacity = "0.5"
+            domNodeControl.style.zIndex = "1000"
+            domNodeControl.style.borderRadius = "5px"
+            domNodeControl.style.paddingTop = "5px"
+            domNodeControl.style.paddingLeft = "2px"
+
+            domNodeControl.style.asDynamic().pointerEvents = "auto"
             domNodeControl.classList.add("notselectable")
 
             domNode.onwheel = { wheel: dynamic ->
@@ -507,17 +958,19 @@ fun addOutput(
                 wheel.stopImmediatePropagation()
             }
 
-            document.body?.appendChild(domNode)
-            val rect = domNode.getBoundingClientRect()
-            domNode.parentElement?.removeChild(domNode)
+            var lines = if (richHtml) {
+                2
+            } else {
+                min(5, textClean.split("\n").size) + 1
+            }
+            lines = max(2, lines)
 
-            var lines = min(5, textClean.split("\n").size) + 1
-            lines = max(2, (rect.height / 20.0).toInt())
-
-            window.setTimeout({
-                domNode.scrollTo(0.0, domNodeInner.scrollHeight - 41.0)
-            }, 100)
-            flash(domNodeInner)
+            if (!richHtml) {
+                window.setTimeout({
+                    scrollOutputToBottom(domNode, domNodeInner, outputScrollTailNewPx)
+                }, 100)
+            }
+            pulseOutput(domNodeInner)
 
             val zone = js("{}")
             zone.afterLineNumber = belowLine
@@ -534,9 +987,6 @@ fun addOutput(
             }
 
             val id = changeAccessor.addZone(zone)
-            domNodeControl.innerHTML =
-                "<div class='closeBox hoverable' onclick='removeArea(\"$id\")'>&#215;</div>" +
-                    "<div class='toggleBox hoverable' onclick='toggleArea(\"$id\")'>&varr;</div>"
 
             val output = js("{}")
             output.id = id
@@ -547,9 +997,17 @@ fun addOutput(
             output.domNode = domNode
             output.domNodeInner = domNodeInner
             output.domNodeAnnotation = domNodeAnnotation
+            output.domNodeControl = domNodeControl
             output.insertionOrder = ++orderCounter
             output.kind = extraClass
+            output.autoScroll = !richHtml
+            output.userCollapsed = false
+            updateOutputControlVisibility(output)
             knownOutputs.add(output)
+            if (extraClass == "error") {
+                setOutputErrorMarkerDecoration(editor, output, belowLine, markerStartColumn, markerEndLine, markerEndColumn)
+            }
+            scheduleOutputHeightRecompute(editor, output)
         }
     }
 
@@ -696,7 +1154,7 @@ private fun appendWithBadge(div: dynamic, msg: String) {
     line.className = "log-line"
     line.dataset.asDynamic().msg = message
 
-    val text = document.createElement("span") as HTMLElement
+    val text = document.createElement("div") as HTMLElement
     text.className = "log-msg"
     text.innerHTML = message
 

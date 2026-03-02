@@ -733,9 +733,18 @@ fun registerBuiltinCommands() {
             label:"Copy Selection",
             keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_C] : [],
             detail:"Copy selected boxes (and all their code & properties)",
-            canvasKeybinding: (event) => (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
+            canvasKeybinding: (event) => {
+                const copyChord = (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey)
+                if (!copyChord) return false
+                const sel = (window.getSelection && window.getSelection()) || null
+                const hasDomSelection = !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && (sel.toString() || "").length > 0)
+                return !hasDomSelection
+            },
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                const sel = (window.getSelection && window.getSelection()) || null
+                const hasDomSelection = !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && (sel.toString() || "").length > 0)
+                if (hasDomSelection) return
                 copySelectedBoxesToClipboard()
             }
         },{

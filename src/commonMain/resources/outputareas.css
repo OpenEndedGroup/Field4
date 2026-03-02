@@ -200,6 +200,19 @@
     width: auto;
 }
 
+.disclosure-content > .value-viz-h2 {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.disclosure-content > .value-viz-h2 > iframe {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 .nested-canvas {
     position: relative;
     overflow: visible;
@@ -238,7 +251,7 @@
     margin: 6px 0 4px 0;
     font-weight: 600;
     font-size: 12px;
-    font-family: "iosevka";
+    font-family: "Iosevka Web", monospace;
 }
 
 .ai-chat-markdown p {
@@ -258,7 +271,7 @@
     color: wheat;
     padding: 0 2px;
     border-radius: 0;
-    font-family: "iosevka";
+    font-family: "Iosevka Web", monospace;
 }
 
 .ai-chat-markdown pre {
@@ -473,7 +486,7 @@
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 4px;
     padding: 8px;
-    font-family: "iosevka", monospace;
+    font-family: "Iosevka Web", monospace;
 }
 
 .ai-chat button {

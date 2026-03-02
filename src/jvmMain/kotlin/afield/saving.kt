@@ -709,6 +709,7 @@ class SavingContext {
 
         const val METADATA_EDN = "metadata.edn"
         const val METADATA_JSON = "metadata.json"
+        const val TRANSCRIPT_EDN = "transcript.edn"
 
         private val ednCustom = Edn.CustomTypes().apply {
             registerEdn(Rect::class, "afield/rect", { rect ->

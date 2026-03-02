@@ -225,6 +225,7 @@ object Inspector {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     @Serializable private data class Request(
+        val channel: String? = null,
         val reqId: String,
         val op: String,
         val id: String? = null,
@@ -260,6 +261,7 @@ object Inspector {
         val client = Client(clientKey) { payload -> push(payload) }
         return try {
             val req = json.decodeFromString(Request.serializer(), text)
+            if (req.channel != null && req.channel != "__browsing__") return ""
             when (req.op) {
                 "getRoots" -> {
                     // If a deep-link token is provided, start from THAT object (as the unseen parent).

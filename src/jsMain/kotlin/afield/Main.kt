@@ -96,6 +96,8 @@ private var axisAlpha = axisAlphaIdle
 private var axisAlphaTarget = axisAlphaIdle
 private var backgroundFadeTimeoutHandle: Int? = null
 private var backgroundLerpHandle: Int? = null
+private var navigationPanAnimationHandle: Int? = null
+private var navigationPanAnimationGeneration = 0
 
 @JsExport
 @JsName("launchNumber")
@@ -136,6 +138,11 @@ var lastAltDownUid: String? = null
 var lastAltDownStamp = 0.0
 var lastShiftDownUid: String? = null
 var lastShiftDownStamp = 0.0
+var pendingShiftToggleBox: HTMLElement? = null
+var pendingShiftToggleDownX = 0.0
+var pendingShiftToggleDownY = 0.0
+var pendingShiftToggleHadDrag = false
+private const val shiftToggleClickSlopPx = 4.0
 
 // Layers system state
 var visibleLayers = mutableSetOf("default")
@@ -205,28 +212,208 @@ private fun collectScreenshotRects(box: HTMLElement): List<Rect> {
     return rects
 }
 
+private fun applyViewportTranslation(
+    nextX: Double,
+    nextY: Double,
+    panning: Boolean = false,
+    refreshSpatial: Boolean = true,
+    syncServer: Boolean = true
+) {
+    val mc = mainCanvas.unsafeCast<dynamic>()
+    (mc as HTMLElement).style.transform = "translate(${nextX}px, ${nextY}px)"
+    mainTranslation = listOf(nextX, nextY)
+    mc.data_x = nextX
+    mc.data_y = nextY
+
+    updateBackgroundGrid(nextX, nextY, panning = panning)
+
+    if (syncServer) {
+        send(
+            Message("set-viewport").payload(
+                Set_rect(
+                    uid = "root",
+                    property = "viewport",
+                    value = Rect(nextX, nextY, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+                )
+            )
+        )
+    }
+
+    canvasGestures.rebuildConnectionGroup(translationOnly = true)
+    repositionSlideNoteOverlayIfVisible()
+    if (refreshSpatial && spatialNavActive) {
+        refreshSpatialNavTargets()
+    }
+}
+
+private fun cancelNavigationPanAnimation() {
+    navigationPanAnimationGeneration += 1
+    navigationPanAnimationHandle?.let { window.cancelAnimationFrame(it) }
+    navigationPanAnimationHandle = null
+}
+
+private fun animateViewportTranslation(
+    nextX: Double,
+    nextY: Double,
+    durationMs: Double = 220.0,
+    refreshSpatialDuringAnimation: Boolean = spatialNavActive
+) {
+    val startX = mainTranslation[0]
+    val startY = mainTranslation[1]
+    val dx = nextX - startX
+    val dy = nextY - startY
+    val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+    if (distance < 1.0 || durationMs <= 0.0) {
+        applyViewportTranslation(nextX, nextY, panning = false, refreshSpatial = refreshSpatialDuringAnimation)
+        return
+    }
+
+    cancelNavigationPanAnimation()
+    val generation = navigationPanAnimationGeneration
+    val startAt = window.performance.now()
+
+    fun easeInOutQuint(t: Double): Double {
+        return if (t < 0.5) {
+            16.0 * t * t * t * t * t
+        } else {
+            val x = -2.0 * t + 2.0
+            1.0 - (x * x * x * x * x) / 2.0
+        }
+    }
+
+    fun frame(now: Double) {
+        if (generation != navigationPanAnimationGeneration) return
+
+        val t = ((now - startAt) / durationMs).coerceIn(0.0, 1.0)
+        val eased = easeInOutQuint(t)
+        val x = startX + dx * eased
+        val y = startY + dy * eased
+
+        val done = t >= 0.999
+        applyViewportTranslation(
+            nextX = x,
+            nextY = y,
+            panning = false,
+            refreshSpatial = refreshSpatialDuringAnimation,
+            syncServer = done
+        )
+
+        if (done) {
+            navigationPanAnimationHandle = null
+        } else {
+            navigationPanAnimationHandle = window.requestAnimationFrame { ts -> frame(ts) }
+        }
+    }
+
+    navigationPanAnimationHandle = window.requestAnimationFrame { ts -> frame(ts) }
+}
+
 private fun centerViewportOn(rect: Rect) {
     val dx = window.innerWidth / 2.0 - (rect.x + rect.w / 2.0)
     val dy = window.innerHeight / 2.0 - (rect.y + rect.h / 2.0)
     val nextX = mainTranslation[0] + dx
     val nextY = mainTranslation[1] + dy
 
-    mainCanvas.style.transform = "translate(${nextX}px, ${nextY}px)"
-    mainTranslation = listOf(nextX, nextY)
-    updateBackgroundGrid(nextX, nextY, panning = false)
+    applyViewportTranslation(nextX, nextY, panning = false)
+}
 
-    send(
-        Message("set-viewport").payload(
-            Set_rect(
-                uid = "root",
-                property = "viewport",
-                value = Rect(nextX, nextY, window.innerWidth.toDouble(), window.innerHeight.toDouble())
-            )
-        )
+private fun isOverlayVisible(element: HTMLElement?): Boolean {
+    if (element == null) return false
+    val style = window.getComputedStyle(element)
+    if (style.display == "none" || style.visibility == "hidden") return false
+    val opacity = style.opacity.toDoubleOrNull() ?: 1.0
+    if (opacity <= 0.05) return false
+    val rect = element.getBoundingClientRect()
+    return rect.width > 1.0 && rect.height > 1.0
+}
+
+private fun navigationSafeViewportRect(padding: Double = 16.0, occluderGap: Double = 14.0): Rect {
+    val viewportWidth = window.innerWidth.toDouble()
+    val viewportHeight = window.innerHeight.toDouble()
+    val base = Rect(
+        padding,
+        padding,
+        (viewportWidth - padding * 2.0).coerceAtLeast(1.0),
+        (viewportHeight - padding * 2.0).coerceAtLeast(1.0)
     )
 
-    canvasGestures.rebuildConnectionGroup(translationOnly = true)
-    repositionSlideNoteOverlayIfVisible()
+    val occluderRects = listOf(".docs-iframe-container", ".monaco-editor-container")
+        .mapNotNull { selector ->
+            val element = document.querySelector(selector) as? HTMLElement ?: return@mapNotNull null
+            if (!isOverlayVisible(element)) return@mapNotNull null
+            val rect = element.getBoundingClientRect()
+            Rect(rect.left, rect.top, rect.width, rect.height)
+        }
+
+    val occluder = occluderRects.maxByOrNull { it.w * it.h } ?: return base
+    val occluderRight = occluder.right
+    val occluderBottom = occluder.bottom
+
+    val overlapsBase = occluder.x < base.right &&
+        occluderRight > base.x &&
+        occluder.y < base.bottom &&
+        occluderBottom > base.y
+    if (!overlapsBase) return base
+
+    // Monaco/docs panel is generally side-docked; carve it out horizontally.
+    val leftSafeWidth = (occluder.x - occluderGap) - base.x
+    val rightSafeX = max(base.x, occluderRight + occluderGap)
+    val rightSafeWidth = base.right - rightSafeX
+    val carved = if (leftSafeWidth >= rightSafeWidth) {
+        Rect(base.x, base.y, leftSafeWidth.coerceAtLeast(0.0), base.h)
+    } else {
+        Rect(rightSafeX, base.y, rightSafeWidth.coerceAtLeast(0.0), base.h)
+    }
+
+    val minSafeWidth = viewportWidth * 0.22
+    return if (carved.w >= minSafeWidth) carved else base
+}
+
+private fun ensureBoxVisibleForNavigation(target: HTMLElement) {
+    val rect = target.getBoundingClientRect()
+    if (rect.width <= 0.0 || rect.height <= 0.0) return
+
+    val safe = navigationSafeViewportRect()
+    val safeRight = safe.right
+    val safeBottom = safe.bottom
+    val marginX = min(48.0, safe.w * 0.2)
+    val marginY = min(42.0, safe.h * 0.2)
+    val leftBound = safe.x + marginX
+    val rightBound = safeRight - marginX
+    val topBound = safe.y + marginY
+    val bottomBound = safeBottom - marginY
+
+    val targetCenterX = rect.left + rect.width / 2.0
+    val targetCenterY = rect.top + rect.height / 2.0
+    val safeCenterX = safe.x + safe.w / 2.0
+    val safeCenterY = safe.y + safe.h / 2.0
+
+    var dx = 0.0
+    var dy = 0.0
+
+    if (rightBound <= leftBound || rect.width > rightBound - leftBound) {
+        dx = safeCenterX - targetCenterX
+    } else if (rect.left < leftBound) {
+        dx = leftBound - rect.left
+    } else if (rect.right > rightBound) {
+        dx = rightBound - rect.right
+    }
+
+    if (bottomBound <= topBound || rect.height > bottomBound - topBound) {
+        dy = safeCenterY - targetCenterY
+    } else if (rect.top < topBound) {
+        dy = topBound - rect.top
+    } else if (rect.bottom > bottomBound) {
+        dy = bottomBound - rect.bottom
+    }
+
+    if (abs(dx) < 0.5 && abs(dy) < 0.5) return
+    animateViewportTranslation(
+        nextX = mainTranslation[0] + dx,
+        nextY = mainTranslation[1] + dy,
+        durationMs = 420.0,
+        refreshSpatialDuringAnimation = spatialNavActive
+    )
 }
 
 private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotResponse {
@@ -1340,6 +1527,7 @@ private fun installSpatialNavigationShortcut() {
                     if (target != null) {
                         selected.toList().forEach { deselectBox(it) }
                         selectBox(target)
+                        ensureBoxVisibleForNavigation(target)
                         spatialNavAnchor = target
                         refreshSpatialNavTargets()
                     } else {
@@ -2057,7 +2245,7 @@ suspend fun main() {
             // Scroll the nested area so the target box is visible
             setTimeout( {
                 try {
-                    box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
+                    ensureBoxVisibleForNavigation(box)
                 } catch (e: Exception) {
                     console.info("[nav] failed to scroll to box", e)
                 }
@@ -2350,6 +2538,7 @@ suspend fun main() {
     mainViewport.onmousemove = { event ->
         if (event.buttons.toInt() ===4) {
             // this is actually a drag gesture
+            cancelNavigationPanAnimation()
             event.preventDefault()
             event.stopPropagation()
 
@@ -2391,6 +2580,7 @@ suspend fun main() {
         if (event.target is SVGElement) {
         } else {
 
+            cancelNavigationPanAnimation()
             event.preventDefault()
             event.stopPropagation()
 
@@ -2614,7 +2804,20 @@ suspend fun main() {
         )
     }
 
-    interactable.on("up") { _ -> }
+    interactable.on("up") { event ->
+        val pendingBox = pendingShiftToggleBox
+        if (pendingBox != null) {
+            val upX = (event.clientX as? Number)?.toDouble() ?: pendingShiftToggleDownX
+            val upY = (event.clientY as? Number)?.toDouble() ?: pendingShiftToggleDownY
+            val moved = abs(upX - pendingShiftToggleDownX) > shiftToggleClickSlopPx ||
+                abs(upY - pendingShiftToggleDownY) > shiftToggleClickSlopPx
+            if (!pendingShiftToggleHadDrag && !moved && selected.contains(pendingBox)) {
+                deselectBox(pendingBox)
+            }
+        }
+        pendingShiftToggleBox = null
+        pendingShiftToggleHadDrag = false
+    }
 
     interactable.on("dragend") { event ->
         provideMissingMouseup(event)
@@ -2623,6 +2826,9 @@ suspend fun main() {
     }
 
     interactable.on("dragstart") { event ->
+        if (pendingShiftToggleBox != null) {
+            pendingShiftToggleHadDrag = true
+        }
         selected.copy().forEach {
             it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
             it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)
@@ -2630,6 +2836,8 @@ suspend fun main() {
     }
 
     interactable.on("down") { event ->
+        pendingShiftToggleBox = null
+        pendingShiftToggleHadDrag = false
 
 
         val originalTarget = event.target as? HTMLElement
@@ -2712,7 +2920,13 @@ suspend fun main() {
                     lastShiftDownUid = uid
                     lastShiftDownStamp = stamp
 
-                    if (selected.contains(boxEl)) deselectBox(boxEl) else selectBox(boxEl)
+                    if (selected.contains(boxEl)) {
+                        pendingShiftToggleBox = boxEl
+                        pendingShiftToggleDownX = (event.clientX as? Number)?.toDouble() ?: 0.0
+                        pendingShiftToggleDownY = (event.clientY as? Number)?.toDouble() ?: 0.0
+                    } else {
+                        selectBox(boxEl)
+                    }
                 }
             } else {
                 selected.copy().forEach {

@@ -50,6 +50,11 @@ private fun escapeForHtml(text: String?): String {
     return text.replace("<", "&lt;").replace(">", "&gt;")
 }
 
+private fun simplifyTypeForOutput(type: String?): String {
+    if (type.isNullOrBlank()) return ""
+    return type.replace("kotlin.", "")
+}
+
 fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
     box.output.proxy = { content, nl, line ->
         val n = content?.toString() ?: ""
@@ -66,15 +71,17 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
 
     box.output.errorProxy = { content, property, nl ->
         val n = content?.toString() ?: ""
-        if (n.trim().length > 0) {
-            reply(
-                Message("output").payload(
-                    Output(
-                        line = nl.i, kind = "err", property = property, html = escapeForHtml(n), frame = Runloop.runLoop.frame.toInt()
-                    )
+        reply(
+            Message("output").payload(
+                Output(
+                    line = nl.i,
+                    kind = "err",
+                    property = property,
+                    html = if (n.trim().isEmpty()) "" else escapeForHtml(n),
+                    frame = Runloop.runLoop.frame.toInt()
                 )
             )
-        }
+        )
     }
 }
 
@@ -236,6 +243,9 @@ class KotlinExecution : BoxExecution {
                                 Message("output").payload(
                                     Output(
                                         line = it.location!!.start.line,
+                                        startColumn = it.location!!.start.col,
+                                        endLine = it.location!!.end?.line ?: -1,
+                                        endColumn = it.location!!.end?.col ?: -1,
                                         kind = "error",
                                         html = escapeForHtml(message),
                                         frame = Runloop.runLoop.frame.toInt()
@@ -338,8 +348,8 @@ class KotlinExecution : BoxExecution {
                         is ResultValue.Value -> {
                             if (size == 0) {
                                 val name = returnValue.name
-                                val value = findDefinition(returnValue.value, search = box.root.children)
-                                val type = returnValue.type
+                                val value = returnValue.value.h
+                                val type = simplifyTypeForOutput(returnValue.type)
 
                                 if (value.length > 0) {
                                     reply?.invoke(
