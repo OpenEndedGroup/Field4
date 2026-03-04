@@ -97,13 +97,24 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         if (nextVisible.isEmpty()) return
         val normalizedVisible = nextVisible.filter { it.isNotBlank() }.toMutableSet()
         if (normalizedVisible.isEmpty()) normalizedVisible.add("default")
+
         val activeCandidate = when {
             desiredActive != null && normalizedVisible.contains(desiredActive) -> desiredActive
-            activeLayer != null && normalizedVisible.contains(activeLayer!!) -> activeLayer!!
-            else -> normalizedVisible.first()
+            desiredActive != null -> normalizedVisible.firstOrNull()
+            activeLayer == null -> null
+            normalizedVisible.contains(activeLayer!!) -> activeLayer
+            else -> normalizedVisible.firstOrNull()
         }
+        layerDebugLog(
+            "palette applyLayerState nextVisible=${normalizedVisible.joinToString(",")} " +
+                "desiredActive=${desiredActive ?: "null"} activeCandidate=${activeCandidate ?: "null"} " +
+                "prevVisible=${visibleLayers.joinToString(",")} prevActive=${activeLayer ?: "null"}"
+        )
+
         setVisibleLayers(normalizedVisible.toSet(), animated = true, duration = animateDuration)
-        setActiveLayer(activeCandidate, animated = true, duration = animateDuration)
+        if (activeCandidate != activeLayer) {
+            setActiveLayer(activeCandidate, animated = true, duration = animateDuration)
+        }
     }
 
     fun renderList() {
@@ -112,11 +123,7 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         val visibleNow = visibleLayers.filter { available.contains(it) }.toMutableSet().ifEmpty {
             if (allLayers.isNotEmpty()) mutableSetOf(allLayers.first()) else mutableSetOf("default")
         }
-        val activeNow = when {
-            activeLayer != null && visibleNow.contains(activeLayer!!) -> activeLayer
-            visibleNow.isNotEmpty() -> visibleNow.firstOrNull()
-            else -> null
-        }
+        val activeNow = activeLayer?.takeIf { visibleNow.contains(it) }
 
         list.innerHTML = ""
         if (allLayers.isEmpty()) {
@@ -181,10 +188,10 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
                 if (nextVisible.isEmpty()) {
                     updateEye(true)
                 } else {
-                    val nextActive = if (activeLayer != null && nextVisible.contains(activeLayer!!)) {
-                        activeLayer
-                    } else {
-                        nextVisible.firstOrNull()
+                    val nextActive = when {
+                        activeLayer == null -> null
+                        nextVisible.contains(activeLayer!!) -> activeLayer
+                        else -> nextVisible.firstOrNull()
                     }
                     applyLayerState(nextVisible, nextActive)
                     renderList()

@@ -26,9 +26,19 @@ fun nextCopyName(name: String): String {
 
 
 fun copyBoxes(boxes: List<Box>): List<Box> {
-    val oldToNew = boxes.filter {
-        !it.getPropertyRaw("_tombstone").isTrue()
-    }.associateWith { copyBox(it) }
+    val sourceBoxes = collectAllNestedBoxes(
+        boxes.filter { !it.getPropertyRaw("_tombstone").isTrue() }.toSet()
+    ).filter { !it.getPropertyRaw("_tombstone").isTrue() }
+
+    if (sourceBoxes.isEmpty()) return emptyList()
+
+    val sourceSet = sourceBoxes.toSet()
+    val topLevelSources = sourceSet.filter { it.nestedIn !in sourceSet }.toSet()
+
+    val oldToNew = sourceBoxes.associateWith { source ->
+        copyBox(source, offsetFrame = source in topLevelSources)
+    }
+
     oldToNew.entries.forEach { (older, newer) ->
         older.parents.forEach { parent ->
             if (parent.getPropertyRaw("_tombstone").isTrue()) return@forEach
@@ -56,14 +66,21 @@ fun copyBoxes(boxes: List<Box>): List<Box> {
             }
         }
     }
+
+    oldToNew.entries.forEach { (older, newer) ->
+        val oldNestedParent = older.nestedIn ?: return@forEach
+        if (oldNestedParent.getPropertyRaw("_tombstone").isTrue()) return@forEach
+        newer.nestedIn = oldToNew[oldNestedParent] ?: oldNestedParent
+    }
+
     return oldToNew.values.toList()
 }
 
 @OptIn(ExperimentalUuidApi::class)
-fun copyBox(b: Box): Box {
+fun copyBox(b: Box, offsetFrame: Boolean = true): Box {
     val newBox = Box(id = Uuid.random().toString())
 
-    val exclude = setOf("parents", "children")
+    val exclude = setOf("parents", "children", "nested", "nestedIn")
     Box.ioPersistentProperties.forEach { name ->
         if (name in b.properties && name !in exclude) {
             newBox.properties[name] = b.properties[name]
@@ -77,7 +94,11 @@ fun copyBox(b: Box): Box {
     newBox.properties["name"] = newName
     newBox.name = newName
     newBox.inside = b.inside
-    newBox.frame = b.frame.copy(x = b.frame.x + 80, y = b.frame.y + 80)
+    newBox.frame = if (offsetFrame) {
+        b.frame.copy(x = b.frame.x + 80, y = b.frame.y + 80)
+    } else {
+        b.frame.copy()
+    }
 
     b.root.connect(newBox)
     b.inside.boxes[newBox.id] = newBox

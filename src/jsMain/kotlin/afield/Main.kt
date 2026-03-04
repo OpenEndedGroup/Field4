@@ -109,7 +109,13 @@ external fun launchAll(uid: String, code: String)
 @JsName("canvasGestures")
 var canvasGestures = CanvasGestures(launcher = {
     it.forEach { launchAll(it.unsafeCast<dynamic>().uid as String, it.unsafeCast<dynamic>().code as String) }
-})
+}).also {
+    val w = window.asDynamic()
+    w.canvasGestures = it
+    w.rebuildConnectionGroup = { translationOnly: dynamic ->
+        it.rebuildConnectionGroup((translationOnly as? Boolean) ?: false)
+    }
+}
 
 var selected = mutableSetOf<HTMLElement>()
 var selectedList = eval("[]")
@@ -147,6 +153,20 @@ private const val shiftToggleClickSlopPx = 4.0
 // Layers system state
 var visibleLayers = mutableSetOf("default")
 var activeLayer: String? = null
+
+private fun isLayerDebugEnabled(): Boolean {
+    val raw = window.asDynamic().layerDebug
+    return !(raw == false || raw == "false" || raw == "0")
+}
+
+fun layerDebugLog(event: String, payload: dynamic = null) {
+    if (!isLayerDebugEnabled()) return
+    if (payload == null || payload == js("undefined")) {
+        console.info("[layers] $event")
+    } else {
+        console.info("[layers] $event", payload)
+    }
+}
 
 fun selectionContextChanged() {
     if (currentAnnotations.isNotEmpty()) {
@@ -463,21 +483,20 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
 }
 
 private fun attachPanToNestedArea(container: HTMLElement) {
-    if (container.asDynamic().panHandlersAttached == true) return
-    container.asDynamic().panHandlersAttached = true
+    val content = container.querySelector(".nested-content") as? HTMLElement ?: run {
+        val nc = document.createElement("div") as HTMLElement
+        nc.classList.add("nested-content")
+        container.appendChild(nc)
+        nc
+    }
+
     container.style.asDynamic().overflow = "hidden"
     container.style.asDynamic().touchAction = "none"
-    container.style.asDynamic().width = "100000px"
-    container.style.asDynamic().height = "100000px"
-
-    var panActive = false
-    var startX = 0.0
-    var startY = 0.0
-    var baseX = 0.0
-    var baseY = 0.0
+    container.style.asDynamic().width = "100%"
+    container.style.asDynamic().height = "100%"
 
     fun applyTranslation(x: Double, y: Double) {
-        container.style.transform = "translate(${x}px, ${y}px)"
+        content.style.transform = "translate(${x}px, ${y}px)"
         container.asDynamic().data_x = x
         container.asDynamic().data_y = y
         canvasGestures.rebuildConnectionGroup()
@@ -487,6 +506,15 @@ private fun attachPanToNestedArea(container: HTMLElement) {
     val initX = (container.asDynamic().data_x as? Double) ?: 0.0
     val initY = (container.asDynamic().data_y as? Double) ?: 0.0
     applyTranslation(initX, initY)
+
+    if (container.asDynamic().panHandlersAttached == true) return
+    container.asDynamic().panHandlersAttached = true
+
+    var panActive = false
+    var startX = 0.0
+    var startY = 0.0
+    var baseX = 0.0
+    var baseY = 0.0
 
     val wheelHandler: (dynamic) -> dynamic = { event: dynamic ->
         event.preventDefault()
@@ -993,8 +1021,18 @@ fun select(selector: String): List<HTMLElement> {
 
 // Layers system functions
 fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: Double = 300.0) {
+    val before = visibleLayers.toList()
     visibleLayers.clear()
     visibleLayers.addAll(layers)
+    layerDebugLog(
+        "setVisibleLayers",
+        json(
+            "before" to before,
+            "after" to visibleLayers.toList(),
+            "animated" to animated,
+            "duration" to duration
+        )
+    )
     send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList(), animated, duration)))
     if (animated) {
         updateAllBoxVisibility(animated = true, duration = duration)
@@ -1006,7 +1044,17 @@ fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: D
 }
 
 fun setActiveLayer(layer: String?, animated: Boolean = false, duration: Double = 500.0) {
+    val before = activeLayer
     activeLayer = layer
+    layerDebugLog(
+        "setActiveLayer",
+        json(
+            "before" to before,
+            "after" to activeLayer,
+            "animated" to animated,
+            "duration" to duration
+        )
+    )
     send(Message("set-active-layer").payload(SetActiveLayer(layer, animated, duration)))
 }
 
@@ -1060,7 +1108,26 @@ private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
 }
 
 private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boolean = false) {
+    // Immediate state changes can race against prior fade-out timers; cancel those first.
+    clearPendingVisibilityHide(box)
+
     val visible = isBoxVisible(box)
+    val uid = box.asDynamic().uid as? String ?: "(unknown)"
+    val boxLayers = (box.asDynamic().box_layers as? String) ?: "default"
+    val serverVisible = box.asDynamic().server_visible as? Boolean
+
+    layerDebugLog(
+        "applyBoxVisibilityImmediate",
+        json(
+            "uid" to uid,
+            "visible" to visible,
+            "includeOutputArea" to includeOutputArea,
+            "layers" to boxLayers,
+            "server_visible" to serverVisible,
+            "displayBefore" to box.style.display,
+            "visibilityBefore" to box.style.visibility
+        )
+    )
 
     box.style.visibility = if (visible) "visible" else "hidden"
     box.style.opacity = if (visible) "1" else "0"
@@ -1071,6 +1138,7 @@ private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boo
 
     val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
     if (outputArea != null) {
+        clearPendingVisibilityHide(outputArea)
         outputArea.style.visibility = if (visible) "visible" else "hidden"
         outputArea.style.opacity = if (visible) "1" else "0"
         outputArea.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
@@ -1091,7 +1159,29 @@ fun isBoxVisible(box: HTMLElement): Boolean {
     return layers.any { layer -> visibleLayers.contains(layer) }
 }
 
+private fun clearPendingVisibilityHide(element: HTMLElement) {
+    val pending = element.asDynamic().__visibilityHideTimeout
+    if (pending != null && pending != js("undefined")) {
+        val uid = element.asDynamic().uid as? String ?: element.className
+        layerDebugLog("clearPendingVisibilityHide", json("id" to uid, "handle" to pending))
+        window.clearTimeout((pending as Number).toInt())
+        element.asDynamic().__visibilityHideTimeout = null
+    }
+}
+
 private fun applyFadeVisibility(element: HTMLElement, show: Boolean, duration: Double) {
+    clearPendingVisibilityHide(element)
+    val uid = element.asDynamic().uid as? String ?: element.className
+    layerDebugLog(
+        "applyFadeVisibility",
+        json(
+            "id" to uid,
+            "show" to show,
+            "duration" to duration,
+            "displayBefore" to element.style.display,
+            "visibilityBefore" to element.style.visibility
+        )
+    )
     element.style.transition = "opacity ${duration}ms ease"
     if (show) {
         if (element.classList.contains("box")) {
@@ -1108,14 +1198,26 @@ private fun applyFadeVisibility(element: HTMLElement, show: Boolean, duration: D
     } else {
         element.style.opacity = "0"
         element.style.asDynamic().pointerEvents = "none"
-        setTimeout({
+        val hideHandle = setTimeout({
+            layerDebugLog("applyFadeVisibility hide timer fired", json("id" to uid, "duration" to duration))
             element.style.visibility = "hidden"
             element.style.display = "none"
+            element.asDynamic().__visibilityHideTimeout = null
         }, duration.toInt())
+        element.asDynamic().__visibilityHideTimeout = hideHandle
+        layerDebugLog("applyFadeVisibility scheduled hide timer", json("id" to uid, "handle" to hideHandle, "duration" to duration))
     }
 }
 
 fun updateAllBoxVisibility(animated: Boolean = false, duration: Double = 250.0) {
+    layerDebugLog(
+        "updateAllBoxVisibility",
+        json(
+            "animated" to animated,
+            "duration" to duration,
+            "visibleLayers" to visibleLayers.toList()
+        )
+    )
     select(".box").forEach { box ->
         val visible = isBoxVisible(box)
         val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
@@ -1790,6 +1892,14 @@ suspend fun main() {
         val uid = payload["uid"] as? String ?: return@put Handled.no
         val visible = payload["visible"] as? Boolean ?: return@put Handled.no
         val duration = (payload["duration"] as? Double) ?: 300.0
+        layerDebugLog(
+            "recv set-visibility-animated",
+            json(
+                "uid" to uid,
+                "visible" to visible,
+                "duration" to duration
+            )
+        )
 
         val boxes = document.body!!.getElementsByClassName("box").asList()
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
@@ -1804,6 +1914,7 @@ suspend fun main() {
             }
 
             if (visible) {
+                clearPendingVisibilityHide(found)
                 // Fade in: set visibility first with opacity 0, then animate to 1
                 found.style.display = "flex"
                 found.style.visibility = "visible"
@@ -1819,15 +1930,18 @@ suspend fun main() {
                 }, duration.toInt() + 10)
             } else {
                 // Fade out: animate opacity to 0, then set visibility hidden
+                clearPendingVisibilityHide(found)
                 found.style.transition = "opacity ${duration}ms ease-in-out"
                 found.style.opacity = "0"
 
-                window.setTimeout({
+                val hideHandle = window.setTimeout({
                     found.style.visibility = "hidden"
                     found.style.display = "none"
                     found.style.transition = ""
                     found.style.opacity = "1" // Reset for next show
+                    found.asDynamic().__visibilityHideTimeout = null
                 }, duration.toInt())
+                found.asDynamic().__visibilityHideTimeout = hideHandle
             }
 
             // Update connections after animation
@@ -1860,6 +1974,15 @@ suspend fun main() {
             "visible" -> {
                 if (found != null) {
                     val box = found as HTMLElement
+                    layerDebugLog(
+                        "recv set-boolean visible",
+                        json(
+                            "uid" to u,
+                            "value" to set.number,
+                            "box_layers" to ((box.asDynamic().box_layers as? String) ?: "default"),
+                            "visibleLayers" to visibleLayers.toList()
+                        )
+                    )
                     box.asDynamic().server_visible = set.number
                     applyBoxVisibilityImmediate(box)
                     canvasGestures.rebuildConnectionGroup()
@@ -1964,11 +2087,21 @@ suspend fun main() {
             return outputArea
         }
         val inter = di(contain!!)
-        val nestedRoot = (inter.upsertDisclosure as (String, String, String) -> HTMLElement).invoke(
+        val disclosureContent = (contain.querySelectorAll(".disclosure").asList().firstOrNull {
+            (it.asDynamic().__disclosureId as? String) == "nested"
+        } as? HTMLElement)?.querySelector(".disclosure-content") as? HTMLElement ?: (
+            inter.upsertDisclosure as (String, String, String) -> HTMLElement
+        ).invoke(
             "nested",
             "nested",
             ""
         ) as HTMLElement
+        val nestedRoot = disclosureContent.querySelector(".nested-root") as? HTMLElement ?: run {
+            val host = document.createElement("div") as HTMLElement
+            host.classList.add("nested-root")
+            disclosureContent.appendChild(host)
+            host
+        }
         nestedRoot.style.asDynamic().overflow = "hidden"
         nestedRoot.style.position = "relative"
         nestedRoot.style.width = "100%"
@@ -1981,10 +2114,26 @@ suspend fun main() {
             nestedRoot.appendChild(nc)
             nc
         }
+        val content = canvas.querySelector(".nested-content") as? HTMLElement ?: run {
+            val nc = document.createElement("div") as HTMLElement
+            nc.classList.add("nested-content")
+            canvas.appendChild(nc)
+            nc
+        }
+        val directBoxes = mutableListOf<HTMLElement>()
+        for (i in 0 until canvas.children.length) {
+            val child = canvas.children.item(i) as? HTMLElement ?: continue
+            if (child.classList.contains("box")) {
+                directBoxes += child
+            }
+        }
+        directBoxes.forEach { child ->
+            content.appendChild(child)
+        }
         attachPanToNestedArea(canvas)
         outputArea.style.visibility = "visible"
         outputArea.style.height = "auto"
-        return canvas
+        return content
     }
 
     fun handleNestedTopology(parent: HTMLElement, nestedIds: List<String>) {
@@ -2172,6 +2321,14 @@ suspend fun main() {
             }
 
             "layers" -> {
+                layerDebugLog(
+                    "recv set-string layers",
+                    json(
+                        "uid" to set.uid,
+                        "value" to set.value,
+                        "visibleLayers" to visibleLayers.toList()
+                    )
+                )
                 found.unsafeCast<dynamic>().box_layers = set.value
                 updateAllBoxVisibility()
                 canvasGestures.rebuildConnectionGroup()

@@ -13,8 +13,184 @@ import org.w3c.dom.svg.SVGSVGElement
 import kotlin.math.*
 
 
+private enum class ConnectionTerminalStyle {
+    None,
+    Dot,
+    PerpendicularTick
+}
+
+private data class ConnectionTerminalConfig(
+    val style: ConnectionTerminalStyle = ConnectionTerminalStyle.None,
+    val endpointInset: Double = 0.0
+)
+
+private data class ConnectionTerminals(
+    val start: ConnectionTerminalConfig = ConnectionTerminalConfig(),
+    val end: ConnectionTerminalConfig = ConnectionTerminalConfig(style = ConnectionTerminalStyle.Dot)
+)
+
+private data class ConnectionTerminalLabels(
+    val start: String? = null,
+    val end: String? = null
+)
+
+private data class NestedDisclosureSnapshot(
+    val isOpen: Boolean,
+    val viewportWorldRect: DOMRect?
+)
+
+private fun connectionLabelFor(box: HTMLElement): String? {
+    val name = (box.asDynamic().name as? String)?.trim()
+    if (!name.isNullOrEmpty()) return name
+    val uid = (box.asDynamic().uid as? String)?.trim()
+    return uid?.takeIf { it.isNotEmpty() }
+}
+
+private var currentConnectionSelectedUids: Set<String> = emptySet()
+
+private fun proxyAnchorSelected(box: HTMLElement, terminal: ConnectionTerminalConfig): Boolean {
+    if (terminal.style != ConnectionTerminalStyle.PerpendicularTick) return false
+    val nestedInUid = box.asDynamic().box_nestedIn as? String ?: return false
+    return currentConnectionSelectedUids.contains(nestedInUid)
+}
+
 fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_rect: DOMRect, svg: SVGElement, opacity: Double = 1.0) {
-    val (a, b) = connectCenters(a_rect, b_rect)
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(),
+        ConnectionTerminalLabels()
+    )
+}
+
+private fun connect_center_nested_proxy_to(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0
+) {
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(
+            end = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            )
+        ),
+        ConnectionTerminalLabels(end = connectionLabelFor(b_box))
+    )
+}
+
+private fun connect_center_nested_proxy_from(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0
+) {
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(
+            start = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            )
+        ),
+        ConnectionTerminalLabels(start = connectionLabelFor(a_box))
+    )
+}
+
+private fun connect_center_nested_proxy_both(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0
+) {
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(
+            start = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            ),
+            end = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            )
+        ),
+        ConnectionTerminalLabels(
+            start = connectionLabelFor(a_box),
+            end = connectionLabelFor(b_box)
+        )
+    )
+}
+
+private fun connect_center_with_terminal(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0,
+    terminals: ConnectionTerminals = ConnectionTerminals(),
+    terminalLabels: ConnectionTerminalLabels = ConnectionTerminalLabels()
+) {
+    val (rawA, rawB) = connectCenters(a_rect, b_rect)
+
+    val maxStartInset = max(0.0, rawA.point.distance(rawB.point) - MIN_CONNECTION_LENGTH)
+    val clampedStartInset = min(terminals.start.endpointInset, maxStartInset)
+    val a = if (clampedStartInset > 0.0) {
+        ClippedResult(
+            Point(
+                rawA.point.x + rawA.normal.x * clampedStartInset,
+                rawA.point.y + rawA.normal.y * clampedStartInset
+            ),
+            rawA.normal
+        )
+    } else {
+        rawA
+    }
+
+    val maxEndInset = max(0.0, a.point.distance(rawB.point) - MIN_CONNECTION_LENGTH)
+    val clampedEndInset = min(terminals.end.endpointInset, maxEndInset)
+    val b = if (clampedEndInset > 0.0) {
+        ClippedResult(
+            Point(
+                rawB.point.x + rawB.normal.x * clampedEndInset,
+                rawB.point.y + rawB.normal.y * clampedEndInset
+            ),
+            rawB.normal
+        )
+    } else {
+        rawB
+    }
+    if (!a.point.isFinite() || !b.point.isFinite()) return
+    if (a.point.distance(b.point) < 1e-3) return
+
     val startHeading = atan2(a.normal.y, a.normal.x)
     val endHeading = atan2(-b.normal.y, -b.normal.x)
     val startScreen = DubinsPose(a.point.x, a.point.y, startHeading)
@@ -27,8 +203,8 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
     currentFrameKeys += key
 
-    val fromSelected = selected.contains(a_box)
-    val toSelected = selected.contains(b_box)
+    val fromSelected = selected.contains(a_box) || proxyAnchorSelected(a_box, terminals.start)
+    val toSelected = selected.contains(b_box) || proxyAnchorSelected(b_box, terminals.end)
     val isHighlighted = fromSelected || toSelected
     val color = when {
         fromSelected && !toSelected -> OUTGOING_CONNECTION_COLOR
@@ -39,15 +215,16 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val visibilityScale = if (isHighlighted) HIGHLIGHTED_CONNECTION_VISIBILITY else DIMMED_CONNECTION_VISIBILITY
     val drawOpacity = (opacity * visibilityScale).coerceIn(0.0, 1.0)
     val markerLayer = currentFrontMarkerLayer ?: svg
-    val markerPoint = Point(
-        b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET,
-        b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET
-    )
+    val startMarkerPoint = Point(a.point.x - a.normal.x * TERMINAL_MARKER_OFFSET, a.point.y - a.normal.y * TERMINAL_MARKER_OFFSET)
+    val endMarkerPoint = Point(b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET, b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET)
+    val startLabel = if (isHighlighted) terminalLabels.start else null
+    val endLabel = if (isHighlighted) terminalLabels.end else null
 
     val dubins = dubinsShortestPath(screenToStandard(startScreen), screenToStandard(endScreen), radius)
     if (dubins == null) {
         drawFallbackBezier(a, b, svg, drawOpacity, color)
-        addTerminalMarker(markerLayer, key, markerPoint, b_rect, drawOpacity, color)
+        addTerminalDecoration(markerLayer, "$key-start", startMarkerPoint, a, a_rect, drawOpacity, color, terminals.start.style, startLabel)
+        addTerminalDecoration(markerLayer, "$key-end", endMarkerPoint, b, b_rect, drawOpacity, color, terminals.end.style, endLabel)
         return
     }
 
@@ -76,7 +253,8 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     }
 
     addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, drawOpacity, color)
-    addTerminalMarker(markerLayer, key, markerPoint, b_rect, drawOpacity, color)
+    addTerminalDecoration(markerLayer, "$key-start", startMarkerPoint, a, a_rect, drawOpacity, color, terminals.start.style, startLabel)
+    addTerminalDecoration(markerLayer, "$key-end", endMarkerPoint, b, b_rect, drawOpacity, color, terminals.end.style, endLabel)
 }
 
 private const val SELECTED_CONNECTION_COLOR = "var(--field-cyan)"
@@ -87,8 +265,23 @@ private const val HIGHLIGHTED_CONNECTION_VISIBILITY = 1.0
 private const val DIMMED_CONNECTION_VISIBILITY = 0.12
 private const val TERMINAL_MARKER_RADIUS = 3.25
 private const val TERMINAL_MARKER_OFFSET = 0.0
+private const val NESTED_PROXY_ENDPOINT_INSET = 20.0
+private const val NESTED_PROXY_TICK_HALF_LENGTH = 5.5
+private const val NESTED_PROXY_TICK_STROKE_WIDTH = 1.8
+private const val NESTED_PROXY_LABEL_X_OFFSET = 7.0
+private const val NESTED_PROXY_LABEL_Y_OFFSET = 8.0
+private const val NESTED_PROXY_LABEL_FONT_SIZE = 10
+private const val NESTED_PROXY_LABEL_BG_PAD_X = 3.5
+private const val NESTED_PROXY_LABEL_BG_PAD_Y = 1.5
+private const val NESTED_PROXY_LABEL_BG_RADIUS = 2.5
+private const val NESTED_PROXY_LABEL_BG_FILL = "rgba(0,0,0,0.75)"
+private const val MIN_CONNECTION_LENGTH = 6.0
+private const val NESTED_VIEWPORT_VISIBILITY_EPSILON = 1e-6
 private const val FRONT_CONNECTION_LAYER_ID = "overlaysvgfrontlayer"
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
+var knownProxyConnectionsTo = mutableMapOf("parent->child" to ::connect_center_nested_proxy_to)
+var knownProxyConnectionsFrom = mutableMapOf("parent->child" to ::connect_center_nested_proxy_from)
+var knownProxyConnectionsBoth = mutableMapOf("parent->child" to ::connect_center_nested_proxy_both)
 var dubinsMinRadius = 190.0 // ends up being length / 3
 
 private const val FILTER_RESAMPLE_COUNT = 64
@@ -172,6 +365,111 @@ private fun addTerminalMarker(layer: SVGElement, key: String, point: Point, trim
     marker.setAttribute("mask", "url(#$maskId)")
 
     layer.appendChild(marker)
+}
+
+private fun addPerpendicularTerminalTick(layer: SVGElement, point: Point, endNormal: Point, opacity: Double, color: String) {
+    val dirLen = hypot(endNormal.x, endNormal.y)
+    if (dirLen < 1e-6) return
+
+    val nx = endNormal.x / dirLen
+    val ny = endNormal.y / dirLen
+    val tx = -ny
+    val ty = nx
+    val half = NESTED_PROXY_TICK_HALF_LENGTH
+
+    path {
+        moveTo(point.x - tx * half, point.y - ty * half)
+        lineTo(point.x + tx * half, point.y + ty * half)
+        stroke = color
+        strokeWidth = NESTED_PROXY_TICK_STROKE_WIDTH
+        fill = "none"
+        this.path.setAttribute("opacity", opacity.toString())
+        this.path.setAttribute("stroke-linecap", "round")
+        appendTo(layer)
+    }
+}
+
+private fun addTerminalDecoration(
+    layer: SVGElement,
+    key: String,
+    point: Point,
+    clippedEnd: ClippedResult,
+    trimRect: DOMRect,
+    opacity: Double,
+    color: String,
+    style: ConnectionTerminalStyle,
+    labelText: String? = null
+) {
+    when (style) {
+        ConnectionTerminalStyle.None -> {}
+        ConnectionTerminalStyle.Dot -> addTerminalMarker(layer, key, point, trimRect, opacity, color)
+        ConnectionTerminalStyle.PerpendicularTick -> {
+            addPerpendicularTerminalTick(layer, point, clippedEnd.normal, opacity, color)
+            if (!labelText.isNullOrBlank()) {
+                addTerminalLabel(layer, point, clippedEnd, trimRect, opacity, color, labelText)
+            }
+        }
+    }
+}
+
+private fun addTerminalLabel(
+    layer: SVGElement,
+    point: Point,
+    clippedEnd: ClippedResult,
+    trimRect: DOMRect,
+    opacity: Double,
+    color: String,
+    text: String
+) {
+    val centerX = trimRect.x + trimRect.width * 0.5
+    val rightSide = if (abs(clippedEnd.normal.x) > 0.2) clippedEnd.normal.x > 0 else point.x >= centerX
+    val mostlyHorizontal = abs(clippedEnd.normal.x) >= abs(clippedEnd.normal.y)
+    val placeBelow = if (mostlyHorizontal) {
+        // For horizontal exits, keep left-side labels above and right-side labels below.
+        rightSide
+    } else {
+        // For vertical exits, follow the line direction.
+        clippedEnd.normal.y > 0
+    }
+    val textElement = document.createElementNS("http://www.w3.org/2000/svg", "text") as SVGElement
+    val dx = if (rightSide) NESTED_PROXY_LABEL_X_OFFSET else -NESTED_PROXY_LABEL_X_OFFSET
+    val dy = if (placeBelow) NESTED_PROXY_LABEL_Y_OFFSET else -NESTED_PROXY_LABEL_Y_OFFSET
+    textElement.setAttribute("x", (point.x + dx).toString())
+    textElement.setAttribute("y", (point.y + dy).toString())
+    textElement.setAttribute("text-anchor", if (rightSide) "start" else "end")
+    textElement.setAttribute("dominant-baseline", "middle")
+    textElement.setAttribute("font-family", "\"Iosevka Web\", \"Iosevka\", monospace")
+    textElement.setAttribute("font-size", NESTED_PROXY_LABEL_FONT_SIZE.toString())
+    textElement.setAttribute("font-weight", "300")
+    textElement.setAttribute("fill", color)
+    textElement.setAttribute("opacity", opacity.toString())
+    textElement.setAttribute("pointer-events", "none")
+    textElement.textContent = text
+    layer.appendChild(textElement)
+
+    val bbox = try {
+        textElement.asDynamic().getBBox()
+    } catch (t: dynamic) {
+        null
+    } ?: return
+
+    val bx = (bbox.x as Number).toDouble()
+    val by = (bbox.y as Number).toDouble()
+    val bw = (bbox.width as Number).toDouble()
+    val bh = (bbox.height as Number).toDouble()
+    if (!bx.isFinite() || !by.isFinite() || !bw.isFinite() || !bh.isFinite()) return
+
+    val bg = document.createElementNS("http://www.w3.org/2000/svg", "rect") as SVGElement
+    bg.setAttribute("x", (bx - NESTED_PROXY_LABEL_BG_PAD_X).toString())
+    bg.setAttribute("y", (by - NESTED_PROXY_LABEL_BG_PAD_Y).toString())
+    bg.setAttribute("width", (bw + NESTED_PROXY_LABEL_BG_PAD_X * 2.0).toString())
+    bg.setAttribute("height", (bh + NESTED_PROXY_LABEL_BG_PAD_Y * 2.0).toString())
+    bg.setAttribute("rx", NESTED_PROXY_LABEL_BG_RADIUS.toString())
+    bg.setAttribute("ry", NESTED_PROXY_LABEL_BG_RADIUS.toString())
+    bg.setAttribute("fill", NESTED_PROXY_LABEL_BG_FILL)
+    bg.setAttribute("opacity", opacity.toString())
+    bg.setAttribute("pointer-events", "none")
+    layer.insertBefore(bg, textElement)
 }
 
 private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double, color: String) {
@@ -645,6 +943,25 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         return true
     }
 
+    private fun nestedDisclosureElement(parentBox: HTMLElement): HTMLElement? {
+        val outputAreas = parentBox.getElementsByClassName("outputArea")
+        val outputArea = if (outputAreas.length > 0) outputAreas.item(0) as? HTMLElement else null
+        if (outputArea == null) return null
+        val contain = outputArea.querySelector(".disclosure-group") ?: return null
+        val disclosures = contain.querySelectorAll(".disclosure")
+        for (i in 0 until disclosures.length) {
+            val disclosure = disclosures.item(i) as? HTMLElement ?: continue
+            if ((disclosure.asDynamic().__disclosureId as? String) == "nested") {
+                return disclosure
+            }
+        }
+        return null
+    }
+
+    private fun rectsIntersect(a: DOMRect, b: DOMRect): Boolean {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+    }
+
     fun getNamedSVGGroup(name: String) =
         (document.getElementById("overlaysvglayer") as SVGSVGElement).getGroupOrMake(name)
 
@@ -688,6 +1005,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         markerDefs.innerHTML = ""
         currentFrontMarkerLayer = markers
         currentFrontMarkerDefs = markerDefs
+        currentConnectionSelectedUids = selected.mapNotNull { it.asDynamic().uid as? String }.toSet()
 
         // example of new box accessable drawing
 //        val circleLayer = getNamedSVGGroup("circleLayer")
@@ -722,58 +1040,148 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             hints.appendChild(line)
         }
 
-        fun traverse(connectionName: String, find: (HTMLElement) -> List<String>?) {
-            cachedBoxes.forEach { from ->
-                val worldRect = cachedWorldRects[from] ?: return@forEach
-                val c = find(from)
-                val screenX = worldRect.x + ox
-                val screenY = worldRect.y + oy
+        fun addOffscreenHintForViewport(targetRect: DOMRect, viewportRect: DOMRect) {
+            val viewportLeft = viewportRect.x
+            val viewportTop = viewportRect.y
+            val viewportRight = viewportRect.x + viewportRect.width
+            val viewportBottom = viewportRect.y + viewportRect.height
 
-                if (from.style.visibility === "hidden" || !hasRenderableFrame(from)) return@forEach
+            val offLeft = targetRect.x + targetRect.width < viewportLeft
+            val offRight = targetRect.x > viewportRight
+            val offTop = targetRect.y + targetRect.height < viewportTop
+            val offBottom = targetRect.y > viewportBottom
+            if (!(offLeft || offRight || offTop || offBottom)) return
+
+            val margin = 4.0
+            val edgeX = if (offLeft) viewportLeft + margin else viewportRight - margin
+            val edgeY = if (offTop) viewportTop + margin else viewportBottom - margin
+            when {
+                (offLeft || offRight) && (offTop || offBottom) -> {
+                    addHintLine(edgeX, edgeY, edgeX, edgeY)
+                }
+                offLeft || offRight -> {
+                    val y1 = clamp(targetRect.y, viewportTop, viewportBottom)
+                    val y2 = clamp(targetRect.y + targetRect.height, viewportTop, viewportBottom)
+                    addHintLine(edgeX, y1, edgeX, y2)
+                }
+                offTop || offBottom -> {
+                    val x1 = clamp(targetRect.x, viewportLeft, viewportRight)
+                    val x2 = clamp(targetRect.x + targetRect.width, viewportLeft, viewportRight)
+                    addHintLine(x1, edgeY, x2, edgeY)
+                }
+            }
+        }
+
+        val mainViewportRect = DOMRect(-ox, -oy, vbw, vbh)
+        val nestedDisclosureSnapshotCache = mutableMapOf<String, NestedDisclosureSnapshot>()
+        fun nestedDisclosureSnapshot(parentUid: String): NestedDisclosureSnapshot = nestedDisclosureSnapshotCache.getOrPut(parentUid) {
+            val parentBox = cachedBoxByUid[parentUid] ?: return@getOrPut NestedDisclosureSnapshot(
+                isOpen = false,
+                viewportWorldRect = null
+            )
+            val disclosure = nestedDisclosureElement(parentBox)
+            val isOpen = disclosure?.classList?.contains("open") == true
+            if (!isOpen || disclosure == null) {
+                return@getOrPut NestedDisclosureSnapshot(
+                    isOpen = false,
+                    viewportWorldRect = null
+                )
+            }
+            val viewport = disclosure.querySelector(".disclosure-content") as? HTMLElement
+            val r = viewport?.getBoundingClientRect()
+            val viewportWorldRect = if (
+                r != null &&
+                r.width > NESTED_VIEWPORT_VISIBILITY_EPSILON &&
+                r.height > NESTED_VIEWPORT_VISIBILITY_EPSILON
+            ) {
+                DOMRect(r.x - ox, r.y - oy, r.width, r.height)
+            } else {
+                null
+            }
+            NestedDisclosureSnapshot(isOpen = true, viewportWorldRect = viewportWorldRect)
+        }
+
+        fun traverse(connectionName: String, find: (HTMLElement) -> List<String>?) {
+            val proxyCache = mutableMapOf<HTMLElement, HTMLElement?>()
+            fun proxyFor(box: HTMLElement): HTMLElement? = proxyCache.getOrPut(box) {
+                val nestedInUid = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return@getOrPut null
+                val nestedIn = cachedBoxByUid[nestedInUid] ?: return@getOrPut null
+                val snapshot = nestedDisclosureSnapshot(nestedInUid)
+                if (!snapshot.isOpen) return@getOrPut nestedIn
+                val childRect = cachedWorldRects[box] ?: return@getOrPut nestedIn
+                val viewportRect = snapshot.viewportWorldRect ?: return@getOrPut nestedIn
+                if (!rectsIntersect(childRect, viewportRect)) nestedIn else null
+            }
+
+            cachedBoxes.forEach { from ->
+                val c = find(from)
+                val fromProxyTarget = proxyFor(from)
+                val renderedFrom = fromProxyTarget ?: from
+                val worldRect = cachedWorldRects[renderedFrom] ?: return@forEach
+
+                if (renderedFrom.style.visibility === "hidden" || !hasRenderableFrame(renderedFrom)) return@forEach
 
                 var o0 = 1.0
                 if (from.asDynamic().offline ) o0 = 0.25
 
                 val r1 = worldRect.copyRect()
 
-                val offLeft = screenX + worldRect.width < 0
-                val offRight = screenX > vbw
-                val offTop = screenY + worldRect.height < 0
-                val offBottom = screenY > vbh
-
-                if (offLeft || offRight || offTop || offBottom) {
-                    val margin = 4.0
-                    val edgeXScreen = if (offLeft) margin else vbw - margin
-                    val edgeYScreen = if (offTop) margin else vbh - margin
-                    val edgeX = edgeXScreen - ox
-                    val edgeY = edgeYScreen - oy
-                    when {
-                        (offLeft || offRight) && (offTop || offBottom) -> {
-                            // Corner case: keep using a short line segment
-                            addHintLine(edgeX, edgeY, edgeX, edgeY)
-                        }
-                        offLeft || offRight -> {
-                            val y1 = clamp(screenY, 0.0, vbh) - oy
-                            val y2 = clamp(screenY + worldRect.height, 0.0, vbh) - oy
-                            addHintLine(edgeX, y1, edgeX, y2)
-                        }
-                        offTop || offBottom -> {
-                            val x1 = clamp(screenX, 0.0, vbw) - ox
-                            val x2 = clamp(screenX + worldRect.width, 0.0, vbw) - ox
-                            addHintLine(x1, edgeY, x2, edgeY)
-                        }
-                    }
-                }
+                addOffscreenHintForViewport(worldRect, mainViewportRect)
 
                 c?.let {
                     it.forEach { id ->
                         cachedBoxByUid[id]?.let { to ->
-                            if (to.style.visibility === "hidden" || !hasRenderableFrame(to)) return@forEach
-                            val toWorldRect = cachedWorldRects[to] ?: return@forEach
+                            val toProxyTarget = proxyFor(to)
+                            val renderedTarget = toProxyTarget ?: to
+                            if (renderedTarget.style.visibility === "hidden" || !hasRenderableFrame(renderedTarget)) return@forEach
+                            if (renderedFrom == renderedTarget) return@forEach
+                            val toWorldRect = cachedWorldRects[renderedTarget] ?: return@forEach
                             var o1 = 1.0
                             if (to.asDynamic().offline ) o1 = 0.25
 
-                            knownConnections[connectionName]?.invoke(from, r1, to, toWorldRect.copyRect(), svg, o0 * o1)
+                            when {
+                                fromProxyTarget != null && toProxyTarget != null -> {
+                                    (knownProxyConnectionsBoth[connectionName] ?: knownConnections[connectionName])?.invoke(
+                                        from,
+                                        r1,
+                                        to,
+                                        toWorldRect.copyRect(),
+                                        svg,
+                                        o0 * o1
+                                    )
+                                }
+
+                                fromProxyTarget != null -> {
+                                    (knownProxyConnectionsFrom[connectionName] ?: knownConnections[connectionName])?.invoke(
+                                        from,
+                                        r1,
+                                        to,
+                                        toWorldRect.copyRect(),
+                                        svg,
+                                        o0 * o1
+                                    )
+                                }
+
+                                toProxyTarget != null -> {
+                                    (knownProxyConnectionsTo[connectionName] ?: knownConnections[connectionName])?.invoke(
+                                        from,
+                                        r1,
+                                        to,
+                                        toWorldRect.copyRect(),
+                                        svg,
+                                        o0 * o1
+                                    )
+                                }
+
+                                else -> knownConnections[connectionName]?.invoke(
+                                    from,
+                                    r1,
+                                    to,
+                                    toWorldRect.copyRect(),
+                                    svg,
+                                    o0 * o1
+                                )
+                            }
                         }
                     }
                 }
@@ -784,8 +1192,18 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             (from.unsafeCast<dynamic>().box_children as Array<String>?)?.toList()
         }
 
+        cachedBoxes.forEach { box ->
+            if (box.style.visibility === "hidden" || !hasRenderableFrame(box)) return@forEach
+            val parentUid = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return@forEach
+            val viewportRect = nestedDisclosureSnapshot(parentUid).viewportWorldRect ?: return@forEach
+            val boxRect = cachedWorldRects[box] ?: return@forEach
+            if (rectsIntersect(boxRect, viewportRect)) return@forEach
+            addOffscreenHintForViewport(boxRect, viewportRect)
+        }
+
         val obsolete = connectionFilterStates.keys - currentFrameKeys
         obsolete.forEach { connectionFilterStates.remove(it) }
+        currentConnectionSelectedUids = emptySet()
         currentFrontMarkerLayer = null
         currentFrontMarkerDefs = null
 

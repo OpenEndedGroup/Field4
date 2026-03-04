@@ -191,14 +191,16 @@ operator fun String.times(ln: Int): String {
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.begin(strand: String = "default") {
     var box = this
+    val execute = Execute(box.id, "launch", 1, code, false, strand = strand)
 
-    box.ke.launchAll(box, Execute(box.id, "launch", 1, code, false), code, strand = strand, {
+    FlightRecorder.recordLaunchEntrypoint("stdlib.begin", box, execute, strand = strand)
+    box.ke.launchAll(box, execute, code, strand = strand, {
 //        send(it)
     })
 }
 
 fun Box.end() {
-    stop(this)
+    stop(this, entrypoint = "stdlib.end")
 }
 
 

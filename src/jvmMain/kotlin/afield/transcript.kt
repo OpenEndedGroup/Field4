@@ -123,23 +123,28 @@ object FlightRecorder {
         }
     }
 
-    fun flushIfDirty(documentPath: String): Boolean {
+    fun checkpointOnMetadataChange(documentPath: String): Boolean {
         val normalizedDocumentPath = normalizeDocumentPath(documentPath)
         val state = states[normalizedDocumentPath] ?: return false
         val snapshot = synchronized(state.lock) {
             ensureLoaded(state)
-            if (!state.dirty) return false
-            state.dirty = false
+            if (!state.dirty || state.entries.isEmpty()) return false
             state.entries.map { LinkedHashMap(it) }
         }
 
         return try {
-            saveSnapshot(normalizedDocumentPath, snapshot)
-        } catch (t: Throwable) {
-            synchronized(state.lock) {
-                state.dirty = true
+            val wrote = saveSnapshot(normalizedDocumentPath, snapshot)
+            if (wrote) {
+                synchronized(state.lock) {
+                    state.dirty = false
+                }
             }
-            lprintln("warning,transcript", "Failed to save transcript for $normalizedDocumentPath: ${t.message}")
+            wrote
+        } catch (t: Throwable) {
+            lprintln(
+                "warning,transcript",
+                "Failed to checkpoint transcript for $normalizedDocumentPath: ${t.message}"
+            )
             false
         }
     }
@@ -168,10 +173,8 @@ object FlightRecorder {
     private fun ensureLoaded(state: DocumentState) {
         if (state.loaded) return
         state.loaded = true
-        // Start a fresh transcript for each Field process launch.
-        // Previous transcript content is intentionally not loaded.
-        // When this session first persists transcript.edn, safeSave() will
-        // rotate the previous file into backups/.
+        // Start fresh per Field process launch.
+        // We intentionally do not load any previous transcript from disk.
     }
 
     private fun saveSnapshot(documentPath: String, snapshot: List<LinkedHashMap<String, Any?>>): Boolean {

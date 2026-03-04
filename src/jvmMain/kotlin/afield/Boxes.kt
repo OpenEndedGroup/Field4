@@ -300,13 +300,29 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             }
 
             actionTable["-delete-box"] = { boxes ->
-                var names = ""
-                boxes.forEach {
-                    it.setPropertyRaw("_tombstone", true)
-                    names += it.name + ", "
-                    thisSessionInfo.get().root.disconnect(it)
+                val selected = boxes
+                    .filter { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+                    .toSet()
+                val targets = collectAllNestedBoxes(selected)
+                    .filter { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+                    .toSet()
+
+                if (targets.isEmpty()) {
+                    notify("Deleted 0 boxes")
+                } else {
+                    val root = thisSessionInfo.get().root
+                    targets.forEach { target ->
+                        // Ensure live parents don't retain stale nested links to deleted boxes.
+                        if (target.nestedIn != null) {
+                            target.nestedIn = null
+                        }
+                        target.setPropertyRaw("_tombstone", true)
+                        root.disconnect(target)
+                    }
+
+                    val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
+                    notify(countMessage)
                 }
-                notify("Deleted ${names.trim(' ', ',')}")
             }
 
             actionTable["-update-check"] = { boxes ->
@@ -352,13 +368,15 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     @JvmOverloads
     override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+        val oldValue = properties[name]
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
-            val a = properties[name]
-            if (a != value) needsResync.add(this to name)
+            if (oldValue != value) needsResync.add(this to name)
             properties[name] = value
         } else {
             properties[name] = value
         }
+
+        FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, value)
     }
 
     override fun getPropertyRaw(name: String, default: Any?): Any? {

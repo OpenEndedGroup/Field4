@@ -281,19 +281,19 @@ class Server {
 
                         documents.forEach { _, info ->
                             // Only persist when we know sidecar-bearing properties changed.
-                            if (info.pendingSidecarSaves.isEmpty()) return@forEach
-
+                            if (info.pendingSidecarSaves.isNotEmpty()) {
 //                            lblock(" saving to ${info.filename}")
-                            run {
-                                try {
-                                    // Include root box in saved boxes to persist root properties like bookmarks
-                                    val allBoxes = info.boxes.values.toMutableSet()
-                                    allBoxes.add(info.root)
-                                    SavingContext().save(info.filename, allBoxes)
-                                    info.pendingSidecarSaves.clear()
-                                } catch (ex: Exception) {
-                                    lprintln("error,server", "trouble saving")
-                                    ex.printStackTrace()
+                                run {
+                                    try {
+                                        // Include root box in saved boxes to persist root properties like bookmarks
+                                        val allBoxes = info.boxes.values.toMutableSet()
+                                        allBoxes.add(info.root)
+                                        SavingContext().save(info.filename, allBoxes)
+                                        info.pendingSidecarSaves.clear()
+                                    } catch (ex: Exception) {
+                                        lprintln("error,server", "trouble saving")
+                                        ex.printStackTrace()
+                                    }
                                 }
                             }
                         }
@@ -894,45 +894,51 @@ class Server {
                 lprintln("debug,layers", "Setting active layer: ${update.layer}, animated: ${update.animated}")
                 val oldActiveLayer = thisSessionInfo.get().activeLayer
 
-                // When leaving an active layer, save current positions to that layer's frames
-                if (oldActiveLayer != null) {
-                    thisSessionInfo.get().boxes.values.forEach { box ->
-                        // Only save if box is visible in the old layer
-                        val boxLayers = parseLayersList(box.layers)
-                        if (boxLayers.contains(oldActiveLayer)) {
-                            box.layerFrames[oldActiveLayer] = box.frame
-                            lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
-                        }
-                    }
-                }
+                // No-op if the active layer is unchanged.
+                if (update.layer == oldActiveLayer) {
+                    Handled.yes
+                } else {
 
-                thisSessionInfo.get().activeLayer = update.layer
-
-                // Apply frame overrides for the new active layer
-                if (update.layer != null) {
-                    thisSessionInfo.get().boxes.values.forEach { box ->
-                        val layerFrame = box.layerFrames[update.layer]
-                        if (layerFrame != null) {
-                            box.frame = layerFrame
-                            lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
-
-                            // Send animated rect if animation is requested
-                            if (update.animated) {
-                                val animMessage = Message("set-animated-rect").payload(
-                                    Set_animated_rect(box.id, "frame", layerFrame, update.duration)
-                                )
-                                box.inside.sessions.forEach { _send(it, animMessage) }
+                    // When leaving an active layer, save current positions to that layer's frames
+                    if (oldActiveLayer != null) {
+                        thisSessionInfo.get().boxes.values.forEach { box ->
+                            // Only save if box is visible in the old layer
+                            val boxLayers = parseLayersList(box.layers)
+                            if (boxLayers.contains(oldActiveLayer)) {
+                                box.layerFrames[oldActiveLayer] = box.frame
+                                lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
                             }
                         }
                     }
-                }
 
-                // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
-                if (!update.animated) {
-                    doResync()
-                }
+                    thisSessionInfo.get().activeLayer = update.layer
 
-                Handled.yes
+                    // Apply frame overrides for the new active layer
+                    if (update.layer != null) {
+                        thisSessionInfo.get().boxes.values.forEach { box ->
+                            val layerFrame = box.layerFrames[update.layer]
+                            if (layerFrame != null) {
+                                box.frame = layerFrame
+                                lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
+
+                                // Send animated rect if animation is requested
+                                if (update.animated) {
+                                    val animMessage = Message("set-animated-rect").payload(
+                                        Set_animated_rect(box.id, "frame", layerFrame, update.duration)
+                                    )
+                                    box.inside.sessions.forEach { _send(it, animMessage) }
+                                }
+                            }
+                        }
+                    }
+
+                    // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
+                    if (!update.animated) {
+                        doResync()
+                    }
+
+                    Handled.yes
+                }
             })
 
             handlers["get-all-layers"] = mutableSetOf({ message, reply ->
@@ -1338,7 +1344,8 @@ class Server {
         }
 
 
-        fun stop(box: Box) {
+        fun stop(box: Box, entrypoint: String = "server.stop") {
+            FlightRecorder.recordStopEntrypoint(entrypoint, box)
             box.ke.stop(box)
         }
 

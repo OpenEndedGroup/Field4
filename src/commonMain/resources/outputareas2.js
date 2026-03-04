@@ -4,6 +4,12 @@ const DEFAULT_W = 480;
 const DEFAULT_H = 240;
 const CLOSED_W = 200;
 const INLINE_CHANNEL_PREFIX = "*";
+const NESTED_MAX_W_PX = 1400;
+const NESTED_MAX_H_PX = 900;
+const NESTED_MAX_VIEWPORT_W_RATIO = 0.9;
+const NESTED_MAX_VIEWPORT_H_RATIO = 0.82;
+const NESTED_MIN_W = 220;
+const NESTED_MIN_H = 120;
 
 // --- Disclosure handling (new behavior) ---
 function disclosureInterface(container) {
@@ -11,6 +17,77 @@ function disclosureInterface(container) {
 
         const disclosures = new Map(); // id -> { wrap, hdr, cw, arr }
         const states = new Map(); // id -> { open, width, height, scrollTop, scrollLeft }
+
+        function clamp(value, min, max) {
+                const lo = Math.min(min, max);
+                const hi = Math.max(min, max);
+                return Math.max(lo, Math.min(hi, value));
+        }
+
+        function boundsForId(id) {
+                if (id !== "nested") {
+                        return {
+                                minW: 50,
+                                minH: 20,
+                                maxW: Number.POSITIVE_INFINITY,
+                                maxH: Number.POSITIVE_INFINITY
+                        };
+                }
+
+                const viewportW = Math.max(window.innerWidth || 0, DEFAULT_W);
+                const viewportH = Math.max(window.innerHeight || 0, DEFAULT_H);
+                return {
+                        minW: NESTED_MIN_W,
+                        minH: NESTED_MIN_H,
+                        maxW: Math.max(NESTED_MIN_W, Math.min(NESTED_MAX_W_PX, Math.floor(viewportW * NESTED_MAX_VIEWPORT_W_RATIO))),
+                        maxH: Math.max(NESTED_MIN_H, Math.min(NESTED_MAX_H_PX, Math.floor(viewportH * NESTED_MAX_VIEWPORT_H_RATIO)))
+                };
+        }
+
+        function clampSizeForId(id, width, height) {
+                const bounds = boundsForId(id);
+                return {
+                        width: clamp(width, bounds.minW, bounds.maxW),
+                        height: clamp(height, bounds.minH, bounds.maxH)
+                };
+        }
+
+        function applySizeBoundsForId(id, d) {
+                if (!d || d.inline) return;
+                if (id !== "nested") {
+                        d.cw.style.maxWidth = "none";
+                        d.cw.style.maxHeight = "none";
+                        d.cw.style.minWidth = "0px";
+                        d.cw.style.minHeight = "0px";
+                        d.wrap.style.maxWidth = "none";
+                        return;
+                }
+                const bounds = boundsForId(id);
+                d.cw.style.maxWidth = Number.isFinite(bounds.maxW) ? `${bounds.maxW}px` : "none";
+                d.cw.style.maxHeight = Number.isFinite(bounds.maxH) ? `${bounds.maxH}px` : "none";
+                d.cw.style.minWidth = `${bounds.minW}px`;
+                d.cw.style.minHeight = `${bounds.minH}px`;
+                d.wrap.style.maxWidth = Number.isFinite(bounds.maxW) ? `${bounds.maxW}px` : "none";
+        }
+
+        function refreshConnectionLayoutForNested(id) {
+                if (id !== "nested") return;
+                const gestures = window.canvasGestures;
+                const rebuild = (gestures && typeof gestures.rebuildConnectionGroup === "function")
+                        ? () => gestures.rebuildConnectionGroup(false)
+                        : (typeof window.rebuildConnectionGroup === "function")
+                                ? () => window.rebuildConnectionGroup(false)
+                                : null;
+                if (!rebuild) return;
+                requestAnimationFrame(() => {
+                        rebuild();
+                });
+                requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                                rebuild();
+                        });
+                });
+        }
 
         function isInlineId(id) {
                 return typeof id === "string" && id.startsWith(INLINE_CHANNEL_PREFIX);
@@ -42,10 +119,12 @@ function disclosureInterface(container) {
                 if (d.cw.style.display === "none") return;
                 const st = ensureState(id);
                 const rect = d.cw.getBoundingClientRect();
-                st.width = Math.max(rect.width, 50);
-                st.height = Math.max(d.cw.clientHeight, 20);
+                const clamped = clampSizeForId(id, Math.max(rect.width, 50), Math.max(d.cw.clientHeight, 20));
+                st.width = clamped.width;
+                st.height = clamped.height;
                 states.set(id, st);
                 d.wrap.style.width = `${st.width}px`;
+                refreshConnectionLayoutForNested(id);
         }
 
         function applyClosed(d) {
@@ -60,8 +139,12 @@ function disclosureInterface(container) {
         function applyOpen(id, d) {
                 if (d.inline) return;
                 const st = ensureState(id);
-                const w = st.width || DEFAULT_W;
-                const h = st.height || DEFAULT_H;
+                applySizeBoundsForId(id, d);
+                const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H);
+                const w = clamped.width;
+                const h = clamped.height;
+                st.width = w;
+                st.height = h;
                 d.wrap.classList.add("open");
                 d.cw.style.display = "block";
                 d.cw.style.padding = d.cw.dataset.origPadding || "0px";
@@ -79,6 +162,7 @@ function disclosureInterface(container) {
                 d.cw.style.boxSizing = "border-box";
                 d.cw.style.maxWidth = "none";
                 d.cw.style.minHeight = "0px";
+                applySizeBoundsForId(id, d);
 
                 if (!d.cw.dataset.origPadding) {
                         const cs = getComputedStyle(d.cw);
@@ -88,6 +172,22 @@ function disclosureInterface(container) {
                 d.cw.addEventListener("scroll", () => saveScroll(id, d));
                 d.cw.addEventListener("mouseup", () => rememberSize(id, d));
                 d.cw.addEventListener("mouseleave", () => rememberSize(id, d));
+
+                if (id === "nested" && typeof ResizeObserver !== "undefined" && !d.resizeObserver) {
+                        let prevW = -1;
+                        let prevH = -1;
+                        d.resizeObserver = new ResizeObserver((entries) => {
+                                const entry = entries && entries[0];
+                                if (!entry) return;
+                                const w = Math.round(entry.contentRect.width);
+                                const h = Math.round(entry.contentRect.height);
+                                if (w === prevW && h === prevH) return;
+                                prevW = w;
+                                prevH = h;
+                                refreshConnectionLayoutForNested(id);
+                        });
+                        d.resizeObserver.observe(d.cw);
+                }
         }
 
         function open(id) {
@@ -105,6 +205,7 @@ function disclosureInterface(container) {
                 applyOpen(id, d);
                 st.open = true;
                 states.set(id, st);
+                refreshConnectionLayoutForNested(id);
         }
 
         function close(id) {
@@ -122,6 +223,7 @@ function disclosureInterface(container) {
                 st.open = false;
                 states.set(id, st);
                 applyClosed(d);
+                refreshConnectionLayoutForNested(id);
         }
 
         function toggle(id) {
@@ -132,6 +234,10 @@ function disclosureInterface(container) {
         function remove(id) {
                 const d = disclosures.get(id);
                 if (!d) return;
+                if (d.resizeObserver && typeof d.resizeObserver.disconnect === "function") {
+                        d.resizeObserver.disconnect();
+                        d.resizeObserver = null;
+                }
                 d.wrap.remove();
                 disclosures.delete(id);
                 states.delete(id);
@@ -284,8 +390,9 @@ function disclosureInterface(container) {
                 const st = ensureState(id);
                 if (st.open) {
                         const rect = d.cw.getBoundingClientRect();
-                        st.width = Math.max(rect.width, 50);
-                        st.height = Math.max(d.cw.scrollHeight, 20);
+                        const clamped = clampSizeForId(id, Math.max(rect.width, 50), Math.max(d.cw.scrollHeight, 20));
+                        st.width = clamped.width;
+                        st.height = clamped.height;
                         states.set(id, st);
                         applyOpen(id, d);
                 }

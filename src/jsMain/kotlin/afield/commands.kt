@@ -1,5 +1,6 @@
 package afield
 
+import handleOutputAreaRequest
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.html.dom.append
@@ -10,6 +11,7 @@ import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
 import web.url.URL
 import kotlin.js.Date
+import kotlin.math.abs
 
 var lastMouse = 0.0 to 0.0
 
@@ -36,6 +38,91 @@ fun registerMouseBug() {
         val y = (event as MouseEvent).pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)
         lastMouse = x to y
     })
+}
+
+private fun allBoxesOnCanvas(): List<HTMLElement> =
+    document.body!!.getElementsByClassName("box").asList().mapNotNull { it as? HTMLElement }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun normalizeNestedPanForSelection() {
+    val allBoxes = allBoxesOnCanvas()
+    val boxByUid = allBoxes.mapNotNull { box ->
+        val uid = box.unsafeCast<dynamic>().uid as? String
+        if (uid == null) null else uid to box
+    }.toMap()
+
+    val parentByUid = linkedMapOf<String, HTMLElement>()
+    selected.forEach { box ->
+        val uid = box.unsafeCast<dynamic>().uid as? String
+        val nested = box.unsafeCast<dynamic>().box_nested as? Array<String>
+        if (uid != null && nested != null && nested.isNotEmpty()) {
+            parentByUid[uid] = box
+        }
+
+        val nestedIn = box.unsafeCast<dynamic>().box_nestedIn as? String
+        if (nestedIn != null) {
+            boxByUid[nestedIn]?.let { parentByUid[nestedIn] = it }
+        }
+    }
+
+    if (parentByUid.isEmpty()) {
+        notify("Select a nest parent or a box inside a nest", "command")
+        return
+    }
+
+    val updates = mutableListOf<Set_rect>()
+    var adjustedChildren = 0
+    var resetNests = 0
+
+    parentByUid.values.forEach { parent ->
+        val nestedCanvas = parent.querySelector(".nested-canvas") as? HTMLElement ?: return@forEach
+        val nestedContent = nestedCanvas.querySelector(".nested-content") as? HTMLElement
+
+        val panX = (nestedCanvas.asDynamic().data_x as? Number)?.toDouble() ?: 0.0
+        val panY = (nestedCanvas.asDynamic().data_y as? Number)?.toDouble() ?: 0.0
+
+        val childIds = (parent.unsafeCast<dynamic>().box_nested as? Array<String>)?.toList() ?: emptyList()
+        if (childIds.isEmpty()) {
+            nestedContent?.style?.transform = "translate(0px, 0px)"
+            nestedCanvas.asDynamic().data_x = 0.0
+            nestedCanvas.asDynamic().data_y = 0.0
+            return@forEach
+        }
+
+        if (abs(panX) > 1e-6 || abs(panY) > 1e-6) {
+            childIds.forEach { childId ->
+                val child = boxByUid[childId] ?: return@forEach
+                val d = child.unsafeCast<dynamic>()
+
+                val x = (d.data_x as? Number)?.toDouble() ?: 0.0
+                val y = (d.data_y as? Number)?.toDouble() ?: 0.0
+                val w = (d.data_w as? Number)?.toDouble() ?: child.getBoundingClientRect().width
+                val h = (d.data_h as? Number)?.toDouble() ?: child.getBoundingClientRect().height
+                val nx = x + panX
+                val ny = y + panY
+
+                d.data_x = nx
+                d.data_y = ny
+                child.style.transform = "translate(${nx}px, ${ny}px)"
+
+                updates += Set_rect(childId, "frame", Rect(nx, ny, w, h))
+                adjustedChildren++
+            }
+        }
+
+        nestedContent?.style?.transform = "translate(0px, 0px)"
+        nestedCanvas.asDynamic().data_x = 0.0
+        nestedCanvas.asDynamic().data_y = 0.0
+        resetNests++
+    }
+
+    if (updates.isNotEmpty()) {
+        send(Message("set-rects").payload(Set_rects(updates)))
+    }
+
+    canvasGestures.rebuildConnectionGroup()
+    notify("Reset pan on $resetNests nest(s), adjusted $adjustedChildren box frame(s)", "command")
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -69,13 +156,73 @@ fun deleteSelectedBoxes() {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun selectAllBoxes() {
-    val boxes = document.body!!.getElementsByClassName("box").asList().mapNotNull { it as? HTMLElement }
+    val boxes = allBoxesOnCanvas()
     if (boxes.isEmpty()) return
 
     // Normalize selection state then select everything
     selected.toList().forEach { deselectBox(it) }
     boxes.forEach { selectBox(it) }
     canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun selectAllNestedBoxes() {
+    val nestedBoxes = allBoxesOnCanvas().filter { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
+    if (nestedBoxes.isEmpty()) {
+        notify("No nested boxes in this document", "command")
+        return
+    }
+    selected.toList().forEach { deselectBox(it) }
+    nestedBoxes.forEach { selectBox(it) }
+    canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun connectFromNestParentToSelection() {
+    val selectedNested = selected.filter { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
+    if (selectedNested.isEmpty()) {
+        notify("Select one or more nested boxes", "command")
+        return
+    }
+
+    val boxByUid = allBoxesOnCanvas().mapNotNull { box ->
+        val uid = box.unsafeCast<dynamic>().uid as? String
+        if (uid == null) null else uid to box
+    }.toMap()
+
+    val groupedByParentUid = linkedMapOf<String, MutableList<String>>()
+    selectedNested.forEach { child ->
+        val childUid = child.unsafeCast<dynamic>().uid as? String ?: return@forEach
+        val parentUid = child.unsafeCast<dynamic>().box_nestedIn as? String ?: return@forEach
+        if (!boxByUid.containsKey(parentUid)) return@forEach
+        groupedByParentUid.getOrPut(parentUid) { mutableListOf() }.add(childUid)
+    }
+
+    if (groupedByParentUid.isEmpty()) {
+        notify("No valid nest parents found for selection", "error")
+        return
+    }
+
+    var linkCount = 0
+    groupedByParentUid.forEach { (parentUid, childUids) ->
+        val uniqueChildren = childUids.distinct().filter { it != parentUid }
+        if (uniqueChildren.isEmpty()) return@forEach
+        send(
+            Message("perform-action").payload(
+                Perform_action(
+                    listOf(parentUid) + uniqueChildren,
+                    "-connect"
+                )
+            )
+        )
+        linkCount += uniqueChildren.size
+    }
+
+    if (linkCount > 0) {
+        notify("Connected nest parent(s) to $linkCount selected nested box${if (linkCount == 1) "" else "es"}", "command")
+    }
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -264,6 +411,29 @@ fun moveSelectedBoxesForward() {
         it.parentNode?.appendChild(it)
     }
     canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun showAllLayers() {
+    val layers = getAllLayers().filter { it.isNotBlank() }.toSet().ifEmpty { setOf("default") }
+    setVisibleLayers(layers, animated = true, duration = 450.0)
+
+    val hostBox = selected.firstOrNull() ?: allBoxesOnCanvas().firstOrNull()
+    val hostUid = hostBox?.unsafeCast<dynamic>()?.uid as? String
+    if (hostBox != null && hostUid != null) {
+        handleOutputAreaRequest(
+            hostBox,
+            Set_output(
+                uid = hostUid,
+                property = "outputarea",
+                channel = "layers",
+                value = ""
+            )
+        )
+    }
+
+    notify("Showing all ${layers.size} layer${if (layers.size == 1) "" else "s"}", "command")
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -459,6 +629,9 @@ fun parseKeybindingSpec(spec: String): String? {
 fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<Action_Desc>>) {
     val all = eval("[]")
     val selId = selected.map { it.unsafeCast<dynamic>().uid as String }.map { "'$it'" }.joinToString(",")
+    val allBoxes = allBoxesOnCanvas()
+    val hasNestedBoxes = allBoxes.any { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
+    val hasSelectedNestedBoxes = boxes.any { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
 
     fun escapeJsString(value: String): String {
         return value
@@ -673,6 +846,20 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
+                id:'normalize-nested-pan', label:'Normalize Nested contents', 
+                detail:'Reset nest offset so that the boxes appear in the current position when the document is opened',
+                canvasKeybinding: (event) => false, 
+                run: () => { 
+                    normalizeNestedPanForSelection()
+                }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+        run {
+            val e = """
+            ({
                 id:'un-nest', label:'Un-nest selection', 
                 detail:'Bring a nested box out of it\'s nest',
                 canvasKeybinding: (event) => false, 
@@ -699,6 +886,34 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
     """.trimIndent()
         val a = eval(e)
         all.push(a)
+    }
+    if (hasNestedBoxes) {
+        run {
+            val e = """
+            ({
+                id:'select-all-nested', label:'Select all nested',
+                detail:'Select all boxes that are currently nested inside another box',
+                canvasKeybinding: (event) => false,
+                run: () => { selectAllNestedBoxes() }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+    }
+    if (hasSelectedNestedBoxes) {
+        run {
+            val e = """
+            ({
+                id:'connect-nest-parent-to-selection', label:'Connect from nest parent to selection',
+                detail:'For each selected nested box, connect its nest parent to it',
+                canvasKeybinding: (event) => false,
+                run: () => { connectFromNestParentToSelection() }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
     }
     allActions.fromSelection = all
     updateActions()
@@ -771,6 +986,14 @@ fun registerBuiltinCommands() {
             detail:"Bring to front",
             run: () => {
                     moveSelectedBoxesForward()
+            }
+        },{
+            id:'show-all-layers',
+            label:"Show All Layers",
+            detail:"Restore visibility for every layer and reopen the layers palette",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                showAllLayers()
             }
         },{
             id:'insert-from-workspace',

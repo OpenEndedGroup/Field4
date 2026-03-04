@@ -307,9 +307,13 @@ class SavingContext {
                 val ednText = Edn.write(payload, ednCustom)
                 val metadataPath = File(root, METADATA_EDN).path
                 touched.add(metadataPath)
-                val cd = checkDifference(metadataPath, ednText)
-                altered = altered || cd
-                if (cd) alteredFiles.add(metadataPath)
+                val metadataChanged = checkDifference(metadataPath, ednText)
+                altered = altered || metadataChanged
+                if (metadataChanged) alteredFiles.add(metadataPath)
+
+                if (metadataChanged) {
+                    FlightRecorder.checkpointOnMetadataChange(fn)
+                }
 
                 SaveReloadLog.log(
                     "save",
