@@ -20,8 +20,9 @@
         }
 
         #editor-host {
-            width: min(960px, 100%);
+            width: 100%;
             background: transparent;
+            box-sizing: border-box;
         }
     </style>
 </head>
@@ -45,8 +46,10 @@
         const urlParams = new URLSearchParams(window.location.search);
         const clientUid = (urlParams.get('uid') || '').trim() || 'anonymous';
         console.log('Client UID:', clientUid, urlParams);
+        // Use the host's actual width so the editor fills the iframe
+        const hostWidth = Math.max(host.clientWidth || 500, 200);
         const editor = new KeyframeEditor(host, {
-                width: 500,
+                width: hostWidth,
                 height: 200,
                 timeRange,
                 valueRange,
@@ -62,6 +65,17 @@
                         broadcastKeyframes('change');
                 },
         });
+
+        // Resize the editor when the iframe / container is resized
+        if (typeof ResizeObserver !== 'undefined') {
+                const ro = new ResizeObserver(() => {
+                        const w = host.clientWidth;
+                        if (w > 0 && Math.abs(w - editor.options.width) > 2) {
+                                editor.resize(w, editor.options.height);
+                        }
+                });
+                ro.observe(host);
+        }
 
         let playhead = timeRange[0];
         editor.setPlayhead(playhead);
@@ -220,6 +234,30 @@
 
                 if (message.type === 'playhead' && typeof message.time === 'number') {
                         applyRemotePlayhead(message.time);
+                        return;
+                }
+
+                // Backend overlay curves
+                if (message.type === 'overlay') {
+                        const id = message.id ?? 'default';
+                        editor.setOverlay(
+                            id,
+                            message.samples ?? [],
+                            message.color ?? '#00e5ff',
+                            message.strokeWidth ?? 1.5,
+                            message.dashArray ?? '6 3'
+                        );
+                        return;
+                }
+
+                if (message.type === 'clearOverlay') {
+                        editor.removeOverlay(message.id ?? 'default');
+                        return;
+                }
+
+                if (message.type === 'clearAllOverlays') {
+                        editor.clearAllOverlays();
+                        return;
                 }
         }
 
@@ -249,13 +287,24 @@
                 const times = keyframes.map((item) => item.time).filter(Number.isFinite);
                 const values = keyframes.map((item) => item.value).filter(Number.isFinite);
                 if (times.length) {
-                        const [min, max] = padRange(Math.min(...times), Math.max(...times), 0.05);
-                        if (max - min > 0) {
-                                editor.setViewTimeRange([min, max], { render: false });
+                        // Always include 0 in the time range and snap to nice boundaries
+                        let tMin = Math.min(0, ...times);
+                        let tMax = Math.max(...times);
+                        // Ensure a minimum visible span
+                        if (tMax - tMin < 1) tMax = tMin + 1;
+                        const [min, max] = padRange(tMin, tMax, 0.08);
+                        // Round to nice boundaries (floor/ceil to nearest step)
+                        const niceMin = Math.floor(min);
+                        const niceMax = Math.ceil(max);
+                        if (niceMax - niceMin > 0) {
+                                editor.setViewTimeRange([niceMin, niceMax], { render: false });
                         }
                 }
                 if (values.length) {
-                        const [min, max] = padRange(Math.min(...values), Math.max(...values), 0.1);
+                        // Always include 0 and 1 for value range (keyframes are 0-1)
+                        let vMin = Math.min(0, ...values);
+                        let vMax = Math.max(1, ...values);
+                        const [min, max] = padRange(vMin, vMax, 0.08);
                         if (max - min > 0) {
                                 editor.setViewValueRange([min, max], { render: false });
                         }

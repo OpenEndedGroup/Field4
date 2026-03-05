@@ -1,7 +1,9 @@
 package afield
 
 import afield.stdlib.Action
+import afield.stdlib.Vec2
 import afield.stdlib.actions
+import afield.stdlib.vec
 import kotlin.math.*
 
 // =====================================================================================
@@ -274,7 +276,6 @@ private fun layoutHorizontal(original: List<Rect>, params: LayoutParams): List<R
 // Snap/Tidy + Route (with aggressive final "columnize" + NEW preserve-centroid offset)
 // =====================================================================================
 
-data class Vec2(val x: Double, val y: Double)
 enum class RouteAxis { HORIZONTAL, VERTICAL }
 
 data class RouteParams(
@@ -284,7 +285,7 @@ data class RouteParams(
     val inertia: Double = 0.15,
     val maxMove: Double = 10000.0,
 
-    val origin: Vec2 = Vec2(0.0, 0.0),
+    val origin: Vec2 = vec(0.0, 0.0),
     val preferNearOrigin: Double = 1.5,
     val preferInDegree0: Double = 3.0,
     val preferOutDegree: Double = 0.25,
@@ -347,7 +348,7 @@ private data class G(
 enum class CentroidMode { UNWEIGHTED, AREA_WEIGHTED }
 
 private fun centroid(rects: List<Rect>, mode: CentroidMode): Vec2 {
-    if (rects.isEmpty()) return Vec2(0.0, 0.0)
+    if (rects.isEmpty()) return vec(0.0, 0.0)
     var sx = 0.0
     var sy = 0.0
     var sw = 0.0
@@ -360,8 +361,8 @@ private fun centroid(rects: List<Rect>, mode: CentroidMode): Vec2 {
         sy += r.cy * w
         sw += w
     }
-    if (sw <= 1e-12) return Vec2(0.0, 0.0)
-    return Vec2(sx / sw, sy / sw)
+    if (sw <= 1e-12) return vec(0.0, 0.0)
+    return vec(sx / sw, sy / sw)
 }
 
 private fun translate(rects: List<Rect>, dx: Double, dy: Double): List<Rect> {
@@ -373,7 +374,7 @@ private fun restoreCentroid(newRects: List<Rect>, oldRects: List<Rect>, mode: Ce
     if (newRects.isEmpty() || oldRects.isEmpty()) return newRects
     val cOld = centroid(oldRects, mode)
     val cNew = centroid(newRects, mode)
-    return translate(newRects, cOld.x - cNew.x, cOld.y - cNew.y)
+    return translate(newRects, (cOld.x - cNew.x).toDouble(), (cOld.y - cNew.y).toDouble())
 }
 
 // ---------- Public APIs ----------

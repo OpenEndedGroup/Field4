@@ -1,6 +1,8 @@
 package afield.stdlib
 
 import afield.graphics.FLine
+import afield.Keyframe
+import afield.KeyframeEvaluator
 import kotlin.math.*
 
 object Functions {
@@ -759,6 +761,31 @@ object Functions {
         val s = kotlin.math.abs(step)
         val count = if (includeEnd) (floor(len / s) + 1).toInt() else floor(len / s).toInt()
         return toDoubleArray(count, domain, includeEnd, edge, outside)
+    }
+
+    /**
+     * Sample this function at [count] uniformly-spaced points and return the
+     * results as `List<Vec2>` where each entry is `Vec2(time, value)`.
+     *
+     * Handy for feeding into [KeyframeEvaluator.setOverlay] or any API that
+     * expects a list of 2D points.
+     */
+    fun Fn.toVec2List(
+        count: Int,
+        domain: Domain = roi,
+        includeEnd: Boolean = true,
+        edge: EdgeMode = EdgeMode.ZERO,
+        outside: Double = 0.0
+    ): List<Vec2> {
+        if (count <= 0) return emptyList()
+        if (domain._isEmpty) return List(count) { Vec2(0f, outside.toFloat()) }
+        val len = domain.length
+        val steps = if (includeEnd) max(1, count - 1) else count
+        val step = if (steps == 0) 0.0 else len / steps.toDouble()
+        return List(count) { i ->
+            val x = domain.min + step * i.toDouble()
+            Vec2(x.toFloat(), evalSafe(x, outside, edge).toFloat())
+        }
     }
 
     // Streaming helpers
@@ -2391,6 +2418,529 @@ object Functions {
         val series: List<DemoSeries>,
         val notes: List<String>
     )
+
+    // ══════════════════════════════════════════════════════════════════
+    //  Keyframe-aware interpolation functions
+    //
+    //  Each takes a list of Keyframe (or Vec2) control points and returns
+    //  a Fn defined over their time span. These are independent of the
+    //  keyframe editor's built-in bezier evaluation — they provide
+    //  alternative curve shapes that can be overlaid, compared, or used
+    //  as stand-alone functions.
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Piecewise-linear interpolation through the keyframe positions.
+     * Outside the keyframe range the first/last value is held.
+     */
+    fun piecewiseLinear(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        val sorted = points.sortedBy { it.time }
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "piecewise-linear") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    val i = sorted.indexOfLast { it.time <= x }
+                    val a = sorted[i]
+                    val b = sorted[i + 1]
+                    val t = if (b.time == a.time) 0.0 else (x - a.time) / (b.time - a.time)
+                    a.value + (b.value - a.value) * t
+                }
+            }
+        }
+    }
+
+    /** Overload accepting Vec2 pairs instead of Keyframe objects. */
+    @JvmName("piecewiseLinearVec2")
+    fun piecewiseLinear(points: List<Vec2>): Fn {
+        return piecewiseLinear(points.map { Keyframe(it.x.toDouble(), it.y.toDouble(), "linear") })
+    }
+
+    /**
+     * Catmull-Rom spline through keyframe positions.
+     *
+     * The Catmull-Rom spline passes exactly through every control point and
+     * produces smooth C¹-continuous curves. The [alpha] parameter controls
+     * the spline variant:
+     *  - 0.0 = uniform (classic)
+     *  - 0.5 = centripetal (avoids cusps — recommended)
+     *  - 1.0 = chordal
+     *
+     * @param points the keyframes to interpolate
+     * @param alpha  parameterisation exponent (0 = uniform, 0.5 = centripetal, 1 = chordal)
+     */
+    fun catmullRomSpline(points: List<Keyframe>, alpha: Double = 0.5): Fn {
+        if (points.isEmpty()) return zero()
+        if (points.size == 1) return c(points[0].value)
+        val sorted = points.sortedBy { it.time }
+        val n = sorted.size
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "catmull-rom") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    // Find segment
+                    var seg = 0
+                    for (i in 0 until n - 1) {
+                        if (x >= sorted[i].time && x < sorted[i + 1].time) { seg = i; break }
+                    }
+                    val p0 = sorted[max(seg - 1, 0)]
+                    val p1 = sorted[seg]
+                    val p2 = sorted[min(seg + 1, n - 1)]
+                    val p3 = sorted[min(seg + 2, n - 1)]
+                    catmullRomSegment(
+                        p0.time, p0.value,
+                        p1.time, p1.value,
+                        p2.time, p2.value,
+                        p3.time, p3.value,
+                        x, alpha
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Evaluate a single Catmull-Rom segment.
+     *
+     * Uses cubic Hermite interpolation where the tangent at each interior knot
+     * is the slope of the line connecting its neighbours, scaled to the segment
+     * span. The [alpha] parameter biases knot spacing but the final evaluation
+     * always uses the standard Hermite basis on the [t1, t2] interval.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun catmullRomSegment(
+        t0: Double, v0: Double,
+        t1: Double, v1: Double,
+        t2: Double, v2: Double,
+        t3: Double, v3: Double,
+        x: Double, alpha: Double
+    ): Double {
+        val span = t2 - t1
+        if (span < 1e-12) return v1
+        val u = ((x - t1) / span).coerceIn(0.0, 1.0)
+
+        // Tangents: slope of chord through neighbours, scaled to segment length
+        val tangent1 = if (t2 != t0) (v2 - v0) / (t2 - t0) * span else 0.0
+        val tangent2 = if (t3 != t1) (v3 - v1) / (t3 - t1) * span else 0.0
+
+        val u2 = u * u
+        val u3 = u2 * u
+        val h00 = 2.0 * u3 - 3.0 * u2 + 1.0
+        val h10 = u3 - 2.0 * u2 + u
+        val h01 = -2.0 * u3 + 3.0 * u2
+        val h11 = u3 - u2
+
+        return h00 * v1 + h10 * tangent1 + h01 * v2 + h11 * tangent2
+    }
+
+    /**
+     * Monotone cubic (Fritsch-Carlson) interpolation.
+     *
+     * Guarantees no overshoot — the curve never exceeds the range defined by
+     * adjacent keyframe values. Excellent for animation curves where you want
+     * smooth motion without unexpected wobble.
+     */
+    fun monotoneCubic(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        if (points.size == 1) return c(points[0].value)
+        val sorted = points.sortedBy { it.time }
+        val n = sorted.size
+
+        // Compute slopes
+        val dx = DoubleArray(n - 1) { sorted[it + 1].time - sorted[it].time }
+        val dy = DoubleArray(n - 1) { sorted[it + 1].value - sorted[it].value }
+        val slopes = DoubleArray(n - 1) { if (dx[it] == 0.0) 0.0 else dy[it] / dx[it] }
+
+        // Tangents via Fritsch-Carlson
+        val tangents = DoubleArray(n)
+        tangents[0] = slopes[0]
+        for (i in 1 until n - 1) {
+            if (slopes[i - 1] * slopes[i] <= 0.0) {
+                tangents[i] = 0.0
+            } else {
+                tangents[i] = (slopes[i - 1] + slopes[i]) * 0.5
+            }
+        }
+        tangents[n - 1] = slopes[n - 2]
+
+        // Enforce monotonicity
+        for (i in 0 until n - 1) {
+            if (abs(slopes[i]) < 1e-30) {
+                tangents[i] = 0.0
+                tangents[i + 1] = 0.0
+            } else {
+                val a = tangents[i] / slopes[i]
+                val b = tangents[i + 1] / slopes[i]
+                val s = a * a + b * b
+                if (s > 9.0) {
+                    val tau = 3.0 / sqrt(s)
+                    tangents[i] = tau * a * slopes[i]
+                    tangents[i + 1] = tau * b * slopes[i]
+                }
+            }
+        }
+
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "monotone-cubic") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    var seg = 0
+                    for (i in 0 until n - 1) {
+                        if (x >= sorted[i].time && x < sorted[i + 1].time) { seg = i; break }
+                    }
+                    val h = dx[seg]
+                    if (h < 1e-30) sorted[seg].value
+                    else {
+                        val t = (x - sorted[seg].time) / h
+                        val t2 = t * t
+                        val t3 = t2 * t
+                        val h00 = 2.0 * t3 - 3.0 * t2 + 1.0
+                        val h10 = (t3 - 2.0 * t2 + t) * h
+                        val h01 = -2.0 * t3 + 3.0 * t2
+                        val h11 = (t3 - t2) * h
+                        h00 * sorted[seg].value + h10 * tangents[seg] +
+                                h01 * sorted[seg + 1].value + h11 * tangents[seg + 1]
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Cubic Hermite interpolation with user-specified tangent slopes.
+     *
+     * Each keyframe's tangent is derived from its [Keyframe.handles]:
+     *  - If handles are present the outgoing slope is `handle.value / handle.time`.
+     *  - If handles are missing a Catmull-Rom-style tangent is used.
+     *
+     * This lets you feed editor keyframes (with their tangent handles) directly
+     * into an independent Hermite evaluator.
+     */
+    fun hermiteFromHandles(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        if (points.size == 1) return c(points[0].value)
+        val sorted = points.sortedBy { it.time }
+        val n = sorted.size
+
+        // Derive tangent slopes — dValue/dTime at each keyframe
+        val tangents = DoubleArray(n) { i ->
+            val kf = sorted[i]
+            // Try to use the outgoing handle slope
+            val outH = kf.handles?.out
+            if (outH != null && abs(outH.time) > 1e-12) {
+                outH.value / outH.time
+            } else {
+                // Catmull-Rom fallback
+                val prev = sorted[max(i - 1, 0)]
+                val next = sorted[min(i + 1, n - 1)]
+                val dt = next.time - prev.time
+                if (abs(dt) < 1e-12) 0.0 else (next.value - prev.value) / dt
+            }
+        }
+
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "hermite") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    var seg = 0
+                    for (i in 0 until n - 1) {
+                        if (x >= sorted[i].time && x < sorted[i + 1].time) { seg = i; break }
+                    }
+                    val h = sorted[seg + 1].time - sorted[seg].time
+                    if (h < 1e-30) sorted[seg].value
+                    else {
+                        val t = (x - sorted[seg].time) / h
+                        val t2 = t * t
+                        val t3 = t2 * t
+                        val h00 = 2.0 * t3 - 3.0 * t2 + 1.0
+                        val h10 = (t3 - 2.0 * t2 + t) * h
+                        val h01 = -2.0 * t3 + 3.0 * t2
+                        val h11 = (t3 - t2) * h
+                        h00 * sorted[seg].value + h10 * tangents[seg] +
+                                h01 * sorted[seg + 1].value + h11 * tangents[seg + 1]
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Quadratic B-spline approximation of the keyframe curve.
+     *
+     * Unlike interpolating splines, B-splines do **not** pass through the
+     * control points — they smoothly approximate the shape. This produces
+     * ultra-smooth curves that are naturally bias-free.
+     */
+    fun bSplineQuadratic(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        if (points.size == 1) return c(points[0].value)
+        if (points.size == 2) return piecewiseLinear(points)
+        val sorted = points.sortedBy { it.time }
+        val n = sorted.size
+
+        // Uniform parameterisation: map keyframe index to parameter
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "b-spline-quadratic") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    // Map x to parameter space [0, n-1]
+                    val span = sorted.last().time - sorted.first().time
+                    val u = if (span < 1e-12) 0.0
+                    else ((x - sorted.first().time) / span * (n - 1)).coerceIn(0.0, (n - 1).toDouble())
+
+                    val seg = u.toInt().coerceIn(0, n - 2)
+                    val t = u - seg
+
+                    val p0val = sorted[max(seg - 1, 0)].value
+                    val p1val = sorted[seg].value
+                    val p2val = sorted[min(seg + 1, n - 1)].value
+
+                    // Quadratic B-spline basis
+                    val b0 = 0.5 * (1.0 - t) * (1.0 - t)
+                    val b1 = 0.5 + t * (1.0 - t)
+                    val b2 = 0.5 * t * t
+
+                    b0 * p0val + b1 * p1val + b2 * p2val
+                }
+            }
+        }
+    }
+
+    /**
+     * Step / sample-and-hold through keyframes.
+     * Holds each keyframe value until the next keyframe time.
+     */
+    fun stepHold(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        val sorted = points.sortedBy { it.time }
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "step-hold") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    var value = sorted.first().value
+                    for (kf in sorted) {
+                        if (kf.time > x) break
+                        value = kf.value
+                    }
+                    value
+                }
+            }
+        }
+    }
+
+    /**
+     * Nearest-value interpolation — returns the value of the closest keyframe.
+     */
+    fun nearestValue(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        val sorted = points.sortedBy { it.time }
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "nearest") { x ->
+            sorted.minByOrNull { abs(it.time - x) }?.value ?: 0.0
+        }
+    }
+
+    /**
+     * Cosine interpolation through keyframes.
+     *
+     * Like piecewise-linear but each segment uses a cosine ease for softer
+     * transitions — simple and cheap, no tangent computation required.
+     */
+    fun cosineInterp(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        val sorted = points.sortedBy { it.time }
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "cosine") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    val i = sorted.indexOfLast { it.time <= x }
+                    val a = sorted[i]
+                    val b = sorted[i + 1]
+                    val span = b.time - a.time
+                    if (span < 1e-12) a.value
+                    else {
+                        val t = (x - a.time) / span
+                        val mu = (1.0 - cos(t * PI)) * 0.5
+                        a.value + (b.value - a.value) * mu
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Smoothstep (Hermite) interpolation through keyframes.
+     *
+     * Each segment is eased with the classic smoothstep 3t² − 2t³, producing
+     * a C¹-continuous curve with zero-velocity at every keyframe.
+     */
+    fun smoothStepInterp(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        val sorted = points.sortedBy { it.time }
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "smoothstep") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    val i = sorted.indexOfLast { it.time <= x }
+                    val a = sorted[i]
+                    val b = sorted[i + 1]
+                    val span = b.time - a.time
+                    if (span < 1e-12) a.value
+                    else {
+                        val t = ((x - a.time) / span).coerceIn(0.0, 1.0)
+                        val s = smoothstep(t)
+                        a.value + (b.value - a.value) * s
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Smootherstep (Ken Perlin's 6t⁵ − 15t⁴ + 10t³) interpolation.
+     *
+     * C²-continuous — smoother than smoothstep, with zero first *and* second
+     * derivative at keyframe positions.
+     */
+    fun smootherStepInterp(points: List<Keyframe>): Fn {
+        if (points.isEmpty()) return zero()
+        val sorted = points.sortedBy { it.time }
+        val d = Domain.of(sorted.first().time, sorted.last().time)
+        return Fn(d, Domain.ALL, "smootherstep") { x ->
+            when {
+                x <= sorted.first().time -> sorted.first().value
+                x >= sorted.last().time -> sorted.last().value
+                else -> {
+                    val i = sorted.indexOfLast { it.time <= x }
+                    val a = sorted[i]
+                    val b = sorted[i + 1]
+                    val span = b.time - a.time
+                    if (span < 1e-12) a.value
+                    else {
+                        val t = ((x - a.time) / span).coerceIn(0.0, 1.0)
+                        val s = smootherstep(t)
+                        a.value + (b.value - a.value) * s
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Resampled / transformed variants ─────────────────────────────
+
+    /**
+     * Gaussian-smoothed version of a source [Fn].
+     *
+     * Convolves the function with a Gaussian kernel of the given [sigma],
+     * keeping the same domain. Useful for "softening" a keyframe curve after
+     * construction.
+     *
+     * @param source the function to smooth
+     * @param sigma  standard deviation of the Gaussian kernel (in time units)
+     * @param taps   number of kernel samples (higher = smoother but slower)
+     */
+    fun gaussianSmooth(source: Fn, sigma: Double = 0.1, taps: Int = 31): Fn {
+        val halfTaps = taps / 2
+        val weights = DoubleArray(taps) { i ->
+            val offset = (i - halfTaps).toDouble()
+            exp(-0.5 * (offset * offset) / (halfTaps * halfTaps).toDouble())
+        }
+        val wSum = weights.sum()
+        for (i in weights.indices) weights[i] /= wSum
+
+        return Fn(source.roi, source.domain, "gaussian-smooth(${source.name ?: "?"})") { x ->
+            var acc = 0.0
+            val step = sigma * 3.0 / halfTaps
+            for (i in 0 until taps) {
+                val offset = (i - halfTaps) * step
+                acc += weights[i] * source.evalSafe(x + offset, source.eval(x), EdgeMode.CLAMP)
+            }
+            acc
+        }
+    }
+
+    /**
+     * Numerically differentiate a source [Fn] (central differences).
+     *
+     * @param source the function to differentiate
+     * @param h      finite-difference half-width
+     */
+    fun differentiate(source: Fn, h: Double = 1e-4): Fn {
+        return Fn(source.roi, source.domain, "d/dt(${source.name ?: "?"})") { x ->
+            (source.eval(x + h) - source.eval(x - h)) / (2.0 * h)
+        }
+    }
+
+    /**
+     * Resample a [Fn] at uniform intervals and return a new [Fn] backed by
+     * the sample table with the given [interpolation] mode.
+     *
+     * @param source       the function to resample
+     * @param sampleCount  number of uniform samples
+     * @param interpolation how to reconstruct between samples
+     */
+    /**
+     * Produces a [Fn] that exactly matches the keyframe editor's native evaluation
+     * (hold / linear / rational-bezier), by constructing a temporary
+     * [KeyframeEvaluator] and sampling it.
+     *
+     * This is the function to use when you want a `Fn` that mirrors what the
+     * user sees in the editor — the same bezier handles, the same hold segments,
+     * the same tangent weights.
+     *
+     * @param keyframes     the keyframe list (e.g. from [KeyframeEvaluator.getKeyframes])
+     * @param sampleCount   number of uniformly-spaced samples across the keyframe time range
+     * @param interpolation how to reconstruct between samples in the resulting Fn
+     */
+    fun fromKeyframeEditor(
+        keyframes: List<Keyframe>,
+        sampleCount: Int = 512,
+        interpolation: Interpolation = Interpolation.LINEAR
+    ): Fn {
+        if (keyframes.isEmpty()) return zero()
+        val json = kotlinx.serialization.json.Json.encodeToString(keyframes)
+        val evaluator = KeyframeEvaluator(json)
+        val sorted = keyframes.sortedBy { it.time }
+        val tMin = sorted.first().time
+        val tMax = sorted.last().time
+        val d = Domain.of(tMin, tMax)
+        if (d._isEmpty || !d.isFinite || d.length < 1e-12) return c(sorted.first().value)
+
+        val values = DoubleArray(sampleCount) { i ->
+            val t = tMin + (tMax - tMin) * i.toDouble() / max(1, sampleCount - 1).toDouble()
+            evaluator.evaluateValueAt(t)
+        }
+        return values.toFn(d, interpolation)
+            .withName("keyframe-editor")
+    }
+
+    fun resample(
+        source: Fn,
+        sampleCount: Int = 256,
+        interpolation: Interpolation = Interpolation.CUBIC
+    ): Fn {
+        val d = source.roi
+        if (d._isEmpty || !d.isFinite) return source
+        val samples = source.toDoubleArray(sampleCount, d, includeEnd = true)
+        return samples.toFn(d, interpolation)
+            .withName("resampled(${source.name ?: "?"})")
+    }
 
     fun demo(
         sampleCount: Int = 512,

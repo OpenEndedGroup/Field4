@@ -1,10 +1,12 @@
 package afield
 
-import afield.server.Inspector
+import afield.stdlib.Vec2
+import afield.stdlib.Functions.Fn
 import io.ktor.websocket.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
+import org.json.JSONArray
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
@@ -24,8 +26,14 @@ class KeyframeEvaluator(jsonString: String) {
 
     lateinit var session: WebSocketSession
 
+    /** The box ID + name uid this evaluator is associated with */
+    var associatedBoxId: String? = null
+    var associatedName: String? = null
+
     private var keyframes: List<Keyframe>
     private var cachedSamples: List<Sample>? = null
+
+    fun isEmpty(): Boolean = keyframes.isEmpty()
 
     init {
         val json = Json { ignoreUnknownKeys = true }
@@ -108,6 +116,170 @@ class KeyframeEvaluator(jsonString: String) {
         }
         return Pair(keyframes.first().time, keyframes.last().time)
     }
+
+    // ── Read-only accessors ──────────────────────────────────────────
+
+    /** Returns a defensive copy of the current keyframe list (sorted by time). */
+    fun getKeyframes(): List<Keyframe> = keyframes.toList()
+
+    /** Number of keyframes currently defined. */
+    fun getKeyframeCount(): Int = keyframes.size
+
+    /** Returns the keyframe at the given index (0-based, sorted by time). */
+    fun getKeyframeAt(index: Int): Keyframe = keyframes[index]
+
+    /** Returns times of all keyframes (sorted ascending). */
+    fun getKeyframeTimes(): List<Double> = keyframes.map { it.time }
+
+    /** Returns values of all keyframes (in time order). */
+    fun getKeyframeValues(): List<Double> = keyframes.map { it.value }
+
+    /** Returns the interpolation types of all keyframes (in time order). */
+    fun getKeyframeTypes(): List<String> = keyframes.map { it.type }
+
+    /** Returns keyframes as a list of Vec2(time, value). */
+    fun getKeyframePoints(): List<Vec2> = keyframes.map { Vec2(it.time.toFloat(), it.value.toFloat()) }
+
+    // ── Change callback ──────────────────────────────────────────────
+
+    /**
+     * Callback invoked whenever the keyframe data changes (e.g. user edits in the UI).
+     * Receives the updated list of [Keyframe]s.
+     * If it returns an [Fn], that function is displayed as an overlay on the editor.
+     * Return `null` to leave the overlay unchanged, or clear it explicitly with [clearOverlay].
+     */
+    var onChange: ((List<Keyframe>) -> Fn?)? = null
+
+    // ── Derivative ───────────────────────────────────────────────────
+
+    /**
+     * Evaluates the numerical derivative (rate of change) of the curve at the given time.
+     *
+     * Uses a central-difference scheme at the given [time], with an adaptive step size
+     * based on the local sample spacing. At the boundaries of the keyframe range the
+     * derivative is one-sided (forward or backward difference).
+     *
+     * @param time the time at which to compute the derivative
+     * @param h    half-width of the finite-difference stencil (default: auto from sample density)
+     * @return     approximate dValue/dTime at [time]
+     */
+    fun evaluateDerivativeAt(time: Double, h: Double = 0.0): Double {
+        if (keyframes.isEmpty()) return 0.0
+
+        // Auto step: use ~1/4 of the smallest segment gap or a fixed small value
+        val step = if (h > 0.0) h else {
+            if (keyframes.size < 2) 1e-4
+            else {
+                var minGap = Double.MAX_VALUE
+                for (i in 1 until keyframes.size) {
+                    val gap = keyframes[i].time - keyframes[i - 1].time
+                    if (gap > EPSILON && gap < minGap) minGap = gap
+                }
+                (minGap * 0.25).coerceIn(1e-6, 0.01)
+            }
+        }
+
+        val (tMin, tMax) = getTimeRange()
+
+        // Central difference, falling back to one-sided at boundaries
+        return when {
+            time - step < tMin -> {
+                // Forward difference
+                val f0 = evaluateValueAt(time)
+                val f1 = evaluateValueAt(time + step)
+                (f1 - f0) / step
+            }
+            time + step > tMax -> {
+                // Backward difference
+                val f0 = evaluateValueAt(time - step)
+                val f1 = evaluateValueAt(time)
+                (f1 - f0) / step
+            }
+            else -> {
+                // Central difference (2nd-order accurate)
+                val fMinus = evaluateValueAt(time - step)
+                val fPlus = evaluateValueAt(time + step)
+                (fPlus - fMinus) / (2.0 * step)
+            }
+        }
+    }
+
+    // ── Overlay graph ────────────────────────────────────────────────
+
+    /**
+     * Send an overlay curve to the keyframe editor UI. The curve is drawn on top of
+     * the main keyframe graph as a non-interactive visual reference.
+     *
+     * @param samples list of (time, value) points defining the overlay curve
+     * @param color   CSS color string for the overlay stroke (default: cyan)
+     * @param strokeWidth SVG stroke width (default: 1.5)
+     * @param dashArray optional SVG dash pattern string (e.g. "4 2"), null for solid
+     * @param id      unique id for this overlay; allows updating/replacing specific overlays
+     */
+    fun setOverlay(
+        samples: List<Vec2>,
+        color: String = "#ff9800",
+        strokeWidth: Double = 1.5,
+        dashArray: String? = "6 3",
+        id: String = "default"
+    ) {
+        val pointsJson = samples.joinToString(",", "[", "]") { v ->
+            """{"time":${v.x},"value":${v.y}}"""
+        }
+        val dashPart = if (dashArray != null) ""","dashArray":"$dashArray"""" else ""
+        val json = """{"type":"overlay","id":"$id","samples":$pointsJson,"color":"$color","strokeWidth":$strokeWidth$dashPart}"""
+        inMain {
+            session.send(json)
+        }
+    }
+
+    /**
+     * Draw an overlay curve from a [Fn], sampled over the keyframe time range.
+     *
+     * @param fn        the function to sample
+     * @param sampleCount number of sample points (default: 200)
+     * @param color     CSS color string for the overlay stroke (default: cyan)
+     * @param strokeWidth SVG stroke width (default: 1.5)
+     * @param dashArray optional SVG dash pattern string (e.g. "4 2"), null for solid
+     * @param id        unique id for this overlay; allows updating/replacing specific overlays
+     */
+    fun setOverlay(
+        fn: Fn,
+        sampleCount: Int = 200,
+        color: String = "#ff9800",
+        strokeWidth: Double = 1.5,
+        dashArray: String? = "6 3",
+        id: String = "default"
+    ) {
+        val (tMin, tMax) = getTimeRange()
+        val step = if (sampleCount <= 1) 0.0 else (tMax - tMin) / (sampleCount - 1).toDouble()
+        val pts = List(sampleCount) { i ->
+            val t = tMin + step * i
+            Vec2(t.toFloat(), fn(t).toFloat())
+        }
+        setOverlay(pts, color, strokeWidth, dashArray, id)
+    }
+
+    /**
+     * Remove a specific overlay curve from the editor.
+     * @param id the overlay id to remove (default: "default")
+     */
+    fun clearOverlay(id: String = "default") {
+        inMain {
+            session.send("""{"type":"clearOverlay","id":"$id"}""")
+        }
+    }
+
+    /**
+     * Remove all overlay curves from the editor.
+     */
+    fun clearAllOverlays() {
+        inMain {
+            session.send("""{"type":"clearAllOverlays"}""")
+        }
+    }
+
+    // ── Sampling ─────────────────────────────────────────────────────
 
     /**
      * Samples the entire curve into discrete points
@@ -262,7 +434,8 @@ data class Keyframe(
     val time: Double,
     val value: Double,
     val type: String,
-    val handles: Handles? = null
+    val handles: Handles? = null,
+    val locked: Boolean = false
 )
 
 @Serializable
@@ -304,6 +477,35 @@ private data class Point(
 
 val knownKeyframeTargets = mutableMapOf<String, KeyframeEvaluator>()
 
+/**
+ * Load persisted keyframe data for a given box and keyframer name.
+ * Returns the JSON string of keyframes, or null if none persisted.
+ */
+fun loadKeyframeData(box: Box, name: String): String? {
+    val raw = box.getPropertyRaw("keyframeData") as? String ?: return null
+    return try {
+        val allData = org.json.JSONObject(raw)
+        if (allData.has(name)) allData.getJSONArray(name).toString() else null
+    } catch (e: Exception) {
+        null
+    }
+}
+
+/**
+ * Save keyframe data for a given box and keyframer name.
+ * Merges with any existing keyframeData on the box.
+ */
+fun saveKeyframeData(box: Box, name: String, keyframesJson: String) {
+    val existing = box.getPropertyRaw("keyframeData") as? String
+    val allData = try {
+        if (existing != null) org.json.JSONObject(existing) else org.json.JSONObject()
+    } catch (e: Exception) {
+        org.json.JSONObject()
+    }
+    allData.put(name, org.json.JSONArray(keyframesJson))
+    box.setPropertyRaw("keyframeData", allData.toString())
+}
+
 @RunsAt(installHandlers)
 fun installKeyframeHandler() {
     rawHandlers.getOrPut("__keyframes__") { mutableSetOf() }.add { text ->
@@ -315,8 +517,34 @@ fun installKeyframeHandler() {
                 knownKeyframeTargets[t.getString("debug_uid")]?.send()
             }
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "keyframes") {
-                knownKeyframeTargets[t.getString("debug_uid")]?.session = s
-                knownKeyframeTargets[t.getString("debug_uid")]?.set(t.getJSONArray("keyframes").toString())
+                val debugUid = t.getString("debug_uid")
+                knownKeyframeTargets[debugUid]?.session = s
+                val keyframesJsonStr = t.getJSONArray("keyframes").toString()
+                val evaluator = knownKeyframeTargets[debugUid]
+                evaluator?.set(keyframesJsonStr)
+
+                // Fire the change callback; if it returns an Fn, show it as an overlay
+                if (evaluator != null) {
+                    val overlayFn = evaluator.onChange?.invoke(evaluator.getKeyframes())
+                    if (overlayFn != null) {
+                        evaluator.setOverlay(overlayFn, id = "_onChange")
+                    }
+                }
+
+                // Persist to box property
+                if (evaluator != null && evaluator.associatedBoxId != null && evaluator.associatedName != null) {
+                    val boxId = evaluator.associatedBoxId!!
+                    val kfName = evaluator.associatedName!!
+                    try {
+                        val si = thisSessionInfo.get()
+                        val box = si?.boxes?.get(boxId)
+                        if (box != null) {
+                            saveKeyframeData(box, kfName, keyframesJsonStr)
+                        }
+                    } catch (e: Exception) {
+                        // silently ignore persistence errors
+                    }
+                }
             }
             Handled.yes
         } catch (e: Exception) {
@@ -327,16 +555,82 @@ fun installKeyframeHandler() {
 }
 
 
-fun Box.keyframes(channel: String = "debug", name: String, a: Any?): KeyframeEvaluator {
-    val aa = a ?: "null"
-    val ln = Inspector.linkFor(aa, "/keyframe")
+/**
+ * Shared implementation for [Box.keyframes] overloads.
+ *
+ * @param defaultKeyframesJson  a JSON array string (e.g. `[{"time":0,"value":0,"type":"linear"}]`)
+ *                              used to seed the editor when no persisted data exists. Pass `"[]"` for no defaults.
+ */
+private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
     val uid = this.id + "_" + name
+    // Use a channel that includes the name so multiple keyframes on the same
+    // channel don't overwrite each other's iframes.
+    val displayChannel = if (channel == name) channel else "$channel/$name"
     display(
-        channel, """
-<iframe src='${ln}&uid=${uid}' style='border:none;padding:0;margin:0'>
+        displayChannel, """
+<iframe src='/keyframe?uid=${uid}' style='border:none;padding:0;margin:0;width:100%;height:100%'>
 """
     )
-    val eval = knownKeyframeTargets.computeIfAbsent(uid) { KeyframeEvaluator("[]") }
+
+    // Load persisted keyframe data if available
+    val persistedData = loadKeyframeData(this, name)
+
+    val initialJson = persistedData ?: defaultKeyframesJson
+
+    val eval = knownKeyframeTargets.computeIfAbsent(uid) {
+        KeyframeEvaluator(initialJson)
+    }
+    // If evaluator already existed but had no data, and we have persisted/default data, load it
+    if (eval.isEmpty() && initialJson != "[]") {
+        eval.set(initialJson)
+    }
+    // Track association for persistence
+    eval.associatedBoxId = this.id
+    eval.associatedName = name
     return eval
+}
+
+/**
+ * Creates (or reconnects to) a keyframe curve editor displayed in the given output [channel].
+ *
+ * @param channel  the output-area channel in which to embed the editor iframe (default `"debug"`)
+ * @param name     a unique name for this set of keyframes within the box (used as persistence key)
+ * @param defaultTimes  optional list of time positions (e.g. `listOf(0, 10, 30)`) used to seed
+ *                      the editor with initial keyframes when no persisted data exists for [name].
+ *                      Each time produces a keyframe at value `0.0` with type `"linear"`.
+ *                      Once the user edits the curve the persisted data takes precedence.
+ * @return a [KeyframeEvaluator] that can be queried with [KeyframeEvaluator.evaluateValueAt]
+ */
+fun Box.keyframes(channel: String = "debug", name: String, defaultTimes: List<Number>? = null): KeyframeEvaluator {
+    val json = if (!defaultTimes.isNullOrEmpty()) {
+        defaultTimes.joinToString(",", "[", "]") { t ->
+            """{ "time": ${t.toDouble()}, "value": 0.0, "type": "linear" }"""
+        }
+    } else "[]"
+    return keyframesImpl(channel, name, json)
+}
+
+/**
+ * Creates (or reconnects to) a keyframe curve editor, with default keyframes specified as
+ * [Vec2] pairs of `(time, value)`.
+ *
+ * Example:
+ * ```kotlin
+ * val n = keyframes("out", "n", listOf(Vec2(0.0, 0.0), Vec2(5.0, 1.0), Vec2(10.0, 0.0)))
+ * ```
+ *
+ * @param channel  the output-area channel (default `"debug"`)
+ * @param name     unique persistence key for this keyframe set
+ * @param defaults list of [Vec2] where `x` = time, `y` = value; used only when no persisted data exists
+ * @return a [KeyframeEvaluator] that can be queried with [KeyframeEvaluator.evaluateValueAt]
+ */
+@JvmName("keyframesVec2")
+fun Box.keyframes(channel: String = "debug", name: String, defaults: List<Vec2>): KeyframeEvaluator {
+    val json = if (defaults.isNotEmpty()) {
+        defaults.joinToString(",", "[", "]") { v ->
+            """{ "time": ${v.x}, "value": ${v.y}, "type": "linear" }"""
+        }
+    } else "[]"
+    return keyframesImpl(channel, name, json)
 }
 
