@@ -102,14 +102,15 @@ data class Note(
 val Int.n: Note get() = Note(this)
 
 /**
- * Quick [Note] from a MIDI pitch with explicit beat duration.
+ * Quick [Note] from a MIDI pitch with explicit beat duration and optional velocity.
  *
  * ```kotlin
- * 60.n(0.5)     // middle C, half-beat (eighth note in 4/4)
- * 67.n(2.0)     // G4, two beats
+ * 60.n(0.5)              // middle C, half-beat (eighth note in 4/4), velocity 0.8
+ * 67.n(2.0)              // G4, two beats
+ * 60.n(0.5, 0.5f)        // middle C, half-beat, softer
  * ```
  */
-fun Int.n(duration: Double): Note = Note(this, duration = duration)
+fun Int.n(duration: Double, velocity: Float = 0.8f): Note = Note(this, velocity, duration)
 
 /** Frequency in Hz for this MIDI note number. */
 val Int.hz: Float get() = midiToHz(this)

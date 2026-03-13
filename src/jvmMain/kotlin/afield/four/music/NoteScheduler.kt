@@ -209,7 +209,7 @@ class NoteScheduler(
         while (nextScheduleBeat < until) {
             if (!it.hasNext()) return   // finite sequence exhausted
             val note = it.next()
-            val dur = note.duration.coerceAtLeast(1e-6)
+            val dur = note.duration.coerceAtLeast(MIN_NOTE_DURATION)
             if (!note.isRest) {
                 insertOnset(
                     NoteEvent(
@@ -240,5 +240,12 @@ class NoteScheduler(
          * 0.9 leaves a slight gap between consecutive notes to avoid merged ADSRs.
          */
         const val NOTE_LEGATO: Double = 0.9
+
+        /**
+         * Minimum note duration in beats.  Prevents degenerate scheduling when
+         * a pattern yields notes with near-zero duration (e.g. from a buggy
+         * generator).  At 120 BPM this equals ≈ 0.0005 ms – effectively zero.
+         */
+        const val MIN_NOTE_DURATION: Double = 1e-6
     }
 }

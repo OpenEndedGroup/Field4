@@ -122,9 +122,7 @@ fun euclid(steps: Int, pulses: Int, rotate: Int = 0): List<Boolean> {
     }
 
     val flat = (ones + zeros).flatten()
-    if (rotate == 0) return flat
-    val r = ((rotate % steps) + steps) % steps
-    return flat.subList(r, steps) + flat.subList(0, r)
+    return if (rotate == 0) flat else flat.rotated(rotate)
 }
 
 /**
