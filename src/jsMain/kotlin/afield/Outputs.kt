@@ -9,8 +9,28 @@ import org.w3c.dom.Text
 import kotlin.math.*
 
 private val knownOutputs = mutableListOf<dynamic>()
-private var decorationsCollection: dynamic = null
-private var decorationsCollectionContents = mutableListOf<dynamic>()
+
+private class EditorDecorations {
+    var collection: dynamic = null
+    var contents: MutableList<dynamic> = mutableListOf()
+}
+private val perEditorDecorations = mutableMapOf<Double, EditorDecorations>()
+
+private fun getOrCreateEditorDecorations(editor: dynamic): EditorDecorations {
+    val key = weakHash(editor)
+    val existing = perEditorDecorations[key]
+    if (existing != null && existing.collection != null) return existing
+    existing?.collection?.clear()
+    val ed = EditorDecorations()
+    ed.collection = editor.createDecorationsCollection(emptyArray<Any>())
+    perEditorDecorations[key] = ed
+    return ed
+}
+
+private fun editorDecorationsFor(editor: dynamic): EditorDecorations? {
+    return perEditorDecorations[weakHash(editor)]
+}
+
 private var executionDecorations = mutableListOf<dynamic>()
 private var executionsCollection: dynamic = null
 private val debounceTimers = mutableMapOf<String, Int>()
@@ -117,8 +137,8 @@ private fun updateOutputControlVisibility(output: dynamic) {
 
     val id = output.id?.toString() ?: return
     val small = (output.small as? Number)?.toInt() ?: 0
-    val currentHeight = (output.zone?.heightInLines as? Number)?.toInt() ?: small
-    val isExpanded = currentHeight > small
+    val currentHeightPx = (output.zone?.heightInPx as? Number)?.toInt() ?: (small * 19 + 18)
+    val isExpanded = currentHeightPx > small * 19 + 18
 
     val domNode = output.domNode as? HTMLElement
     val scrollHeight = (domNode?.scrollHeight as? Number)?.toDouble() ?: 0.0
@@ -138,7 +158,7 @@ private fun updateOutputControlVisibility(output: dynamic) {
 private fun recomputeOutputHeight(editor: dynamic, output: dynamic) {
     val zone = output.zone ?: return
     val previousSmall = (output.small as? Number)?.toInt() ?: 2
-    val currentHeight = (zone.heightInLines as? Number)?.toInt() ?: previousSmall
+    val currentHeightPx = (zone.heightInPx as? Number)?.toInt() ?: (previousSmall * 19 + 18)
     val userCollapsed = output.userCollapsed as? Boolean ?: false
 
     val preferredLines = preferredOutputLines(
@@ -151,13 +171,14 @@ private fun recomputeOutputHeight(editor: dynamic, output: dynamic) {
 
     val targetHeight = if (userCollapsed) output.small else output.big
     val targetHeightInt = (targetHeight as? Number)?.toInt() ?: output.small
-    if (targetHeightInt == currentHeight) {
+    val targetHeightPx = (targetHeightInt as Number).toInt() * 19 + 18
+    if (targetHeightPx == currentHeightPx) {
         updateOutputControlVisibility(output)
         return
     }
 
     editor.changeViewZones { changeAccessor: dynamic ->
-        zone.heightInLines = targetHeight
+        zone.heightInPx = targetHeightPx
         changeAccessor.layoutZone(output.id)
     }
     window.requestAnimationFrame {
@@ -233,9 +254,10 @@ fun setOutputMaxHeight(px: Double) {
     if (!px.isFinite()) return
     outputMaxHeightPx = max(120.0, px)
     val w = js("window")
-    val editor = w.globalMonacoEditor
-    if (editor != null) {
-        knownOutputs.forEach { output ->
+    val globalEditor = w.globalMonacoEditor
+    knownOutputs.forEach { output ->
+        val editor = output.editor ?: globalEditor
+        if (editor != null) {
             recomputeOutputHeight(editor, output)
         }
     }
@@ -367,17 +389,32 @@ fun installFragileErrorMarkerPruning(editor: dynamic) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun clear(editor: dynamic) {
+    // Group outputs by owning editor so we remove zones from the correct editor
+    val byEditor = mutableMapOf<dynamic, MutableList<dynamic>>()
     for (output in knownOutputs) {
-        resetOutputErrorMarkerState(editor, output)
-        editor.changeViewZones { changeAccessor: dynamic ->
-            changeAccessor.removeZone(output.id)
+        val owningEditor = output.editor ?: editor
+        byEditor.getOrPut(owningEditor) { mutableListOf() }.add(output)
+    }
+    for ((ed, outputs) in byEditor) {
+        for (output in outputs) {
+            resetOutputErrorMarkerState(ed, output)
         }
-        val domNode = output.domNode as? HTMLElement
-        domNode?.parentElement?.removeChild(domNode)
+        ed.changeViewZones { changeAccessor: dynamic ->
+            for (output in outputs) {
+                changeAccessor.removeZone(output.id)
+            }
+        }
+        for (output in outputs) {
+            val domNode = output.domNode as? HTMLElement
+            domNode?.parentElement?.removeChild(domNode)
+        }
     }
     knownOutputs.clear()
 
-    if (decorationsCollection != null) decorationsCollection.clear()
+    for (ed in perEditorDecorations.values) {
+        ed.collection?.clear()
+    }
+    perEditorDecorations.clear()
     if (executionsCollection != null) executionsCollection.clear()
 }
 
@@ -413,8 +450,9 @@ fun removeNewestOutput() {
     }
     if (best != null) {
         val w = js("window")
-        resetOutputErrorMarkerState(w.globalMonacoEditor, best)
-        w.globalMonacoEditor.changeViewZones { changeAccessor: dynamic ->
+        val editor = best.editor ?: w.globalMonacoEditor
+        resetOutputErrorMarkerState(editor, best)
+        editor.changeViewZones { changeAccessor: dynamic ->
             changeAccessor.removeZone(best.id)
         }
         knownOutputs.remove(best)
@@ -428,8 +466,9 @@ fun removeArea(id: String) {
         output.id?.toString() == id
     } ?: return
     val w = js("window")
-    resetOutputErrorMarkerState(w.globalMonacoEditor, found)
-    w.globalMonacoEditor.changeViewZones { changeAccessor: dynamic ->
+    val editor = found.editor ?: w.globalMonacoEditor
+    resetOutputErrorMarkerState(editor, found)
+    editor.changeViewZones { changeAccessor: dynamic ->
         changeAccessor.removeZone(id)
     }
     knownOutputs.remove(found)
@@ -442,18 +481,19 @@ fun toggleArea(id: String) {
         output.id?.toString() == id
     } ?: return
     val w = js("window")
+    val editor = found.editor ?: w.globalMonacoEditor
     val zone = found.zone ?: return
-    val wasCollapsed = (zone.heightInLines as? Number)?.toInt() == (found.small as? Number)?.toInt()
+    val wasCollapsed = (zone.heightInPx as? Number)?.toInt() == ((found.small as? Number)?.toInt() ?: 2) * 19 + 18
 
     val domNode = found.domNode as? HTMLElement
     val domNodeInner = found.domNodeInner as? HTMLElement
-    val preferredLines = preferredOutputLines(w.globalMonacoEditor, domNode, domNodeInner)
+    val preferredLines = preferredOutputLines(editor, domNode, domNodeInner)
     found.big = preferredLines
     found.small = min(2, preferredLines)
     found.userCollapsed = !wasCollapsed
 
-    w.globalMonacoEditor.changeViewZones { changeAccessor: dynamic ->
-        zone.heightInLines = if (wasCollapsed) found.big else found.small
+    editor.changeViewZones { changeAccessor: dynamic ->
+        zone.heightInPx = (if (wasCollapsed) (found.big as? Number)?.toInt() ?: 2 else (found.small as? Number)?.toInt() ?: 2) * 19 + 18
         changeAccessor.layoutZone(id)
         window.setTimeout({
             val domNode = found.domNode as? HTMLElement ?: return@setTimeout
@@ -468,10 +508,7 @@ fun toggleArea(id: String) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun addInlineOutput(editor: dynamic, lineNumber: Int, text: String, extraClass: String, frameMarker: Int) {
-    if (decorationsCollection == null) {
-        decorationsCollection = editor.createDecorationsCollection(emptyArray<Any>())
-        decorationsCollectionContents = mutableListOf()
-    }
+    val edDecor = getOrCreateEditorDecorations(editor)
     var line = lineNumber
     val model = editor.getModel()
     val lineCount = (model.getLineCount() as Number).toInt()
@@ -482,15 +519,15 @@ fun addInlineOutput(editor: dynamic, lineNumber: Int, text: String, extraClass: 
     }
     val lineLength = (model.getLineLength(line) as Number).toInt()
 
-    for (i in decorationsCollectionContents.size - 1 downTo 0) {
-        val entry = decorationsCollectionContents[i]
+    for (i in edDecor.contents.size - 1 downTo 0) {
+        val entry = edDecor.contents[i]
         val entryFrame = (entry.frameMarker as? Number)?.toInt() ?: 0
         if (entryFrame < frameMarker) {
-            decorationsCollectionContents.removeAt(i)
+            edDecor.contents.removeAt(i)
             continue
         }
         if ((entry._line as? Number)?.toInt() == line) {
-            decorationsCollectionContents.removeAt(i)
+            edDecor.contents.removeAt(i)
         }
     }
 
@@ -512,8 +549,8 @@ fun addInlineOutput(editor: dynamic, lineNumber: Int, text: String, extraClass: 
     entry._text = text
     entry.isTick = true
     entry.frameMarker = frameMarker
-    decorationsCollectionContents.add(entry)
-    decorationsCollection.set(decorationsCollectionContents.toTypedArray())
+    edDecor.contents.add(entry)
+    edDecor.collection.set(edDecor.contents.toTypedArray())
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -573,8 +610,11 @@ fun setStatusForExecutionMarker(className: String, running: Boolean) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun clearAllDecorations() {
-    decorationsCollection?.set(emptyArray<Any>())
-    decorationsCollectionContents.clear()
+    for (ed in perEditorDecorations.values) {
+        ed.collection?.set(emptyArray<Any>())
+        ed.contents.clear()
+    }
+    perEditorDecorations.clear()
 }
 
 private fun looksLikeHTML(text: String): Boolean {
@@ -818,23 +858,24 @@ fun addOutput(
         belowLine = (editor.getModel().getValue() as String).split("\n").size
     }
 
-    if (decorationsCollectionContents.isNotEmpty()) {
+    val edDecor = editorDecorationsFor(editor)
+    if (edDecor != null && edDecor.contents.isNotEmpty()) {
         var changed = false
-        for (i in decorationsCollectionContents.size - 1 downTo 0) {
-            val entry = decorationsCollectionContents[i]
+        for (i in edDecor.contents.size - 1 downTo 0) {
+            val entry = edDecor.contents[i]
             val entryFrame = (entry.frameMarker as? Number)?.toInt() ?: 0
             if (entryFrame < frameMarker) {
-                decorationsCollectionContents.removeAt(i)
+                edDecor.contents.removeAt(i)
                 changed = true
                 continue
             }
             if ((entry._line as? Number)?.toInt() == belowLine) {
-                decorationsCollectionContents.removeAt(i)
+                edDecor.contents.removeAt(i)
                 changed = true
             }
         }
         if (changed) {
-            decorationsCollection?.set(decorationsCollectionContents.toTypedArray())
+            edDecor.collection?.set(edDecor.contents.toTypedArray())
         }
     }
 
@@ -879,18 +920,18 @@ fun addOutput(
 
     var extraText = ""
     var allowInline = true
-    val decorationMatch = decorationsCollectionContents.firstOrNull { entry ->
+    val decorationMatch = edDecor?.contents?.firstOrNull { entry ->
         (entry._line as? Number)?.toInt() == belowLine
     }
-    if (decorationMatch != null) {
+    if (decorationMatch != null && edDecor != null) {
         if (decorationMatch.isTick as? Boolean == true) {
-            decorationsCollectionContents.remove(decorationMatch)
-            decorationsCollection?.set(decorationsCollectionContents.toTypedArray())
+            edDecor.contents.remove(decorationMatch)
+            edDecor.collection?.set(edDecor.contents.toTypedArray())
             allowInline = true
         } else {
             extraText += decorationMatch._text as? String ?: ""
-            decorationsCollectionContents.remove(decorationMatch)
-            decorationsCollection?.set(decorationsCollectionContents.toTypedArray())
+            edDecor.contents.remove(decorationMatch)
+            edDecor.collection?.set(edDecor.contents.toTypedArray())
             allowInline = false
         }
     } else {
@@ -927,25 +968,23 @@ fun addOutput(
             domNodeInner.classList.add("inner_output")
             domNodeInner.style.background = "rgba(0,0,0,1)"
             domNodeInner.style.borderRadius = "8px"
-            domNodeInner.style.marginBottom = "8px"
             domNodeInner.style.width = "calc( 100% - 8px )"
-            domNodeInner.style.padding = "4px 4px 0px 4px"
-            domNodeInner.style.marginTop = "3px"
+            domNodeInner.style.padding = "6px 6px 4px 6px"
             domNodeInner.style.marginLeft = "3px"
-            domNodeInner.style.paddingLeft = "8px"
+            domNodeInner.style.fontSize = "10px"
             domNodeInner.style.asDynamic().overflowX = if (richHtml) "hidden" else "scroll"
 
             domNode.style.zIndex = "11"
 
             val domNodeControl = document.createElement("div") as HTMLElement
-            domNodeControl.style.borderLeft = "5px solid rgba(255,255,255,0.23)"
-            domNodeControl.style.borderTop = "5px solid rgba(255,255,255,0.23)"
-            domNodeControl.style.borderBottom = "5px solid rgba(255,255,255,0.23)"
-            domNodeControl.style.marginLeft = "3px"
+            domNodeControl.style.borderLeft = "4px solid rgba(255,255,255,0.23)"
+            domNodeControl.style.borderTop = "4px solid rgba(255,255,255,0.23)"
+            domNodeControl.style.borderBottom = "4px solid rgba(255,255,255,0.23)"
+            domNodeControl.style.marginLeft = "2px"
             domNodeControl.style.opacity = "0.5"
             domNodeControl.style.zIndex = "1000"
-            domNodeControl.style.borderRadius = "5px"
-            domNodeControl.style.paddingTop = "5px"
+            domNodeControl.style.borderRadius = "4px"
+            domNodeControl.style.paddingTop = "4px"
             domNodeControl.style.paddingLeft = "2px"
 
             domNodeControl.style.asDynamic().pointerEvents = "auto"
@@ -974,7 +1013,7 @@ fun addOutput(
 
             val zone = js("{}")
             zone.afterLineNumber = belowLine
-            zone.heightInLines = lines
+            zone.heightInPx = lines * 19 + 18
             zone.domNode = domNode
             zone.marginDomNode = domNodeControl
 
@@ -1002,6 +1041,7 @@ fun addOutput(
             output.kind = extraClass
             output.autoScroll = !richHtml
             output.userCollapsed = false
+            output.editor = editor
             updateOutputControlVisibility(output)
             knownOutputs.add(output)
             if (extraClass == "error") {

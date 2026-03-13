@@ -275,6 +275,7 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
     val startColumn = (payload.startColumn as? Number)?.toInt() ?: -1
     val endLine = (payload.endLine as? Number)?.toInt() ?: -1
     val endColumn = (payload.endColumn as? Number)?.toInt() ?: -1
+    val property = payload.property as? String ?: "code"
 
     val w = js("window")
     val selected = w.currentSelectedCode
@@ -282,24 +283,40 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
         (selected.length as? Number)?.toInt() == 1 &&
         selected[0].uid == uid
 
+    // Check for an embedded editor matching this (uid, property)
+    val embeddedEditor: dynamic = if (w.embeddedEditors != null && w.embeddedEditors != undefined)
+        w.embeddedEditors.getFor(uid, property) else null
+
+    // When an embedded editor exists for (uid, property), route output
+    // exclusively to it — not to the main editor.
+    val routeToMain = isCurrent && embeddedEditor == null
+
     when (kind) {
         "normal" -> {
             monacoSetStatus(uid, true, html)
-            if (isCurrent) {
+            if (routeToMain) {
                 clearErrors(w.globalEditor)
                 addOutput(w.globalEditor, html, line, "normal", annotation, frameMarker, -1, -1, -1)
+            }
+            if (embeddedEditor != null) {
+                clearErrors(embeddedEditor.editor)
+                addOutput(embeddedEditor.editor, html, line, "normal", annotation, frameMarker, -1, -1, -1)
             }
         }
         "ok" -> {
             monacoSetStatus(uid, true, html)
-            if (isCurrent) {
+            if (routeToMain) {
                 clearErrors(w.globalEditor)
                 addOutput(w.globalEditor, html, line, "ok", annotation, frameMarker, -1, -1, -1)
+            }
+            if (embeddedEditor != null) {
+                clearErrors(embeddedEditor.editor)
+                addOutput(embeddedEditor.editor, html, line, "ok", annotation, frameMarker, -1, -1, -1)
             }
         }
         else -> {
             if (html.isEmpty()) monacoSetStatus(uid, true, html) else monacoSetStatus(uid, false, html)
-            if (isCurrent) {
+            if (routeToMain) {
                 if (html.isEmpty()) {
                     clearErrors(w.globalEditor)
                 } else {
@@ -309,6 +326,17 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
                         ?: html
                     addOutput(w.globalEditor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
                     w.lastErrorIs = arrayOf(line - 1, html)
+                }
+            }
+            if (embeddedEditor != null) {
+                if (html.isEmpty()) {
+                    clearErrors(embeddedEditor.editor)
+                } else {
+                    val formatted = formatKotlinCompilerErrorHtml(html, uid)
+                        ?: formatKotlinTypeMismatchHtml(html)
+                        ?: formatKotlinSingleLineErrorHtml(html, uid)
+                        ?: html
+                    addOutput(embeddedEditor.editor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
                 }
             }
         }

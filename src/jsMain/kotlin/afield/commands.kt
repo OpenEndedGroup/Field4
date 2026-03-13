@@ -6,6 +6,7 @@ import kotlinx.browser.window
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import openEditorInOutput
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
@@ -148,6 +149,13 @@ fun deleteSelectedBoxes() {
         )
     )
     selected.forEach {
+        val uid = it.unsafeCast<dynamic>().uid as? String
+        if (uid != null) {
+            val emb = js("window.embeddedEditors")
+            if (emb != null) {
+                (emb.disposeForBox as? Function<*>)?.asDynamic()?.call(emb, uid)
+            }
+        }
         it.parentElement?.removeChild(it)
     }
     canvasGestures.rebuildConnectionGroup()
@@ -920,6 +928,10 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
 }
 
 fun registerBuiltinCommands() {
+    // Expose openEditorInOutput to window so inline JS commands can call it
+    val w = js("window")
+    w.openEditorInOutput = ::openEditorInOutput
+
     allActions.builtin = eval(
         """
         [{
@@ -957,6 +969,7 @@ fun registerBuiltinCommands() {
             },
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                if (window.embeddedEditors && window.embeddedEditors.getFocused && window.embeddedEditors.getFocused()) return
                 const sel = (window.getSelection && window.getSelection()) || null
                 const hasDomSelection = !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && (sel.toString() || "").length > 0)
                 if (hasDomSelection) return
@@ -970,6 +983,7 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='v') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                if (window.embeddedEditors && window.embeddedEditors.getFocused && window.embeddedEditors.getFocused()) return
                 pasteBoxesFromClipboard()
             }
         },{
@@ -1070,6 +1084,40 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => false,
             run: () => {
                 window.switchToMonaco();
+            }
+        },{
+            id:'add-editor-to-output',
+            label:"Add Editor to Output Area",
+            detail:"Open an embedded text editor for a property (e.g. fragment, vertex) in the selected box's output area",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                if (!window.selectedList || window.selectedList.length !== 1) {
+                    if (typeof window.notify === 'function') window.notify('Select exactly one box', 'command');
+                    return;
+                }
+                const box = window.selectedList[0];
+                const uid = box.uid;
+                if (!uid) return;
+                const props = [
+                    {label:'fragment',  description:'Fragment Shader (GLSL)'},
+                    {label:'vertex',    description:'Vertex Shader (GLSL)'},
+                    {label:'compute',   description:'Compute Shader (GLSL)'},
+                    {label:'task',      description:'Task Shader (GLSL)'},
+                    {label:'mesh',      description:'Mesh Shader (GLSL)'},
+                    {label:'preamble',  description:'Kotlin (preamble)'},
+                    {label:'introduction', description:'Kotlin (introduction)'},
+                    {label:'metadata',  description:'Metadata (YAML)'},
+                    {label:'code',      description:'Kotlin (main)'},
+                ];
+                if (typeof window.showPickMenu_custom === 'function') {
+                    window.showPickMenu_custom(props.map(p => ({
+                        label: '✎ ' + p.label,
+                        detail: p.description,
+                        run: () => { window.openEditorInOutput(uid, p.label); }
+                    })));
+                } else {
+                    window.openEditorInOutput(uid, 'fragment');
+                }
             }
         }]
     """.trimIndent()

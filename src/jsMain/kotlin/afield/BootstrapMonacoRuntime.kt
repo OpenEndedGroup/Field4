@@ -132,45 +132,51 @@ private fun monitorSelection() {
     val currentLen = (currentSelectedCode.length as? Number)?.toInt() ?: 0
     if (currentLen == 1) {
         val codeDiv = currentSelectedCode[0]
-        val nc = globalEditor.getModel().getValue() as String
-        val vs = js("JSON.stringify")(globalEditor.saveViewState()) as String
-        val editorStateKey = "${currentSelectedProperty}_editorState"
-        if (codeDiv[editorStateKey] != vs) {
-            codeDiv[editorStateKey] = vs
-            val payload = js("{}")
-            payload.uid = codeDiv.uid
-            payload.property = editorStateKey
-            payload.value = vs
-            send("set-string", payload)
-        }
+        val curUid = codeDiv.uid as? String
 
-        if (nc != codeDiv[currentSelectedProperty]) {
-            codeDiv[currentSelectedProperty] = nc
-            currentValueAtOrigination = codeDiv[currentSelectedProperty] as? String ?: ""
-            recentChangeCache.add(currentValueAtOrigination)
-            if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
+        // Skip save-back from main editor when an embedded editor owns this property
+        val embeddedOwnsProperty = if (curUid != null && w.embeddedEditors != null && w.embeddedEditors != undefined) {
+            val entry = w.embeddedEditors.getFor(curUid, currentSelectedProperty)
+            entry != null && entry != undefined
+        } else false
 
-            val payload = js("{}")
-            payload.uid = codeDiv.uid
-            payload.property = currentSelectedProperty
-            payload.value = codeDiv[currentSelectedProperty]
-            send("set-string", payload)
+        if (!embeddedOwnsProperty) {
+            val nc = globalEditor.getModel().getValue() as String
+            val vs = js("JSON.stringify")(globalEditor.saveViewState()) as String
+            val editorStateKey = "${currentSelectedProperty}_editorState"
+            if (codeDiv[editorStateKey] != vs) {
+                codeDiv[editorStateKey] = vs
+                val payload = js("{}")
+                payload.uid = codeDiv.uid
+                payload.property = editorStateKey
+                payload.value = vs
+                send("set-string", payload)
+            }
 
-            val payloadState = js("{}")
-            payloadState.uid = codeDiv.uid
-            payloadState.property = editorStateKey
-            payloadState.value = vs
-            send("set-string", payloadState)
+            if (nc != codeDiv[currentSelectedProperty]) {
+                codeDiv[currentSelectedProperty] = nc
+                currentValueAtOrigination = codeDiv[currentSelectedProperty] as? String ?: ""
+                recentChangeCache.add(currentValueAtOrigination)
+                if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
+
+                val payload = js("{}")
+                payload.uid = codeDiv.uid
+                payload.property = currentSelectedProperty
+                payload.value = codeDiv[currentSelectedProperty]
+                send("set-string", payload)
+
+                val payloadState = js("{}")
+                payloadState.uid = codeDiv.uid
+                payloadState.property = editorStateKey
+                payloadState.value = vs
+                send("set-string", payloadState)
+            }
         }
     }
 
     if (monacoNotEqual(next, currentSelectedCode) || nextProperty != currentSelectedProperty) {
         val currentGen = (w.currentEditorGeneration as? Number)?.toInt() ?: 0
         w.currentEditorGeneration = currentGen + 1
-
-        if ((next.length as? Number)?.toInt() == 1) {
-            w.showMonaco()
-        }
 
         w.clear(globalEditor)
 
@@ -180,7 +186,9 @@ private fun monitorSelection() {
         w.currentSelectedProperty = currentSelectedProperty
 
         val nextLen = (currentSelectedCode.length as? Number)?.toInt() ?: 0
+
         if (nextLen == 1) {
+            w.showMonaco()
             var code = currentSelectedCode[0][currentSelectedProperty] as? String
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
@@ -283,4 +291,15 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
     editor.setSelection(selection)
     currentValueAtOrigination = result
     selected[0][property] = result
+}
+
+/**
+ * Forward a remote property update to any open embedded editor for (uid, property).
+ * Delegates to the JS embeddedEditors registry.
+ */
+fun notifyEmbeddedEditorOfRemoteUpdate(uid: String, property: String, value: String) {
+    val w = js("window")
+    val emb = w.embeddedEditors ?: return
+    val fn = emb.notifyRemote ?: return
+    (fn as Function<*>).asDynamic().call(emb, uid, property, value)
 }

@@ -962,6 +962,10 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
     }
 
+    private fun pointInRect(p: Point, r: DOMRect): Boolean {
+        return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom
+    }
+
     fun getNamedSVGGroup(name: String) =
         (document.getElementById("overlaysvglayer") as SVGSVGElement).getGroupOrMake(name)
 
@@ -1131,43 +1135,107 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
                 c?.let {
                     it.forEach { id ->
                         cachedBoxByUid[id]?.let { to ->
-                            val toProxyTarget = proxyFor(to)
-                            val renderedTarget = toProxyTarget ?: to
-                            if (renderedTarget.style.visibility === "hidden" || !hasRenderableFrame(renderedTarget)) return@forEach
-                            if (renderedFrom == renderedTarget) return@forEach
-                            val toWorldRect = cachedWorldRects[renderedTarget] ?: return@forEach
+                            var effectiveFromProxy = fromProxyTarget
+                            var effectiveToProxy = proxyFor(to)
+                            var effectiveRenderedFrom = effectiveFromProxy ?: from
+                            var effectiveRenderedTo = effectiveToProxy ?: to
+                            if (effectiveRenderedTo.style.visibility === "hidden" || !hasRenderableFrame(effectiveRenderedTo)) return@forEach
+                            if (effectiveRenderedFrom == effectiveRenderedTo) return@forEach
+                            var effectiveFromRect = cachedWorldRects[effectiveRenderedFrom]?.copyRect() ?: return@forEach
+                            var effectiveToRect = cachedWorldRects[effectiveRenderedTo]?.copyRect() ?: return@forEach
+
+                            // Per-connection endpoint visibility: if the box is partially visible
+                            // inside the nest viewport but the connection endpoint falls outside
+                            // the viewport, override to proxy so the connection doesn't float.
+                            fun endpointVisibilityOverride() {
+                                val fromNestedUid = from.unsafeCast<dynamic>().box_nestedIn as? String
+                                val toNestedUid = to.unsafeCast<dynamic>().box_nestedIn as? String
+                                if (fromNestedUid == null && toNestedUid == null) return
+
+                                val endpoints = connectCenters(effectiveFromRect, effectiveToRect)
+
+                                // Check "from" endpoint: if from is nested, not proxied, and endpoint is outside viewport
+                                if (fromNestedUid != null && effectiveFromProxy == null) {
+                                    val viewportRect = nestedDisclosureSnapshot(fromNestedUid).viewportWorldRect
+                                    if (viewportRect != null && !pointInRect(endpoints.first.point, viewportRect)) {
+                                        val parentEl = cachedBoxByUid[fromNestedUid]
+                                        if (parentEl != null) {
+                                            effectiveFromProxy = parentEl
+                                            effectiveRenderedFrom = parentEl
+                                            effectiveFromRect = cachedWorldRects[parentEl]?.copyRect() ?: return
+                                        }
+                                    }
+                                }
+
+                                // Check "to" endpoint: if to is nested, not proxied, and endpoint is outside viewport
+                                if (toNestedUid != null && effectiveToProxy == null) {
+                                    // Recompute endpoints since fromRect may have changed
+                                    val endpoints2 = connectCenters(effectiveFromRect, effectiveToRect)
+                                    val viewportRect = nestedDisclosureSnapshot(toNestedUid).viewportWorldRect
+                                    if (viewportRect != null && !pointInRect(endpoints2.second.point, viewportRect)) {
+                                        val parentEl = cachedBoxByUid[toNestedUid]
+                                        if (parentEl != null) {
+                                            effectiveToProxy = parentEl
+                                            effectiveRenderedTo = parentEl
+                                            effectiveToRect = cachedWorldRects[parentEl]?.copyRect() ?: return
+                                        }
+                                    }
+                                }
+
+                                // If from was overridden, re-verify its endpoint against the new geometry
+                                if (fromNestedUid != null && effectiveFromProxy != null && effectiveFromProxy != fromProxyTarget) {
+                                    // Already proxied to parent — nothing more to do
+                                } else if (fromNestedUid != null && effectiveFromProxy == null) {
+                                    // Recheck: overriding "to" may have shifted from's endpoint
+                                    val endpoints3 = connectCenters(effectiveFromRect, effectiveToRect)
+                                    val viewportRect = nestedDisclosureSnapshot(fromNestedUid).viewportWorldRect
+                                    if (viewportRect != null && !pointInRect(endpoints3.first.point, viewportRect)) {
+                                        val parentEl = cachedBoxByUid[fromNestedUid]
+                                        if (parentEl != null) {
+                                            effectiveFromProxy = parentEl
+                                            effectiveRenderedFrom = parentEl
+                                            effectiveFromRect = cachedWorldRects[parentEl]?.copyRect() ?: return
+                                        }
+                                    }
+                                }
+                            }
+                            endpointVisibilityOverride()
+
+                            // Re-check identity after potential proxy overrides
+                            if (effectiveRenderedFrom == effectiveRenderedTo) return@forEach
+
                             var o1 = 1.0
                             if (to.asDynamic().offline ) o1 = 0.25
 
                             when {
-                                fromProxyTarget != null && toProxyTarget != null -> {
+                                effectiveFromProxy != null && effectiveToProxy != null -> {
                                     (knownProxyConnectionsBoth[connectionName] ?: knownConnections[connectionName])?.invoke(
                                         from,
-                                        r1,
+                                        effectiveFromRect,
                                         to,
-                                        toWorldRect.copyRect(),
+                                        effectiveToRect,
                                         svg,
                                         o0 * o1
                                     )
                                 }
 
-                                fromProxyTarget != null -> {
+                                effectiveFromProxy != null -> {
                                     (knownProxyConnectionsFrom[connectionName] ?: knownConnections[connectionName])?.invoke(
                                         from,
-                                        r1,
+                                        effectiveFromRect,
                                         to,
-                                        toWorldRect.copyRect(),
+                                        effectiveToRect,
                                         svg,
                                         o0 * o1
                                     )
                                 }
 
-                                toProxyTarget != null -> {
+                                effectiveToProxy != null -> {
                                     (knownProxyConnectionsTo[connectionName] ?: knownConnections[connectionName])?.invoke(
                                         from,
-                                        r1,
+                                        effectiveFromRect,
                                         to,
-                                        toWorldRect.copyRect(),
+                                        effectiveToRect,
                                         svg,
                                         o0 * o1
                                     )
@@ -1175,9 +1243,9 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
                                 else -> knownConnections[connectionName]?.invoke(
                                     from,
-                                    r1,
+                                    effectiveFromRect,
                                     to,
-                                    toWorldRect.copyRect(),
+                                    effectiveToRect,
                                     svg,
                                     o0 * o1
                                 )

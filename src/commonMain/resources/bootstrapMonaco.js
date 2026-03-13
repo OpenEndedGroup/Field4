@@ -104,15 +104,21 @@ const initMonaco = () => {
                                 return {suggestions: cached.merged || cached.base || [], incomplete: false}
                         }
 
-                        const basePayload = {
-                                uid: window.currentSelectedCode[0].uid,
-                                line: completionInfo.at[0],
-                                allCode: completionInfo.allCode,
-                                column: completionInfo.at[1],
-                                position: ed.getModel().getOffsetAt({
-                                        column: completionInfo.at[1], lineNumber: completionInfo.at[0]
-                                }),
-                                property: window.currentSelectedProperty
+// Resolve uid/property: check embedded editor first, fall back to main editor globals
+				const embEntry = window.embeddedEditors && window.embeddedEditors.getByModel(model);
+				const completionUid = embEntry ? embEntry.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
+				const completionProperty = embEntry ? embEntry.property : window.currentSelectedProperty;
+				if (!completionUid) return { suggestions: [] };
+
+				const basePayload = {
+					uid: completionUid,
+					line: completionInfo.at[0],
+					allCode: completionInfo.allCode,
+					column: completionInfo.at[1],
+					position: model.getOffsetAt({
+						column: completionInfo.at[1], lineNumber: completionInfo.at[0]
+					}),
+					property: completionProperty
                         }
 
                         const rangeForPayload = (payload) => {
@@ -236,18 +242,26 @@ const initMonaco = () => {
                                 if (!item || !item.data) return item
                                 if (item.data.aiDocResolved || item.data.aiDocPending) return item
                                 if (item.data.source !== "kotlin") return item
-                                if (!globalEditor || !globalEditor.getModel) return item
-                                var model = globalEditor.getModel()
+
+                                // Find the right editor+model: check focused embedded editor first, fall back to globalEditor
+                                const embFocused = window.embeddedEditors && window.embeddedEditors.getFocused();
+                                const resolveEditor = embFocused ? embFocused.editor : globalEditor;
+                                if (!resolveEditor || !resolveEditor.getModel) return item
+                                var model = resolveEditor.getModel()
                                 if (!model) return item
-                                var pos = globalEditor.getPosition()
+                                var pos = resolveEditor.getPosition()
                                 if (!pos) return item
+
+                                const resolveUid = embFocused ? embFocused.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
+                                const resolveProperty = embFocused ? embFocused.property : window.currentSelectedProperty;
+                                if (!resolveUid) return item;
 
                                 item.data.aiDocPending = true
                                 var rawLabel = item.label
                                 var labelText = (typeof rawLabel === "string") ? rawLabel : ((rawLabel && rawLabel.label) ? rawLabel.label : "")
                                 var payload = {
-                                        uid: window.currentSelectedCode[0].uid,
-                                        property: window.currentSelectedProperty,
+                                        uid: resolveUid,
+                                        property: resolveProperty,
                                         label: labelText || "",
                                         insertText: item.data.insertText || item.insertText || "",
                                         detail: item.data.detail || item.detail || "",
@@ -439,7 +453,11 @@ window.addEventListener("resize", syncDocsIframeBoundsToMonaco)
 window.addEventListener("keydown", (e) => {
             const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p';
             if (e.key === "F1" || isCtrlOrCmdP) {
-
+                    // If an embedded editor has focus, let it handle F1 itself
+                    // (it has its own command palette action registered)
+                    if (window.embeddedEditors && window.embeddedEditors.getFocused()) {
+                            return;
+                    }
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     openQuickCommandPalette()
@@ -460,11 +478,14 @@ const isMonacoTextTarget = (el) => {
 const isMonacoTextFocused = () => {
         const ed = window.globalEditor
         if (ed && typeof ed.hasTextFocus === "function" && ed.hasTextFocus()) return true
+        if (window.embeddedEditors && window.embeddedEditors.getFocused()) return true
         return isMonacoTextTarget(document.activeElement)
 }
 
 const runMonacoAction = (id) => {
-        const ed = window.globalEditor
+        // Prefer the focused embedded editor, fall back to the main editor
+        const emb = window.embeddedEditors && window.embeddedEditors.getFocused();
+        const ed = emb ? emb.editor : window.globalEditor;
         if (!ed) return false
         try {
                 const action = ed.getAction && ed.getAction(id)

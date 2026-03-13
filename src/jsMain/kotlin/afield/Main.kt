@@ -2264,6 +2264,7 @@ suspend fun main() {
             "code" -> {
                 found.unsafeCast<dynamic>().code = set.value
                 notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, "code", set.value)
+                notifyEmbeddedEditorOfRemoteUpdate(u, "code", set.value)
             }
 
             "code_editorState" -> {
@@ -2286,34 +2287,42 @@ suspend fun main() {
 
             "fragment" -> {
                 found.unsafeCast<dynamic>().fragment = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
             }
 
             "task" -> {
                 found.unsafeCast<dynamic>().task = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "task", set.value)
             }
 
             "mesh" -> {
                 found.unsafeCast<dynamic>().mesh = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "mesh", set.value)
             }
 
             "metadata" -> {
                 found.unsafeCast<dynamic>().metadata = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "metadata", set.value)
             }
 
             "compute" -> {
                 found.unsafeCast<dynamic>().compute = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "compute", set.value)
             }
 
             "preamble" -> {
                 found.unsafeCast<dynamic>().preamble = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "preamble", set.value)
             }
 
             "introduction" -> {
                 found.unsafeCast<dynamic>().introduction = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "introduction", set.value)
             }
 
             "vertex" -> {
                 found.unsafeCast<dynamic>().vertex = set.value
+                notifyEmbeddedEditorOfRemoteUpdate(u, "vertex", set.value)
             }
 
             "customization" -> {
@@ -2999,6 +3008,16 @@ suspend fun main() {
 
         val originalTarget = event.target as? HTMLElement
         val insideOutputArea = originalTarget?.closest(".outputArea") != null
+
+        // If the click originates from inside an embedded Monaco editor,
+        // don't re-select the box — that would disrupt the main editor.
+        val insideEmbeddedEditor = originalTarget?.closest(".monaco-editor") != null && insideOutputArea
+        if (insideEmbeddedEditor) return@on
+
+        // If the click originates from a disclosure header (output area UI),
+        // don't intercept — let the disclosure handle its own alt-click removal.
+        val insideDisclosureHeader = originalTarget?.closest(".disclosure-header") != null
+        if (insideOutputArea && insideDisclosureHeader) return@on
 
         val target: dynamic = reorient(event.target)
         if (event.altKey) {

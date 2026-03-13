@@ -774,7 +774,7 @@
         }
 
         .closeBox + .hoverable {
-            margin-left: 4.3px;
+            margin-left: 4.8px;
         }
 
         body::-webkit-scrollbar {
@@ -1007,11 +1007,25 @@
             transition: color 0.3s;
             margin-left: 8px;
             margin-top: -3px;
-            font-size: 15px;
+            font-size: 13.5px;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+        }
+
+        /* Smaller controls inside embedded editors */
+        .outputArea .monaco-editor .hoverable {
+            font-size: 10.5px;
+        }
+
+        .outputArea .monaco-editor .closeBox + .hoverable {
+            margin-left: 5.8px;
+        }
+
+        /* Remove Monaco focus outline inside embedded editors */
+        .outputArea .monaco-editor {
+            outline: none !important;
         }
 
         .notselectable {
@@ -1449,6 +1463,7 @@
 <link rel="stylesheet" href="/github-dark.min.css">
 <script src="/highlight.min.js"></script>
 <script src="outputareas2.js" type="module"></script>
+<script src="embeddedEditors.js" type="module"></script>
 <script src="sliders.js"></script>
 <script src="decorations.js"></script>
 <script src="trays.js"></script>

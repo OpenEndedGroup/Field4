@@ -14,6 +14,7 @@ const val installHandlers = "installHandlers" // install message handlers for we
 const val templatesRegistration = "templatesRegistration" // install KTor resource templates
 const val newRoot = "newRoot" // whenever a new root is made
 const val macroRegistration = "macroRegistration" // whenever a new root is made
+const val returnValueRegistration = "returnValueRegistration" // register handlers for return values from box execution
 
 /**
  * this is the world's smallest DI framework

@@ -55,6 +55,24 @@ import kotlin.system.measureNanoTime
 @Retention(AnnotationRetention.RUNTIME)
 annotation class exported
 
+private fun kotlinInfoEscapeHtml(text: String): String {
+    return text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+}
+
+private fun kotlinInfoClip(text: String, maxChars: Int = 220): String {
+    if (text.length <= maxChars) return text
+    return text.take(maxChars - 1) + "…"
+}
+
+private fun kotlinInfoTypeName(value: Any?): String {
+    if (value == null) return "null"
+    return value::class.qualifiedName ?: value::class.simpleName ?: value::class.java.name
+}
+
 class KotlinInterface(
     val propertyClasses: Map<String, KClass<*>> = emptyMap(), val properties: Map<String, Any?> = emptyMap(),
 
@@ -728,10 +746,77 @@ class KotlinInterface(
     )
 
 
-    class KotlinFunctionInfo(val function: KFunction<*>, val line: Any) : Comparable<KotlinFunctionInfo> {
+    class KotlinFunctionInfo(val function: KFunction<*>, val line: Any) : Comparable<KotlinFunctionInfo>, ToHTML {
 
         val name: String
             get() = function.name
+
+        private fun parameterLabel(parameter: KParameter): String {
+            val typeText = shortenType(parameter.type.toString())
+            val base = when (parameter.kind) {
+                KParameter.Kind.EXTENSION_RECEIVER -> "<receiver>"
+                KParameter.Kind.INSTANCE -> "<instance>"
+                else -> parameter.name ?: "<arg>"
+            }
+            val flags = buildList {
+                if (parameter.isVararg) add("vararg")
+                if (parameter.isOptional) add("optional")
+            }
+            return if (flags.isEmpty()) "$base: $typeText" else "$base: $typeText [${flags.joinToString(", ")}]"
+        }
+
+        override fun toHTML(): String {
+            val signature = shortenType(functionSignature(function))
+            val returnType = shortenType(function.returnType.toString())
+            val scriptClass = kotlinInfoClip(shortenType(line.javaClass.name))
+            val valueParams = function.parameters.filter { it.kind == KParameter.Kind.VALUE }
+            val extensionReceiver = function.parameters.firstOrNull { it.kind == KParameter.Kind.EXTENSION_RECEIVER }
+            val instanceReceiver = function.parameters.firstOrNull { it.kind == KParameter.Kind.INSTANCE }
+
+            return buildString {
+                append("<div style='display:inline-block; max-width: 620px;'>")
+                append("<div><span style='color:#f6c;'>fun</span> <span style='color:#fff;font-style:italic;'>")
+                append(kotlinInfoEscapeHtml(name))
+                append("</span></div>")
+
+                append("<div style='color:#aaa; overflow-wrap:anywhere;'>")
+                append(kotlinInfoEscapeHtml(signature))
+                append("</div>")
+
+                append("<div style='color:#999;'>returns <span style='color:#8cf;'>")
+                append(kotlinInfoEscapeHtml(returnType))
+                append("</span></div>")
+
+                extensionReceiver?.let {
+                    append("<div style='color:#999;'>extension receiver <span style='color:#8cf;'>")
+                    append(kotlinInfoEscapeHtml(shortenType(it.type.toString())))
+                    append("</span></div>")
+                }
+                instanceReceiver?.let {
+                    append("<div style='color:#999;'>instance receiver <span style='color:#8cf;'>")
+                    append(kotlinInfoEscapeHtml(shortenType(it.type.toString())))
+                    append("</span></div>")
+                }
+
+                if (valueParams.isNotEmpty()) {
+                    append("<div style='color:#999;'>params (")
+                    append(valueParams.size)
+                    append(")</div>")
+                    valueParams.forEach { parameter ->
+                        append("<div style='margin-left:12px; color:#bbb; overflow-wrap:anywhere;'>• ")
+                        append(kotlinInfoEscapeHtml(parameterLabel(parameter)))
+                        append("</div>")
+                    }
+                } else {
+                    append("<div style='color:#777;'>params (0)</div>")
+                }
+
+                append("<div style='color:#777; overflow-wrap:anywhere;'>defined in ")
+                append(kotlinInfoEscapeHtml(scriptClass))
+                append("</div>")
+                append("</div>")
+            }
+        }
 
         fun toString(shortenTypes: Boolean): String {
             return if (shortenTypes) {
@@ -758,7 +843,7 @@ class KotlinInterface(
         }
     }
 
-    class KotlinVariableInfo(val value: Any?, val descriptor: KProperty<*>, val line: Any) {
+    class KotlinVariableInfo(val value: Any?, val descriptor: KProperty<*>, val line: Any) : ToHTML {
 
         val name: String
             get() = descriptor.name
@@ -777,6 +862,59 @@ class KotlinInterface(
 
         override fun toString(): String {
             return toString(false)
+        }
+
+        private fun valuePreview(): String {
+            return when (value) {
+                null -> "<span style='color:#888;'>null</span>"
+                is Number -> "<span style='color:#8cf;'>${kotlinInfoEscapeHtml(value.toString())}</span>"
+                is Boolean -> "<span style='color:#f88;'>${kotlinInfoEscapeHtml(value.toString())}</span>"
+                is Char -> "<span style='color:#8f8;'>'${kotlinInfoEscapeHtml(value.toString())}'</span>"
+                is String -> "<span style='color:#8f8;'>${kotlinInfoEscapeHtml(kotlinInfoClip(value))}</span>"
+                else -> {
+                    val runtime = shortenType(kotlinInfoTypeName(value))
+                    val text = kotlinInfoClip(value.toString())
+                    "<span style='color:#bbb;'>${kotlinInfoEscapeHtml(runtime)}</span> <span style='color:#777;'>= ${kotlinInfoEscapeHtml(text)}</span>"
+                }
+            }
+        }
+
+        override fun toHTML(): String {
+            val declaration = shortenType(descriptor.toString())
+            val declaredType = runCatching { shortenType(descriptor.returnType.toString()) }.getOrDefault(shortenType(type))
+            val runtimeType = shortenType(kotlinInfoTypeName(value))
+            val scriptClass = kotlinInfoClip(shortenType(line.javaClass.name))
+            val kind = if (descriptor is KMutableProperty<*>) "var" else "val"
+
+            return buildString {
+                append("<div style='display:inline-block; max-width: 620px;'>")
+                append("<div><span style='color:#f6c;'>")
+                append(kind)
+                append("</span> <span style='color:#fff;font-style:italic;'>")
+                append(kotlinInfoEscapeHtml(name))
+                append("</span></div>")
+
+                append("<div style='color:#aaa; overflow-wrap:anywhere;'>")
+                append(kotlinInfoEscapeHtml(declaration))
+                append("</div>")
+
+                append("<div style='color:#999;'>declared type <span style='color:#8cf;'>")
+                append(kotlinInfoEscapeHtml(declaredType))
+                append("</span></div>")
+
+                append("<div style='color:#999;'>runtime type <span style='color:#8cf;'>")
+                append(kotlinInfoEscapeHtml(runtimeType))
+                append("</span></div>")
+
+                append("<div style='margin-top:2px; color:#999;'>value ")
+                append(valuePreview())
+                append("</div>")
+
+                append("<div style='color:#777; overflow-wrap:anywhere;'>defined in ")
+                append(kotlinInfoEscapeHtml(scriptClass))
+                append("</div>")
+                append("</div>")
+            }
         }
     }
 

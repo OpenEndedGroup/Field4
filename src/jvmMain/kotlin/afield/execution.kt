@@ -412,61 +412,7 @@ class KotlinExecution : BoxExecution {
         strand: String = "default",
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
     ) {
-        val generation = inside.runGeneration.incrementAndGet(strand)
-        when (returnValue) {
-
-
-            is Sequence<*> -> {
-                val a = returnValue.iterator()
-                inMain {
-                    notify(true, strand, generation)
-                    while (inside.runGeneration[strand] == generation && a.hasNext()) {
-                        val n = a.next()
-                        yield()
-                    }
-                    notify(false, strand, generation)
-                }
-            }
-
-            is Frames -> {
-                returnValue.shouldend = {
-                    inside.runGeneration[strand] != generation
-                }
-                val original = returnValue.atEnd
-                returnValue.atEnd = {
-                    original()
-                    notify(false, strand, generation)
-                }
-                inMain {
-                    notify(true, strand, generation)
-                    returnValue.job = kotlin.coroutines.coroutineContext[Job]!!
-                    inside.jobs += returnValue.job!!
-                    try {
-                        returnValue.body()
-                        // throwing here (a cancellation exception) does not
-                        // run atEnd (should it?)
-                    } catch (e: CancellationException) {
-                    } catch (t: Throwable) {
-                        lprintln("error,execution", t.stackTraceToString())
-                        var firstLine = -1
-                        t.stackTrace.forEach { e ->
-                            if (firstLine == -1 && e.fileName.contains(inside.id)) {
-                                firstLine = e.lineNumber
-                            }
-                        }
-                        inside.error(t.message ?: "", line = firstLine)
-                    } finally {
-                        notify(false, strand, generation)
-                    }
-                }
-            }
-
-            else -> {
-                notify(false, strand, generation)
-
-            }
-
-        }
+        ReturnValueRegistry.launch(inside, returnValue, strand, notify)
     }
 
     override fun stop(box: Box) {

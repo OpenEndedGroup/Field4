@@ -347,3 +347,85 @@ fun handleEvalRequest(box: HTMLElement, code: String) {
     console.info("[customize] evaluating module code")
     insertHTMLWithScripts(box, "<script type='module'>$code</script>", isModule = true)
 }
+
+// ── Embedded editor in output area ─────────────────────────────────────
+
+/**
+ * Open an embedded Monaco editor for a given property inside a box's output area.
+ * Creates a disclosure panel with the editor inside.
+ */
+fun openEditorInOutput(uid: String, property: String) {
+    val box = findBoxByUid(uid) ?: run {
+        console.warn("[embedded-editor] box not found: $uid")
+        return
+    }
+
+    val emb = js("window.embeddedEditors") ?: run {
+        console.warn("[embedded-editor] embeddedEditors module not loaded")
+        return
+    }
+
+    // Check if an editor already exists for this (uid, property)
+    val existing = emb.getFor(uid, property)
+    if (existing != null) {
+        js("if (typeof window.notify === 'function') window.notify('Editor already open for ' + property, 'command')")
+        return
+    }
+
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+    outputArea.style.visibility = "visible"
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val di = js("window.disclosureInterface") ?: return
+    val inter = di(contain)
+
+    val channelId = "editor:$property"
+    val language = (emb.languageFor as Function<*>).asDynamic().call(emb, property) as? String ?: "plaintext"
+    val title = "\u270E $property ($language)"
+
+    // Create the disclosure panel
+    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(channelId, title, "")
+
+    // Read current value from the box DOM element
+    val currentValue = box.asDynamic()[property] as? String ?: ""
+
+    // Create a container div for Monaco
+    val editorContainer = document.createElement("div") as HTMLElement
+    editorContainer.style.width = "100%"
+    editorContainer.style.height = "100%"
+    editorContainer.style.minHeight = "120px"
+    editorContainer.asDynamic().style.overflow = "hidden"
+    contentRoot.innerHTML = ""
+    contentRoot.appendChild(editorContainer)
+
+    // Override disclosure-content font-size — it defaults to 10px in CSS,
+    // which Monaco inherits for gutter measurements. Set it to match the
+    // editor's configured fontSize so line numbers and controls are sized
+    // correctly.
+    (contentRoot as HTMLElement).style.fontSize = "13px"
+    (contentRoot as HTMLElement).style.padding = "0px"
+    (contentRoot as HTMLElement).style.background = "#000000"
+
+    // Create the embedded editor
+    val editorId = (emb.create as Function<*>).asDynamic().call(emb, editorContainer, uid, property, language, currentValue) as? String
+
+    if (editorId != null) {
+        // The embeddedEditors.js module tags the container with data-embeddedEditorId
+        // which the disclosure remove() hook reads for cleanup.
+        // Also tag the disclosure content wrapper (contentRoot) so the remove hook can find it
+        (contentRoot as HTMLElement).asDynamic().dataset.embeddedEditorId = editorId
+    }
+
+    // Open the disclosure
+    (inter.open as (String) -> Unit).invoke(channelId)
+
+    // Force Monaco to re-layout after the disclosure has opened and the DOM has settled
+    if (editorId != null) {
+        val entry = emb.getFor(uid, property)
+        if (entry != null) {
+            kotlinx.browser.window.requestAnimationFrame {
+                entry.editor.layout()
+            }
+        }
+    }
+}
+

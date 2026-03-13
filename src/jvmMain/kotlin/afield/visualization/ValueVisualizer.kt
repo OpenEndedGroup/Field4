@@ -69,10 +69,24 @@ object ValueVisualizer {
     private const val FLINE_LENGTH_MAX_COMPLEXITY = 1200
     private const val FLINE_SIGNATURE_HEAD = 42
     private const val FLINE_SIGNATURE_TAIL = 22
+    private const val BOX_SYMBOL = "\u25A1"
+    private val UNDERSCORE_UUID_REGEX = Regex(
+        "^_?([0-9a-f]{8})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{12})$",
+        options = setOf(RegexOption.IGNORE_CASE)
+    )
+    private val BOX_ID_TOKEN_REGEX = Regex(
+        pattern = "(?<![A-Za-z0-9_])(_[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12})(__(\\d+))?(?![A-Za-z0-9_])",
+        options = setOf(RegexOption.IGNORE_CASE)
+    )
 
     private data class ThumbnailResult(
         val svg: String?,
         val reason: String? = null
+    )
+
+    private data class BoxReference(
+        val uid: String,
+        val name: String
     )
 
     /**
@@ -96,7 +110,7 @@ object ValueVisualizer {
             null -> "<span style='color: #888;'>null</span>"
 
             // Check for ToHTML interface first
-            is ToHTML -> value.toHTML()
+            is ToHTML -> rewriteBoxReferencesInHtml(value.toHTML())
 
             // Check custom printers
             else -> {
@@ -449,9 +463,9 @@ object ValueVisualizer {
         val escaped = escape(s)
         return if (s.length > MAX_STRING_LENGTH) {
             val preview = escaped.substring(0, MAX_STRING_LENGTH)
-            """<span style='color: #8f8;'>"$preview…"</span> <span style='color: #888;'>(</span>${formatNumberToken(s.length)}<span style='color: #888;'> chars)</span>"""
+            """<span style='color: #8f8;'>$preview…</span> <span style='color: #888;'>(</span>${formatNumberToken(s.length)}<span style='color: #888;'> chars)</span>"""
         } else {
-            "<span style='color: #8f8;'>\"$escaped\"</span>"
+            "<span style='color: #8f8;'>$escaped</span>"
         }
     }
 
@@ -838,8 +852,140 @@ object ValueVisualizer {
         }
     }
 
+    private fun lookupBoxReference(boxId: String): BoxReference? {
+        val candidates = candidateBoxIds(boxId)
+        val currentSession: SessionInformation? = thisSessionInfo.get()
+        currentSession?.let { session ->
+            candidates.forEach { candidate ->
+                session.boxes[candidate]?.let { currentBox ->
+                    return BoxReference(
+                        uid = currentBox.id,
+                        name = currentBox.name.ifBlank { currentBox.id }
+                    )
+                }
+            }
+        }
+
+        documents.values.forEach { sessionInfo ->
+            candidates.forEach { candidateId ->
+                val candidate = sessionInfo.boxes[candidateId] ?: return@forEach
+                return BoxReference(
+                    uid = candidate.id,
+                    name = candidate.name.ifBlank { candidate.id }
+                )
+            }
+        }
+
+        return null
+    }
+
+    private fun candidateBoxIds(boxId: String): List<String> {
+        val candidates = linkedSetOf<String>()
+        candidates += boxId
+        candidates += boxId.lowercase()
+        if (boxId.startsWith("_")) {
+            val noPrefix = boxId.drop(1)
+            candidates += noPrefix
+            candidates += noPrefix.lowercase()
+        }
+
+        UNDERSCORE_UUID_REGEX.matchEntire(boxId)?.let { m ->
+            val hyphenUuid = "${m.groupValues[1]}-${m.groupValues[2]}-${m.groupValues[3]}-${m.groupValues[4]}-${m.groupValues[5]}"
+            candidates += hyphenUuid
+            candidates += hyphenUuid.lowercase()
+        }
+
+        return candidates.toList()
+    }
+
+    private fun rewriteBoxReferencesInHtml(html: String): String {
+        if (html.length < 37 || html.indexOf('_') < 0) return html
+
+        val out = StringBuilder(html.length + 32)
+        var cursor = 0
+        while (cursor < html.length) {
+            val tagStart = html.indexOf('<', cursor)
+            if (tagStart < 0) {
+                out.append(rewriteBoxReferencesInText(html.substring(cursor), escapePlainText = false))
+                break
+            }
+
+            if (tagStart > cursor) {
+                out.append(rewriteBoxReferencesInText(html.substring(cursor, tagStart), escapePlainText = false))
+            }
+
+            val tagEnd = html.indexOf('>', tagStart + 1)
+            if (tagEnd < 0) {
+                out.append(rewriteBoxReferencesInText(html.substring(tagStart), escapePlainText = false))
+                break
+            }
+
+            out.append(html, tagStart, tagEnd + 1)
+            cursor = tagEnd + 1
+        }
+        return out.toString()
+    }
+
+    private fun rewriteBoxReferencesInText(text: String, escapePlainText: Boolean): String {
+        if (text.length < 37 || text.indexOf('_') < 0) {
+            return if (escapePlainText) escapeHtmlText(text) else text
+        }
+
+        val nameCache = mutableMapOf<String, BoxReference?>()
+        val out = StringBuilder(text.length + 32)
+        var cursor = 0
+        var replacedAny = false
+
+        BOX_ID_TOKEN_REGEX.findAll(text).forEach { match ->
+            val boxId = match.groups[1]?.value ?: return@forEach
+            val runSuffix = match.groups[2]?.value.orEmpty()
+            val boxRef = nameCache.getOrPut(boxId) { lookupBoxReference(boxId) } ?: return@forEach
+
+            val start = match.range.first
+            val endExclusive = match.range.last + 1
+            if (start < cursor) return@forEach
+
+            val prefix = text.substring(cursor, start)
+            out.append(if (escapePlainText) escapeHtmlText(prefix) else prefix)
+            out.append(formatStyledBoxReference(boxRef, runSuffix))
+            cursor = endExclusive
+            replacedAny = true
+        }
+
+        if (!replacedAny) {
+            return if (escapePlainText) escapeHtmlText(text) else text
+        }
+
+        val suffix = text.substring(cursor)
+        out.append(if (escapePlainText) escapeHtmlText(suffix) else suffix)
+        return out.toString()
+    }
+
     private fun escape(s: String): String {
-        return s.replace("&", "&amp;")
+        return rewriteBoxReferencesInText(s, escapePlainText = true)
+    }
+
+    private fun formatStyledBoxReference(boxRef: BoxReference, runSuffix: String): String {
+        val escapedUid = escapeHtmlText(boxRef.uid)
+        return buildString {
+            append("<a href='#box:")
+            append(escapedUid)
+            append("' data-box-uid='")
+            append(escapedUid)
+            append("' style='text-decoration:none;cursor:pointer;'>")
+            append("<span style='color:#fff;font-weight:300;'>")
+            append(BOX_SYMBOL)
+            append("</span>")
+            append("<span style='color:#fff;font-weight:300;font-style:italic;'>")
+            append(escapeHtmlText(boxRef.name))
+            append("</span>")
+            if (runSuffix.isNotEmpty()) append("<span style='color:#bbb;'>${escapeHtmlText(runSuffix)}</span>")
+            append("</a>")
+        }
+    }
+
+    private fun escapeHtmlText(text: String): String {
+        return text.replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace("\"", "&quot;")

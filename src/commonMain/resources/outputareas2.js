@@ -238,6 +238,11 @@ function disclosureInterface(container) {
                         d.resizeObserver.disconnect();
                         d.resizeObserver = null;
                 }
+                // Dispose any embedded Monaco editor inside this disclosure
+                const embEditorId = d.cw && d.cw.dataset && d.cw.dataset.embeddedEditorId;
+                if (embEditorId && window.embeddedEditors && typeof window.embeddedEditors.dispose === "function") {
+                        window.embeddedEditors.dispose(embEditorId);
+                }
                 d.wrap.remove();
                 disclosures.delete(id);
                 states.delete(id);
@@ -334,8 +339,10 @@ function disclosureInterface(container) {
                                         if (inline) {
                                                 if (e.altKey && e.shiftKey) {
                                                         removeAllExcept(id);
+                                                        e.stopPropagation();
                                                 } else if (e.altKey) {
                                                         remove(id);
+                                                        e.stopPropagation();
                                                 }
                                                 return;
                                         }
@@ -343,9 +350,11 @@ function disclosureInterface(container) {
                                                 // Alt+Shift+click removes all other disclosures
                                                 removeAllExcept(id);
                                                 clearRemoveIndicators();
+                                                e.stopPropagation();
                                         } else if (e.altKey) {
                                                 // Alt+click removes the disclosure
                                                 remove(id);
+                                                e.stopPropagation();
                                         } else if (e.shiftKey) {
                                                 // Shift+click solos this disclosure
                                                 solo(id);
@@ -398,6 +407,28 @@ function disclosureInterface(container) {
                 }
         }
 
+        if (!container.__boxLinkSelectionInstalled) {
+                container.__boxLinkSelectionInstalled = true;
+                container.addEventListener("click", (event) => {
+                        const target = event.target;
+                        if (!(target instanceof Element)) return;
+
+                        const link = target.closest("a[data-box-uid], a[href^='#box:']");
+                        if (!link || !container.contains(link)) return;
+
+                        let uid = (link.getAttribute("data-box-uid") || "").trim();
+                        if (!uid) {
+                                const href = link.getAttribute("href") || "";
+                                uid = decodeBoxUidFromHref(href);
+                        }
+                        if (!uid) return;
+
+                        event.preventDefault();
+                        event.stopPropagation();
+                        selectBoxByUidFromOutput(uid);
+                });
+        }
+
         const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo };
         container.__disclosureAPI = api;
         return api;
@@ -414,6 +445,46 @@ function findBoxByUid(uid) {
                 if (box.uid === uid) return box;
         }
         return null;
+}
+
+function decodeBoxUidFromHref(href) {
+        if (typeof href !== "string") return "";
+        if (!href.startsWith("#box:")) return "";
+        const raw = href.slice(5).trim();
+        if (!raw) return "";
+        try {
+                return decodeURIComponent(raw);
+        } catch (_error) {
+                return raw;
+        }
+}
+
+function selectBoxByUidFromOutput(uid) {
+        if (!uid) return false;
+        const box = findBoxByUid(uid);
+        if (!box) {
+                if (typeof window.notify === "function") {
+                        window.notify(`Box not found: ${uid}`, "output");
+                }
+                return false;
+        }
+
+        const currentlySelected = Array.isArray(window.selectedList)
+                ? Array.from(window.selectedList)
+                : Array.from(window.selected || []);
+        currentlySelected.forEach((selectedBox) => {
+                if (typeof window.deselectBox === "function") {
+                        window.deselectBox(selectedBox);
+                }
+        });
+
+        if (typeof window.selectBox === "function") {
+                window.selectBox(box);
+        }
+        if (typeof box.scrollIntoView === "function") {
+                box.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        }
+        return true;
 }
 
 function readBoxProperty(box, property) {

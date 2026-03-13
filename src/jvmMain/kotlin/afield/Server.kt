@@ -51,10 +51,6 @@ import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-
-/***
- */
-
 class SessionInformation(
     val filename: String,
     var boxes: ConcurrentHashMap<String, Box> = ConcurrentHashMap<String, Box>(),
@@ -136,7 +132,6 @@ actual fun _send(message: Message) {
     _send(message, document = ".*")
 }
 
-
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     val m = Json.encodeToString(message)
@@ -168,13 +163,11 @@ fun _send(session: WebSocketSession?, message: Message) {
     }
 }
 
-
 @OptIn(DelicateCoroutinesApi::class)
 fun notify(text: String, category: String = "") {
     thisSession.get()
     _send(thisSession.get(), Message("notify").payload(Notify(text, category)))
 }
-
 
 val thisSession = ThreadLocal<WebSocketSession>()
 val thisSessionInfo = ThreadLocal<SessionInformation>()
@@ -282,7 +275,6 @@ class Server {
                         documents.forEach { _, info ->
                             // Only persist when we know sidecar-bearing properties changed.
                             if (info.pendingSidecarSaves.isNotEmpty()) {
-//                            lblock(" saving to ${info.filename}")
                                 run {
                                     try {
                                         // Include root box in saved boxes to persist root properties like bookmarks
@@ -397,20 +389,16 @@ class Server {
                     found.sessions.add(thisSession.get())
 
                     found.boxes.values.forEach {
-                        lprintln("info,server", "resync all")
                         it.resyncAll()
                     }
                     found.topologyGeneration++
                     found.scheduleAutorunBoxes()
                 }
 
-
-
                 Handled.yes
             })
 
             handlers["set-string"] = mutableSetOf({ message, reply ->
-
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
 
                 if (set.property == "name") {

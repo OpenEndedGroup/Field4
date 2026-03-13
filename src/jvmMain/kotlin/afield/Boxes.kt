@@ -6,18 +6,11 @@ import afield.stdlib.Action
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
 import afield.stdlib.actions
-import checkUpdateVersion
-import defaultUpdateUrl
-import downloadAndUnzip
-import fetchUpdateInfo
-import formatKotlinCode
 import io.ktor.util.collections.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import promoteStagingToLive
-import writeLocalVersion
 import kotlin.script.experimental.api.KotlinType
 
 var needsResync = ConcurrentSet<Pair<Box, String>>()
@@ -603,6 +596,7 @@ fun box(
 var intro = """
 import afield.*
 import afield.stdlib.*
+import afield.four.synth.*
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
