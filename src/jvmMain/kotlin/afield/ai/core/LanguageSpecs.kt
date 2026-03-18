@@ -159,3 +159,14 @@ private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
 
 fun glslSpecForProperty(property: String): LanguageSpec? =
     GLSL_PROPERTY_SPECS[property.lowercase()]
+
+/**
+ * Language spec for the Nano micro-computer assembly language.
+ * Nano is an 8-bit VM with 4 registers (r0–r3) and 32 bytes of RAM,
+ * designed for emergence and artificial-life simulations.
+ */
+val NANO_ASM: LanguageSpec = LanguageSpec(
+    name = "Nano",
+    wrap = { it.trimEnd() },
+    unwrap = { it.trimEnd() }
+)
