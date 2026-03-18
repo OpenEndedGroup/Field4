@@ -1,7 +1,11 @@
 package afield
 
 import afield.logger.lprintln
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.yield
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * A handler that can launch a return value from box execution.
@@ -15,6 +19,20 @@ typealias ReturnValueHandler = (
     generation: Int,
     notify: (running: Boolean, strand: String, watermark: Int) -> Unit
 ) -> Boolean
+
+class LaunchBundle internal constructor(val items: List<Any?>) {
+    override fun toString() = "launchBundle[of ${items.size}]"
+}
+
+fun launches(vararg items: Any?): LaunchBundle = LaunchBundle(items.toList())
+
+operator fun LaunchBundle.plus(other: Any?): LaunchBundle =
+    LaunchBundle(buildList {
+        addAll(items.flatMap(::flattenLaunchItems))
+        addAll(flattenLaunchItems(other))
+    })
+
+operator fun Frames.plus(other: Any?): LaunchBundle = launches(this, other)
 
 object ReturnValueRegistry {
 
@@ -35,12 +53,90 @@ object ReturnValueRegistry {
             notify(false, strand, generation)
             return
         }
-        for (handler in handlers) {
-            if (handler(inside, returnValue, strand, generation, notify)) return
-        }
+        if (launchCompositeIfPresent(inside, returnValue, strand, generation, notify)) return
+        if (dispatch(inside, returnValue, strand, generation, notify)) return
         // no handler matched
         notify(false, strand, generation)
     }
+
+    internal fun dispatch(
+        inside: Box,
+        returnValue: Any,
+        strand: String,
+        generation: Int,
+        notify: (running: Boolean, strand: String, watermark: Int) -> Unit
+    ): Boolean {
+        for (handler in handlers) {
+            if (handler(inside, returnValue, strand, generation, notify)) return true
+        }
+        return false
+    }
+
+    private fun launchCompositeIfPresent(
+        inside: Box,
+        returnValue: Any,
+        strand: String,
+        generation: Int,
+        notify: (running: Boolean, strand: String, watermark: Int) -> Unit
+    ): Boolean {
+        val items = when (returnValue) {
+            is LaunchBundle -> flattenLaunchItems(returnValue)
+            is Iterable<*> -> flattenLaunchItems(returnValue)
+            else -> return false
+        }.filterNotNull()
+
+        if (items.isEmpty()) {
+            notify(false, strand, generation)
+            return true
+        }
+
+        val activeChildren = AtomicInteger(0)
+        val launchedAny = AtomicBoolean(false)
+        val dispatchComplete = AtomicBoolean(false)
+        val runningNotified = AtomicBoolean(false)
+        val compositeNotify: (Boolean, String, Int) -> Unit = composite@{ running: Boolean, _: String, _: Int ->
+            if (running) return@composite
+            activeChildren.updateAndGet { current -> if (current > 0) current - 1 else 0 }
+            if (
+                dispatchComplete.get() &&
+                activeChildren.get() == 0 &&
+                launchedAny.get() &&
+                runningNotified.compareAndSet(true, false)
+            ) {
+                notify(false, strand, generation)
+            }
+        }
+
+        for (item in items) {
+            activeChildren.incrementAndGet()
+            val consumed = dispatch(inside, item, strand, generation, compositeNotify)
+            if (consumed) {
+                launchedAny.set(true)
+            } else {
+                activeChildren.decrementAndGet()
+                lprintln(
+                    "warn,execution",
+                    "No return-value handler for composite launch item `${item::class.qualifiedName ?: item::class.simpleName ?: item}`"
+                )
+            }
+        }
+
+        dispatchComplete.set(true)
+        if (launchedAny.get() && activeChildren.get() > 0) {
+            if (runningNotified.compareAndSet(false, true)) {
+                notify(true, strand, generation)
+            }
+        } else {
+            notify(false, strand, generation)
+        }
+        return true
+    }
+}
+
+private fun flattenLaunchItems(value: Any?): List<Any?> = when (value) {
+    is LaunchBundle -> value.items.flatMap(::flattenLaunchItems)
+    is Iterable<*> -> value.flatMap(::flattenLaunchItems)
+    else -> listOf(value)
 }
 
 private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
@@ -78,6 +174,7 @@ fun registerFramesReturnValue() {
             notify(false, strand, generation)
         }
         inMain {
+            Box.withBoxContext(inside) {
             notify(true, strand, generation)
             returnValue.job = kotlin.coroutines.coroutineContext[Job]!!
             inside.jobs += returnValue.job!!
@@ -95,6 +192,7 @@ fun registerFramesReturnValue() {
                 inside.error(t.message ?: "", line = firstLine)
             } finally {
                 notify(false, strand, generation)
+            }
             }
         }
         true

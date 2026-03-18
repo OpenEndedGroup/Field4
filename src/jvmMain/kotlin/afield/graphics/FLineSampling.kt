@@ -1,6 +1,8 @@
 package afield.graphics
 
 import afield.stdlib.Vec3
+import afield.stdlib.prettyNumber
+import afield.stdlib.prettySummary
 import afield.stdlib.vec
 import kotlin.math.abs
 import kotlin.math.acos
@@ -12,7 +14,9 @@ import kotlin.random.Random
 /**
  * A sampled point on an [FLine], with normalized parameter [t] in [0, 1].
  */
-data class FLineSample(val t: Float, val point: Vec3)
+data class FLineSample(val t: Float, val point: Vec3) {
+    override fun toString(): String = "FLineSample(t=${prettyNumber(t)}, point=$point)"
+}
 
 /**
  * Sampling request context for [FLineSampler].
@@ -21,7 +25,14 @@ data class FLineSampleContext(
     val requestedCount: Int = 100,
     val seed: Long? = null,
     val pointSetAware: Boolean = true
-)
+) {
+    override fun toString(): String = prettySummary(
+        "FLineSampleContext",
+        "requestedCount" to requestedCount,
+        "seed" to seed,
+        "pointSetAware" to pointSetAware
+    )
+}
 
 /**
  * Composable sampler interface for extracting point-series data from an [FLine].

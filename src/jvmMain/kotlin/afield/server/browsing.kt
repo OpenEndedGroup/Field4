@@ -183,6 +183,25 @@ object Inspector {
             // 2) Treat HasBrowsable with null like real null
             any == null || any is HasBrowsable -> Resolved.Leaf(html = { "<i>null</i>" }, obj = null)
 
+            // 2.5) Maps and Iterables: handle directly so KClass mapped-type lookups can't miss
+            any is Map<*, *> -> {
+                val entries = any.entries.associate { (k, v) -> (k?.toString() ?: "null") to v }
+                Resolved.Dir(
+                    heading = title ?: "Map",
+                    entries = { entries },
+                    obj = any
+                )
+            }
+
+            any is Iterable<*> -> {
+                val items = any.toList()
+                Resolved.Dir(
+                    heading = title ?: "List",
+                    entries = { items.mapIndexed { idx, v -> "[${idx}]" to v }.toMap() },
+                    obj = any
+                )
+            }
+
             // 3) Try adapters: turn arbitrary types into a Browsable wrapper
             else -> {
                 val adapted = BrowsableAdapters.adapt(any, parent, title)
@@ -595,15 +614,12 @@ object BrowsableAdapters {
 @Suppress("UNCHECKED_CAST")
 fun registerExampleAdapters() {
     BrowsableAdapters.register(Map::class) { m: Map<*, *>, parent, title ->
-        val allStrings = m.keys.all { it is String } && m.values.all { it is String }
-        if (!allStrings) return@register null
+        if (!m.keys.all { it is String }) return@register null
 
-        val map = m as Map<String, String>
+        val entries = m.entries.associate { (k, v) -> (k as String) to v }
         object : Browsable {
             override fun heading(): String = title ?: "Map"
-            override fun dir(): Map<String, Any?> = map   // values are Strings -> leaves
-            // optional: provide a version if the map is known to change
-            // override fun version(): Long = (parent as? SomeParent)?.version() ?: 0
+            override fun dir(): Map<String, Any?> = entries
         }
     }
 }

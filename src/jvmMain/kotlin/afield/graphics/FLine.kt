@@ -160,6 +160,9 @@ class FLine : HasProperties {
 
         override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
+        protected fun pointsSummary(): String =
+            if (storage.isEmpty()) "" else storage.joinToString(", ", prefix = "(", postfix = ")") { prettyVec3(it) }
+
     }
 
     /**
@@ -172,9 +175,7 @@ class FLine : HasProperties {
      */
     class MoveTo : Node(1) {
         override fun create(): Node = MoveTo()
-        override fun toString(): String {
-            return "MoveTo"
-        }
+        override fun toString(): String = "MoveTo${pointsSummary()}"
     }
 
     /**
@@ -182,9 +183,7 @@ class FLine : HasProperties {
      */
     class LineTo : Node(1) {
         override fun create(): Node = LineTo()
-        override fun toString(): String {
-            return "LineTo"
-        }
+        override fun toString(): String = "LineTo${pointsSummary()}"
     }
 
     /**
@@ -203,9 +202,7 @@ class FLine : HasProperties {
                 storage[2] = v
             }
 
-        override fun toString(): String {
-            return "CubicTo"
-        }
+        override fun toString(): String = "CubicTo${pointsSummary()}"
     }
 
     /**
@@ -213,9 +210,7 @@ class FLine : HasProperties {
      */
     class Close : Node(0) {
         override fun create(): Node = Close()
-        override fun toString(): String {
-            return "Close"
-        }
+        override fun toString(): String = "Close"
     }
 
     /**
@@ -581,7 +576,14 @@ class FLine : HasProperties {
     override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
     override fun toString(): String {
-        return "FLine[${nodes.size}n]"
+        val bbox = runCatching { fast2DBounds() }.getOrNull()
+        return prettySummary(
+            "FLine",
+            "nodes" to nodes.size,
+            "pieces" to pieces().size,
+            "bounds" to bbox?.let { "[${prettyNumber(it.x)} , ${prettyNumber(it.y)} , ${prettyNumber(it.w)} x ${prettyNumber(it.h)}]" },
+            "properties" to properties.keys.take(4)
+        )
     }
 
     /**
@@ -963,6 +965,8 @@ class FLine : HasProperties {
     }
 
 }
+
+private fun prettyVec3(v: Vec3): String = "(${prettyNumber(v.x)}, ${prettyNumber(v.y)}, ${prettyNumber(v.z)})"
 
 
 private fun FLine.parametersToPoints(params: List<Any>): MutableList<Vec3> {

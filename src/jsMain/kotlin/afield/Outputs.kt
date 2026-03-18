@@ -93,6 +93,12 @@ private fun pulseOutput(node: dynamic) {
     flash(node)
 }
 
+private fun updateOutputFlashSignature(output: dynamic, nextSignature: String): Boolean {
+    val previous = output.flashSignature as? String
+    output.flashSignature = nextSignature
+    return previous != null && previous == nextSignature
+}
+
 private fun newRange(startLine: Int, startCol: Int, endLine: Int, endCol: Int): dynamic {
     val w = js("window")
     val ctor = w.globalMonaco.Range
@@ -116,11 +122,25 @@ private fun getMonacoLineHeightPx(editor: dynamic): Double {
 private fun preferredOutputLines(editor: dynamic, domNode: HTMLElement?, domNodeInner: HTMLElement?): Int {
     val innerScrollHeight = (domNodeInner?.scrollHeight as? Number)?.toDouble() ?: 0.0
     val outerScrollHeight = (domNode?.scrollHeight as? Number)?.toDouble() ?: 0.0
+    val renderedChildExtent = domNodeInner?.let { inner ->
+        val innerRect = inner.getBoundingClientRect()
+        (0 until inner.children.length).mapNotNull { index ->
+            val child = inner.children.item(index) ?: return@mapNotNull null
+            val rect = runCatching {
+                child.asDynamic().getBoundingClientRect?.call(child)
+            }.getOrNull() ?: return@mapNotNull null
+            val bottom = (rect.bottom as? Number)?.toDouble() ?: return@mapNotNull null
+            bottom - innerRect.top
+        }.maxOrNull() ?: 0.0
+    } ?: 0.0
     // Prefer actual content height (inner). Using outer zone height can lock outputs
     // into an oversized state after an initial over-estimate.
     val measuredHeight = max(
         0.0,
-        if (innerScrollHeight > 0.0) innerScrollHeight else outerScrollHeight
+        max(
+            renderedChildExtent,
+            if (innerScrollHeight > 0.0) innerScrollHeight else outerScrollHeight
+        )
     )
     if (measuredHeight <= 0.0) return 2
 
@@ -192,6 +212,12 @@ private fun scheduleOutputHeightRecompute(editor: dynamic, output: dynamic) {
         window.setTimeout({
             recomputeOutputHeight(editor, output)
         }, 35)
+        window.setTimeout({
+            recomputeOutputHeight(editor, output)
+        }, 150)
+        window.setTimeout({
+            recomputeOutputHeight(editor, output)
+        }, 350)
     }
 }
 
@@ -507,7 +533,14 @@ fun toggleArea(id: String) {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun addInlineOutput(editor: dynamic, lineNumber: Int, text: String, extraClass: String, frameMarker: Int) {
+fun addInlineOutput(
+    editor: dynamic,
+    lineNumber: Int,
+    text: String,
+    extraClass: String,
+    frameMarker: Int,
+    shouldFlash: Boolean = true
+) {
     val edDecor = getOrCreateEditorDecorations(editor)
     var line = lineNumber
     val model = editor.getModel()
@@ -533,9 +566,11 @@ fun addInlineOutput(editor: dynamic, lineNumber: Int, text: String, extraClass: 
 
     val options = js("{}")
     val after = js("{}")
-    after.content = text
+    val inlineOutputSpacer = "\u00A0\u00A0"
+    after.content = if (text.isEmpty()) text else inlineOutputSpacer + text
+    val flashClass = if (shouldFlash) " flash-inverted" else ""
     after.inlineClassName =
-        "tick_text flash-inverted $extraClass q${js("Math.random()") as Double}"
+        "tick_text$flashClass $extraClass q${js("Math.random()") as Double}"
     after.inlineClassNameAffectsLetterSpacing = true
     after.cursorStops = 1
     options.after = after
@@ -547,6 +582,7 @@ fun addInlineOutput(editor: dynamic, lineNumber: Int, text: String, extraClass: 
     entry.options = options
     entry._line = line
     entry._text = text
+    entry._extraClass = extraClass
     entry.isTick = true
     entry.frameMarker = frameMarker
     edDecor.contents.add(entry)
@@ -859,6 +895,7 @@ fun addOutput(
     }
 
     val edDecor = editorDecorationsFor(editor)
+    var repeatedInlineOutput = false
     if (edDecor != null && edDecor.contents.isNotEmpty()) {
         var changed = false
         for (i in edDecor.contents.size - 1 downTo 0) {
@@ -870,6 +907,12 @@ fun addOutput(
                 continue
             }
             if ((entry._line as? Number)?.toInt() == belowLine) {
+                if (entry.isTick as? Boolean == true) {
+                    val previousText = entry._text as? String ?: ""
+                    val previousClass = entry._extraClass as? String ?: ""
+                    repeatedInlineOutput =
+                        repeatedInlineOutput || (previousText == textClean && previousClass == extraClass)
+                }
                 edDecor.contents.removeAt(i)
                 changed = true
             }
@@ -884,9 +927,12 @@ fun addOutput(
     }
     if (found != null) {
         found.autoScroll = !richHtml
-        if (richHtml) {
+        val shouldPulse = if (richHtml) {
+            val repeatedContent = updateOutputFlashSignature(found, textClean)
             found.domNodeInner.innerHTML = textClean
+            repeatedContent
         } else {
+            found.flashSignature = null
             appendWithBadge(found.domNodeInner, textClean)
         }
         scheduleOutputHeightRecompute(editor, found)
@@ -903,7 +949,9 @@ fun addOutput(
         domNode.classList.add(extraClass)
         domNode.style.asDynamic().overflow = if (richHtml) "hidden" else "scroll"
         domNode.style.zIndex = "11"
-        pulseOutput(found.domNodeInner)
+        if (shouldPulse) {
+            pulseOutput(found.domNodeInner)
+        }
         if (found.autoScroll as? Boolean != false) {
             window.setTimeout({
                 scrollOutputToBottom(domNode, found.domNodeInner as? HTMLElement, outputScrollTailExistingPx)
@@ -923,7 +971,7 @@ fun addOutput(
     val decorationMatch = edDecor?.contents?.firstOrNull { entry ->
         (entry._line as? Number)?.toInt() == belowLine
     }
-    if (decorationMatch != null && edDecor != null) {
+    if (decorationMatch != null) {
         if (decorationMatch.isTick as? Boolean == true) {
             edDecor.contents.remove(decorationMatch)
             edDecor.collection?.set(edDecor.contents.toTypedArray())
@@ -943,7 +991,7 @@ fun addOutput(
         extraClass != "error" &&
         !richHtml
     ) {
-        addInlineOutput(editor, belowLine, textClean, extraClass, frameMarker)
+        addInlineOutput(editor, belowLine, textClean, extraClass, frameMarker, shouldFlash = repeatedInlineOutput)
     } else {
         editor.changeViewZones { changeAccessor: dynamic ->
             val domNode = document.createElement("div") as HTMLElement
@@ -1009,7 +1057,6 @@ fun addOutput(
                     scrollOutputToBottom(domNode, domNodeInner, outputScrollTailNewPx)
                 }, 100)
             }
-            pulseOutput(domNodeInner)
 
             val zone = js("{}")
             zone.afterLineNumber = belowLine
@@ -1039,6 +1086,7 @@ fun addOutput(
             output.domNodeControl = domNodeControl
             output.insertionOrder = ++orderCounter
             output.kind = extraClass
+            output.flashSignature = if (richHtml) textClean else null
             output.autoScroll = !richHtml
             output.userCollapsed = false
             output.editor = editor
@@ -1173,12 +1221,11 @@ private fun alignSpansWithinXPixels(x: Double): Boolean {
     return stop
 }
 
-private fun appendWithBadge(div: dynamic, msg: String) {
-    val container = div as? HTMLElement ?: return
+private fun appendWithBadge(div: dynamic, msg: String): Boolean {
+    val container = div as? HTMLElement ?: return false
     val message = msg
     val last = container.lastElementChild
-    val isLastLogLine =
-        last != null && last.classList != null && last.classList.contains("log-line")
+    val isLastLogLine = last?.classList?.contains("log-line") == true
 
     if (isLastLogLine && (last as HTMLElement).dataset.asDynamic().msg == message) {
         val badge = last.querySelector(".badge") as HTMLElement
@@ -1187,7 +1234,7 @@ private fun appendWithBadge(div: dynamic, msg: String) {
         badge.dataset.asDynamic().count = next.toString()
         badge.textContent = "×$next"
         badge.classList.add("show")
-        return
+        return true
     }
 
     val line = document.createElement("div") as HTMLElement
@@ -1206,4 +1253,5 @@ private fun appendWithBadge(div: dynamic, msg: String) {
     line.appendChild(badge)
     container.appendChild(line)
     container.scrollTop = container.scrollHeight.toDouble()
+    return false
 }

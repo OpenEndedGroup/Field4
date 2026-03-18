@@ -791,8 +791,8 @@ class SavingContext {
             // Define the guide files to copy
             val guidesToCopy = mapOf(
                 "templates/WORKSPACE_README.md" to "README.md",
-                "dev_docs/agents/AGENT_GUIDE.md" to "AGENT_GUIDE.md",
-                "dev_docs/agents/AGENT_QUICK_REF.md" to "AGENT_QUICK_REF.md"
+                "AGENT_GUIDE.md" to "AGENT_GUIDE.md",
+                "AGENT_QUICK_REF.md" to "AGENT_QUICK_REF.md"
             )
             
             // Get the repository root (go up from wherever we are)
@@ -833,8 +833,7 @@ class SavingContext {
             // Check for repository markers
             if (File(current, "build.gradle.kts").exists() || 
                 File(current, ".git").exists() ||
-                File(current, "AGENTS.md").exists() ||
-                File(current, "dev_docs/agents/AGENT_GUIDE.md").exists()) {
+                File(current, "AGENT_GUIDE.md").exists()) {
                 return current
             }
             current = current.parentFile ?: break

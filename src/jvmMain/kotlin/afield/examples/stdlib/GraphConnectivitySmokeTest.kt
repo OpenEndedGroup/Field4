@@ -4,6 +4,18 @@ import afield.stdlib.*
 import kotlin.math.abs
 import kotlin.random.Random
 
+/*
+FIELD_TEST
+id: stdlib.graph-connectivity.smoke
+runner: jvm-main
+entrypoint: afield.examples.stdlib.GraphConnectivitySmokeTest
+tags: [smoke, stdlib, graph, geometry]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "Graph Connectivity smoke tests passed"
+*/
 /**
  * Smoke tests for the graph connectivity library.
  *
@@ -204,8 +216,17 @@ object GraphConnectivitySmokeTest {
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.isNotEmpty()) { "Gabriel graph should have edges" }
         
-        // Gabriel graph should include edges of the square
-        require(graph.edges.size == 4) { "Square should have 4 Gabriel edges, got ${graph.edges.size}" }
+        val undirectedEdges = graph.edges
+            .map { minOf(it.i, it.j) to maxOf(it.i, it.j) }
+            .toSet()
+
+        // With the open-circle Gabriel definition, the square's diagonals are retained because the
+        // opposite corners lie on the boundary of the diameter circle rather than strictly inside it.
+        require(graph.edges.size == 6) { "Square should have 6 Gabriel edges under open-circle semantics, got ${graph.edges.size}" }
+        require((0 to 1) in undirectedEdges) { "Expected square edge 0-1" }
+        require((0 to 2) in undirectedEdges) { "Expected square edge 0-2" }
+        require((1 to 3) in undirectedEdges) { "Expected square edge 1-3" }
+        require((2 to 3) in undirectedEdges) { "Expected square edge 2-3" }
         
         println("  ✓ 2D Gabriel graph test passed")
     }

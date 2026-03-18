@@ -12,6 +12,7 @@ import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
 import afield.logger.lprintln
+import io.ktor.websocket.WebSocketSession
 import jep.*
 import jep.python.PyCallable
 import jep.python.PyObject
@@ -634,9 +635,10 @@ print(" python interpreter has finished starting up ")
     val otherError = Regex("<class\\s+'([^']+)'>:(.*)")
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        val originSession = thisSession.get()
         inMain {
             var withholdEndNotification = false
-            configureOutputProxies(inside, reply)
+            configureOutputProxies(inside, reply, originSession)
             hasHadOutput = false
             deliverStdOut = {
                 inside.print(it)
@@ -734,14 +736,20 @@ print(" python interpreter has finished starting up ")
                 )
 
                 // just send an ok if we need to
-                if (!hasHadOutput) Message("output").payload(
-                    Output(
-                        line = execute.line + execute.code.split("\n").count(),
-                        kind = "ok",
-                        html = "ok",
-                        frame = Runloop.runLoop.frame.toInt()
+                if (!hasHadOutput) {
+                    dispatchExecutionOutput(
+                        inside,
+                        reply,
+                        Output(
+                            uid = inside.id,
+                            line = execute.line + execute.code.split("\n").count(),
+                            kind = "ok",
+                            html = "ok",
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
                     )
-                )
+                }
             }
         }
     }

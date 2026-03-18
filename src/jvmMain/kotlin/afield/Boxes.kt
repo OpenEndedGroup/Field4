@@ -486,7 +486,7 @@ fun doResync() {
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
                     is String -> {
                         lprintln("info,boxes", "sending set-string for $name = $value")
-                        if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized()) {
+                        if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized() && !box.inside.ephemeral) {
                             box.inside.pendingSidecarSaves += box.id to name
                         }
                         Message("set-string").payload(Set_string(box.id, name, value))

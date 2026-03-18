@@ -1,18 +1,12 @@
 package afield.four.synth
 
+import afield.Box
 import afield.RunsAt
 import afield.newRoot
 import afield.registerValuePrinter
-import java.util.Locale
-import kotlin.math.PI
-import kotlin.math.ceil
-import kotlin.math.cos
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
+import kotlinx.coroutines.*
+import java.util.*
+import kotlin.math.*
 
 private const val SYNTH_BLUE = "#0af"
 private const val FIELD_ORANGE = "#f80"
@@ -206,6 +200,13 @@ data class AudioSnapshot(
             gapPx = gap
         )
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "frameCount" to frameCount,
+        "isStereo" to isStereo,
+        "sampleRate" to sampleRate
+    )
 }
 
 class Scope(
@@ -224,7 +225,7 @@ class Scope(
 class StereoScope(
     private val source: StereoRenderable,
     historySize: Int = 4096
-) : StereoNode() {
+) : StereoNode(), LiveGraphInspectable {
     internal val trace = StereoTrace(capacity = historySize, stride = 1)
     @Volatile internal var sampleRateHint: Int = 48_000
 
@@ -233,6 +234,10 @@ class StereoScope(
         sampleRateHint = ctx.sampleRate.roundToInt()
         trace.recordStereo(outL, outR, numFrames)
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("source") { source }
+    )
 }
 
 fun Signal.scope(historySize: Int = 4096): Scope = Scope(historySize).also { it.input = this }
@@ -295,6 +300,46 @@ fun AudioPatchSpec.summaryHtml(
     fontFamily = fontFamily
 )
 
+private val liveSynthVisualizerJobs =
+    java.util.Collections.synchronizedMap(WeakHashMap<Box, MutableMap<String, Job>>())
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun installLiveSynthVisualizer(
+    key: String,
+    channel: String,
+    refreshHz: Double,
+    render: () -> String
+) {
+    val box = Box.context.get()
+        ?: throw IllegalStateException("Live synth visualizers require an active Box context")
+    val intervalMs = (1000.0 / refreshHz.coerceIn(1.0, 60.0)).toLong().coerceAtLeast(16L)
+
+    val job = GlobalScope.launch(Box.boxContextElement(box)) {
+        while (isActive) {
+            box.display(channel, render())
+            delay(intervalMs)
+        }
+    }
+
+    liveSynthVisualizerJobs.computeIfAbsent(box) { mutableMapOf() }
+        .put(key, job)
+        ?.cancel()
+
+    box.jobs += job
+}
+
+fun AudioPatchSpec.liveSummary(
+    channel: String = "audio",
+    refreshHz: Double = 12.0,
+    widthPx: Int = 640,
+    waveformHeightPx: Int = 96,
+    spectrumHeightPx: Int = 96
+): AudioPatchSpec = apply {
+    installLiveSynthVisualizer("audio-summary:$channel", channel, refreshHz) {
+        summaryHtml(widthPx = widthPx, waveformHeightPx = waveformHeightPx, spectrumHeightPx = spectrumHeightPx)
+    }
+}
+
 fun Scope.snapshot(sampleRate: Int = sampleRateHint): AudioSnapshot = trace.snapshot(sampleRate)
 
 fun Scope.waveformSvg(
@@ -320,6 +365,48 @@ fun Scope.summaryHtml(
     spectrumHeightPx = spectrumHeightPx
 )
 
+fun Scope.liveWaveform(
+    channel: String = "scope",
+    refreshHz: Double = 30.0,
+    widthPx: Int = 480,
+    heightPx: Int = 96,
+    sampleRate: Int = 48_000
+): Scope = apply {
+    installLiveSynthVisualizer("scope-waveform:$channel", channel, refreshHz) {
+        waveformSvg(widthPx = widthPx, heightPx = heightPx, sampleRate = sampleRate)
+    }
+}
+
+fun Scope.liveSpectrum(
+    channel: String = "scope",
+    refreshHz: Double = 30.0,
+    widthPx: Int = 480,
+    heightPx: Int = 96,
+    sampleRate: Int = 48_000
+): Scope = apply {
+    installLiveSynthVisualizer("scope-spectrum:$channel", channel, refreshHz) {
+        spectrumSvg(widthPx = widthPx, heightPx = heightPx, sampleRate = sampleRate)
+    }
+}
+
+fun Scope.liveSummary(
+    channel: String = "scope",
+    refreshHz: Double = 12.0,
+    widthPx: Int = 640,
+    waveformHeightPx: Int = 96,
+    spectrumHeightPx: Int = 96,
+    sampleRate: Int = 48_000
+): Scope = apply {
+    installLiveSynthVisualizer("scope-summary:$channel", channel, refreshHz) {
+        summaryHtml(
+            widthPx = widthPx,
+            waveformHeightPx = waveformHeightPx,
+            spectrumHeightPx = spectrumHeightPx,
+            sampleRate = sampleRate
+        )
+    }
+}
+
 fun StereoScope.snapshot(sampleRate: Int = sampleRateHint): AudioSnapshot = trace.snapshot(sampleRate)
 
 fun StereoScope.waveformSvg(
@@ -340,6 +427,82 @@ fun StereoScope.summaryHtml(
     spectrumHeightPx: Int = 96,
     sampleRate: Int = 48_000
 ): String = snapshot(sampleRate).summaryHtml(
+    widthPx = widthPx,
+    waveformHeightPx = waveformHeightPx,
+    spectrumHeightPx = spectrumHeightPx
+)
+
+fun StereoScope.liveWaveform(
+    channel: String = "stereo",
+    refreshHz: Double = 12.0,
+    widthPx: Int = 480,
+    heightPx: Int = 96,
+    sampleRate: Int = 48_000
+): StereoScope = apply {
+    installLiveSynthVisualizer("stereo-waveform:$channel", channel, refreshHz) {
+        waveformSvg(widthPx = widthPx, heightPx = heightPx, sampleRate = sampleRate)
+    }
+}
+
+fun StereoScope.liveSpectrum(
+    channel: String = "stereo",
+    refreshHz: Double = 12.0,
+    widthPx: Int = 480,
+    heightPx: Int = 96,
+    sampleRate: Int = 48_000
+): StereoScope = apply {
+    installLiveSynthVisualizer("stereo-spectrum:$channel", channel, refreshHz) {
+        spectrumSvg(widthPx = widthPx, heightPx = heightPx, sampleRate = sampleRate)
+    }
+}
+
+fun StereoScope.liveSummary(
+    channel: String = "stereo",
+    refreshHz: Double = 12.0,
+    widthPx: Int = 640,
+    waveformHeightPx: Int = 96,
+    spectrumHeightPx: Int = 96,
+    sampleRate: Int = 48_000
+): StereoScope = apply {
+    installLiveSynthVisualizer("stereo-summary:$channel", channel, refreshHz) {
+        summaryHtml(
+            widthPx = widthPx,
+            waveformHeightPx = waveformHeightPx,
+            spectrumHeightPx = spectrumHeightPx,
+            sampleRate = sampleRate
+        )
+    }
+}
+
+fun SpectralWavetable.waveformSvg(
+    position: Float = lastAccessPosition,
+    harmonicLimit: Int = frameSize / 2,
+    widthPx: Int = 480,
+    heightPx: Int = 96
+): String = snapshot(position = position, harmonicLimit = harmonicLimit).waveformSvg(
+    widthPx = widthPx,
+    heightPx = heightPx,
+    title = "Wavetable Waveform"
+)
+
+fun SpectralWavetable.spectrumSvg(
+    position: Float = lastAccessPosition,
+    harmonicLimit: Int = frameSize / 2,
+    widthPx: Int = 480,
+    heightPx: Int = 96
+): String = snapshot(position = position, harmonicLimit = harmonicLimit).spectrumSvg(
+    widthPx = widthPx,
+    heightPx = heightPx,
+    title = "Wavetable Spectrum"
+)
+
+fun SpectralWavetable.summaryHtml(
+    position: Float = lastAccessPosition,
+    harmonicLimit: Int = frameSize / 2,
+    widthPx: Int = 640,
+    waveformHeightPx: Int = 96,
+    spectrumHeightPx: Int = 96
+): String = snapshot(position = position, harmonicLimit = harmonicLimit).summaryHtml(
     widthPx = widthPx,
     waveformHeightPx = waveformHeightPx,
     spectrumHeightPx = spectrumHeightPx
@@ -585,15 +748,17 @@ private fun renderWaveformSvg(
     val leftBuckets = buildWaveBuckets(leftValues, bucketCount)
     val rightBuckets = rightValues?.let { buildWaveBuckets(it, bucketCount) }
 
-    fun drawBuckets(buckets: List<WaveBucket>, color: String, opacity: Double): String = buildString {
-        val step = if (bucketCount <= 1) 0.0 else innerW / (bucketCount - 1)
-        buckets.forEachIndexed { index, bucket ->
-            val x = x0 + step * index
-            append(
-                """<line x1="${x.f2()}" y1="${yFor(bucket.min).f2()}" x2="${x.f2()}" y2="${yFor(bucket.max).f2()}" stroke="$color" stroke-width="1.1" stroke-linecap="round" opacity="$opacity"/>"""
-            )
-            append('\n')
-        }
+    fun drawEnvelope(buckets: List<WaveBucket>, color: String, fillOpacity: Double, strokeOpacity: Double): String {
+        val envelope = buildWaveEnvelopePath(
+            buckets = buckets,
+            x0 = x0,
+            innerW = innerW,
+            yFor = ::yFor
+        )
+        if (envelope.isEmpty()) return ""
+        return """
+            <path d="$envelope" fill="$color" fill-opacity="$fillOpacity" stroke="$color" stroke-opacity="$strokeOpacity" stroke-width="1.0" stroke-linejoin="round"/>
+        """.trimIndent()
     }
 
     val infoBadges = buildBadges(
@@ -620,8 +785,8 @@ private fun renderWaveformSvg(
           <text x="${x0.f2()}" y="13" font-family="$fontFamily" font-size="10" fill="$primaryColor">$title</text>
           $infoBadges
           <line x1="${x0.f2()}" y1="${centerY.f2()}" x2="${(x0 + innerW).f2()}" y2="${centerY.f2()}" stroke="$primaryColor" opacity="0.25" stroke-width="1"/>
-          ${drawBuckets(leftBuckets, primaryColor, 0.95)}
-          ${if (rightBuckets != null) drawBuckets(rightBuckets, secondaryColor, 0.75) else ""}
+          ${drawEnvelope(leftBuckets, primaryColor, fillOpacity = 0.24, strokeOpacity = 0.92)}
+          ${if (rightBuckets != null) drawEnvelope(rightBuckets, secondaryColor, fillOpacity = 0.14, strokeOpacity = 0.72) else ""}
           $legend
         </svg>
     """.trimIndent()
@@ -826,6 +991,31 @@ private fun emptySvg(
 
 private data class WaveBucket(val min: Float, val max: Float)
 
+private fun buildWaveEnvelopePath(
+    buckets: List<WaveBucket>,
+    x0: Double,
+    innerW: Double,
+    yFor: (Float) -> Double
+): String {
+    if (buckets.isEmpty()) return ""
+    val count = buckets.size
+    val step = if (count <= 1) 0.0 else innerW / (count - 1)
+
+    return buildString {
+        buckets.forEachIndexed { index, bucket ->
+            val x = x0 + step * index
+            val y = yFor(bucket.max)
+            if (index == 0) append("M ${x.f2()} ${y.f2()}") else append(" L ${x.f2()} ${y.f2()}")
+        }
+        for (index in buckets.indices.reversed()) {
+            val bucket = buckets[index]
+            val x = x0 + step * index
+            append(" L ${x.f2()} ${yFor(bucket.min).f2()}")
+        }
+        append(" Z")
+    }
+}
+
 private fun buildWaveBuckets(values: FloatArray, bucketCount: Int): List<WaveBucket> {
     if (values.isEmpty()) return emptyList()
     val safeCount = bucketCount.coerceAtLeast(1).coerceAtMost(values.size)
@@ -973,6 +1163,7 @@ fun registerSynthVisualizers() {
     registerValuePrinter<AudioPatchSpec> { it.summaryHtml() }
     registerValuePrinter<Scope> { it.summaryHtml() }
     registerValuePrinter<StereoScope> { it.summaryHtml() }
+    registerValuePrinter<SpectralWavetable> { it.summaryHtml() }
     registerValuePrinter<ADSR> { it.stateHtml() }
     registerValuePrinter<AR> { it.stateHtml() }
     registerValuePrinter<BreakpointEnvelope> { it.stateHtml() }

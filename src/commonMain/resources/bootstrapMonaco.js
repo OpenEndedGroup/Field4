@@ -153,7 +153,7 @@ const initMonaco = () => {
                                                 }
                                         }
 
-                                        const sortPrefix = opts.ai ? "0000" : "1000"
+                                        const sortPrefix = opts.ai ? "9000" : "1000"
                                         const sortText = sortPrefix + (idx++).toString(36).padStart(6, "0")
 
                                         return {
@@ -163,7 +163,7 @@ const initMonaco = () => {
                                                 kind: kindForIcon(m.icon),
                                                 detail: m.tail,
                                                 sortText: sortText,
-                                                preselect: !!opts.ai,
+                                                preselect: false,
                                                 documentation: {
                                                         value: m.documentation,
                                                         isTrusted: true,
@@ -199,8 +199,10 @@ const initMonaco = () => {
                                         if (!window.kotlinAiCompletion || window.kotlinAiCompletion.key !== sessionKey) return true
                                         const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true})
                                         window.kotlinAiCompletion.ai = aiSuggestions
-                                        window.kotlinAiCompletion.merged = (window.kotlinAiCompletion.base || []).concat(aiSuggestions)
-                                        if (aiSuggestions.length > 0) {
+                                        const baseExisting = window.kotlinAiCompletion.base || []
+                                        const hasBase = baseExisting.length > 0
+                                        window.kotlinAiCompletion.merged = hasBase ? baseExisting : aiSuggestions
+                                        if (!hasBase && aiSuggestions.length > 0) {
                                                 window.kotlinAiCompletion.useCacheOnce = true
                                                 if (isSuggestWidgetVisible()) {
                                                         try {
@@ -227,7 +229,7 @@ const initMonaco = () => {
                                         const baseSuggestions = buildSuggestions(payload, {offset: 0})
                                         window.kotlinAiCompletion.base = baseSuggestions
                                         const aiExisting = window.kotlinAiCompletion.ai || []
-                                        window.kotlinAiCompletion.merged = aiExisting.length > 0 ? baseSuggestions.concat(aiExisting) : baseSuggestions
+                                        window.kotlinAiCompletion.merged = baseSuggestions.length > 0 ? baseSuggestions : aiExisting
 
                                         monacoLog("resolving. Answer is ", {suggestions: baseSuggestions})
                                         resolve({suggestions: baseSuggestions})
@@ -242,6 +244,11 @@ const initMonaco = () => {
                                 if (!item || !item.data) return item
                                 if (item.data.aiDocResolved || item.data.aiDocPending) return item
                                 if (item.data.source !== "kotlin") return item
+                                const existingDocValue = (item.documentation && item.documentation.value) ? item.documentation.value.trim() : ""
+                                if (existingDocValue.length > 0) {
+                                        item.data.aiDocResolved = true
+                                        return item
+                                }
 
                                 // Find the right editor+model: check focused embedded editor first, fall back to globalEditor
                                 const embFocused = window.embeddedEditors && window.embeddedEditors.getFocused();
@@ -266,7 +273,7 @@ const initMonaco = () => {
                                         insertText: item.data.insertText || item.insertText || "",
                                         detail: item.data.detail || item.detail || "",
                                         displayText: item.data.displayText || labelText || "",
-                                        existingDocumentation: (item.documentation && item.documentation.value) ? item.documentation.value : "",
+                                        existingDocumentation: existingDocValue,
                                         allCode: model.getValue(),
                                         line: pos.lineNumber,
                                         column: pos.column,

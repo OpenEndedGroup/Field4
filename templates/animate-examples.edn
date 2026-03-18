@@ -173,7 +173,7 @@ animate {
  * - Clear separation of concerns
  * - Standard pattern across examples
  * 
- * See ANIMATE_BLOCK_SYNTAX.md for more details.
+ * See dev_docs/animation/ANIMATE_BLOCK_SYNTAX.md for more details.
  */"
    :x 500
    :y 170

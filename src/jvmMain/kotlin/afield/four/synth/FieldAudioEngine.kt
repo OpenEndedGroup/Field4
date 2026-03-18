@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 class AudioPatchSpec internal constructor(
     internal var renderer: Renderer,
     val warmUpCycles: Int = 0
-) {
+) : LiveGraphInspectable {
     internal val visualTrace = StereoTrace(capacity = 4096, stride = 1)
     internal var visualSampleRate: Int = 48_000
 
@@ -60,6 +60,17 @@ class AudioPatchSpec internal constructor(
     private object PlaceholderRenderer : Renderer {
         override fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) = Unit
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("renderer") { renderer },
+        LiveGraphEdge("warmUpCycles") { warmUpCycles }
+    )
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "renderer" to renderer,
+        "warmUpCycles" to warmUpCycles
+    )
 }
 
 class AudioPatchHandle internal constructor(
@@ -69,6 +80,8 @@ class AudioPatchHandle internal constructor(
     override fun close() {
         engine.unregister(id)
     }
+
+    override fun toString(): String = "AudioPatchHandle(id=$id)"
 }
 
 private class MonoRenderer(
@@ -76,7 +89,7 @@ private class MonoRenderer(
     private val gain: Param,
     private val pan: Param,
     private val trace: StereoTrace
-) : AudioPatchSpec.Renderer {
+) : AudioPatchSpec.Renderer, LiveGraphInspectable {
     private var srcBuf = FloatArray(0)
     private var gainBuf = FloatArray(0)
     private var panBuf = FloatArray(0)
@@ -109,13 +122,19 @@ private class MonoRenderer(
         }
         trace.recordStereo(patchL, patchR, numFrames)
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("source") { source },
+        LiveGraphEdge("gain") { gain },
+        LiveGraphEdge("pan") { pan }
+    )
 }
 
 private class StereoRenderer(
     private val source: StereoRenderable,
     private val gain: Param,
     private val trace: StereoTrace
-) : AudioPatchSpec.Renderer {
+) : AudioPatchSpec.Renderer, LiveGraphInspectable {
     private var leftBuf = FloatArray(0)
     private var rightBuf = FloatArray(0)
     private var gainBuf = FloatArray(0)
@@ -138,6 +157,11 @@ private class StereoRenderer(
         }
         trace.recordStereo(leftBuf, rightBuf, numFrames)
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("source") { source },
+        LiveGraphEdge("gain") { gain }
+    )
 }
 
 class FieldAudioEngine private constructor(
@@ -219,6 +243,17 @@ class FieldAudioEngine private constructor(
         start()
         return StereoSignal(leftInputSignal, rightInputSignal)
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "sampleRate" to sampleRate,
+        "bufferSize" to bufferSize,
+        "queuedBufferCount" to queuedBufferCount,
+        "inputChannels" to inputChannels,
+        "patchCount" to patches.size,
+        "inputActive" to inputActive,
+        "outputActive" to outputActive
+    )
 
     fun register(spec: AudioPatchSpec): AudioPatchHandle {
         start()

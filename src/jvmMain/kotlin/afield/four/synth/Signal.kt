@@ -1,5 +1,10 @@
 package afield.four.synth
 
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.createCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 
 // ═══════════════════════════════════════════════════════════════════
@@ -63,6 +68,14 @@ class SynthContext(
 
     /** Return a buffer to the pool. */
     fun releaseBuf(buf: FloatArray) { pool.addLast(buf) }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "sampleRate" to sampleRate,
+        "bufferSize" to bufferSize,
+        "cycleId" to cycleId,
+        "time" to time
+    )
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -100,12 +113,16 @@ abstract class Signal {
 
     operator fun plus(other: Signal): Signal  = BinaryOp(this, other, BinaryOp.Kind.ADD)
     operator fun plus(value: Float): Signal   = BinaryOp(this, Const(value), BinaryOp.Kind.ADD)
+    operator fun plus(value: Double): Signal  = this + value.toFloat()
     operator fun minus(other: Signal): Signal = BinaryOp(this, other, BinaryOp.Kind.SUB)
     operator fun minus(value: Float): Signal  = BinaryOp(this, Const(value), BinaryOp.Kind.SUB)
+    operator fun minus(value: Double): Signal = this - value.toFloat()
     operator fun times(other: Signal): Signal = BinaryOp(this, other, BinaryOp.Kind.MUL)
     operator fun times(value: Float): Signal  = Scale(this, value)
+    operator fun times(value: Double): Signal = Scale(this, value.toFloat())
     operator fun div(other: Signal): Signal   = BinaryOp(this, other, BinaryOp.Kind.DIV)
     operator fun div(value: Float): Signal    = Scale(this, 1f / value)
+    operator fun div(value: Double): Signal   = Scale(this, 1f / value.toFloat())
     operator fun div(processor: SignalProcessor): Signal = through(processor)
     operator fun unaryMinus(): Signal         = Negate(this)
 
@@ -116,12 +133,22 @@ abstract class Signal {
     }
 
     infix fun mix(other: Signal): Signal = this + other
+
+    override fun toString(): String = synthPrettyObject(this)
 }
+
+/** Mono signals already memoize per audio block, so this is an intent marker. */
+fun Signal.hold(): Signal = this
 
 
 operator fun Float.plus(sig: Signal): Signal  = sig + this
 operator fun Float.times(sig: Signal): Signal = sig * this
 operator fun Float.minus(sig: Signal): Signal = Const(this) - sig
+
+operator fun Double.plus(sig: Signal): Signal  = sig + toFloat()
+operator fun Double.times(sig: Signal): Signal = sig * toFloat()
+operator fun Double.minus(sig: Signal): Signal = Const(toFloat()) - sig
+operator fun Int.times(sig: Signal): Signal    = sig * toFloat()
 
 // ═══════════════════════════════════════════════════════════════════
 //  Param – modulatable parameter
@@ -145,17 +172,61 @@ class Param(var base: Float = 0f) : Signal() {
 
     companion object {
         /**
-         * Create a parameter driven by a lambda, with per-buffer
-         * linear interpolation.  The lambda receives [SynthContext]
-         * as `this`, so you can use [SynthContext.time] etc.
+         * Create a parameter from a lambda.
+         *
+         * If the block simply returns a [Float], it behaves like the original
+         * once-per-buffer supplier:
          *
          * ```kotlin
-         * val cutoff = Param { 1000f + 500f * sin(time * 3f) }
+         * val cutoff = Param { 1000f + 500f * kotlin.math.sin(time * 3f) }
+         * ```
+         *
+         * If the block uses [ParamScope.yield], it becomes a coroutine-style
+         * generator that resumes once per audio block while keeping local state:
+         *
+         * ```kotlin
+         * val cutoff = Param {
+         *     var step = 0
+         *     while (true) {
+         *         step = (step + 1) % 8
+         *         yield(400f + step * 120f + kotlin.math.sin(time) * 40f)
+         *     }
+         * }
          * ```
          */
-        operator fun invoke(supplier: SynthContext.() -> Float): Param {
+        operator fun invoke(block: suspend ParamScope.() -> Any?): Param {
+            val driver = ParamCoroutineDriver(block)
             val p = Param()
-            p.supplier = supplier
+            var last = p.base
+            p.supplier = {
+                driver.next(this)?.also { last = it } ?: last
+            }
+            return p
+        }
+
+        /**
+         * Create a parameter that steps through a sequence once per audio block.
+         *
+         * When the sequence is exhausted, the parameter holds the last value.
+         */
+        operator fun invoke(values: Sequence<Float>, defaultValue: Float = 0f): Param =
+            invoke(values.iterator(), defaultValue)
+
+        /**
+         * Iterator form of the sequence-driven parameter constructor.
+         *
+         * Values are consumed once per audio block and then linearly interpolated
+         * across that block, matching the standard [supplier] behaviour.
+         */
+        operator fun invoke(values: Iterator<Float>, defaultValue: Float = 0f): Param {
+            val p = Param(defaultValue)
+            var last = defaultValue
+            p.supplier = {
+                if (values.hasNext()) {
+                    last = values.next()
+                }
+                last
+            }
             return p
         }
     }
@@ -212,6 +283,118 @@ class Param(var base: Float = 0f) : Signal() {
         "Param(base=$base, supplier=${supplier != null}, mod=${mod != null})"
 }
 
+class ParamScope internal constructor() {
+    internal var currentContext: SynthContext? = null
+    internal var yieldedValue: Float = 0f
+    internal var hasYielded: Boolean = false
+    internal var nextStep: Continuation<Unit>? = null
+
+    val context: SynthContext
+        get() = currentContext ?: error("Param builder is not currently running inside an audio context")
+
+    val time: Float
+        get() = context.time
+
+    val sampleRate: Float
+        get() = context.sampleRate
+
+    val bufferSize: Int
+        get() = context.bufferSize
+
+    val cycleId: Long
+        get() = context.cycleId
+
+    val inverseSampleRate: Float
+        get() = context.inverseSampleRate
+
+    val nyquist: Float
+        get() = context.nyquist
+
+    fun acquireBuf(size: Int = bufferSize): FloatArray = context.acquireBuf(size)
+
+    fun releaseBuf(buf: FloatArray) {
+        context.releaseBuf(buf)
+    }
+
+    suspend fun yield(value: Float) {
+        suspendCoroutine<Unit> { continuation ->
+            yieldedValue = value
+            hasYielded = true
+            nextStep = continuation
+        }
+    }
+
+    suspend fun yieldAll(values: Iterator<Float>) {
+        while (values.hasNext()) yield(values.next())
+    }
+
+    suspend fun yieldAll(values: Iterable<Float>) = yieldAll(values.iterator())
+
+    suspend fun yieldAll(values: Sequence<Float>) = yieldAll(values.iterator())
+}
+
+private class ParamCoroutineDriver(
+    private val block: suspend ParamScope.() -> Any?
+) {
+    private val scope = ParamScope()
+    private var nextStep: Continuation<Unit>? = null
+    private var completed = false
+    private var completionValue: Any? = null
+    private var failure: Throwable? = null
+    private var hasEverYielded = false
+
+    fun next(ctx: SynthContext): Float? {
+        failure?.let { throw it }
+        if (nextStep == null) {
+            if (hasEverYielded && completed) return null
+            createFreshCoroutine()
+        }
+
+        scope.currentContext = ctx
+        scope.hasYielded = false
+        completionValue = null
+
+        val step = nextStep ?: return null
+        nextStep = null
+        step.resume(Unit)
+
+        failure?.let { throw it }
+        if (scope.hasYielded) {
+            hasEverYielded = true
+            nextStep = scope.nextStep
+            scope.nextStep = null
+            return scope.yieldedValue
+        }
+
+        if (!completed) {
+            error("Param builder neither returned a value nor yielded one")
+        }
+
+        if (hasEverYielded) return null
+
+        return when (val value = completionValue) {
+            is Number -> value.toFloat()
+            null -> 0f
+            else -> error("Param builder returned ${value::class.simpleName}; expected a Number or yield(...)")
+        }
+    }
+
+    private fun createFreshCoroutine() {
+        completed = false
+        completionValue = null
+        failure = null
+        nextStep = block.createCoroutine(scope, object : Continuation<Any?> {
+            override val context = EmptyCoroutineContext
+
+            override fun resumeWith(result: Result<Any?>) {
+                completed = true
+                completionValue = result.getOrNull()
+                failure = result.exceptionOrNull()
+            }
+        })
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  SignalProcessor – base for filters / effects with an input
 // ═══════════════════════════════════════════════════════════════════
@@ -234,20 +417,29 @@ class Const(val value: Float) : Signal() {
 }
 
 
-internal class Scale(private val src: Signal, private val scalar: Float) : Signal() {
+internal class Scale(private val src: Signal, private val scalar: Float) : Signal(), LiveGraphInspectable {
     private var tmp = FloatArray(0)
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         src.render(output, numFrames, ctx)
         Buf.scale(output, scalar, 0, numFrames)
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("src") { src },
+        LiveGraphEdge("scalar") { scalar }
+    )
 }
 
 
-internal class Negate(private val src: Signal) : Signal() {
+internal class Negate(private val src: Signal) : Signal(), LiveGraphInspectable {
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         src.render(output, numFrames, ctx)
         Buf.scale(output, -1f, 0, numFrames)
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("src") { src }
+    )
 }
 
 
@@ -255,7 +447,7 @@ internal class BinaryOp(
     private val a: Signal,
     private val b: Signal,
     private val kind: Kind
-) : Signal() {
+) : Signal(), LiveGraphInspectable {
     enum class Kind { ADD, SUB, MUL, DIV }
 
     private var tmp = FloatArray(0)
@@ -271,10 +463,16 @@ internal class BinaryOp(
             Kind.DIV -> Buf.div(output, tmp, 0, numFrames)
         }
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("a") { a },
+        LiveGraphEdge("b") { b },
+        LiveGraphEdge("kind") { kind.name }
+    )
 }
 
 
-class Mix(vararg sources: Signal) : Signal() {
+class Mix(vararg sources: Signal) : Signal(), LiveGraphInspectable {
     private val srcs = sources.toMutableList()
     private var tmp = FloatArray(0)
 
@@ -288,6 +486,10 @@ class Mix(vararg sources: Signal) : Signal() {
             Buf.add(output, tmp, 0, numFrames)
         }
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("sources") { srcs }
+    )
 }
 
 interface StereoRenderable {
@@ -312,6 +514,8 @@ abstract class StereoNode : StereoRenderable {
                 cacheL = FloatArray(numFrames)
                 cacheR = FloatArray(numFrames)
             }
+            Buf.clear(cacheL, 0, numFrames)
+            Buf.clear(cacheR, 0, numFrames)
             generateStereo(cacheL, cacheR, numFrames, ctx)
             cacheId = ctx.cycleId
         }
@@ -320,14 +524,20 @@ abstract class StereoNode : StereoRenderable {
     }
 
     protected abstract fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
+
+    override fun toString(): String = synthPrettyObject(this)
 }
 
 class StereoHold(
     private val source: StereoRenderable
-) : StereoNode() {
+) : StereoNode(), LiveGraphInspectable {
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
         source.render(outL, outR, numFrames, ctx)
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("source") { source }
+    )
 }
 
 fun StereoRenderable.hold(): StereoRenderable = if (this is StereoNode) this else StereoHold(this)
@@ -340,13 +550,19 @@ class StereoSignal(
         left.render(outL, numFrames, ctx)
         right.render(outR, numFrames, ctx)
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "left" to left,
+        "right" to right
+    )
 }
 
 
 class Pan(
     private val source: Signal,
     val pan: Param = Param(0f)
-) : StereoNode() {
+) : StereoNode(), LiveGraphInspectable {
     private var panBuf = FloatArray(0)
     private var srcBuf = FloatArray(0)
 
@@ -365,4 +581,9 @@ class Pan(
             outR[i] = srcBuf[i] * kotlin.math.sin(angle + piOver4)
         }
     }
+
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> = listOf(
+        LiveGraphEdge("source") { source },
+        LiveGraphEdge("pan") { pan }
+    )
 }

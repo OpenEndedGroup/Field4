@@ -6,6 +6,7 @@ import afield.ai.glslSpecForProperty
 import afield.logger.lprintln
 import afield.macros.standardExecutionPractice
 import afield.stdlib.*
+import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.*
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
@@ -55,32 +56,54 @@ private fun simplifyTypeForOutput(type: String?): String {
     return type.replace("kotlin.", "")
 }
 
-fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
+internal fun dispatchExecutionOutput(
+    box: Box,
+    reply: ((Message) -> Unit)?,
+    output: Output,
+    originSession: WebSocketSession? = thisSession.get()
+) {
+    val normalized = if (output.uid.isBlank()) output.copy(uid = box.id) else output
+    reply?.invoke(Message("output").payload(normalized))
+    _sendToPeerSessions(
+        Message("peer-output").payload(normalized),
+        sessionInfo = box.inside,
+        current = originSession
+    )
+}
+
+fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: WebSocketSession? = thisSession.get()) {
     box.output.proxy = { content, nl, line ->
         val n = content?.toString() ?: ""
         if (n.trim().length > 0) {
-            reply(
-                Message("output").payload(
-                    Output(
-                        line = line.i, kind = "normal", html = n.trim()+(if(nl) "\n" else ""), frame = Runloop.runLoop.frame.toInt()
-                    )
-                )
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = line.i,
+                    kind = "normal",
+                    html = n.trim() + (if (nl) "\n" else ""),
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
             )
         }
     }
 
     box.output.errorProxy = { content, property, nl ->
         val n = content?.toString() ?: ""
-        reply(
-            Message("output").payload(
-                Output(
-                    line = nl.i,
-                    kind = "err",
-                    property = property,
-                    html = if (n.trim().isEmpty()) "" else escapeForHtml(n),
-                    frame = Runloop.runLoop.frame.toInt()
-                )
-            )
+        dispatchExecutionOutput(
+            box,
+            reply,
+            Output(
+                uid = box.id,
+                line = nl.i,
+                kind = "err",
+                property = property,
+                html = if (n.trim().isEmpty()) "" else escapeForHtml(n),
+                frame = Runloop.runLoop.frame.toInt()
+            ),
+            originSession = originSession
         )
     }
 }
@@ -89,6 +112,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
 @Suppress("UnstableApiUsage")
 class KotlinExecution : BoxExecution {
     override fun executeFragment(box: Box, exec: Execute, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
 
         val ln = Math.max(0, exec.line)
 
@@ -100,16 +124,18 @@ class KotlinExecution : BoxExecution {
         if (existingFunction != null) {
             lprintln("debug,execution", "found existing function: $existingFunction")
 
-            reply(
-                Message("output").payload(
-                    Output(
-                        line = ln + dur,
-                        kind = "normal",
-                        html = existingFunction.function.toString() + "<br>",
-                        annotation = "<i>${existingFunction.name}=</i>(function)",
-                        frame = Runloop.runLoop.frame.toInt()
-                    )
-                )
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = ln + dur,
+                    kind = "normal",
+                    html = existingFunction.function.toString() + "<br>",
+                    annotation = "<i>${existingFunction.name}=</i>(function)",
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
             )
             return
         }
@@ -120,7 +146,7 @@ class KotlinExecution : BoxExecution {
         box._currentlyExecutingFragment = true
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
-            execute(box, code, reply, 0, finishedHandler = {
+            execute(box, code, reply, originSession, 0, finishedHandler = {
                 box._currentlyExecutingFragment = false
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
@@ -130,6 +156,7 @@ class KotlinExecution : BoxExecution {
     }
 
     override fun executeAll(box: Box, exec: Execute, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
 
         val code = exec.code
 
@@ -137,7 +164,7 @@ class KotlinExecution : BoxExecution {
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
             box.resetStdlibRandom()
-            execute(box, code, reply, code.split("\n").size, finishedHandler = {
+            execute(box, code, reply, originSession, code.split("\n").size, finishedHandler = {
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
         }
@@ -146,11 +173,9 @@ class KotlinExecution : BoxExecution {
     }
 
     override fun launchAll(box: Box, exec: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
 
         box.preamble = "" // still controversial
-
-        val generation = box.runGeneration.incrementAndGet("default")
-        send(Message("is-running").payload(IsRunning(exec.uid, true, generation, strand)))
 
         val ln = Math.max(0, exec.line)
 
@@ -165,16 +190,14 @@ class KotlinExecution : BoxExecution {
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}
             // this is just the field2 design
 
-            execute(box, code, reply, exec.line) { returnValue ->
+            execute(box, code, reply, originSession, exec.line) { returnValue ->
 
-                configureOutputProxies(box, reply)
+                configureOutputProxies(box, reply, originSession)
 
                 launchReturnValue(box, returnValue, strand = strand, { isRunning, strand, watermark ->
                     send(Message("is-running").payload(IsRunning(exec.uid, isRunning, watermark, strand)))
                 })
             }
-
-            send(Message("is-running").payload(IsRunning(exec.uid, false, generation, strand)))
         }
     }
 
@@ -183,6 +206,7 @@ class KotlinExecution : BoxExecution {
         box: Box,
         code: String,
         reply: ((Message) -> Unit)?,
+        originSession: WebSocketSession?,
         ln: Int,
         finishedHandler: () -> Unit = {},
         handleReturn: (Any?) -> Unit
@@ -198,30 +222,34 @@ class KotlinExecution : BoxExecution {
                     if (nl) output.add("")
 
                     lprintln("debug,execution", "out $content")
-                    reply?.invoke(
-                        Message("output").payload(
-                            Output(
-                                line = line.i,
-                                kind = "normal",
-                                html = content.toString().trim()+(if(nl) "\n" else ""),
-                                frame = Runloop.runLoop.frame.toInt()
-                            )
-                        )
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = line.i,
+                            kind = "normal",
+                            html = content.toString().trim() + (if (nl) "\n" else ""),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
                     )
 
                 }
                 box.output.errorProxy = { content, property, line ->
                     hasError = hasError || content != null
-                    reply?.invoke(
-                        Message("output").payload(
-                            Output(
-                                line = (line + ln).i,
-                                kind = "error",
-                                property = property,
-                                html = escapeForHtml(content?.toString()),
-                                frame = Runloop.runLoop.frame.toInt()
-                            )
-                        )
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = (line + ln).i,
+                            kind = "error",
+                            property = property,
+                            html = escapeForHtml(content?.toString()),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
                     )
                 }
                 box.output.displayProxy = { channel, content ->
@@ -239,29 +267,33 @@ class KotlinExecution : BoxExecution {
                         message = improveMessage(box, message)
                         first = false
                         if (it.location != null) {
-                            reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = it.location!!.start.line,
-                                        startColumn = it.location!!.start.col,
-                                        endLine = it.location!!.end?.line ?: -1,
-                                        endColumn = it.location!!.end?.col ?: -1,
-                                        kind = "error",
-                                        html = escapeForHtml(message),
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = it.location!!.start.line,
+                                    startColumn = it.location!!.start.col,
+                                    endLine = it.location!!.end?.line ?: -1,
+                                    endColumn = it.location!!.end?.col ?: -1,
+                                    kind = "error",
+                                    html = escapeForHtml(message),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                         } else {
-                            reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = ln + dur,
-                                        kind = "error",
-                                        html = escapeForHtml(message),
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = ln + dur,
+                                    kind = "error",
+                                    html = escapeForHtml(message),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                         }
                     }
@@ -289,15 +321,17 @@ class KotlinExecution : BoxExecution {
                 }
 
                 var firstLine = if (firstLineInThisBox!=-1) firstLineInThisBox else fallbackFirstLine
-                reply?.invoke(
-                    Message("output").payload(
-                        Output(
-                            line = firstLine,
-                            kind = "error",
-                            html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
-                            frame = Runloop.runLoop.frame.toInt()
-                        )
-                    )
+                dispatchExecutionOutput(
+                    box,
+                    reply,
+                    Output(
+                        uid = box.id,
+                        line = firstLine,
+                        kind = "error",
+                        html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
+                        frame = Runloop.runLoop.frame.toInt()
+                    ),
+                    originSession = originSession
                 )
 
             }, implicits = listOf(box))
@@ -316,15 +350,17 @@ class KotlinExecution : BoxExecution {
                 returnValues.forEach { returnValue ->
                     when (returnValue) {
                         is ResultValue.Unit -> {
-                            if (size == 0) reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = dur,
-                                        kind = "ok",
-                                        html = "ok",
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            if (size == 0) dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = dur,
+                                    kind = "ok",
+                                    html = "ok",
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                             handleReturn(null)
                         }
@@ -332,15 +368,17 @@ class KotlinExecution : BoxExecution {
                         is ResultValue.NotEvaluated -> {}
 
                         is ResultValue.Error -> {
-                            reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = ln + dur,
-                                        kind = "error",
-                                        html = escapeForHtml(returnValue.error.message ?: returnValue.error.javaClass.name),
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = ln + dur,
+                                    kind = "error",
+                                    html = escapeForHtml(returnValue.error.message ?: returnValue.error.javaClass.name),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                             handleReturn(null)
                         }
@@ -352,27 +390,30 @@ class KotlinExecution : BoxExecution {
                                 val type = simplifyTypeForOutput(returnValue.type)
 
                                 if (value.length > 0) {
-                                    reply?.invoke(
-                                        Message("output").payload(
-                                            Output(
-                                                line = ln + dur,
-                                                kind = "normal",
-                                                html = value,//.trim().replace("\n", "<br>") + "<br>",
-                                                annotation = "<i>${name}=</i>${type}",
-                                                frame = Runloop.runLoop.frame.toInt()
-                                            )
-                                        )
-                                    )
-                                } else reply?.invoke(
-
-                                    Message("output").payload(
+                                    dispatchExecutionOutput(
+                                        box,
+                                        reply,
                                         Output(
+                                            uid = box.id,
                                             line = ln + dur,
-                                            kind = "ok",
-                                            html = "ok",
+                                            kind = "normal",
+                                            html = value,
+                                            annotation = "<i>${name}=</i>${type}",
                                             frame = Runloop.runLoop.frame.toInt()
-                                        )
+                                        ),
+                                        originSession = originSession
                                     )
+                                } else dispatchExecutionOutput(
+                                    box,
+                                    reply,
+                                    Output(
+                                        uid = box.id,
+                                        line = ln + dur,
+                                        kind = "ok",
+                                        html = "ok",
+                                        frame = Runloop.runLoop.frame.toInt()
+                                    ),
+                                    originSession = originSession
                                 )
                             }
 
@@ -380,15 +421,17 @@ class KotlinExecution : BoxExecution {
                         }
 
                         null -> {
-                            if (size == 0) reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = ln + dur,
-                                        kind = "ok",
-                                        html = "ok",
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            if (size == 0) dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = ln + dur,
+                                    kind = "ok",
+                                    html = "ok",
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                             handleReturn(null)
                         }
@@ -703,12 +746,14 @@ class KotlinExecution : BoxExecution {
         }
 
         fun completionFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
+            val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             return c.metadata.map {
 //                println(it.extraInfo)
                 var extraDoc = ""
                 val descriptor = it.extraInfo.getOrDefault("original", null)
                 var mainText = it.displayText
                 var symbolName: String? = null
+                val rawSymbolName = it.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
 
                 descriptor?.let {
                     if (descriptor is DeclarationDescriptor) {
@@ -721,7 +766,6 @@ class KotlinExecution : BoxExecution {
                     }
                     (it as? Annotated)?.let {
                         it.annotations.forEach {
-                            print(it.fqName)
                             if (it.fqName.toString() == "afield.Doc") {
                                 extraDoc += it.allValueArguments.values.joinToString(separator = "\n")
                                     .trim('\"')
@@ -730,21 +774,37 @@ class KotlinExecution : BoxExecution {
                     }
                 }
 
+                val candidateName = (symbolName ?: rawSymbolName).trim()
+                val shouldEnrich = activeToken.isNotBlank() &&
+                    candidateName.isNotBlank() &&
+                    candidateName.startsWith(activeToken)
+
                 // Try to get KDoc from the source index for afield symbols
-                if (extraDoc.isEmpty() && symbolName != null) {
+                if (shouldEnrich && extraDoc.isEmpty() && symbolName != null) {
                     val kdoc = KotlinSourceIndex.getKDocForSymbol(symbolName)
                     if (kdoc != null) {
                         extraDoc = kdoc
                     }
                 }
 
-                Metadata(
+                val rawMetadata = Metadata(
                     icon = it.icon,
                     tail = it.tail,
                     text = it.text,
                     displayText = mainText.trim(),
                     documentation = extraDoc.trim()
                 )
+
+                if (shouldEnrich) {
+                    KotlinCompletionSupport.enrichMetadata(
+                        box = box,
+                        allCode = allCode,
+                        symbolName = symbolName,
+                        metadata = rawMetadata
+                    )
+                } else {
+                    rawMetadata
+                }
             }
         }
 
@@ -769,10 +829,13 @@ class KotlinExecution : BoxExecution {
                 val c = box.ki.complete(allCode, position)
                 when (c) {
                     is KotlinInterface.CompletionResult.Success -> {
+                        val synthetic = KotlinCompletionSupport.namedArgumentCompletions(box, allCode, position)
+                        val boundsStart = synthetic?.bounds?.start ?: c.bounds.start
+                        val boundsEnd = synthetic?.bounds?.end ?: c.bounds.end
                         val completions = Completion(
-                            boundsStart = c.bounds.start,
-                            boundsEnd = c.bounds.end,
-                            metadata = completionFor(c) + importHelpFor(c)
+                            boundsStart = boundsStart,
+                            boundsEnd = boundsEnd,
+                            metadata = (synthetic?.metadata ?: emptyList()) + completionFor(c) + importHelpFor(c)
                         )
 
                         reply(

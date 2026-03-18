@@ -38,6 +38,13 @@ class AudioSample(
             return AudioSample(data, sampleRate)
         }
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "lengthSamples" to lengthSamples,
+        "lengthSeconds" to lengthSeconds,
+        "sampleRate" to sampleRate
+    )
 }
 
 private fun hermite4(frac: Float, s0: Float, s1: Float, s2: Float, s3: Float): Float {
@@ -111,6 +118,16 @@ class Sampler(
             }
         }
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "sample" to sample,
+        "rate" to rate,
+        "gate" to gate,
+        "loop" to loop,
+        "loopStart" to loopStart,
+        "loopEnd" to loopEnd
+    )
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -209,6 +226,17 @@ class GrainCloud(
             output[i] = sum
         }
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "source" to source,
+        "position" to position,
+        "grainSize" to grainSize,
+        "density" to density,
+        "pitch" to pitch,
+        "spray" to spray,
+        "maxGrains" to maxGrains
+    )
 }
 
 

@@ -260,6 +260,139 @@ class Waveshaper(
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  Rectifier – half/full-wave rectification with blend control
+// ═══════════════════════════════════════════════════════════════════
+
+enum class RectifierMode {
+    HALF_WAVE,
+    FULL_WAVE,
+    NEGATIVE_HALF
+}
+
+class Rectifier(
+    val mode: RectifierMode = RectifierMode.FULL_WAVE,
+    val drive: Param = Param(1f),
+    val bias: Param = Param(0f),
+    val mix: Param = Param(1f)
+) : SignalProcessor() {
+    private var inBuf = FloatArray(0)
+    private var driveBuf = FloatArray(0)
+    private var biasBuf = FloatArray(0)
+    private var mixBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames)
+            driveBuf = FloatArray(numFrames)
+            biasBuf = FloatArray(numFrames)
+            mixBuf = FloatArray(numFrames)
+        }
+
+        input.render(inBuf, numFrames, ctx)
+        drive.render(driveBuf, numFrames, ctx)
+        bias.render(biasBuf, numFrames, ctx)
+        mix.render(mixBuf, numFrames, ctx)
+
+        for (i in 0 until numFrames) {
+            val dry = inBuf[i]
+            val shaped = when (mode) {
+                RectifierMode.HALF_WAVE -> (dry * driveBuf[i] + biasBuf[i]).coerceAtLeast(0f)
+                RectifierMode.FULL_WAVE -> abs(dry * driveBuf[i] + biasBuf[i])
+                RectifierMode.NEGATIVE_HALF -> (dry * driveBuf[i] + biasBuf[i]).coerceAtMost(0f)
+            }
+            val wet = mixBuf[i].coerceIn(0f, 1f)
+            output[i] = dry * (1f - wet) + shaped * wet
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  StagedWaveFolder – multi-stage analog-style folding
+// ═══════════════════════════════════════════════════════════════════
+
+class StagedWaveFolder(
+    val drive: Param = Param(2f),
+    val threshold: Param = Param(0.7f),
+    /** Additional gain applied between folding stages. */
+    val stageGain: Param = Param(1.35f),
+    /** Positive values open the positive side and tighten the negative side. */
+    val symmetry: Param = Param(0f),
+    /** Pre-fold DC offset / bias. */
+    val bias: Param = Param(0f),
+    /** Wet/dry mix. */
+    val mix: Param = Param(1f),
+    /** Output trim after the final stage. */
+    val makeup: Param = Param(0.8f),
+    val stages: Int = 3
+) : SignalProcessor() {
+    private val safeStages = stages.coerceAtLeast(1)
+    private var inBuf = FloatArray(0)
+    private var driveBuf = FloatArray(0)
+    private var thresholdBuf = FloatArray(0)
+    private var stageGainBuf = FloatArray(0)
+    private var symmetryBuf = FloatArray(0)
+    private var biasBuf = FloatArray(0)
+    private var mixBuf = FloatArray(0)
+    private var makeupBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames)
+            driveBuf = FloatArray(numFrames)
+            thresholdBuf = FloatArray(numFrames)
+            stageGainBuf = FloatArray(numFrames)
+            symmetryBuf = FloatArray(numFrames)
+            biasBuf = FloatArray(numFrames)
+            mixBuf = FloatArray(numFrames)
+            makeupBuf = FloatArray(numFrames)
+        }
+
+        input.render(inBuf, numFrames, ctx)
+        drive.render(driveBuf, numFrames, ctx)
+        threshold.render(thresholdBuf, numFrames, ctx)
+        stageGain.render(stageGainBuf, numFrames, ctx)
+        symmetry.render(symmetryBuf, numFrames, ctx)
+        bias.render(biasBuf, numFrames, ctx)
+        mix.render(mixBuf, numFrames, ctx)
+        makeup.render(makeupBuf, numFrames, ctx)
+
+        for (i in 0 until numFrames) {
+            val dry = inBuf[i]
+            val baseThreshold = thresholdBuf[i].coerceAtLeast(1e-4f)
+            val asym = symmetryBuf[i].coerceIn(-0.95f, 0.95f)
+            val positiveThreshold = baseThreshold * (1f + asym)
+            val negativeThreshold = -baseThreshold * (1f - asym)
+            var folded = dry * driveBuf[i] + biasBuf[i]
+            val stageDrive = stageGainBuf[i].coerceAtLeast(0f)
+
+            repeat(safeStages) { stage ->
+                if (stage > 0 && stageDrive != 1f) folded *= stageDrive
+                folded = foldReflect(folded, positiveThreshold, negativeThreshold)
+            }
+
+            folded *= makeupBuf[i]
+            val wet = mixBuf[i].coerceIn(0f, 1f)
+            output[i] = dry * (1f - wet) + folded * wet
+        }
+    }
+
+    private fun foldReflect(value: Float, positiveThreshold: Float, negativeThreshold: Float): Float {
+        val range = positiveThreshold - negativeThreshold
+        if (range <= 1e-6f) return value.coerceIn(negativeThreshold, positiveThreshold)
+
+        var x = value
+        while (x > positiveThreshold || x < negativeThreshold) {
+            x = when {
+                x > positiveThreshold -> positiveThreshold - (x - positiveThreshold)
+                x < negativeThreshold -> negativeThreshold + (negativeThreshold - x)
+                else -> x
+            }
+        }
+        return x
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  Compressor – dynamic range compressor
 // ═══════════════════════════════════════════════════════════════════
 

@@ -1020,25 +1020,17 @@ fun histogramToSvg(
     val bars = buildString {
         hist.bins.forEachIndexed { i, b ->
             val c = b.count
+            if (c <= 0) return@forEachIndexed
             val barHeight = innerH * (c.toDouble() / maxCount.toDouble())
             val x = x0 + i * barW
-            val y = y0 + (innerH - barHeight)
             val gw = max(0.0, barW - 1.0)
+            val drawHeight = barHeight.coerceAtLeast(0.5)
 
             append(
-                """<rect x="${x.toFloat()}" y="${y.toFloat()}" width="${gw.toFloat()}" height="${barHeight.toFloat() / 1000}" """
+                """<rect x="${x.toFloat()}" y="${(y0 + innerH - drawHeight).toFloat()}" width="${gw.toFloat()}" height="${drawHeight.toFloat()}" """
             )
             append("""fill="$barFill" fill-opacity="${barFillOpacity}" """)
-            append("""stroke="$barStroke" stroke-opacity="$barStrokeOpacity" stroke-width="$barStrokeWidth">""")
-            if (showCountsOnHover) {
-                append("<title>${c} in [${fmt(b.start)}, ${fmt(b.end)}]</title>")
-            }
-            append("</rect>\n")
-
-            append(
-                """<rect x="${x.toFloat()}" y="${y.toFloat()}" width="${gw.toFloat()}" height="${barHeight.toFloat()}" """
-            )
-            append("""fill="$barFill" fill-opacity="${barFillOpacity}" """)
+            append("""stroke="$barStroke" stroke-opacity="$barStrokeOpacity" stroke-width="$barStrokeWidth" vector-effect="non-scaling-stroke">""")
             if (showCountsOnHover) {
                 append("<title>${c} in [${fmt(b.start)}, ${fmt(b.end)}]</title>")
             }

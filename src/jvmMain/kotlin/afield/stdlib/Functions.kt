@@ -1,15 +1,15 @@
 package afield.stdlib
 
-import afield.graphics.FLine
 import afield.Keyframe
 import afield.KeyframeEvaluator
+import afield.graphics.FLine
 import kotlin.math.*
 
 object Functions {
     private const val TAU = Math.PI * 2.0
 
     // Closed range for 1D functions. Supports infinite and empty ranges.
-    data class Domain(val min: Double, val max: Double) : ClosedRange<Double> {
+    public data class Domain(val min: Double, val max: Double) : ClosedRange<Double> {
         override val start: Double
             get() = min
         override val endInclusive: Double
@@ -97,6 +97,13 @@ object Functions {
             fun point(x: Double): Domain = Domain(x, x)
             fun centered(center: Double, radius: Double): Domain = Domain(center - radius, center + radius)
         }
+
+        override fun toString(): String = when {
+            _isEmpty -> "Domain.EMPTY"
+            this == ALL -> "Domain.ALL"
+            min == max -> "Domain(${prettyNumber(min)})"
+            else -> "Domain(${prettyNumber(min)}..${prettyNumber(max)})"
+        }
     }
 
     enum class EdgeMode { ZERO, CLAMP, WRAP, MIRROR }
@@ -130,6 +137,13 @@ object Functions {
         fun withRoi(newRoi: Domain): Fn = Fn(newRoi, domain, name, evalFn)
         fun withDomain(newDomain: Domain): Fn = Fn(roi, newDomain, name, evalFn)
         fun withName(newName: String?): Fn = Fn(roi, domain, newName, evalFn)
+
+        override fun toString(): String = prettySummary(
+            "Fn",
+            "name" to (name ?: "anonymous"),
+            "roi" to roi,
+            "domain" to domain
+        )
     }
 
     private fun blend(a: Double, b: Double, t: Double): Double = a + (b - a) * t
@@ -807,6 +821,13 @@ object Functions {
             }
             return out
         }
+
+        override fun toString(): String = prettySummary(
+            "FunctionCursor",
+            "fn" to fn,
+            "x" to prettyNumber(x),
+            "step" to prettyNumber(step)
+        )
     }
 
     fun Fn.cursor(start: Double = roi.min, step: Double = 1.0): FunctionCursor = FunctionCursor(this, start, step)
@@ -908,6 +929,17 @@ object Functions {
             val sourceX = mapToSource(globalX)
             return source.evalSafe(sourceX, outside = outside, edge = edge)
         }
+
+        override fun toString(): String = prettySummary(
+            "TimelineChunk",
+            "name" to (name ?: source.name ?: "chunk"),
+            "target" to targetDomain,
+            "source" to sourceDomain,
+            "map" to mapMode,
+            "blend" to blend,
+            "window" to window,
+            "gain" to gain
+        )
     }
 
     class TimelineGraph(
@@ -955,6 +987,13 @@ object Functions {
             val tapRoi = if (activeDomain._isEmpty) activeDomain else activeDomain.shift(offset)
             return Fn(roi = tapRoi, domain = tapRoi, name = name) { x -> eval(x - offset) }
         }
+
+        override fun toString(): String = prettySummary(
+            "TimelineGraph",
+            "chunks" to chunks.size,
+            "activeDomain" to activeDomain,
+            "outside" to prettyNumber(outside)
+        )
     }
 
     class TimelineBuilder(
@@ -1037,6 +1076,14 @@ object Functions {
             if (advanceCursor) cursor = target.max
             return chunk
         }
+
+        override fun toString(): String = prettySummary(
+            "TimelineBuilder",
+            "cursor" to prettyNumber(cursor),
+            "chunks" to chunks.size,
+            "marks" to marks.keys.toList(),
+            "outside" to prettyNumber(outside)
+        )
 
         fun repeatToFit(
             source: Fn,
@@ -2287,6 +2334,14 @@ object Functions {
             }
             return sum
         }
+
+        override fun toString(): String = prettySummary(
+            "RbfInterpolator",
+            "points" to points.size,
+            "kernel" to kernel,
+            "smoothing" to prettyNumber(smoothing),
+            "base" to base
+        )
     }
 
     fun rbf(points: List<Sample>, kernel: RbfKernel = RbfKernels.thinPlate, smoothing: Double = 0.0, base: Fn? = null): Fn {

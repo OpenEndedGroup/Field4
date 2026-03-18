@@ -262,21 +262,19 @@ fun monacoSetStatus(uid: String, good: Boolean, text: String) {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean {
-    val original = message.originalName as? String ?: return true
-    if (original != "output") return true
+fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
+    val uid = uidOverride.ifBlank { payload.uid }
+    if (uid.isBlank()) return true
 
-    val line = (payload.line as? Number)?.toInt() ?: 0
-    val html = payload.html as? String ?: ""
-    val kind = payload.kind as? String ?: ""
-    val annotation = payload.annotation as? String
-    val frame = payload.frame as? Number
-    val frameMarker = frame?.toInt() ?: 0
-    val startColumn = (payload.startColumn as? Number)?.toInt() ?: -1
-    val endLine = (payload.endLine as? Number)?.toInt() ?: -1
-    val endColumn = (payload.endColumn as? Number)?.toInt() ?: -1
-    val property = payload.property as? String ?: "code"
-
+    val line = payload.line
+    val html = payload.html
+    val kind = payload.kind
+    val annotation = payload.annotation
+    val frameMarker = payload.frame
+    val startColumn = payload.startColumn
+    val endLine = payload.endLine
+    val endColumn = payload.endColumn
+    val property = payload.property
     val w = js("window")
     val selected = w.currentSelectedCode
     val isCurrent = selected != null &&
@@ -343,6 +341,29 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
     }
 
     return true
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean {
+    val original = message.originalName as? String ?: return true
+    if (original != "output") return true
+
+    return routeMonacoOutput(
+        Output(
+            uid = uid,
+            line = (payload.line as? Number)?.toInt() ?: 0,
+            html = payload.html as? String ?: "",
+            kind = payload.kind as? String ?: "",
+            property = payload.property as? String ?: "code",
+            annotation = payload.annotation as? String ?: "",
+            frame = (payload.frame as? Number)?.toInt() ?: 0,
+            startColumn = (payload.startColumn as? Number)?.toInt() ?: -1,
+            endLine = (payload.endLine as? Number)?.toInt() ?: -1,
+            endColumn = (payload.endColumn as? Number)?.toInt() ?: -1
+        ),
+        uid
+    )
 }
 
 @OptIn(ExperimentalJsExport::class)

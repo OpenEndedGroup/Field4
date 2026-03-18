@@ -127,7 +127,7 @@ class KotlinInterface(
         }
 
         compilerConfig = ScriptCompilationConfiguration {
-            defaultImports(DependsOn::class, Repository::class)
+            defaultImports(DependsOn::class, Repository::class, exported::class)
             hostConfiguration.update {
                 myHostConfiguration
             }

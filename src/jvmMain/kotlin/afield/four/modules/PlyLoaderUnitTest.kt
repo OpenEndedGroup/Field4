@@ -4,6 +4,18 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/*
+FIELD_TEST
+id: four.ply-loader.smoke
+runner: jvm-main
+entrypoint: afield.four.modules.PlyLoaderUnitTestKt
+tags: [smoke, four, ply, io]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "All tests PASSED"
+*/
 /**
  * Unit tests for PLY loader that don't require graphics context
  */
@@ -182,7 +194,7 @@ end_header
         // Test 3: Minimal PLY
         print("Test 3: Minimal PLY (no colors/normals)... ")
         try {
-            val model = PlySupport.loadPly("/tmp/ply_test/test_minimal.ply")
+            val model = PlySupport.loadPly(File(testDir, "test_minimal.ply").absolutePath)
             assert(model.buffers.vertexCount == 3) { "Expected 3 vertices" }
             assert(model.buffers.indexCount == 3) { "Expected 3 indices" }
             assert(!model.buffers.hasColors) { "Should not have colors" }

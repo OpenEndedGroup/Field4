@@ -89,22 +89,26 @@ class RateLimiter(
         val delayMs = max(0, executeAt - System.currentTimeMillis())
         job = GlobalScope.launch {
             delay(delayMs)
-            // dispatch on your main runloop
+            var blockToRun: (() -> Unit)? = null
             synchronized(lock) {
-                // if there’s a newer pending block, schedule it now
+                // If there’s a newer pending block, schedule it now.
                 pending?.also { next ->
                     pending = null
                     val now = System.currentTimeMillis()
                     val nextExec = max(lastExecution + intervalMillis, now)
                     if (nextExec - now <= maxLatency * 1000) {
                         schedule(next, nextExec)
+                    } else {
+                        job = null
                     }
-                } ?: inMain {
+                } ?: run {
                     lastExecution = System.currentTimeMillis()
                     job = null
-                    block()
+                    blockToRun = block
                 }
-
+            }
+            blockToRun?.let { ready ->
+                ready()
             }
         }
     }

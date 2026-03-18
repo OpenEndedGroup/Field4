@@ -6,6 +6,18 @@ import afield.stdlib.Vec4
 import afield.stdlib.vec
 import kotlin.math.abs
 
+/*
+FIELD_TEST
+id: graphics.fline-instruction-trajectory-tracker.smoke
+runner: jvm-main
+entrypoint: afield.examples.graphics.FLineInstructionTrajectoryTrackerSmokeTest
+tags: [smoke, graphics, fline, trajectories]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "FLineInstructionTrajectoryTracker smoke tests passed"
+*/
 /**
  * Lightweight smoke tests for [FLineInstructionTrajectoryTracker].
  */

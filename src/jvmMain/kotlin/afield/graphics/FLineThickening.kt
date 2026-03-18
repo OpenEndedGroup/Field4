@@ -48,7 +48,14 @@ data class FLineRibbon(
     val left: FLine,
     val right: FLine,
     val shell: FLine
-)
+) {
+    override fun toString(): String = prettySummary(
+        "FLineRibbon",
+        "left" to left,
+        "right" to right,
+        "shell" to shell
+    )
+}
 
 /**
  * JTS split result: largest outer loop, interior loops, and open line components.
@@ -57,7 +64,14 @@ data class FLineSplit(
     val outerLoop: FLine?,
     val innerLoops: List<FLine>,
     val lines: List<FLine>
-)
+) {
+    override fun toString(): String = prettySummary(
+        "FLineSplit",
+        "outerLoop" to outerLoop,
+        "innerLoops" to innerLoops.size,
+        "lines" to lines.size
+    )
+}
 
 /**
  * Create left/right offset edges at equal distance from the centerline.

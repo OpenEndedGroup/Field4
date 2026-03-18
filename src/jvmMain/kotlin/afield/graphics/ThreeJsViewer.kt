@@ -21,32 +21,65 @@ data class ThreeAttribute(
     val array: FloatArray,
     val type: String = "Float32Array",
     val normalized: Boolean = false
-)
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeAttribute",
+        "itemSize" to itemSize,
+        "array" to array,
+        "type" to type,
+        "normalized" to normalized
+    )
+}
 
 @Serializable
 data class ThreeIndex(
     val type: String,
     val array: IntArray
-)
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeIndex",
+        "type" to type,
+        "array" to array
+    )
+}
 
 @Serializable
 data class ThreeGeometryData(
     val attributes: Map<String, ThreeAttribute>,
     val index: ThreeIndex? = null
-)
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeGeometryData",
+        "attributes" to attributes.keys.sorted(),
+        "index" to index
+    )
+}
 
 @Serializable
 data class ThreeBounds(
     val min: FloatArray,
     val max: FloatArray
-)
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeBounds",
+        "min" to min,
+        "max" to max
+    )
+}
 
 @Serializable
 data class ThreeMeta(
     val lineSegments: Int = 0,
     val triangles: Int = 0,
     val points: Int = 0
-)
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeMeta",
+        "lineSegments" to lineSegments,
+        "triangles" to triangles,
+        "points" to points
+    )
+}
 
 @Serializable
 data class ThreeGeometryPayload(
@@ -58,7 +91,18 @@ data class ThreeGeometryPayload(
     val bounds: ThreeBounds? = null,
     val meta: ThreeMeta? = null,
     val autoFrame: Boolean = true
-)
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeGeometryPayload",
+        "uid" to uid,
+        "lines" to (lines != null),
+        "fills" to (fills != null),
+        "points" to (points != null),
+        "bounds" to bounds,
+        "meta" to meta,
+        "autoFrame" to autoFrame
+    )
+}
 
 private val threeJson = Json {
     encodeDefaults = true
@@ -98,6 +142,13 @@ class ThreeGeometryViewState(val uid: String) {
             runCatching { session.send(payload) }
         }
     }
+
+    override fun toString(): String = prettySummary(
+        "ThreeGeometryViewState",
+        "uid" to uid,
+        "sessions" to sessions.size,
+        "hasPayload" to (lastPayload != null)
+    )
 }
 
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()

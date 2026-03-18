@@ -1,47 +1,382 @@
 package afield
 
 import afield.logger.lprintln
+import com.google.gson.JsonObject
+import com.microsoft.playwright.CDPSession
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.Clip
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.decodeFromString
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.UUID
+import java.util.Base64
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
+
+private const val SCREENSHOT_PREP_TIMEOUT_MS = 12_000
+private const val SCREENSHOT_POLL_INTERVAL_MS = 60
+private const val SCREENSHOT_OUTPUT_GRACE_MS = 2_500
+
+private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
+    "uid" to uid,
+    "padding" to padding,
+    "panIntoView" to panIntoView,
+    "hideMonaco" to hideMonaco,
+    "openOutputs" to openOutputs
+)
+
+private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
+    "uid" to uid,
+    "property" to property,
+    "panIntoView" to panIntoView,
+    "showEditor" to showEditor,
+    "openOutputs" to openOutputs,
+    "editorOnly" to editorOnly,
+    "padding" to padding
+)
+
+private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScreenshotResponse {
+    val raw = page.evaluate(
+        """
+        async (request) => {
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+          const settle = async (frames) => {
+            for (let index = 0; index < frames; index += 1) {
+              await nextFrame();
+            }
+          };
+          const findBox = (uid) => {
+            const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
+            return boxes.find((element) => {
+              const candidate = element.uid || element.getAttribute("uid") || element.getAttribute("data-uid");
+              return candidate === uid;
+            }) || null;
+          };
+          const pageReady = () => {
+            const currentUrl = String(window.location && window.location.href ? window.location.href : "");
+            return !!document.body &&
+              !!document.getElementById("overlaycanvas") &&
+              !currentUrl.startsWith("about:") &&
+              window.fieldClientOpen === true &&
+              window.fieldBackdoorDisconnectedOverlayActive !== true &&
+              window.fieldBackdoorUiReady === true &&
+              typeof window.fieldBackdoorPrepareBoxScreenshot === "function";
+          };
+          const decode = (value) => {
+            if (typeof value !== "string") {
+              return null;
+            }
+            try {
+              return JSON.parse(value);
+            } catch (error) {
+              return null;
+            }
+          };
+          const blockedStatusText = (value) => {
+            const text = String(value || "").trim().toLowerCase();
+            if (!text) {
+              return false;
+            }
+            return text.includes("connecting") ||
+              text.includes("loading") ||
+              text.includes("disconnected") ||
+              text.includes("waiting for audio") ||
+              text.includes("waiting for state");
+          };
+          const iframeReady = (iframe) => {
+            try {
+              const doc = iframe.contentDocument;
+              if (!doc || doc.readyState !== "complete") {
+                return false;
+              }
+              const statusEl = doc.getElementById("status");
+              return !blockedStatusText(statusEl && statusEl.textContent);
+            } catch (error) {
+              return true;
+            }
+          };
+          const outputsReady = (root) => {
+            if (!root) {
+              return false;
+            }
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) {
+              return false;
+            }
+            const iframes = Array.from(outputArea.querySelectorAll("iframe"));
+            if (iframes.some((iframe) => !iframeReady(iframe))) {
+              return false;
+            }
+            const statusTexts = Array.from(outputArea.querySelectorAll("svg text, .status, #status"))
+              .map((node) => String(node.textContent || "").trim())
+              .filter((text) => text.length > 0);
+            return !statusTexts.some(blockedStatusText);
+          };
+          const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
+          let lastMessage = "Timed out waiting for box screenshot prep";
+          while (Date.now() < deadline) {
+            if (!pageReady()) {
+              lastMessage = "Field page is not connected yet";
+              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              continue;
+            }
+            const box = findBox(request.uid);
+            if (!box) {
+              lastMessage = `box ${'$'}{request.uid} not found`;
+              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              continue;
+            }
+            if (request.openOutputs) {
+              const outputDeadline = Date.now() + ${SCREENSHOT_OUTPUT_GRACE_MS};
+              while (Date.now() < outputDeadline) {
+                if (!pageReady()) {
+                  break;
+                }
+                const currentBox = findBox(request.uid);
+                if (currentBox && outputsReady(currentBox)) {
+                  break;
+                }
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              }
+            }
+            await settle(request.openOutputs ? 3 : 1);
+            const fn = window.fieldBackdoorPrepareBoxScreenshot;
+            if (typeof fn !== "function") {
+              lastMessage = "fieldBackdoorPrepareBoxScreenshot not ready";
+              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              continue;
+            }
+            const prepared = await Promise.resolve(fn(request));
+            const decoded = decode(prepared);
+            if (decoded && decoded.success) {
+              await settle(request.openOutputs ? 2 : 1);
+              if (!pageReady()) {
+                lastMessage = "Field page disconnected during screenshot prep";
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                continue;
+              }
+              return prepared;
+            }
+            const message = decoded && typeof decoded.message === "string"
+              ? decoded.message
+              : "Box screenshot preparation failed";
+            lastMessage = message;
+            const transient = message.includes("not found") ||
+              message.includes("no geometry") ||
+              message.includes("invalid clip");
+            if (!transient) {
+              return typeof prepared === "string"
+                ? prepared
+                : JSON.stringify({
+                    uid: request && request.uid ? request.uid : "",
+                    success: false,
+                    message
+                  });
+            }
+            await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+          }
+          return JSON.stringify({
+            uid: request && request.uid ? request.uid : "",
+            success: false,
+            message: lastMessage
+          });
+        }
+        """.trimIndent(),
+        req.toPlaywrightArg()
+    ) as? String ?: error("Box screenshot preparation returned a non-string payload")
+    return Json.decodeFromString(raw)
+}
+
+private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): WindowScreenshotResponse {
+    val raw = page.evaluate(
+        """
+        async (request) => {
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+          const settle = async (frames) => {
+            for (let index = 0; index < frames; index += 1) {
+              await nextFrame();
+            }
+          };
+          const findBox = (uid) => {
+            const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
+            return boxes.find((element) => {
+              const candidate = element.uid || element.getAttribute("uid") || element.getAttribute("data-uid");
+              return candidate === uid;
+            }) || null;
+          };
+          const pageReady = () => {
+            const currentUrl = String(window.location && window.location.href ? window.location.href : "");
+            return !!document.body &&
+              !!document.getElementById("overlaycanvas") &&
+              !currentUrl.startsWith("about:") &&
+              window.fieldClientOpen === true &&
+              window.fieldBackdoorDisconnectedOverlayActive !== true &&
+              window.fieldBackdoorUiReady === true &&
+              typeof window.fieldBackdoorPrepareWindowScreenshot === "function";
+          };
+          const decode = (value) => {
+            if (typeof value !== "string") {
+              return null;
+            }
+            try {
+              return JSON.parse(value);
+            } catch (error) {
+              return null;
+            }
+          };
+          const blockedStatusText = (value) => {
+            const text = String(value || "").trim().toLowerCase();
+            if (!text) {
+              return false;
+            }
+            return text.includes("connecting") ||
+              text.includes("loading") ||
+              text.includes("disconnected") ||
+              text.includes("waiting for audio") ||
+              text.includes("waiting for state");
+          };
+          const iframeReady = (iframe) => {
+            try {
+              const doc = iframe.contentDocument;
+              if (!doc || doc.readyState !== "complete") {
+                return false;
+              }
+              const statusEl = doc.getElementById("status");
+              return !blockedStatusText(statusEl && statusEl.textContent);
+            } catch (error) {
+              return true;
+            }
+          };
+          const outputsReady = (root) => {
+            if (!root) {
+              return false;
+            }
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) {
+              return false;
+            }
+            const iframes = Array.from(outputArea.querySelectorAll("iframe"));
+            if (iframes.some((iframe) => !iframeReady(iframe))) {
+              return false;
+            }
+            const statusTexts = Array.from(outputArea.querySelectorAll("svg text, .status, #status"))
+              .map((node) => String(node.textContent || "").trim())
+              .filter((text) => text.length > 0);
+            return !statusTexts.some(blockedStatusText);
+          };
+          if (request.showEditor && !request.uid) {
+            return JSON.stringify({
+              uid: null,
+              success: false,
+              message: "showEditor requires a target box"
+            });
+          }
+          const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
+          let lastMessage = "Timed out waiting for window screenshot prep";
+          while (Date.now() < deadline) {
+            if (!pageReady()) {
+              lastMessage = "Field page is not connected yet";
+              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              continue;
+            }
+            if (request.uid) {
+              const box = findBox(request.uid);
+              if (!box) {
+                lastMessage = `box ${'$'}{request.uid} not found`;
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                continue;
+              }
+              if (request.openOutputs) {
+                const outputDeadline = Date.now() + ${SCREENSHOT_OUTPUT_GRACE_MS};
+                while (Date.now() < outputDeadline) {
+                  if (!pageReady()) {
+                    break;
+                  }
+                  const currentBox = findBox(request.uid);
+                  if (currentBox && outputsReady(currentBox)) {
+                    break;
+                  }
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                }
+              }
+            }
+            await settle(request.openOutputs || request.showEditor ? 5 : 1);
+            const fn = window.fieldBackdoorPrepareWindowScreenshot;
+            if (typeof fn !== "function") {
+              lastMessage = "fieldBackdoorPrepareWindowScreenshot not ready";
+              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              continue;
+            }
+            const prepared = await Promise.resolve(fn(request));
+            const decoded = decode(prepared);
+            if (decoded && decoded.success) {
+              await settle(request.openOutputs || request.showEditor ? 3 : 1);
+              if (!pageReady()) {
+                lastMessage = "Field page disconnected during screenshot prep";
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                continue;
+              }
+              return prepared;
+            }
+            const message = decoded && typeof decoded.message === "string"
+              ? decoded.message
+              : "Window screenshot preparation failed";
+            lastMessage = message;
+            const transient = message.includes("not found") ||
+              message.includes("not visible") ||
+              message.includes("not synced yet") ||
+              message.includes("no geometry") ||
+              message.includes("invalid clip");
+            if (!transient) {
+              return typeof prepared === "string"
+                ? prepared
+                : JSON.stringify({
+                    uid: request && request.uid ? request.uid : null,
+                    success: false,
+                    message
+                  });
+            }
+            await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+          }
+          return JSON.stringify({
+            uid: request && request.uid ? request.uid : null,
+            success: false,
+            message: lastMessage
+          });
+        }
+        """.trimIndent(),
+        req.toPlaywrightArg()
+    ) as? String ?: error("Window screenshot preparation returned a non-string payload")
+    return Json.decodeFromString(raw)
+}
 
 suspend fun Box.screenshot(
     fn: String,
     padding: Double = 12.0,
     panIntoView: Boolean = true,
-    hideMonaco: Boolean = true
+    hideMonaco: Boolean = true,
+    openOutputs: Boolean = false
 ): Boolean {
     val page = globalPlaywriteContext ?: run {
         lprintln("warning,screenshot", "Playwright is not active; cannot screenshot ${id}")
         return false
     }
 
-    val pending = CompletableDeferred<BoxScreenshotResponse>()
-    val callbackName = "box-screenshot-response-${UUID.randomUUID()}"
-
-    sendWithReply(
-        Message("box-screenshot").payload(
+    val response = runCatching {
+        requestBoxScreenshot(
+            page,
             BoxScreenshotRequest(
                 uid = id,
                 padding = padding,
                 panIntoView = panIntoView,
-                hideMonaco = hideMonaco
+                hideMonaco = hideMonaco,
+                openOutputs = openOutputs
             )
-        ),
-        callbackName
-    ) { message, _ ->
-        val response = Json.decodeFromJsonElement<BoxScreenshotResponse>(message.payload!!)
-        pending.complete(response)
-        Handled.yes_remove
-    }
-
-    val response = runCatching { withTimeout(5_000) { pending.await() } }.getOrElse {
+        )
+    }.getOrElse {
         lprintln("warning,screenshot", "Timed out waiting for screenshot prep on ${id}: ${it.message}")
         return false
     }
@@ -65,4 +400,535 @@ suspend fun Box.screenshot(
     }.onFailure {
         lprintln("warning,screenshot", "Playwright screenshot failed for ${id}: ${it.message}")
     }.getOrElse { false }
+}
+
+private fun failedAgentScreenshot(
+    info: SessionInformation,
+    kind: String,
+    path: String,
+    uid: String? = null,
+    message: String
+) = AgentScreenshotResponse(
+    ok = false,
+    kind = kind,
+    path = path,
+    uid = uid,
+    documentName = info.documentName,
+    scratch = info.ephemeral,
+    sessionKey = info.filename,
+    message = message
+)
+
+suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWindowScreenshot): AgentScreenshotResponse {
+    val kind = if (request.editorOnly) "editor" else "window"
+    val page = globalPlaywriteContext ?: return failedAgentScreenshot(
+        info = info,
+        kind = kind,
+        path = request.path,
+        uid = request.uid,
+        message = "Playwright is not active"
+    )
+
+    val response = runCatching {
+        requestWindowScreenshot(
+            page,
+            WindowScreenshotRequest(
+                uid = request.uid,
+                property = request.property,
+                panIntoView = request.panIntoView,
+                showEditor = request.showEditor,
+                openOutputs = request.openOutputs,
+                editorOnly = request.editorOnly,
+                padding = request.padding
+            )
+        )
+    }.getOrElse {
+        return failedAgentScreenshot(
+            info = info,
+            kind = kind,
+            path = request.path,
+            uid = request.uid,
+            message = "Timed out waiting for window screenshot prep: ${it.message}"
+        )
+    }
+
+    if (!response.success) {
+        return failedAgentScreenshot(
+            info = info,
+            kind = kind,
+            path = request.path,
+            uid = request.uid,
+            message = response.message
+        )
+    }
+
+    val clip = response.clip
+    if (request.editorOnly && clip == null) {
+        return failedAgentScreenshot(
+            info = info,
+            kind = kind,
+            path = request.path,
+            uid = request.uid,
+            message = "Editor screenshot prep did not return a clip"
+        )
+    }
+
+    val outputPath = Path.of(request.path)
+    outputPath.parent?.let { Files.createDirectories(it) }
+
+    return runCatching {
+        val options = Page.ScreenshotOptions().setPath(outputPath)
+        if (clip != null) {
+            options.setClip(Clip(clip.x, clip.y, clip.w, clip.h))
+        }
+        page.screenshot(options)
+        AgentScreenshotResponse(
+            ok = true,
+            kind = kind,
+            path = outputPath.toString(),
+            uid = request.uid,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            clip = clip,
+            viewport = response.viewport
+        )
+    }.onFailure {
+        lprintln("warning,screenshot", "Window screenshot failed for ${request.path}: ${it.message}")
+    }.getOrElse {
+        failedAgentScreenshot(
+            info = info,
+            kind = kind,
+            path = outputPath.toString(),
+            uid = request.uid,
+            message = it.message ?: "Playwright screenshot failed"
+        )
+    }
+}
+
+suspend fun openEditorForCapture(info: SessionInformation, request: AgentOpenEditorRequest): AgentOpenEditorResponse {
+    val page = globalPlaywriteContext ?: return AgentOpenEditorResponse(
+        ok = false,
+        uid = request.uid,
+        property = request.property,
+        documentName = info.documentName,
+        scratch = info.ephemeral,
+        sessionKey = info.filename,
+        message = "Playwright is not active"
+    )
+
+    val response = runCatching {
+        requestWindowScreenshot(
+            page,
+            WindowScreenshotRequest(
+                uid = request.uid,
+                property = request.property,
+                panIntoView = request.panIntoView,
+                showEditor = true,
+                openOutputs = request.openOutputs,
+                editorOnly = false,
+                padding = request.padding
+            )
+        )
+    }.getOrElse {
+        return AgentOpenEditorResponse(
+            ok = false,
+            uid = request.uid,
+            property = request.property,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            message = "Timed out waiting for editor prep: ${it.message}"
+        )
+    }
+
+    return AgentOpenEditorResponse(
+        ok = response.success,
+        uid = request.uid,
+        property = request.property,
+        documentName = info.documentName,
+        scratch = info.ephemeral,
+        sessionKey = info.filename,
+        message = response.message
+    )
+}
+
+suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScreenshot): AgentScreenshotResponse {
+    val page = globalPlaywriteContext ?: return failedAgentScreenshot(
+        info = info,
+        kind = "box",
+        path = request.path,
+        uid = request.uid,
+        message = "Playwright is not active"
+    )
+
+    val response = runCatching {
+        requestBoxScreenshot(
+            page,
+            BoxScreenshotRequest(
+                uid = request.uid,
+                padding = request.padding,
+                panIntoView = request.panIntoView,
+                hideMonaco = true,
+                openOutputs = request.openOutputs
+            )
+        )
+    }.getOrElse {
+        return failedAgentScreenshot(
+            info = info,
+            kind = "box",
+            path = request.path,
+            uid = request.uid,
+            message = "Timed out waiting for box screenshot prep: ${it.message}"
+        )
+    }
+
+    val clip = response.clip
+    if (!response.success || clip == null) {
+        return failedAgentScreenshot(
+            info = info,
+            kind = "box",
+            path = request.path,
+            uid = request.uid,
+            message = response.message.ifEmpty { "Screenshot prep failed for ${request.uid}" }
+        )
+    }
+
+    val outputPath = Path.of(request.path)
+    outputPath.parent?.let { Files.createDirectories(it) }
+
+    return runCatching {
+        page.screenshot(
+            Page.ScreenshotOptions()
+                .setPath(outputPath)
+                .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
+        )
+        AgentScreenshotResponse(
+            ok = true,
+            kind = "box",
+            path = outputPath.toString(),
+            uid = request.uid,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            clip = clip,
+            viewport = response.viewport
+        )
+    }.onFailure {
+        lprintln("warning,screenshot", "Box screenshot failed for ${request.uid}: ${it.message}")
+    }.getOrElse {
+        failedAgentScreenshot(
+            info = info,
+            kind = "box",
+            path = outputPath.toString(),
+            uid = request.uid,
+            message = it.message ?: "Playwright screenshot failed"
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Video recording via CDP screencast → ffmpeg H.264 MP4
+// ---------------------------------------------------------------------------
+
+private const val VIDEO_POLL_INTERVAL_MS = 10L
+private const val VIDEO_MAX_DIMENSION = 1920
+
+private fun failedAgentVideo(
+    info: SessionInformation,
+    kind: String,
+    path: String,
+    uid: String? = null,
+    message: String,
+) = AgentVideoResponse(
+    ok = false,
+    kind = kind,
+    path = path,
+    uid = uid,
+    documentName = info.documentName,
+    scratch = info.ephemeral,
+    sessionKey = info.filename,
+    message = message
+)
+
+/**
+ * Record a window-level video (full page or editor-only clip)
+ * using CDP Page.startScreencast, then encode the JPEG frames
+ * to an H.264 MP4 via ffmpeg.
+ */
+suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVideo): AgentVideoResponse {
+    val kind = if (request.editorOnly) "editor" else "window"
+    val page = globalPlaywriteContext ?: return failedAgentVideo(
+        info = info, kind = kind, path = request.path, uid = request.uid,
+        message = "Playwright is not active"
+    )
+
+    // Prepare the view (select box, open editor, pan, etc.) using the same
+    // prep logic as screenshots.
+    val prepResponse = runCatching {
+        requestWindowScreenshot(
+            page,
+            WindowScreenshotRequest(
+                uid = request.uid,
+                property = request.property,
+                panIntoView = request.panIntoView,
+                showEditor = request.showEditor,
+                openOutputs = request.openOutputs,
+                editorOnly = request.editorOnly,
+                padding = request.padding
+            )
+        )
+    }.getOrElse {
+        return failedAgentVideo(
+            info = info, kind = kind, path = request.path, uid = request.uid,
+            message = "Timed out waiting for video prep: ${it.message}"
+        )
+    }
+
+    if (!prepResponse.success) {
+        return failedAgentVideo(
+            info = info, kind = kind, path = request.path, uid = request.uid,
+            message = prepResponse.message
+        )
+    }
+
+    val clip = prepResponse.clip
+    if (request.editorOnly && clip == null) {
+        return failedAgentVideo(
+            info = info, kind = kind, path = request.path, uid = request.uid,
+            message = "Editor video prep did not return a clip"
+        )
+    }
+
+    val outputPath = Path.of(request.path)
+    outputPath.parent?.let { Files.createDirectories(it) }
+
+    return runCatching {
+        val result = recordScreencastToMp4(
+            page = page,
+            outputPath = outputPath,
+            clip = clip,
+            durationSec = request.durationSec,
+            fps = request.fps
+        )
+        AgentVideoResponse(
+            ok = true,
+            kind = kind,
+            path = outputPath.toString(),
+            uid = request.uid,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            durationSec = request.durationSec,
+            frameCount = result.frameCount,
+            clip = clip,
+            viewport = prepResponse.viewport
+        )
+    }.onFailure {
+        lprintln("warning,video", "Window video failed for ${request.path}: ${it.message}")
+    }.getOrElse {
+        failedAgentVideo(
+            info = info, kind = kind, path = outputPath.toString(), uid = request.uid,
+            message = it.message ?: "Video recording failed"
+        )
+    }
+}
+
+/**
+ * Record a box-level video (clipped to the box region).
+ */
+suspend fun captureBoxVideo(info: SessionInformation, request: AgentBoxVideo): AgentVideoResponse {
+    val page = globalPlaywriteContext ?: return failedAgentVideo(
+        info = info, kind = "box", path = request.path, uid = request.uid,
+        message = "Playwright is not active"
+    )
+
+    val prepResponse = runCatching {
+        requestBoxScreenshot(
+            page,
+            BoxScreenshotRequest(
+                uid = request.uid,
+                padding = request.padding,
+                panIntoView = request.panIntoView,
+                hideMonaco = true,
+                openOutputs = request.openOutputs
+            )
+        )
+    }.getOrElse {
+        return failedAgentVideo(
+            info = info, kind = "box", path = request.path, uid = request.uid,
+            message = "Timed out waiting for box video prep: ${it.message}"
+        )
+    }
+
+    val clip = prepResponse.clip
+    if (!prepResponse.success || clip == null) {
+        return failedAgentVideo(
+            info = info, kind = "box", path = request.path, uid = request.uid,
+            message = prepResponse.message.ifEmpty { "Video prep failed for ${request.uid}" }
+        )
+    }
+
+    val outputPath = Path.of(request.path)
+    outputPath.parent?.let { Files.createDirectories(it) }
+
+    return runCatching {
+        val result = recordScreencastToMp4(
+            page = page,
+            outputPath = outputPath,
+            clip = clip,
+            durationSec = request.durationSec,
+            fps = request.fps
+        )
+        AgentVideoResponse(
+            ok = true,
+            kind = "box",
+            path = outputPath.toString(),
+            uid = request.uid,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            durationSec = request.durationSec,
+            frameCount = result.frameCount,
+            clip = clip,
+            viewport = prepResponse.viewport
+        )
+    }.onFailure {
+        lprintln("warning,video", "Box video failed for ${request.uid}: ${it.message}")
+    }.getOrElse {
+        failedAgentVideo(
+            info = info, kind = "box", path = outputPath.toString(), uid = request.uid,
+            message = it.message ?: "Video recording failed"
+        )
+    }
+}
+
+private data class ScreencastResult(val frameCount: Int)
+
+/**
+ * Use CDP Page.startScreencast to capture JPEG frames from the Playwright
+ * page, then pipe them into ffmpeg to produce an H.264/MP4 file.
+ *
+ * When [clip] is non-null the captured frames are cropped to that region
+ * by ffmpeg's crop filter (coordinates are in CSS pixels, scaled by the
+ * device-pixel-ratio reported by the page).
+ */
+private fun recordScreencastToMp4(
+    page: Page,
+    outputPath: Path,
+    clip: Rect?,
+    durationSec: Double,
+    fps: Int,
+): ScreencastResult {
+    val dpr = (page.evaluate("window.devicePixelRatio") as? Number)?.toDouble() ?: 2.0
+
+    val cdp: CDPSession = page.context().newCDPSession(page)
+    val frames = mutableListOf<ByteArray>()
+    val done = CountDownLatch(1)
+    var frameCount = 0
+
+    cdp.on("Page.screencastFrame") { params: JsonObject ->
+        val sessionId = params.get("sessionId")?.asInt ?: return@on
+        // Acknowledge frame so CDP keeps sending
+        val ack = JsonObject()
+        ack.addProperty("sessionId", sessionId)
+        cdp.send("Page.screencastFrameAck", ack)
+
+        val data = params.getAsJsonObject("metadata") // unused but available
+        val base64 = params.get("data")?.asString ?: return@on
+        val decoded = Base64.getDecoder().decode(base64)
+        synchronized(frames) {
+            frames.add(decoded)
+            frameCount++
+        }
+    }
+
+    // Start screencast — capture full viewport as JPEG
+    val startParams = JsonObject()
+    startParams.addProperty("format", "jpeg")
+    startParams.addProperty("quality", 90)
+    startParams.addProperty("maxWidth", VIDEO_MAX_DIMENSION)
+    startParams.addProperty("maxHeight", VIDEO_MAX_DIMENSION)
+    startParams.addProperty("everyNthFrame", 1)
+    cdp.send("Page.startScreencast", startParams)
+
+    // Wait for the requested duration
+    val durationMs = (durationSec * 1000).toLong()
+    Thread.sleep(durationMs)
+
+    cdp.send("Page.stopScreencast")
+
+    // Small grace period to collect remaining frames
+    Thread.sleep(200)
+    cdp.detach()
+
+    val capturedFrames: List<ByteArray>
+    synchronized(frames) {
+        capturedFrames = frames.toList()
+    }
+
+    if (capturedFrames.isEmpty()) {
+        throw IllegalStateException("CDP screencast captured 0 frames in ${durationSec}s")
+    }
+
+    lprintln("info,video", "Captured ${capturedFrames.size} screencast frames in ${durationSec}s")
+
+    // Build ffmpeg command: pipe JPEG frames via stdin, encode to H.264 MP4
+    val ffmpeg = FFMPEG
+
+    val actualFps = (capturedFrames.size.toDouble() / durationSec).let { captured ->
+        // Use the actual capture rate but cap at the requested fps
+        if (captured < fps) captured else fps.toDouble()
+    }
+
+    val filterParts = mutableListOf<String>()
+    // If we have a clip region, add a crop filter (scale by DPR for device pixels)
+    if (clip != null) {
+        val cx = (clip.x * dpr).toInt()
+        val cy = (clip.y * dpr).toInt()
+        val cw = (clip.w * dpr).toInt()
+        val ch = (clip.h * dpr).toInt()
+        filterParts.add("crop=$cw:$ch:$cx:$cy")
+    }
+    // Ensure dimensions are even (required by yuv420p)
+    filterParts.add("pad=ceil(iw/2)*2:ceil(ih/2)*2")
+
+    val args = buildList {
+        addAll(listOf(ffmpeg, "-y"))
+        // Input: concatenated JPEGs from stdin
+        addAll(listOf("-f", "image2pipe", "-framerate", String.format("%.2f", actualFps), "-i", "-"))
+        // Video filter
+        addAll(listOf("-vf", filterParts.joinToString(",")))
+        // Encoding
+        addAll(listOf(
+            "-c:v", "libx264",
+            "-crf", "23",
+            "-preset", "fast",
+            "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            "-an"
+        ))
+        add(outputPath.toString())
+    }
+
+    val process = ProcessBuilder(args)
+        .redirectErrorStream(true)
+        .start()
+
+    // Write all JPEG frames to ffmpeg stdin
+    process.outputStream.use { stdin ->
+        for (frame in capturedFrames) {
+            stdin.write(frame)
+        }
+    }
+
+    val log = process.inputStream.bufferedReader().readText()
+    val exitCode = process.waitFor()
+    if (exitCode != 0) {
+        throw IllegalStateException("ffmpeg encoding failed (exit=$exitCode):\n${args.joinToString(" ")}\n$log")
+    }
+
+    lprintln("info,video", "Encoded ${outputPath}: ${capturedFrames.size} frames, ${durationSec}s, ${String.format("%.1f", actualFps)} fps")
+
+    return ScreencastResult(frameCount = capturedFrames.size)
 }

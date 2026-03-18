@@ -5,6 +5,7 @@ import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
+import io.ktor.websocket.WebSocketSession
 
 /**
  * BoxExecution implementation for the FORTH microlanguage.
@@ -27,10 +28,11 @@ class ForthExecution(val inside: Box) : BoxExecution {
         inside: Box,
         executeLine: Int,
         reply: (Message) -> Unit,
+        originSession: WebSocketSession?,
         allowFrameYield: Boolean
     ): () -> Boolean {
         var hadVisibleOutput = false
-        configureOutputProxies(inside, reply)
+        configureOutputProxies(inside, reply, originSession)
         inside.output.displayProxy = { channel, content ->
             hadVisibleOutput = true
             send(Message("set-output").payload(Set_output(inside.id, "outputarea", channel, content.toString())))
@@ -51,21 +53,24 @@ class ForthExecution(val inside: Box) : BoxExecution {
         return { hadVisibleOutput }
     }
 
-    private fun clearExecutionErrorStatus(reply: (Message) -> Unit) {
-        reply(
-            Message("output").payload(
-                Output(
-                    line = -1,
-                    kind = "err",
-                    property = "code",
-                    html = "",
-                    frame = Runloop.runLoop.frame.toInt()
-                )
-            )
+    private fun clearExecutionErrorStatus(reply: (Message) -> Unit, originSession: WebSocketSession?) {
+        dispatchExecutionOutput(
+            inside,
+            reply,
+            Output(
+                uid = inside.id,
+                line = -1,
+                kind = "err",
+                property = "code",
+                html = "",
+                frame = Runloop.runLoop.frame.toInt()
+            ),
+            originSession = originSession
         )
     }
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        val originSession = thisSession.get()
         inMain {
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
@@ -73,23 +78,26 @@ class ForthExecution(val inside: Box) : BoxExecution {
                 inside = inside,
                 executeLine = execute.line,
                 reply = reply,
+                originSession = originSession,
                 allowFrameYield = false
             )
             try {
                 val diagnostics = forth.eval(execute.code)
                 if (diagnostics.isEmpty()) {
-                    clearExecutionErrorStatus(reply)
+                    clearExecutionErrorStatus(reply, originSession)
                 }
                 if (diagnostics.isEmpty() && !hadVisibleOutput()) {
-                    reply(
-                        Message("output").payload(
-                            Output(
-                                line = execute.line + execute.code.split("\n").size,
-                                kind = "ok",
-                                html = "ok",
-                                frame = Runloop.runLoop.frame.toInt()
-                            )
-                        )
+                    dispatchExecutionOutput(
+                        inside,
+                        reply,
+                        Output(
+                            uid = inside.id,
+                            line = execute.line + execute.code.split("\n").size,
+                            kind = "ok",
+                            html = "ok",
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
                     )
                 } else if (diagnostics.isNotEmpty()) {
                     diagnostics.forEach { diag ->
@@ -110,12 +118,14 @@ class ForthExecution(val inside: Box) : BoxExecution {
     override fun launchAll(
         inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit
     ) {
+        val originSession = thisSession.get()
         inMain {
             val wm = ++inside.fragmentGeneration
             configureForthOutput(
                 inside = inside,
                 executeLine = execute.line,
                 reply = reply,
+                originSession = originSession,
                 allowFrameYield = true
             )
 
@@ -130,7 +140,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
                 return@inMain
             }
 
-            clearExecutionErrorStatus(reply)
+            clearExecutionErrorStatus(reply, originSession)
 
             // If code ends with a word call (last non-whitespace token), register it as a strand
             val tokens = forth.tokenize(code.trim())

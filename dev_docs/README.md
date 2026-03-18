@@ -5,6 +5,7 @@
 ## Topical Folders
 
 - `agents/`: agent-facing workspace guides and references
+- `testing/`: smoke-test discovery, annotation, and runner strategy notes
 - `workspace/`: self-healing metadata, guide deployment, and workspace architecture notes
 - `animation/`: `animate {}` syntax and implementation notes
 - `processing/`: Processing integration quickstarts and architecture notes
@@ -15,6 +16,8 @@
 ## Good Entry Points
 
 - [`agents/AGENT_GUIDE.md`](./agents/AGENT_GUIDE.md)
+- [`agents/FIELD_BACKDOOR.md`](./agents/FIELD_BACKDOOR.md)
+- [`testing/SMOKE_TEST_ANNOTATION_STRATEGY.md`](./testing/SMOKE_TEST_ANNOTATION_STRATEGY.md)
 - [`workspace/ARCHITECTURE_COMPLETE.md`](./workspace/ARCHITECTURE_COMPLETE.md)
 - [`animation/ANIMATE_BLOCK_SYNTAX.md`](./animation/ANIMATE_BLOCK_SYNTAX.md)
 - [`processing/PROCESSING_QUICKSTART.md`](./processing/PROCESSING_QUICKSTART.md)

@@ -1,24 +1,19 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalDistributionDsl::class)
 
-import java.net.URL
-import java.io.InputStream
-import java.io.PrintStream
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
+import java.io.InputStream
+import java.io.PrintStream
+import java.net.URL
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.*
 
 val lwjglVersion = "3.4.0-SNAPSHOT"
 val jomlVersion = "1.10.7"
@@ -85,7 +80,7 @@ plugins {
 }
 
 jvmWrapper {
-    unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
+    unixJvmInstallDir = "${"$"}{HOME}/.field4/  gradle-jvm"
     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
     linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
     linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
@@ -100,7 +95,7 @@ java {
         // Constrain vendor to avoid Foojay returning non-directly-downloadable builds (which can 4xx on /redirect).
         vendor = JvmVendorSpec.ADOPTIUM
     }
-}
+    }
 
 group = "afield"
 version = "1.1-SNAPSHOT"

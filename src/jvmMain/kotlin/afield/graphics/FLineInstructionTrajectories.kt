@@ -168,7 +168,9 @@ class FLineSideways(
         matchedTrackIds: MutableSet<Long>
     ) {
         if (tracks.isEmpty()) {
-            observations.forEach { spawnTrack(it) }
+            observations.forEach { observation ->
+                matchedTrackIds.add(spawnTrack(observation).id)
+            }
             return
         }
         if (observations.isEmpty()) return
@@ -214,7 +216,7 @@ class FLineSideways(
 
         observations.indices.forEach { col ->
             if (!usedObservation[col]) {
-                spawnTrack(observations[col])
+                matchedTrackIds.add(spawnTrack(observations[col]).id)
             }
         }
     }
@@ -273,7 +275,7 @@ class FLineSideways(
         track.trajectory.properties["lastInstructionIndex"] = observation.instructionIndex
     }
 
-    private fun spawnTrack(observation: Observation) {
+    private fun spawnTrack(observation: Observation): Track {
         val id = nextTrackId++
         val trajectory = FLine()
         trajectory.moveTo(observation.position)
@@ -282,13 +284,13 @@ class FLineSideways(
         trajectory.properties["lineKey"] = observation.lineKey
         trajectory.properties["firstInstructionIndex"] = observation.instructionIndex
         trajectory.properties["lastInstructionIndex"] = observation.instructionIndex
-        activeTracks[id] = Track(
+        return Track(
             id = id,
             lineKey = observation.lineKey,
             trajectory = trajectory,
             lastPoint = Vec3(observation.position),
             lastInstructionIndex = observation.instructionIndex
-        )
+        ).also { activeTracks[id] = it }
     }
 
     private fun extractObservations(lineKey: Any, line: FLine): List<Observation> {

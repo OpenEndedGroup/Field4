@@ -301,60 +301,60 @@ class BiquadFilter(
 
         when (type) {
             BiquadType.LOWPASS -> {
-                b0 = (1 - cos(w0)) / 2
-                b1 = 1 - cos(w0)
-                b2 = (1 - cos(w0)) / 2
-                a0 = 1 + alpha
-                a1 = -2 * cos(w0)
-                a2 = 1 - alpha
+                b0 = ((1 - cos(w0)) / 2).toFloat()
+                b1 = (1 - cos(w0)).toFloat()
+                b2 = ((1 - cos(w0)) / 2).toFloat()
+                a0 = (1 + alpha).toFloat()
+                a1 = (-2 * cos(w0)).toFloat()
+                a2 = (1 - alpha).toFloat()
             }
             BiquadType.HIGHPASS -> {
-                b0 = (1 + cos(w0)) / 2
-                b1 = -(1 + cos(w0))
-                b2 = (1 + cos(w0)) / 2
-                a0 = 1 + alpha
-                a1 = -2 * cos(w0)
-                a2 = 1 - alpha
+                b0 = ((1 + cos(w0)) / 2).toFloat()
+                b1 = (-(1 + cos(w0))).toFloat()
+                b2 = ((1 + cos(w0)) / 2).toFloat()
+                a0 = (1 + alpha).toFloat()
+                a1 = (-2 * cos(w0)).toFloat()
+                a2 = (1 - alpha).toFloat()
             }
             BiquadType.BANDPASS -> {
-                b0 = alpha
+                b0 = alpha.toFloat()
                 b1 = 0f
-                b2 = -alpha
-                a0 = 1 + alpha
-                a1 = -2 * cos(w0)
-                a2 = 1 - alpha
+                b2 = (-alpha).toFloat()
+                a0 = (1 + alpha).toFloat()
+                a1 = (-2 * cos(w0)).toFloat()
+                a2 = (1 - alpha).toFloat()
             }
             BiquadType.NOTCH -> {
                 b0 = 1f
-                b1 = -2 * cos(w0)
+                b1 = (-2 * cos(w0)).toFloat()
                 b2 = 1f
-                a0 = 1 + alpha
-                a1 = -2 * cos(w0)
-                a2 = 1 - alpha
+                a0 = (1 + alpha).toFloat()
+                a1 = (-2 * cos(w0)).toFloat()
+                a2 = (1 - alpha).toFloat()
             }
             BiquadType.PEAK -> {
-                b0 = 1 + alpha * a
-                b1 = -2 * cos(w0)
-                b2 = 1 - alpha * a
-                a0 = 1 + alpha / a
-                a1 = -2 * cos(w0)
-                a2 = 1 - alpha / a
+                b0 = (1 + alpha * a).toFloat()
+                b1 = (-2 * cos(w0)).toFloat()
+                b2 = (1 - alpha * a).toFloat()
+                a0 = (1 + alpha / a).toFloat()
+                a1 = (-2 * cos(w0)).toFloat()
+                a2 = (1 - alpha / a).toFloat()
             }
             BiquadType.LOWSHELF -> {
-                b0 = a * ((a + 1) - (a - 1) * cos(w0) + 2 * sqrt(a) * alpha)
-                b1 = 2 * a * ((a - 1) - (a + 1) * cos(w0))
-                b2 = a * ((a + 1) - (a - 1) * cos(w0) - 2 * sqrt(a) * alpha)
-                a0 = (a + 1) + (a - 1) * cos(w0) + 2 * sqrt(a) * alpha
-                a1 = -2 * ((a - 1) + (a + 1) * cos(w0))
-                a2 = (a + 1) + (a - 1) * cos(w0) - 2 * sqrt(a) * alpha
+                b0 = (a * ((a + 1) - (a - 1) * cos(w0) + 2 * sqrt(a) * alpha)).toFloat()
+                b1 = (2 * a * ((a - 1) - (a + 1) * cos(w0))).toFloat()
+                b2 = (a * ((a + 1) - (a - 1) * cos(w0) - 2 * sqrt(a) * alpha)).toFloat()
+                a0 = ((a + 1) + (a - 1) * cos(w0) + 2 * sqrt(a) * alpha).toFloat()
+                a1 = (-2 * ((a - 1) + (a + 1) * cos(w0))).toFloat()
+                a2 = ((a + 1) + (a - 1) * cos(w0) - 2 * sqrt(a) * alpha).toFloat()
             }
             BiquadType.HIGHSHELF -> {
-                b0 = a * ((a + 1) + (a - 1) * cos(w0) + 2 * sqrt(a) * alpha)
-                b1 = -2 * a * ((a - 1) + (a + 1) * cos(w0))
-                b2 = a * ((a + 1) + (a - 1) * cos(w0) - 2 * sqrt(a) * alpha)
-                a0 = (a + 1) - (a - 1) * cos(w0) + 2 * sqrt(a) * alpha
-                a1 = 2 * ((a - 1) - (a + 1) * cos(w0))
-                a2 = (a + 1) - (a - 1) * cos(w0) - 2 * sqrt(a) * alpha
+                b0 = (a * ((a + 1) + (a - 1) * cos(w0) + 2 * sqrt(a) * alpha)).toFloat()
+                b1 = (-2 * a * ((a - 1) + (a + 1) * cos(w0))).toFloat()
+                b2 = (a * ((a + 1) + (a - 1) * cos(w0) - 2 * sqrt(a) * alpha)).toFloat()
+                a0 = ((a + 1) - (a - 1) * cos(w0) + 2 * sqrt(a) * alpha).toFloat()
+                a1 = (2 * ((a - 1) - (a + 1) * cos(w0))).toFloat()
+                a2 = ((a + 1) - (a - 1) * cos(w0) - 2 * sqrt(a) * alpha).toFloat()
             }
         }
 
@@ -1239,7 +1239,7 @@ class AdaptiveThresholder(
         val stdDev = sqrt(variance)
 
         val rangeHalf = if (stdDev > 0) stdDev * stdDevMultiplier else 1f
-        
+
         val scaled = (value - mean) / rangeHalf
         return if (clamp) scaled.coerceIn(-1f, 1f) else scaled
     }
@@ -1381,11 +1381,11 @@ class StreamingWhitener(var alpha: Float = 0.01f, var epsilon: Float = 1e-5f) : 
             initialized = true
             return 0f
         }
-        
+
         val diff = value - mean
         mean += alpha * diff
         variance = (1 - alpha) * variance + alpha * diff * diff
-        
+
         val stdDev = sqrt(variance)
         return if (stdDev > epsilon) (value - mean) / stdDev else 0f
     }
@@ -1457,7 +1457,7 @@ class PercentileThresholder(val windowSize: Int = 100, var mapToMinusOneToOne: B
         }
 
         val percentile = if (count > 1) lessThanCount.toFloat() / (count - 1) else 0.5f
-        
+
         return if (mapToMinusOneToOne) {
             percentile * 2f - 1f
         } else {
@@ -1492,7 +1492,7 @@ class DynamicRangeCompressor(
         }
 
         val envelopeDb = linearToDb(envelope)
-        
+
         val overDb = envelopeDb - thresholdDb
         val gainReductionDb = if (overDb < -kneeWidthDb / 2f) {
             0f

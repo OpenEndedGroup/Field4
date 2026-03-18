@@ -3210,6 +3210,8 @@ interface ParameterFunction {
  */
 class ConstantParameter(val value: Float) : ParameterFunction {
     override fun evaluate(t: Float, position: Vec3) = value
+
+    override fun toString(): String = prettySummary("ConstantParameter", "value" to prettyNumber(value))
 }
 
 /**
@@ -3217,6 +3219,12 @@ class ConstantParameter(val value: Float) : ParameterFunction {
  */
 class LinearParameter(val start: Float, val end: Float) : ParameterFunction {
     override fun evaluate(t: Float, position: Vec3) = start + (end - start) * t
+
+    override fun toString(): String = prettySummary(
+        "LinearParameter",
+        "start" to prettyNumber(start),
+        "end" to prettyNumber(end)
+    )
 }
 
 /**
@@ -3229,6 +3237,13 @@ class CurveParameter(val curve: FLine, val scale: Float = 1f, val offset: Float 
         cursor.setT(t * (curve.nodes.size - 1))
         return cursor.position().y * scale + offset
     }
+
+    override fun toString(): String = prettySummary(
+        "CurveParameter",
+        "curve" to curve,
+        "scale" to prettyNumber(scale),
+        "offset" to prettyNumber(offset)
+    )
 }
 
 /**
@@ -3245,6 +3260,14 @@ class DistanceParameter(
         val normalized = (dist / maxDistance).coerceIn(0f, 1f)
         return minValue + (maxValue - minValue) * normalized
     }
+
+    override fun toString(): String = prettySummary(
+        "DistanceParameter",
+        "point" to point,
+        "minValue" to prettyNumber(minValue),
+        "maxValue" to prettyNumber(maxValue),
+        "maxDistance" to prettyNumber(maxDistance)
+    )
 }
 
 /**
@@ -3272,6 +3295,14 @@ class CurvatureParameter(
 
         return minValue
     }
+
+    override fun toString(): String = prettySummary(
+        "CurvatureParameter",
+        "line" to line,
+        "minValue" to prettyNumber(minValue),
+        "maxValue" to prettyNumber(maxValue),
+        "maxCurvature" to prettyNumber(maxCurvature)
+    )
 }
 
 /**
@@ -3285,6 +3316,14 @@ class SineParameter(
 ) : ParameterFunction {
     override fun evaluate(t: Float, position: Vec3) =
         offset + amplitude * sin(t * frequency * 2 * PI.toFloat() + phase)
+
+    override fun toString(): String = prettySummary(
+        "SineParameter",
+        "amplitude" to prettyNumber(amplitude),
+        "frequency" to prettyNumber(frequency),
+        "phase" to prettyNumber(phase),
+        "offset" to prettyNumber(offset)
+    )
 }
 
 /**

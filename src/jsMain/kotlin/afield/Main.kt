@@ -19,6 +19,7 @@ import kotlinx.html.*
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.encodeToString
 import org.w3c.dom.*
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
@@ -186,7 +187,12 @@ fun serviceEvents() {
 
 private fun findBoxElementByUid(uid: String): HTMLElement? {
     val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
-    return boxes.firstOrNull { (it.asDynamic().uid as? String) == uid } as? HTMLElement
+    return boxes.firstOrNull {
+        val candidate = (it.asDynamic().uid as? String)
+            ?: it.getAttribute("uid")
+            ?: it.getAttribute("data-uid")
+        candidate == uid
+    } as? HTMLElement
 }
 
 private fun domRectToRect(r: dynamic): Rect {
@@ -230,6 +236,365 @@ private fun collectScreenshotRects(box: HTMLElement): List<Rect> {
         }
     }
     return rects
+}
+
+private fun visibleMonacoContainer(): HTMLElement? {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return null
+    return if (isOverlayVisible(container)) container else null
+}
+
+private fun currentViewportRect() = Rect(
+    window.scrollX.toDouble(),
+    window.scrollY.toDouble(),
+    window.innerWidth.toDouble(),
+    window.innerHeight.toDouble()
+)
+
+private fun clipForPageRect(pageRect: Rect): Rect? {
+    val viewport = currentViewportRect()
+    val left = max(pageRect.x, viewport.x)
+    val top = max(pageRect.y, viewport.y)
+    val right = min(pageRect.right, viewport.right)
+    val bottom = min(pageRect.bottom, viewport.bottom)
+    val width = right - left
+    val height = bottom - top
+    if (width <= 0.0 || height <= 0.0) return null
+    return Rect(left, top, width, height)
+}
+
+private fun clipForVisibleElement(element: HTMLElement, padding: Double): Rect? {
+    val pageRect = domRectToRect(element.getBoundingClientRect())
+        .expand(max(0.0, padding))
+        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    return clipForPageRect(pageRect)
+}
+
+private fun clipForRenderedEditorContent(padding: Double): Rect? {
+    val container = visibleMonacoContainer() ?: return null
+    val editor = window.asDynamic().globalEditor ?: return clipForVisibleElement(container, padding)
+    val containerRect = container.getBoundingClientRect()
+    val headerHeight = runCatching {
+        val hover = container.querySelector(".hoverlay") as? HTMLElement ?: return@runCatching 0.0
+        hover.getBoundingClientRect().height
+    }.getOrDefault(0.0)
+    val contentHeight = runCatching {
+        (editor.getContentHeight?.invoke() as? Number)?.toDouble() ?: 0.0
+    }.getOrDefault(0.0)
+    val domBottom = container.querySelectorAll(
+        ".view-lines > div, .view-zones > div, .margin-view-zones > div, .view-overlays > div, .margin-view-overlays > div, .execution_output"
+    ).asList().mapNotNull {
+        val element = it as? HTMLElement ?: return@mapNotNull null
+        if (!isOverlayVisible(element)) return@mapNotNull null
+        element.getBoundingClientRect().bottom - containerRect.top
+    }.maxOrNull() ?: 0.0
+    val trimmedHeight = max(
+        160.0,
+        max(domBottom, headerHeight + contentHeight) + 20.0
+    ).coerceAtMost(containerRect.height)
+    val pageRect = Rect(
+        containerRect.left,
+        containerRect.top,
+        containerRect.width,
+        trimmedHeight
+    ).expand(max(0.0, padding)).translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    return clipForPageRect(pageRect)
+}
+
+private fun clearSelectionForScreenshot() {
+    selected.toList().forEach { deselectBox(it) }
+}
+
+private fun hideNotificationsForScreenshot() {
+    document.querySelectorAll(".bubble").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach {
+            it.style.visibility = "hidden"
+            it.style.opacity = "0"
+            it.style.setProperty("pointer-events", "none")
+        }
+}
+
+private fun disclosureInterfaceFor(container: Element): dynamic {
+    val factory = js("window.disclosureInterface")
+    if (factory == null || factory == js("undefined")) return null
+    return runCatching { factory(container) }.getOrNull()
+}
+
+private fun openAllOutputDisclosures(outputArea: HTMLElement) {
+    outputArea.style.visibility = "visible"
+    outputArea.style.height = "auto"
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val inter = disclosureInterfaceFor(contain) ?: return
+    val ids = contain.querySelectorAll(".disclosure").asList().mapNotNull {
+        it.asDynamic().__disclosureId as? String
+    }
+    ids.forEach { id ->
+        runCatching {
+            (inter.open as (String) -> Unit).invoke(id)
+        }
+    }
+}
+
+private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
+    val maxDisclosureHeight = max(520.0, min(920.0, window.innerHeight.toDouble() * 0.48))
+    outputArea.querySelectorAll(".disclosure-content").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach { content ->
+            val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
+            val childHeights = content.children.asList()
+                .mapNotNull { child ->
+                    val element = child as? HTMLElement ?: return@mapNotNull null
+                    val rect = element.getBoundingClientRect()
+                    max(
+                        rect.height,
+                        (element.scrollHeight as? Number)?.toDouble() ?: 0.0
+                    )
+                }
+            val naturalHeight = max(
+                scrollHeight,
+                childHeights.maxOrNull() ?: 0.0
+            )
+            val minimumHeight = when {
+                content.querySelector("iframe") != null -> 220.0
+                content.querySelector("input, textarea, select, button") != null -> 260.0
+                content.querySelector("svg") != null -> 170.0
+                else -> 120.0
+            }
+            val targetHeight = max(minimumHeight, naturalHeight + 18.0)
+                .coerceAtMost(maxDisclosureHeight)
+            content.style.height = "${targetHeight}px"
+        }
+}
+
+private fun openNestedDisclosuresForScreenshot(targetBox: HTMLElement) {
+    fun openFor(box: HTMLElement) {
+        val nestedIn = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return
+        val parentBox = document.body
+            ?.getElementsByClassName("box")
+            ?.asList()
+            ?.firstOrNull { it.unsafeCast<dynamic>().uid == nestedIn } as? HTMLElement ?: return
+        openFor(parentBox)
+        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+        val contain = outputArea.querySelector(".disclosure-group") ?: return
+        runCatching {
+            val inter = disclosureInterfaceFor(contain) ?: return@runCatching
+            (inter.open as (String) -> Unit).invoke("nested")
+        }
+    }
+
+    openFor(targetBox)
+}
+
+private fun revealBoxForScreenshot(
+    box: HTMLElement,
+    openOutputs: Boolean,
+    panIntoView: Boolean,
+    padding: Double
+): Rect? {
+    openNestedDisclosuresForScreenshot(box)
+    if (openOutputs) {
+        val outputArea = box.querySelector(".outputArea") as? HTMLElement
+        if (outputArea != null) {
+            openAllOutputDisclosures(outputArea)
+            fitOutputDisclosuresForScreenshot(outputArea)
+        }
+    }
+
+    var targetRect = unionRects(collectScreenshotRects(box)) ?: return null
+    if (panIntoView) {
+        ensureRectVisibleForScreenshot(targetRect.expand(padding))
+        targetRect = unionRects(collectScreenshotRects(box)) ?: targetRect
+    }
+    return targetRect
+}
+
+private fun ensureRectVisibleForScreenshot(rect: Rect) {
+    if (rect.w <= 0.0 || rect.h <= 0.0) return
+
+    val safe = navigationSafeViewportRect(padding = 12.0, occluderGap = 10.0)
+    val inset = 10.0
+    val leftBound = safe.x + inset
+    val rightBound = safe.right - inset
+    val topBound = safe.y + inset
+    val bottomBound = safe.bottom - inset
+
+    var dx = 0.0
+    var dy = 0.0
+
+    if (rect.w >= rightBound - leftBound) {
+        dx = leftBound - rect.x
+    } else if (rect.x < leftBound) {
+        dx = leftBound - rect.x
+    } else if (rect.right > rightBound) {
+        dx = rightBound - rect.right
+    }
+
+    if (rect.h >= bottomBound - topBound) {
+        dy = topBound - rect.y
+    } else if (rect.y < topBound) {
+        dy = topBound - rect.y
+    } else if (rect.bottom > bottomBound) {
+        dy = bottomBound - rect.bottom
+    }
+
+    if (abs(dx) < 0.5 && abs(dy) < 0.5) return
+    applyViewportTranslation(
+        nextX = mainTranslation[0] + dx,
+        nextY = mainTranslation[1] + dy,
+        panning = false,
+        refreshSpatial = false,
+        syncServer = true
+    )
+}
+
+private fun globalEditorText(): String? = runCatching {
+    val editor = window.asDynamic().globalEditor ?: return@runCatching null
+    val model = editor.getModel?.invoke() ?: return@runCatching null
+    model.getValue?.invoke() as? String
+}.getOrNull()
+
+private fun boxPropertyText(box: HTMLElement, property: String): String? = runCatching {
+    box.asDynamic()[property] as? String
+}.getOrNull()
+
+private fun normalizeEditorSyncText(text: String?): String? =
+    text?.replace("\r\n", "\n")?.trimEnd('\n')
+
+private fun layoutGlobalEditor() {
+    runCatching {
+        val editor = window.asDynamic().globalEditor ?: return@runCatching
+        editor.layout?.invoke()
+    }
+}
+
+private fun prepareMonacoForScreenshotLayout() {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
+    val targetWidth = min(1180.0, max(920.0, window.innerWidth.toDouble() * 0.54))
+    val targetHeight = min(1200.0, max(840.0, window.innerHeight.toDouble() * 0.72))
+    container.style.top = "12px"
+    container.style.right = "12px"
+    container.style.width = "${targetWidth}px"
+    container.style.height = "${targetHeight}px"
+}
+
+private fun syncEditorToBoxForScreenshot(box: HTMLElement, property: String): Boolean {
+    val w = window.asDynamic()
+    val editor = w.globalEditor ?: return false
+    val monacoValue = w.globalMonaco
+    val code = boxPropertyText(box, property) ?: ""
+
+    val selectedArray = eval("[]")
+    selectedArray.push(box)
+    w.currentSelectedCode = selectedArray
+    w.currentSelectedProperty = property
+    w.selectedProperty = property
+
+    val language = if (property == "code") {
+        (box.asDynamic().code_language as? String) ?: monacoFindLanguageForPropertyName(property)
+    } else {
+        monacoFindLanguageForPropertyName(property)
+    }
+
+    runCatching { w.clear(editor) }
+    runCatching { w.pauseLineTracking() }
+    runCatching { editor.setValue(code.replace("\r\n", "\n")) }
+    runCatching { editor.getModel()?.setEOL(0) }
+    runCatching { monacoValue?.editor?.setModelLanguage(editor.getModel(), language.lowercase()) }
+    runCatching {
+        editor._domElement
+            .querySelectorAll(".hoverlay")[0]
+            .innerHTML = "$property <i>($language)</i>"
+    }
+    runCatching { editor.setScrollTop(0) }
+    runCatching { editor.setScrollLeft(0) }
+    runCatching { editor.setPosition(js("{ lineNumber: 1, column: 1 }")) }
+    runCatching { editor.revealLineNearTop(1) }
+    runCatching { w.unpauseLineTracking() }
+    layoutGlobalEditor()
+    return true
+}
+
+private fun switchSelectionToProperty(uid: String, property: String, syncEditor: Boolean = false): Boolean {
+    val box = findBoxElementByUid(uid) ?: return false
+    selected.toList().forEach {
+        if (it != box) {
+            deselectBox(it)
+        }
+    }
+    selectedProperty = property
+    window.unsafeCast<dynamic>().selectedProperty = selectedProperty
+    if (!selected.contains(box)) {
+        selectBox(box)
+    } else {
+        window.unsafeCast<dynamic>().selectedList = selectedList
+        selectionContextChanged()
+    }
+    if (!syncEditor) return true
+    runCatching { switchToMonaco() }
+    prepareMonacoForScreenshotLayout()
+    layoutGlobalEditor()
+    return window.asDynamic().globalEditor != null
+}
+
+private fun editorIsSyncedFor(box: HTMLElement, property: String): Boolean {
+    val expected = boxPropertyText(box, property)?.takeIf { it.isNotBlank() } ?: return true
+    val actual = globalEditorText() ?: return false
+    return normalizeEditorSyncText(actual) == normalizeEditorSyncText(expected)
+}
+
+private fun editorHasRenderableContentFor(box: HTMLElement, property: String): Boolean {
+    val expected = normalizeEditorSyncText(boxPropertyText(box, property)) ?: return true
+    val actual = normalizeEditorSyncText(globalEditorText())
+    if (actual == expected) return true
+    if (actual != null && actual.isBlank()) return false
+
+    val expectedFirst = expected.lineSequence().firstOrNull { it.isNotBlank() }?.trim()
+    val actualFirst = actual?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    if (expectedFirst != null && expectedFirst == actualFirst) return true
+
+    val editorDomText = runCatching {
+        val container = visibleMonacoContainer() ?: return@runCatching null
+        val lines = container.querySelector(".view-lines") ?: return@runCatching null
+        (lines.textContent as? String)?.replace('\u00A0', ' ')
+    }.getOrNull()
+    val editorFirst = editorDomText
+        ?.lineSequence()
+        ?.firstOrNull { it.isNotBlank() }
+        ?.trim()
+    return editorFirst != null && expectedFirst != null && editorFirst.startsWith(expectedFirst)
+}
+
+private fun editorSyncDebug(box: HTMLElement, property: String): String {
+    val expected = normalizeEditorSyncText(boxPropertyText(box, property))
+    val actual = normalizeEditorSyncText(globalEditorText())
+    val visible = visibleMonacoContainer() != null
+    val editorExists = window.asDynamic().globalEditor != null
+    val domText = runCatching {
+        val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return@runCatching null
+        val lines = container.querySelector(".view-lines") ?: return@runCatching null
+        (lines.textContent as? String)?.replace('\u00A0', ' ')
+    }.getOrNull()
+    val expectedFirst = expected?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    val actualFirst = actual?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    val domFirst = domText?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    return buildString {
+        append("editor=")
+        append(editorExists)
+        append(" visible=")
+        append(visible)
+        append(" expectedLen=")
+        append(expected?.length ?: -1)
+        append(" actualLen=")
+        append(actual?.length ?: -1)
+        append(" expectedFirst=")
+        append(expectedFirst ?: "<null>")
+        append(" actualFirst=")
+        append(actualFirst ?: "<null>")
+        append(" domFirst=")
+        append(domFirst ?: "<null>")
+    }
 }
 
 private fun applyViewportTranslation(
@@ -437,25 +802,28 @@ private fun ensureBoxVisibleForNavigation(target: HTMLElement) {
 }
 
 private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotResponse {
+    if (window.asDynamic().fieldClientOpen != true || window.asDynamic().fieldBackdoorDisconnectedOverlayActive == true) {
+        return BoxScreenshotResponse(uid = req.uid, success = false, message = "Field page is not connected")
+    }
     val box = findBoxElementByUid(req.uid)
         ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
 
+    hideNotificationsForScreenshot()
     if (req.hideMonaco) {
+        clearSelectionForScreenshot()
         runCatching { hideMonaco() }
     }
 
-    fun measure(): Rect? = unionRects(collectScreenshotRects(box))
-
-    var targetRect = measure() ?: return BoxScreenshotResponse(
+    val targetRect = revealBoxForScreenshot(
+        box,
+        openOutputs = req.openOutputs,
+        panIntoView = req.panIntoView,
+        padding = req.padding
+    ) ?: return BoxScreenshotResponse(
         uid = req.uid,
         success = false,
         message = "no geometry for ${req.uid}"
     )
-
-    if (req.panIntoView) {
-        centerViewportOn(targetRect.expand(req.padding))
-        targetRect = measure() ?: targetRect
-    }
 
     val padded = targetRect.expand(req.padding)
     val clip = padded.translate(window.scrollX.toDouble(), window.scrollY.toDouble())
@@ -480,6 +848,122 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         clip = clip,
         viewport = viewport
     )
+}
+
+private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreenshotResponse {
+    if (window.asDynamic().fieldClientOpen != true || window.asDynamic().fieldBackdoorDisconnectedOverlayActive == true) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "Field page is not connected")
+    }
+    val box = req.uid?.let(::findBoxElementByUid)
+    if (req.uid != null && box == null) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
+    }
+    if (req.showEditor && box == null) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "showEditor requires a target box")
+    }
+    if (req.editorOnly && (!req.showEditor || box == null)) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "editorOnly requires a target box and showEditor")
+    }
+
+    selectedProperty = req.property
+    window.unsafeCast<dynamic>().selectedProperty = selectedProperty
+    hideNotificationsForScreenshot()
+
+    if (req.showEditor && box != null) {
+        if (!switchSelectionToProperty(req.uid!!, req.property, syncEditor = true)) {
+            return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet")
+        }
+    } else {
+        clearSelectionForScreenshot()
+        runCatching { hideMonaco() }
+    }
+
+    if (box != null) {
+        revealBoxForScreenshot(
+            box,
+            openOutputs = req.openOutputs,
+            panIntoView = req.panIntoView,
+            padding = req.padding
+        )
+    }
+
+    if (req.showEditor && box != null && !editorHasRenderableContentFor(box, req.property)) {
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = false,
+            message = "editor not synced yet; ${editorSyncDebug(box, req.property)}"
+        )
+    }
+
+    val viewport = currentViewportRect()
+    if (req.editorOnly) {
+        val editor = visibleMonacoContainer()
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
+        val clip = clipForRenderedEditorContent(req.padding)
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = true,
+            clip = clip,
+            viewport = viewport
+        )
+    }
+
+    return WindowScreenshotResponse(
+        uid = req.uid,
+        success = true,
+        viewport = viewport
+    )
+}
+
+private fun dynamicString(value: dynamic): String? = value as? String
+
+private fun dynamicDouble(value: dynamic, default: Double): Double =
+    (value as? Number)?.toDouble() ?: default
+
+private fun dynamicBoolean(value: dynamic, default: Boolean): Boolean =
+    (value as? Boolean) ?: default
+
+private fun rawToBoxScreenshotRequest(raw: dynamic) = BoxScreenshotRequest(
+    uid = dynamicString(raw?.uid) ?: "",
+    padding = dynamicDouble(raw?.padding, 12.0),
+    panIntoView = dynamicBoolean(raw?.panIntoView, true),
+    hideMonaco = dynamicBoolean(raw?.hideMonaco, true),
+    openOutputs = dynamicBoolean(raw?.openOutputs, false)
+)
+
+private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest(
+    uid = dynamicString(raw?.uid),
+    property = dynamicString(raw?.property) ?: "code",
+    panIntoView = dynamicBoolean(raw?.panIntoView, true),
+    showEditor = dynamicBoolean(raw?.showEditor, false),
+    openOutputs = dynamicBoolean(raw?.openOutputs, false),
+    editorOnly = dynamicBoolean(raw?.editorOnly, false),
+    padding = dynamicDouble(raw?.padding, 12.0)
+)
+
+private fun prepareBoxScreenshotJson(raw: dynamic): String {
+    val request = rawToBoxScreenshotRequest(raw)
+    val response = runCatching { prepareBoxScreenshot(request) }.getOrElse { throwable ->
+        BoxScreenshotResponse(
+            uid = request.uid,
+            success = false,
+            message = throwable.message ?: "Unexpected box screenshot preparation failure"
+        )
+    }
+    return Json.encodeToString(response)
+}
+
+private fun prepareWindowScreenshotJson(raw: dynamic): String {
+    val request = rawToWindowScreenshotRequest(raw)
+    val response = runCatching { prepareWindowScreenshot(request) }.getOrElse { throwable ->
+        WindowScreenshotResponse(
+            uid = request.uid,
+            success = false,
+            message = throwable.message ?: "Unexpected window screenshot preparation failure"
+        )
+    }
+    return Json.encodeToString(response)
 }
 
 private fun attachPanToNestedArea(container: HTMLElement) {
@@ -1769,17 +2253,35 @@ var styles = CssBuilder().apply {
 suspend fun main() {
     launchNumber++
     println(" -- welcome to Main.kt --")
+    val searchParams = URLSearchParams(document.location?.search)
+    val filename = searchParams.get("file") ?: "default"
+    val username = searchParams.get("user") ?: "everybody"
+    val sessionKey = searchParams.get("sessionKey")
+    val scratch = searchParams.get("scratch") == "1" || searchParams.get("scratch") == "true"
+    window.asDynamic().fieldBackdoorUiReady = false
+    window.asDynamic().fieldBackdoorDisconnectedOverlayActive = false
+    window.asDynamic().currentDocumentFilename = filename
+    window.asDynamic().currentDocumentSessionKey = sessionKey
+    window.asDynamic().currentDocumentScratch = scratch
     window.unsafeCast<dynamic>().selected = selected
     window.unsafeCast<dynamic>().selectedList = selectedList
     window.unsafeCast<dynamic>().selectedProperty = selectedProperty
     window.unsafeCast<dynamic>().selectionContextChanged = { selectionContextChanged() }
+    window.unsafeCast<dynamic>().switchToProperty = { uid: String, property: String ->
+        switchSelectionToProperty(uid, property, syncEditor = true)
+    }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
+    window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
+    window.asDynamic().fieldBackdoorPrepareWindowScreenshot = { raw: dynamic -> prepareWindowScreenshotJson(raw) }
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
 
     // Initialize the box snapping system
     boxSnappingSystem.initialize()
+
+    document.title = filename.substringAfterLast("/")
+    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch)))
 
     initializeClient()
     registerDoubleTap()
@@ -2036,6 +2538,14 @@ suspend fun main() {
 
         Handled.yes
     }
+    handlers.put("peer-output") { message, _ ->
+        if (!window.location.search.contains("user=playwright")) {
+            return@put Handled.no
+        }
+        val output = Json.decodeFromJsonElement<Output>(message.payload!!)
+        routeMonacoOutput(output)
+        Handled.yes
+    }
     handlers.put("describe-action") { message, _ ->
         val set = Json.decodeFromJsonElement<Describe_actions>(message.payload!!)
         val u = set.uid
@@ -2205,11 +2715,39 @@ suspend fun main() {
 
     handlers.put("box-screenshot") { message, reply ->
         val req = Json.decodeFromJsonElement<BoxScreenshotRequest>(message.payload!!)
-        val result = prepareBoxScreenshot(req)
         val responseName = message.replyTo ?: "box-screenshot"
-        reply(Message(responseName).payload(result))
+        window.setTimeout({
+            val result = runCatching { prepareBoxScreenshot(req) }.getOrElse { throwable ->
+                console.error("[screenshot] box prep failed", throwable)
+                BoxScreenshotResponse(
+                    uid = req.uid,
+                    success = false,
+                    message = throwable.message ?: "Unexpected box screenshot preparation failure"
+                )
+            }
+            reply(Message(responseName).payload(result))
+        }, 220)
         Handled.yes
     }
+
+    handlers.put("window-screenshot") { message, reply ->
+        val req = Json.decodeFromJsonElement<WindowScreenshotRequest>(message.payload!!)
+        val responseName = message.replyTo ?: "window-screenshot"
+        window.setTimeout({
+            val result = runCatching { prepareWindowScreenshot(req) }.getOrElse { throwable ->
+                console.error("[screenshot] window prep failed", throwable)
+                WindowScreenshotResponse(
+                    uid = req.uid,
+                    success = false,
+                    message = throwable.message ?: "Unexpected window screenshot preparation failure"
+                )
+            }
+            reply(Message(responseName).payload(result))
+        }, 220)
+        Handled.yes
+    }
+
+    window.asDynamic().fieldBackdoorUiReady = true
 
     handlers.put("set-output") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_output>(message.payload!!)
@@ -2217,7 +2755,6 @@ suspend fun main() {
 
         var found = defaultCreate(u)
 
-        println(" got set-output request for ${u} with ${set.value}")
         when (set.property) {
             "outputarea" -> {
                 handleOutputAreaRequest(found as HTMLElement, set)
@@ -2626,13 +3163,6 @@ suspend fun main() {
         switchToMonaco()
         Handled.yes
     }
-
-    val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
-    val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
-    window.asDynamic().currentDocumentFilename = filename
-    document.title = filename.substringAfterLast("/")
-    val hello = Message("hello").payload(Hello(filename, username))
-    onOpen.add(hello)
 
     val body = document.body ?: error("No body")
     body.append {

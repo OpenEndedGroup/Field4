@@ -1,7 +1,7 @@
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send } from "./afield.mjs";
 
 const DEFAULT_W = 480;
-const DEFAULT_H = 240;
+const DEFAULT_H = 150;
 const CLOSED_W = 200;
 const INLINE_CHANNEL_PREFIX = "*";
 const NESTED_MAX_W_PX = 1400;

@@ -56,8 +56,62 @@ fun runAll(time : String, vararg args : Any?) {
     lblock("info,di", "runall at `$time`") {
         fieldSourceCache[time]?.sortedBy { it.first }?.forEach {
             lblock("debug,di", "method ${it.second.name} (from ${it.second.declaringClass.name})") {
-                it.second.invoke(null, *args)
+                it.second.invoke(null, *selectInvocationArgs(it.second, args))
             }
         }
+    }
+}
+
+private fun selectInvocationArgs(method: Method, providedArgs: Array<out Any?>): Array<Any?> {
+    val parameterTypes = method.parameterTypes
+    if (parameterTypes.isEmpty()) return emptyArray()
+    if (providedArgs.isEmpty()) {
+        throw IllegalArgumentException(
+            "No arguments provided for ${method.declaringClass.name}.${method.name}${parameterTypes.contentToString()}"
+        )
+    }
+
+    val used = BooleanArray(providedArgs.size)
+    val selected = arrayOfNulls<Any?>(parameterTypes.size)
+
+    parameterTypes.forEachIndexed { index, parameterType ->
+        val matchIndex = providedArgs.indices.firstOrNull { candidateIndex ->
+            !used[candidateIndex] && isCompatibleArgument(parameterType, providedArgs[candidateIndex])
+        } ?: throw IllegalArgumentException(
+            buildString {
+                append("Cannot satisfy ")
+                append(method.declaringClass.name)
+                append('.')
+                append(method.name)
+                append(" parameter ")
+                append(index)
+                append(" of type ")
+                append(parameterType.name)
+                append(" from provided args ")
+                append(providedArgs.map { it?.javaClass?.name ?: "null" })
+            }
+        )
+
+        used[matchIndex] = true
+        selected[index] = providedArgs[matchIndex]
+    }
+
+    return selected
+}
+
+private fun isCompatibleArgument(parameterType: Class<*>, arg: Any?): Boolean {
+    if (arg == null) return !parameterType.isPrimitive
+    if (parameterType.isAssignableFrom(arg.javaClass)) return true
+
+    return when (parameterType) {
+        java.lang.Boolean.TYPE -> arg is Boolean
+        java.lang.Byte.TYPE -> arg is Byte
+        java.lang.Short.TYPE -> arg is Short
+        java.lang.Integer.TYPE -> arg is Int
+        java.lang.Long.TYPE -> arg is Long
+        java.lang.Float.TYPE -> arg is Float
+        java.lang.Double.TYPE -> arg is Double
+        java.lang.Character.TYPE -> arg is Char
+        else -> false
     }
 }

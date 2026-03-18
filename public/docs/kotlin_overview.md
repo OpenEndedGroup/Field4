@@ -105,6 +105,18 @@ And `.i` and `.l` as well. This looks a bit odd, but it's much less typing than 
 
 Printing is the simplest way to see what your code is doing. Kotlin uses `println(...)` (prints a line) and `print(...)` (prints without a trailing newline). Kotlin will call `toString()` for you.
 
+<!--
+FIELD_TEST
+id: docs.kotlin-overview.printing.println
+runner: backdoor-box
+tags: [docs, kotlin, printing]
+timeoutSec: 30
+expect:
+  outputContains:
+    - "x = 42"
+  eventKinds:
+    - output
+-->
 ```diffstatic {data-lang=kotlin}
 :::static
 val x = 42
@@ -117,6 +129,23 @@ Field wires Kotlin's `print( ... )` and `println( ... )` functions such that wha
 
 For larger outputs Field also defines a `display(channel :String, contents: Any)` function that lets you 'print' to a channel on the canvas. So:
 
+<!--
+FIELD_TEST
+id: docs.kotlin-overview.display.basic
+runner: backdoor-box
+tags: [docs, kotlin, display, visual]
+timeoutSec: 45
+withPlaywright: true
+waitSec: 0.75
+expect:
+  outputContains:
+    - "hello!?"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
 ```diffstatic {data-lang=kotlin}
 :::static
 display("foo", "hello!?")
