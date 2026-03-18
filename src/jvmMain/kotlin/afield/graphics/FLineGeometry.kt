@@ -1770,10 +1770,8 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
             }
 
             distance += dashLength
-            if (distance >= totalLength) {
-                cursor.setD(totalLength)
-                currentSegment.lineTo(cursor.position())
-            }
+            cursor.setD(minOf(distance, totalLength))
+            currentSegment.lineTo(cursor.position())
             result.add(currentSegment)
             currentSegment = null
             inDash = false

@@ -29,21 +29,21 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
 
-sealed interface JoltShape3D {
-    data class Cuboid(val width: Double, val height: Double, val depth: Double) : JoltShape3D
-    data class Sphere(val radius: Double) : JoltShape3D
-    data class Capsule(val radius: Double, val height: Double) : JoltShape3D
+sealed interface JoltShape {
+    data class Cuboid(val width: Double, val height: Double, val depth: Double) : JoltShape
+    data class Sphere(val radius: Double) : JoltShape
+    data class Capsule(val radius: Double, val height: Double) : JoltShape
     data class Plane(
         val nx: Double = 0.0,
         val ny: Double = 1.0,
         val nz: Double = 0.0,
         val constant: Double = 0.0
-    ) : JoltShape3D
+    ) : JoltShape
 }
 
-data class JoltBodyDef3D(
+data class JoltBodyDef(
     val name: String,
-    val shape: JoltShape3D,
+    val shape: JoltShape,
     val x: Double,
     val y: Double,
     val z: Double,
@@ -61,7 +61,7 @@ data class JoltBodyDef3D(
     val wz: Double = 0.0
 )
 
-data class JoltBodyState3D(
+data class JoltBodyState(
     val name: String,
     val position: Vec3,
     val rotation: Quat,
@@ -70,7 +70,7 @@ data class JoltBodyState3D(
     val bodyId: Int
 )
 
-data class JoltBodyPick3D(
+data class JoltBodyPick(
     val name: String,
     val bodyId: Int,
     val queryPoint: Vec3,
@@ -78,7 +78,7 @@ data class JoltBodyPick3D(
     val signedDistanceToSurface: Double
 )
 
-class JoltPhysicsWorld3D(
+class JoltPhysicsWorld(
     gravityX: Double = 0.0,
     gravityY: Double = -9.8,
     gravityZ: Double = 0.0
@@ -87,7 +87,7 @@ class JoltPhysicsWorld3D(
     val grabbedBodyName: String?
         get() = activeGrab?.name
 
-    private val shapeByName = LinkedHashMap<String, JoltShape3D>()
+    private val shapeByName = LinkedHashMap<String, JoltShape>()
     private val dynamicByName = HashMap<String, Boolean>()
     private val nameByBodyId = HashMap<Int, String>()
     private var activeGrab: ActiveGrab? = null
@@ -126,10 +126,10 @@ class JoltPhysicsWorld3D(
         jobSystem = JobSystemThreadPool(Jolt.cMaxPhysicsJobs, Jolt.cMaxPhysicsBarriers, workerThreads)
     }
 
-    fun createBody(def: JoltBodyDef3D): Int {
+    fun createBody(def: JoltBodyDef): Int {
         check(def.name !in bodyIdsByName) { "Body with name '${def.name}' already exists." }
 
-        val isDynamic = def.dynamic && def.shape !is JoltShape3D.Plane
+        val isDynamic = def.dynamic && def.shape !is JoltShape.Plane
         val motionType = if (isDynamic) EMotionType.Dynamic else EMotionType.Static
         val objectLayer = if (isDynamic) OBJECT_LAYER_MOVING else OBJECT_LAYER_NON_MOVING
 
@@ -187,7 +187,7 @@ class JoltPhysicsWorld3D(
         nameByBodyId.clear()
     }
 
-    fun step(dt: Double): List<JoltBodyState3D> {
+    fun step(dt: Double): List<JoltBodyState> {
         require(dt > 0.0) { "dt must be > 0, got $dt" }
         applyActiveGrabTarget(dt.toFloat())
 
@@ -204,7 +204,7 @@ class JoltPhysicsWorld3D(
             val linearVelocity = bodyInterface.getLinearVelocity(bodyId).toVec3f()
             val angularVelocity = bodyInterface.getAngularVelocity(bodyId).toVec3f()
 
-            JoltBodyState3D(
+            JoltBodyState(
                 name = name,
                 position = position,
                 rotation = rotation,
@@ -266,10 +266,10 @@ class JoltPhysicsWorld3D(
         point: Vec3,
         maxOutsideDistance: Double = 0.08,
         includeStatic: Boolean = false
-    ): JoltBodyPick3D? {
+    ): JoltBodyPick? {
         require(maxOutsideDistance >= 0.0) { "maxOutsideDistance must be >= 0, got $maxOutsideDistance" }
 
-        var bestPick: JoltBodyPick3D? = null
+        var bestPick: JoltBodyPick? = null
         var bestAbsDistance = Double.POSITIVE_INFINITY
 
         for ((name, bodyId) in bodyIdsByName) {
@@ -277,7 +277,7 @@ class JoltPhysicsWorld3D(
             if (!includeStatic && dynamicByName[name] != true) continue
 
             val shape = shapeByName[name] ?: continue
-            if (shape is JoltShape3D.Plane) continue
+            if (shape is JoltShape.Plane) continue
 
             val position = bodyInterface.getPosition(bodyId).toVec3f()
             val rotation = bodyInterface.getRotation(bodyId).toQuatf()
@@ -287,7 +287,7 @@ class JoltPhysicsWorld3D(
             val absDistance = abs(query.signedDistance)
             if (absDistance < bestAbsDistance) {
                 bestAbsDistance = absDistance
-                bestPick = JoltBodyPick3D(
+                bestPick = JoltBodyPick(
                     name = name,
                     bodyId = bodyId,
                     queryPoint = Vec3(point),
@@ -349,7 +349,7 @@ class JoltPhysicsWorld3D(
         controllerPosition: Vec3,
         controllerRotation: Quat,
         maxOutsideDistance: Double = 0.08
-    ): JoltBodyPick3D? {
+    ): JoltBodyPick? {
         val pick = pickBodyNearPoint(
             point = queryPoint,
             maxOutsideDistance = maxOutsideDistance,
@@ -404,10 +404,10 @@ class JoltPhysicsWorld3D(
             val rotation = bodyInterface.getRotation(bodyId).toQuatf()
 
             val localShapeLines = when (shape) {
-                is JoltShape3D.Cuboid -> wireCuboid(shape.width, shape.height, shape.depth)
-                is JoltShape3D.Sphere -> wireSphereRings(shape.radius, sphereSegs)
-                is JoltShape3D.Capsule -> wireCapsule(shape.radius, shape.height, capsuleSegs)
-                is JoltShape3D.Plane -> wirePlanePatch(
+                is JoltShape.Cuboid -> wireCuboid(shape.width, shape.height, shape.depth)
+                is JoltShape.Sphere -> wireSphereRings(shape.radius, sphereSegs)
+                is JoltShape.Capsule -> wireCapsule(shape.radius, shape.height, capsuleSegs)
+                is JoltShape.Plane -> wirePlanePatch(
                     shape.nx,
                     shape.ny,
                     shape.nz,
@@ -467,8 +467,8 @@ class JoltPhysicsWorld3D(
         )
     }
 
-    private fun buildShape(shape: JoltShape3D) = when (shape) {
-        is JoltShape3D.Cuboid -> {
+    private fun buildShape(shape: JoltShape) = when (shape) {
+        is JoltShape.Cuboid -> {
             require(shape.width > 0.0 && shape.height > 0.0 && shape.depth > 0.0) {
                 "Cuboid dimensions must be > 0, got $shape"
             }
@@ -479,19 +479,19 @@ class JoltPhysicsWorld3D(
             )
         }
 
-        is JoltShape3D.Sphere -> {
+        is JoltShape.Sphere -> {
             require(shape.radius > 0.0) { "Sphere radius must be > 0, got ${shape.radius}" }
             SphereShape(shape.radius.toFloat())
         }
 
-        is JoltShape3D.Capsule -> {
+        is JoltShape.Capsule -> {
             require(shape.radius > 0.0) { "Capsule radius must be > 0, got ${shape.radius}" }
             require(shape.height > 0.0) { "Capsule height must be > 0, got ${shape.height}" }
             val halfHeightCylinder = max(0.0, (shape.height - 2.0 * shape.radius) * 0.5)
             CapsuleShape(halfHeightCylinder.toFloat(), shape.radius.toFloat())
         }
 
-        is JoltShape3D.Plane -> {
+        is JoltShape.Plane -> {
             val normal = JoltVec3(shape.nx.toFloat(), shape.ny.toFloat(), shape.nz.toFloat())
             val plane = JoltPlane(normal, shape.constant.toFloat())
             PlaneShape(plane)
@@ -579,7 +579,7 @@ class JoltPhysicsWorld3D(
     }
 
     private fun surfaceQuery(
-        shape: JoltShape3D,
+        shape: JoltShape,
         pointWorld: Vec3,
         bodyPosition: Vec3,
         bodyRotation: Quat
@@ -589,10 +589,10 @@ class JoltPhysicsWorld3D(
             .transform(Vec3(pointWorld).sub(bodyPosition))
 
         val localQuery = when (shape) {
-            is JoltShape3D.Cuboid -> cuboidSurfaceQuery(shape, localPoint)
-            is JoltShape3D.Sphere -> sphereSurfaceQuery(shape, localPoint)
-            is JoltShape3D.Capsule -> capsuleSurfaceQuery(shape, localPoint)
-            is JoltShape3D.Plane -> null
+            is JoltShape.Cuboid -> cuboidSurfaceQuery(shape, localPoint)
+            is JoltShape.Sphere -> sphereSurfaceQuery(shape, localPoint)
+            is JoltShape.Capsule -> capsuleSurfaceQuery(shape, localPoint)
+            is JoltShape.Plane -> null
         } ?: return null
 
         val worldSurfacePoint = Quat(bodyRotation)
@@ -604,7 +604,7 @@ class JoltPhysicsWorld3D(
         )
     }
 
-    private fun cuboidSurfaceQuery(shape: JoltShape3D.Cuboid, localPoint: Vec3): SurfaceQuery {
+    private fun cuboidSurfaceQuery(shape: JoltShape.Cuboid, localPoint: Vec3): SurfaceQuery {
         val hx = (shape.width * 0.5).toFloat()
         val hy = (shape.height * 0.5).toFloat()
         val hz = (shape.depth * 0.5).toFloat()
@@ -644,7 +644,7 @@ class JoltPhysicsWorld3D(
         )
     }
 
-    private fun sphereSurfaceQuery(shape: JoltShape3D.Sphere, localPoint: Vec3): SurfaceQuery {
+    private fun sphereSurfaceQuery(shape: JoltShape.Sphere, localPoint: Vec3): SurfaceQuery {
         val radius = shape.radius.toFloat()
         val distance = localPoint.length()
         val surface = if (distance > 1e-6f) {
@@ -659,7 +659,7 @@ class JoltPhysicsWorld3D(
         )
     }
 
-    private fun capsuleSurfaceQuery(shape: JoltShape3D.Capsule, localPoint: Vec3): SurfaceQuery {
+    private fun capsuleSurfaceQuery(shape: JoltShape.Capsule, localPoint: Vec3): SurfaceQuery {
         val radius = shape.radius.toFloat()
         val halfHeightCylinder = max(0.0, (shape.height - 2.0 * shape.radius) * 0.5).toFloat()
         val axisPoint = Vec3(0f, localPoint.y.coerceIn(-halfHeightCylinder, halfHeightCylinder), 0f)
@@ -703,17 +703,32 @@ private fun JoltRVec3.toVec3f(): Vec3 = Vec3(xx().toFloat(), yy().toFloat(), zz(
 
 private fun JoltQuat.toQuatf(): Quat = Quat(getX(), getY(), getZ(), getW())
 
-@Deprecated("Use JoltShape3D", ReplaceWith("JoltShape3D"))
-typealias ShapeDef3D = JoltShape3D
+@Deprecated("Use JoltShape", ReplaceWith("JoltShape"))
+typealias JoltShape3D = JoltShape
 
-@Deprecated("Use JoltBodyDef3D", ReplaceWith("JoltBodyDef3D"))
-typealias BodyDef3D = JoltBodyDef3D
+@Deprecated("Use JoltBodyDef", ReplaceWith("JoltBodyDef"))
+typealias JoltBodyDef3D = JoltBodyDef
 
-@Deprecated("Use JoltBodyState3D", ReplaceWith("JoltBodyState3D"))
-typealias BodyState3D = JoltBodyState3D
+@Deprecated("Use JoltBodyState", ReplaceWith("JoltBodyState"))
+typealias JoltBodyState3D = JoltBodyState
 
-@Deprecated("Use JoltBodyPick3D", ReplaceWith("JoltBodyPick3D"))
-typealias BodyPick3D = JoltBodyPick3D
+@Deprecated("Use JoltBodyPick", ReplaceWith("JoltBodyPick"))
+typealias JoltBodyPick3D = JoltBodyPick
 
-@Deprecated("Use JoltPhysicsWorld3D", ReplaceWith("JoltPhysicsWorld3D"))
-typealias SimplePhysics3D = JoltPhysicsWorld3D
+@Deprecated("Use JoltPhysicsWorld", ReplaceWith("JoltPhysicsWorld"))
+typealias JoltPhysicsWorld3D = JoltPhysicsWorld
+
+@Deprecated("Use JoltShape", ReplaceWith("JoltShape"))
+typealias ShapeDef3D = JoltShape
+
+@Deprecated("Use JoltBodyDef", ReplaceWith("JoltBodyDef"))
+typealias BodyDef3D = JoltBodyDef
+
+@Deprecated("Use JoltBodyState", ReplaceWith("JoltBodyState"))
+typealias BodyState3D = JoltBodyState
+
+@Deprecated("Use JoltBodyPick", ReplaceWith("JoltBodyPick"))
+typealias BodyPick3D = JoltBodyPick
+
+@Deprecated("Use JoltPhysicsWorld", ReplaceWith("JoltPhysicsWorld"))
+typealias SimplePhysics3D = JoltPhysicsWorld

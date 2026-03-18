@@ -49,14 +49,25 @@ object ReturnValueRegistry {
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
     ) {
         val generation = inside.runGeneration.incrementAndGet(strand)
+        launchWithGeneration(inside, returnValue, strand, generation, notify)
+    }
+
+    internal fun launchWithGeneration(
+        inside: Box,
+        returnValue: Any?,
+        strand: String,
+        generation: Int,
+        notify: (running: Boolean, strand: String, watermark: Int) -> Unit
+    ): Boolean {
         if (returnValue == null) {
             notify(false, strand, generation)
-            return
+            return true
         }
-        if (launchCompositeIfPresent(inside, returnValue, strand, generation, notify)) return
-        if (dispatch(inside, returnValue, strand, generation, notify)) return
+        if (launchCompositeIfPresent(inside, returnValue, strand, generation, notify)) return true
+        if (dispatch(inside, returnValue, strand, generation, notify)) return true
         // no handler matched
         notify(false, strand, generation)
+        return false
     }
 
     internal fun dispatch(

@@ -10,7 +10,7 @@ import afield.graphics.FLine
 import afield.stdlib.*
 
 val points = List(220) {
-    vec(random(80.0, 980.0), random(70.0, 620.0))
+    vec(80.0 + random() * 900.0, 70.0 + random() * 550.0)
 }
 
 val exact = vec2NN(points, mode = VecNNMode.EXACT)
@@ -68,7 +68,7 @@ lines(
 import afield.graphics.FLine
 import afield.stdlib.*
 
-val points = List(260) { vec(random(50.0, 1050.0), random(50.0, 650.0)) }
+val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
 val index = vec2NN(points, mode = VecNNMode.APPROXIMATE)
 val nn = index.kNearest(q, 14)
@@ -84,7 +84,7 @@ lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fit
 import afield.graphics.FLine
 import afield.stdlib.*
 
-val points = List(260) { vec(random(50.0, 1050.0), random(50.0, 650.0)) }
+val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
 val index = vec2NN(
     points,

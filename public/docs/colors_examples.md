@@ -39,7 +39,7 @@ lines(
 
 ## paletteForBackground on layered paths
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/palette_background_paths.png" wait="1.0" capture="window" open-outputs="true" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/palette_background_paths.png" wait="1.0" capture="box" open-outputs="true" embed=true}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*

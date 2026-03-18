@@ -238,6 +238,106 @@ private fun collectScreenshotRects(box: HTMLElement): List<Rect> {
     return rects
 }
 
+private fun svgContentClientRect(svg: SVGElement): Rect? = runCatching {
+    val bbox = svg.asDynamic().getBBox?.invoke() ?: return@runCatching null
+    val ctm = svg.asDynamic().getScreenCTM?.invoke() ?: return@runCatching null
+    val x = (bbox.x as? Number)?.toDouble() ?: return@runCatching null
+    val y = (bbox.y as? Number)?.toDouble() ?: return@runCatching null
+    val w = (bbox.width as? Number)?.toDouble() ?: return@runCatching null
+    val h = (bbox.height as? Number)?.toDouble() ?: return@runCatching null
+    if (w <= 0.0 || h <= 0.0) return@runCatching null
+
+    fun point(px: Double, py: Double): Pair<Double, Double>? {
+        val p = svg.asDynamic().createSVGPoint?.invoke() ?: return null
+        p.x = px
+        p.y = py
+        val transformed = p.matrixTransform(ctm)
+        val tx = (transformed.x as? Number)?.toDouble() ?: return null
+        val ty = (transformed.y as? Number)?.toDouble() ?: return null
+        return tx to ty
+    }
+
+    val corners = listOfNotNull(
+        point(x, y),
+        point(x + w, y),
+        point(x, y + h),
+        point(x + w, y + h)
+    )
+    if (corners.isEmpty()) return@runCatching null
+    val left = corners.minOf { it.first }
+    val top = corners.minOf { it.second }
+    val right = corners.maxOf { it.first }
+    val bottom = corners.maxOf { it.second }
+    val width = right - left
+    val height = bottom - top
+    if (width <= 0.0 || height <= 0.0) return@runCatching null
+    Rect(left, top, width, height)
+}.getOrNull()
+
+private fun disclosureTitleClientRect(disclosure: HTMLElement): Rect? {
+    val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
+    if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
+    val header = disclosure.querySelector(".disclosure-header") as? HTMLElement ?: return disclosureRect
+    if (!isOverlayVisible(header)) return disclosureRect
+    val headerRect = domRectToRect(header.getBoundingClientRect())
+    val titleRect = (header.querySelector(".title") as? HTMLElement)
+        ?.takeIf { isOverlayVisible(it) }
+        ?.let { domRectToRect(it.getBoundingClientRect()) }
+
+    val targetWidth = min(
+        disclosureRect.w,
+        max(
+            108.0,
+            max(titleRect?.w ?: 0.0, headerRect.w.coerceAtMost(180.0)) + 20.0
+        )
+    )
+    val targetHeight = max(headerRect.h, titleRect?.h ?: 0.0)
+    return Rect(disclosureRect.x, disclosureRect.y, targetWidth, targetHeight)
+}
+
+private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
+    val outputArea = box.querySelector(".outputArea") as? HTMLElement ?: return emptyList()
+    if (outputArea.style.visibility == "hidden") return emptyList()
+
+    val disclosureElements = outputArea.querySelectorAll(".disclosure").asList()
+        .mapNotNull { disclosure ->
+            val element = disclosure as? HTMLElement ?: return@mapNotNull null
+            if (!isOverlayVisible(element)) return@mapNotNull null
+            val rect = domRectToRect(element.getBoundingClientRect())
+            if (rect.w <= 2.0 || rect.h <= 2.0) return@mapNotNull null
+            element
+        }
+    val disclosureRects = disclosureElements.map { domRectToRect(it.getBoundingClientRect()) }
+    if (disclosureRects.size > 1) {
+        return disclosureRects
+    }
+    val disclosureTitleRect = disclosureElements.firstOrNull()?.let(::disclosureTitleClientRect)
+
+    val svgRects = outputArea.querySelectorAll("svg").asList()
+        .mapNotNull { node ->
+            val svg = node as? SVGElement ?: return@mapNotNull null
+            if (!isOverlayVisible(svg as Element)) return@mapNotNull null
+            svgContentClientRect(svg) ?: domRectToRect(svg.getBoundingClientRect())
+        }
+    if (svgRects.isNotEmpty()) {
+        val maxArea = svgRects.maxOf { it.w * it.h }
+        val meaningful = svgRects.filter { rect ->
+            val area = rect.w * rect.h
+            area >= max(2500.0, maxArea * 0.15)
+        }
+        val trimmed = meaningful.ifEmpty {
+            listOf(svgRects.maxByOrNull { it.w * it.h } ?: svgRects.last())
+        }
+        if (disclosureTitleRect == null) return trimmed
+        return trimmed.map { rect -> unionRects(listOf(disclosureTitleRect, rect)) ?: rect }
+    }
+
+    if (disclosureRects.isNotEmpty()) {
+        return disclosureRects
+    }
+    return listOf(domRectToRect(outputArea.getBoundingClientRect()))
+}
+
 private fun visibleMonacoContainer(): HTMLElement? {
     val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return null
     return if (isOverlayVisible(container)) container else null
@@ -287,14 +387,38 @@ private fun clipForRenderedEditorContent(padding: Double): Rect? {
         if (!isOverlayVisible(element)) return@mapNotNull null
         element.getBoundingClientRect().bottom - containerRect.top
     }.maxOrNull() ?: 0.0
+    val layoutInfo = runCatching { editor.getLayoutInfo?.invoke() }.getOrNull()
+    val contentLeft = (layoutInfo?.contentLeft as? Number)?.toDouble() ?: 0.0
+    val scrollWidth = runCatching {
+        (editor.getContentWidth?.invoke() as? Number)?.toDouble()
+            ?: (editor.getScrollWidth?.invoke() as? Number)?.toDouble()
+            ?: 0.0
+    }.getOrDefault(0.0)
+    val scrollbarWidth = runCatching {
+        (layoutInfo?.verticalScrollbarWidth as? Number)?.toDouble()
+            ?: (layoutInfo?.scrollbarWidth as? Number)?.toDouble()
+            ?: 0.0
+    }.getOrDefault(0.0)
+    val domRight = container.querySelectorAll(
+        ".margin, .margin-view-overlays, .line-numbers, .view-lines > div, .view-zones > div, .margin-view-zones > div, .view-overlays > div, .execution_output"
+    ).asList().mapNotNull {
+        val element = it as? Element ?: return@mapNotNull null
+        if (!isOverlayVisible(element)) return@mapNotNull null
+        val right = element.getBoundingClientRect().right - containerRect.left
+        if (right > 0.0) right else null
+    }.maxOrNull() ?: 0.0
     val trimmedHeight = max(
         160.0,
         max(domBottom, headerHeight + contentHeight) + 20.0
     ).coerceAtMost(containerRect.height)
+    val trimmedWidth = max(
+        360.0,
+        max(domRight, contentLeft + scrollWidth + scrollbarWidth) + 24.0
+    ).coerceAtMost(containerRect.width)
     val pageRect = Rect(
         containerRect.left,
         containerRect.top,
-        containerRect.width,
+        trimmedWidth,
         trimmedHeight
     ).expand(max(0.0, padding)).translate(window.scrollX.toDouble(), window.scrollY.toDouble())
     return clipForPageRect(pageRect)
@@ -336,10 +460,13 @@ private fun openAllOutputDisclosures(outputArea: HTMLElement) {
 }
 
 private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
-    val maxDisclosureHeight = max(520.0, min(920.0, window.innerHeight.toDouble() * 0.48))
+    outputArea.style.maxHeight = "none"
+    val maxDisclosureHeight = max(680.0, min(1400.0, window.innerHeight.toDouble() * 0.82))
     outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
         .forEach { content ->
+            content.style.maxHeight = "none"
+            content.style.setProperty("overflow", "visible")
             val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
             val childHeights = content.children.asList()
                 .mapNotNull { child ->
@@ -350,20 +477,75 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                         (element.scrollHeight as? Number)?.toDouble() ?: 0.0
                     )
                 }
+            val svgHeights = content.querySelectorAll("svg").asList()
+                .mapNotNull { node ->
+                    val svg = node as? HTMLElement ?: return@mapNotNull null
+                    val rectHeight = svg.getBoundingClientRect().height
+                    val scrollHeightSvg = (svg.scrollHeight as? Number)?.toDouble() ?: 0.0
+                    max(rectHeight, scrollHeightSvg)
+                }
             val naturalHeight = max(
                 scrollHeight,
-                childHeights.maxOrNull() ?: 0.0
+                max(
+                    childHeights.maxOrNull() ?: 0.0,
+                    svgHeights.maxOrNull() ?: 0.0
+                )
             )
             val minimumHeight = when {
                 content.querySelector("iframe") != null -> 220.0
                 content.querySelector("input, textarea, select, button") != null -> 260.0
-                content.querySelector("svg") != null -> 170.0
+                content.querySelector("svg") != null -> 260.0
                 else -> 120.0
             }
-            val targetHeight = max(minimumHeight, naturalHeight + 18.0)
+            val targetHeight = max(minimumHeight, naturalHeight + 36.0)
                 .coerceAtMost(maxDisclosureHeight)
             content.style.height = "${targetHeight}px"
         }
+}
+
+private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTMLElement) {
+    val currentWidth = box.getBoundingClientRect().width
+    val maxContentWidth = outputArea.querySelectorAll(".disclosure-content").asList()
+        .mapNotNull { it as? HTMLElement }
+        .map { content ->
+            val scrollW = (content.scrollWidth as? Number)?.toDouble() ?: 0.0
+            val contentRect = content.getBoundingClientRect()
+            val childW = content.children.asList()
+                .mapNotNull { child ->
+                    val element = child as? Element ?: return@mapNotNull null
+                    if (!isOverlayVisible(element)) return@mapNotNull null
+                    val edgeW = element.getBoundingClientRect().right - contentRect.left
+                    val html = element as? HTMLElement
+                    max(
+                        edgeW,
+                        max(
+                            html?.getBoundingClientRect()?.width ?: 0.0,
+                            (html?.scrollWidth as? Number)?.toDouble() ?: 0.0
+                        )
+                    )
+                }
+                .maxOrNull() ?: 0.0
+            val svgW = content.querySelectorAll("svg").asList()
+                .mapNotNull { node ->
+                    val svg = node as? SVGElement ?: return@mapNotNull null
+                    if (!isOverlayVisible(svg as Element)) return@mapNotNull null
+                    val contentRight = svgContentClientRect(svg)?.right?.minus(contentRect.left) ?: 0.0
+                    max(contentRight, svg.getBoundingClientRect().right - contentRect.left)
+                }
+                .maxOrNull() ?: 0.0
+            max(scrollW, max(childW, svgW))
+        }
+        .maxOrNull() ?: 0.0
+
+    if (maxContentWidth <= 0.0) return
+
+    val desiredWidth = (maxContentWidth + 80.0)
+        .coerceAtLeast(currentWidth)
+        .coerceAtMost(max(920.0, window.innerWidth.toDouble() * 0.95))
+
+    if (desiredWidth > currentWidth + 2.0) {
+        box.style.width = "${desiredWidth}px"
+    }
 }
 
 private fun openNestedDisclosuresForScreenshot(targetBox: HTMLElement) {
@@ -399,6 +581,7 @@ private fun revealBoxForScreenshot(
         if (outputArea != null) {
             openAllOutputDisclosures(outputArea)
             fitOutputDisclosuresForScreenshot(outputArea)
+            fitBoxWidthToOutputsForScreenshot(box, outputArea)
         }
     }
 
@@ -702,7 +885,7 @@ private fun centerViewportOn(rect: Rect) {
     applyViewportTranslation(nextX, nextY, panning = false)
 }
 
-private fun isOverlayVisible(element: HTMLElement?): Boolean {
+private fun isOverlayVisible(element: Element?): Boolean {
     if (element == null) return false
     val style = window.getComputedStyle(element)
     if (style.display == "none" || style.visibility == "hidden") return false
@@ -814,7 +997,7 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         runCatching { hideMonaco() }
     }
 
-    val targetRect = revealBoxForScreenshot(
+    val revealedRect = revealBoxForScreenshot(
         box,
         openOutputs = req.openOutputs,
         panIntoView = req.panIntoView,
@@ -824,6 +1007,14 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         success = false,
         message = "no geometry for ${req.uid}"
     )
+
+    // For docs captures that open outputs, crop to the visible disclosures instead
+    // of the whole box body to avoid large empty header/code regions.
+    val targetRect = if (req.openOutputs) {
+        unionRects(collectOutputScreenshotRects(box)) ?: revealedRect
+    } else {
+        revealedRect
+    }
 
     val padded = targetRect.expand(req.padding)
     val clip = padded.translate(window.scrollX.toDouble(), window.scrollY.toDouble())

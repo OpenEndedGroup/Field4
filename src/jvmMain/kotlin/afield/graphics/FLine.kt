@@ -145,6 +145,7 @@ class FLine : HasProperties {
         fun copy(transform: (Vec3) -> Vec3 = { it }): Node {
             val next = create()
             storage.forEach { next.storage.add(transform(it)) }
+            next.properties.putAll(properties)
             return next
         }
 

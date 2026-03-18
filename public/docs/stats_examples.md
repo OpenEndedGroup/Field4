@@ -14,7 +14,7 @@ import kotlin.math.sin
 val buffer = SummaryStatsBuffer(maxSize = 300)
 for (i in 0 until 520) {
     val t = i / 90.0
-    val x = sin(t * PI * 0.75) * 0.55 + random(-0.15, 0.15)
+    val x = sin(t * PI * 0.75) * 0.55 + (-0.15 + random() * 0.30)
     buffer.add(x)
 }
 
@@ -72,8 +72,8 @@ val vbuf = Vec2SummaryStatsBuffer(maxSize = 260)
 for (i in 0 until 420) {
     val t = i / 60.0
     val p = vec(
-        cos(t * PI * 0.35) * 240 + random(-26.0, 26.0),
-        sin(t * PI * 0.47) * 160 + random(-20.0, 20.0)
+        cos(t * PI * 0.35) * 240 + (-26.0 + random() * 52.0),
+        sin(t * PI * 0.47) * 160 + (-20.0 + random() * 40.0)
     )
     vbuf.add(p)
 }

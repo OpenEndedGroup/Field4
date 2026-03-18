@@ -4,7 +4,7 @@ Signal processing in this file is easiest to learn by drawing the raw stream and
 
 ## Filter chains as layered curves
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.0" capture="window" open-outputs="true" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.0" capture="box" open-outputs="true" padding="20" embed=true}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -37,7 +37,7 @@ for (i in 0 until 420) {
     val signal = (
         sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
         sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
-        random(-0.12f, 0.12f)
+        (-0.12f + random().toFloat() * 0.24f)
     )
     raw += signal
     val s = oneEuro(ema(signal))
@@ -82,7 +82,7 @@ val eb = mutableListOf<Float>()
 
 for (i in 0 until 360) {
     val t = i / 120f
-    var x = (sin(2.0 * PI * 1.1 * t) * 0.55 + random(-0.08f, 0.08f)).toFloat()
+    var x = (sin(2.0 * PI * 1.1 * t) * 0.55 + (-0.08 + random() * 0.16)).toFloat()
     if (i % 83 == 0) x += 0.95f
     if (i % 127 == 0) x -= 0.8f
     raw += x

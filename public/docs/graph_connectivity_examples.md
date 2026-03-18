@@ -15,7 +15,7 @@ import kotlin.math.sin
 val points = List(140) { i ->
     val a = i / 140.0 * PI * 2.0
     val r = 180.0 + 95.0 * sin(a * 3.0)
-    vec(560.0 + cos(a) * r + random(-24.0, 24.0), 360.0 + sin(a) * r * 0.65 + random(-18.0, 18.0))
+    vec(560.0 + cos(a) * r + (-24.0 + random() * 48.0), 360.0 + sin(a) * r * 0.65 + (-18.0 + random() * 36.0))
 }
 
 val delaunay = vec2DelaunayGraph(points)
@@ -64,7 +64,7 @@ lines(
 import afield.graphics.FLine
 import afield.stdlib.*
 
-val points = List(110) { vec(random(80.0, 1020.0), random(80.0, 640.0)) }
+val points = List(110) { vec(80.0 + random() * 940.0, 80.0 + random() * 560.0) }
 val base = vec2KnnGraph(points, k = 4)
 
 val anchor = 0

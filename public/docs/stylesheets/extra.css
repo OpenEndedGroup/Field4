@@ -259,6 +259,47 @@ code {
     border-right: 0;
 }
 
+.field-doc-export {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 18px 0;
+    padding: 8px 10px;
+    border: 1px solid var(--mono-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.field-doc-export-button {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: black;
+    color: white;
+    font-family: var(--md-code-font);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 6px 9px;
+    cursor: pointer;
+}
+
+.field-doc-export-button:hover {
+    background: #151515;
+    border-color: white;
+}
+
+.field-doc-export-status {
+    font-size: 11px;
+    color: var(--mono-text-faint);
+}
+
+.field-doc-export-status[data-kind="ok"] {
+    color: #9ff1b6;
+}
+
+.field-doc-export-status[data-kind="error"] {
+    color: #ff9a9a;
+}
+
 /* ── sidebars: 13px black border at rest, content reveals on hover (desktop only) ── */
 @media screen and (min-width: 76.234375em) {
     /* border on __inner = nav-content height, sticky, always visible (not inside the clip) */

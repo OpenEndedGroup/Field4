@@ -268,6 +268,14 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
         pw.chromium().launch(
             BrowserType.LaunchOptions()
                 .setHeadless(!visibleBackdoorPlaywright)
+                .setArgs(
+                    listOf(
+                        "--disable-background-timer-throttling",
+                        "--disable-backgrounding-occluded-windows",
+                        "--disable-renderer-backgrounding",
+                        "--disable-frame-rate-limit"
+                    )
+                )
         ).also { globalPlaywrightBrowser = it }
     }
 

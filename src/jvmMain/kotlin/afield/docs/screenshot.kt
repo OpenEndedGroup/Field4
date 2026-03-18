@@ -1,16 +1,13 @@
 package afield
 
 import afield.logger.lprintln
-import com.google.gson.JsonObject
-import com.microsoft.playwright.CDPSession
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.Clip
+import com.microsoft.playwright.options.ScreenshotType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Base64
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
@@ -157,7 +154,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }
-              return prepared;
+              return JSON.stringify(decoded);
             }
             const message = decoded && typeof decoded.message === "string"
               ? decoded.message
@@ -820,83 +817,51 @@ private fun recordScreencastToMp4(
     durationSec: Double,
     fps: Int,
 ): ScreencastResult {
-    val dpr = (page.evaluate("window.devicePixelRatio") as? Number)?.toDouble() ?: 2.0
-
-    val cdp: CDPSession = page.context().newCDPSession(page)
     val frames = mutableListOf<ByteArray>()
-    val done = CountDownLatch(1)
-    var frameCount = 0
+  val safeFps = fps.coerceAtLeast(1)
+  val targetFrames = maxOf(1, kotlin.math.ceil(durationSec * safeFps).toInt())
+  val frameIntervalNs = (1_000_000_000.0 / safeFps.toDouble()).toLong().coerceAtLeast(1L)
 
-    cdp.on("Page.screencastFrame") { params: JsonObject ->
-        val sessionId = params.get("sessionId")?.asInt ?: return@on
-        // Acknowledge frame so CDP keeps sending
-        val ack = JsonObject()
-        ack.addProperty("sessionId", sessionId)
-        cdp.send("Page.screencastFrameAck", ack)
-
-        val data = params.getAsJsonObject("metadata") // unused but available
-        val base64 = params.get("data")?.asString ?: return@on
-        val decoded = Base64.getDecoder().decode(base64)
-        synchronized(frames) {
-            frames.add(decoded)
-            frameCount++
-        }
+  repeat(targetFrames) { index ->
+    val frameStart = System.nanoTime()
+    val screenshotOptions = Page.ScreenshotOptions().setType(ScreenshotType.JPEG).setQuality(90)
+    if (clip != null) {
+      screenshotOptions.setClip(Clip(clip.x, clip.y, clip.w, clip.h))
     }
-
-    // Start screencast — capture full viewport as JPEG
-    val startParams = JsonObject()
-    startParams.addProperty("format", "jpeg")
-    startParams.addProperty("quality", 90)
-    startParams.addProperty("maxWidth", VIDEO_MAX_DIMENSION)
-    startParams.addProperty("maxHeight", VIDEO_MAX_DIMENSION)
-    startParams.addProperty("everyNthFrame", 1)
-    cdp.send("Page.startScreencast", startParams)
-
-    // Wait for the requested duration
-    val durationMs = (durationSec * 1000).toLong()
-    Thread.sleep(durationMs)
-
-    cdp.send("Page.stopScreencast")
-
-    // Small grace period to collect remaining frames
-    Thread.sleep(200)
-    cdp.detach()
-
-    val capturedFrames: List<ByteArray>
+    val bytes = page.screenshot(screenshotOptions)
     synchronized(frames) {
-        capturedFrames = frames.toList()
+      frames.add(bytes)
     }
 
-    if (capturedFrames.isEmpty()) {
-        throw IllegalStateException("CDP screencast captured 0 frames in ${durationSec}s")
+    val elapsedNs = System.nanoTime() - frameStart
+    val sleepNs = frameIntervalNs - elapsedNs
+    if (sleepNs > 0 && index < targetFrames - 1) {
+      val sleepMs = sleepNs / 1_000_000L
+      val sleepRemainderNs = (sleepNs % 1_000_000L).toInt()
+      Thread.sleep(sleepMs, sleepRemainderNs)
     }
+  }
 
-    lprintln("info,video", "Captured ${capturedFrames.size} screencast frames in ${durationSec}s")
+  val capturedFrames = synchronized(frames) { frames.toList() }
+  if (capturedFrames.isEmpty()) {
+    throw IllegalStateException("Video capture sampled 0 frames in ${durationSec}s")
+  }
+
+  lprintln("info,video", "Captured ${capturedFrames.size} sampled frames in ${durationSec}s")
 
     // Build ffmpeg command: pipe JPEG frames via stdin, encode to H.264 MP4
     val ffmpeg = FFMPEG
 
-    val actualFps = (capturedFrames.size.toDouble() / durationSec).let { captured ->
-        // Use the actual capture rate but cap at the requested fps
-        if (captured < fps) captured else fps.toDouble()
-    }
-
     val filterParts = mutableListOf<String>()
-    // If we have a clip region, add a crop filter (scale by DPR for device pixels)
-    if (clip != null) {
-        val cx = (clip.x * dpr).toInt()
-        val cy = (clip.y * dpr).toInt()
-        val cw = (clip.w * dpr).toInt()
-        val ch = (clip.h * dpr).toInt()
-        filterParts.add("crop=$cw:$ch:$cx:$cy")
-    }
     // Ensure dimensions are even (required by yuv420p)
     filterParts.add("pad=ceil(iw/2)*2:ceil(ih/2)*2")
+    // Normalize to a constant output frame rate for stable playback duration.
+    filterParts.add("fps=$fps")
 
     val args = buildList {
         addAll(listOf(ffmpeg, "-y"))
         // Input: concatenated JPEGs from stdin
-        addAll(listOf("-f", "image2pipe", "-framerate", String.format("%.2f", actualFps), "-i", "-"))
+        addAll(listOf("-f", "image2pipe", "-vcodec", "mjpeg", "-framerate", String.format("%.2f", safeFps.toDouble()), "-i", "-"))
         // Video filter
         addAll(listOf("-vf", filterParts.joinToString(",")))
         // Encoding
@@ -911,24 +876,29 @@ private fun recordScreencastToMp4(
         add(outputPath.toString())
     }
 
-    val process = ProcessBuilder(args)
-        .redirectErrorStream(true)
-        .start()
+      fun runFfmpegEncode(arguments: List<String>): Pair<Int, String> {
+        val process = ProcessBuilder(arguments)
+          .redirectErrorStream(true)
+          .start()
 
-    // Write all JPEG frames to ffmpeg stdin
-    process.outputStream.use { stdin ->
-        for (frame in capturedFrames) {
+        // Write all JPEG frames to ffmpeg stdin
+        process.outputStream.use { stdin ->
+          for (frame in capturedFrames) {
             stdin.write(frame)
+          }
         }
-    }
 
-    val log = process.inputStream.bufferedReader().readText()
-    val exitCode = process.waitFor()
-    if (exitCode != 0) {
+        val log = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        return exitCode to log
+      }
+
+      val (exitCode, log) = runFfmpegEncode(args)
+      if (exitCode != 0) {
         throw IllegalStateException("ffmpeg encoding failed (exit=$exitCode):\n${args.joinToString(" ")}\n$log")
-    }
+      }
 
-    lprintln("info,video", "Encoded ${outputPath}: ${capturedFrames.size} frames, ${durationSec}s, ${String.format("%.1f", actualFps)} fps")
+    lprintln("info,video", "Encoded ${outputPath}: ${capturedFrames.size} source frames, ${durationSec}s, output ${fps} fps")
 
     return ScreencastResult(frameCount = capturedFrames.size)
 }

@@ -44,6 +44,8 @@ expect:
 :::static
 var tick = 0.0
 
+println("inline metrics ready")
+
 loop {
     tick += 0.4
 
@@ -379,8 +381,7 @@ id: docs.visualizers.signal-panels
 runner: backdoor-box
 tags: [docs, visualizers, synth, signal, scope]
 timeoutSec: 45
-execution: launch
-waitSec: 7.0
+waitSec: 1.5
 expect:
   outputContains:
     - "signal visualizers ready"
@@ -390,22 +391,18 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" wait="7.0" capture="box" execution="launch" embed=true name="signal-panels"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" wait="1.5" capture="box" embed=true name="signal-panels"}
 :::static
+val patch = audio(gain = 0.1f) { saw / FreeVerb() }
 val monoScope = (saw / MoogLadder(cutoff = 900.p)).scope()
-val env = ADSR(gate = gate.also { it.open() }, release = 0.4.p)
 val comp = Compressor(threshold = (-18).p, ratio = 6.p)
-val patch = audio(gain = 0.07f) { (monoScope * env) / comp / FreeVerb() }
+val env = ADSR(gate = gate.also { it.open() }, release = 0.4.p)
 
 display("status", "<div style=\"padding:18px;background:#111827;color:#f9c74f\">signal visualizers ready</div>")
-patch.liveSummary("audio", widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72)
-monoScope.liveSummary("scope", widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72)
-
-patch + loop {
-    display("env", env.stateSvg())
-    display("comp", comp.stateSvg())
-    frame()
-}
+display("audio", patch.summaryHtml(widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72))
+display("scope", monoScope.summaryHtml(widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72))
+display("env", env.stateSvg())
+display("comp", comp.stateSvg())
 ```
 
 Good things to know here:

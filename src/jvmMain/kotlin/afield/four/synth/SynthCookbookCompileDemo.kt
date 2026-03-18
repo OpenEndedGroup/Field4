@@ -243,20 +243,18 @@ expect:
     - output
 */
 private val SYNTH_COOKBOOK_PATTERNS_AND_NOTES = """
-val arp = noteProcess {
-    val chord = listOf(48, 55, 60, 64)
-    var step = 0
-    while (step < 8) {
+val arp = notes {
+    listOf(48, 55, 60, 64).forEachIndexed { step, pitch ->
         note(
-            pitch = chord[step % chord.size],
+            pitch = pitch,
             duration = 0.18,
             velocity = 0.85,
             label = "n" + step
         )
         rest(0.25)
-        step++
     }
 }
+val arpSvg = arp.at(0.8).pianoRollSvg()
 
 val motif = notes {
     chord(60, 64, 67, durationSeconds = 0.35, velocity = 0.7)
@@ -274,14 +272,10 @@ val clipSvg = clip.pianoRollSvg(nowSeconds = 0.4, futureSeconds = 1.2)
 
 val hats = pat("bd [hh hh] sd")
 val postfixOperators = pat("bd(3,8) hh!2 cp*2 lead@3")
-val polymeter = pat("{bd hh 808:4}%8")
-val layeredPolymeter = pat("{bd sd stab, cp arpy cr arpy}")
 val randomChoice = pat("[bd*4|hh*12|cp*2]")
 val parameterizedAtom = pat("bd:(1,2,3) hh")
 val scheduledAtoms = hats.scheduled(cps = 2.0, startAt = 0.25).take(4).toList()
 val postfixSchedule = postfixOperators.scheduled(cps = 1.0).take(8).toList()
-val polymeterSchedule = polymeter.scheduled(cps = 1.0).take(12).toList()
-val layeredPolymeterSchedule = layeredPolymeter.scheduled(cps = 1.0).take(12).toList()
 val randomChoiceSchedule = randomChoice.scheduled(cps = 1.0).take(12).toList()
 val parameterizedAtomSchedule = parameterizedAtom.scheduled(cps = 1.0).take(4).toList()
 
@@ -360,6 +354,8 @@ val bassFromPattern = degrees.asNotes(cps = 2.0) { event ->
         )
     )
 }
+val bassSvg = bassFromPattern.at(1.0).pianoRollSvg()
+val motifSvg = motif.at(1.0).pianoRollSvg()
 println(
     "synth patterns ok " +
         scheduledAtoms.size + " " +
@@ -367,8 +363,9 @@ println(
         cueSchedule.size + " " +
         gaussianFieldSamples.size + " " +
         clipSvg.length + " " +
-        bassFromPattern.size + " " +
-        motif.size
+        arpSvg.length + " " +
+        bassSvg.length + " " +
+        motifSvg.length
 )
 """.trimIndent()
 

@@ -4,7 +4,7 @@ Correlation coefficients become much easier to trust when they are rendered as m
 
 ## Rolling distance correlation and xi
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.0" capture="window" open-outputs="true" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.0" capture="box" open-outputs="true" embed=true}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -20,7 +20,7 @@ val xiVals = mutableListOf<Float>()
 for (i in 0 until 420) {
     val t = i / 420.0
     val x = t * 2.0 - 1.0
-    val y = x * x + sin(t * PI * 8.0) * 0.08 + random(-0.04, 0.04)
+    val y = x * x + sin(t * PI * 8.0) * 0.08 + (-0.04 + random() * 0.08)
     dVals += (rollingD.push(x, y) ?: 0.0).toFloat()
     xiVals += (rollingXi.push(x, y) ?: 0.0).toFloat()
 }
@@ -53,14 +53,14 @@ lines(
 
 ## StatsDependence metric profile on one dataset
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true" embed=true}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
 
 val n = 320
 val x = DoubleArray(n) { i -> i.toDouble() / (n - 1).toDouble() * 2.0 - 1.0 }
-val y = DoubleArray(n) { i -> x[i] * x[i] + random(-0.05, 0.05) }
+val y = DoubleArray(n) { i -> x[i] * x[i] + (-0.05 + random() * 0.10) }
 
 val metrics = listOf(
     "pearson" to StatsDependence.pearson(x, y),

@@ -394,6 +394,14 @@ kotlin {
                 implementation("org.bytedeco:javacpp:$javacppVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$ffmpegPlatform")
+
+                implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0")
+                implementation("com.github.stephengold:jolt-jni-Linux64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-Linux_ARM64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-MacOSX64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-MacOSX_ARM64:3.6.0:DebugSp")
+
             }
         }
 

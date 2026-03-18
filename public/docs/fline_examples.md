@@ -892,15 +892,13 @@ lines(listOf(noisy, smooth, simple), w = 420.0, h = 260.0, fitToSize = true)
 
 ```diffstatic {data-lang=kotlin}
 :::static
-fun FLine.byChopping(threshold: Float = 0f): FLine
-fun FLine.byChoppingSpacing(spacing: Float = 0f): FLine
-fun FLine.byDecimating(every: Int): FLine
-fun FLine.byRemovingShortSections(length: Float): FLine
-fun FLine.byResampling(every: Int): FLine
-fun FLine.byResampling(spacing: Float = 0f): FLine
+fun FLine.bySimplifying(epsilon: Float): FLine
+fun FLine.byArcLengthParameterizing(spacing: Float): FLine
+fun FLine.sampleByNumber(steps: Int): List<Vec3>
+fun FLine.sampleByDistance(distance: Float): List<Vec3>
 ```
 
-These are “make it usable” tools for raw input: chop out repeated points, drop every Nth point, remove tiny segments, or resample at a fixed spacing.
+These are the current “make it usable” tools for raw input: simplify away redundant detail, then rebuild the line with evenly spaced samples along arc length. If you need the raw samples themselves, `sampleByNumber(...)` and `sampleByDistance(...)` expose them directly.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/cleanup_and_resampling.png" embed=true}
 :::static
@@ -917,12 +915,12 @@ val raw = FLine().apply {
     color = vec(1.0, 1.0, 1.0, 0.25)
 }
 
-val chopped = raw.byChoppingSpacing(spacing = 1.5f).apply {
+val simplified = raw.bySimplifying(epsilon = 1.5f).apply {
     thickness = 3.0
     color = vec(0.7, 0.9, 1.0, 0.75)
 }
 
-val resampled = chopped.byResampling(spacing = 12f).apply {
+val resampled = simplified.byArcLengthParameterizing(spacing = 12f).apply {
     thickness = 4.5
     color = vec(1.0, 0.6, 0.2, 0.95)
     pointed = true
@@ -931,7 +929,7 @@ val resampled = chopped.byResampling(spacing = 12f).apply {
     filled = false
 }
 
-lines(listOf(raw, chopped, resampled), w = 420.0, h = 260.0, fitToSize = true)
+lines(listOf(raw, simplified, resampled), w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Noise utilities (make it organic)
@@ -1220,15 +1218,18 @@ val normals = f.byCreatingNormalLines(samples = 18, length = 18f).onEach {
     it.color = vec(0.4, 1.0, 0.6, 0.22)
 }
 
-val corners = polylineFrom(f.findHighCurvaturePoints(threshold = 0.03f, samples = 120).map { it.v2 }).apply {
-    pointed = true
-    pointSize = 3.5
-    stroked = false
-    filled = true
-    color = vec(1.0, 0.5, 0.2, 1.0)
-}
+val highCurvature = f.findHighCurvaturePoints(threshold = 0.02f, samples = 120)
+val corners = if (highCurvature.isEmpty()) emptyList() else listOf(
+    polylineFrom(highCurvature.map { it.v2 }).apply {
+        pointed = true
+        pointSize = 3.5
+        stroked = false
+        filled = true
+        color = vec(1.0, 0.5, 0.2, 1.0)
+    }
+)
 
-lines(listOf(f) + tangents + normals + listOf(corners), w = 420.0, h = 260.0, fitToSize = true)
+lines(listOf(f) + tangents + normals + corners, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Convex hull + inflections
@@ -1364,7 +1365,6 @@ val circle = FLine().apply {
         val p = vec(center.x + radius * kotlin.math.cos(a), center.y + radius * kotlin.math.sin(a))
         if (i == 0) moveTo(p) else lineTo(p)
     }
-    close()
     thickness = 3.0
     color = vec(1.0, 1.0, 1.0, 0.35)
 }
@@ -1703,4 +1703,3 @@ val f = FLine().apply {
 
 lines(f, w = 420.0, h = 260.0, fitToSize = true)
 ```
-

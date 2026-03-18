@@ -2,7 +2,6 @@ package afield.four.synth
 
 import afield.*
 import kotlinx.coroutines.*
-import kotlin.math.roundToLong
 
 @RunsAt(returnValueRegistration, priority = 11)
 fun registerPatPatternReturnValue() {
@@ -72,15 +71,10 @@ private suspend fun waitUntil(
     strand: String,
     generation: Int
 ) {
-    while (currentCoroutineContext().isActive && inside.runGeneration[strand] == generation) {
-        val remaining = target - scope.now
-        if (remaining <= 0.0) return
-
-        val waitMillis = when {
-            scope.clock == null -> (remaining * 1000.0).roundToLong().coerceAtLeast(1L)
-            !scope.clock.isRunning -> 20L
-            else -> (remaining.coerceAtMost(0.05) * 1000.0).roundToLong().coerceAtLeast(1L)
-        }
-        delay(waitMillis)
-    }
+    waitForPatTime(
+        target = target,
+        now = { scope.now },
+        isRunning = scope.clock?.let { { it.isRunning } },
+        shouldContinue = { inside.runGeneration[strand] == generation }
+    )
 }

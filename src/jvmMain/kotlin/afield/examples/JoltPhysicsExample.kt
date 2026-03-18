@@ -1,9 +1,9 @@
 package afield.examples
 
-import afield.four.physics.JoltBodyDef3D
-import afield.four.physics.JoltBodyPick3D
-import afield.four.physics.JoltPhysicsWorld3D
-import afield.four.physics.JoltShape3D
+import afield.four.physics.JoltBodyDef
+import afield.four.physics.JoltBodyPick
+import afield.four.physics.JoltPhysicsWorld
+import afield.four.physics.JoltShape
 import afield.graphics.FLine
 import afield.stdlib.Quat
 import afield.stdlib.Vec3
@@ -13,7 +13,7 @@ import kotlin.random.Random
 
 class JoltPickupLoopRuntime internal constructor(
 	val frames: Sequence<List<FLine>>,
-	private val grabFn: (queryPoint: Vec3, controllerPosition: Vec3, controllerRotation: Quat, maxOutsideDistance: Double) -> JoltBodyPick3D?,
+	private val grabFn: (queryPoint: Vec3, controllerPosition: Vec3, controllerRotation: Quat, maxOutsideDistance: Double) -> JoltBodyPick?,
 	private val continueFn: (controllerPosition: Vec3, controllerRotation: Quat) -> Boolean,
 	private val releaseFn: () -> String?,
 	private val grabbedBodyNameFn: () -> String?,
@@ -24,13 +24,13 @@ class JoltPickupLoopRuntime internal constructor(
 		controllerPosition: Vec3 = Vec3(queryPoint),
 		controllerRotation: Quat = Quat(),
 		maxOutsideDistance: Double = 0.08
-	): JoltBodyPick3D? = grabFn(queryPoint, controllerPosition, controllerRotation, maxOutsideDistance)
+	): JoltBodyPick? = grabFn(queryPoint, controllerPosition, controllerRotation, maxOutsideDistance)
 
 	fun grab(
 		controllerPosition: Vec3,
 		controllerRotation: Quat,
 		maxOutsideDistance: Double = 0.08
-	): JoltBodyPick3D? = grab(
+	): JoltBodyPick? = grab(
 		queryPoint = controllerPosition,
 		controllerPosition = controllerPosition,
 		controllerRotation = controllerRotation,
@@ -67,11 +67,11 @@ object JoltPhysicsExample {
 		val planeA = PlaneDef(nx = 0.24, ny = 0.97, nz = 0.10, constant = -0.90)
 		val planeB = PlaneDef(nx = -0.18, ny = 0.98, nz = -0.21, constant = -1.70)
 
-		JoltPhysicsWorld3D().use { engine ->
+		JoltPhysicsWorld().use { engine ->
 			engine.createBody(
-				JoltBodyDef3D(
+				JoltBodyDef(
 					name = "planeA",
-					shape = JoltShape3D.Plane(planeA.nx, planeA.ny, planeA.nz, planeA.constant),
+					shape = JoltShape.Plane(planeA.nx, planeA.ny, planeA.nz, planeA.constant),
 					x = 0.0,
 					y = 0.0,
 					z = 0.0,
@@ -81,9 +81,9 @@ object JoltPhysicsExample {
 				)
 			)
 			engine.createBody(
-				JoltBodyDef3D(
+				JoltBodyDef(
 					name = "planeB",
-					shape = JoltShape3D.Plane(planeB.nx, planeB.ny, planeB.nz, planeB.constant),
+					shape = JoltShape.Plane(planeB.nx, planeB.ny, planeB.nz, planeB.constant),
 					x = 0.0,
 					y = 0.0,
 					z = 0.0,
@@ -104,9 +104,9 @@ object JoltPhysicsExample {
 
 			spawns.forEachIndexed { index, spawn ->
 				engine.createBody(
-					JoltBodyDef3D(
+					JoltBodyDef(
 						name = "box_${index.toString().padStart(2, '0')}",
-						shape = JoltShape3D.Cuboid(spawn.width, spawn.height, spawn.depth),
+						shape = JoltShape.Cuboid(spawn.width, spawn.height, spawn.depth),
 						x = spawn.x,
 						y = spawn.y,
 						z = spawn.z,
@@ -164,15 +164,15 @@ object JoltPhysicsExample {
 
 		val random = Random(seed)
 		val ground = PlaneDef(nx = 0.0, ny = 1.0, nz = 0.0, constant = -floorPlaneHeight.toDouble())
-		val engine = JoltPhysicsWorld3D()
+		val engine = JoltPhysicsWorld()
 		val simulationLock = Any()
 		var closed = false
 
 		synchronized(simulationLock) {
 			engine.createBody(
-				JoltBodyDef3D(
+				JoltBodyDef(
 					name = "ground",
-					shape = JoltShape3D.Plane(ground.nx, ground.ny, ground.nz, ground.constant),
+					shape = JoltShape.Plane(ground.nx, ground.ny, ground.nz, ground.constant),
 					x = 0.0,
 					y = 0.0,
 					z = 0.0,
@@ -192,9 +192,9 @@ object JoltPhysicsExample {
 
 			spawns.forEachIndexed { index, spawn ->
 				engine.createBody(
-					JoltBodyDef3D(
+					JoltBodyDef(
 						name = "box_${index.toString().padStart(2, '0')}",
-						shape = JoltShape3D.Cuboid(spawn.width, spawn.height, spawn.depth),
+						shape = JoltShape.Cuboid(spawn.width, spawn.height, spawn.depth),
 						x = spawn.x,
 						y = spawn.y,
 						z = spawn.z,
@@ -281,11 +281,11 @@ object JoltPhysicsExample {
 	}
 
 	private fun runOffCenterCollisionDemo() {
-		JoltPhysicsWorld3D().use { engine ->
+		JoltPhysicsWorld().use { engine ->
 			engine.createBody(
-				JoltBodyDef3D(
+				JoltBodyDef(
 					name = "ground",
-					shape = JoltShape3D.Plane(ny = 1.0, constant = 0.0),
+					shape = JoltShape.Plane(ny = 1.0, constant = 0.0),
 					x = 0.0,
 					y = 0.0,
 					z = 0.0,
@@ -296,9 +296,9 @@ object JoltPhysicsExample {
 			)
 
 			engine.createBody(
-				JoltBodyDef3D(
+				JoltBodyDef(
 					name = "targetBox",
-					shape = JoltShape3D.Cuboid(1.0, 1.0, 1.0),
+					shape = JoltShape.Cuboid(1.0, 1.0, 1.0),
 					x = 0.0,
 					y = 0.55,
 					z = 0.0,
@@ -308,9 +308,9 @@ object JoltPhysicsExample {
 			)
 
 			engine.createBody(
-				JoltBodyDef3D(
+				JoltBodyDef(
 					name = "strikerSphere",
-					shape = JoltShape3D.Sphere(0.35),
+					shape = JoltShape.Sphere(0.35),
 					x = -3.2,
 					y = 1.05,
 					z = 0.65,

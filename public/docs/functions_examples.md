@@ -332,8 +332,8 @@ with(Functions) {
         roi = d,
         domain = d
     )
-    val c = fbm(seed = 77L, frequency = c(4.0), amplitude = c(0.12), octaves = 4, roi = d, domain = d)
-    val f = (a + b + c).softClip(c(1.22))
+    val detail = fbm(seed = 77L, frequency = c(4.0), amplitude = c(0.12), octaves = 4, roi = d, domain = d)
+    val f = (a + b + detail).softClip(c(1.22))
 
     val line = f.toFLine(domain = d, samples = 900, xScale = 900.0, yScale = 160.0, xOffset = 40.0, yOffset = 220.0).apply {
         color = vec(0.58, 0.93, 1.0, 1.0)

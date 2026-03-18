@@ -191,6 +191,13 @@ private fun FLine.applyFit(transform: FitTransform?): FLine {
     val scaled = this.transform { p ->
         vec((p.x + sx) * s, (p.y + sy) * s, p.z)
     }
+    val styleScale = s.toDouble().coerceIn(0.0, 1.0)
+    this.thickness?.let { scaled.thickness = it * styleScale }
+    scaled.pointSize = this.pointSize * styleScale
+    scaled.nodes.forEach { node ->
+        val pointSize = node.properties["pointSize"] as? Number ?: return@forEach
+        node.properties["pointSize"] = pointSize.toDouble() * styleScale
+    }
     return scaled
 }
 

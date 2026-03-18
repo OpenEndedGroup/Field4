@@ -13,6 +13,7 @@
    return fresh instances each time they are referenced
  - `/` chains a Signal into a SignalProcessor
  - `audio { ... }` wraps a mono or stereo graph as something launchable
+ - `.onBeat(...)` quantizes any launchable return value to the next musical boundary
  - Mono signals cache automatically for the duration of an audio block; built-in
    stereo nodes do the same, and `hold()` is available for arbitrary stereo renderables
  - Returning a Signal, Pan, StereoSignal, StereoGrainCloud, or AudioPatchSpec
@@ -69,6 +70,33 @@
              __m("pat").patHighlight(event)
          }
      )
+
+ ---------------------------------------------------------------------------
+ Quantized launch timing
+ ---------------------------------------------------------------------------
+
+ Delay any launchable return value until the next clock boundary:
+
+     audio { saw * 0.05f }.onBeat(every = 4, preroll = 0.02)
+
+ This also works for bundles:
+
+     (audio { saw * 0.05f } +
+         pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
+             __m("pat").patHighlight(event)
+         }).onBeat(every = 4, preroll = 0.02)
+
+ In `frames {}` / `loop {}` code you can suspend directly:
+
+     frames {
+         waitForBeat(every = 4, preroll = 0.02)
+         println("downbeat")
+     }
+
+ `every` is measured in the chosen clock's units, so `every = 4` means every
+ fourth rollover of that clock. Use a subdivided clock when you need finer
+ boundaries, or a slower clock / larger `every` when you want measure-level
+ quantization.
 
  ---------------------------------------------------------------------------
  Params and modulation
