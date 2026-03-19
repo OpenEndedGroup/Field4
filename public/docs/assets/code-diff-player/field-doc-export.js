@@ -28,6 +28,22 @@
       .replace(/\t/g, "\\t")}"`;
   }
 
+  function ednKey(name) {
+    return escapeEdnString(name);
+  }
+
+  function ednBoxRef(id) {
+    return `#afield/box ${escapeEdnString(id)}`;
+  }
+
+  function ednSet(items) {
+    return `#{${items.join(" ")}}`;
+  }
+
+  function ednRect(x, y, w, h) {
+    return `#afield/rect [${x} ${y} ${w} ${h}]`;
+  }
+
   function headingForNode(node, headings) {
     let chosen = null;
     for (const heading of headings) {
@@ -116,25 +132,42 @@
     const gap = 36.0;
     const startX = 50.0;
     const y = 80.0;
+    const persistentProperties = [
+      "frame",
+      "name",
+      "code",
+      "preamble",
+      "children",
+      "parents",
+      "nested",
+      "autorun",
+    ];
 
     const entries = blocks.map((block, idx) => {
       const x = (startX + idx * (boxW + gap)).toFixed(1);
       const name = escapeEdnString(block.name);
       const code = escapeEdnString(block.code);
       const uid = escapeEdnString(block.uid);
+      const frame = ednRect(x, y.toFixed(1), boxW.toFixed(1), boxH.toFixed(1));
       return [
-        "  {:id " + uid,
-        "   :properties {:name " + name,
-        "                :code " + code,
-        `                :frame [${x} ${y.toFixed(1)} ${boxW.toFixed(1)} ${boxH.toFixed(1)}]}}` + (idx < blocks.length - 1 ? "," : ""),
+        `  {${ednKey("id")} ${uid}`,
+        `   ${ednKey("properties")} {${ednKey("children")} ${ednSet([])}`,
+        `                  ${ednKey("parents")} ${ednSet([ednBoxRef("root")])}`,
+        `                  ${ednKey("frame")} ${frame}`,
+        `                  ${ednKey("name")} ${name}`,
+        `                  ${ednKey("preamble")} ""`,
+        `                  ${ednKey("code")} ${code}`,
+        `                  ${ednKey("nested")} ${ednSet([])}`,
+        `                  ${ednKey("autorun")} false}}`,
       ].join("\n");
     });
 
     return [
-      "{:version 2",
-      " :boxes [",
+      `{${ednKey("version")} 2`,
+      ` ${ednKey("boxes")} [`,
       ...entries,
-      " ]}",
+      " ]",
+      ` ${ednKey("persistentProperties")} [${persistentProperties.map(escapeEdnString).join(" ")}]}`,
     ].join("\n");
   }
 
@@ -219,12 +252,7 @@
     host.appendChild(button);
     host.appendChild(status);
 
-    const anchor = root.querySelector("h1");
-    if (anchor && anchor.parentElement) {
-      anchor.insertAdjacentElement("afterend", host);
-    } else {
-      root.prepend(host);
-    }
+    root.appendChild(host);
 
     root.setAttribute(BOUND_ATTR, "true");
   }

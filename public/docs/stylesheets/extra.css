@@ -5,12 +5,16 @@
 
 /* ── palette ─────────────────────────────────────────────────── */
 :root {
-    --mono-bg: #141414;
+    --mono-bg: #0e0e0e;
     --mono-panel: #050505;
     --mono-text: rgba(255, 255, 255, 0.8);
     --mono-text-faint: rgba(255, 255, 255, 0.4);
     --mono-accent: rgba(255, 255, 255, 0.6);
     --mono-border: rgba(255, 255, 255, 0.12);
+    --nav-font-size: 0.64rem;
+    --nav-line-height: 1.02;
+    --nav-item-gap: 0.03rem;
+    --nav-sidebar-offset: 2.5rem;
 
     --md-text-font: "IBM Plex Sans Condensed", sans-serif;
     --md-code-font: "Iosevka Web", "Iosevka", "SFMono-Regular", "Menlo", monospace;
@@ -55,10 +59,11 @@ p { font-size: 0.75rem;
     color: var(--mono-accent);
     font-weight: 300;
     letter-spacing: -0.01em;
-    border-bottom: 13px solid black;
+    border-bottom: 0.5px solid white;
     padding-bottom: 6px;
     color: white;
     text-align: left;
+    padding-top: 10px;
 }
 
 h1 {
@@ -73,6 +78,18 @@ h3 {
     font-size: 150% !important;
 }
 
+.md-typeset h2,
+.md-typeset h3 {
+    margin-top: 100px;
+}
+
+.md-typeset h1 + h2,
+.md-typeset h1 + h3,
+.md-typeset h2 + h2,
+.md-typeset h2 + h3 {
+    margin-top: 0;
+}
+
 /* ── images: no upscale ──────────────────────────────────────── */
 .md-typeset img {
     max-width: 100%;
@@ -83,9 +100,9 @@ h3 {
 @media screen and (min-width: 76.234375em) {
     .md-typeset img {
         max-width: calc(100% + 63px);
-        border-left: 13px solid black;
         padding-left: 50px;
         margin-left: -63px;
+        /* border-left: 0.5px solid white; */
     }
 }
 
@@ -143,6 +160,7 @@ code {
 }
 .md-typeset pre > code {
     background: var(--mono-panel) !important;
+    /* border-right: 0.5px solid white !important; */
 }
 .highlight {
     background: var(--mono-panel);
@@ -225,13 +243,25 @@ code {
     font-weight: 400;
     opacity: 0.6;
     letter-spacing: 0.02em;
-    font-size: 0.72rem;
+    font-size: var(--nav-font-size);
+    line-height: var(--nav-line-height);
+    padding-top: var(--nav-item-gap);
+    padding-bottom: var(--nav-item-gap);
 }
 
 .md-nav--secondary > .md-nav__list > .md-nav__item > .md-nav__link,
 .md-nav--secondary > .md-nav__list > .md-nav__item > .md-nav__list > .md-nav__item > .md-nav__link {
     font-variant-caps: all-small-caps;
-    font-size: 130%;
+    font-size: calc(var(--nav-font-size) * 1.05);
+}
+
+.md-nav__item {
+    margin: 0;
+}
+
+.md-nav__list,
+.md-nav__item--nested > .md-nav__list {
+    gap: 0;
 }
 
 .md-icon:last-child {
@@ -243,8 +273,8 @@ code {
 .md-nav__link--active,
 .md-nav__link:focus,
 .md-nav__link:hover {
-    color: var(--mono-accent) !important;
-    opacity: 0.85;
+    color: #fff !important;
+    opacity: 1;
 }
 
 .md-nav__title {
@@ -300,11 +330,19 @@ code {
     color: #ff9a9a;
 }
 
-/* ── sidebars: 13px black border at rest, content reveals on hover (desktop only) ── */
+/* ── sidebars: 1px black border at rest, content reveals on hover (desktop only) ── */
 @media screen and (min-width: 76.234375em) {
+    .md-sidebar--primary {
+        transform: translateX(calc(var(--nav-sidebar-offset) * -1));
+    }
+
+    .md-sidebar--secondary {
+        transform: translateX(var(--nav-sidebar-offset));
+    }
+
     /* border on __inner = nav-content height, sticky, always visible (not inside the clip) */
-    .md-sidebar--primary  .md-sidebar__inner { border-left: 13px solid black;  }
-    .md-sidebar--secondary .md-sidebar__inner { border-right:  13px solid black;  }
+    .md-sidebar--primary  .md-sidebar__inner { border-left: 1px solid black;  }
+    .md-sidebar--secondary .md-sidebar__inner { border-right:  1px solid black;  }
 
     /* clip-path on .md-nav hides nav links but leaves __inner's border untouched */
     .md-sidebar--primary .md-sidebar__inner > .md-nav {

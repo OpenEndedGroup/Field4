@@ -6,14 +6,123 @@ import com.microsoft.playwright.options.Clip
 import com.microsoft.playwright.options.ScreenshotType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
+import java.awt.image.Raster
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
+import javax.imageio.ImageIO
 
 private const val SCREENSHOT_PREP_TIMEOUT_MS = 12_000
 private const val SCREENSHOT_POLL_INTERVAL_MS = 60
 private const val SCREENSHOT_OUTPUT_GRACE_MS = 2_500
+private const val PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS = 15_000.0
+
+data class UniformEdgeTrimResult(
+    val trimmed: Boolean,
+    val left: Int = 0,
+    val top: Int = 0,
+    val right: Int = 0,
+    val bottom: Int = 0
+)
+
+private fun isUniformSamples(samples: IntArray, bands: Int): Boolean {
+    if (samples.size <= bands) {
+        return true
+    }
+    for (index in bands until samples.size step bands) {
+        for (band in 0 until bands) {
+            if (samples[index + band] != samples[band]) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+private fun isUniformRow(raster: Raster, y: Int, left: Int, right: Int): Boolean {
+    if (right <= left) {
+        return true
+    }
+    val samples = raster.getPixels(left, y, right - left + 1, 1, null as IntArray?)
+    return isUniformSamples(samples, raster.numBands)
+}
+
+private fun isUniformColumn(raster: Raster, x: Int, top: Int, bottom: Int): Boolean {
+    if (bottom <= top) {
+        return true
+    }
+    val samples = raster.getPixels(x, top, 1, bottom - top + 1, null as IntArray?)
+    return isUniformSamples(samples, raster.numBands)
+}
+
+fun trimUniformEdgePixels(path: Path): UniformEdgeTrimResult {
+    val filename = path.fileName?.toString()?.lowercase() ?: return UniformEdgeTrimResult(trimmed = false)
+    if (!filename.endsWith(".png")) {
+        return UniformEdgeTrimResult(trimmed = false)
+    }
+
+    val image = ImageIO.read(path.toFile()) ?: return UniformEdgeTrimResult(trimmed = false)
+    if (image.width <= 1 || image.height <= 1) {
+        return UniformEdgeTrimResult(trimmed = false)
+    }
+    val raster = image.raster
+
+    var left = 0
+    var right = image.width - 1
+    var top = 0
+    var bottom = image.height - 1
+
+    while (top <= bottom && isUniformRow(raster, top, left, right)) {
+        top += 1
+    }
+    while (bottom >= top && isUniformRow(raster, bottom, left, right)) {
+        bottom -= 1
+    }
+    while (left <= right && top <= bottom && isUniformColumn(raster, left, top, bottom)) {
+        left += 1
+    }
+    while (right >= left && top <= bottom && isUniformColumn(raster, right, top, bottom)) {
+        right -= 1
+    }
+
+    if (left == 0 && top == 0 && right == image.width - 1 && bottom == image.height - 1) {
+        return UniformEdgeTrimResult(trimmed = false)
+    }
+    if (left > right || top > bottom) {
+        return UniformEdgeTrimResult(trimmed = false)
+    }
+
+    val trimmedWidth = right - left + 1
+    val trimmedHeight = bottom - top + 1
+    val trimmedImage = image.getSubimage(left, top, trimmedWidth, trimmedHeight)
+    if (!ImageIO.write(trimmedImage, "png", path.toFile())) {
+        return UniformEdgeTrimResult(trimmed = false)
+    }
+
+    return UniformEdgeTrimResult(
+        trimmed = true,
+        left = left,
+        top = top,
+        right = image.width - 1 - right,
+        bottom = image.height - 1 - bottom
+    )
+}
+
+private fun postProcessScreenshot(path: Path) {
+    runCatching {
+        trimUniformEdgePixels(path)
+    }.onSuccess { result ->
+        if (result.trimmed) {
+            lprintln(
+                "info,screenshot",
+                "Trimmed uniform border from $path (left=${result.left}, top=${result.top}, right=${result.right}, bottom=${result.bottom})"
+            )
+        }
+    }.onFailure {
+        lprintln("warning,screenshot", "Uniform-edge trim failed for $path: ${it.message}")
+    }
+}
 
 private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "uid" to uid,
@@ -393,6 +502,7 @@ suspend fun Box.screenshot(
                 .setPath(outputPath)
                 .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
         )
+        postProcessScreenshot(outputPath)
         true
     }.onFailure {
         lprintln("warning,screenshot", "Playwright screenshot failed for ${id}: ${it.message}")
@@ -440,6 +550,7 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
             )
         )
     }.getOrElse {
+        lprintln("warning,screenshot", "Timed out during $kind screenshot prep for ${request.uid ?: "<viewport>"}: ${it.message}")
         return failedAgentScreenshot(
             info = info,
             kind = kind,
@@ -474,11 +585,14 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
     outputPath.parent?.let { Files.createDirectories(it) }
 
     return runCatching {
-        val options = Page.ScreenshotOptions().setPath(outputPath)
+        val options = Page.ScreenshotOptions()
+            .setPath(outputPath)
+            .setTimeout(PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS)
         if (clip != null) {
             options.setClip(Clip(clip.x, clip.y, clip.w, clip.h))
         }
         page.screenshot(options)
+        postProcessScreenshot(outputPath)
         AgentScreenshotResponse(
             ok = true,
             kind = kind,
@@ -571,6 +685,7 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
             )
         )
     }.getOrElse {
+        lprintln("warning,screenshot", "Timed out during box screenshot prep for ${request.uid}: ${it.message}")
         return failedAgentScreenshot(
             info = info,
             kind = "box",
@@ -598,8 +713,10 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
         page.screenshot(
             Page.ScreenshotOptions()
                 .setPath(outputPath)
+                .setTimeout(PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS)
                 .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
         )
+        postProcessScreenshot(outputPath)
         AgentScreenshotResponse(
             ok = true,
             kind = "box",

@@ -1,10 +1,12 @@
 # Interpolants to FLine examples
 
-The interpolants file is about smooth state transitions, which map naturally to drawn trajectories.
+Interpolants are what you reach for when you do not want a value to snap from here to there like a frightened rabbit. In animation that means smoother motion; in UI it means less mechanical transitions; in music and interaction it means gestures that settle instead of click. These examples make that behavior visible.
 
 ## smoothTo for scalar envelopes
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_scalar.png" wait="1.0" capture="box" embed=true}
+Suppose you need a parameter to move decisively, but not abruptly. Opacity, brightness, a filter cutoff, a camera move, a gesture-derived control signal: all of these want *arrival* rather than *teleportation*. `smoothTo(...)` is one answer to that need.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_scalar.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -33,9 +35,17 @@ val guides = listOf(
 lines(guides + curve, channel = "interpolants-scalar", w = 1080.0, h = 640.0, fitToSize = true)
 ```
 
+Nothing exotic is happening in the code. We give one interpolant a starting value, let it chase a target, and draw the trace. The guide lines are only there so your eye can read the climb and the settling behavior more clearly.
+
+![](assets/interpolants_examples/smooth_scalar.png)
+
+What matters is the shape that comes back: fast at first, then increasingly reluctant to overshoot the target. That is why `smoothTo(...)` is so handy for animation parameters, fades, controller smoothing, and "make this feel less binary" problems in general. If you want to apply the same idea to live signals rather than a synthetic ramp, continue with [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+
 ## Diff: retime interpolation by duration
 
-```diff_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_duration.png" wait="1.0" capture="window" open-outputs="true" embed=true}
+But what exactly do you mean by "smoothly"? Over the next 140 evaluations? Over 1.2 seconds of real time? Those are not the same promise, and the distinction matters the moment frame rate, scheduling, or sampling cadence starts to drift.
+
+```diff_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_duration.png" wait="1.0" capture="window" open-outputs="true"}
 :::before
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -79,3 +89,9 @@ val f = FLine().apply {
 }
 lines(f, channel = "interpolants-diff", w = 1080.0, h = 640.0, fitToSize = true)
 ```
+
+The diff isolates that choice. The first version counts calls; the second version cares about elapsed time. The small `Thread.sleep(...)` in the latter is there to expose the difference rather than hide it.
+
+![](assets/interpolants_examples/smooth_duration.png)
+
+And there it is on the page: the time-based version behaves like a duration, not like a loop counter. Use the step-based form when your world is discrete and counted; use the time-based form when your world is musical, animated, interactive, or otherwise measured in seconds. For more timing-oriented examples, see [Visualizers](visualizers.md) and [Timeseries examples](timeseries_examples.md).

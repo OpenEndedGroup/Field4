@@ -6,6 +6,7 @@
 </head>
 <body style="margin:0;">
 <div id="app"></div>
+<script src="/iframe_autosize.js"></script>
 <script type="module">
         import { initTreeInspector } from "inspector.js";
 
@@ -18,7 +19,9 @@
         const typeDefs = [];
 
         const app = document.getElementById("app");
-        app.style.height = "100vh";
+        const embedded = document.documentElement.dataset.afieldOutputIframe === "true";
+        app.style.height = embedded ? "auto" : "100vh";
+        app.style.minHeight = embedded ? "0" : "100vh";
         const inspector = initTreeInspector(app, state, typeDefs, {
                 theme: "light",
                 onChangeRoot: (roots) => {

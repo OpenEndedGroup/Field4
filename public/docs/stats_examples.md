@@ -1,10 +1,12 @@
 # Stats to FLine examples
 
-Rolling summary buffers are most useful when they feed geometry directly.
+A mean without a distribution is often little more than a rumor. The same is true of quartiles, standard deviations, and vector summaries: useful, certainly, but far more trustworthy when they stay attached to the thing they summarize. These examples make the statistics answer to the picture.
 
 ## Windowed histogram as bars + quartile markers
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/histogram_fline.png" wait="1.0" capture="window" open-outputs="true" embed=true}
+Why draw a histogram if the buffer can already tell you the median and quartiles? Because those numbers mean much more once you can see the shape they came from. In data science this is basic honesty; in creative coding it is how you stop "interesting noise" from becoming numerology; in music it is how you decide whether a gesture stream is truly varied or merely twitchy.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/histogram_fline.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -58,9 +60,17 @@ val marks = listOf(
 lines(bars + marks, channel = "stats-hist-fline", w = 1100.0, h = 620.0, fitToSize = true)
 ```
 
+So the example forces the stats buffer to show its work. We feed it a noisy scalar signal, ask for both a histogram and a snapshot, and then draw the bars and quartile markers in the same space. The markers are not the story; they are annotations on the story.
+
+![](assets/stats_examples/histogram_fline.png)
+
+That is why the image reads so much better than a printed table. First you see the distribution, then you see where the summary lands inside it. A median that sits in the thick of the mass feels different from a median perched beside a lopsided tail, and the eye catches that instantly. For statistics that evolve frame by frame, continue with [Timeseries examples](timeseries_examples.md) and [Visualizers](visualizers.md).
+
 ## Vec2 cloud trajectory + length envelope
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/vec2_stats_fline.png" wait="1.0" capture="box" embed=true}
+A scalar distribution is only half the story. Plenty of live systems produce points, trajectories, and clouds: cursor motion, body tracking, controller input, particle studies. How do you summarize *that* without losing the motion itself?
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/vec2_stats_fline.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -111,3 +121,9 @@ display("stats", lenText)
 
 lines(listOf(trail, dots, lenBand), channel = "stats-vec2", w = 1100.0, h = 620.0, fitToSize = true)
 ```
+
+Here the geometry stays on stage. We collect a rolling stream of 2D points, draw the orbit it traces, and only then add a short textual summary of path length. The text is not trying to replace the drawing; it is there to sharpen what the drawing already suggests.
+
+![](assets/stats_examples/vec2_stats_fline.png)
+
+The result is the combination you usually want in practice: geometric intuition and a compact numeric report in the same place. You can see the orbit, and you can also say something precise about how far it tends to wander. For neighborhood and connectivity structure on similar point clouds, see [Smile neighbors examples](smile_neighbors_examples.md) and [Graph connectivity examples](graph_connectivity_examples.md).

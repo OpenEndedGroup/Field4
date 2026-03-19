@@ -271,8 +271,24 @@ private fun svgContentClientRect(svg: SVGElement): Rect? = runCatching {
     val width = right - left
     val height = bottom - top
     if (width <= 0.0 || height <= 0.0) return@runCatching null
-    Rect(left, top, width, height)
+    Rect(left, top, width, height).expand(8.0)
 }.getOrNull()
+
+private fun svgIntrinsicWidth(svg: SVGElement): Double {
+    val widthAttr = svg.getAttribute("width")
+        ?.removeSuffix("px")
+        ?.trim()
+        ?.toDoubleOrNull()
+        ?: 0.0
+    val viewBoxWidth = svg.getAttribute("viewBox")
+        ?.trim()
+        ?.split(Regex("\\s+"))
+        ?.takeIf { it.size == 4 }
+        ?.getOrNull(2)
+        ?.toDoubleOrNull()
+        ?: 0.0
+    return max(widthAttr, viewBoxWidth)
+}
 
 private fun disclosureTitleClientRect(disclosure: HTMLElement): Rect? {
     val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
@@ -530,7 +546,10 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
                     val svg = node as? SVGElement ?: return@mapNotNull null
                     if (!isOverlayVisible(svg as Element)) return@mapNotNull null
                     val contentRight = svgContentClientRect(svg)?.right?.minus(contentRect.left) ?: 0.0
-                    max(contentRight, svg.getBoundingClientRect().right - contentRect.left)
+                    max(
+                        max(contentRight, svg.getBoundingClientRect().right - contentRect.left),
+                        svgIntrinsicWidth(svg)
+                    )
                 }
                 .maxOrNull() ?: 0.0
             max(scrollW, max(childW, svgW))
@@ -539,7 +558,23 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
 
     if (maxContentWidth <= 0.0) return
 
-    val desiredWidth = (maxContentWidth + 80.0)
+    val disclosureWidth = (maxContentWidth + 56.0)
+        .coerceAtMost(max(1040.0, window.innerWidth.toDouble() * 0.94))
+
+    outputArea.querySelectorAll(".disclosure").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach { disclosure ->
+            disclosure.style.width = "${disclosureWidth}px"
+            disclosure.style.maxWidth = "none"
+        }
+    outputArea.querySelectorAll(".disclosure-content").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach { content ->
+            content.style.width = "${disclosureWidth}px"
+            content.style.maxWidth = "none"
+        }
+
+    val desiredWidth = (disclosureWidth + 32.0)
         .coerceAtLeast(currentWidth)
         .coerceAtMost(max(920.0, window.innerWidth.toDouble() * 0.95))
 
@@ -580,8 +615,11 @@ private fun revealBoxForScreenshot(
         val outputArea = box.querySelector(".outputArea") as? HTMLElement
         if (outputArea != null) {
             openAllOutputDisclosures(outputArea)
-            fitOutputDisclosuresForScreenshot(outputArea)
-            fitBoxWidthToOutputsForScreenshot(box, outputArea)
+            val hasIframeOutputs = outputArea.querySelector("iframe") != null
+            if (!hasIframeOutputs) {
+                fitOutputDisclosuresForScreenshot(outputArea)
+                fitBoxWidthToOutputsForScreenshot(box, outputArea)
+            }
         }
     }
 
@@ -590,6 +628,38 @@ private fun revealBoxForScreenshot(
         ensureRectVisibleForScreenshot(targetRect.expand(padding))
         targetRect = unionRects(collectScreenshotRects(box)) ?: targetRect
     }
+    return targetRect
+}
+
+private fun iframeOutputRectForScreenshot(
+    box: HTMLElement,
+    openOutputs: Boolean,
+    panIntoView: Boolean,
+    padding: Double
+): Rect? {
+    if (!openOutputs) return null
+    val outputArea = box.querySelector(".outputArea") as? HTMLElement ?: return null
+    if (outputArea.querySelector("iframe") == null) return null
+
+    openNestedDisclosuresForScreenshot(box)
+    openAllOutputDisclosures(outputArea)
+
+    fun visibleDisclosureRects(): List<Rect> =
+        outputArea.querySelectorAll(".disclosure").asList()
+            .mapNotNull { it as? HTMLElement }
+            .filter { isOverlayVisible(it) }
+            .map { domRectToRect(it.getBoundingClientRect()) }
+            .filter { it.w > 2.0 && it.h > 2.0 }
+
+    var targetRect = unionRects(visibleDisclosureRects())
+        ?: domRectToRect(outputArea.getBoundingClientRect())
+
+    if (panIntoView) {
+        ensureRectVisibleForScreenshot(targetRect.expand(padding))
+        targetRect = unionRects(visibleDisclosureRects())
+            ?: domRectToRect(outputArea.getBoundingClientRect())
+    }
+
     return targetRect
 }
 
@@ -654,7 +724,7 @@ private fun layoutGlobalEditor() {
 
 private fun prepareMonacoForScreenshotLayout() {
     val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
-    val targetWidth = min(1180.0, max(920.0, window.innerWidth.toDouble() * 0.54))
+    val targetWidth = min(860.0, max(760.0, window.innerWidth.toDouble() * 0.38))
     val targetHeight = min(1200.0, max(840.0, window.innerHeight.toDouble() * 0.72))
     container.style.top = "12px"
     container.style.right = "12px"
@@ -997,23 +1067,34 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         runCatching { hideMonaco() }
     }
 
-    val revealedRect = revealBoxForScreenshot(
+    val iframeOutputRect = iframeOutputRectForScreenshot(
         box,
         openOutputs = req.openOutputs,
         panIntoView = req.panIntoView,
         padding = req.padding
-    ) ?: return BoxScreenshotResponse(
-        uid = req.uid,
-        success = false,
-        message = "no geometry for ${req.uid}"
     )
 
-    // For docs captures that open outputs, crop to the visible disclosures instead
-    // of the whole box body to avoid large empty header/code regions.
-    val targetRect = if (req.openOutputs) {
-        unionRects(collectOutputScreenshotRects(box)) ?: revealedRect
+    val targetRect = if (iframeOutputRect != null) {
+        iframeOutputRect
     } else {
-        revealedRect
+        val revealedRect = revealBoxForScreenshot(
+            box,
+            openOutputs = req.openOutputs,
+            panIntoView = req.panIntoView,
+            padding = req.padding
+        ) ?: return BoxScreenshotResponse(
+            uid = req.uid,
+            success = false,
+            message = "no geometry for ${req.uid}"
+        )
+
+        // For docs captures that open outputs, crop to the visible disclosures instead
+        // of the whole box body to avoid large empty header/code regions.
+        if (req.openOutputs) {
+            unionRects(collectOutputScreenshotRects(box)) ?: revealedRect
+        } else {
+            revealedRect
+        }
     }
 
     val padded = targetRect.expand(req.padding)

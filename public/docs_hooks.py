@@ -35,6 +35,7 @@ STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
 SCRIPT_VERSION = 7
 RUNNER_RETRIES = 3
+RUNNER_SUBPROCESS_GRACE_SEC = 20.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
@@ -261,14 +262,22 @@ class RunnerState:
         LOG.info("Field docs runner recording video %s for %s", page_path.name, video_path)
         completed: subprocess.CompletedProcess[str] | None = None
         for attempt in range(1, RUNNER_RETRIES + 1):
-            completed = subprocess.run(
-                command,
-                cwd=self.repo_root,
-                input=code,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
+            try:
+                completed = subprocess.run(
+                    command,
+                    cwd=self.repo_root,
+                    input=code,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=runner_subprocess_timeout(options=video_options, is_video=True),
+                )
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError(
+                    f"Field docs runner video timed out for {page_path.name} -> {video_path}.\n"
+                    f"Command: {shlex.join(command)}\n"
+                    f"Timed out after {exc.timeout:.1f}s"
+                ) from exc
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -330,14 +339,22 @@ class RunnerState:
         LOG.info("Field docs runner executing %s for %s", page_path.name, screenshot_path)
         completed: subprocess.CompletedProcess[str] | None = None
         for attempt in range(1, RUNNER_RETRIES + 1):
-            completed = subprocess.run(
-                command,
-                cwd=self.repo_root,
-                input=code,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
+            try:
+                completed = subprocess.run(
+                    command,
+                    cwd=self.repo_root,
+                    input=code,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=runner_subprocess_timeout(options=options, is_video=False),
+                )
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError(
+                    f"Field docs runner timed out for {page_path.name} -> {screenshot_path}.\n"
+                    f"Command: {shlex.join(command)}\n"
+                    f"Timed out after {exc.timeout:.1f}s"
+                ) from exc
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -931,6 +948,11 @@ def effective_capture_mode(options: RunnerOptions) -> str:
     if options.capture == "window" and options.open_outputs and not options.with_editor:
         return "box"
     return options.capture
+
+
+def runner_subprocess_timeout(*, options: RunnerOptions, is_video: bool) -> float:
+    base = max(options.timeout, options.duration + 30.0) if is_video else options.timeout
+    return base + RUNNER_SUBPROCESS_GRACE_SEC
 
 
 def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: RunnerOptions, is_video: bool = False) -> list[str]:

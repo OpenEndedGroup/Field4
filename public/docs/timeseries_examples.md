@@ -1,10 +1,12 @@
 # Timeseries to FLine examples
 
-Signal processing in this file is easiest to learn by drawing the raw stream and transformed stream together.
+Signal processing is full of transformations that sound sensible and look useless once applied to real data. Did the filter reveal structure, or merely sand away the detail you cared about? Did the event detector find a gesture, or just rebrand a random spike? These examples keep the raw stream and the processed stream in the same frame so the answers stay visible.
 
 ## Filter chains as layered curves
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.0" capture="box" open-outputs="true" padding="20" embed=true}
+Anyone can stack three filters in a row. The harder question is whether the stack has actually helped. This comes up with motion capture, sensor cleanup, musical control signals, and exploratory analysis: you want less junk, but you do not want to throw away the gesture.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -64,9 +66,17 @@ lines(
 )
 ```
 
+So we keep the drawing consistent and let the signal chain make the difference. A small helper maps all three streams onto the same canvas, while `EMAFilter`, `OneEuroFilter`, and `BandPassFilter` each get a chance to justify their existence.
+
+![](assets/timeseries_examples/filter_chains.png)
+
+Now you can judge the tradeoffs, not merely assume them. The raw line still contains everything, the smoothed line becomes legible, and the lower shifted trace isolates a narrower component that might matter musically or physically. That is exactly the sort of picture you want when tuning sensor cleanup, gesture preprocessing, or control-rate signal design. For statistical summaries of similar streams, see [Stats examples](stats_examples.md).
+
 ## Distribution-aware event flags
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/distribution_events.png" wait="1.0" capture="box" embed=true}
+Sometimes the question is not "what is the cleaned signal?" but "did something noteworthy just happen?" That is a different problem. Event detectors matter when you are looking for onsets, anomalies, attacks, impacts, threshold crossings, or rare deviations in a stream that mostly behaves itself.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/distribution_events.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -113,3 +123,9 @@ lines(
     fitToSize = true
 )
 ```
+
+So we give the detectors something worth noticing. A mostly smooth stream gets a handful of deliberate disturbances, and both detectors are made to report their verdict as traces rather than log messages.
+
+![](assets/timeseries_examples/distribution_events.png)
+
+The result is the kind of diagnostic view that makes event logic feel trustworthy. You can see the raw motion, and you can see precisely which departures were promoted into events by each detector. That is useful for onset detection, anomaly marking, interaction thresholds, and any signal that needs a little memory before it speaks. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md).

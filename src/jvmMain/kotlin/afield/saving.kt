@@ -435,6 +435,66 @@ class SavingContext {
         )
     }
 
+    private fun normalizedEdnKey(key: Any?): String? {
+        val text = key?.toString() ?: return null
+        return if (text.startsWith(":")) text.substring(1) else text
+    }
+
+    private fun mapLookup(map: Map<*, *>, key: String): Any? {
+        map[key]?.let { return it }
+        map[":$key"]?.let { return it }
+        return map.entries.firstOrNull { normalizedEdnKey(it.key) == key }?.value
+    }
+
+    private fun numberLikeToDouble(value: Any?): Double? = when (value) {
+        is Number -> value.toDouble()
+        is String -> value.toDoubleOrNull()
+        else -> null
+    }
+
+    private fun coerceRect(value: Any?): Rect? {
+        val items = value as? List<*> ?: return null
+        if (items.size != 4) return null
+        val x = numberLikeToDouble(items[0]) ?: return null
+        val y = numberLikeToDouble(items[1]) ?: return null
+        val w = numberLikeToDouble(items[2]) ?: return null
+        val h = numberLikeToDouble(items[3]) ?: return null
+        return Rect(x, y, w, h)
+    }
+
+    private fun coerceBoxRefLike(value: Any?): BoxRef? = when (value) {
+        is BoxRef -> value
+        is String -> {
+            val id = value.removePrefix(":").trim()
+            if (id.isEmpty()) null else BoxRef(id)
+        }
+        else -> null
+    }
+
+    private fun normalizeTransferPropertyValue(name: String, value: Any?): Any? = when (name) {
+        "frame", "viewport" -> coerceRect(value) ?: value
+        "parents", "children", "nested" -> {
+            val collection = value as? Collection<*>
+            if (collection == null) {
+                value
+            } else {
+                val refs = LinkedHashSet<BoxRef>()
+                var valid = true
+                for (item in collection) {
+                    val ref = coerceBoxRefLike(item)
+                    if (ref == null) {
+                        valid = false
+                        break
+                    }
+                    refs.add(ref)
+                }
+                if (valid) refs else value
+            }
+        }
+        "nestedIn" -> coerceBoxRefLike(value) ?: value
+        else -> value
+    }
+
     /**
      * Merges persistent properties from a document with the current global set.
      * This ensures that all properties that were previously saved in a document
@@ -447,7 +507,7 @@ class SavingContext {
      * @param rootValue The root EDN value from metadata.edn (should be a Map)
      */
     private fun mergePersistentProperties(rootValue: Map<*, *>) {
-        val savedProps = rootValue["persistentProperties"]
+        val savedProps = mapLookup(rootValue, "persistentProperties")
         if (savedProps != null) {
             val propsList = when (savedProps) {
                 is List<*> -> savedProps.mapNotNull { it?.toString() }
@@ -466,7 +526,7 @@ class SavingContext {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
                 mergePersistentProperties(rootValue)
-                rootValue["boxes"]
+                mapLookup(rootValue, "boxes")
             }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
@@ -481,12 +541,12 @@ class SavingContext {
 
         return boxList.mapNotNull { entry ->
             val map = entry as? Map<*, *> ?: return@mapNotNull null
-            val id = map["id"]?.toString() ?: return@mapNotNull null
-            val propsRaw = map["properties"] as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val id = mapLookup(map, "id")?.toString() ?: return@mapNotNull null
+            val propsRaw = mapLookup(map, "properties") as? Map<*, *> ?: emptyMap<Any?, Any?>()
             val props = LinkedHashMap<String, Any?>()
             for ((k, v) in propsRaw) {
-                val key = k?.toString() ?: continue
-                props[key] = v
+                val key = normalizedEdnKey(k) ?: continue
+                props[key] = normalizeTransferPropertyValue(key, v)
             }
             BoxTransferEdn(id, props)
         }
@@ -498,7 +558,7 @@ class SavingContext {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
                 mergePersistentProperties(rootValue)
-                rootValue["boxes"]
+                mapLookup(rootValue, "boxes")
             }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
@@ -513,12 +573,12 @@ class SavingContext {
 
         return boxList.mapNotNull { entry ->
             val map = entry as? Map<*, *> ?: return@mapNotNull null
-            val id = map["id"]?.toString() ?: return@mapNotNull null
-            val propsRaw = map["properties"] as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val id = mapLookup(map, "id")?.toString() ?: return@mapNotNull null
+            val propsRaw = mapLookup(map, "properties") as? Map<*, *> ?: emptyMap<Any?, Any?>()
             val props = LinkedHashMap<String, Any?>()
             for ((k, v) in propsRaw) {
-                val key = k?.toString() ?: continue
-                props[key] = v
+                val key = normalizedEdnKey(k) ?: continue
+                props[key] = normalizeTransferPropertyValue(key, v)
             }
             BoxTransferEdn(id, props)
         }

@@ -431,6 +431,27 @@ internal fun ensurePlaywrightForSession(info: SessionInformation): AgentOpenPlay
     throw lastFailure ?: IllegalStateException("Playwright session attach failed without an exception")
 }
 
+internal fun ensurePlaywrightForSessionIfNeeded(info: SessionInformation): AgentOpenPlaywrightResponse {
+    val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
+    val targetUrl = buildPlaywrightDocumentUrl(info)
+    val currentUrl = currentPage?.let { runCatching { it.url() }.getOrNull() }
+    if (currentPage != null && currentUrl == targetUrl) {
+        return AgentOpenPlaywrightResponse(
+            ok = true,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            url = currentUrl,
+            createdBrowser = false,
+            createdContext = false,
+            createdPage = false,
+            navigated = false,
+            ready = true
+        )
+    }
+    return ensurePlaywrightForSession(info)
+}
+
 class Server {
     companion object {
 

@@ -157,6 +157,12 @@
             width:100%;
             pointer-events:none;
         }
+
+        html[data-afield-output-iframe="true"],
+        html[data-afield-output-iframe="true"] body{
+            width:auto;
+            height:auto;
+        }
     </style>
 </head>
 <body>
@@ -180,6 +186,7 @@
     </div>
 </div>
 
+<script src="/iframe_autosize.js"></script>
 <script>
     const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
     const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;

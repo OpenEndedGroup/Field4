@@ -163,6 +163,15 @@
         #tree::-webkit-scrollbar-thumb:hover, .leaf::-webkit-scrollbar-thumb:hover { background-color: var(--sb-thumb-hover); }
         #tree::-webkit-scrollbar-track, .leaf::-webkit-scrollbar-track,
         #tree::-webkit-scrollbar-corner, .leaf::-webkit-scrollbar-corner { background: transparent; }
+
+        html[data-afield-output-iframe="true"] #tree{
+            max-height: none;
+            overflow: visible;
+        }
+        html[data-afield-output-iframe="true"] .leaf{
+            overflow: visible;
+            max-height: none;
+        }
     </style>
 </head>
 <body>
@@ -171,6 +180,7 @@
     <ul id="tree" role="tree" tabindex="0" aria-label="Inspector tree"></ul>
 </div>
 
+<script src="/iframe_autosize.js"></script>
 <script>
         const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
 

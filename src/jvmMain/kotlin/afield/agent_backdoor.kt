@@ -428,7 +428,7 @@ fun installAgentBackdoorHandlers() {
         val request = Json.decodeFromJsonElement<AgentOpenEditorRequest>(message.payload!!)
         playwrightScope.launch {
             val response = runCatching {
-                ensurePlaywrightForSession(info)
+                ensurePlaywrightForSessionIfNeeded(info)
                 openEditorForCapture(info, request)
             }.getOrElse { throwable ->
                 lprintln("warning,agent_backdoor", "editor open failed for ${request.uid}: ${throwable.message}")
@@ -476,7 +476,7 @@ fun installAgentBackdoorHandlers() {
         playwrightScope.launch {
             val kind = if (request.editorOnly) "editor" else "window"
             val response = runCatching {
-                ensurePlaywrightForSession(info)
+                ensurePlaywrightForSessionIfNeeded(info)
                 captureWindowScreenshot(info, request)
             }.getOrElse { throwable ->
                 lprintln("warning,agent_backdoor", "window screenshot failed for ${request.path}: ${throwable.message}")
@@ -501,7 +501,7 @@ fun installAgentBackdoorHandlers() {
         val request = Json.decodeFromJsonElement<AgentBoxScreenshot>(message.payload!!)
         playwrightScope.launch {
             val response = runCatching {
-                ensurePlaywrightForSession(info)
+                ensurePlaywrightForSessionIfNeeded(info)
                 captureBoxScreenshot(info, request)
             }.getOrElse { throwable ->
                 lprintln("warning,agent_backdoor", "box screenshot failed for ${request.uid}: ${throwable.message}")
@@ -527,7 +527,7 @@ fun installAgentBackdoorHandlers() {
         playwrightScope.launch {
             val kind = if (request.editorOnly) "editor" else "window"
             val response = runCatching {
-                ensurePlaywrightForSession(info)
+                ensurePlaywrightForSessionIfNeeded(info)
                 captureWindowVideo(info, request)
             }.getOrElse { throwable ->
                 lprintln("warning,agent_backdoor", "window video failed for ${request.path}: ${throwable.message}")
@@ -552,7 +552,7 @@ fun installAgentBackdoorHandlers() {
         val request = Json.decodeFromJsonElement<AgentBoxVideo>(message.payload!!)
         playwrightScope.launch {
             val response = runCatching {
-                ensurePlaywrightForSession(info)
+                ensurePlaywrightForSessionIfNeeded(info)
                 captureBoxVideo(info, request)
             }.getOrElse { throwable ->
                 lprintln("warning,agent_backdoor", "box video failed for ${request.uid}: ${throwable.message}")

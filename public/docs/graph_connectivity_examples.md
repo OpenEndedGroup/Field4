@@ -1,10 +1,12 @@
 # Graph connectivity to FLine examples
 
-These graph APIs are visual by design. The snippets below keep output stable by always drawing through FLines and enabling fit-to-size framing.
+Graphs are one of those topics that become much less mysterious the moment you draw them. In data science they organize structure in a cloud of points; in creative coding they become scaffolds for growth, routing, and composition; in musical systems they can describe proximity, voice-leading, or navigation through a space of states. These examples keep the algorithms attached to pictures.
 
 ## Geometric graph families on one point cloud
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true" embed=true}
+Suppose you have one point cloud and several plausible ways to connect it. Which graph gives you a generous scaffold? Which one trims aggressively? Which one keeps only the bare minimum needed to stay connected? Those are not academic questions if the graph is about to drive routing, clustering, or a generative drawing.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -57,9 +59,17 @@ lines(
 )
 ```
 
+So the scene stays fixed while the graph family changes. A single `graphLine(...)` helper draws Delaunay, Gabriel, relative-neighborhood, and minimum-spanning structures with different visual weights, making the structural differences carry the comparison.
+
+![](assets/graph_connectivity_examples/geometric_families.png)
+
+The picture gives you a quick vocabulary for the families. Delaunay is generous, Gabriel is choosier, RNG is choosier still, and the spanning tree is the austerity program. Once you can *see* that progression, choosing the right scaffold for a pathing or clustering problem becomes much easier. For local queries on similar point sets, see [Smile neighbors examples](smile_neighbors_examples.md).
+
 ## Pathing: anchored cover + A* overlay
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box" embed=true}
+A graph is only interesting once you ask it to do something. Can it help you cover a space from a given anchor? Can it produce a route from here to there? Can one sparse base structure support both a global reading and a local path?
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.*
@@ -117,3 +127,9 @@ out += dots
 
 lines(out, channel = "graph-pathing", w = 1180.0, h = 760.0, fitToSize = true)
 ```
+
+That is the experiment here. We build a modest k-nearest-neighbor graph, then ask it for two quite different answers: a cover that spreads outward from one anchor, and an A* path to a chosen goal. The faded base graph stays in the background so those answers cannot pretend they appeared from nowhere.
+
+![](assets/graph_connectivity_examples/path_cover_astar.png)
+
+The result is a graph doing double duty. The colored cover paths tell you how the structure fans out from the anchor; the bright A* overlay tells you how to get somewhere specific. That combination is useful in navigation, decomposition, interactive layouts, and any system that needs both "show me the territory" and "show me the route". For statistics and dependence measures on related datasets, continue with [Correlations examples](correlations_examples.md) and [Stats examples](stats_examples.md).
