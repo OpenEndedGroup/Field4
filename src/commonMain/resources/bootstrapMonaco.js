@@ -33,7 +33,7 @@ require(["vs/editor/editor.main"], function (e, is) {
         });
         require(["vs/basic-languages/yaml/yaml"], function (e, is) {
         });
-        require(["bithero/glsl", "bithero/forth"], function () {
+        require(["bithero/glsl", "bithero/forth", "bithero/nano"], function () {
                 initMonaco()
                 require(["vs/platform/quickinput/common/quickInput"], function (is) {
                         initQuickPick(is)
@@ -312,6 +312,7 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("clojure", completionProvider)
         monaco.languages.registerCompletionItemProvider("glsl", completionProvider)
         monaco.languages.registerCompletionItemProvider("forth", completionProvider)
+        monaco.languages.registerCompletionItemProvider("nano", completionProvider)
         monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 

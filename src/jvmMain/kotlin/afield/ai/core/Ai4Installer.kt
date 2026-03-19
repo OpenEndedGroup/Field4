@@ -36,6 +36,7 @@ fun installAi4() {
         name.equals(GLSL_MESH.name, ignoreCase = true) -> GLSL_MESH
         name.equals(GLSL_TASK.name, ignoreCase = true) -> GLSL_TASK
         name.equals(GLSL_COMPUTE.name, ignoreCase = true) -> GLSL_COMPUTE
+        name.equals("nano", ignoreCase = true) -> NANO_ASM
         else -> LanguageSpec(
             name = name,
             wrap = { it.trimEnd() },

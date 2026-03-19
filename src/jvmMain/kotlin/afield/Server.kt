@@ -1382,6 +1382,7 @@ class Server {
                     files("./src/jsMain/resources/")
                     files("./src/jsMain/resources/monaco")
                     files("./src/commonMain/kotlin/resources/")
+                    files("./src/commonMain/resources/")
 
                     route("/chat") {
                         handle {
