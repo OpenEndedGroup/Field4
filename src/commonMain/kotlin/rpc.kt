@@ -564,6 +564,9 @@ data class SlideAnnotation(
     val strokeWidth: Double = 2.0,
     val dashed: Boolean = false
 )
+@Serializable
+data class FLineClick(val callbackId: String)
+
 // Control messages
 @Serializable
 data class SliderUpdate(val sliderId: String, val value: Double)

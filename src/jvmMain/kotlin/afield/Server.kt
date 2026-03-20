@@ -1019,6 +1019,27 @@ class Server {
                 Handled.yes
             })
 
+            handlers["fline-click"] = mutableSetOf({ message, reply ->
+                val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
+                lprintln("debug,fline", "Received FLine click: ${click.callbackId}")
+
+                val callback = getFLineClickCallback(click.callbackId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback()
+                        } catch (e: Exception) {
+                            lprintln("error,fline", "Error in FLine click callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,fline", "No callback registered for FLine: ${click.callbackId}")
+                }
+
+                Handled.yes
+            })
+
             handlers["string-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")

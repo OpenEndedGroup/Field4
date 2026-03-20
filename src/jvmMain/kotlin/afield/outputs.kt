@@ -393,6 +393,17 @@ internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
     return sliderCallbacks[sliderId]
 }
 
+// Global registry for FLine click callbacks
+private val flineClickCallbacks = java.util.concurrent.ConcurrentHashMap<String, () -> Unit>()
+
+internal fun registerFLineClickCallback(callbackId: String, callback: () -> Unit) {
+    flineClickCallbacks[callbackId] = callback
+}
+
+internal fun getFLineClickCallback(callbackId: String): (() -> Unit)? {
+    return flineClickCallbacks[callbackId]
+}
+
 fun Box.slider(
     label: String,
     min: Double = 0.0,
