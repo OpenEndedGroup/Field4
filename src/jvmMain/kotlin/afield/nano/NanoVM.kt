@@ -68,6 +68,13 @@ class NanoVM(
     var onOutput: (Int) -> Unit = {}
     var onError: (String, Int) -> Unit = { _, _ -> }
 
+    data class StepResult(
+        val executedPc: Int,
+        val currentPc: Int,
+        val halted: Boolean,
+        val executed: Boolean
+    )
+
     // ── Reset ──────────────────────────────────────────────────────────────────
 
     fun reset() {
@@ -110,17 +117,38 @@ class NanoVM(
         if (program.isEmpty()) return 0
         var steps = 0
         while (!halted && steps < maxSteps) {
-            if (pc < 0 || pc >= program.size) {
-                halted = true
-                break
-            }
-            val opcode = program[pc].toInt() and 0xFF
-            val nextPc = step(opcode, program)
-            if (nextPc < 0) { halted = true; break }
-            pc = nextPc
+            val stepResult = stepOnce(program)
+            if (!stepResult.executed) break
             steps++
         }
         return steps
+    }
+
+    /**
+     * Execute exactly one instruction at the current [pc].
+     */
+    fun stepOnce(program: ByteArray): StepResult {
+        if (program.isEmpty() || halted) {
+            return StepResult(executedPc = pc, currentPc = pc, halted = halted, executed = false)
+        }
+        if (pc < 0 || pc >= program.size) {
+            halted = true
+            return StepResult(executedPc = pc, currentPc = pc, halted = true, executed = false)
+        }
+        val executedPc = pc
+        val opcode = program[pc].toInt() and 0xFF
+        val nextPc = step(opcode, program)
+        if (nextPc >= 0) {
+            pc = nextPc
+        } else {
+            halted = true
+        }
+        return StepResult(
+            executedPc = executedPc,
+            currentPc = pc,
+            halted = halted,
+            executed = true
+        )
     }
 
     // ── Flag helpers ──────────────────────────────────────────────────────────

@@ -669,6 +669,75 @@ function drawConnections() {
     });
 }
 
+function makeHostRequestId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function requestFieldHost(messageType, payload, options = {}) {
+    if (window.top === window) {
+        return Promise.reject(new Error('not embedded in Field'));
+    }
+
+    const messageId = makeHostRequestId(messageType);
+    const responseType = `${messageType}-response`;
+    const timeoutMs = options.timeoutMs || 1800;
+
+    return new Promise((resolve, reject) => {
+        let settled = false;
+
+        const cleanup = () => {
+            window.removeEventListener('message', onMessage);
+            window.clearTimeout(timer);
+        };
+
+        const onMessage = (event) => {
+            const data = event.data || {};
+            if (data.type !== responseType || data.messageId !== messageId) {
+                return;
+            }
+            settled = true;
+            cleanup();
+            if (data.ok === false) {
+                reject(new Error(data.error || `${messageType} failed`));
+                return;
+            }
+            resolve(data.result);
+        };
+
+        const timer = window.setTimeout(() => {
+            if (settled) return;
+            cleanup();
+            reject(new Error('Field host request timed out'));
+        }, timeoutMs);
+
+        window.addEventListener('message', onMessage);
+        window.top.postMessage({ type: messageType, messageId, ...payload }, '*');
+    });
+}
+
+async function importOfflineDocViaLocalhost(recommendedName, ednText) {
+    const localBase = 'https://localhost:9092';
+    const response = await fetch(`${localBase}/api/import-offline-doc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            recommendedName,
+            ednText,
+            sourceUrl: window.location.href
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return {
+        localBase,
+        result
+    };
+}
+
 function setupOpenLocalButton(fileUrl, ednText, data) {
     const button = document.getElementById('open-local');
     button.style.display = 'inline-block';
@@ -685,22 +754,25 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         button.textContent = 'Sending to Field4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
-            const localBase = 'https://localhost:9092';
-            const response = await fetch(`${localBase}/api/import-offline-doc`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            let localBase = 'https://localhost:9092';
+            let result = null;
+            let hostOpened = false;
+
+            try {
+                result = await requestFieldHost('field-import-offline-doc', {
                     recommendedName,
                     ednText,
-                    sourceUrl: window.location.href
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    sourceUrl: window.location.href,
+                    openInHost: true
+                });
+                hostOpened = true;
+            } catch (hostError) {
+                console.info('offline-viewer host import unavailable, falling back to localhost import', hostError);
+                const fallback = await importOfflineDocViaLocalhost(recommendedName, ednText);
+                localBase = fallback.localBase;
+                result = fallback.result;
             }
 
-            const result = await response.json();
             const localEdnUrl = result.projectUrl || `${localBase}/${encodeURIComponent(result.documentName)}/metadata.edn`;
             const openUrl = result.openUrl || `${localBase}/index.html?file=${encodeURIComponent(result.documentName)}`;
 
@@ -719,7 +791,12 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
             button.textContent = 'Open in Field4';
             button.title = `Open ${result.documentName} in Field4`;
 
-            // Launch Field4
+            if (hostOpened) {
+                button.textContent = 'Opening in Field4...';
+                return;
+            }
+
+            // Launch Field4 directly when we imported over localhost ourselves.
             window.location.href = openUrl;
         } catch (error) {
             showError(`Failed to send to Field4: ${error.message}`);

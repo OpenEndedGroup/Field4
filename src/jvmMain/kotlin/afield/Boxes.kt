@@ -595,6 +595,7 @@ fun box(
 
 var intro = """
 import afield.*
+import afield.nano.*
 import afield.stdlib.*
 import afield.four.synth.*
 import afield.stdlib.Vec2

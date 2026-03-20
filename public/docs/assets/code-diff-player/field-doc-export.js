@@ -171,11 +171,55 @@
     ].join("\n");
   }
 
-  function copyText(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text);
+  function makeMessageId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function requestFieldHost(messageType, payload, options = {}) {
+    if (window.parent === window) {
+      return Promise.reject(new Error("not embedded in Field"));
     }
 
+    const messageId = makeMessageId(messageType);
+    const responseType = `${messageType}-response`;
+    const timeoutMs = options.timeoutMs || 1200;
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        window.removeEventListener("message", onMessage);
+        window.clearTimeout(timer);
+      };
+
+      const onMessage = (event) => {
+        const data = event.data || {};
+        if (data.type !== responseType || data.messageId !== messageId) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        if (data.ok === false) {
+          reject(new Error(data.error || `${messageType} failed`));
+          return;
+        }
+        resolve(data.result);
+      };
+
+      const timer = window.setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        cleanup();
+        reject(new Error("Field host request timed out"));
+      }, timeoutMs);
+
+      window.addEventListener("message", onMessage);
+      window.parent.postMessage({ type: messageType, messageId, ...payload }, "*");
+    });
+  }
+
+  function legacyCopyText(text) {
     return new Promise((resolve, reject) => {
       try {
         const area = document.createElement("textarea");
@@ -194,6 +238,26 @@
         reject(err);
       }
     });
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch (error) {
+        console.warn("field-doc-export clipboard API failed, trying Field host/legacy copy", error);
+      }
+    }
+
+    try {
+      await requestFieldHost("field-copy-to-clipboard", { text }, { timeoutMs: 1000 });
+      return;
+    } catch (error) {
+      console.warn("field-doc-export Field host copy failed, falling back to execCommand", error);
+    }
+
+    return legacyCopyText(text);
   }
 
   function setStatus(statusEl, message, kind) {

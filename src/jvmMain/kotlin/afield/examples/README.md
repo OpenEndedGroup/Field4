@@ -12,13 +12,10 @@ This package contains all example code for Field4, organized by topic area. Thes
   - Template system with live data display
   - Shared chat across template instances
 
-- **`BooleanNetworkExplorer.kt`** - Boolean network exploration, visualization, and analysis
-  - Core `BooleanNetwork` and `BoolNode` data model
-  - Synchronous evolution: `step`, `trajectory`, `trajectoryUntilCycle`
-  - Attractor and basin-of-attraction enumeration: `findAttractors`
-  - FLine visualizations: wiring graph, spacetime unrolling, state-transition graph, basin diagrams
-  - HTML notation panels for network rules and attractor summaries
-  - Pre-built example networks: `toggleNetwork`, `threeNodeNetwork`, `segmentPolarityNetwork`, `kauffmanNetwork`
+- **`BooleanNetworkExplorer.kt`** - Console showcase for the Boolean-network stdlib
+  - Demonstrates the public API from `afield.stdlib.booleannetworks.kt`
+  - Prints attractor summaries for the bundled example networks
+  - Runs a small Kauffman regime sweep to compare random-network behavior
 
 - **`JoltPhysicsExample.kt`** - 3D rigid-body Jolt JNI examples
   - Stress-test chaos scene generation

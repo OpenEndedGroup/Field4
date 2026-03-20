@@ -27,6 +27,7 @@ object SortingNetworksSmokeTest {
             testBubbleIsValid()
             testOddEvenMergeIsValid()
             testSortProducesCorrectOrder()
+            testLayerTrace()
             testNotationRoundTrip()
             testFromNotationRejectsInvalid()
             testLayersAreDisjoint()
@@ -106,6 +107,18 @@ object SortingNetworksSmokeTest {
         }
     }
 
+    private fun testLayerTrace() {
+        val net = SortingNetwork.oddEvenMerge(5)
+        val trace = net.layerTrace(intArrayOf(5, 1, 4, 2, 3))
+        require(trace.size == net.depth() + 1) {
+            "layerTrace() should return depth+1 snapshots, got ${trace.size}"
+        }
+        val last = trace.last()
+        require(last.contentEquals(intArrayOf(1, 2, 3, 4, 5))) {
+            "layerTrace() final state should be sorted, got ${last.toList()}"
+        }
+    }
+
     // ─── notation ─────────────────────────────────────────────────────────────
 
     private fun testNotationRoundTrip() {
@@ -144,10 +157,12 @@ object SortingNetworksSmokeTest {
     }
 
     private fun testDepth() {
-        // bubble(n) has n-1 layers
+        // Under ASAP scheduling, the standard left-to-right bubble comparator order
+        // has depth 2n-3.
         for (n in 2..6) {
             val depth = SortingNetwork.bubble(n).depth()
-            require(depth == n - 1) { "bubble($n) should have depth ${n-1}, got $depth" }
+            val expected = 2 * n - 3
+            require(depth == expected) { "bubble($n) should have depth $expected, got $depth" }
         }
         // oddEvenMerge should have depth ≤ bubble depth
         for (n in 4..8) {
@@ -198,8 +213,13 @@ object SortingNetworksSmokeTest {
 
     private fun testAnnealResultIsValid() {
         for (n in 2..6) {
+            var callbackCount = 0
             val opt = SortingNetwork.anneal(n = n, seed = 7L)
             require(opt.isSorting()) { "anneal(n=$n) result must be a valid sorting network" }
+            SortingNetwork.anneal(n = n, seed = 7L, iterations = 2_500, progressEvery = 500) { _, _ ->
+                callbackCount++
+            }
+            require(callbackCount >= 5) { "anneal progress callback should have fired repeatedly, got $callbackCount" }
         }
     }
 }

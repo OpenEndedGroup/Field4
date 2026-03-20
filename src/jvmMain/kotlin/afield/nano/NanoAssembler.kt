@@ -77,9 +77,45 @@ class NanoAssembler {
         data class Err(val errors: List<AssemblyError>) : AssemblyResult()
     }
 
+    data class AssemblyDebugInfo(
+        val bytes: ByteArray,
+        val pcToLine: IntArray
+    )
+
+    sealed class AssemblyDebugResult {
+        data class Ok(val info: AssemblyDebugInfo) : AssemblyDebugResult()
+        data class Err(val errors: List<AssemblyError>) : AssemblyDebugResult()
+    }
+
     fun assemble(source: String): AssemblyResult {
+        return when (val result = assembleInternal(source, captureSourceMap = false)) {
+            is InternalAssemblyResult.Ok -> AssemblyResult.Ok(result.bytes)
+            is InternalAssemblyResult.Err -> AssemblyResult.Err(result.errors)
+        }
+    }
+
+    fun assembleWithSourceMap(source: String): AssemblyDebugResult {
+        return when (val result = assembleInternal(source, captureSourceMap = true)) {
+            is InternalAssemblyResult.Ok ->
+                AssemblyDebugResult.Ok(
+                    AssemblyDebugInfo(
+                        bytes = result.bytes,
+                        pcToLine = result.pcToLine ?: IntArray(0)
+                    )
+                )
+            is InternalAssemblyResult.Err -> AssemblyDebugResult.Err(result.errors)
+        }
+    }
+
+    private sealed class InternalAssemblyResult {
+        data class Ok(val bytes: ByteArray, val pcToLine: IntArray?) : InternalAssemblyResult()
+        data class Err(val errors: List<AssemblyError>) : InternalAssemblyResult()
+    }
+
+    private fun assembleInternal(source: String, captureSourceMap: Boolean): InternalAssemblyResult {
         val errors = mutableListOf<AssemblyError>()
         val bytes = mutableListOf<Int>()          // output bytes (0–255)
+        val pcToLine = if (captureSourceMap) mutableListOf<Int>() else null
         val labels = mutableMapOf<String, Int>()  // label name → address
         // Patches: list of (address-of-offset-byte, instruction-end-pc, label, lineNo, isAbsolute)
         data class Patch(val offsetAddr: Int, val instrEndPc: Int, val label: String, val lineNo: Int, val absolute: Boolean)
@@ -135,7 +171,10 @@ class NanoAssembler {
                 }
             }
 
-            fun emitByte(b: Int) { bytes.add(b and 0xFF) }
+            fun emitByte(b: Int) {
+                bytes.add(b and 0xFF)
+                pcToLine?.add(lineNo)
+            }
 
             fun emitBranchRel(op: Int, labelOrNum: String?) {
                 if (labelOrNum == null) { errors += AssemblyError(lineNo, "Missing branch target"); return }
@@ -281,8 +320,14 @@ class NanoAssembler {
             }
         }
 
-        return if (errors.isEmpty()) AssemblyResult.Ok(ByteArray(bytes.size) { bytes[it].toByte() })
-        else AssemblyResult.Err(errors)
+        return if (errors.isEmpty()) {
+            InternalAssemblyResult.Ok(
+                bytes = ByteArray(bytes.size) { bytes[it].toByte() },
+                pcToLine = pcToLine?.let { IntArray(it.size) { index -> it[index] } }
+            )
+        } else {
+            InternalAssemblyResult.Err(errors)
+        }
     }
 
     // ── Utilities ────────────────────────────────────────────────────────────

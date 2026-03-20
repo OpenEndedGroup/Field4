@@ -5,7 +5,9 @@ import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
+import afield.stdlib.Inheritance
 import io.ktor.websocket.WebSocketSession
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 
 /**
@@ -43,8 +45,9 @@ import kotlinx.coroutines.yield
 class NanoExecution(val inside: Box) : BoxExecution {
 
     private val assembler = NanoAssembler()
-    private val disassembler = NanoDisassembler()
     private val vm = NanoVM()
+    private val stepDecorationKey = "__nano_step_line__"
+    private val stepDelayMs = 220L
 
     // ── Output wiring ─────────────────────────────────────────────────────────
 
@@ -87,6 +90,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
         inMain {
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
+            clearStepDecoration()
             configureOutput(inside, execute.line, reply, originSession)
             try {
                 runNano(execute.code, execute.line, reply, originSession, maxSteps = 100_000)
@@ -107,11 +111,22 @@ class NanoExecution(val inside: Box) : BoxExecution {
         inMain {
             val wm = ++inside.fragmentGeneration
 
-            configureOutput(inside, execute.line, reply, originSession)
+            configureOutputProxies(inside, reply, originSession)
+            val outputs = mutableListOf<Int>()
+            var runtimeError: String? = null
+            vm.onOutput = { value ->
+                outputs += value and 0xFF
+                inside.output.proxy(value.toString(), true, execute.line)
+            }
+            vm.onError = { msg, pcVal ->
+                runtimeError = "Nano VM error at PC=0x${pcVal.toString(16).padStart(2, '0')}: $msg"
+                inside.error(msg, line = execute.line, property = "code")
+                lprintln("error,nano", runtimeError ?: msg)
+            }
 
-            // Assemble once
-            val result = assembler.assemble(code)
-            if (result is NanoAssembler.AssemblyResult.Err) {
+            val result = assembler.assembleWithSourceMap(code)
+            if (result is NanoAssembler.AssemblyDebugResult.Err) {
+                clearStepDecoration()
                 result.errors.forEach { e ->
                     inside.error(e.message, line = execute.line + e.line - 1, property = "code")
                 }
@@ -119,25 +134,77 @@ class NanoExecution(val inside: Box) : BoxExecution {
                 return@inMain
             }
 
-            val program = (result as NanoAssembler.AssemblyResult.Ok).bytes
+            result as NanoAssembler.AssemblyDebugResult.Ok
+            val assembly = result.info
+            val program = assembly.bytes
             clearErrorStatus(reply, originSession)
+            clearStepDecoration()
 
             val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
             inside.runGeneration[strand] = generation
             send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand)))
 
-            // Initial full load (sets up RAM with any embedded .data bytes from the program).
-            vm.load(program)
+            val memoryBefore = loadProgramIntoVm(vm, program)
+            inside.displayOpen("nano")
+
+            var steps = 0
+            var lastFocusedLine: Int? = null
+
+            fun publishState(focusPc: Int, changedRegisters: Set<Int>, changedRam: Set<Int>) {
+                val focusLine = assembly.pcToLine.getOrNull(focusPc)
+                setStepDecoration(code, focusLine)
+                if (focusLine != null && focusLine != lastFocusedLine) {
+                    focusEditorLine(focusLine, originSession)
+                    lastFocusedLine = focusLine
+                }
+                inside.nanoMemoryBefore = memoryBefore
+                inside.nanoMemoryAfter = vm.ram.toList()
+                send(
+                    Message("set-output").payload(
+                        Set_output(
+                            inside.id,
+                            "outputarea",
+                            "nano",
+                            vm.toNanoRunReport(
+                                program = program,
+                                source = code,
+                                steps = steps,
+                                outputs = outputs,
+                                focusPc = focusPc,
+                                focusLine = focusLine,
+                                changedRegisters = changedRegisters,
+                                changedRam = changedRam,
+                                runtimeError = runtimeError
+                            ).toHtml(
+                                title = "Nano state",
+                                includeSource = false,
+                                includeDisassembly = true,
+                                includeProgramBytes = true
+                            )
+                        )
+                    )
+                )
+            }
+
+            publishState(vm.pc, emptySet(), emptySet())
 
             inMain {
                 try {
-                    while (inside.runGeneration[strand] == generation) {
-                        // Each tick: reset registers/flags/PC only, preserving RAM.
-                        // This means RAM acts as persistent working memory across ticks —
-                        // crucial for ALife agents that store state between steps.
-                        vm.resetRegisters()
-                        vm.run(program)
-                        yield()
+                    while (inside.runGeneration[strand] == generation && !vm.halted) {
+                        delay(configuredStepDelayMs())
+                        if (inside.runGeneration[strand] != generation || vm.halted) break
+
+                        val previousRegisters = vm.reg.copyOf()
+                        val previousRam = vm.ram.copyOf()
+                        val stepResult = vm.stepOnce(program)
+                        if (!stepResult.executed) break
+
+                        steps++
+                        publishState(
+                            focusPc = stepResult.executedPc,
+                            changedRegisters = diffChangedIndices(previousRegisters, vm.reg),
+                            changedRam = diffChangedIndices(previousRam, vm.ram)
+                        )
                     }
                 } finally {
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
@@ -241,28 +308,48 @@ class NanoExecution(val inside: Box) : BoxExecution {
         originSession: WebSocketSession?,
         maxSteps: Int = 100_000
     ) {
-        val result = assembler.assemble(code)
+        val result = assembler.assembleWithSourceMap(code)
         when (result) {
-            is NanoAssembler.AssemblyResult.Err -> {
+            is NanoAssembler.AssemblyDebugResult.Err -> {
                 result.errors.forEach { e ->
                     inside.error(e.message, line = executeLine + e.line - 1, property = "code")
                 }
             }
-            is NanoAssembler.AssemblyResult.Ok -> {
+            is NanoAssembler.AssemblyDebugResult.Ok -> {
                 clearErrorStatus(reply, originSession)
-                val program = result.bytes
+                val assembly = result.info
+                val program = assembly.bytes
                 val freshVm = NanoVM(maxSteps = maxSteps)
-                freshVm.onOutput = vm.onOutput
-                freshVm.onError = vm.onError
-                freshVm.load(program)
+                val outputs = mutableListOf<Int>()
+                var runtimeError: String? = null
+                freshVm.onOutput = { value ->
+                    outputs += value and 0xFF
+                    vm.onOutput(value)
+                }
+                freshVm.onError = { msg, pc ->
+                    runtimeError = "Nano VM error at PC=0x${pc.toString(16).padStart(2, '0')}: $msg"
+                    vm.onError(msg, pc)
+                }
+                val memoryBefore = loadProgramIntoVm(freshVm, program)
                 val steps = freshVm.run(program)
-
-                val outputs = mutableListOf<String>()
-                // Show final register state
-                val regs = freshVm.reg.mapIndexed { i, v -> "r$i=0x${v.toString(16).padStart(2, '0')}($v)" }
-                outputs += "  ${regs.joinToString("  ")}  [steps=$steps]"
-
-                val html = "<pre style='margin:0;font-size:11px;color:#aaa'>${outputs.joinToString("\n")}</pre>"
+                inside.nanoMemoryBefore = memoryBefore
+                inside.nanoMemoryAfter = freshVm.ram.toList()
+                val html = freshVm
+                    .toNanoRunReport(
+                        program = program,
+                        source = code,
+                        steps = steps,
+                        outputs = outputs,
+                        focusPc = freshVm.pc,
+                        focusLine = assembly.pcToLine.getOrNull(freshVm.pc),
+                        runtimeError = runtimeError
+                    )
+                    .toHtml(
+                        title = "Nano state",
+                        includeSource = false,
+                        includeDisassembly = false,
+                        includeProgramBytes = false
+                    )
                 dispatchExecutionOutput(
                     inside,
                     reply,
@@ -278,15 +365,138 @@ class NanoExecution(val inside: Box) : BoxExecution {
             }
         }
     }
+
+    private fun diffChangedIndices(previous: IntArray, current: IntArray): Set<Int> {
+        return previous.indices.filterTo(linkedSetOf()) { index -> previous[index] != current[index] }
+    }
+
+    private fun configuredStepDelayMs(): Long {
+        val raw = runCatching { inside.nanoLaunchDelayMs }.getOrNull()
+        return raw?.toLong()?.coerceAtLeast(0L) ?: stepDelayMs
+    }
+
+    private fun loadProgramIntoVm(machine: NanoVM, program: ByteArray): List<Int> {
+        machine.load(program)
+        applyConfiguredMemory(machine.ram, runCatching { inside.nanoMemoryInit }.getOrNull())
+        return machine.ram.toList()
+    }
+
+    private fun applyConfiguredMemory(memory: IntArray, spec: Any?) {
+        when (spec) {
+            null -> return
+            is ByteArray -> spec.forEachIndexed { index, value -> writeMemoryValue(memory, index, value.toInt()) }
+            is ShortArray -> spec.forEachIndexed { index, value -> writeMemoryValue(memory, index, value.toInt()) }
+            is IntArray -> spec.forEachIndexed { index, value -> writeMemoryValue(memory, index, value) }
+            is LongArray -> spec.forEachIndexed { index, value -> writeMemoryValue(memory, index, value.toInt()) }
+            is FloatArray -> spec.forEachIndexed { index, value -> writeMemoryValue(memory, index, value.toInt()) }
+            is DoubleArray -> spec.forEachIndexed { index, value -> writeMemoryValue(memory, index, value.toInt()) }
+            is Array<*> -> spec.forEachIndexed { index, value -> value.asNanoByteOrNull()?.let { writeMemoryValue(memory, index, it) } }
+            is Iterable<*> -> spec.forEachIndexed { index, value -> value.asNanoByteOrNull()?.let { writeMemoryValue(memory, index, it) } }
+            is Map<*, *> -> spec.forEach { (address, value) ->
+                val addr = address.asNanoIndexOrNull() ?: return@forEach
+                val byte = value.asNanoByteOrNull() ?: return@forEach
+                writeMemoryValue(memory, addr, byte)
+            }
+            else -> lprintln("warning,nano", "Ignoring unsupported nanoMemoryInit value of type ${spec::class.simpleName}")
+        }
+    }
+
+    private fun writeMemoryValue(memory: IntArray, index: Int, value: Int) {
+        if (memory.isEmpty()) return
+        memory[index and (memory.size - 1)] = value and 0xFF
+    }
+
+    private fun Any?.asNanoIndexOrNull(): Int? {
+        return when (this) {
+            is Number -> this.toInt()
+            is String -> this.trim().toIntOrNull()
+            else -> null
+        }
+    }
+
+    private fun Any?.asNanoByteOrNull(): Int? {
+        return when (this) {
+            is Number -> this.toInt() and 0xFF
+            is String -> parseNanoStringNumber(this)
+            else -> null
+        }
+    }
+
+    private fun parseNanoStringNumber(text: String): Int? {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return null
+        val parsed = when {
+            trimmed.startsWith("-0x", ignoreCase = true) ->
+                trimmed.substring(3).toIntOrNull(16)?.let { -it }
+            trimmed.startsWith("0x", ignoreCase = true) ->
+                trimmed.substring(2).toIntOrNull(16)
+            else -> trimmed.toIntOrNull()
+        } ?: return null
+        return parsed and 0xFF
+    }
+
+    private fun clearStepDecoration() {
+        inside.decorationState.remove(stepDecorationKey)
+    }
+
+    private fun setStepDecoration(code: String, focusLine: Int?) {
+        if (focusLine == null) {
+            clearStepDecoration()
+            return
+        }
+        val lines = code.lines()
+        if (focusLine !in 1..lines.size) {
+            clearStepDecoration()
+            return
+        }
+        val lineText = lines[focusLine - 1]
+        val endColumn = maxOf(1, lineText.length + 1)
+        val className = "nanoStep_${inside.id}".map { if (it.isLetterOrDigit()) it else '_' }.joinToString("")
+        val css = """
+            .${className} {
+                background: rgba(217, 115, 38, 0.10);
+                border-bottom: 1px solid rgba(217, 115, 38, 0.95);
+                border-radius: 2px;
+            }
+        """.trimIndent().replace("\n", " ")
+        inside.decorationState[stepDecorationKey] = RawDecoration(
+            lineStart = focusLine,
+            colStart = 1,
+            lineEnd = focusLine,
+            colEnd = endColumn,
+            classname = className,
+            classDef = mapOf(className to css)
+        )
+    }
+
+    private fun focusEditorLine(line: Int, originSession: WebSocketSession?) {
+        val message = Message("select-and-edit-box").payload(
+            SelectAndEditBox(
+                uid = inside.id,
+                property = "code",
+                scrollToLine = line,
+                highlightLine = line
+            )
+        )
+        if (originSession != null) {
+            _send(originSession, message)
+        } else {
+            send(message)
+        }
+    }
 }
 
 // ── Box property for root detection ──────────────────────────────────────────
 
 var Box.isNanoRoot by Delegation<Boolean?>()
+var Box.nanoLaunchDelayMs by Inheritance<Number?>()
+var Box.nanoMemoryInit by Inheritance<Any?>()
+var Box.nanoMemoryBefore by Delegation<List<Int>?>()
+var Box.nanoMemoryAfter by Delegation<List<Int>?>()
 
 @RunsAt(early)
 fun installNano() {
-    Box.ioPersistentProperties.add("isNanoRoot")
+    Box.ioPersistentProperties.addAll(setOf("isNanoRoot", "nanoLaunchDelayMs", "nanoMemoryInit"))
 }
 
 @RunsAt(plugins)

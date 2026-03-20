@@ -93,6 +93,30 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
     }
 
     /**
+     * Apply this network layer-by-layer and return a snapshot after each layer.
+     *
+     * The first entry is the original [input], followed by one snapshot per
+     * parallel layer from [layers]. This is useful for plotting how disorder
+     * decays as the network progresses.
+     */
+    fun layerTrace(input: IntArray): List<IntArray> {
+        require(input.size == n) { "Input size ${input.size} != n=$n" }
+        val state = input.copyOf()
+        val snapshots = mutableListOf(state.copyOf())
+        layers().forEach { layer ->
+            layer.forEach { (lo, hi) ->
+                if (state[lo] > state[hi]) {
+                    val t = state[lo]
+                    state[lo] = state[hi]
+                    state[hi] = t
+                }
+            }
+            snapshots += state.copyOf()
+        }
+        return snapshots
+    }
+
+    /**
      * Check whether this network correctly sorts all possible inputs (0-1 principle).
      *
      * For [n] ≤ 20 every binary input is tested exactly (2^[n] tests).  For [n] > 20
@@ -427,8 +451,9 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
          * @param initialTemp     Starting temperature for the Metropolis acceptance criterion.
          * @param finalTemp       Ending temperature.
          * @param seed            Random seed for reproducible runs.
-         * @param onProgress      Optional callback invoked every 5 000 steps with the
-         *                        current step index and the best network found so far.
+         * @param progressEvery   Callback cadence for [onProgress].
+         * @param onProgress      Optional callback invoked every [progressEvery] steps with
+         *                        the current step index and the best network found so far.
          * @return The best valid [SortingNetwork] discovered.
          */
         fun anneal(
@@ -438,9 +463,12 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
             initialTemp: Double = 2.0,
             finalTemp: Double = 0.01,
             seed: Long = 42L,
+            progressEvery: Int = 5_000,
             onProgress: ((iteration: Int, network: SortingNetwork) -> Unit)? = null,
         ): SortingNetwork {
             require(initialNetwork.isSorting()) { "initialNetwork must be a valid sorting network" }
+            require(iterations > 0) { "iterations must be > 0" }
+            require(progressEvery > 0) { "progressEvery must be > 0" }
 
             val rng = Random(seed)
             fun energy(net: SortingNetwork) = net.comparators.size.toDouble() + 0.1 * net.depth()
@@ -495,24 +523,26 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
                             SortingNetwork(n, list)
                         }
                     }
-                } ?: return@repeat
+                }
 
-                if (!candidate.isSorting()) return@repeat
+                if (candidate != null && candidate.isSorting()) {
+                    val candidateEnergy = energy(candidate)
+                    val delta = candidateEnergy - currentEnergy
 
-                val candidateEnergy = energy(candidate)
-                val delta = candidateEnergy - currentEnergy
-
-                if (delta <= 0.0 || rng.nextDouble() < exp(-delta / temp)) {
-                    current = candidate
-                    currentEnergy = candidateEnergy
-                    if (currentEnergy < bestEnergy) {
-                        best = current
-                        bestEnergy = currentEnergy
+                    if (delta <= 0.0 || rng.nextDouble() < exp(-delta / temp)) {
+                        current = candidate
+                        currentEnergy = candidateEnergy
+                        if (currentEnergy < bestEnergy) {
+                            best = current
+                            bestEnergy = currentEnergy
+                        }
                     }
                 }
 
-                if (onProgress != null && iter % 5_000 == 0) onProgress(iter, best)
+                if (onProgress != null && iter % progressEvery == 0) onProgress(iter, best)
             }
+
+            if (onProgress != null && iterations % progressEvery != 0) onProgress(iterations, best)
 
             return best
         }

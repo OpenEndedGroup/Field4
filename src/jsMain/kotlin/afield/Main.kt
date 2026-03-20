@@ -769,7 +769,12 @@ private fun syncEditorToBoxForScreenshot(box: HTMLElement, property: String): Bo
     return true
 }
 
-private fun switchSelectionToProperty(uid: String, property: String, syncEditor: Boolean = false): Boolean {
+private fun switchSelectionToProperty(
+    uid: String,
+    property: String,
+    syncEditor: Boolean = false,
+    applyScreenshotLayout: Boolean = false
+): Boolean {
     val box = findBoxElementByUid(uid) ?: return false
     selected.toList().forEach {
         if (it != box) {
@@ -786,7 +791,9 @@ private fun switchSelectionToProperty(uid: String, property: String, syncEditor:
     }
     if (!syncEditor) return true
     runCatching { switchToMonaco() }
-    prepareMonacoForScreenshotLayout()
+    if (applyScreenshotLayout) {
+        prepareMonacoForScreenshotLayout()
+    }
     layoutGlobalEditor()
     return window.asDynamic().globalEditor != null
 }
@@ -1142,7 +1149,7 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
     hideNotificationsForScreenshot()
 
     if (req.showEditor && box != null) {
-        if (!switchSelectionToProperty(req.uid!!, req.property, syncEditor = true)) {
+        if (!switchSelectionToProperty(req.uid!!, req.property, syncEditor = true, applyScreenshotLayout = true)) {
             return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet")
         }
     } else {

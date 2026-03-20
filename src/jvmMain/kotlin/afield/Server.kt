@@ -1213,6 +1213,14 @@ class Server {
                     anyHost()
                 }
 
+                intercept(ApplicationCallPipeline.Setup) {
+                    if (call.request.path() == "/api/import-offline-doc") {
+                        call.response.headers.append("Access-Control-Allow-Private-Network", "true")
+                        call.response.headers.append(HttpHeaders.Vary, "Origin")
+                        call.response.headers.append(HttpHeaders.Vary, "Access-Control-Request-Private-Network")
+                    }
+                }
+
                 install(Compression) {
                     gzip()
                 }

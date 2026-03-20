@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ base_url }}/stylesheets/extra.css">
+{% endblock extrahead %}
+
+{% block content %}
+{% if page.nb_url %}
+    <a href="{{ page.nb_url }}" title="Download Notebook" class="md-content__button md-icon" style="z-index: 100 !important;display: block; position: relative;">
+        {% include ".icons/material/download.svg" %}
+    </a>
+{% endif %}
+
+{{ super() }}
+{% endblock content %}

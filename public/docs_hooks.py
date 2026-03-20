@@ -33,7 +33,7 @@ RUNNER_FENCES = {"diffstatic_runner", "diff_runner"}
 DIFF_FENCES = {"diff", "diff_runner"}
 STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
-SCRIPT_VERSION = 7
+SCRIPT_VERSION = 8
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 20.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
@@ -62,6 +62,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/docs/screenshot.kt",
     "src/jvmMain/kotlin/afield/graphics/FLine.kt",
     "src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt",
+    "src/jvmMain/kotlin/afield/nano/NanoVisualization.kt",
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
     "tools/field_backdoor.py",
@@ -145,6 +146,7 @@ class RunnerState:
             "stderr": subprocess.STDOUT,
             "stdin": subprocess.DEVNULL,
             "text": True,
+            "env": {**os.environ, "PORT": str(self.backdoor_port)},
         }
         if os.name == "nt":
             popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
@@ -486,6 +488,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 page_path=page_path,
                 line_number=start_line,
             )
+            code = wrap_runnable_code_for_language(code=code, language_key=language_key)
             if options.screenshot:
                 state.ensure_screenshot(code=code, options=options, page_path=page_path, block_index=block_index)
                 register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=resolve_output_path(page_path, options.screenshot))
@@ -636,6 +639,99 @@ def resolve_runner_mode(raw: str | None) -> str:
 def fence_language_key(*, open_line: str, fence_name: str) -> str:
     attrs = parse_attrs(open_line.split(fence_name, 1)[1].strip())
     return first_attr(attrs, "data-lang", "data-language", "lang", "language") or "__default__"
+
+
+def wrap_runnable_code_for_language(*, code: str, language_key: str) -> str:
+    language = language_key.strip().lower()
+    if language == "nano":
+        source_literal = json.dumps(code)
+        wrapped = f"""
+// FIELD_DOCS_EXPECT_OUTPUT_AREA: true
+// FIELD_DOCS_EXPECT_SVG: false
+import afield.nano.nanoRunReportHtml
+
+val __nanoSource = {source_literal}
+
+display(
+    "nano",
+    nanoRunReportHtml(
+        source = __nanoSource,
+        title = "Nano state",
+        includeSource = false,
+        includeDisassembly = true,
+        includeProgramBytes = true,
+        rngSeed = 1
+    )
+)
+""".strip()
+        return wrapped + "\n"
+
+    if language == "forth":
+        source_literal = json.dumps(code)
+        expects_svg = forth_source_likely_produces_svg(code)
+        wrapped = f"""
+// FIELD_DOCS_EXPECT_OUTPUT_AREA: true
+// FIELD_DOCS_EXPECT_SVG: {"true" if expects_svg else "false"}
+import afield.forth.ForthInterpreter
+import afield.graphics.FLine
+import afield.h
+
+val __forthSource = {source_literal}
+val __forth = ForthInterpreter()
+val __forthStdout = StringBuilder()
+var __forthHadDisplay = false
+
+__forth.onOutput = {{ text ->
+    print(text)
+    __forthStdout.append(text)
+}}
+__forth.onDisplay = {{ channel, content ->
+    __forthHadDisplay = true
+    display(channel, content?.toString() ?: "")
+}}
+
+val __forthDiagnostics = __forth.eval(__forthSource)
+check(__forthDiagnostics.isEmpty()) {{
+    __forthDiagnostics.joinToString("\\n") {{ diag ->
+        val prefix = if (diag.line >= 0) "line ${{diag.line + 1}}: " else ""
+        prefix + diag.message
+    }}
+}}
+
+val __forthLines = __forth.stack.filterIsInstance<FLine>()
+if (__forthLines.isNotEmpty()) {{
+    lines(__forthLines, channel = "lines", w = 460.0, h = 320.0, fitToSize = true)
+}} else if (!__forthHadDisplay && __forthStdout.isNotBlank()) {{
+    display("stdout", __forthStdout.toString())
+}} else if (!__forthHadDisplay && __forth.stack.isNotEmpty()) {{
+    display("stack", __forth.stack.toList().h)
+}} else if (!__forthHadDisplay) {{
+    display("status", "<em>ok</em>")
+}}
+""".strip()
+        return wrapped + "\n"
+
+    return code
+
+
+def forth_source_likely_produces_svg(source: str) -> bool:
+    lowered = source.lower()
+    direct_tokens = (
+        " fline",
+        "\nfline",
+        " moveto",
+        " moveto3",
+        " lineto",
+        " lineto3",
+        " cubicto",
+        " cubicto3",
+        "fline-",
+        's"fline"',
+        " moveto ",
+        " lineto ",
+        " cubicto ",
+    )
+    return any(token in lowered for token in direct_tokens)
 
 
 def extract_runnable_code(*, lines: list[str], fence_name: str, page_path: Path, line_number: int) -> str:
@@ -924,11 +1020,22 @@ def extract_backdoor_output_gap(*, stdout: str, code: str, options: RunnerOption
     has_output_area = bool(set_output_events)
     has_svg_output = any("<svg" in str(payload.get("value", "")).lower() for payload in set_output_events)
 
-    expects_svg = re.search(r"\blines\s*\([\s\S]*?\bchannel\s*=", code) is not None
+    expects_svg_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_SVG")
+    expects_output_area_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_OUTPUT_AREA")
+
+    expects_svg = (
+        expects_svg_override
+        if expects_svg_override is not None
+        else re.search(r"\blines\s*\([\s\S]*?\bchannel\s*=", code) is not None
+    )
     expects_display = re.search(r"\bdisplay\s*\(", code) is not None
     # Only enforce output-area diagnostics when code appears to request rendered output.
     # `open_outputs` controls screenshot UI state, not whether every snippet must emit outputs.
-    expects_output_area = expects_svg or expects_display
+    expects_output_area = (
+        expects_output_area_override
+        if expects_output_area_override is not None
+        else (expects_svg or expects_display)
+    )
 
     if expects_output_area and not has_output_area:
         return (
@@ -942,6 +1049,13 @@ def extract_backdoor_output_gap(*, stdout: str, code: str, options: RunnerOption
         return "Code appears to call lines(...) but no SVG output was observed in set-output payloads." + channel_text
 
     return None
+
+
+def parse_codegen_expectation(*, code: str, key: str) -> bool | None:
+    match = re.search(rf"{re.escape(key)}:\s*(true|false)", code, re.IGNORECASE)
+    if match is None:
+        return None
+    return match.group(1).lower() == "true"
 
 
 def effective_capture_mode(options: RunnerOptions) -> str:
