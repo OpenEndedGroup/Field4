@@ -3,11 +3,15 @@ package afield.graphics
 import afield.*
 import afield.stdlib.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.max
@@ -81,6 +85,34 @@ data class ThreeMeta(
     )
 }
 
+/**
+ * Geometry + interaction metadata for a single interactive FLine inside the Three.js viewer.
+ *
+ * Each interactive FLine (one with [FLine.onClick] or [FLine.hoverColor] set) is serialised
+ * as a separate object rather than being batched with the rest of the scene geometry.  This
+ * allows the viewer to run Three.js raycasting per-object and fire the registered server-side
+ * callback when the user clicks on that specific FLine.
+ */
+@Serializable
+data class ThreeInteractiveObject(
+    /** Server-side callback ID. Empty when this object only has hover (no click). */
+    val callbackId: String,
+    /** Optional hover override colour as [r, g, b, a] each in [0, 1]. */
+    val hoverColor: FloatArray? = null,
+    val lines: ThreeGeometryData? = null,
+    val fills: ThreeGeometryData? = null,
+    val points: ThreeGeometryData? = null
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeInteractiveObject",
+        "callbackId" to callbackId,
+        "hoverColor" to hoverColor?.contentToString(),
+        "lines" to (lines != null),
+        "fills" to (fills != null),
+        "points" to (points != null)
+    )
+}
+
 @Serializable
 data class ThreeGeometryPayload(
     val type: String = "three/geometry",
@@ -90,7 +122,9 @@ data class ThreeGeometryPayload(
     val points: ThreeGeometryData? = null,
     val bounds: ThreeBounds? = null,
     val meta: ThreeMeta? = null,
-    val autoFrame: Boolean = true
+    val autoFrame: Boolean = true,
+    /** Per-FLine interactive objects (separate geometry with click/hover callbacks). */
+    val interactive: List<ThreeInteractiveObject> = emptyList()
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -100,7 +134,8 @@ data class ThreeGeometryPayload(
         "points" to (points != null),
         "bounds" to bounds,
         "meta" to meta,
-        "autoFrame" to autoFrame
+        "autoFrame" to autoFrame,
+        "interactive" to interactive.size
     )
 }
 
@@ -154,6 +189,7 @@ class ThreeGeometryViewState(val uid: String) {
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()
 
 @RunsAt(installHandlers)
+@OptIn(DelicateCoroutinesApi::class)
 fun installThreeJsHandler() {
     rawHandlers.getOrPut(THREE_CHANNEL) { mutableSetOf() }.add { text ->
         val session = thisSession.get()
@@ -162,8 +198,24 @@ fun installThreeJsHandler() {
         val channel = payload["channel"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
         if (channel != THREE_CHANNEL) return@add Handled.no
         val uid = payload["debug_uid"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
-        val viewer = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
-        viewer.attach(session)
+
+        when (payload["type"]?.jsonPrimitive?.contentOrNull) {
+            "fline-click" -> {
+                val callbackId = payload["callbackId"]?.jsonPrimitive?.contentOrNull
+                    ?: return@add Handled.no
+                val callback = getFLineClickCallback(callbackId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        runCatching { callback() }
+                    }
+                }
+            }
+            else -> {
+                // Default: treat as a hello/attach message
+                val viewer = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
+                viewer.attach(session)
+            }
+        }
         Handled.yes
     }
 }
@@ -291,16 +343,80 @@ private fun buildThreeGeometryPayload(
     val bounds = BoundsTracker()
     val samples = samplesPerCubic.coerceAtLeast(2)
 
+    val interactiveObjects = ArrayList<ThreeInteractiveObject>()
+
     lines.forEach { f ->
         val color = f.color
-        if (f.stroked) {
-            appendLineSegments(f, samples, color, linePositions, lineColors, lineAlphas, bounds)
-        }
-        if (f.filled) {
-            appendFilledMesh(f, samples, color, meshPositions, meshColors, meshAlphas, meshIndices, bounds)
-        }
-        if (f.pointed) {
-            appendPoints(f, color, pointPositions, pointColors, pointAlphas, pointSizes, bounds)
+        val isInteractive = f.onClick != null || f.hoverColor != null
+
+        if (isInteractive) {
+            // Build separate geometry data for this FLine so the viewer can
+            // attach raycasting to it independently.
+            val iLinePositions = ArrayList<Float>()
+            val iLineColors = ArrayList<Float>()
+            val iLineAlphas = ArrayList<Float>()
+            val iMeshPositions = ArrayList<Float>()
+            val iMeshColors = ArrayList<Float>()
+            val iMeshAlphas = ArrayList<Float>()
+            val iMeshIndices = ArrayList<Int>()
+            val iPointPositions = ArrayList<Float>()
+            val iPointColors = ArrayList<Float>()
+            val iPointAlphas = ArrayList<Float>()
+            val iPointSizes = ArrayList<Float>()
+
+            if (f.stroked) {
+                appendLineSegments(f, samples, color, iLinePositions, iLineColors, iLineAlphas, bounds)
+            }
+            if (f.filled) {
+                appendFilledMesh(f, samples, color, iMeshPositions, iMeshColors, iMeshAlphas, iMeshIndices, bounds)
+            }
+            if (f.pointed) {
+                appendPoints(f, color, iPointPositions, iPointColors, iPointAlphas, iPointSizes, bounds)
+            }
+
+            // Register click callback if set
+            val callbackId = f.onClick?.let { cb ->
+                val id = "fline-${UUID.randomUUID()}"
+                registerFLineClickCallback(id, cb)
+                id
+            } ?: ""
+
+            // Encode hover color as [r,g,b,a] float array if set
+            val hc = f.hoverColor?.let { c ->
+                floatArrayOf(c.x, c.y, c.z, c.w)
+            }
+
+            val iLineGeom = if (iLinePositions.isNotEmpty()) buildGeometryData(
+                iLinePositions.toFloatArray(), iLineColors.toFloatArray(), iLineAlphas.toFloatArray(), null, null
+            ) else null
+            val iFillGeom = if (iMeshPositions.isNotEmpty()) buildGeometryData(
+                iMeshPositions.toFloatArray(), iMeshColors.toFloatArray(), iMeshAlphas.toFloatArray(), null, iMeshIndices.toIntArray()
+            ) else null
+            val iPointGeom = if (iPointPositions.isNotEmpty()) buildGeometryData(
+                iPointPositions.toFloatArray(), iPointColors.toFloatArray(), iPointAlphas.toFloatArray(), iPointSizes.toFloatArray(), null
+            ) else null
+
+            if (iLineGeom != null || iFillGeom != null || iPointGeom != null) {
+                interactiveObjects.add(
+                    ThreeInteractiveObject(
+                        callbackId = callbackId,
+                        hoverColor = hc,
+                        lines = iLineGeom,
+                        fills = iFillGeom,
+                        points = iPointGeom
+                    )
+                )
+            }
+        } else {
+            if (f.stroked) {
+                appendLineSegments(f, samples, color, linePositions, lineColors, lineAlphas, bounds)
+            }
+            if (f.filled) {
+                appendFilledMesh(f, samples, color, meshPositions, meshColors, meshAlphas, meshIndices, bounds)
+            }
+            if (f.pointed) {
+                appendPoints(f, color, pointPositions, pointColors, pointAlphas, pointSizes, bounds)
+            }
         }
     }
 
@@ -347,7 +463,8 @@ private fun buildThreeGeometryPayload(
         points = pointGeom,
         bounds = bounds.toBounds(),
         meta = meta,
-        autoFrame = autoFrame
+        autoFrame = autoFrame,
+        interactive = interactiveObjects
     )
 }
 

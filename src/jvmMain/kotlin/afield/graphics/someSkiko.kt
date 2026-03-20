@@ -2,14 +2,18 @@ package afield.graphics
 
 import afield.Box
 import afield.examples.graphics.FLineGeometryExamples
+import afield.registerFLineClickCallback
 import afield.stdlib.*
 import org.jetbrains.skia.*
 import org.jetbrains.skia.svg.SVGCanvas
 import java.io.ByteArrayOutputStream
+import java.util.UUID
 import kotlin.math.min
 
 /**
  * Render one or more [FLine]s to SVG and display them in an output channel.
+ * If any FLine has [FLine.onClick] or [FLine.hoverColor] set, an interactive
+ * SVG is generated instead of using the Skia canvas renderer.
  *
  * @param channel Output channel name (disclosure panel).
  * @param w Output SVG width in pixels.
@@ -24,12 +28,20 @@ fun Box.lines(
     fitToSize: Boolean = false
 ) {
     val fit = computeFitTransform(m.asList(), w, h, fitToSize)
-    val scaled = m.map { it.applyFit(fit) }
-    display(channel, drawToSVG(scaled, w, h))
+    val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
+    if (hasInteractive) {
+        val pairs = m.map { it to it.applyFit(fit) }
+        display(channel, buildInteractiveSVG(pairs, w, h))
+    } else {
+        val scaled = m.map { it.applyFit(fit) }
+        display(channel, drawToSVG(scaled, w, h))
+    }
 }
 
 /**
  * Render a list of [FLine]s to SVG and display them in an output channel.
+ * If any FLine has [FLine.onClick] or [FLine.hoverColor] set, an interactive
+ * SVG is generated instead of using the Skia canvas renderer.
  *
  * @param channel Output channel name (disclosure panel).
  * @param w Output SVG width in pixels.
@@ -44,12 +56,20 @@ fun Box.lines(
     fitToSize: Boolean = false
 ) {
     val fit = computeFitTransform(m, w, h, fitToSize)
-    val scaled = m.map { it.applyFit(fit) }
-    display(channel, drawToSVG(scaled, w, h))
+    val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
+    if (hasInteractive) {
+        val pairs = m.map { it to it.applyFit(fit) }
+        display(channel, buildInteractiveSVG(pairs, w, h))
+    } else {
+        val scaled = m.map { it.applyFit(fit) }
+        display(channel, drawToSVG(scaled, w, h))
+    }
 }
 
 /**
  * Render [FLine]s from a map, optionally splitting by channel.
+ * If any FLine has [FLine.onClick] or [FLine.hoverColor] set, an interactive
+ * SVG is generated instead of using the Skia canvas renderer.
  *
  * @param w Output SVG width in pixels.
  * @param h Output SVG height in pixels.
@@ -69,12 +89,24 @@ fun Box.lines(
     val fit = computeFitTransform(allLines, w, h, fitToSize)
     if (splitByChannel) {
         linesByChannel.forEach { (channelName, lines) ->
-            val scaled = lines.map { it.applyFit(fit) }
-            display(channelName, drawToSVG(scaled, w, h))
+            val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
+            if (hasInteractive) {
+                val pairs = lines.map { it to it.applyFit(fit) }
+                display(channelName, buildInteractiveSVG(pairs, w, h))
+            } else {
+                val scaled = lines.map { it.applyFit(fit) }
+                display(channelName, drawToSVG(scaled, w, h))
+            }
         }
     } else {
-        val scaled = allLines.map { it.applyFit(fit) }
-        display(channel, drawToSVG(scaled, w, h))
+        val hasInteractive = allLines.any { it.onClick != null || it.hoverColor != null }
+        if (hasInteractive) {
+            val pairs = allLines.map { it to it.applyFit(fit) }
+            display(channel, buildInteractiveSVG(pairs, w, h))
+        } else {
+            val scaled = allLines.map { it.applyFit(fit) }
+            display(channel, drawToSVG(scaled, w, h))
+        }
     }
 }
 
@@ -281,4 +313,154 @@ fun outputTo(f: FLine, s: Canvas) {
         runCatching { p.close() }
     }
 
+}
+
+// ---------------------------------------------------------------------------
+// Interactive SVG renderer (click callbacks + hover colors)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build an SVG string from [pairs] of (original, scaled) [FLine]s.
+ *
+ * For each original FLine that has [FLine.onClick] set, a unique callback ID is
+ * registered via [registerFLineClickCallback] and the corresponding `<g>` element
+ * gets an `onclick` attribute that calls `window.sendFLineClick(id)`.
+ *
+ * For each original FLine that has [FLine.hoverColor] set, the `<g>` element gets
+ * `onmouseover` / `onmouseout` attributes that call `window.__flineHoverIn` /
+ * `window.__flineHoverOut` to swap the geometry colour on pointer entry/exit.
+ */
+internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double): String {
+    val we: Double
+    val he: Double
+    if (w <= 0.0 || h <= 0.0) {
+        val scaledLines = pairs.map { it.second }
+        if (scaledLines.isEmpty()) return "<svg xmlns='http://www.w3.org/2000/svg'/>"
+        val bounds = scaledLines.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
+        we = (bounds.w + bounds.x).toDouble()
+        he = (bounds.h + bounds.y).toDouble()
+    } else {
+        we = w
+        he = h
+    }
+
+    val sb = StringBuilder()
+    sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$we" height="$he" style="overflow:visible">""")
+
+    pairs.forEach { (original, scaled) ->
+        val onClick = original.onClick
+        val hoverColor = original.hoverColor
+        val hasInteraction = onClick != null || hoverColor != null
+
+        val callbackId: String? = if (onClick != null) {
+            val id = "fline-${UUID.randomUUID()}"
+            registerFLineClickCallback(id, onClick)
+            id
+        } else null
+
+        if (hasInteraction) {
+            sb.append("<g")
+            if (callbackId != null) {
+                sb.append(""" data-fline-callback-id="$callbackId"""")
+                sb.append(""" onclick="window.sendFLineClick&&window.sendFLineClick('$callbackId')" style="cursor:pointer"""")
+            }
+            if (hoverColor != null) {
+                val hc = vec4ToSvgColor(hoverColor)
+                sb.append(""" data-hover-color="$hc"""")
+                sb.append(""" onmouseover="window.__flineHoverIn&&window.__flineHoverIn(this)"""")
+                sb.append(""" onmouseout="window.__flineHoverOut&&window.__flineHoverOut(this)"""")
+            }
+            sb.append(">")
+        }
+
+        renderFLineToSVG(scaled, sb)
+
+        if (hasInteraction) sb.append("</g>")
+    }
+
+    sb.append("</svg>")
+    return sb.toString()
+}
+
+/** Convert a [Vec4] RGBA colour (components in [0,1]) to an SVG `rgba(...)` string. */
+private fun vec4ToSvgColor(c: Vec4): String {
+    val r = (c.x * 255).toInt().coerceIn(0, 255)
+    val g = (c.y * 255).toInt().coerceIn(0, 255)
+    val b = (c.z * 255).toInt().coerceIn(0, 255)
+    return "rgba($r,$g,$b,${c.w})"
+}
+
+/** Format a floating-point coordinate to a compact SVG number string. */
+private fun svgN(v: Float): String {
+    if (!v.isFinite()) return "0"
+    return "%.3f".format(v).trimEnd('0').trimEnd('.')
+}
+
+/** Build the SVG path `d` attribute from the nodes of [f]. */
+private fun flinePathData(f: FLine): String {
+    val sb = StringBuilder()
+    var first = true
+    f.nodes.forEach { node ->
+        when (node) {
+            is FLine.MoveTo -> {
+                sb.append("M${svgN(node.to.x)},${svgN(node.to.y)} ")
+                first = false
+            }
+            is FLine.LineTo -> {
+                if (first) sb.append("M${svgN(node.to.x)},${svgN(node.to.y)} ")
+                else sb.append("L${svgN(node.to.x)},${svgN(node.to.y)} ")
+                first = false
+            }
+            is FLine.CubicTo -> {
+                if (first) sb.append("M${svgN(node.to.x)},${svgN(node.to.y)} ")
+                else sb.append(
+                    "C${svgN(node.c1.x)},${svgN(node.c1.y)} " +
+                    "${svgN(node.c2.x)},${svgN(node.c2.y)} " +
+                    "${svgN(node.to.x)},${svgN(node.to.y)} "
+                )
+                first = false
+            }
+            is FLine.Close -> sb.append("Z ")
+        }
+    }
+    return sb.toString().trimEnd()
+}
+
+/**
+ * Append SVG `<path>` and/or `<circle>` elements for [f] to [sb].
+ * Uses presentation attributes so that CSS hover rules (applied by the JS helpers in
+ * `sliders.js`) can override stroke/fill without fighting inline `style` specificity.
+ */
+private fun renderFLineToSVG(f: FLine, sb: StringBuilder) {
+    val color = f.color
+    val colorStr = vec4ToSvgColor(color)
+    val strokeWidth = svgN((f.thickness ?: 1.0).toFloat())
+    val pathData = flinePathData(f)
+
+    if (pathData.isNotEmpty()) {
+        when {
+            f.stroked && f.filled -> {
+                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="$colorStr"/>""")
+            }
+            f.stroked -> {
+                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="none"/>""")
+            }
+            f.filled -> {
+                sb.append("""<path d="$pathData" stroke="none" fill="$colorStr"/>""")
+            }
+        }
+    }
+
+    if (f.pointed) {
+        f.nodes.forEach { node ->
+            val to = when (node) {
+                is FLine.MoveTo -> node.to
+                is FLine.LineTo -> node.to
+                is FLine.CubicTo -> node.to
+                is FLine.Close -> null
+            } ?: return@forEach
+            val r = svgN(((node.pointSize ?: f.pointSize) * 3.0).toFloat())
+            sb.append("""<circle cx="${svgN(to.x)}" cy="${svgN(to.y)}" r="$r" fill="$colorStr"/>""")
+        }
+    }
 }
