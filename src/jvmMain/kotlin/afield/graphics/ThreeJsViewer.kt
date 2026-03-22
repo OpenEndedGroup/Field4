@@ -253,6 +253,22 @@ fun installThreeJsHandler() {
                     runCatching { editSession.translate(update) }
                 }
             }
+            "fline-edit-add-line" -> {
+                val update = runCatching { threeJson.decodeFromJsonElement<FLineAddLine>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
+                GlobalScope.launch {
+                    runCatching { editSession.addLine(update) }
+                }
+            }
+            "fline-edit-clear" -> {
+                val update = runCatching { threeJson.decodeFromJsonElement<FLineClearSession>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
+                GlobalScope.launch {
+                    runCatching { editSession.clear() }
+                }
+            }
             else -> {
                 // Default: treat as a hello/attach message
                 val viewer = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }

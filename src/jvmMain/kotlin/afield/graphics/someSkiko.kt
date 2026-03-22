@@ -26,13 +26,16 @@ fun Box.lines(
     w: Double = -1.0,
     h: Double = -1.0,
     fitToSize: Boolean = false,
-    editable: Boolean = false
-) {
+    editable: Boolean = false,
+    drawing: Boolean = false
+): EditableFLineViewState? {
     val fit = computeFitTransform(m.asList(), w, h, fitToSize)
     val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
     if (editable) {
         val pairs = m.map { it to it.applyFit(fit) }
-        display(channel, buildEditableSVGWidget(pairs, fit, w, h))
+        val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing)
+        display(channel, widget.html)
+        return widget.viewState
     } else if (hasInteractive) {
         val pairs = m.map { it to it.applyFit(fit) }
         display(channel, buildInteractiveSVG(pairs, w, h))
@@ -40,6 +43,7 @@ fun Box.lines(
         val scaled = m.map { it.applyFit(fit) }
         display(channel, drawToSVG(scaled, w, h))
     }
+    return null
 }
 
 /**
@@ -58,13 +62,16 @@ fun Box.lines(
     w: Double = -1.0,
     h: Double = -1.0,
     fitToSize: Boolean = false,
-    editable: Boolean = false
-) {
+    editable: Boolean = false,
+    drawing: Boolean = false
+): EditableFLineViewState? {
     val fit = computeFitTransform(m, w, h, fitToSize)
     val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
     if (editable) {
         val pairs = m.map { it to it.applyFit(fit) }
-        display(channel, buildEditableSVGWidget(pairs, fit, w, h))
+        val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing)
+        display(channel, widget.html)
+        return widget.viewState
     } else if (hasInteractive) {
         val pairs = m.map { it to it.applyFit(fit) }
         display(channel, buildInteractiveSVG(pairs, w, h))
@@ -72,6 +79,7 @@ fun Box.lines(
         val scaled = m.map { it.applyFit(fit) }
         display(channel, drawToSVG(scaled, w, h))
     }
+    return null
 }
 
 /**
@@ -92,16 +100,20 @@ fun Box.lines(
     fitToSize: Boolean = false,
     splitByChannel: Boolean = false,
     channel: String = "lines",
-    editable: Boolean = false
-) {
+    editable: Boolean = false,
+    drawing: Boolean = false
+): Map<String, EditableFLineViewState> {
     val allLines = linesByChannel.values.flatten()
     val fit = computeFitTransform(allLines, w, h, fitToSize)
+    val states = linkedMapOf<String, EditableFLineViewState>()
     if (splitByChannel) {
         linesByChannel.forEach { (channelName, lines) ->
             val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
             if (editable) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, buildEditableSVGWidget(pairs, fit, w, h))
+                val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing)
+                display(channelName, widget.html)
+                states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
                 display(channelName, buildInteractiveSVG(pairs, w, h))
@@ -114,7 +126,9 @@ fun Box.lines(
         val hasInteractive = allLines.any { it.onClick != null || it.hoverColor != null }
         if (editable) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, buildEditableSVGWidget(pairs, fit, w, h))
+            val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing)
+            display(channel, widget.html)
+            states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
             display(channel, buildInteractiveSVG(pairs, w, h))
@@ -123,6 +137,7 @@ fun Box.lines(
             display(channel, drawToSVG(scaled, w, h))
         }
     }
+    return states
 }
 
 

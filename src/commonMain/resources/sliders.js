@@ -103,6 +103,7 @@ window.__flineHoverOut = function(groupEl) {
 (function() {
     var SVG_NS = 'http://www.w3.org/2000/svg';
     var DRAG_START_DISTANCE = 3;
+    var DRAW_SAMPLE_DISTANCE = 2.5;
 
     function svgEl(name, attrs) {
         var el = document.createElementNS(SVG_NS, name);
@@ -132,6 +133,10 @@ window.__flineHoverOut = function(groupEl) {
 
     function cloneRefs(refs) {
         return refs.map(cloneRef);
+    }
+
+    function clonePoint3(point) {
+        return { x: point.x, y: point.y, z: point.z || 0 };
     }
 
     function uniqueRefs(refs) {
@@ -239,6 +244,99 @@ window.__flineHoverOut = function(groupEl) {
             if (!pt) return;
             pt[0] += dx;
             pt[1] += dy;
+        });
+    }
+
+    function defaultDrawStyle() {
+        return {
+            color: [0.92, 0.96, 1.0, 0.95],
+            thickness: 2.0,
+            stroked: true,
+            filled: false,
+            pointed: false,
+            pointSize: 1.0
+        };
+    }
+
+    function cloneDrawStyle(style) {
+        var source = style || defaultDrawStyle();
+        return {
+            color: Array.isArray(source.color) ? source.color.slice() : defaultDrawStyle().color.slice(),
+            thickness: typeof source.thickness === 'number' ? source.thickness : 2.0,
+            stroked: source.stroked !== false,
+            filled: !!source.filled,
+            pointed: !!source.pointed,
+            pointSize: typeof source.pointSize === 'number' ? source.pointSize : 1.0
+        };
+    }
+
+    function rgbaArrayToCss(color) {
+        var c = Array.isArray(color) ? color : defaultDrawStyle().color;
+        var r = Math.round((c[0] || 0) * 255);
+        var g = Math.round((c[1] || 0) * 255);
+        var b = Math.round((c[2] || 0) * 255);
+        var a = typeof c[3] === 'number' ? c[3] : 1;
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
+    }
+
+    function pointsToLineNodes(points) {
+        return points.map(function(point, index) {
+            return {
+                nodeIndex: index,
+                kind: index === 0 ? 'move' : 'line',
+                to: [point.x, point.y, point.z || 0]
+            };
+        });
+    }
+
+    function createSceneLineFromPoints(scene, points, style) {
+        var drawStyle = cloneDrawStyle(style || scene.drawStyle);
+        return {
+            lineIndex: scene.lines.length,
+            color: rgbaArrayToCss(drawStyle.color),
+            thickness: drawStyle.thickness,
+            stroked: drawStyle.stroked,
+            filled: drawStyle.filled,
+            pointed: drawStyle.pointed,
+            pointSize: drawStyle.pointSize,
+            nodes: pointsToLineNodes(points)
+        };
+    }
+
+    function normalizeDrawPoints(rawPoints) {
+        if (!rawPoints || rawPoints.length < 2) return [];
+        var normalized = [];
+        rawPoints.forEach(function(point) {
+            var cloned = clonePoint3(point);
+            var previous = normalized[normalized.length - 1];
+            if (!previous || Math.hypot(cloned.x - previous.x, cloned.y - previous.y) >= DRAW_SAMPLE_DISTANCE) {
+                normalized.push(cloned);
+            }
+        });
+        var last = clonePoint3(rawPoints[rawPoints.length - 1]);
+        var tail = normalized[normalized.length - 1];
+        if (!tail || Math.hypot(last.x - tail.x, last.y - tail.y) >= 0.25) {
+            normalized.push(last);
+        }
+        return normalized;
+    }
+
+    function sendFLineAddLine(sessionId, points, style) {
+        if (!points.length) return;
+        sendViaAfield('fline-edit-add-line', {
+            sessionId: sessionId,
+            points: points.map(function(point) {
+                return { x: point.x, y: point.y, z: point.z || 0 };
+            }),
+            closed: false,
+            style: cloneDrawStyle(style),
+            space: 'VIEW'
+        });
+    }
+
+    function sendFLineClear(sessionId) {
+        sendViaAfield('fline-edit-clear', {
+            sessionId: sessionId
         });
     }
 
@@ -417,6 +515,16 @@ window.__flineHoverOut = function(groupEl) {
     }
 
     function updateStatus(state) {
+        if (state.mode === 'draw') {
+            if (state.drawingStroke && state.drawingStroke.points.length > 1) {
+                state.status.textContent = state.drawingStroke.points.length + ' samples';
+                state.status.classList.remove('is-empty');
+            } else {
+                state.status.textContent = 'Draw mode';
+                state.status.classList.remove('is-empty');
+            }
+            return;
+        }
         var counts = { point: 0, edge: 0, face: 0 };
         selectedItems(state).forEach(function(item) {
             counts[item.kind] = (counts[item.kind] || 0) + 1;
@@ -486,12 +594,53 @@ window.__flineHoverOut = function(groupEl) {
         return keys;
     }
 
+    function renderToolbarState(state) {
+        if (state.modeGroup) {
+            state.modeGroup.querySelectorAll('[data-mode-button]').forEach(function(button) {
+                button.classList.toggle('is-active', button.getAttribute('data-mode-button') === state.mode);
+            });
+        }
+        if (state.maskGroup) {
+            state.maskGroup.classList.toggle('is-hidden', state.mode === 'draw');
+        }
+        if (state.drawGroup) {
+            state.drawGroup.classList.toggle('is-hidden', state.mode !== 'draw');
+        }
+        if (state.clearButton) {
+            state.clearButton.disabled = state.scene.lines.length === 0;
+        }
+    }
+
+    function commitDrawStroke(state) {
+        if (!state.drawingStroke) return;
+        var points = normalizeDrawPoints(state.drawingStroke.points);
+        state.drawingStroke = null;
+        if (points.length < 2) {
+            renderFLineEditor(state);
+            return;
+        }
+        var style = cloneDrawStyle(state.scene.drawStyle);
+        state.scene.lines.push(createSceneLineFromPoints(state.scene, points, style));
+        state.selection = new Set();
+        sendFLineAddLine(state.scene.sessionId, points, style);
+        renderFLineEditor(state);
+    }
+
+    function clearDrawnLines(state) {
+        state.drawingStroke = null;
+        state.selection = new Set();
+        state.scene.lines = [];
+        sendFLineClear(state.scene.sessionId);
+        renderFLineEditor(state);
+    }
+
     function renderFLineEditor(state) {
         var derived = buildEditorItems(state.scene);
         state.items = derived.items;
         state.points = derived.points;
         state.edges = derived.edges;
         state.faces = derived.faces;
+        renderToolbarState(state);
 
         if (state.overlay) {
             state.overlay.classList.toggle('is-hidden', !state.uiVisible);
@@ -501,8 +650,8 @@ window.__flineHoverOut = function(groupEl) {
         while (svg.firstChild) svg.removeChild(svg.firstChild);
 
         var selectedRefKeys = new Set(selectionRefs(state).map(pointRefKey));
-        var visibleControls = state.uiVisible && (state.mask.point || selectedRefKeys.size > 0);
-        var visibleSelections = state.uiVisible;
+        var visibleControls = state.uiVisible && state.mode === 'edit' && (state.mask.point || selectedRefKeys.size > 0);
+        var visibleSelections = state.uiVisible && state.mode === 'edit';
 
         var faceSelectionLayer = svgEl('g', { 'data-layer': 'face-selection' });
         var geometryLayer = svgEl('g', { 'data-layer': 'geometry' });
@@ -510,6 +659,7 @@ window.__flineHoverOut = function(groupEl) {
         var controlLayer = svgEl('g', { 'data-layer': 'controls' });
         var pointLayer = svgEl('g', { 'data-layer': 'points' });
         var interactionLayer = svgEl('g', { 'data-layer': 'interaction' });
+        var drawLayer = svgEl('g', { 'data-layer': 'draw' });
         var marqueeLayer = svgEl('g', { 'data-layer': 'marquee' });
 
         state.faces.forEach(function(face) {
@@ -640,7 +790,7 @@ window.__flineHoverOut = function(groupEl) {
                     'stroke-width': selected ? 2.2 : 1.6,
                     opacity: selected || state.mask.point ? 1 : 0.0
                 }));
-                if (state.mask.point) {
+                if (state.mode === 'edit' && state.mask.point) {
                     interactionLayer.appendChild(svgEl('circle', {
                         cx: item.x,
                         cy: item.y,
@@ -652,6 +802,23 @@ window.__flineHoverOut = function(groupEl) {
                     }));
                 }
             });
+        }
+
+        if (state.drawingStroke && state.drawingStroke.points.length > 0) {
+            var previewNodes = pointsToLineNodes(state.drawingStroke.points);
+            var previewPath = buildLinePath(previewNodes);
+            var previewStyle = cloneDrawStyle(state.scene.drawStyle);
+            if (previewPath) {
+                drawLayer.appendChild(svgEl('path', {
+                    d: previewPath,
+                    fill: 'none',
+                    stroke: rgbaArrayToCss(previewStyle.color),
+                    'stroke-width': previewStyle.thickness,
+                    'stroke-linecap': 'round',
+                    'stroke-linejoin': 'round',
+                    opacity: 0.95
+                }));
+            }
         }
 
         if (state.marquee) {
@@ -674,12 +841,32 @@ window.__flineHoverOut = function(groupEl) {
         svg.appendChild(controlLayer);
         svg.appendChild(pointLayer);
         svg.appendChild(interactionLayer);
+        svg.appendChild(drawLayer);
         svg.appendChild(marqueeLayer);
 
         updateStatus(state);
     }
 
     function wireToolbar(root, state) {
+        root.querySelectorAll('[data-mode-button]').forEach(function(button) {
+            var mode = button.getAttribute('data-mode-button');
+            if (!mode) return;
+            button.addEventListener('click', function() {
+                state.mode = mode;
+                state.drawingStroke = null;
+                state.pointerDown = null;
+                state.dragging = null;
+                state.marquee = null;
+                renderFLineEditor(state);
+            });
+        });
+        root.querySelectorAll('[data-draw-action]').forEach(function(button) {
+            var action = button.getAttribute('data-draw-action');
+            if (action !== 'clear') return;
+            button.addEventListener('click', function() {
+                clearDrawnLines(state);
+            });
+        });
         root.querySelectorAll('[data-mask-button]').forEach(function(button) {
             var mask = button.getAttribute('data-mask-button');
             if (!mask) return;
@@ -698,6 +885,10 @@ window.__flineHoverOut = function(groupEl) {
         var svg = root.querySelector('.field-fline-editor-canvas');
         var status = root.querySelector('[data-role="status"]');
         var overlay = root.querySelector('.field-fline-editor-overlay');
+        var modeGroup = root.querySelector('.field-fline-editor-modegroup');
+        var maskGroup = root.querySelector('.field-fline-editor-maskgroup');
+        var drawGroup = root.querySelector('.field-fline-editor-drawgroup');
+        var clearButton = root.querySelector('[data-draw-action="clear"]');
         if (!sceneScript || !svg || !status) return;
 
         root.tabIndex = 0;
@@ -709,12 +900,19 @@ window.__flineHoverOut = function(groupEl) {
             status: status,
             overlay: overlay,
             scene: scene,
+            modeGroup: modeGroup,
+            maskGroup: maskGroup,
+            drawGroup: drawGroup,
+            clearButton: clearButton,
+            drawingEnabled: !!scene.drawingEnabled,
+            mode: scene.drawingEnabled && (!scene.lines || scene.lines.length === 0) ? 'draw' : 'edit',
             mask: { point: true, edge: true, face: true },
             uiVisible: true,
             selection: new Set(),
             marquee: null,
             dragging: null,
             pointerDown: null,
+            drawingStroke: null,
             items: new Map(),
             points: [],
             edges: [],
@@ -737,9 +935,31 @@ window.__flineHoverOut = function(groupEl) {
             event.stopPropagation();
         });
 
+        root.addEventListener('keydown', function(event) {
+            if (!state.drawingEnabled) return;
+            if (event.key !== 'd' && event.key !== 'D') return;
+            var target = event.target;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+            state.mode = state.mode === 'draw' ? 'edit' : 'draw';
+            state.drawingStroke = null;
+            renderFLineEditor(state);
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
         svg.addEventListener('pointerdown', function(event) {
             root.focus();
             var pt = getSvgPoint(svg, event);
+            if (state.mode === 'draw') {
+                state.drawingStroke = {
+                    pointerId: event.pointerId,
+                    points: [{ x: pt.x, y: pt.y, z: 0 }]
+                };
+                try { svg.setPointerCapture(event.pointerId); } catch (_) {}
+                renderFLineEditor(state);
+                event.preventDefault();
+                return;
+            }
             var hitEl = hitElementFromEvent(event);
             var hitKey = hitEl ? hitEl.getAttribute('data-key') : null;
             state.pointerDown = {
@@ -754,6 +974,19 @@ window.__flineHoverOut = function(groupEl) {
 
         svg.addEventListener('pointermove', function(event) {
             var pt = getSvgPoint(svg, event);
+
+            if (state.mode === 'draw') {
+                if (state.drawingStroke && state.drawingStroke.pointerId === event.pointerId) {
+                    var lastPoint = state.drawingStroke.points[state.drawingStroke.points.length - 1];
+                    if (!lastPoint || Math.hypot(pt.x - lastPoint.x, pt.y - lastPoint.y) >= DRAW_SAMPLE_DISTANCE) {
+                        state.drawingStroke.points.push({ x: pt.x, y: pt.y, z: 0 });
+                        renderFLineEditor(state);
+                    }
+                    event.preventDefault();
+                }
+                return;
+            }
+
             var down = state.pointerDown;
 
             if (!state.dragging && !state.marquee && down && down.pointerId === event.pointerId) {
@@ -819,6 +1052,16 @@ window.__flineHoverOut = function(groupEl) {
         });
 
         function finishPointer(event) {
+            if (state.mode === 'draw') {
+                if (state.drawingStroke && state.drawingStroke.pointerId === event.pointerId) {
+                    var pt = getSvgPoint(svg, event);
+                    state.drawingStroke.points.push({ x: pt.x, y: pt.y, z: 0 });
+                    commitDrawStroke(state);
+                }
+                try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
+                return;
+            }
+
             var hadMarquee = !!(state.marquee && state.marquee.pointerId === event.pointerId);
             var hadDragging = !!(state.dragging && state.dragging.pointerId === event.pointerId);
 

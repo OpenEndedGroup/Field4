@@ -1079,6 +1079,46 @@ class Server {
                 Handled.yes
             })
 
+            handlers["fline-edit-add-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineAddLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.addLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error adding FLine to edit session: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-clear"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineClearSession>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.clear()
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error clearing FLine edit session: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
             handlers["string-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")

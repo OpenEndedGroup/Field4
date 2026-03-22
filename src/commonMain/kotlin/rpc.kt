@@ -619,6 +619,37 @@ data class FLineTranslatePoints(
     val space: FLineEditSpace = FLineEditSpace.VIEW
 )
 
+@Serializable
+data class FLinePoint3(
+    val x: Double,
+    val y: Double,
+    val z: Double = 0.0
+)
+
+@Serializable
+data class FLineDrawStyle(
+    val color: FloatArray = floatArrayOf(0.92f, 0.96f, 1.0f, 0.95f),
+    val thickness: Double = 2.0,
+    val stroked: Boolean = true,
+    val filled: Boolean = false,
+    val pointed: Boolean = false,
+    val pointSize: Double = 1.0
+)
+
+@Serializable
+data class FLineAddLine(
+    val sessionId: String,
+    val points: List<FLinePoint3>,
+    val closed: Boolean = false,
+    val style: FLineDrawStyle? = null,
+    val space: FLineEditSpace = FLineEditSpace.VIEW
+)
+
+@Serializable
+data class FLineClearSession(
+    val sessionId: String
+)
+
 // Control messages
 @Serializable
 data class SliderUpdate(val sliderId: String, val value: Double)
