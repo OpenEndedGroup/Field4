@@ -23,13 +23,17 @@ import kotlin.math.min
 fun Box.lines(
     vararg m: FLine,
     channel: String = "lines",
-    w: Double = 1000.0,
-    h: Double = 1000.0,
-    fitToSize: Boolean = false
+    w: Double = -1.0,
+    h: Double = -1.0,
+    fitToSize: Boolean = false,
+    editable: Boolean = false
 ) {
     val fit = computeFitTransform(m.asList(), w, h, fitToSize)
     val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
-    if (hasInteractive) {
+    if (editable) {
+        val pairs = m.map { it to it.applyFit(fit) }
+        display(channel, buildEditableSVGWidget(pairs, fit, w, h))
+    } else if (hasInteractive) {
         val pairs = m.map { it to it.applyFit(fit) }
         display(channel, buildInteractiveSVG(pairs, w, h))
     } else {
@@ -51,13 +55,17 @@ fun Box.lines(
 fun Box.lines(
     m: List<FLine>,
     channel: String = "lines",
-    w: Double = 1000.0,
-    h: Double = 1000.0,
-    fitToSize: Boolean = false
+    w: Double = -1.0,
+    h: Double = -1.0,
+    fitToSize: Boolean = false,
+    editable: Boolean = false
 ) {
     val fit = computeFitTransform(m, w, h, fitToSize)
     val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
-    if (hasInteractive) {
+    if (editable) {
+        val pairs = m.map { it to it.applyFit(fit) }
+        display(channel, buildEditableSVGWidget(pairs, fit, w, h))
+    } else if (hasInteractive) {
         val pairs = m.map { it to it.applyFit(fit) }
         display(channel, buildInteractiveSVG(pairs, w, h))
     } else {
@@ -79,18 +87,22 @@ fun Box.lines(
  */
 fun Box.lines(
     linesByChannel: Map<String, List<FLine>>,
-    w: Double = 1000.0,
-    h: Double = 1000.0,
+    w: Double = -1.0,
+    h: Double = -1.0,
     fitToSize: Boolean = false,
     splitByChannel: Boolean = false,
-    channel: String = "lines"
+    channel: String = "lines",
+    editable: Boolean = false
 ) {
     val allLines = linesByChannel.values.flatten()
     val fit = computeFitTransform(allLines, w, h, fitToSize)
     if (splitByChannel) {
         linesByChannel.forEach { (channelName, lines) ->
             val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
-            if (hasInteractive) {
+            if (editable) {
+                val pairs = lines.map { it to it.applyFit(fit) }
+                display(channelName, buildEditableSVGWidget(pairs, fit, w, h))
+            } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
                 display(channelName, buildInteractiveSVG(pairs, w, h))
             } else {
@@ -100,7 +112,10 @@ fun Box.lines(
         }
     } else {
         val hasInteractive = allLines.any { it.onClick != null || it.hoverColor != null }
-        if (hasInteractive) {
+        if (editable) {
+            val pairs = allLines.map { it to it.applyFit(fit) }
+            display(channel, buildEditableSVGWidget(pairs, fit, w, h))
+        } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
             display(channel, buildInteractiveSVG(pairs, w, h))
         } else {
@@ -193,7 +208,7 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
 
 }
 
-private data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float)
+internal data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float)
 
 private fun computeFitTransform(lines: Collection<FLine>, w: Double, h: Double, enabled: Boolean): FitTransform? {
     if (!enabled) return null
@@ -383,7 +398,7 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
 }
 
 /** Convert a [Vec4] RGBA colour (components in [0,1]) to an SVG `rgba(...)` string. */
-private fun vec4ToSvgColor(c: Vec4): String {
+internal fun vec4ToSvgColor(c: Vec4): String {
     val r = (c.x * 255).toInt().coerceIn(0, 255)
     val g = (c.y * 255).toInt().coerceIn(0, 255)
     val b = (c.z * 255).toInt().coerceIn(0, 255)

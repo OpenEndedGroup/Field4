@@ -95,6 +95,12 @@ class RunnerOptions:
     fps: int  # video frame rate (default 30)
 
 
+@dataclass(frozen=True)
+class CacheEntry:
+    digest: str
+    metadata: dict[str, Any] | None = None
+
+
 class RunnerState:
     def __init__(self, config: Any) -> None:
         self.config = config
@@ -109,7 +115,7 @@ class RunnerState:
         self._shared_field_started_by_runner = False
         self._closed = False
         self.runner_source_digest = compute_runner_source_digest(self.repo_root)
-        self.cache = self._load_cache()
+        self.cache, self.cache_metadata = self._load_cache()
         self.dirty = False
         LOG.info("Field docs runner mode: %s", self.runner_mode)
         self._ensure_shared_field_server()
@@ -177,28 +183,55 @@ class RunnerState:
             f"See {self.shared_log_path}"
         )
 
-    def _load_cache(self) -> dict[str, str]:
+    def _load_cache(self) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
         try:
             payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
         except FileNotFoundError:
-            return {}
+            return {}, {}
         except Exception as exc:
             LOG.warning("Field docs runner ignored unreadable cache %s: %s", self.cache_path, exc)
-            return {}
+            return {}, {}
         if not isinstance(payload, dict):
-            return {}
+            return {}, {}
         entries = payload.get("entries")
         if not isinstance(entries, dict):
-            return {}
-        return {str(key): str(value) for key, value in entries.items()}
+            return {}, {}
+
+        cache: dict[str, str] = {}
+        metadata: dict[str, dict[str, Any]] = {}
+        for key, value in entries.items():
+            cache_key = str(key)
+            if isinstance(value, str):
+                cache[cache_key] = value
+                continue
+            if not isinstance(value, dict):
+                continue
+            digest = value.get("digest")
+            if not isinstance(digest, str):
+                continue
+            cache[cache_key] = digest
+            entry_metadata = value.get("metadata")
+            if isinstance(entry_metadata, dict):
+                metadata[cache_key] = entry_metadata
+        return cache, metadata
 
     def save(self) -> None:
         if not self.dirty:
             return
+        entries: dict[str, Any] = {}
+        for cache_key, digest in self.cache.items():
+            metadata = self.cache_metadata.get(cache_key)
+            if metadata is None:
+                entries[cache_key] = digest
+            else:
+                entries[cache_key] = {
+                    "digest": digest,
+                    "metadata": metadata,
+                }
         payload = {
             "version": SCRIPT_VERSION,
             "mode": self.runner_mode,
-            "entries": self.cache,
+            "entries": entries,
         }
         self.cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         self.dirty = False
@@ -207,6 +240,7 @@ class RunnerState:
         if self._closed:
             return
         self._closed = True
+        self.save()
         if not self._shared_field_started_by_runner:
             return
         process = self._shared_field_process
@@ -243,6 +277,13 @@ class RunnerState:
         video_path = resolve_output_path(page_path, options.video)
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
+        cache_metadata = compute_cache_metadata(
+            code=code,
+            options=video_options,
+            page_path=page_path,
+            block_index=block_index,
+            runner_source_digest=self.runner_source_digest,
+        )
         digest = compute_digest(
             code=code,
             options=video_options,
@@ -252,9 +293,26 @@ class RunnerState:
             runner_source_digest=self.runner_source_digest,
         )
         cache_key = str(video_path)
-        if cache_allowed and not options.force and video_path.exists() and self.cache.get(cache_key) == digest:
+        cached_digest = self.cache.get(cache_key)
+        cached_metadata = self.cache_metadata.get(cache_key)
+        if cache_allowed and not options.force and video_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit (video): %s", video_path)
             return
+        LOG.info(
+            "Field docs runner cache %s (video): %s",
+            cache_status_label(cache_allowed=cache_allowed, force=options.force),
+            format_cache_reason(
+                output_path=video_path,
+                output_exists=video_path.exists(),
+                cached_digest=cached_digest,
+                computed_digest=digest,
+                cached_metadata=cached_metadata,
+                current_metadata=cache_metadata,
+                cache_allowed=cache_allowed,
+                force=options.force,
+                runner_mode=self.runner_mode,
+            ),
+        )
         command = build_backdoor_command(
             repo_root=self.repo_root,
             screenshot_path=video_path,
@@ -315,12 +373,21 @@ class RunnerState:
                 f"{output_gap}"
             )
         self.cache[cache_key] = digest
+        self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
+        self.save()
 
     def ensure_screenshot(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         screenshot_path = resolve_output_path(page_path, options.screenshot)
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
+        cache_metadata = compute_cache_metadata(
+            code=code,
+            options=options,
+            page_path=page_path,
+            block_index=block_index,
+            runner_source_digest=self.runner_source_digest,
+        )
         digest = compute_digest(
             code=code,
             options=options,
@@ -330,9 +397,26 @@ class RunnerState:
             runner_source_digest=self.runner_source_digest,
         )
         cache_key = str(screenshot_path)
-        if cache_allowed and not options.force and screenshot_path.exists() and self.cache.get(cache_key) == digest:
+        cached_digest = self.cache.get(cache_key)
+        cached_metadata = self.cache_metadata.get(cache_key)
+        if cache_allowed and not options.force and screenshot_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit: %s", screenshot_path)
             return
+        LOG.info(
+            "Field docs runner cache %s: %s",
+            cache_status_label(cache_allowed=cache_allowed, force=options.force),
+            format_cache_reason(
+                output_path=screenshot_path,
+                output_exists=screenshot_path.exists(),
+                cached_digest=cached_digest,
+                computed_digest=digest,
+                cached_metadata=cached_metadata,
+                current_metadata=cache_metadata,
+                cache_allowed=cache_allowed,
+                force=options.force,
+                runner_mode=self.runner_mode,
+            ),
+        )
         command = build_backdoor_command(
             repo_root=self.repo_root,
             screenshot_path=screenshot_path,
@@ -392,7 +476,9 @@ class RunnerState:
                 f"{output_gap}"
             )
         self.cache[cache_key] = digest
+        self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
+        self.save()
 
 
 STATE: RunnerState | None = None
@@ -504,7 +590,12 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 out.append("\n")
                 out.append(f"![{options.alt or options.box_name}]({markdown_path_for(page_path, options.screenshot)})\n")
             if options.video:
-                video_rel = markdown_path_for(page_path, options.video)
+                video_rel = embedded_asset_path_for(
+                    page_path=page_path,
+                    asset=options.video,
+                    docs_dir=state.docs_dir,
+                    use_directory_urls=bool(state.config["use_directory_urls"]),
+                )
                 out.append("\n")
                 out.append(f'<video controls autoplay loop muted playsinline style="max-width:100%">\n')
                 out.append(f'  <source src="{video_rel}" type="video/mp4">\n')
@@ -857,6 +948,25 @@ def markdown_path_for(page_path: Path, screenshot: str) -> str:
     return Path(os.path.relpath(absolute, start=page_path.parent)).as_posix()
 
 
+def embedded_asset_path_for(*, page_path: Path, asset: str, docs_dir: Path, use_directory_urls: bool) -> str:
+    absolute = resolve_output_path(page_path, asset)
+    try:
+        page_relative = page_path.relative_to(docs_dir)
+        asset_relative = absolute.relative_to(docs_dir)
+    except ValueError:
+        return markdown_path_for(page_path, asset)
+
+    if use_directory_urls:
+        if page_relative.name == "index.md":
+            rendered_dir = page_relative.parent
+        else:
+            rendered_dir = page_relative.with_suffix("")
+    else:
+        rendered_dir = page_relative.with_suffix(".html").parent
+
+    return Path(os.path.relpath(asset_relative, start=rendered_dir)).as_posix()
+
+
 def register_generated_file(*, files: Any, docs_dir: Path, site_dir: Path, use_directory_urls: bool, output_path: Path) -> None:
     try:
         relative = output_path.relative_to(docs_dir).as_posix()
@@ -882,6 +992,57 @@ def compute_runner_source_digest(repo_root: Path) -> str:
     return hasher.hexdigest()
 
 
+def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
+    return {
+        "capture": options.capture,
+        "effectiveCapture": effective_capture_mode(options),
+        "execution": options.execution,
+        "wait": options.wait,
+        "padding": options.padding,
+        "timeout": options.timeout,
+        "property": options.property_name,
+        "document": options.document,
+        "boxName": options.box_name,
+        "boxX": options.box_x,
+        "boxY": options.box_y,
+        "boxW": options.box_w,
+        "boxH": options.box_h,
+        "openOutputs": options.open_outputs,
+        "withEditor": options.with_editor,
+        "video": options.video,
+        "duration": options.duration,
+        "fps": options.fps,
+    }
+
+
+def digest_string(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def digest_json(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def compute_cache_metadata(
+    *,
+    code: str,
+    options: RunnerOptions,
+    page_path: Path,
+    block_index: int,
+    runner_source_digest: str,
+) -> dict[str, Any]:
+    options_payload = options_digest_payload(options)
+    return {
+        "page": str(page_path),
+        "block": block_index,
+        "scriptVersion": SCRIPT_VERSION,
+        "runnerSourceDigest": runner_source_digest,
+        "codeDigest": digest_string(code),
+        "optionsDigest": digest_json(options_payload),
+        "options": options_payload,
+    }
+
+
 def compute_digest(
     *,
     code: str,
@@ -897,28 +1058,78 @@ def compute_digest(
         "scriptVersion": SCRIPT_VERSION,
         "runnerSourceDigest": runner_source_digest,
         "code": code,
-        "options": {
-            "capture": options.capture,
-            "effectiveCapture": effective_capture_mode(options),
-            "execution": options.execution,
-            "wait": options.wait,
-            "padding": options.padding,
-            "timeout": options.timeout,
-            "property": options.property_name,
-            "document": options.document,
-            "boxName": options.box_name,
-            "boxX": options.box_x,
-            "boxY": options.box_y,
-            "boxW": options.box_w,
-            "boxH": options.box_h,
-            "openOutputs": options.open_outputs,
-            "withEditor": options.with_editor,
-            "video": options.video,
-            "duration": options.duration,
-            "fps": options.fps,
-        },
+        "options": options_digest_payload(options),
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def short_digest(value: str | None) -> str:
+    if not value:
+        return "missing"
+    return value[:12]
+
+
+def cache_status_label(*, cache_allowed: bool, force: bool) -> str:
+    if not cache_allowed:
+        return "bypassed"
+    if force:
+        return "forced"
+    return "miss"
+
+
+def format_cache_reason(
+    *,
+    output_path: Path,
+    output_exists: bool,
+    cached_digest: str | None,
+    computed_digest: str,
+    cached_metadata: dict[str, Any] | None,
+    current_metadata: dict[str, Any],
+    cache_allowed: bool,
+    force: bool,
+    runner_mode: str,
+) -> str:
+    reasons: list[str] = []
+    if not cache_allowed:
+        reasons.append(f"runner mode {runner_mode}")
+    if force:
+        reasons.append("force=true")
+    if not output_exists:
+        reasons.append("output file missing")
+    if cached_digest is None:
+        reasons.append("no cache entry")
+    elif cached_digest != computed_digest:
+        reasons.extend(compare_cache_metadata(cached_metadata=cached_metadata, current_metadata=current_metadata))
+        reasons.append(f"digest {short_digest(cached_digest)} -> {short_digest(computed_digest)}")
+    if not reasons:
+        reasons.append("cache digest changed")
+    return f"{output_path} ({', '.join(dict.fromkeys(reasons))})"
+
+
+def compare_cache_metadata(
+    *,
+    cached_metadata: dict[str, Any] | None,
+    current_metadata: dict[str, Any],
+) -> list[str]:
+    if not isinstance(cached_metadata, dict):
+        return ["digest changed", "previous cache metadata unavailable"]
+
+    reasons: list[str] = []
+    if cached_metadata.get("scriptVersion") != current_metadata.get("scriptVersion"):
+        reasons.append("script version changed")
+    if cached_metadata.get("runnerSourceDigest") != current_metadata.get("runnerSourceDigest"):
+        reasons.append("runner source changed")
+    if cached_metadata.get("codeDigest") != current_metadata.get("codeDigest"):
+        reasons.append("runnable code changed")
+    if cached_metadata.get("optionsDigest") != current_metadata.get("optionsDigest"):
+        reasons.append("capture options changed")
+    if cached_metadata.get("page") != current_metadata.get("page"):
+        reasons.append("page path changed")
+    if cached_metadata.get("block") != current_metadata.get("block"):
+        reasons.append("block index changed")
+    if not reasons:
+        reasons.append("digest changed")
+    return reasons
 
 
 def parse_backdoor_results(stdout: str) -> list[dict[str, Any]]:

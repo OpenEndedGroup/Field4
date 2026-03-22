@@ -98,19 +98,17 @@ animate {
 }
 ```
 
-### Processing Graphics
+### Animation with State
 
 ```kotlin
 // Setup - runs once
-p.stroke(255f)
-p.strokeWeight(2f)
-val radius = 50f
+var x = 0.0
+val speed = 0.1
 
 // Animation - runs every frame
 animate {
-    p.background(0f)
-    p.fill(255f, 100f, 100f)
-    p.ellipse(p.mouseX.toFloat(), p.mouseY.toFloat(), radius, radius)
+    x += speed
+    println("x = $x")
 }
 ```
 
@@ -118,15 +116,14 @@ animate {
 
 ```kotlin
 // All of this runs once
-val colors = listOf(255f to 0f to 0f, 0f to 255f to 0f)
-val positions = mutableListOf<Float>()
+val offsets = listOf(0.0, 0.25, 0.5)
 println("Animation initialized")
 
 // This runs every frame
 animate {
-    colors.forEachIndexed { i, (r, g, b) ->
-        p.fill(r, g, b)
-        p.ellipse(i * 100f, 200f, 50f, 50f)
+    offsets.forEachIndexed { i, offset ->
+        val sample = kotlin.math.sin(frameNumber * 0.05 + offset)
+        println("track $i -> $sample")
     }
 }
 ```
@@ -146,8 +143,7 @@ animate {
 
 ```kotlin
 // Everything runs every frame
-p.background(0f)
-p.ellipse(p.mouseX.toFloat(), p.mouseY.toFloat(), 50f, 50f)
+println(frameNumber)
 ```
 
 Problem: No clear separation between setup and animation
@@ -156,12 +152,11 @@ Problem: No clear separation between setup and animation
 
 ```kotlin
 // Setup
-p.strokeWeight(2f)
+val label = "tick"
 
 // Animation
 animate {
-    p.background(0f)
-    p.ellipse(p.mouseX.toFloat(), p.mouseY.toFloat(), 50f, 50f)
+    println("$label $frameNumber")
 }
 ```
 
@@ -195,9 +190,8 @@ Problem: Code as string, no syntax checking
 Created comprehensive documentation:
 
 1. **[ANIMATE_BLOCK_SYNTAX.md](./ANIMATE_BLOCK_SYNTAX.md)** - Complete guide with examples
-2. **Updated [PROCESSING_QUICKSTART.md](../processing/PROCESSING_QUICKSTART.md)** - Added animate examples
-3. **templates/animate-examples.edn** - Example workspace
-4. **src/jvmTest/kotlin/afield/test/AnimateBlockTest.kt** - Unit tests
+2. **templates/animate-examples.edn** - Example workspace
+3. **src/jvmTest/kotlin/afield/test/AnimateBlockTest.kt** - Unit tests
 
 ## Testing
 
@@ -207,14 +201,13 @@ Unit tests verify:
 - Setup code runs once (conceptually)
 - Animation code is wrapped for frame execution
 
-Full integration testing requires running Field4 with the Processing integration.
+Full integration testing requires running Field4 itself.
 
 ## Files Changed
 
 ```
 Modified:
   src/jvmMain/kotlin/afield/stdlib/stdlib.kt (+19 lines)
-  dev_docs/processing/PROCESSING_QUICKSTART.md (updated examples)
 
 Added:
   dev_docs/animation/ANIMATE_BLOCK_SYNTAX.md (156 lines)

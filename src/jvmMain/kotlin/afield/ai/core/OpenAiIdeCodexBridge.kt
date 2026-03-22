@@ -1,5 +1,6 @@
 package afield.ai.core
 
+import afield.ai.RelatedContextDiscovery
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -18,7 +19,7 @@ import java.util.*
 
 class OpenAiIdeCodexBridge(
     private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
-    model: String = ChatModel.GPT_5_1_CODEX.toString(),
+    model: String = "gpt-5.3-codex",
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
@@ -247,6 +248,7 @@ class OpenAiIdeCodexBridge(
                         append(json)
                     }
                 )
+                info("tool: result name=${call.name()} ${summarizeToolResult(toolResult)}")
 
                 if (call.name() == Commentary::class.java.simpleName) {
                     // Extract commentary regardless of handler output
@@ -290,6 +292,28 @@ class OpenAiIdeCodexBridge(
             rounds++
         }
 
+        val pendingCalls = response.output()
+            .filter { it.isFunctionCall() }
+            .mapNotNull { it.functionCall().orElse(null) }
+        if (pendingCalls.isNotEmpty()) {
+            warn(
+                "maxToolRounds=$maxToolRounds reached with ${pendingCalls.size} pending tool call(s); " +
+                    "requesting a final answer without further tools."
+            )
+            response = createForcedFinalResponse(
+                previousResponse = response,
+                pendingCalls = pendingCalls,
+                maxOutputTokens = maxOutputTokens,
+                onTextDelta = onTextDelta
+            )
+            if (onTextDelta != null) {
+                info("")
+            }
+            state.previousResponseId = response.id()
+            info("forced-final response id=${response.id()} outputItems=${response.output().size}")
+            logOutputShape(response)
+        }
+
         val text = extractOutputTextWithNewlines(response)
         val reasoningSummaries = extractReasoningSummaries(response)
         trace?.log(
@@ -305,7 +329,7 @@ class OpenAiIdeCodexBridge(
         if (text.isBlank() && reasoningSummaries.isNotEmpty()) {
             commentaryMessages += reasoningSummaries
             val combined = reasoningSummaries.joinToString(" ").trim()
-            info("reasoning summary (no output_text): ${truncate(combined, 400)}")
+            info("reasoning summary (no output_text): ${truncate(combined, 40000)}")
         }
 
         if (text.isBlank()) {
@@ -373,16 +397,68 @@ class OpenAiIdeCodexBridge(
     private fun createResponse(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response {
         if (onTextDelta == null) return client.responses().create(params)
 
-        val acc = ResponseAccumulator.create()
-        client.async().responses().createStreaming(params).subscribe({ event ->
-            acc.accumulate(event)
-            event.outputTextDelta().ifPresent { delta ->
-                val chunk = delta.delta()
-                if (chunk.isNotEmpty()) onTextDelta(chunk)
-            }
-        }).onCompleteFuture().join()
+        return try {
+            val acc = ResponseAccumulator.create()
+            client.async().responses().createStreaming(params).subscribe({ event ->
+                acc.accumulate(event)
+                event.outputTextDelta().ifPresent { delta ->
+                    val chunk = delta.delta()
+                    if (chunk.isNotEmpty()) onTextDelta(chunk)
+                }
+            }).onCompleteFuture().join()
 
-        return acc.response()
+            acc.response()
+        } catch (t: Throwable) {
+            val rendered = renderThrowableChain(t)
+            warn(
+                "streaming response failed; falling back to non-streaming create. " +
+                    "cause=${truncate(rendered, 600)}"
+            )
+            client.responses().create(params)
+        }
+    }
+
+    private fun createForcedFinalResponse(
+        previousResponse: Response,
+        pendingCalls: List<ResponseFunctionToolCall>,
+        maxOutputTokens: Long,
+        onTextDelta: ((String) -> Unit)?
+    ): Response {
+        val inputItems = mutableListOf<ResponseInputItem>()
+        pendingCalls.forEach { call ->
+            val outputItem = ResponseInputItem.FunctionCallOutput.builder()
+                .callId(call.callId())
+                .outputAsJson(
+                    mapOf(
+                        "error" to true,
+                        "aborted" to true,
+                        "tool" to call.name(),
+                        "reason" to "max_tool_rounds_reached",
+                        "message" to "Tool call aborted so the assistant can answer directly."
+                    )
+                )
+                .build()
+            inputItems += ResponseInputItem.ofFunctionCallOutput(outputItem)
+        }
+
+        val stopUsingTools = ResponseInputItem.Message.builder()
+            .role(ResponseInputItem.Message.Role.DEVELOPER)
+            .addInputTextContent(
+                "Stop using tools for this turn. Answer the user directly in text now using the context " +
+                    "already gathered. If you remain uncertain, say so briefly instead of calling more tools."
+            )
+            .build()
+        inputItems += ResponseInputItem.ofMessage(stopUsingTools)
+
+        val builder = ResponseCreateParams.builder()
+            .model(chatModel)
+            .previousResponseId(previousResponse.id())
+            .input(ResponseCreateParams.Input.ofResponse(inputItems))
+            .maxOutputTokens(maxOutputTokens)
+        builder.text(textConfig)
+        builder.reasoning(reasoningConfig)
+        info("creating response (forced-final) <<spinner>>")
+        return createResponse(builder.build(), onTextDelta)
     }
 
     private fun extractOutputTextWithNewlines(response: Response): String {
@@ -434,7 +510,7 @@ class OpenAiIdeCodexBridge(
                         } catch (_: Exception) {
                             ""
                         }
-                        val summaryPart = if (summary.isBlank()) "" else " summary=${truncate(summary, 200)}"
+                        val summaryPart = if (summary.isBlank()) "" else " summary=${truncate(summary, 20000)}"
                         "reasoning status=${reasoning.status().orElse(null)}$summaryPart"
                     }
                 }
@@ -458,7 +534,7 @@ class OpenAiIdeCodexBridge(
             info("output[$idx] $desc")
             if (desc == "unknown") {
                 val raw = item._json().orElse(null)?.toString()
-                if (raw != null) warn("output[$idx] raw=${truncate(raw, 400)}")
+                if (raw != null) warn("output[$idx] raw=${raw}")
             }
         }
     }
@@ -476,6 +552,53 @@ class OpenAiIdeCodexBridge(
 
     private fun truncate(text: String, max: Int): String =
         if (text.length <= max) text else text.substring(0, max) + "..."
+
+    private fun renderThrowableChain(error: Throwable): String {
+        val seen = linkedSetOf<String>()
+        var cursor: Throwable? = error
+        while (cursor != null) {
+            val label = buildString {
+                append(cursor::class.java.simpleName.ifBlank { cursor::class.java.name })
+                cursor.message?.takeIf { it.isNotBlank() }?.let {
+                    append(": ")
+                    append(it)
+                }
+            }
+            seen += label
+            cursor = cursor.cause
+        }
+        return seen.joinToString(" <- ")
+    }
+
+    private fun summarizeToolResult(toolResult: Any): String = when (toolResult) {
+        is WorkspaceSymbolSearchResult -> {
+            val preview = toolResult.matches.take(3).joinToString(" | ") { match ->
+                val guideHint = when {
+                    match.relatedGuides.isNotEmpty() || match.relatedExamples.isNotEmpty() ->
+                        " docs=${match.relatedGuides.size}/${match.relatedExamples.size}"
+                    else -> ""
+                }
+                "${match.symbol}@${match.filePath ?: "?"}:${match.line ?: 0}$guideHint"
+            }
+            "matches=${toolResult.matches.size}" + if (preview.isNotBlank()) " top=$preview" else ""
+        }
+        is AttachmentResponse ->
+            "file=${toolResult.file} language=${toolResult.language} chars=${toolResult.content.length} " +
+                "guides=${toolResult.relatedGuides.size} examples=${toolResult.relatedExamples.size}"
+        is ListContentsResult -> {
+            val totalChars = toolResult.contents.sumOf { it.content.length }
+            "entries=${toolResult.contents.size} primary=${toolResult.fileRef ?: "<none>"} chars=$totalChars"
+        }
+        is ListDefinitionsResult -> {
+            val preview = toolResult.definitions.take(5).joinToString(",") { it.name }
+            "definitions=${toolResult.definitions.size}" + if (preview.isNotBlank()) " top=$preview" else ""
+        }
+        is EditFileResponse ->
+            "success=${toolResult.success}" + (toolResult.message?.let { " message=${truncate(it, 200)}" } ?: "")
+        is Map<*, *> ->
+            "keys=${toolResult.keys.joinToString(",") { it.toString() }}"
+        else -> "type=${toolResult::class.java.simpleName}"
+    }
 
     private fun supportsFileSearch(): Boolean = chatModel != ChatModel.GPT_5_1_CODEX
 
@@ -508,7 +631,14 @@ class OpenAiIdeCodexBridge(
                 }
 
             if (hit != null) {
-                AttachmentResponse(hit.fileName, hit.language, hit.code)
+                val related = RelatedContextDiscovery.forPath(hit.fileName)
+                AttachmentResponse(
+                    file = hit.fileName,
+                    language = hit.language,
+                    content = hit.code,
+                    relatedGuides = related.guides,
+                    relatedExamples = related.examples
+                )
             } else {
                 ctx.resolveAttachment?.invoke(requested)
                     ?: throw IllegalArgumentException(

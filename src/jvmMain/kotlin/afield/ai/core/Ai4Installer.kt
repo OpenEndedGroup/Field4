@@ -3,6 +3,8 @@ package afield.ai.core
 import afield.*
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
+import afield.ai.RelatedContextDiscovery
+import afield.ai.searchWorkspaceSymbols
 import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -198,6 +200,37 @@ fun installAi4() {
             )
         }
 
+        val contextAttachments: List<ContextAttachment> = buildList {
+            textProperties.forEach { property ->
+                val content = textPropertyContents(box, property) ?: return@forEach
+                add(
+                    ContextAttachment(
+                        fileName = fileRefFor(docName, box.id, property),
+                        language = languageNameForBoxProperty(box, property),
+                        code = content
+                    )
+                )
+            }
+
+            val hasGraphicsProperties = listOf("vertex", "fragment", "mesh", "task", "compute")
+                .any { property -> textPropertyContents(box, property) != null }
+            if (hasGraphicsProperties || exec.prompt.contains("moduleHere") || exec.prompt.contains("renderer")) {
+                val guidePath = Paths.get(System.getProperty("user.dir")).resolve("src/VULKAN_GRAPHICS_SYSTEM.md")
+                if (Files.exists(guidePath) && Files.isRegularFile(guidePath)) {
+                    val guide = runCatching { Files.readString(guidePath, StandardCharsets.UTF_8) }.getOrNull()
+                    if (!guide.isNullOrBlank()) {
+                        add(
+                            ContextAttachment(
+                                fileName = guidePath.toString(),
+                                language = "Markdown",
+                                code = guide
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
         val resolveAttachment: (String) -> AttachmentResponse? = attachmentResolver@{ raw ->
             val requested = raw.trim()
             if (requested.isEmpty()) return@attachmentResolver null
@@ -240,10 +273,13 @@ fun installAi4() {
             for (candidate in candidatePaths) {
                 if (!Files.exists(candidate) || !Files.isRegularFile(candidate)) continue
                 val content = runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
+                val related = RelatedContextDiscovery.forPath(candidate.toString())
                 return@attachmentResolver AttachmentResponse(
                     file = candidate.toString(),
                     language = languageForFilePath(candidate),
-                    content = content
+                    content = content,
+                    relatedGuides = related.guides,
+                    relatedExamples = related.examples
                 )
             }
 
@@ -266,118 +302,11 @@ fun installAi4() {
         val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
             val query = req.query.trim()
             if (query.isEmpty()) return@workspaceSymbolSearch WorkspaceSymbolSearchResult(emptyList())
-
-            val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
-            val definitions = index?.definitions.orEmpty()
-            val limit = req.limit.coerceAtLeast(1)
-            val exact = ArrayList<WorkspaceSymbolMatch>()
-            val prefix = ArrayList<WorkspaceSymbolMatch>()
-            val contains = ArrayList<WorkspaceSymbolMatch>()
-
-            val fileCache = HashMap<String, List<String>>()
-            fun fileLines(path: String): List<String>? {
-                return fileCache.getOrPut(path) {
-                    val direct = Paths.get(path)
-                    val resolved = if (Files.exists(direct)) direct else Paths.get(System.getProperty("user.dir")).resolve(path)
-                    if (!Files.exists(resolved)) return@getOrPut emptyList()
-                    runCatching { Files.readAllLines(resolved, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
-                }.takeIf { it.isNotEmpty() }
-            }
-
-            fun definitionLineText(def: KotlinDefinitionRecord): String? {
-                val lines = fileLines(def.filePath) ?: return null
-                val idx = def.line - 1
-                return lines.getOrNull(idx)?.trimEnd()
-            }
-
-            fun functionBody(def: KotlinDefinitionRecord, maxChars: Int = 6000): String? {
-                if (def.kind != "fun") return null
-                val lines = fileLines(def.filePath) ?: return null
-                val startIdx = (def.line - 1).coerceIn(0, lines.lastIndex)
-                var depth = 0
-                var found = false
-                val sb = StringBuilder()
-                var chars = 0
-                for (i in startIdx..lines.lastIndex) {
-                    val line = lines[i]
-                    var j = 0
-                    while (j < line.length) {
-                        val ch = line[j]
-                        if (!found) {
-                            if (ch == '{') {
-                                found = true
-                                depth = 1
-                                sb.append(ch)
-                            }
-                        } else {
-                            sb.append(ch)
-                            if (ch == '{') depth++
-                            if (ch == '}') {
-                                depth--
-                                if (depth == 0) return sb.toString().trimEnd()
-                            }
-                        }
-                        if (found) {
-                            chars++
-                            if (chars >= maxChars) return sb.toString().trimEnd()
-                        }
-                        j++
-                    }
-                    if (found) {
-                        sb.append('\n')
-                        chars++
-                        if (chars >= maxChars) return sb.toString().trimEnd()
-                    }
-                }
-                return if (found) sb.toString().trimEnd() else null
-            }
-
-            fun toMatch(def: KotlinDefinitionRecord): WorkspaceSymbolMatch {
-                val location = if (!def.fileId.isNullOrBlank()) {
-                    "${def.filePath}:${def.line} (fileId=${def.fileId})"
-                } else {
-                    "${def.filePath}:${def.line}"
-                }
-                val lineText = definitionLineText(def)
-                val body = functionBody(def)
-                return WorkspaceSymbolMatch(
-                    symbol = def.name,
-                    kind = def.kind,
-                    locationHint = location,
-                    filePath = def.filePath,
-                    fileId = def.fileId,
-                    line = def.line,
-                    definitionLine = lineText,
-                    definitionBody = body
-                )
-            }
-
-            for (def in definitions) {
-                val name = def.name
-                if (name.equals(query, ignoreCase = true)) {
-                    exact.add(toMatch(def))
-                    if (exact.size >= limit) break
-                    continue
-                }
-                if (name.startsWith(query, ignoreCase = true)) {
-                    prefix.add(toMatch(def))
-                    continue
-                }
-                if (name.contains(query, ignoreCase = true)) {
-                    contains.add(toMatch(def))
-                }
-            }
-
-            val matches = ArrayList<WorkspaceSymbolMatch>(limit)
-            for (bucket in listOf(exact, prefix, contains)) {
-                for (item in bucket) {
-                    matches.add(item)
-                    if (matches.size >= limit) break
-                }
-                if (matches.size >= limit) break
-            }
-
-            WorkspaceSymbolSearchResult(matches)
+            searchWorkspaceSymbols(
+                index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(),
+                rawQuery = query,
+                limit = req.limit
+            )
         }
 
         val vectorStoreIds = KotlinSourceIndex.currentVectorStoreId()?.let { listOf(it) } ?: emptyList()
@@ -464,6 +393,7 @@ fun installAi4() {
                             lang = lang,
                             userPrompt = exec.extraPrompt,
                             imageUrls = exec.images,
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
@@ -496,6 +426,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Complete the code at <cursor>.",
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
@@ -511,6 +442,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Rewrite only the code between <rewrite> and </rewrite>.",
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
@@ -526,6 +458,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Fix the error described between <error> and </error>.",
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,

@@ -110,9 +110,9 @@ data class ExecuteSymbol(
 data class AiAssist(
     val uid: String,
     val prompt: String,
-    val extraPrompt: String,
-    val startLine: Int,
-    val property: String,
+    val extraPrompt: String = "",
+    val startLine: Int = 0,
+    val property: String = "code",
     val kind: String,
     val images: List<String> = emptyList()
 )
@@ -273,6 +273,31 @@ data class AgentOpenEditorResponse(
     val ok: Boolean,
     val uid: String,
     val property: String,
+    val documentName: String,
+    val scratch: Boolean,
+    val sessionKey: String,
+    val message: String = ""
+)
+
+@Serializable
+data class AgentPlaywrightInputRequest(
+    val action: String,
+    val key: String? = null,
+    val uid: String? = null,
+    val dx: Double = 0.0,
+    val dy: Double = 0.0,
+    val hold: Boolean = false,
+    val steps: Int = 12,
+    val filename: String? = null,
+    val waitMs: Double = 0.0
+)
+
+@Serializable
+data class AgentPlaywrightInputResponse(
+    val ok: Boolean,
+    val action: String,
+    val key: String? = null,
+    val uid: String? = null,
     val documentName: String,
     val scratch: Boolean,
     val sessionKey: String,
@@ -566,6 +591,33 @@ data class SlideAnnotation(
 )
 @Serializable
 data class FLineClick(val callbackId: String)
+
+@Serializable
+enum class FLineHandleKind {
+    TO, C1, C2
+}
+
+@Serializable
+enum class FLineEditSpace {
+    MODEL, VIEW
+}
+
+@Serializable
+data class FLinePointRef(
+    val lineIndex: Int,
+    val nodeIndex: Int,
+    val handle: FLineHandleKind
+)
+
+@Serializable
+data class FLineTranslatePoints(
+    val sessionId: String,
+    val points: List<FLinePointRef>,
+    val dx: Double,
+    val dy: Double,
+    val dz: Double = 0.0,
+    val space: FLineEditSpace = FLineEditSpace.VIEW
+)
 
 // Control messages
 @Serializable

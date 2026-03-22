@@ -4,6 +4,7 @@ package afield
 
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.completion.Ai4KotlinAutocomplete
+import afield.graphics.getFLineEditSession
 import afield.four.util.Options
 import afield.logger.lblock
 import afield.logger.lprint
@@ -39,6 +40,7 @@ import org.joml.Vector2f
 import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
+import java.net.BindException
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.file.Paths
@@ -47,6 +49,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -527,6 +530,22 @@ class Server {
             if (exit != 0) error("Failed to generate keystore: keytool exited with $exit")
 
             return target
+        }
+
+        private fun isPortBindException(error: Throwable): Boolean {
+            val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+            val queue = ArrayDeque<Throwable>()
+            queue.add(error)
+
+            while (queue.isNotEmpty()) {
+                val current = queue.removeFirst()
+                if (!seen.add(current)) continue
+                if (current is BindException) return true
+
+                current.cause?.let { queue.add(it) }
+                current.suppressed.forEach { queue.add(it) }
+            }
+            return false
         }
 
         @OptIn(DelicateCoroutinesApi::class, BetaOpenAI::class)
@@ -1040,6 +1059,26 @@ class Server {
                 Handled.yes
             })
 
+            handlers["fline-edit-translate"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineTranslatePoints>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.translate(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
             handlers["string-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")
@@ -1180,7 +1219,9 @@ class Server {
 
             registerTemplate(home)
 
-            val port = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
+            val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
+            val portFallbackCount = System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
+            var port = preferredPort
             val httpsHost = "0.0.0.0"
             val keystorePath = System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
             val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
@@ -1190,17 +1231,18 @@ class Server {
                 load(keystoreFile.inputStream(), keystorePassword.toCharArray())
             }
 
-            ourServer = embeddedServer(Netty, configure = {
-                sslConnector(
-                    keyStore = keyStore,
-                    keyAlias = keystoreAlias,
-                    keyStorePassword = { keystorePassword.toCharArray() },
-                    privateKeyPassword = { keystorePassword.toCharArray() }
-                ) {
-                    this.host = httpsHost
-                    this.port = port
-                }
-            }) {
+            fun createServer(bindPort: Int): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
+                return embeddedServer(Netty, configure = {
+                    sslConnector(
+                        keyStore = keyStore,
+                        keyAlias = keystoreAlias,
+                        keyStorePassword = { keystorePassword.toCharArray() },
+                        privateKeyPassword = { keystorePassword.toCharArray() }
+                    ) {
+                        this.host = httpsHost
+                        this.port = bindPort
+                    }
+                }) {
                 install(ContentNegotiation) {
                     json()
                 }
@@ -1252,6 +1294,22 @@ class Server {
                         call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument))
                     }
 
+                    get("/api/workspace-search") {
+                        val query = call.request.queryParameters["q"].orEmpty()
+                        val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
+                        val maxMatchesPerDocument =
+                            call.request.queryParameters["maxMatchesPerDocument"]?.toIntOrNull() ?: 5
+
+                        call.respond(
+                            searchWorkspace(
+                                base = home,
+                                rawQuery = query,
+                                maxDocuments = maxDocuments,
+                                maxMatchesPerDocument = maxMatchesPerDocument
+                            )
+                        )
+                    }
+
                     route("/welcome") {
                         handle {
                             val originalContent = File("./src/commonMain/resources/welcome.html").readText(Charsets.UTF_8)
@@ -1294,6 +1352,25 @@ class Server {
                         } catch (ex: Exception) {
                             lprintln("error,server", "offline import failed: ${ex.message}")
                             call.respond(HttpStatusCode.BadRequest, ex.message ?: "import failed")
+                        }
+                    }
+
+                    post("/api/shutdown-instance") {
+                        call.respond(HttpStatusCode.OK, "Shutting down this Field instance")
+
+                        thread(name = "field-instance-shutdown", isDaemon = true) {
+                            try {
+                                Thread.sleep(150)
+                            } catch (_: InterruptedException) {
+                            }
+
+                            runCatching {
+                                if (this@Companion::ourServer.isInitialized) {
+                                    ourServer.stop(500, 2000)
+                                }
+                            }
+
+                            exitProcess(0)
                         }
                     }
 
@@ -1522,49 +1599,73 @@ class Server {
                     }
                 }
 
-                globalServerPort = port
-                val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
-                lprintln("info,server", asciiWelcome)
-                lprintln("info,server", "welcome to Field, ß-033")
-                lprintln("info,server", "last document: $initialURL")
-                lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
-                lprintln("info,server", "---")
-
-                if (preferSystemBrowser) {
-//                    thread { openSystemBrowser(initialURL) }
-                }
-                else {
-                    thread {
-                        Playwright.create().let { pw ->
-                            globalPlaywright = pw
-                            val browser = pw.chromium().launch(
-                                BrowserType.LaunchOptions()
-                                    .setHeadless(false)
-                                    .setArgs(
-                                        listOf(
-                                            "--app=${initialURL}",
-                                        )
-                                    )
-                            )
-                            globalPlaywrightBrowser = browser
-                            val ctx = browser.newContext(
-                                Browser.NewContextOptions()
-                                    .setViewportSize(null)
-                                    .setIgnoreHTTPSErrors(true)
-                            )
-                            globalPlaywrightBrowserContext = ctx
-                            val page = ctx.newPage()
-                            page.navigate(initialURL)
-                            page.waitForLoadState(LoadState.NETWORKIDLE)
-                            lprintln("info,server", "network idle")
-
-                            globalPlaywriteContext = page
-                        }
-                    }
                 }
             }
 
-            ourServer.start(wait = true)
+            var started = false
+            var bindFailure: Throwable? = null
+            for (offset in 0 until portFallbackCount) {
+                val candidatePort = preferredPort + offset
+                port = candidatePort
+                try {
+                    ourServer = createServer(candidatePort)
+                    ourServer.start(wait = false)
+                    started = true
+                    if (offset > 0) {
+                        lprintln("warning,server", "Requested port ${preferredPort} was unavailable; using fallback port ${candidatePort}")
+                    }
+                    break
+                } catch (t: Throwable) {
+                    if (!isPortBindException(t)) throw t
+                    bindFailure = t
+                    lprintln("warning,server", "Port ${candidatePort} is already in use; trying next port")
+                }
+            }
+
+            if (!started) {
+                throw bindFailure ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
+            }
+
+            globalServerPort = port
+            val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
+            lprintln("info,server", asciiWelcome)
+            lprintln("info,server", "welcome to Field, ß-033")
+            lprintln("info,server", "last document: $initialURL")
+            lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
+            lprintln("info,server", "---")
+
+            if (preferSystemBrowser) {
+//                    thread { openSystemBrowser(initialURL) }
+            }
+            else {
+                thread {
+                    Playwright.create().let { pw ->
+                        globalPlaywright = pw
+                        val browser = pw.chromium().launch(
+                            BrowserType.LaunchOptions()
+                                .setHeadless(false)
+                                .setArgs(
+                                    listOf(
+                                        "--app=${initialURL}",
+                                    )
+                                )
+                        )
+                        globalPlaywrightBrowser = browser
+                        val ctx = browser.newContext(
+                            Browser.NewContextOptions()
+                                .setViewportSize(null)
+                                .setIgnoreHTTPSErrors(true)
+                        )
+                        globalPlaywrightBrowserContext = ctx
+                        val page = ctx.newPage()
+                        page.navigate(initialURL)
+                        page.waitForLoadState(LoadState.NETWORKIDLE)
+                        lprintln("info,server", "network idle")
+
+                        globalPlaywriteContext = page
+                    }
+                }
+            }
         }
 
 
@@ -1589,13 +1690,6 @@ class Server {
 //                    lprintln("warn,server", "AWT init failed: ${e.message}")
 //                }
 //            }
-
-//            val bootProcessing = System.getenv("AFIELD_PROCESSING_BOOT")?.lowercase() in listOf("1", "true", "yes")
-//            if (bootProcessing) {
-//                lprintln("info,server", "Booting Processing on main thread")
-////                getSharedHost().getApplet()
-//            }
-//
 //            val logEawt = System.getenv("AFIELD_LOG_EAWT")?.lowercase() in listOf("1", "true", "yes")
 //            if (logEawt) {
 //                val loader = Thread.currentThread().contextClassLoader

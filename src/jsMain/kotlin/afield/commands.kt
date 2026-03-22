@@ -18,6 +18,110 @@ var lastMouse = 0.0 to 0.0
 
 external fun showPickMenu_custom(options: dynamic): dynamic
 
+private fun browserPrompt(message: String, defaultValue: String): String? =
+    window.asDynamic().prompt(message, defaultValue)
+
+private fun defaultMp4Path(kind: String): String {
+    val stamp = Date.now().toLong().toString()
+    return "/tmp/field4-$kind-$stamp.mp4"
+}
+
+private fun promptMp4Target(kind: String): Pair<String, Double>? {
+    val path = browserPrompt("Output .mp4 path for $kind capture", defaultMp4Path(kind))?.trim()
+        ?.takeIf { it.isNotEmpty() } ?: return null
+
+    val durationText = browserPrompt("Duration in seconds", "3")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val duration = durationText.toDoubleOrNull()
+    if (duration == null || duration <= 0.0) {
+        notify("Duration must be a positive number", "error")
+        return null
+    }
+
+    return path to duration
+}
+
+private fun requireSingleSelectedBox(): dynamic? {
+    if (selected.size != 1) {
+        notify("Select exactly one box", "command")
+        return null
+    }
+    return selected.first().unsafeCast<dynamic>()
+}
+
+private fun sendBoxVideo(request: AgentBoxVideo) {
+    val callbackName = "agent-box-video-${Date.now().toLong()}"
+    notify("Recording box MP4...", "command")
+    sendWithReply(Message("agent-box-video").payload(request), callbackName) { message, _ ->
+        val response = Json.decodeFromJsonElement<AgentVideoResponse>(message.payload!!)
+        if (response.ok) {
+            notify("Saved MP4 to ${response.path}", "command")
+        } else {
+            notify(response.message.ifEmpty { "MP4 recording failed" }, "error")
+        }
+        Handled.yes_remove
+    }
+}
+
+private fun sendWindowVideo(request: AgentWindowVideo) {
+    val callbackName = "agent-window-video-${Date.now().toLong()}"
+    notify("Recording window MP4...", "command")
+    sendWithReply(Message("agent-window-video").payload(request), callbackName) { message, _ ->
+        val response = Json.decodeFromJsonElement<AgentVideoResponse>(message.payload!!)
+        if (response.ok) {
+            notify("Saved MP4 to ${response.path}", "command")
+        } else {
+            notify(response.message.ifEmpty { "MP4 recording failed" }, "error")
+        }
+        Handled.yes_remove
+    }
+}
+
+fun recordSelectedBoxMp4() {
+    val box = requireSingleSelectedBox() ?: return
+    val uid = box.uid as? String ?: return
+    val (path, durationSec) = promptMp4Target("box") ?: return
+    sendBoxVideo(
+        AgentBoxVideo(
+            uid = uid,
+            path = path,
+            durationSec = durationSec,
+            fps = 30
+        )
+    )
+}
+
+fun recordSelectedBoxEditorMp4() {
+    val box = requireSingleSelectedBox() ?: return
+    val uid = box.uid as? String ?: return
+    val (path, durationSec) = promptMp4Target("editor") ?: return
+    sendWindowVideo(
+        AgentWindowVideo(
+            path = path,
+            uid = uid,
+            showEditor = true,
+            editorOnly = true,
+            openOutputs = false,
+            durationSec = durationSec,
+            fps = 30
+        )
+    )
+}
+
+fun recordWindowMp4() {
+    val (path, durationSec) = promptMp4Target("window") ?: return
+    sendWindowVideo(
+        AgentWindowVideo(
+            path = path,
+            uid = null,
+            showEditor = false,
+            editorOnly = false,
+            openOutputs = false,
+            durationSec = durationSec,
+            fps = 30
+        )
+    )
+}
+
 private fun downloadEdnFile(filename: String, edn: String) {
     val blob = js("new Blob([edn], { type: 'application/edn' })")
     val url = URL.createObjectURL(blob)
@@ -931,6 +1035,9 @@ fun registerBuiltinCommands() {
     // Expose openEditorInOutput to window so inline JS commands can call it
     val w = js("window")
     w.openEditorInOutput = ::openEditorInOutput
+    w.recordSelectedBoxMp4 = ::recordSelectedBoxMp4
+    w.recordSelectedBoxEditorMp4 = ::recordSelectedBoxEditorMp4
+    w.recordWindowMp4 = ::recordWindowMp4
 
     allActions.builtin = eval(
         """
@@ -1118,6 +1225,30 @@ fun registerBuiltinCommands() {
                 } else {
                     window.openEditorInOutput(uid, 'fragment');
                 }
+            }
+        },{
+            id:'record-selected-box-mp4',
+            label:"Record Selected Box MP4",
+            detail:"Record a short MP4 clipped to the selected box and its outputs",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.recordSelectedBoxMp4();
+            }
+        },{
+            id:'record-selected-editor-mp4',
+            label:"Record Selected Editor MP4",
+            detail:"Record a short MP4 clipped to the selected box's Monaco editor",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.recordSelectedBoxEditorMp4();
+            }
+        },{
+            id:'record-window-mp4',
+            label:"Record Window MP4",
+            detail:"Record a short MP4 of the current Field window",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.recordWindowMp4();
             }
         }]
     """.trimIndent()

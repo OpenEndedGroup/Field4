@@ -14,7 +14,6 @@ If you want to run these examples, this embedded viewer's "Open in Field4" butto
     allowfullscreen>
 </iframe>
 
-
 ## Some syntax, before we get started
 
 In 'professional' Kotlin you’ll often see something like `FLine().apply { ... }`. It’s just a convenient way to create an object, run some setup code on it, and get the object back. This is less typing but maybe less clear than just naming the FLine you are building repeatedly. A comparison:
@@ -48,6 +47,276 @@ f3.color = vec(1.0, 1.0, 1.0, 0.25)
 // Show they really are the same geometry (offset so you can see them).
 lines(listOf(f1 + vec(0, 0, 0), f3 + vec(180, 0, 0)), w = 320.0, h = 170.0, fitToSize = true)
 ```
+
+
+## Seeing an `FLine`: static and editable viewers
+
+There are now two main ways to inspect `FLine` geometry in Field:
+
+- `lines(...)` renders an SVG-style 2D view in an output area.
+- `threeLines(...)` renders the same geometry in the Three.js viewer.
+
+Both now accept `editable = true`. With `editable = false` they are viewers. With `editable = true` they become lightweight editors for the underlying `FLine` data rather than just pictures of it.
+
+### 2D output: `lines(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun Box.lines(
+    vararg m: FLine,
+    channel: String = "lines",
+    w: Double = -1.0,
+    h: Double = -1.0,
+    fitToSize: Boolean = false,
+    editable: Boolean = false
+)
+```
+
+Use plain `lines(...)` when you want the usual fast 2D display. It is ideal for diagrams, plotted curves, path debugging, and anything that fundamentally lives in screen space.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_static.png" embed=true}
+:::static
+
+val wave = FLine().apply {
+    moveTo(40, 170)
+    cubicTo(120, 40, 180, 40, 250, 170)
+    cubicTo(320, 300, 380, 300, 460, 170)
+    thickness = 5.0
+    color = vec(0.98, 0.88, 0.28, 1.0)
+}
+
+val fill = FLine().apply {
+    moveTo(40, 170)
+    cubicTo(120, 40, 180, 40, 250, 170)
+    cubicTo(320, 300, 380, 300, 460, 170)
+    lineTo(460, 260)
+    lineTo(40, 260)
+    close()
+    filled = true
+    stroked = false
+    color = vec(0.32, 0.82, 1.0, 0.18)
+}
+
+val nodes = wave.copy().apply {
+    stroked = false
+    pointed = true
+    pointSize = 4.0
+    color = vec(1.0, 0.5, 0.25, 1.0)
+}
+
+lines(listOf(fill, wave, nodes), w = 520.0, h = 320.0, fitToSize = true)
+```
+
+If you switch on `editable = true`, the same output becomes an editor. You can click points, edges, or filled regions, drag a selection, marquee-select, and press `e` to hide or reveal the edit UI.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_editable.png" embed=true}
+:::static
+
+val petal = FLine().apply {
+    moveTo(0, -120)
+    cubicTo(90, -100, 140, -20, 0, 120)
+    cubicTo(-140, -20, -90, -100, 0, -120)
+    close()
+    filled = true
+    stroked = true
+    thickness = 2.5
+    color = vec(0.95, 0.42, 0.6, 0.34)
+}
+
+val stem = FLine().apply {
+    moveTo(0, 120)
+    cubicTo(10, 180, -20, 230, 0, 300)
+    thickness = 5.0
+    color = vec(0.45, 0.95, 0.62, 1.0)
+}
+
+lines(listOf(petal, stem), w = 420.0, h = 420.0, fitToSize = true, editable = true)
+```
+
+The important distinction is that this is not editing a copy of the SVG. It mutates the `FLine` you passed in, so it is useful as a geometry sketchpad, a control-shape editor, or a quick way to pull a hand-tuned curve back into your code.
+
+### 3D output: `threeLines(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun Box.threeLines(
+    lines: Collection<FLine>,
+    channel: String = "debug",
+    name: String = "threejs",
+    height: Int = 420,
+    samplesPerCubic: Int = 48,
+    autoFrame: Boolean = true,
+    editable: Boolean = false
+): ThreeGeometryViewState
+```
+
+Use `threeLines(...)` when depth matters or when you want to orbit around the geometry instead of looking at a projected SVG. It is still very happy with ordinary 2D paths, but it also handles 3D points directly.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_lines_static.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
+:::static
+
+val rings = (0 until 14).map { i ->
+    val radius = 60.0 + i * 11.0
+    val z = -90.0 + i * 14.0
+    FLine().apply {
+        val steps = 80
+        for (s in 0..steps) {
+            val t = s / steps.toDouble() * Math.PI * 2.0
+            val p = vec(Math.cos(t) * radius, Math.sin(t) * radius, z)
+            if (s == 0) moveTo(p) else lineTo(p)
+        }
+        close()
+        color = vec(0.35 + i / 20.0, 0.85, 1.0 - i / 18.0, 0.7)
+        thickness = 1.8
+    }
+}
+
+threeLines(rings, channel = "rings3d", height = 430, editable = false)
+```
+
+![Static Three.js FLine viewer](assets/fline_examples/three_lines_static.png)
+
+If you pass `editable = true`, the Three.js viewer grows an edit mode alongside camera control. In camera mode you orbit as usual. In edit mode you can select and drag points, edges, and faces; press `e` to hide or reveal the edit chrome without leaving the view.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_lines_editable.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
+:::static
+
+fun ribbon(z: Double, phase: Double, color: Vec4): FLine = FLine().apply {
+    val steps = 42
+    for (i in 0..steps) {
+        val t = i / steps.toDouble()
+        val x = -220.0 + t * 440.0
+        val y = Math.sin(t * Math.PI * 2.0 + phase) * 70.0
+        val edge = Math.cos(t * Math.PI * 4.0 + phase) * 24.0
+        if (i == 0) moveTo(x, y - edge, z) else lineTo(x, y - edge, z)
+    }
+    for (i in steps downTo 0) {
+        val t = i / steps.toDouble()
+        val x = -220.0 + t * 440.0
+        val y = Math.sin(t * Math.PI * 2.0 + phase) * 70.0
+        val edge = Math.cos(t * Math.PI * 4.0 + phase) * 24.0
+        lineTo(x, y + edge, z)
+    }
+    close()
+    filled = true
+    stroked = true
+    thickness = 1.4
+    this.color = color
+}
+
+val ribbons = listOf(
+    ribbon(-50.0, 0.0, vec(1.0, 0.6, 0.24, 0.32)),
+    ribbon(0.0, 0.8, vec(0.4, 0.92, 1.0, 0.28)),
+    ribbon(55.0, 1.6, vec(0.72, 0.58, 1.0, 0.28))
+)
+
+threeLines(ribbons, channel = "editable3d", height = 430, editable = true)
+```
+
+![Editable Three.js FLine viewer](assets/fline_examples/three_lines_editable.png)
+
+That gives you a useful split of responsibilities:
+
+- `lines(...)` for direct 2D inspection and editing.
+- `threeLines(...)` for orbiting, spatial debugging, and editing geometry in depth.
+
+The two viewers are deliberately close in spirit. If you learn one, the other should feel familiar rather than like a separate subsystem.
+
+### Callbacks: `onClick` and `hoverColor`
+
+`FLine` can also be interactive without being editable. If you set `onClick`, Field registers a callback for that line. If you set `hoverColor`, the line brightens or changes color when the pointer moves over it.
+
+```diffstatic {data-lang=kotlin}
+:::static
+var FLine.onClick: (() -> Unit)?
+var FLine.hoverColor: Vec4?
+```
+
+This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer. The usual pattern is simple: draw something, assign `onClick`, and update another output area when it gets picked.
+
+#### 2D callbacks
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_2d.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true name="fline-callbacks-2d"}
+:::static
+
+fun status(message: String) {
+    display(
+        "callback-log",
+        "<div style='padding:10px;font-family:monospace'>2D callback: $message</div>"
+    )
+}
+
+status("click a shape")
+
+val triangle = FLine().apply {
+    moveTo(70, 250)
+    lineTo(200, 40)
+    lineTo(330, 250)
+    close()
+    filled = true
+    stroked = true
+    thickness = 2.5
+    color = vec(1.0, 0.63, 0.24, 0.30)
+    hoverColor = vec(1.0, 0.82, 0.42, 0.92)
+    onClick = { status("triangle") }
+}
+
+val blob = FLine().apply {
+    moveTo(420, 150)
+    cubicTo(470, 30, 620, 40, 650, 150)
+    cubicTo(620, 290, 470, 300, 420, 150)
+    close()
+    filled = true
+    stroked = true
+    thickness = 2.5
+    color = vec(0.34, 0.88, 1.0, 0.24)
+    hoverColor = vec(0.48, 1.0, 1.0, 0.92)
+    onClick = { status("blob") }
+}
+
+lines(listOf(triangle, blob), channel = "callbacks2d", w = 760.0, h = 340.0, fitToSize = true)
+```
+
+In practice this is useful for picking diagram elements, selecting generated forms, or turning a sketch into a tiny control surface without writing separate HTML.
+
+#### 3D callbacks
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="fline-callbacks-3d"}
+:::static
+
+fun status(message: String) {
+    display(
+        "callback-log-3d",
+        "<div style='padding:10px;font-family:monospace'>3D callback: $message</div>"
+    )
+}
+
+status("orbit, hover, then click")
+
+fun ring(radius: Double, z: Double, color: Vec4, hover: Vec4, name: String): FLine = FLine().apply {
+    val steps = 72
+    for (i in 0..steps) {
+        val t = i / steps.toDouble() * Math.PI * 2.0
+        val p = vec(Math.cos(t) * radius, Math.sin(t) * radius, z)
+        if (i == 0) moveTo(p) else lineTo(p)
+    }
+    close()
+    thickness = 3.0
+    this.color = color
+    hoverColor = hover
+    onClick = { status(name) }
+}
+
+val stack = listOf(
+    ring(90.0, -80.0, vec(1.0, 0.58, 0.22, 0.70), vec(1.0, 0.82, 0.42, 1.0), "front ring"),
+    ring(130.0, 0.0, vec(0.42, 0.92, 1.0, 0.70), vec(0.72, 1.0, 1.0, 1.0), "middle ring"),
+    ring(170.0, 90.0, vec(0.74, 0.60, 1.0, 0.70), vec(0.92, 0.82, 1.0, 1.0), "back ring")
+)
+
+threeLines(stack, channel = "callbacks3d", height = 430, editable = false)
+```
+
+The 3D version is the same idea, just with ray-picking instead of SVG hit testing. That makes it useful for picking generated layers, debugging spatial structures, or attaching lightweight behavior to procedural geometry.
 
 ## Styling: `color`, `stroked`, `filled`, `pointed`
 
@@ -1431,8 +1700,6 @@ fun FLine.bySubdividing(levels: Int = 1): FLine
 ```
 
 `fitCircle` gives you an approximate circle for a curve segment (center/radius + an error estimate). `bySubdividing` increases resolution (more control points) for a smoother-looking polyline approximation.
-
-
 
 ## Advanced / experimental curves (FLineGeometry)
 

@@ -40,7 +40,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-inline-metrics.png" video="assets/visualizers-inline-metrics.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-metrics"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-metrics.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-metrics"}
 :::static
 var tick = 0.0
 
@@ -67,7 +67,7 @@ Those three calls all share the same basic idea:
 
 In the editor you can add a marker rune (ᛟ), with f1, "Insert Stack Mark", or shift+command period:
 
-![](assets/screenshot_26.png)
+![Insert stack mark command](assets/screenshot_26.png)
 
 These functions are **passthroughs**. They return the value they were given, so you can drop them into a chain when you want to inspect the value flowing through a wire without changing the computation:
 
@@ -140,7 +140,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-inline-pianoroll.png" video="assets/visualizers-inline-pianoroll.mp4" wait="5.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-pianoroll"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="5.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-pianoroll"}
 :::static
 val arp = noteProcess {
     val chord = listOf(48, 55, 60, 64)
@@ -368,6 +368,101 @@ syncToProperty("accent", org.joml.Vector4f(0.9f, 0.4f, 0.2f, 1.0f))
 ```
 
 That is especially nice when you are turning a sketch into a reusable little instrument.
+
+### Build one surface with mixed control types
+
+`controlGroup(...)` is the easiest way to build a compact surface for one box.
+
+Use it when several parameters belong together and should land in one disclosure channel.
+
+<!--
+FIELD_TEST
+id: docs.visualizers.controls.mixed-surface
+runner: backdoor-box
+tags: [docs, visualizers, controls, vec2, checkbox, string, color]
+timeoutSec: 45
+waitSec: 0.5
+expect:
+  outputContains:
+    - "mixed controls ready"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" wait="0.5" capture="box" embed=true name="mixed-controls"}
+:::static
+import org.joml.Vector2f
+import org.joml.Vector4f
+
+var velocity = Vector2f(0.35f, -0.2f)
+var enabled = true
+var label = "Orbit A"
+var tint = Vector4f(0.95f, 0.45f, 0.15f, 0.85f)
+
+controlGroup("surface") {
+    vec2Control("velocity", initialValue = velocity, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0, step = 0.05) {
+        velocity = it
+    }
+    checkbox("enabled", initialValue = enabled) {
+        enabled = it
+    }
+    stringInput("label", initialValue = label) {
+        label = it
+    }
+    colorPicker("tint", initialValue = tint) {
+        tint = it
+    }
+}
+
+println("mixed controls ready")
+```
+
+This pattern is good for:
+
+- small simulation controls
+- animation parameters
+- quick scene presets
+- reusable demo boxes
+
+### Sync controls to persistent properties
+
+`syncToProperty(...)` is the short path from “I want a control” to “I want a control that survives document reloads”.
+
+It chooses a control type from the initial value and writes changes back to the current box with resync enabled.
+
+Supported value types include:
+
+- `Double`
+- `Boolean`
+- `String`
+- `Vector2f`
+- `Vector4f`
+
+```diffstatic {data-lang=kotlin}
+:::static
+import org.joml.Vector2f
+import org.joml.Vector4f
+
+syncToProperty("gain", 0.35, label = "gain")
+syncToProperty("enabled", true)
+syncToProperty("nickname", "hello")
+syncToProperty("offset", Vector2f(0.2f, -0.4f))
+syncToProperty("accent", Vector4f(0.9f, 0.4f, 0.2f, 1.0f))
+```
+
+Use explicit `slider(...)`, `vec2Control(...)`, `checkbox(...)`, `stringInput(...)`, or `colorPicker(...)` when you want full control over ranges and behavior. Use `syncToProperty(...)` when the main goal is a persistent editable parameter.
+
+### Choosing the right control
+
+- Use `slider(...)` for one bounded numeric value.
+- Use `vec2Control(...)` for direction, position, velocity, or any paired numeric parameter.
+- Use `checkbox(...)` for feature toggles and gates.
+- Use `stringInput(...)` for names, labels, prompts, and small text parameters.
+- Use `colorPicker(...)` for RGBA values stored as normalized `Vector4f` data.
+
+The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.
 
 ## Signal and synth visualizers
 

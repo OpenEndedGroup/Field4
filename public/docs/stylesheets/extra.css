@@ -78,6 +78,7 @@ h3 {
     font-size: 150% !important;
 }
 
+.md-typeset h1,
 .md-typeset h2,
 .md-typeset h3 {
     margin-top: 100px;
@@ -97,11 +98,30 @@ h3 {
     height: auto;
     display: block;
 }
+
+.md-typeset img.field-docs-image-native-sized {
+    width: min(100%, var(--field-docs-native-max-width));
+}
+
+.md-typeset img.field-docs-image-zoomable {
+    cursor: zoom-in;
+}
+
+.md-typeset img.field-docs-image-zoomable:focus-visible {
+    outline: none;
+    /* outline-offset: 6px; */
+}
 @media screen and (min-width: 76.234375em) {
     .md-typeset img {
         max-width: calc(100% + 63px);
         padding-left: 50px;
-        margin-left: -63px;
+        margin-left: -50px;
+        /* border-left: 0.5px solid white; */
+    }
+    .md-typeset video {
+        max-width: calc(100% + 63px);
+        padding-left: 50px;
+        margin-left: -50px;
         /* border-left: 0.5px solid white; */
     }
 }
@@ -156,7 +176,11 @@ code {
 .md-typeset code {
     background: rgba(0,0,0,1);
     border-radius: 3px;
-    color: #fda;
+    color: #adf;
+    font-weight: 900;
+}
+.md-typeset :is(p, li, td, blockquote) > code:first-child {
+    margin-left: -0.18em;
 }
 .md-typeset pre > code {
     background: var(--mono-panel) !important;
@@ -236,6 +260,181 @@ code {
 
 .md-typeset hr {
     border-bottom: 1px solid var(--mono-border);
+}
+
+body.field-docs-image-lightbox-open {
+    overflow: hidden;
+}
+
+/* ── homepage video background ──────────────────────────────── */
+html[data-field-homepage="true"],
+html[data-field-homepage="true"] body {
+    background: #000;
+}
+
+html[data-field-homepage="true"] .field-homepage-video {
+    position: fixed !important;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #000;
+    opacity: 0;
+}
+
+html[data-field-homepage="true"] .field-homepage-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+}
+
+html[data-field-homepage="true"] .field-homepage-video__veil {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(0, 0, 0, 1.0) 0%, rgba(0, 0, 0, 0.5) 32%, rgba(0, 0, 1, 0.0) 100%), linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.7) 100%);
+
+}
+
+html[data-field-homepage="true"] .md-container,
+html[data-field-homepage="true"] .md-main,
+html[data-field-homepage="true"] .md-main__inner,
+html[data-field-homepage="true"] .md-content,
+html[data-field-homepage="true"] .md-content__inner,
+html[data-field-homepage="true"] .md-grid {
+    position: relative;
+    z-index: 2;
+    isolation: isolate;
+}
+
+html[data-field-homepage="true"] .md-content__inner > *:not(.field-homepage-video),
+html[data-field-homepage="true"] .md-content__inner .md-typeset,
+html[data-field-homepage="true"] .md-content__inner .md-typeset > * {
+    position: relative;
+    z-index: 3;
+}
+
+html[data-field-homepage="true"] .md-header,
+html[data-field-homepage="true"] .md-main,
+html[data-field-homepage="true"] .md-content,
+html[data-field-homepage="true"] .md-content__inner,
+html[data-field-homepage="true"] .md-sidebar,
+html[data-field-homepage="true"] .md-sidebar__scrollwrap,
+html[data-field-homepage="true"] .md-nav,
+html[data-field-homepage="true"] .md-nav__list {
+    background: transparent !important;
+}
+
+html[data-field-homepage="true"] .md-main {
+    z-index: 1;
+}
+
+html[data-field-homepage="true"] .md-sidebar,
+html[data-field-homepage="true"] .md-sidebar__scrollwrap,
+html[data-field-homepage="true"] .md-sidebar__inner,
+html[data-field-homepage="true"] .md-sidebar .md-nav {
+    position: relative;
+    z-index: 4;
+    pointer-events: auto;
+}
+
+html[data-field-homepage="true"] .md-main__inner {
+    margin-top: 0;
+}
+
+html[data-field-homepage="true"] .md-content__inner {
+    min-height: calc(100vh - 3rem);
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+}
+
+.field-docs-image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: none;
+}
+
+.field-docs-image-lightbox.is-open {
+    display: block;
+}
+
+.field-docs-image-lightbox__overlay {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.92);
+    cursor: zoom-out;
+}
+
+.field-docs-image-lightbox__frame {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    pointer-events: none;
+}
+
+.field-docs-image-lightbox__frame:focus {
+    outline: none;
+}
+
+.field-docs-image-lightbox__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.55);
+    color: white;
+    padding: 0.45rem 0.75rem;
+    font: inherit;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.field-docs-image-lightbox__image {
+    display: block;
+    max-width: min(96vw, 1800px);
+    max-height: calc(100vh - 7rem);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    box-shadow: 0 1.25rem 4rem rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+}
+
+.field-docs-image-lightbox__caption {
+    max-width: min(96vw, 1200px);
+    margin: 0;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.78);
+    pointer-events: auto;
+}
+
+@media screen and (max-width: 44rem) {
+    .field-docs-image-lightbox__frame {
+        padding: 1rem;
+        padding-top: 3.5rem;
+    }
+
+    .field-docs-image-lightbox__image {
+        max-width: 100%;
+        max-height: calc(100vh - 5.5rem);
+    }
+
+    .field-docs-image-lightbox__close {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
 }
 
 .md-nav__link {
@@ -344,21 +543,19 @@ code {
     .md-sidebar--primary  .md-sidebar__inner { border-left: 1px solid black;  }
     .md-sidebar--secondary .md-sidebar__inner { border-right:  1px solid black;  }
 
-    /* clip-path on .md-nav hides nav links but leaves __inner's border untouched */
-    .md-sidebar--primary .md-sidebar__inner > .md-nav {
-        clip-path: inset(0 100% 0 0);
-        transition: clip-path 400ms ease;
-    }
-    .md-sidebar--primary:hover .md-sidebar__inner > .md-nav {
-        clip-path: inset(0);
-    }
-
+    /* fade nav content while leaving the sticky border visible */
+    .md-sidebar--primary .md-sidebar__inner > .md-nav,
     .md-sidebar--secondary .md-sidebar__inner > .md-nav {
-        clip-path: inset(0 0 0 100%);
-        transition: clip-path 400ms ease;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 260ms ease !important;
     }
-    .md-sidebar--secondary:hover .md-sidebar__inner > .md-nav {
-        clip-path: inset(0);
+    .md-sidebar--primary:hover .md-sidebar__inner > .md-nav,
+    .md-sidebar--primary .md-sidebar__inner:hover > .md-nav,
+    .md-sidebar--secondary:hover .md-sidebar__inner > .md-nav,
+    .md-sidebar--secondary .md-sidebar__inner:hover > .md-nav {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 

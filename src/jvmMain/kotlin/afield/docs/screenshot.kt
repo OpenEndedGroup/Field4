@@ -124,6 +124,179 @@ private fun postProcessScreenshot(path: Path) {
     }
 }
 
+  private fun responseString(value: Any?): String = when (value) {
+    null -> ""
+    is String -> value
+    else -> value.toString()
+  }
+
+  private fun responseDouble(map: Map<*, *>, key: String): Double? =
+    (map[key] as? Number)?.toDouble()
+
+  private fun locateBoxPoint(page: Page, uid: String): Pair<Double, Double> {
+    val raw = page.evaluate(
+      """
+      async (uid) => {
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const findBox = (targetUid) => {
+        const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
+        return boxes.find((element) => {
+          const candidate = element.uid || element.getAttribute("uid") || element.getAttribute("data-uid");
+          return candidate === targetUid;
+        }) || null;
+        };
+        const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
+        while (Date.now() < deadline) {
+        const box = findBox(uid);
+        if (box) {
+          const rect = box.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+          return {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          };
+          }
+        }
+        await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+        }
+        return null;
+      }
+      """.trimIndent(),
+      uid
+    )
+    val point = raw as? Map<*, *> ?: error("Box $uid was not found in the current page")
+    val x = responseDouble(point, "x") ?: error("Box $uid did not provide an x coordinate")
+    val y = responseDouble(point, "y") ?: error("Box $uid did not provide a y coordinate")
+    return x to y
+  }
+
+  private fun moveMouseInSteps(page: Page, startX: Double, startY: Double, endX: Double, endY: Double, steps: Int) {
+    val safeSteps = maxOf(1, steps)
+    for (step in 1..safeSteps) {
+      val t = step.toDouble() / safeSteps.toDouble()
+      val x = startX + (endX - startX) * t
+      val y = startY + (endY - startY) * t
+      page.mouse().move(x, y)
+      page.waitForTimeout(16.0)
+    }
+  }
+
+  private fun focusFieldPage(page: Page) {
+    page.evaluate(
+      """
+      () => {
+        if (document.body && document.body.focus) {
+        document.body.focus();
+        }
+        if (window.focus) {
+        window.focus();
+        }
+        return true;
+      }
+      """.trimIndent()
+    )
+  }
+
+  private fun performWindowAction(page: Page, request: AgentPlaywrightInputRequest) {
+    when (request.action) {
+      "keyPress" -> {
+        val key = request.key ?: error("keyPress requires a key")
+        focusFieldPage(page)
+        page.keyboard().press(key)
+      }
+      "keyDown" -> {
+        val key = request.key ?: error("keyDown requires a key")
+        focusFieldPage(page)
+        page.keyboard().down(key)
+      }
+      "keyUp" -> {
+        val key = request.key ?: error("keyUp requires a key")
+        focusFieldPage(page)
+        page.keyboard().up(key)
+      }
+      "clickBox" -> {
+        val uid = request.uid ?: error("clickBox requires a uid")
+        val (x, y) = locateBoxPoint(page, uid)
+        page.mouse().move(x, y)
+        page.mouse().click(x, y)
+      }
+      "dragBox" -> {
+        val uid = request.uid ?: error("dragBox requires a uid")
+        val (startX, startY) = locateBoxPoint(page, uid)
+        val endX = startX + request.dx
+        val endY = startY + request.dy
+        page.mouse().move(startX, startY)
+        page.mouse().down()
+        moveMouseInSteps(page, startX, startY, endX, endY, request.steps)
+        if (!request.hold) {
+          page.mouse().up()
+        }
+      }
+      "mouseUp" -> page.mouse().up()
+      "showHistory" -> {
+        val raw = page.evaluate(
+          """
+          (filename) => {
+            const target = filename || window.currentDocumentFilename || "default";
+            if (typeof window.switchToHistoryForFile !== "function") {
+            return { ok: false, message: "switchToHistoryForFile is unavailable" };
+            }
+            window.switchToHistoryForFile(target);
+            return { ok: true, message: target };
+          }
+          """.trimIndent(),
+          request.filename
+        )
+        val result = raw as? Map<*, *> ?: error("showHistory returned an invalid response")
+        if (result["ok"] != true) {
+          error(responseString(result["message"]).ifBlank { "showHistory failed" })
+        }
+      }
+      else -> error("Unsupported Playwright action '${request.action}'")
+    }
+
+    if (request.waitMs > 0.0) {
+      page.waitForTimeout(request.waitMs)
+    }
+  }
+
+  fun performPlaywrightInput(info: SessionInformation, request: AgentPlaywrightInputRequest): AgentPlaywrightInputResponse {
+    val page = globalPlaywriteContext ?: return AgentPlaywrightInputResponse(
+      ok = false,
+      action = request.action,
+      key = request.key,
+      uid = request.uid,
+      documentName = info.documentName,
+      scratch = info.ephemeral,
+      sessionKey = info.filename,
+      message = "Playwright is not active"
+    )
+
+    return runCatching {
+      performWindowAction(page, request)
+      AgentPlaywrightInputResponse(
+        ok = true,
+        action = request.action,
+        key = request.key,
+        uid = request.uid,
+        documentName = info.documentName,
+        scratch = info.ephemeral,
+        sessionKey = info.filename
+      )
+    }.getOrElse {
+      AgentPlaywrightInputResponse(
+        ok = false,
+        action = request.action,
+        key = request.key,
+        uid = request.uid,
+        documentName = info.documentName,
+        scratch = info.ephemeral,
+        sessionKey = info.filename,
+        message = it.message ?: "Playwright input failed"
+      )
+    }
+  }
+
 private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "uid" to uid,
     "padding" to padding,

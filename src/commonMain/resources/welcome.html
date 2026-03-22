@@ -141,6 +141,15 @@
             border-bottom-style: solid;
         }
 
+        .button-danger {
+            color: var(--field-danger);
+            border-color: rgba(255, 111, 111, 0.45);
+        }
+
+        .button-danger:hover {
+            border-color: rgba(255, 111, 111, 0.8);
+        }
+
         .new-doc {
             padding: 12px;
             display: grid;
@@ -262,6 +271,40 @@
             color: var(--field-text-soft);
             text-align: right;
             white-space: nowrap;
+        }
+
+        .doc-body {
+            display: grid;
+            gap: 6px;
+        }
+
+        .search-match-list {
+            display: grid;
+            gap: 4px;
+        }
+
+        .search-match {
+            border-left: 1px solid rgba(72, 201, 255, 0.16);
+            padding-left: 8px;
+        }
+
+        .search-match-meta {
+            font-size: 10px;
+            color: var(--field-text-soft);
+            text-transform: lowercase;
+        }
+
+        .search-match-snippet {
+            font-size: 11px;
+            color: var(--field-text);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .search-match mark {
+            background: rgba(72, 201, 255, 0.18);
+            color: white;
+            padding: 0 2px;
         }
 
         .empty-state {
@@ -422,6 +465,7 @@
             <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
             <a class="button-link" href="/dir">/dir</a>
             <a class="button-link" href="https://openendedgroup.com/field4">/docs</a>
+            <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
         </div>
     </section>
 
@@ -438,7 +482,7 @@
 
     <section class="panel list-panel">
         <div class="search-row">
-            <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search recent documents">
+            <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search workspace text or document name">
             <div id="recent-search-status" aria-live="polite"></div>
         </div>
         <div class="list-header">
@@ -453,9 +497,13 @@
     const state = {
         documents: [],
         searchQuery: "",
+        searchResults: [],
+        searchTruncated: false,
         lastOpened: "welcome",
         defaultDocument: "welcome"
     };
+    let searchController = null;
+    let searchDebounceTimer = null;
 
     function escapeHtml(text) {
         return String(text)
@@ -510,10 +558,15 @@
     }
 
 
-    function getFilteredDocuments() {
-        const query = state.searchQuery.trim().toLowerCase();
-        if (!query) return state.documents;
-        return state.documents.filter((doc) => (doc.filename || "").toLowerCase().includes(query));
+    function escapeRegExp(text) {
+        return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function highlightQuery(text, query) {
+        if (!query) return escapeHtml(text);
+        const safe = escapeHtml(text);
+        const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
+        return safe.replace(regex, "<mark>$1</mark>");
     }
 
     function validateDocumentName(name) {
@@ -537,26 +590,20 @@
         return null;
     }
 
-    function renderDocuments() {
+    function getFirstVisibleDocument() {
+        if (state.searchQuery.trim()) {
+            return state.searchResults[0] || null;
+        }
+        return state.documents[0] || null;
+    }
+
+    function renderRecentDocuments() {
         const listNode = document.getElementById("recent-list");
         const countNode = document.getElementById("doc-count");
-        const allDocs = state.documents;
-        const docs = getFilteredDocuments();
-        if (state.searchQuery.trim()) {
-            countNode.textContent = `${docs.length} of ${allDocs.length} documents`;
-        } else {
-            countNode.textContent = allDocs.length === 1 ? "1 document" : `${allDocs.length} documents`;
-        }
+        const docs = state.documents;
+        countNode.textContent = docs.length === 1 ? "1 document" : `${docs.length} documents`;
 
         if (!docs.length) {
-            if (allDocs.length && state.searchQuery.trim()) {
-                listNode.innerHTML = `
-                    <div class="empty-state">
-                        No recent documents match <code>${escapeHtml(state.searchQuery.trim())}</code>.
-                    </div>
-                `;
-                return;
-            }
             listNode.innerHTML = `
                 <div class="empty-state">
                     No documents found in this workspace yet.<br><br>
@@ -573,7 +620,9 @@
             const meta = `${boxes} · ${formatBytes(doc.sizeBytes)} · ${when}`;
             return `
                 <button type="button" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
-                    <span class="doc-name">${escapeHtml(doc.filename)}</span>
+                    <div class="doc-body">
+                        <span class="doc-name">${escapeHtml(doc.filename)}</span>
+                    </div>
                     <span class="doc-meta">${escapeHtml(meta)}</span>
                 </button>
             `;
@@ -587,6 +636,81 @@
         });
     }
 
+    function renderSearchResults() {
+        const listNode = document.getElementById("recent-list");
+        const countNode = document.getElementById("doc-count");
+        const docs = state.searchResults;
+        const query = state.searchQuery.trim();
+        const statusNode = document.getElementById("recent-search-status");
+
+        countNode.textContent = docs.length === 1 ? "1 matching document" : `${docs.length} matching documents`;
+
+        if (!docs.length) {
+            listNode.innerHTML = `
+                <div class="empty-state">
+                    No workspace matches for <code>${escapeHtml(query)}</code>.
+                </div>
+            `;
+            statusNode.textContent = "no matches";
+            statusNode.classList.remove("error");
+            return;
+        }
+
+        listNode.innerHTML = docs.map((doc) => {
+            const activeClass = doc.filename === state.lastOpened ? "active" : "";
+            const when = formatDuration(doc.lastModifiedAgoMs);
+            const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+            const meta = `${boxes} · ${when}`;
+            const matches = Array.isArray(doc.matches) ? doc.matches : [];
+            const matchHtml = matches.map((match) => {
+                const property = match.property === "document" ? "document name" : match.property;
+                const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                return `
+                    <div class="search-match">
+                        <div class="search-match-meta">${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(linePart)}</div>
+                        <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
+                    </div>
+                `;
+            }).join("");
+
+            return `
+                <button type="button" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                    <div class="doc-body">
+                        <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
+                        <div class="search-match-list">${matchHtml}</div>
+                    </div>
+                    <span class="doc-meta">${escapeHtml(meta)}</span>
+                </button>
+            `;
+        }).join("");
+
+        listNode.querySelectorAll(".doc-entry").forEach((button) => {
+            button.addEventListener("click", () => {
+                const name = button.getAttribute("data-doc");
+                if (name) openDocument(name);
+            });
+        });
+
+        const matchCount = docs.reduce((sum, doc) => sum + ((doc.matches || []).length), 0);
+        statusNode.textContent = state.searchTruncated
+            ? `${matchCount}+ matches shown`
+            : `${matchCount} matches`;
+        statusNode.classList.remove("error");
+    }
+
+    function renderList() {
+        if (state.searchQuery.trim()) {
+            renderSearchResults();
+        } else {
+            const statusNode = document.getElementById("recent-search-status");
+            statusNode.textContent = state.documents.length
+                ? `${state.documents.length} recent documents`
+                : "";
+            statusNode.classList.remove("error");
+            renderRecentDocuments();
+        }
+    }
+
     async function loadWelcomeDocs() {
         try {
             const response = await fetch("/api/welcome-docs", { cache: "no-store" });
@@ -595,19 +719,77 @@
             state.documents = Array.isArray(payload.documents) ? payload.documents : [];
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
-            renderDocuments();
+            renderList();
         } catch (error) {
             console.error("Failed to load welcome docs", error);
             state.documents = [];
-            renderDocuments();
+            renderList();
             setCreateStatus("Could not load workspace documents.", true);
         }
+    }
+
+    async function runWorkspaceSearch(query) {
+        if (searchController) {
+            searchController.abort();
+        }
+
+        searchController = new AbortController();
+        const statusNode = document.getElementById("recent-search-status");
+        statusNode.textContent = "searching…";
+        statusNode.classList.remove("error");
+
+        try {
+            const params = new URLSearchParams({
+                q: query,
+                maxDocuments: "50",
+                maxMatchesPerDocument: "5"
+            });
+            const response = await fetch(`/api/workspace-search?${params.toString()}`, {
+                cache: "no-store",
+                signal: searchController.signal
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.searchResults = Array.isArray(payload.documents) ? payload.documents : [];
+            state.searchTruncated = !!payload.truncated;
+            renderList();
+        } catch (error) {
+            if (error?.name === "AbortError") return;
+            console.error("Workspace search failed", error);
+            state.searchResults = [];
+            state.searchTruncated = false;
+            renderList();
+            statusNode.textContent = "search failed";
+            statusNode.classList.add("error");
+        }
+    }
+
+    function queueWorkspaceSearch(query) {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = null;
+
+        const trimmed = query.trim();
+        if (!trimmed) {
+            if (searchController) {
+                searchController.abort();
+                searchController = null;
+            }
+            state.searchResults = [];
+            state.searchTruncated = false;
+            renderList();
+            return;
+        }
+
+        searchDebounceTimer = setTimeout(() => {
+            runWorkspaceSearch(trimmed);
+        }, 180);
     }
 
     function installHandlers() {
         const createButton = document.getElementById("create-doc");
         const nameInput = document.getElementById("new-doc-name");
         const searchInput = document.getElementById("recent-search");
+        const shutdownButton = document.getElementById("shutdown-instance");
 
         const runCreate = () => {
             const name = nameInput.value.trim();
@@ -630,16 +812,43 @@
 
         searchInput.addEventListener("input", () => {
             state.searchQuery = searchInput.value;
-            renderDocuments();
+            queueWorkspaceSearch(state.searchQuery);
         });
 
         searchInput.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
             event.preventDefault();
-            const first = getFilteredDocuments()[0];
+            const first = getFirstVisibleDocument();
             if (first && first.filename) {
                 openDocument(first.filename);
                 return;
+            }
+        });
+
+        shutdownButton?.addEventListener("click", async () => {
+            const confirmed = window.confirm("Shutdown this Field instance now?");
+            if (!confirmed) return;
+
+            shutdownButton.disabled = true;
+            shutdownButton.textContent = "shutting down...";
+            setCreateStatus("Shutting down this Field instance...");
+
+            try {
+                const response = await fetch("/api/shutdown-instance", {
+                    method: "POST",
+                    cache: "no-store"
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                setCreateStatus("Shutdown requested. This page should disconnect shortly.");
+            } catch (error) {
+                console.error("Failed to shutdown Field instance", error);
+                shutdownButton.disabled = false;
+                shutdownButton.textContent = "shutdown this instance of Field";
+                setCreateStatus("Could not shutdown this Field instance.", true);
             }
         });
 

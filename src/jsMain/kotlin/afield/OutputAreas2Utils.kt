@@ -14,8 +14,48 @@ private fun inlineFormat(text: String): String {
     out = out.replace(Regex("`([^`]+)`"), "<code>$1</code>")
     out = out.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
     out = out.replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
+    out = replaceImages(out)
     out = replaceLinks(out)
     return out
+}
+
+private fun replaceImages(text: String): String {
+    val sb = StringBuilder(text.length)
+    var index = 0
+    while (index < text.length) {
+        val open = text.indexOf("![", index)
+        if (open == -1) {
+            sb.append(text.substring(index))
+            break
+        }
+        val close = text.indexOf(']', open + 2)
+        if (close == -1 || close + 1 >= text.length || text[close + 1] != '(') {
+            sb.append(text.substring(index, open + 2))
+            index = open + 2
+            continue
+        }
+        val end = text.indexOf(')', close + 2)
+        if (end == -1) {
+            sb.append(text.substring(index, open + 2))
+            index = open + 2
+            continue
+        }
+        val alt = text.substring(open + 2, close)
+        val src = text.substring(close + 2, end)
+        if (src.isEmpty()) {
+            sb.append(text.substring(index, open + 2))
+            index = open + 2
+            continue
+        }
+        sb.append(text.substring(index, open))
+        sb.append("<img class=\"ai-chat-inline-image\" src=\"")
+        sb.append(src)
+        sb.append("\" alt=\"")
+        sb.append(alt)
+        sb.append("\" loading=\"lazy\" />")
+        index = end + 1
+    }
+    return sb.toString()
 }
 
 private fun replaceLinks(text: String): String {

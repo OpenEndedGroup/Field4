@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.UUID
@@ -85,6 +86,35 @@ data class ThreeMeta(
     )
 }
 
+@Serializable
+data class ThreeEditableNode(
+    val nodeIndex: Int,
+    val kind: String,
+    val to: FloatArray? = null,
+    val c1: FloatArray? = null,
+    val c2: FloatArray? = null
+)
+
+@Serializable
+data class ThreeEditableLine(
+    val lineIndex: Int,
+    val color: FloatArray,
+    val thickness: Float,
+    val stroked: Boolean,
+    val filled: Boolean,
+    val pointed: Boolean,
+    val pointSize: Float,
+    val callbackId: String = "",
+    val hoverColor: FloatArray? = null,
+    val nodes: List<ThreeEditableNode>
+)
+
+@Serializable
+data class ThreeEditableScene(
+    val sessionId: String,
+    val lines: List<ThreeEditableLine>
+)
+
 /**
  * Geometry + interaction metadata for a single interactive FLine inside the Three.js viewer.
  *
@@ -124,7 +154,9 @@ data class ThreeGeometryPayload(
     val meta: ThreeMeta? = null,
     val autoFrame: Boolean = true,
     /** Per-FLine interactive objects (separate geometry with click/hover callbacks). */
-    val interactive: List<ThreeInteractiveObject> = emptyList()
+    val interactive: List<ThreeInteractiveObject> = emptyList(),
+    val scene: ThreeEditableScene? = null,
+    val editableEnabled: Boolean = false
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -135,12 +167,15 @@ data class ThreeGeometryPayload(
         "bounds" to bounds,
         "meta" to meta,
         "autoFrame" to autoFrame,
-        "interactive" to interactive.size
+        "interactive" to interactive.size,
+        "scene" to (scene != null),
+        "editableEnabled" to editableEnabled
     )
 }
 
 private val threeJson = Json {
     encodeDefaults = true
+    ignoreUnknownKeys = true
 }
 
 /**
@@ -210,6 +245,14 @@ fun installThreeJsHandler() {
                     }
                 }
             }
+            "fline-edit-translate" -> {
+                val update = runCatching { threeJson.decodeFromJsonElement<FLineTranslatePoints>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
+                GlobalScope.launch {
+                    runCatching { editSession.translate(update) }
+                }
+            }
             else -> {
                 // Default: treat as a hello/attach message
                 val viewer = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
@@ -237,7 +280,8 @@ fun Box.threeLines(
     name: String = "threejs",
     height: Int = 420,
     samplesPerCubic: Int = 48,
-    autoFrame: Boolean = true
+    autoFrame: Boolean = true,
+    editable: Boolean = false
 ): ThreeGeometryViewState {
     val uid = "${this.id}_$name"
     val ln = "/threejs?uid=$uid"
@@ -247,7 +291,7 @@ fun Box.threeLines(
 """
     )
     val view = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
-    val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame)
+    val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable)
     view.update(payload)
     return view
 }
@@ -261,14 +305,16 @@ fun Box.threeLines(
     name: String = "threejs",
     height: Int = 420,
     samplesPerCubic: Int = 48,
-    autoFrame: Boolean = true
+    autoFrame: Boolean = true,
+    editable: Boolean = false
 ): ThreeGeometryViewState = threeLines(
     lines = lines.toList(),
     channel = channel,
     name = name,
     height = height,
     samplesPerCubic = samplesPerCubic,
-    autoFrame = autoFrame
+    autoFrame = autoFrame,
+    editable = editable
 )
 
 /**
@@ -280,14 +326,16 @@ fun Box.threeLines(
     name: String = "threejs",
     height: Int = 420,
     samplesPerCubic: Int = 48,
-    autoFrame: Boolean = true
+    autoFrame: Boolean = true,
+    editable: Boolean = false
 ): ThreeGeometryViewState = threeLines(
     lines = linesByChannel.values.flatten(),
     channel = channel,
     name = name,
     height = height,
     samplesPerCubic = samplesPerCubic,
-    autoFrame = autoFrame
+    autoFrame = autoFrame,
+    editable = editable
 )
 
 private class BoundsTracker {
@@ -327,144 +375,112 @@ private fun buildThreeGeometryPayload(
     uid: String,
     lines: Collection<FLine>,
     samplesPerCubic: Int,
-    autoFrame: Boolean
+    autoFrame: Boolean,
+    editable: Boolean
 ): ThreeGeometryPayload {
-    val linePositions = ArrayList<Float>()
-    val lineColors = ArrayList<Float>()
-    val lineAlphas = ArrayList<Float>()
-    val meshPositions = ArrayList<Float>()
-    val meshColors = ArrayList<Float>()
-    val meshAlphas = ArrayList<Float>()
-    val meshIndices = ArrayList<Int>()
-    val pointPositions = ArrayList<Float>()
-    val pointColors = ArrayList<Float>()
-    val pointAlphas = ArrayList<Float>()
-    val pointSizes = ArrayList<Float>()
-    val bounds = BoundsTracker()
-    val samples = samplesPerCubic.coerceAtLeast(2)
+    val sourceLines = lines.toList()
+    val editSession = if (editable) registerFLineEditSession(sourceLines, null) else null
+    val sceneBounds = BoundsTracker()
+    var sceneLineSegments = 0
+    var sceneTriangles = 0
+    var scenePoints = 0
 
-    val interactiveObjects = ArrayList<ThreeInteractiveObject>()
-
-    lines.forEach { f ->
-        val color = f.color
-        val isInteractive = f.onClick != null || f.hoverColor != null
-
-        if (isInteractive) {
-            // Build separate geometry data for this FLine so the viewer can
-            // attach raycasting to it independently.
-            val iLinePositions = ArrayList<Float>()
-            val iLineColors = ArrayList<Float>()
-            val iLineAlphas = ArrayList<Float>()
-            val iMeshPositions = ArrayList<Float>()
-            val iMeshColors = ArrayList<Float>()
-            val iMeshAlphas = ArrayList<Float>()
-            val iMeshIndices = ArrayList<Int>()
-            val iPointPositions = ArrayList<Float>()
-            val iPointColors = ArrayList<Float>()
-            val iPointAlphas = ArrayList<Float>()
-            val iPointSizes = ArrayList<Float>()
-
-            if (f.stroked) {
-                appendLineSegments(f, samples, color, iLinePositions, iLineColors, iLineAlphas, bounds)
-            }
-            if (f.filled) {
-                appendFilledMesh(f, samples, color, iMeshPositions, iMeshColors, iMeshAlphas, iMeshIndices, bounds)
-            }
-            if (f.pointed) {
-                appendPoints(f, color, iPointPositions, iPointColors, iPointAlphas, iPointSizes, bounds)
-            }
-
-            // Register click callback if set
-            val callbackId = f.onClick?.let { cb ->
+    val scene = ThreeEditableScene(
+        sessionId = editSession?.sessionId ?: "",
+        lines = sourceLines.mapIndexed { lineIndex, line ->
+            var boundaryPoints = 0
+            val callbackId = line.onClick?.let { cb ->
                 val id = "fline-${UUID.randomUUID()}"
                 registerFLineClickCallback(id, cb)
                 id
             } ?: ""
-
-            // Encode hover color as [r,g,b,a] float array if set
-            val hc = f.hoverColor?.let { c ->
+            val hoverColor = line.hoverColor?.let { c ->
                 floatArrayOf(c.x, c.y, c.z, c.w)
             }
 
-            val iLineGeom = if (iLinePositions.isNotEmpty()) buildGeometryData(
-                iLinePositions.toFloatArray(), iLineColors.toFloatArray(), iLineAlphas.toFloatArray(), null, null
-            ) else null
-            val iFillGeom = if (iMeshPositions.isNotEmpty()) buildGeometryData(
-                iMeshPositions.toFloatArray(), iMeshColors.toFloatArray(), iMeshAlphas.toFloatArray(), null, iMeshIndices.toIntArray()
-            ) else null
-            val iPointGeom = if (iPointPositions.isNotEmpty()) buildGeometryData(
-                iPointPositions.toFloatArray(), iPointColors.toFloatArray(), iPointAlphas.toFloatArray(), iPointSizes.toFloatArray(), null
-            ) else null
+            ThreeEditableLine(
+                lineIndex = lineIndex,
+                color = floatArrayOf(line.color.x, line.color.y, line.color.z, line.color.w),
+                thickness = (line.thickness ?: 1.0).toFloat(),
+                stroked = line.stroked,
+                filled = line.filled,
+                pointed = line.pointed,
+                pointSize = line.pointSize.toFloat(),
+                callbackId = callbackId,
+                hoverColor = hoverColor,
+                nodes = line.nodes.mapIndexed { nodeIndex, node ->
+                    when (node) {
+                        is FLine.MoveTo -> {
+                            scenePoints += 1
+                            boundaryPoints = 1
+                            sceneBounds.include(node.to)
+                            ThreeEditableNode(
+                                nodeIndex = nodeIndex,
+                                kind = "move",
+                                to = floatArrayOf(node.to.x, node.to.y, node.to.z)
+                            )
+                        }
 
-            if (iLineGeom != null || iFillGeom != null || iPointGeom != null) {
-                interactiveObjects.add(
-                    ThreeInteractiveObject(
-                        callbackId = callbackId,
-                        hoverColor = hc,
-                        lines = iLineGeom,
-                        fills = iFillGeom,
-                        points = iPointGeom
-                    )
-                )
-            }
-        } else {
-            if (f.stroked) {
-                appendLineSegments(f, samples, color, linePositions, lineColors, lineAlphas, bounds)
-            }
-            if (f.filled) {
-                appendFilledMesh(f, samples, color, meshPositions, meshColors, meshAlphas, meshIndices, bounds)
-            }
-            if (f.pointed) {
-                appendPoints(f, color, pointPositions, pointColors, pointAlphas, pointSizes, bounds)
-            }
+                        is FLine.LineTo -> {
+                            scenePoints += 1
+                            sceneLineSegments += 1
+                            boundaryPoints += 1
+                            sceneBounds.include(node.to)
+                            ThreeEditableNode(
+                                nodeIndex = nodeIndex,
+                                kind = "line",
+                                to = floatArrayOf(node.to.x, node.to.y, node.to.z)
+                            )
+                        }
+
+                        is FLine.CubicTo -> {
+                            scenePoints += 1
+                            sceneLineSegments += samplesPerCubic.coerceAtLeast(2)
+                            boundaryPoints += samplesPerCubic.coerceAtLeast(2)
+                            sceneBounds.include(node.to)
+                            sceneBounds.include(node.c1)
+                            sceneBounds.include(node.c2)
+                            ThreeEditableNode(
+                                nodeIndex = nodeIndex,
+                                kind = "cubic",
+                                to = floatArrayOf(node.to.x, node.to.y, node.to.z),
+                                c1 = floatArrayOf(node.c1.x, node.c1.y, node.c1.z),
+                                c2 = floatArrayOf(node.c2.x, node.c2.y, node.c2.z)
+                            )
+                        }
+
+                        is FLine.Close -> {
+                            sceneLineSegments += 1
+                            if (line.filled && boundaryPoints >= 3) {
+                                sceneTriangles += (boundaryPoints - 2)
+                            }
+                            boundaryPoints = 0
+                            ThreeEditableNode(
+                                nodeIndex = nodeIndex,
+                                kind = "close"
+                            )
+                        }
+                    }
+                }
+            )
         }
-    }
-
-    val lineGeom = if (linePositions.isNotEmpty()) {
-        buildGeometryData(
-            positions = linePositions.toFloatArray(),
-            colors = lineColors.toFloatArray(),
-            alphas = lineAlphas.toFloatArray(),
-            sizes = null,
-            indices = null
-        )
-    } else null
-
-    val fillGeom = if (meshPositions.isNotEmpty()) {
-        buildGeometryData(
-            positions = meshPositions.toFloatArray(),
-            colors = meshColors.toFloatArray(),
-            alphas = meshAlphas.toFloatArray(),
-            sizes = null,
-            indices = meshIndices.toIntArray()
-        )
-    } else null
-
-    val pointGeom = if (pointPositions.isNotEmpty()) {
-        buildGeometryData(
-            positions = pointPositions.toFloatArray(),
-            colors = pointColors.toFloatArray(),
-            alphas = pointAlphas.toFloatArray(),
-            sizes = pointSizes.toFloatArray(),
-            indices = null
-        )
-    } else null
-
-    val meta = ThreeMeta(
-        lineSegments = linePositions.size / 6,
-        triangles = meshIndices.size / 3,
-        points = pointPositions.size / 3
     )
 
     return ThreeGeometryPayload(
         uid = uid,
-        lines = lineGeom,
-        fills = fillGeom,
-        points = pointGeom,
-        bounds = bounds.toBounds(),
-        meta = meta,
+        lines = null,
+        fills = null,
+        points = null,
+        bounds = sceneBounds.toBounds(),
+        meta = ThreeMeta(
+            lineSegments = sceneLineSegments,
+            triangles = sceneTriangles,
+            points = scenePoints
+        ),
         autoFrame = autoFrame,
-        interactive = interactiveObjects
+        interactive = emptyList(),
+        scene = scene,
+        editableEnabled = editable
     )
 }
 

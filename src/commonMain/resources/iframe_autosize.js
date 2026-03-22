@@ -3,6 +3,7 @@
 
     const frame = window.frameElement;
     if (!frame || String(frame.tagName || "").toUpperCase() !== "IFRAME") return;
+    if ((frame.getAttribute("data-afield-autosize") || "").toLowerCase() === "off") return;
 
     const html = document.documentElement;
     const body = document.body;

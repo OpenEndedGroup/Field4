@@ -8,7 +8,6 @@
 - `testing/`: smoke-test discovery, annotation, and runner strategy notes
 - `workspace/`: self-healing metadata, guide deployment, and workspace architecture notes
 - `animation/`: `animate {}` syntax and implementation notes
-- `processing/`: Processing integration quickstarts and architecture notes
 - `ai/`: AI-assisted docs/search notes and Dokka/KDoc work
 - `stdlib/`: user-facing Kotlin/stdlib feature notes
 - `physics/`: simulation- and math-heavy implementation notes
@@ -20,7 +19,6 @@
 - [`testing/SMOKE_TEST_ANNOTATION_STRATEGY.md`](./testing/SMOKE_TEST_ANNOTATION_STRATEGY.md)
 - [`workspace/ARCHITECTURE_COMPLETE.md`](./workspace/ARCHITECTURE_COMPLETE.md)
 - [`animation/ANIMATE_BLOCK_SYNTAX.md`](./animation/ANIMATE_BLOCK_SYNTAX.md)
-- [`processing/PROCESSING_QUICKSTART.md`](./processing/PROCESSING_QUICKSTART.md)
 - [`ai/DOCS_SEARCH_FEATURE.md`](./ai/DOCS_SEARCH_FEATURE.md)
 - [`stdlib/GRAPH_CONNECTIVITY_LIBRARY.md`](./stdlib/GRAPH_CONNECTIVITY_LIBRARY.md)
 

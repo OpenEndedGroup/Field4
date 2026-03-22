@@ -150,7 +150,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "compute",
             "customization",
             "_tombstone",
-//            ".*_editorState",
+            ".*_editorState",
             "code_decorationState",
             "metadata",
             "offline",

@@ -85,7 +85,7 @@ The result still reads as one waveform, but now you can see exactly what each in
 
 Smooth oscillation is only one side of the story. Often you want edges, gates, bursts, latches, and sample-and-hold behavior: things that feel more like rhythm, switching, or digital control than like a pure tone. That is where pulse-oriented stacks start becoming interesting.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/pulse_processing_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/pulse_stack_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
 import afield.graphics.FLine
 import afield.stdlib.Functions
@@ -154,7 +154,7 @@ with(Functions) {
 
 Here the pulse train is the raw material. A slower sine bends it, a blur softens it, and `sampleHold(...)` turns the result into something more stepped and clocked. Putting the three curves on the same axes makes the transformation feel causal rather than mysterious.
 
-![](assets/functions_examples/pulse_processing_window.png)
+![](assets/functions_examples/pulse_stack_window.png)
 
 And now the personalities separate cleanly: one jagged, one softened, one quantized into holds. That is exactly the sort of side-by-side picture that helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
 

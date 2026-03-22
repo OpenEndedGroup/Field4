@@ -7,24 +7,29 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Survival Guide: survivalGuide.md
+  - Feature Overview: funFeatures.md
+  - AI Overview: aiFeatures.md
   - Kotlin Overview: kotlin_overview.md
-  - Visualizers & Controls: visualizers.md
-  - VR:
-    - Sketch 2: vr_sketch2.md
+  - Reference:
     - FLine Examples: fline_examples.md
-    - Forth Examples: forth_examples.md
-    - Nano Examples: nano_examples.md
-    - Functions Examples: functions_examples.md
-    - Timeseries Examples: timeseries_examples.md
-    - Stats Examples: stats_examples.md
-    - Smile Neighbors Examples: smile_neighbors_examples.md
-    - Interpolants Examples: interpolants_examples.md
-    - Colors Examples: colors_examples.md
-    - Correlations Examples: correlations_examples.md
-    - Graph Connectivity Examples: graph_connectivity_examples.md
-    - Sorting Networks Examples: sorting_networks_examples.md
-    - Boolean Networks Examples: boolean_networks_examples.md
-    - Boolean Network Music Examples: boolean_network_music_examples.md
+    - Visualizers & Controls: visualizers.md
+    - Staging area:
+      - Interactive Guides: interactive_guides.md
+      - Guide Chat: guide_chat.md
+      - Some VR: vr_sketch2.md
+      - Forth Examples: forth_examples.md
+      - Nano Examples: nano_examples.md
+      - Functions Examples: functions_examples.md
+      - Timeseries Examples: timeseries_examples.md
+      - Stats Examples: stats_examples.md
+      - Smile Neighbors Examples: smile_neighbors_examples.md
+      - Interpolants Examples: interpolants_examples.md
+      - Colors Examples: colors_examples.md
+      - Correlations Examples: correlations_examples.md
+      - Graph Connectivity Examples: graph_connectivity_examples.md
+      - Sorting Networks Examples: sorting_networks_examples.md
+      - Boolean Networks Examples: boolean_networks_examples.md
+      - Boolean Network Music Examples: boolean_network_music_examples.md
 
 markdown_extensions:
   - pymdownx.superfences:         # required extension
@@ -74,6 +79,7 @@ extra_css:
   - assets/code-diff-player/code-diff-player.css
 
 extra_javascript:
+  - assets/image-lightbox.js
   - assets/code-diff-player/fence-upgrade.js
   - assets/code-diff-player/code-diff-player.js
   - assets/code-diff-player/field-doc-export.js

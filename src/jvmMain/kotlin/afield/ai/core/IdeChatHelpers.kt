@@ -6,6 +6,19 @@ class IdeChatHelpers(
 ) {
     private fun info(message: String) = log.log("info,ai.chat", message)
 
+    private fun attachmentContextNote(attachments: List<ContextAttachment>): String {
+        if (attachments.isEmpty()) return ""
+        val lines = attachments.joinToString("\n") { attachment ->
+            "- ${attachment.fileName} (${attachment.language})"
+        }
+        return buildString {
+            appendLine("Attached context files are available via AttachmentRequest:")
+            append(lines)
+            appendLine()
+            appendLine("If the current box includes sibling shader/code properties above, inspect them before claiming they are unavailable.")
+        }.trim()
+    }
+
     data class HighLevelResult(
         val editedCode: String,
         val commentary: List<String>,
@@ -106,14 +119,26 @@ class IdeChatHelpers(
             ctx = ctx
         )
 
+        val attachmentNote = attachmentContextNote(attachments)
+        val prompt = buildString {
+            append(instructions)
+            if (attachmentNote.isNotBlank()) {
+                append("\n\n")
+                append(attachmentNote)
+            }
+            append("\n\n")
+            append(userPrompt)
+        }
+
         return bridge.send(
             state,
-            "$instructions\n\n$userPrompt",
+            prompt,
             fileText = code,
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
             imageDataUrls = imageUrls,
-            onTextDelta = onTextDelta
+            onTextDelta = onTextDelta,
+            maxOutputTokens = 10000
         )
     }
 

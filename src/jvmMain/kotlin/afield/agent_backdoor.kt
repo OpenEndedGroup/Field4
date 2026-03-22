@@ -447,6 +447,34 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    handlers["agent-playwright-input"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val request = Json.decodeFromJsonElement<AgentPlaywrightInputRequest>(message.payload!!)
+        playwrightScope.launch {
+            val response = runCatching {
+                val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
+                if (currentPage == null) {
+                    ensurePlaywrightForSessionIfNeeded(info)
+                }
+                performPlaywrightInput(info, request)
+            }.getOrElse { throwable ->
+                lprintln("warning,agent_backdoor", "playwright input failed for ${request.action}: ${throwable.message}")
+                AgentPlaywrightInputResponse(
+                    ok = false,
+                    action = request.action,
+                    key = request.key,
+                    uid = request.uid,
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    sessionKey = info.filename,
+                    message = throwable.message ?: throwable::class.simpleName ?: "Unknown Playwright input error"
+                )
+            }
+            reply(Message("agent-playwright-input").payload(response))
+        }
+        Handled.yes
+    })
+
     handlers["agent-run-jvm-main"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentRunJvmMainRequest>(message.payload!!)
         agentBackdoorScope.launch {

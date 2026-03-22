@@ -236,16 +236,24 @@ class DocsSearchBridge(
     }
 
     private fun createResponse(params: ResponseCreateParams, onTextDelta: (String) -> Unit): Response {
-        val acc = ResponseAccumulator.create()
-        client.async().responses().createStreaming(params).subscribe({ event ->
-            acc.accumulate(event)
-            event.outputTextDelta().ifPresent { delta ->
-                val chunk = delta.delta()
-                if (chunk.isNotEmpty()) onTextDelta(chunk)
-            }
-        }).onCompleteFuture().join()
+        return try {
+            val acc = ResponseAccumulator.create()
+            client.async().responses().createStreaming(params).subscribe({ event ->
+                acc.accumulate(event)
+                event.outputTextDelta().ifPresent { delta ->
+                    val chunk = delta.delta()
+                    if (chunk.isNotEmpty()) onTextDelta(chunk)
+                }
+            }).onCompleteFuture().join()
 
-        return acc.response()
+            acc.response()
+        } catch (t: Throwable) {
+            warn(
+                "streaming response failed; falling back to non-streaming create. " +
+                    "cause=${renderThrowableChain(t)}"
+            )
+            client.responses().create(params)
+        }
     }
 
     private fun isMissingModelError(error: Throwable): Boolean {
@@ -274,6 +282,23 @@ class DocsSearchBridge(
             }
         }
         return parts.joinToString(separator = "\n").trimEnd()
+    }
+
+    private fun renderThrowableChain(error: Throwable): String {
+        val seen = linkedSetOf<String>()
+        var cursor: Throwable? = error
+        while (cursor != null) {
+            val label = buildString {
+                append(cursor::class.java.simpleName.ifBlank { cursor::class.java.name })
+                cursor.message?.takeIf { it.isNotBlank() }?.let {
+                    append(": ")
+                    append(it)
+                }
+            }
+            seen += label
+            cursor = cursor.cause
+        }
+        return seen.joinToString(" <- ")
     }
     
     data class SearchResult(

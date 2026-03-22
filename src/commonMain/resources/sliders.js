@@ -98,6 +98,772 @@ window.__flineHoverOut = function(groupEl) {
     });
 };
 
+// Editable FLine SVG editor -----------------------------------------------
+
+(function() {
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var DRAG_START_DISTANCE = 3;
+
+    function svgEl(name, attrs) {
+        var el = document.createElementNS(SVG_NS, name);
+        Object.keys(attrs || {}).forEach(function(key) {
+            if (attrs[key] !== undefined && attrs[key] !== null) {
+                el.setAttribute(key, String(attrs[key]));
+            }
+        });
+        return el;
+    }
+
+    function pointRef(lineIndex, nodeIndex, handle) {
+        return { lineIndex: lineIndex, nodeIndex: nodeIndex, handle: handle };
+    }
+
+    function pointRefKey(ref) {
+        return ref.lineIndex + ':' + ref.nodeIndex + ':' + ref.handle;
+    }
+
+    function itemKey(kind, parts) {
+        return kind + ':' + parts.join(':');
+    }
+
+    function cloneRef(ref) {
+        return { lineIndex: ref.lineIndex, nodeIndex: ref.nodeIndex, handle: ref.handle };
+    }
+
+    function cloneRefs(refs) {
+        return refs.map(cloneRef);
+    }
+
+    function uniqueRefs(refs) {
+        var seen = new Set();
+        var out = [];
+        refs.forEach(function(ref) {
+            var key = pointRefKey(ref);
+            if (!seen.has(key)) {
+                seen.add(key);
+                out.push(cloneRef(ref));
+            }
+        });
+        return out;
+    }
+
+    function getSvgPoint(svg, event) {
+        var rect = svg.getBoundingClientRect();
+        var viewBox = svg.viewBox.baseVal;
+        var scaleX = rect.width === 0 ? 1 : viewBox.width / rect.width;
+        var scaleY = rect.height === 0 ? 1 : viewBox.height / rect.height;
+        return {
+            x: viewBox.x + (event.clientX - rect.left) * scaleX,
+            y: viewBox.y + (event.clientY - rect.top) * scaleY
+        };
+    }
+
+    function buildLinePath(nodes) {
+        var path = [];
+        var first = true;
+        nodes.forEach(function(node) {
+            if (node.kind === 'move') {
+                path.push('M' + node.to[0] + ',' + node.to[1]);
+                first = false;
+            } else if (node.kind === 'line') {
+                if (first) path.push('M' + node.to[0] + ',' + node.to[1]);
+                else path.push('L' + node.to[0] + ',' + node.to[1]);
+                first = false;
+            } else if (node.kind === 'cubic') {
+                if (first) path.push('M' + node.to[0] + ',' + node.to[1]);
+                else {
+                    path.push(
+                        'C' +
+                        node.c1[0] + ',' + node.c1[1] + ' ' +
+                        node.c2[0] + ',' + node.c2[1] + ' ' +
+                        node.to[0] + ',' + node.to[1]
+                    );
+                }
+                first = false;
+            } else if (node.kind === 'close') {
+                path.push('Z');
+            }
+        });
+        return path.join(' ');
+    }
+
+    function bboxFromPoints(points) {
+        if (!points.length) return { x: 0, y: 0, w: 0, h: 0 };
+        var minX = points[0][0];
+        var minY = points[0][1];
+        var maxX = points[0][0];
+        var maxY = points[0][1];
+        points.forEach(function(p) {
+            minX = Math.min(minX, p[0]);
+            minY = Math.min(minY, p[1]);
+            maxX = Math.max(maxX, p[0]);
+            maxY = Math.max(maxY, p[1]);
+        });
+        return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    }
+
+    function rectNormalized(marquee) {
+        return {
+            x: Math.min(marquee.x0, marquee.x1),
+            y: Math.min(marquee.y0, marquee.y1),
+            w: Math.abs(marquee.x1 - marquee.x0),
+            h: Math.abs(marquee.y1 - marquee.y0)
+        };
+    }
+
+    function rectContainsPoint(rect, x, y) {
+        return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+    }
+
+    function rectIntersectsBBox(rect, bbox) {
+        return rect.x <= bbox.x + bbox.w &&
+            rect.x + rect.w >= bbox.x &&
+            rect.y <= bbox.y + bbox.h &&
+            rect.y + rect.h >= bbox.y;
+    }
+
+    function getNodePoint(node, handle) {
+        if (handle === 'TO') return node.to;
+        if (handle === 'C1') return node.c1;
+        if (handle === 'C2') return node.c2;
+        return null;
+    }
+
+    function translatePointRefs(scene, refs, dx, dy) {
+        uniqueRefs(refs).forEach(function(ref) {
+            var line = scene.lines[ref.lineIndex];
+            if (!line) return;
+            var node = line.nodes[ref.nodeIndex];
+            if (!node) return;
+            var pt = getNodePoint(node, ref.handle);
+            if (!pt) return;
+            pt[0] += dx;
+            pt[1] += dy;
+        });
+    }
+
+    function buildEditorItems(scene) {
+        var items = new Map();
+        var points = [];
+        var edges = [];
+        var faces = [];
+
+        scene.lines.forEach(function(line) {
+            var pieces = [];
+            var currentPiece = null;
+            var previousAnchor = null;
+            var firstAnchor = null;
+
+            function ensurePiece() {
+                if (!currentPiece) {
+                    currentPiece = {
+                        lineIndex: line.lineIndex,
+                        pieceIndex: pieces.length,
+                        nodeIndices: [],
+                        pointRefs: [],
+                        points: [],
+                        edges: [],
+                        closed: false
+                    };
+                    pieces.push(currentPiece);
+                }
+                return currentPiece;
+            }
+
+            function addPointItem(node, handle, role, point) {
+                var ref = pointRef(line.lineIndex, node.nodeIndex, handle);
+                var key = itemKey('point', [line.lineIndex, node.nodeIndex, handle]);
+                var item = {
+                    kind: 'point',
+                    key: key,
+                    pointRefs: [ref],
+                    x: point[0],
+                    y: point[1],
+                    role: role
+                };
+                items.set(key, item);
+                points.push(item);
+                return ref;
+            }
+
+            function addAnchor(node, point) {
+                var piece = ensurePiece();
+                var ref = addPointItem(node, 'TO', 'anchor', point);
+                piece.pointRefs.push(ref);
+                piece.points.push(point);
+                if (!firstAnchor) firstAnchor = ref;
+                previousAnchor = ref;
+                return ref;
+            }
+
+            line.nodes.forEach(function(node) {
+                if (node.kind === 'move') {
+                    currentPiece = null;
+                    previousAnchor = null;
+                    firstAnchor = null;
+                    var movePiece = ensurePiece();
+                    movePiece.nodeIndices.push(node.nodeIndex);
+                    addAnchor(node, node.to);
+                    return;
+                }
+
+                if (node.kind === 'line') {
+                    var linePiece = ensurePiece();
+                    linePiece.nodeIndices.push(node.nodeIndex);
+                    var previousForLine = previousAnchor ? cloneRef(previousAnchor) : null;
+                    var nextAnchor = addAnchor(node, node.to);
+                    if (previousForLine && pointRefKey(previousForLine) !== pointRefKey(nextAnchor)) {
+                        var startNode = line.nodes[previousForLine.nodeIndex];
+                        var edgePath = 'M' + startNode.to[0] + ',' + startNode.to[1] + ' L' + node.to[0] + ',' + node.to[1];
+                        var edgeItem = {
+                            kind: 'edge',
+                            key: itemKey('edge', [line.lineIndex, linePiece.pieceIndex, linePiece.edges.length]),
+                            pointRefs: [cloneRef(previousForLine), cloneRef(nextAnchor)],
+                            path: edgePath,
+                            bbox: bboxFromPoints([startNode.to, node.to])
+                        };
+                        items.set(edgeItem.key, edgeItem);
+                        edges.push(edgeItem);
+                        linePiece.edges.push(edgeItem);
+                    }
+                    previousAnchor = nextAnchor;
+                    return;
+                }
+
+                if (node.kind === 'cubic') {
+                    var cubicPiece = ensurePiece();
+                    cubicPiece.nodeIndices.push(node.nodeIndex);
+                    var previousForCubic = previousAnchor ? cloneRef(previousAnchor) : null;
+                    var c1Ref = addPointItem(node, 'C1', 'control', node.c1);
+                    var c2Ref = addPointItem(node, 'C2', 'control', node.c2);
+                    cubicPiece.pointRefs.push(c1Ref, c2Ref);
+                    cubicPiece.points.push(node.c1, node.c2);
+                    var endRef = addAnchor(node, node.to);
+                    if (previousForCubic && pointRefKey(previousForCubic) !== pointRefKey(endRef)) {
+                        var start = line.nodes[previousForCubic.nodeIndex].to;
+                        var cubicEdge = {
+                            kind: 'edge',
+                            key: itemKey('edge', [line.lineIndex, cubicPiece.pieceIndex, cubicPiece.edges.length]),
+                            pointRefs: [cloneRef(previousForCubic), cloneRef(c1Ref), cloneRef(c2Ref), cloneRef(endRef)],
+                            path: 'M' + start[0] + ',' + start[1] + ' C' +
+                                node.c1[0] + ',' + node.c1[1] + ' ' +
+                                node.c2[0] + ',' + node.c2[1] + ' ' +
+                                node.to[0] + ',' + node.to[1],
+                            bbox: bboxFromPoints([start, node.c1, node.c2, node.to])
+                        };
+                        items.set(cubicEdge.key, cubicEdge);
+                        edges.push(cubicEdge);
+                        cubicPiece.edges.push(cubicEdge);
+                    }
+                    previousAnchor = endRef;
+                    return;
+                }
+
+                if (node.kind === 'close') {
+                    var closePiece = ensurePiece();
+                    closePiece.nodeIndices.push(node.nodeIndex);
+                    closePiece.closed = true;
+                    if (previousAnchor && firstAnchor && pointRefKey(previousAnchor) !== pointRefKey(firstAnchor)) {
+                        var from = line.nodes[previousAnchor.nodeIndex].to;
+                        var to = line.nodes[firstAnchor.nodeIndex].to;
+                        var closeEdge = {
+                            kind: 'edge',
+                            key: itemKey('edge', [line.lineIndex, closePiece.pieceIndex, closePiece.edges.length]),
+                            pointRefs: [cloneRef(previousAnchor), cloneRef(firstAnchor)],
+                            path: 'M' + from[0] + ',' + from[1] + ' L' + to[0] + ',' + to[1],
+                            bbox: bboxFromPoints([from, to])
+                        };
+                        items.set(closeEdge.key, closeEdge);
+                        edges.push(closeEdge);
+                        closePiece.edges.push(closeEdge);
+                    }
+                    currentPiece = null;
+                    previousAnchor = null;
+                    firstAnchor = null;
+                }
+            });
+
+            pieces.forEach(function(piece) {
+                if (!piece.nodeIndices.length) return;
+                if (!piece.closed) return;
+                var pieceNodes = piece.nodeIndices.map(function(index) { return line.nodes[index]; });
+                var faceItem = {
+                    kind: 'face',
+                    key: itemKey('face', [line.lineIndex, piece.pieceIndex]),
+                    pointRefs: uniqueRefs(piece.pointRefs),
+                    path: buildLinePath(pieceNodes),
+                    bbox: bboxFromPoints(piece.points)
+                };
+                items.set(faceItem.key, faceItem);
+                faces.push(faceItem);
+            });
+        });
+
+        return { items: items, points: points, edges: edges, faces: faces };
+    }
+
+    function selectedItems(state) {
+        return Array.from(state.selection).map(function(key) {
+            return state.items.get(key);
+        }).filter(Boolean);
+    }
+
+    function selectionRefs(state) {
+        var refs = [];
+        selectedItems(state).forEach(function(item) {
+            refs = refs.concat(item.pointRefs || []);
+        });
+        return uniqueRefs(refs);
+    }
+
+    function updateStatus(state) {
+        var counts = { point: 0, edge: 0, face: 0 };
+        selectedItems(state).forEach(function(item) {
+            counts[item.kind] = (counts[item.kind] || 0) + 1;
+        });
+        var parts = [];
+        if (counts.point) parts.push(counts.point + ' point' + (counts.point === 1 ? '' : 's'));
+        if (counts.edge) parts.push(counts.edge + ' edge' + (counts.edge === 1 ? '' : 's'));
+        if (counts.face) parts.push(counts.face + ' face' + (counts.face === 1 ? '' : 's'));
+        if (parts.length) {
+            state.status.textContent = parts.join(' | ');
+            state.status.classList.remove('is-empty');
+        } else {
+            state.status.textContent = '';
+            state.status.classList.add('is-empty');
+        }
+    }
+
+    function applySelection(state, keys, additive) {
+        var next = additive ? new Set(state.selection) : new Set();
+        keys.forEach(function(key) { next.add(key); });
+        state.selection = next;
+        renderFLineEditor(state);
+    }
+
+    function toggleSelection(state, key) {
+        var next = new Set(state.selection);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        state.selection = next;
+        renderFLineEditor(state);
+    }
+
+    function sendFLineTranslate(sessionId, refs, dx, dy) {
+        if (!refs.length) return;
+        sendViaAfield('fline-edit-translate', {
+            sessionId: sessionId,
+            points: uniqueRefs(refs),
+            dx: dx,
+            dy: dy,
+            dz: 0,
+            space: 'VIEW'
+        });
+    }
+
+    function hitElementFromEvent(event) {
+        if (!event.target || !event.target.closest) return null;
+        return event.target.closest('[data-fline-hit-kind]');
+    }
+
+    function marqueeSelection(state, rect) {
+        var keys = [];
+        if (state.mask.point) {
+            state.points.forEach(function(item) {
+                if (rectContainsPoint(rect, item.x, item.y)) keys.push(item.key);
+            });
+        }
+        if (state.mask.edge) {
+            state.edges.forEach(function(item) {
+                if (rectIntersectsBBox(rect, item.bbox)) keys.push(item.key);
+            });
+        }
+        if (state.mask.face) {
+            state.faces.forEach(function(item) {
+                if (rectIntersectsBBox(rect, item.bbox)) keys.push(item.key);
+            });
+        }
+        return keys;
+    }
+
+    function renderFLineEditor(state) {
+        var derived = buildEditorItems(state.scene);
+        state.items = derived.items;
+        state.points = derived.points;
+        state.edges = derived.edges;
+        state.faces = derived.faces;
+
+        if (state.overlay) {
+            state.overlay.classList.toggle('is-hidden', !state.uiVisible);
+        }
+
+        var svg = state.svg;
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+        var selectedRefKeys = new Set(selectionRefs(state).map(pointRefKey));
+        var visibleControls = state.uiVisible && (state.mask.point || selectedRefKeys.size > 0);
+        var visibleSelections = state.uiVisible;
+
+        var faceSelectionLayer = svgEl('g', { 'data-layer': 'face-selection' });
+        var geometryLayer = svgEl('g', { 'data-layer': 'geometry' });
+        var edgeSelectionLayer = svgEl('g', { 'data-layer': 'edge-selection' });
+        var controlLayer = svgEl('g', { 'data-layer': 'controls' });
+        var pointLayer = svgEl('g', { 'data-layer': 'points' });
+        var interactionLayer = svgEl('g', { 'data-layer': 'interaction' });
+        var marqueeLayer = svgEl('g', { 'data-layer': 'marquee' });
+
+        state.faces.forEach(function(face) {
+            if (visibleSelections && state.selection.has(face.key)) {
+                faceSelectionLayer.appendChild(svgEl('path', {
+                    d: face.path,
+                    fill: 'var(--fline-editor-selection-soft)',
+                    stroke: 'var(--fline-editor-selection)',
+                    'stroke-width': 1.5
+                }));
+            }
+            if (state.mask.face) {
+                interactionLayer.appendChild(svgEl('path', {
+                    d: face.path,
+                    fill: 'rgba(0,0,0,0)',
+                    stroke: 'none',
+                    'pointer-events': 'fill',
+                    'data-fline-hit-kind': 'face',
+                    'data-key': face.key
+                }));
+            }
+        });
+
+        state.scene.lines.forEach(function(line) {
+            var pathData = buildLinePath(line.nodes);
+            if (pathData) {
+                geometryLayer.appendChild(svgEl('path', {
+                    d: pathData,
+                    fill: line.filled ? line.color : 'none',
+                    stroke: line.stroked ? line.color : 'none',
+                    'stroke-width': line.thickness
+                }));
+            }
+            if (line.pointed) {
+                line.nodes.forEach(function(node) {
+                    if (!node.to) return;
+                    geometryLayer.appendChild(svgEl('circle', {
+                        cx: node.to[0],
+                        cy: node.to[1],
+                        r: Math.max(1.5, line.pointSize * 3.0),
+                        fill: line.color
+                    }));
+                });
+            }
+        });
+
+        state.edges.forEach(function(edge) {
+            if (visibleSelections && state.selection.has(edge.key)) {
+                edgeSelectionLayer.appendChild(svgEl('path', {
+                    d: edge.path,
+                    fill: 'none',
+                    stroke: 'var(--fline-editor-selection)',
+                    'stroke-width': 4,
+                    'stroke-linecap': 'round',
+                    'stroke-linejoin': 'round',
+                    opacity: 0.95
+                }));
+            }
+            if (state.mask.edge) {
+                interactionLayer.appendChild(svgEl('path', {
+                    d: edge.path,
+                    fill: 'none',
+                    stroke: 'rgba(0,0,0,0)',
+                    'stroke-width': 12,
+                    'stroke-linecap': 'round',
+                    'stroke-linejoin': 'round',
+                    'pointer-events': 'stroke',
+                    'data-fline-hit-kind': 'edge',
+                    'data-key': edge.key
+                }));
+            }
+        });
+
+        if (visibleControls) {
+            state.scene.lines.forEach(function(line) {
+                var previousAnchor = null;
+                line.nodes.forEach(function(node) {
+                    if (node.kind === 'move') {
+                        previousAnchor = node.to;
+                        return;
+                    }
+                    if (node.kind === 'line') {
+                        previousAnchor = node.to;
+                        return;
+                    }
+                    if (node.kind === 'cubic' && previousAnchor) {
+                        controlLayer.appendChild(svgEl('line', {
+                            x1: previousAnchor[0],
+                            y1: previousAnchor[1],
+                            x2: node.c1[0],
+                            y2: node.c1[1],
+                            stroke: 'rgba(136, 190, 214, 0.42)',
+                            'stroke-width': 1,
+                            'stroke-dasharray': '4 4'
+                        }));
+                        controlLayer.appendChild(svgEl('line', {
+                            x1: node.to[0],
+                            y1: node.to[1],
+                            x2: node.c2[0],
+                            y2: node.c2[1],
+                            stroke: 'rgba(136, 190, 214, 0.42)',
+                            'stroke-width': 1,
+                            'stroke-dasharray': '4 4'
+                        }));
+                        previousAnchor = node.to;
+                    } else if (node.kind === 'cubic') {
+                        previousAnchor = node.to;
+                    } else if (node.kind === 'close') {
+                        previousAnchor = null;
+                    }
+                });
+            });
+        }
+
+        if (visibleControls) {
+            state.points.forEach(function(item) {
+                var refKey = pointRefKey(item.pointRefs[0]);
+                var selected = selectedRefKeys.has(refKey) || state.selection.has(item.key);
+                var radius = item.role === 'control' ? 4.2 : 5.5;
+                var fill = item.role === 'control' ? '#0f1a22' : '#081117';
+                var stroke = selected ? 'var(--fline-editor-selection)' : 'var(--fline-editor-accent)';
+                pointLayer.appendChild(svgEl('circle', {
+                    cx: item.x,
+                    cy: item.y,
+                    r: selected ? radius + 1.8 : radius,
+                    fill: fill,
+                    stroke: stroke,
+                    'stroke-width': selected ? 2.2 : 1.6,
+                    opacity: selected || state.mask.point ? 1 : 0.0
+                }));
+                if (state.mask.point) {
+                    interactionLayer.appendChild(svgEl('circle', {
+                        cx: item.x,
+                        cy: item.y,
+                        r: radius + 5,
+                        fill: 'rgba(0,0,0,0)',
+                        'pointer-events': 'all',
+                        'data-fline-hit-kind': 'point',
+                        'data-key': item.key
+                    }));
+                }
+            });
+        }
+
+        if (state.marquee) {
+            var rect = rectNormalized(state.marquee);
+            marqueeLayer.appendChild(svgEl('rect', {
+                x: rect.x,
+                y: rect.y,
+                width: rect.w,
+                height: rect.h,
+                fill: 'rgba(98, 215, 255, 0.10)',
+                stroke: 'rgba(98, 215, 255, 0.86)',
+                'stroke-width': 1,
+                'stroke-dasharray': '6 4'
+            }));
+        }
+
+        svg.appendChild(faceSelectionLayer);
+        svg.appendChild(geometryLayer);
+        svg.appendChild(edgeSelectionLayer);
+        svg.appendChild(controlLayer);
+        svg.appendChild(pointLayer);
+        svg.appendChild(interactionLayer);
+        svg.appendChild(marqueeLayer);
+
+        updateStatus(state);
+    }
+
+    function wireToolbar(root, state) {
+        root.querySelectorAll('[data-mask-button]').forEach(function(button) {
+            var mask = button.getAttribute('data-mask-button');
+            if (!mask) return;
+            button.classList.toggle('is-active', !!state.mask[mask]);
+            button.addEventListener('click', function() {
+                state.mask[mask] = !state.mask[mask];
+                button.classList.toggle('is-active', !!state.mask[mask]);
+                renderFLineEditor(state);
+            });
+        });
+    }
+
+    function initializeEditor(root) {
+        if (!root || root.__fieldFLineEditorInitialized) return;
+        var sceneScript = root.querySelector('.field-fline-editor-scene');
+        var svg = root.querySelector('.field-fline-editor-canvas');
+        var status = root.querySelector('[data-role="status"]');
+        var overlay = root.querySelector('.field-fline-editor-overlay');
+        if (!sceneScript || !svg || !status) return;
+
+        root.tabIndex = 0;
+
+        var scene = JSON.parse(sceneScript.textContent || '{}');
+        var state = {
+            root: root,
+            svg: svg,
+            status: status,
+            overlay: overlay,
+            scene: scene,
+            mask: { point: true, edge: true, face: true },
+            uiVisible: true,
+            selection: new Set(),
+            marquee: null,
+            dragging: null,
+            pointerDown: null,
+            items: new Map(),
+            points: [],
+            edges: [],
+            faces: []
+        };
+
+        root.__fieldFLineEditorInitialized = true;
+        root.__fieldFLineEditorState = state;
+
+        wireToolbar(root, state);
+        renderFLineEditor(state);
+
+        root.addEventListener('keydown', function(event) {
+            if (event.key !== 'e' && event.key !== 'E') return;
+            var target = event.target;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+            state.uiVisible = !state.uiVisible;
+            renderFLineEditor(state);
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
+        svg.addEventListener('pointerdown', function(event) {
+            root.focus();
+            var pt = getSvgPoint(svg, event);
+            var hitEl = hitElementFromEvent(event);
+            var hitKey = hitEl ? hitEl.getAttribute('data-key') : null;
+            state.pointerDown = {
+                pointerId: event.pointerId,
+                startClientX: event.clientX,
+                startClientY: event.clientY,
+                hitKey: hitKey,
+                shiftKey: !!event.shiftKey
+            };
+            try { svg.setPointerCapture(event.pointerId); } catch (_) {}
+        });
+
+        svg.addEventListener('pointermove', function(event) {
+            var pt = getSvgPoint(svg, event);
+            var down = state.pointerDown;
+
+            if (!state.dragging && !state.marquee && down && down.pointerId === event.pointerId) {
+                var dxScreen = event.clientX - down.startClientX;
+                var dyScreen = event.clientY - down.startClientY;
+                var movedEnough = Math.hypot(dxScreen, dyScreen) >= DRAG_START_DISTANCE;
+                if (movedEnough) {
+                    if (down.hitKey) {
+                        if (!state.selection.has(down.hitKey)) {
+                            var expanded = new Set(state.selection);
+                            expanded.add(down.hitKey);
+                            state.selection = expanded;
+                        }
+                        var refs = selectionRefs(state);
+                        if (!refs.length) {
+                            var downItem = state.items.get(down.hitKey);
+                            refs = downItem ? uniqueRefs(downItem.pointRefs || []) : [];
+                        }
+                        if (refs.length) {
+                            state.dragging = {
+                                pointerId: event.pointerId,
+                                lastX: pt.x,
+                                lastY: pt.y,
+                                refs: refs
+                            };
+                        }
+                    } else {
+                        state.marquee = {
+                            x0: pt.x,
+                            y0: pt.y,
+                            x1: pt.x,
+                            y1: pt.y,
+                            additive: !!down.shiftKey,
+                            pointerId: event.pointerId
+                        };
+                    }
+                    if (state.dragging || state.marquee) {
+                        renderFLineEditor(state);
+                        event.preventDefault();
+                    }
+                }
+            }
+
+            if (state.marquee && state.marquee.pointerId === event.pointerId) {
+                state.marquee.x1 = pt.x;
+                state.marquee.y1 = pt.y;
+                renderFLineEditor(state);
+                event.preventDefault();
+                return;
+            }
+            if (state.dragging && state.dragging.pointerId === event.pointerId) {
+                var dx = pt.x - state.dragging.lastX;
+                var dy = pt.y - state.dragging.lastY;
+                if (dx !== 0 || dy !== 0) {
+                    translatePointRefs(state.scene, state.dragging.refs, dx, dy);
+                    sendFLineTranslate(state.scene.sessionId, state.dragging.refs, dx, dy);
+                    state.dragging.lastX = pt.x;
+                    state.dragging.lastY = pt.y;
+                    renderFLineEditor(state);
+                }
+                event.preventDefault();
+            }
+        });
+
+        function finishPointer(event) {
+            var hadMarquee = !!(state.marquee && state.marquee.pointerId === event.pointerId);
+            var hadDragging = !!(state.dragging && state.dragging.pointerId === event.pointerId);
+
+            if (state.marquee && state.marquee.pointerId === event.pointerId) {
+                var rect = rectNormalized(state.marquee);
+                var keys = marqueeSelection(state, rect);
+                var additive = state.marquee.additive;
+                state.marquee = null;
+                applySelection(state, keys, additive);
+            }
+            if (state.dragging && state.dragging.pointerId === event.pointerId) {
+                state.dragging = null;
+                renderFLineEditor(state);
+            }
+
+            var down = state.pointerDown;
+            if (down && down.pointerId === event.pointerId) {
+                if (!hadMarquee && !hadDragging) {
+                    if (down.hitKey) {
+                        if (down.shiftKey) toggleSelection(state, down.hitKey);
+                        else applySelection(state, [down.hitKey], false);
+                    } else if (!down.shiftKey && state.selection.size > 0) {
+                        state.selection = new Set();
+                        renderFLineEditor(state);
+                    }
+                }
+                state.pointerDown = null;
+            }
+
+            try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
+        }
+
+        svg.addEventListener('pointerup', finishPointer);
+        svg.addEventListener('pointercancel', finishPointer);
+    }
+
+    window.initializeFLineEditors = function(root) {
+        if (root) {
+            initializeEditor(root);
+            return;
+        }
+        document.querySelectorAll('[data-field-fline-editor="true"]').forEach(initializeEditor);
+    };
+})();
+
 // Small helpers for the new vector UI
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 const snap = (v, step, min) => {

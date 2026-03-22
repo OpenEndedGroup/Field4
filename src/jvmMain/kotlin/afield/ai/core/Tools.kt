@@ -29,10 +29,16 @@ data class ListAttachmentsResult(val attachments: List<AttachmentInfo>)
 data class AttachmentInfo(val file: String, val language: String)
 
 /** Tool: retrieve an attached file's contents by name. */
-@JsonClassDescription("Retrieve the code content of an attached file by its name.")
+@JsonClassDescription("Retrieve the code content of an attached file by its name. Responses may also include relatedGuides and relatedExamples paths.")
 data class AttachmentRequest(val file: String)
 
-data class AttachmentResponse(val file: String, val language: String, val content: String)
+data class AttachmentResponse(
+    val file: String,
+    val language: String,
+    val content: String,
+    val relatedGuides: List<String> = emptyList(),
+    val relatedExamples: List<String> = emptyList()
+)
 
 /** Kotlin-only tools -------------------------------------------------------- */
 
@@ -68,7 +74,7 @@ data class EditFileRequest(val file: String, val newContent: String)
 data class EditFileResponse(val success: Boolean, val message: String? = null)
 
 /** Example tool (optional) ------------------------------------------------- */
-@JsonClassDescription("Looks up symbols in the IDE workspace index.")
+@JsonClassDescription("Looks up symbols in the IDE workspace index. Results may include relatedGuides and relatedExamples paths.")
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25)
 
 data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
@@ -80,7 +86,9 @@ data class WorkspaceSymbolMatch(
     val fileId: String? = null,
     val line: Int? = null,
     val definitionLine: String? = null,
-    val definitionBody: String? = null
+    val definitionBody: String? = null,
+    val relatedGuides: List<String> = emptyList(),
+    val relatedExamples: List<String> = emptyList()
 )
 
 /** CLI example tools -------------------------------------------------------- */

@@ -274,6 +274,43 @@ private fun svgContentClientRect(svg: SVGElement): Rect? = runCatching {
     Rect(left, top, width, height).expand(8.0)
 }.getOrNull()
 
+private fun svgGraphicClientRect(element: SVGElement): Rect? = runCatching {
+    val bbox = element.asDynamic().getBBox?.invoke() ?: return@runCatching null
+    val ctm = element.asDynamic().getScreenCTM?.invoke() ?: return@runCatching null
+    val pointFactory = (element.asDynamic().ownerSVGElement ?: element).asDynamic().createSVGPoint ?: return@runCatching null
+    val x = (bbox.x as? Number)?.toDouble() ?: return@runCatching null
+    val y = (bbox.y as? Number)?.toDouble() ?: return@runCatching null
+    val w = (bbox.width as? Number)?.toDouble() ?: return@runCatching null
+    val h = (bbox.height as? Number)?.toDouble() ?: return@runCatching null
+    if (w <= 0.0 || h <= 0.0) return@runCatching null
+
+    fun point(px: Double, py: Double): Pair<Double, Double>? {
+        val p = pointFactory.invoke() ?: return null
+        p.x = px
+        p.y = py
+        val transformed = p.matrixTransform(ctm)
+        val tx = (transformed.x as? Number)?.toDouble() ?: return null
+        val ty = (transformed.y as? Number)?.toDouble() ?: return null
+        return tx to ty
+    }
+
+    val corners = listOfNotNull(
+        point(x, y),
+        point(x + w, y),
+        point(x, y + h),
+        point(x + w, y + h)
+    )
+    if (corners.isEmpty()) return@runCatching null
+    val left = corners.minOf { it.first }
+    val top = corners.minOf { it.second }
+    val right = corners.maxOf { it.first }
+    val bottom = corners.maxOf { it.second }
+    val width = right - left
+    val height = bottom - top
+    if (width <= 0.0 || height <= 0.0) return@runCatching null
+    Rect(left, top, width, height).expand(8.0)
+}.getOrNull()
+
 private fun svgIntrinsicWidth(svg: SVGElement): Double {
     val widthAttr = svg.getAttribute("width")
         ?.removeSuffix("px")
@@ -383,6 +420,94 @@ private fun clipForVisibleElement(element: HTMLElement, padding: Double): Rect? 
         .expand(max(0.0, padding))
         .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
     return clipForPageRect(pageRect)
+}
+
+private fun visibleDocsIframeElement(): HTMLElement? {
+    val iframe = document.getElementById("docs-iframe") as? HTMLElement
+    if (iframe != null && isOverlayVisible(iframe)) return iframe
+    val container = document.querySelector(".docs-iframe-container") as? HTMLElement ?: return null
+    return if (isOverlayVisible(container)) container else null
+}
+
+private fun clipForVisibleDocsIframe(padding: Double): Rect? {
+    val element = visibleDocsIframeElement() ?: return null
+    val maxHeight = 1120.0
+    val pageRect = domRectToRect(element.getBoundingClientRect())
+        .expand(max(0.0, padding))
+        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    val clippedHeight = min(pageRect.h, maxHeight)
+    return clipForPageRect(Rect(pageRect.x, pageRect.y, pageRect.w, clippedHeight))
+}
+
+private fun pageRectForElement(element: HTMLElement): Rect =
+    domRectToRect(element.getBoundingClientRect())
+        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+
+private fun visibleSlideNoteOverlay(): HTMLElement? {
+    val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return null
+    if (!isOverlayVisible(overlay)) return null
+    if (overlay.style.display == "none") return null
+    return overlay
+}
+
+private fun guideAnnotationScreenshotRect(): Rect? {
+    if (currentAnnotations.isEmpty()) return null
+    val layer = document.getElementById("slide-annotation-layer") as? SVGSVGElement ?: return null
+    if (!isOverlayVisible(layer)) return null
+    val group = layer.querySelector("[data-name=\"slideAnnotations\"]") as? SVGElement ?: return null
+    return svgGraphicClientRect(group)
+}
+
+private fun snapGuideScreenshotRect(): Rect? {
+    val group = document.querySelector("#snap-guides") as? SVGElement ?: return null
+    if (!isOverlayVisible(group)) return null
+    return svgGraphicClientRect(group)
+}
+
+private fun activeSnapReferenceScreenshotRects(): List<Rect> =
+    boxSnappingSystem.activeSnapReferenceBoxes().map { domRectToRect(it.getBoundingClientRect()) }
+
+private fun spatialNavScreenshotRects(): List<Rect> {
+    if (!spatialNavActive) return emptyList()
+    val rects = mutableListOf<Rect>()
+    val selectors = listOf(
+        ".spatial-nav-highlight",
+        ".spatial-nav-badge",
+        ".spatial-nav-bookmark-badge",
+        ".spatial-nav-lines"
+    )
+    selectors.forEach { selector ->
+        document.querySelectorAll(selector).asList().forEach { node ->
+            val element = node as? HTMLElement ?: return@forEach
+            if (!isOverlayVisible(element)) return@forEach
+            val rect = domRectToRect(element.getBoundingClientRect())
+            if (rect.w > 0.0 && rect.h > 0.0) rects.add(rect)
+        }
+    }
+    document.querySelectorAll("svg.spatial-nav-lines").asList().forEach { node ->
+        val svg = node as? SVGElement ?: return@forEach
+        if (!isOverlayVisible(svg)) return@forEach
+        svgGraphicClientRect(svg)?.let { rects.add(it) }
+    }
+    return rects
+}
+
+private fun collectGuideScreenshotRects(box: HTMLElement): List<Rect> {
+    val rects = mutableListOf<Rect>()
+    visibleSlideNoteOverlay()?.let { rects.add(domRectToRect(it.getBoundingClientRect())) }
+    guideAnnotationScreenshotRect()?.let { rects.add(it) }
+    snapGuideScreenshotRect()?.let { rects.add(it) }
+    rects.addAll(activeSnapReferenceScreenshotRects())
+    rects.addAll(spatialNavScreenshotRects())
+    return rects
+}
+
+private fun clipForWindowEditorCapture(box: HTMLElement, padding: Double): Rect? {
+    val rects = mutableListOf(pageRectForElement(box))
+    visibleSlideNoteOverlay()?.let { rects.add(pageRectForElement(it)) }
+    clipForRenderedEditorContent(0.0)?.let { rects.add(it) }
+    val union = unionRects(rects) ?: return null
+    return clipForPageRect(union.expand(max(0.0, padding)))
 }
 
 private fun clipForRenderedEditorContent(padding: Double): Rect? {
@@ -1104,7 +1229,9 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         }
     }
 
-    val padded = targetRect.expand(req.padding)
+    val guideAwareRect = unionRects(listOf(targetRect) + collectGuideScreenshotRects(box)) ?: targetRect
+
+    val padded = guideAwareRect.expand(req.padding)
     val clip = padded.translate(window.scrollX.toDouble(), window.scrollY.toDouble())
     val viewport = Rect(
         window.scrollX.toDouble(),
@@ -1180,6 +1307,28 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
         val clip = clipForRenderedEditorContent(req.padding)
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = true,
+            clip = clip,
+            viewport = viewport
+        )
+    }
+
+    if (req.showEditor && box != null) {
+        val clip = clipForWindowEditorCapture(box, req.padding)
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid window-editor clip")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = true,
+            clip = clip,
+            viewport = viewport
+        )
+    }
+
+    visibleDocsIframeElement()?.let {
+        val clip = clipForVisibleDocsIframe(req.padding)
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid docs iframe clip")
         return WindowScreenshotResponse(
             uid = req.uid,
             success = true,
@@ -3065,8 +3214,8 @@ suspend fun main() {
 
         var found = defaultCreate(u)
 
-        when (set.property) {
-            "name" -> {
+        when {
+            set.property == "name" -> {
                 if (found === null) {
                     mainCanvas.append {
                         createBox(set.value, frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
@@ -3077,75 +3226,80 @@ suspend fun main() {
                 found.unsafeCast<dynamic>().name = set.value
             }
 
-            "code" -> {
+            set.property == "code" -> {
                 found.unsafeCast<dynamic>().code = set.value
                 notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, "code", set.value)
                 notifyEmbeddedEditorOfRemoteUpdate(u, "code", set.value)
             }
 
-            "code_editorState" -> {
-                found.unsafeCast<dynamic>().code_editorState = set.value
-                notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(u, "code", set.value)
+            set.property.endsWith("_editorState") -> {
+                found.unsafeCast<dynamic>()[set.property] = set.value
+                notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(
+                    u,
+                    set.property.removeSuffix("_editorState"),
+                    set.value
+                )
             }
 
-            "code_decorationState" -> {
+            set.property == "code_decorationState" -> {
                 found.unsafeCast<dynamic>().decorSpec = set.value
                 val sv = JSON.parse<dynamic>(set.value)
                 setDecorationsForEditor(u, "code",found.unsafeCast<HTMLElement>(), sv)
             }
 
-            "code_language" -> {
+            set.property == "code_language" -> {
                 if (set.value != found.unsafeCast<dynamic>().code_language) {
                     found.unsafeCast<dynamic>().code_language = set.value
                     notifyPotentialEditedPropertyHasHadLanguageChanged(u, "code", set.value)
                 }
             }
 
-            "fragment" -> {
-                found.unsafeCast<dynamic>().fragment = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
-            }
+            else -> when (set.property) {
+                "fragment" -> {
+                    found.unsafeCast<dynamic>().fragment = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
+                }
 
-            "task" -> {
-                found.unsafeCast<dynamic>().task = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "task", set.value)
-            }
+                "task" -> {
+                    found.unsafeCast<dynamic>().task = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "task", set.value)
+                }
 
-            "mesh" -> {
-                found.unsafeCast<dynamic>().mesh = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "mesh", set.value)
-            }
+                "mesh" -> {
+                    found.unsafeCast<dynamic>().mesh = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "mesh", set.value)
+                }
 
-            "metadata" -> {
-                found.unsafeCast<dynamic>().metadata = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "metadata", set.value)
-            }
+                "metadata" -> {
+                    found.unsafeCast<dynamic>().metadata = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "metadata", set.value)
+                }
 
-            "compute" -> {
-                found.unsafeCast<dynamic>().compute = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "compute", set.value)
-            }
+                "compute" -> {
+                    found.unsafeCast<dynamic>().compute = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "compute", set.value)
+                }
 
-            "preamble" -> {
-                found.unsafeCast<dynamic>().preamble = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "preamble", set.value)
-            }
+                "preamble" -> {
+                    found.unsafeCast<dynamic>().preamble = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "preamble", set.value)
+                }
 
-            "introduction" -> {
-                found.unsafeCast<dynamic>().introduction = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "introduction", set.value)
-            }
+                "introduction" -> {
+                    found.unsafeCast<dynamic>().introduction = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "introduction", set.value)
+                }
 
-            "vertex" -> {
-                found.unsafeCast<dynamic>().vertex = set.value
-                notifyEmbeddedEditorOfRemoteUpdate(u, "vertex", set.value)
-            }
+                "vertex" -> {
+                    found.unsafeCast<dynamic>().vertex = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "vertex", set.value)
+                }
 
-            "customization" -> {
-                handleCustomizationRequest(found as HTMLElement, set)
-            }
+                "customization" -> {
+                    handleCustomizationRequest(found as HTMLElement, set)
+                }
 
-            "layers" -> {
+                "layers" -> {
                 layerDebugLog(
                     "recv set-string layers",
                     json(
@@ -3157,15 +3311,16 @@ suspend fun main() {
                 found.unsafeCast<dynamic>().box_layers = set.value
                 updateAllBoxVisibility()
                 canvasGestures.rebuildConnectionGroup()
-            }
+                }
 
-            "layerFrames" -> {
-                // layerFrames comes as a JSON string representation of Map<String, Rect>
-                try {
-                    val parsed = JSON.parse<dynamic>(set.value)
-                    found.unsafeCast<dynamic>().box_layerFrames = parsed
-                } catch (e: Exception) {
-                    console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
+                "layerFrames" -> {
+                    // layerFrames comes as a JSON string representation of Map<String, Rect>
+                    try {
+                        val parsed = JSON.parse<dynamic>(set.value)
+                        found.unsafeCast<dynamic>().box_layerFrames = parsed
+                    } catch (e: Exception) {
+                        console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
+                    }
                 }
             }
         }

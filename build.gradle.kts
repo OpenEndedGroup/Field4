@@ -295,7 +295,7 @@ kotlin {
                 implementation("org.ow2.asm:asm-util:7.3.1")
 
                 implementation("com.aallam.openai:openai-client:4.0.1")
-                implementation("com.openai:openai-java:4.13.0")
+                implementation("com.openai:openai-java:4.29.0")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
@@ -360,32 +360,6 @@ kotlin {
                 implementation("org.clojure:tools.reader:1.5.1")
                 implementation("compliment:compliment:0.5.5")
                 implementation("org.clojure:data.json:2.5.0")
-
-                // Processing support
-                val jogampVersion = "2.5.0"
-                val osName = System.getProperty("os.name").lowercase()
-                val osArch = System.getProperty("os.arch").lowercase()
-                val jogampClassifier = when {
-                    osName.contains("mac") -> "natives-macosx-universal"
-                    osName.contains("linux") -> if (osArch.contains("aarch64") || osArch.contains("arm64")) {
-                        "natives-linux-aarch64"
-                    } else {
-                        "natives-linux-amd64"
-                    }
-                    osName.contains("windows") -> "natives-windows-amd64"
-                    else -> null
-                }
-
-                implementation("org.processing:core:4.3.1")
-                implementation("org.jogamp.jogl:jogl-all:$jogampVersion")
-                implementation("org.jogamp.jogl:nativewindow:$jogampVersion")
-                implementation("org.jogamp.jogl:nativewindow-main:$jogampVersion")
-                implementation("org.jogamp.gluegen:gluegen-rt:$jogampVersion")
-                if (jogampClassifier != null) {
-                    runtimeOnly("org.jogamp.jogl:jogl-all:$jogampVersion:$jogampClassifier")
-                    runtimeOnly("org.jogamp.jogl:nativewindow:$jogampVersion:$jogampClassifier")
-                    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$jogampVersion:$jogampClassifier")
-                }
 
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")

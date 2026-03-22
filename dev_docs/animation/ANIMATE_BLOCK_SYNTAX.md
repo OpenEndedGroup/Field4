@@ -26,19 +26,17 @@ The `animate` function:
 
 ## Examples
 
-### Example 1: Processing Animation
+### Example 1: Simple Frame Loop
 
 ```kotlin
 // Setup - runs once
-p.stroke(255f)
-p.strokeWeight(2f)
-val speed = 5f
+var x = 0.0
+val speed = 0.05
 
 // Animation - runs every frame
 animate {
-    p.background(0f)
-    p.fill(255f, 100f, 100f)
-    p.ellipse(p.mouseX.toFloat(), p.mouseY.toFloat(), 50f, 50f)
+    x += speed
+    println("x = $x")
 }
 ```
 
@@ -46,26 +44,14 @@ animate {
 
 ```kotlin
 // Initialize variables - runs once
-var x = 100f
-var y = 100f
-var vx = 2f
-var vy = 3f
+var position = 0.0
+var velocity = 0.12
 
 // Animation loop - runs every frame
 animate {
-    p.background(0f)
-    
-    // Update position
-    x += vx
-    y += vy
-    
-    // Bounce off edges
-    if (x < 0 || x > p.width) vx *= -1
-    if (y < 0 || y > p.height) vy *= -1
-    
-    // Draw
-    p.fill(255f, 200f, 100f)
-    p.ellipse(x, y, 40f, 40f)
+    position += velocity
+    if (position > 1.0 || position < 0.0) velocity *= -1.0
+    println("position = $position, velocity = $velocity")
 }
 ```
 

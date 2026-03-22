@@ -162,7 +162,7 @@ This regenerates `build/field-tests/catalog.json`, then runs each discovered `FI
 - `metadata_store/`: example documents/templates (`metadata.edn`) used by the offline viewer and the Python metadata server.
 - `templates/`: additional template content and example `.edn` documents.
 - `server/`: optional Python services (metadata server + guide chat server) used by some features.
-- `dev_docs/`: internal design notes; newer notes are grouped into topical subfolders like `agents/`, `animation/`, `processing/`, `workspace/`, and `physics/`.
+- `dev_docs/`: internal design notes; newer notes are grouped into topical subfolders like `agents/`, `animation/`, `workspace/`, and `physics/`.
 - `field-user-dir/`: local user workspace artifacts (gitignored in many setups; treat as mutable user data).
 
 ---

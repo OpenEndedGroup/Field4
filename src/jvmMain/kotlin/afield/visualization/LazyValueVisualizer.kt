@@ -66,7 +66,7 @@ object LazyValueVisualizer {
         val embeddedPath = "$H2_EMBED_EXPLORER_PATH?root=$token"
 
         return buildString {
-            append("<div class='value-viz-h2' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:100%;box-sizing:border-box;'>")
+            append("<div class='value-viz-h2' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:auto;box-sizing:border-box;'>")
             append("<div style='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;'>")
             append("<span style='color:#9cf;'>")
             append(escapeHtml(summary(value)))
@@ -78,7 +78,7 @@ object LazyValueVisualizer {
             append(escapeHtmlAttr(columnsPath))
             append("' target='_blank' style='color:#777;text-decoration:none;'>columns</a>")
             append("</div>")
-            append("<iframe src='")
+            append("<iframe data-afield-autosize='off' src='")
             append(escapeHtmlAttr(embeddedPath))
             append("' loading='lazy' style='position:static;display:block;width:100%;height:${H2_IFRAME_HEIGHT_PX}px;flex:1 1 auto;min-height:0;border:1px solid #333;border-radius:4px;background:#000;'></iframe>")
             append("</div>")
