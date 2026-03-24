@@ -1049,7 +1049,7 @@ private class Parser(private val s: String) {
                 i++; break
             }
             val atom = when (s[i]) {
-                'm', 'l', 'c', 'z' -> {
+                'm', 'l', 'c', 'z', 's' -> {
                     i++; Cmd(s[i - 1])
                 }
 
@@ -1057,7 +1057,7 @@ private class Parser(private val s: String) {
                     i++; parseSeq(')')
                 }
 
-                else -> error("Unexpected '${s[i]}' at ${here()}; expected m,l,c,z or '('")
+                else -> error("Unexpected '${s[i]}' at ${here()}; expected m,l,c,s, z or '('")
             }
             skip()
             val node = if (i < s.length && s[i] == '+') {
@@ -1133,6 +1133,11 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
                 val a = take()
                 f.lineTo(a)          // uses your Vec3 overload
             }
+            's' -> {
+                ensure(1, "smoothTo")
+                val a = take()
+                f.smoothTo(a)          // uses your Vec3 overload
+            }
 
             'c' -> {
                 ensure(3, "cubicTo")
@@ -1149,7 +1154,7 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
 
     private fun minPoints(n: Node): Int = when (n) {
         is Cmd -> when (n.kind) {
-            'm' -> 1; 'l' -> 1; 'c' -> 3; 'z' -> 0; else -> 0
+            'm' -> 1; 'l' -> 1; 's' -> 1; 'c' -> 3; 'z' -> 0; else -> 0
         }
 
         is Seq -> n.items.sumOf { minPoints(it) }

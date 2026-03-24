@@ -1085,9 +1085,10 @@ fun vec3BetaSkeleton(
 }
 
 /**
- * Compute an Euclidean Minimum Spanning Tree for 2D points.
+ * Compute a KNN-constrained minimum spanning tree for 2D points.
  *
- * Uses Kruskal's algorithm with a union-find data structure.
+ * Uses Kruskal's algorithm over an undirected K-nearest-neighbor graph.
+ * The neighborhood size grows adaptively until a spanning tree exists.
  *
  * @param points List of 2D points
  * @param options Graph connectivity options
@@ -1099,36 +1100,18 @@ fun vec2MinimumSpanningTree(
 ): PointGraph {
     require(points.isNotEmpty()) { "vec2MinimumSpanningTree: points must not be empty" }
     validatePoints2D(points, "vec2MinimumSpanningTree")
-    
-    // Generate all possible edges
-    val allEdges = mutableListOf<GraphEdge>()
-    for (i in points.indices) {
-        for (j in (i + 1) until points.size) {
-            allEdges.add(GraphEdge(i, j, computeDistance2D(points[i], points[j], options, i, j, points)))
-        }
-    }
-    
-    // Sort edges by weight
-    allEdges.sortBy { it.weight }
-    
-    // Kruskal's algorithm with Union-Find
-    val uf = UnionFind(points.size)
-    val mstEdges = mutableListOf<GraphEdge>()
-    
-    for (edge in allEdges) {
-        if (uf.union(edge.i, edge.j)) {
-            mstEdges.add(edge)
-            if (mstEdges.size == points.size - 1) break
-        }
-    }
-    
-    return PointGraph(mstEdges, points.size)
+
+    return adaptiveKnnSpanningTree(
+        pointCount = points.size,
+        knnEdges = { k -> vec2KnnGraph(points, k, options).edges }
+    )
 }
 
 /**
- * Compute an Euclidean Minimum Spanning Tree for 3D points.
+ * Compute a KNN-constrained minimum spanning tree for 3D points.
  *
- * Uses Kruskal's algorithm with a union-find data structure.
+ * Uses Kruskal's algorithm over an undirected K-nearest-neighbor graph.
+ * The neighborhood size grows adaptively until a spanning tree exists.
  *
  * @param points List of 3D points
  * @param options Graph connectivity options
@@ -1140,30 +1123,11 @@ fun vec3MinimumSpanningTree(
 ): PointGraph {
     require(points.isNotEmpty()) { "vec3MinimumSpanningTree: points must not be empty" }
     validatePoints3D(points, "vec3MinimumSpanningTree")
-    
-    // Generate all possible edges
-    val allEdges = mutableListOf<GraphEdge>()
-    for (i in points.indices) {
-        for (j in (i + 1) until points.size) {
-            allEdges.add(GraphEdge(i, j, computeDistance3D(points[i], points[j], options, i, j, points)))
-        }
-    }
-    
-    // Sort edges by weight
-    allEdges.sortBy { it.weight }
-    
-    // Kruskal's algorithm with Union-Find
-    val uf = UnionFind(points.size)
-    val mstEdges = mutableListOf<GraphEdge>()
-    
-    for (edge in allEdges) {
-        if (uf.union(edge.i, edge.j)) {
-            mstEdges.add(edge)
-            if (mstEdges.size == points.size - 1) break
-        }
-    }
-    
-    return PointGraph(mstEdges, points.size)
+
+    return adaptiveKnnSpanningTree(
+        pointCount = points.size,
+        knnEdges = { k -> vec3KnnGraph(points, k, options).edges }
+    )
 }
 
 /**
@@ -1268,8 +1232,7 @@ fun vec3NearestNeighborGraph(
  * Compute an Urquhart Graph for 2D points.
  *
  * The Urquhart graph is formed by removing the longest edge from each triangle
- * in the Delaunay triangulation. For simplicity, we approximate by taking
- * the MST of the RNG.
+ * in the Delaunay triangulation.
  *
  * @param points List of 2D points
  * @param options Graph connectivity options
@@ -1281,14 +1244,43 @@ fun vec2UrquhartGraph(
 ): PointGraph {
     require(points.isNotEmpty()) { "vec2UrquhartGraph: points must not be empty" }
     validatePoints2D(points, "vec2UrquhartGraph")
-    
-    // Urquhart graph is a subgraph of the Delaunay triangulation
-    // For now, approximate using MST (which is always a subgraph of Urquhart)
-    return vec2MinimumSpanningTree(points, options)
+
+    if (points.size < 3) return vec2DelaunayGraph(points, options)
+
+    val triangles = vec2DelaunayTriangles(points)
+    if (triangles.isEmpty()) return vec2DelaunayGraph(points, options)
+
+    val candidateEdges = mutableSetOf<GraphEdge>()
+    val removedEdges = mutableSetOf<GraphEdge>()
+    val tieTolerance = 1e-9
+
+    for ((a, b, c) in triangles) {
+        val ab = GraphEdge(a, b, computeDistance2D(points[a], points[b], options, a, b, points))
+        val bc = GraphEdge(b, c, computeDistance2D(points[b], points[c], options, b, c, points))
+        val ca = GraphEdge(c, a, computeDistance2D(points[c], points[a], options, c, a, points))
+        val triangleEdges = listOf(ab, bc, ca)
+
+        candidateEdges.addAll(triangleEdges)
+
+        val maxWeight = triangleEdges.maxOf { it.weight }
+        val longestEdges = triangleEdges.filter { abs(it.weight - maxWeight) <= tieTolerance }
+
+        // When a triangle has a tied longest edge, keep those edges rather than
+        // deleting multiple edges due to symmetry or floating-point noise.
+        if (longestEdges.size == 1) {
+            removedEdges.add(longestEdges.first())
+        }
+    }
+
+    return PointGraph((candidateEdges - removedEdges).toList(), points.size)
 }
 
 /**
  * Compute an Urquhart Graph for 3D points.
+ *
+ * A full 3D Urquhart graph would require removing longest edges from a
+ * 3D Delaunay tetrahedralization. Field currently only has 2D Delaunay
+ * support wired in via JTS, so this remains an MST approximation.
  *
  * @param points List of 3D points
  * @param options Graph connectivity options
@@ -1866,6 +1858,71 @@ private class UnionFind(size: Int) {
         
         return true
     }
+}
+
+private fun kruskalSpanningForest(pointCount: Int, edges: List<GraphEdge>): List<GraphEdge> {
+    if (pointCount <= 1 || edges.isEmpty()) return emptyList()
+
+    val sortedEdges = edges.sortedBy { it.weight }
+    val uf = UnionFind(pointCount)
+    val treeEdges = mutableListOf<GraphEdge>()
+
+    for (edge in sortedEdges) {
+        if (uf.union(edge.i, edge.j)) {
+            treeEdges.add(edge)
+            if (treeEdges.size == pointCount - 1) break
+        }
+    }
+
+    return treeEdges
+}
+
+private fun isConnectedGraph(pointCount: Int, edges: List<GraphEdge>): Boolean {
+    if (pointCount <= 1) return true
+    if (edges.isEmpty()) return false
+
+    val adjacency = Array(pointCount) { mutableListOf<Int>() }
+    for (edge in edges) {
+        adjacency[edge.i].add(edge.j)
+        adjacency[edge.j].add(edge.i)
+    }
+
+    val visited = BooleanArray(pointCount)
+    val queue = ArrayDeque<Int>()
+    visited[0] = true
+    queue.addLast(0)
+
+    while (queue.isNotEmpty()) {
+        val current = queue.removeFirst()
+        for (neighbor in adjacency[current]) {
+            if (visited[neighbor]) continue
+            visited[neighbor] = true
+            queue.addLast(neighbor)
+        }
+    }
+
+    return visited.all { it }
+}
+
+private fun adaptiveKnnSpanningTree(
+    pointCount: Int,
+    knnEdges: (k: Int) -> List<GraphEdge>
+): PointGraph {
+    if (pointCount <= 1) return PointGraph(emptyList(), pointCount)
+
+    var k = 1
+    var candidateEdges = knnEdges(k)
+
+    while (k < pointCount - 1 && !isConnectedGraph(pointCount, candidateEdges)) {
+        k = min(pointCount - 1, k * 2)
+        candidateEdges = knnEdges(k)
+    }
+
+    val treeEdges = kruskalSpanningForest(pointCount, candidateEdges)
+    require(treeEdges.size == pointCount - 1) {
+        "adaptiveKnnSpanningTree: failed to build a spanning tree for $pointCount points"
+    }
+    return PointGraph(treeEdges, pointCount)
 }
 
 // ==================== Additional JTS Wrappers ====================

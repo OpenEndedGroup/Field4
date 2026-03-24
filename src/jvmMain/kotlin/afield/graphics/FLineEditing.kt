@@ -1,8 +1,11 @@
 package afield.graphics
 
 import afield.FLineAddLine
+import afield.FLineAppendLine
+import afield.FLineBeginLine
 import afield.FLineDrawStyle
 import afield.FLineEditSpace
+import afield.FLineEndLine
 import afield.FLineHandleKind
 import afield.FLinePoint3
 import afield.FLinePointRef
@@ -30,6 +33,8 @@ internal class FLineEditSession(
     private val fitTransform: FitTransform?,
     private val drawStyle: FLineDrawStyle
 ) {
+    private val draftLines = LinkedHashMap<String, FLine>()
+
     fun currentLines(): List<FLine> = synchronized(this) { lines.toList() }
 
     fun drawStyle(): FLineDrawStyle = drawStyle.copy(color = drawStyle.color.copyOf())
@@ -54,27 +59,58 @@ internal class FLineEditSession(
         }
     }
 
+    fun beginLine(update: FLineBeginLine): FLine? {
+        val firstPoint = modelPoint(update.point, update.space)?.takeIf { it.isFinite() } ?: return null
+        val line = styledLine(update.style ?: drawStyle).apply {
+            moveTo(firstPoint)
+        }
+
+        synchronized(this) {
+            draftLines.remove(update.lineId)?.let { lines.remove(it) }
+            lines += line
+            draftLines[update.lineId] = line
+        }
+        return line
+    }
+
+    fun appendLine(update: FLineAppendLine) {
+        val modelPoints = update.points.mapNotNull { modelPoint(it, update.space)?.takeIf(Vec3::isFinite) }
+        if (modelPoints.isEmpty()) return
+
+        synchronized(this) {
+            val line = draftLines[update.lineId] ?: return
+            var changed = false
+            modelPoints.forEach { point ->
+                val last = line.lastAnchorPoint()
+                if (last == null || !last.samePosition(point)) {
+                    line.lineTo(point)
+                    changed = true
+                }
+            }
+            if (changed) line.rev++
+        }
+    }
+
+    fun endLine(update: FLineEndLine) {
+        synchronized(this) {
+            val line = draftLines.remove(update.lineId) ?: return
+            if (line.anchorPointCount() < 2) {
+                lines.remove(line)
+            } else {
+                line.rev++
+            }
+        }
+    }
+
     fun addLine(update: FLineAddLine): FLine? {
         val sourcePoints = update.points.distinct()
         if (sourcePoints.size < 2) return null
 
-        val modelPoints = sourcePoints.map { point ->
-            when (update.space) {
-                FLineEditSpace.MODEL -> vec(point.x, point.y, point.z)
-                FLineEditSpace.VIEW -> viewPointToModel(point)
-            }
-        }.filter { it.isFinite() }
+        val modelPoints = sourcePoints.mapNotNull { modelPoint(it, update.space)?.takeIf(Vec3::isFinite) }
 
         if (modelPoints.size < 2) return null
 
-        val style = update.style ?: drawStyle
-        val line = FLine().apply {
-            color = style.color.toVec4()
-            thickness = style.thickness
-            stroked = style.stroked
-            filled = style.filled
-            pointed = style.pointed
-            pointSize = style.pointSize
+        val line = styledLine(update.style ?: drawStyle).apply {
             moveTo(modelPoints.first())
             modelPoints.drop(1).forEach { lineTo(it) }
             if (update.closed && modelPoints.size >= 3) close()
@@ -88,6 +124,7 @@ internal class FLineEditSession(
 
     fun clear() {
         synchronized(this) {
+            draftLines.clear()
             lines.clear()
         }
     }
@@ -102,6 +139,20 @@ internal class FLineEditSession(
         val offsetX = fitTransform?.offsetX ?: 0f
         val offsetY = fitTransform?.offsetY ?: 0f
         return vec(point.x / scale - offsetX, point.y / scale - offsetY, point.z)
+    }
+
+    private fun modelPoint(point: FLinePoint3, space: FLineEditSpace): Vec3 = when (space) {
+        FLineEditSpace.MODEL -> vec(point.x, point.y, point.z)
+        FLineEditSpace.VIEW -> viewPointToModel(point)
+    }
+
+    private fun styledLine(style: FLineDrawStyle) = FLine().apply {
+        color = style.color.toVec4()
+        thickness = style.thickness
+        stroked = style.stroked
+        filled = style.filled
+        pointed = style.pointed
+        pointSize = style.pointSize
     }
 
     private fun resolve(ref: FLinePointRef): Vec3? {
@@ -152,3 +203,19 @@ private fun FloatArray.toVec4() = afield.stdlib.vec(
 )
 
 private fun Vec3.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
+
+private fun Vec3.samePosition(other: Vec3, epsilon: Float = 1e-5f): Boolean =
+    kotlin.math.abs(x - other.x) <= epsilon &&
+        kotlin.math.abs(y - other.y) <= epsilon &&
+        kotlin.math.abs(z - other.z) <= epsilon
+
+private fun FLine.lastAnchorPoint(): Vec3? = when (val node = nodes.lastOrNull()) {
+    is FLine.MoveTo -> node.to
+    is FLine.LineTo -> node.to
+    is FLine.CubicTo -> node.to
+    else -> null
+}
+
+private fun FLine.anchorPointCount(): Int = nodes.count {
+    it is FLine.MoveTo || it is FLine.LineTo || it is FLine.CubicTo
+}

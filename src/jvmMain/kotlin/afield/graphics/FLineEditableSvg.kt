@@ -22,6 +22,7 @@ private data class EditableSvgScene(
     val width: Double,
     val height: Double,
     val drawingEnabled: Boolean,
+    val liveDrawingEnabled: Boolean,
     val drawStyle: FLineDrawStyle,
     val lines: List<EditableSvgLine>
 )
@@ -56,7 +57,8 @@ internal fun buildEditableSVGWidget(
     fitTransform: FitTransform?,
     w: Double,
     h: Double,
-    drawingEnabled: Boolean = false
+    drawingEnabled: Boolean = false,
+    liveDrawingEnabled: Boolean = false
 ): EditableSvgWidget {
     val scaledLines = pairs.map { it.second }
     val session = registerFLineEditSession(pairs.map { it.first }, fitTransform)
@@ -66,6 +68,7 @@ internal fun buildEditableSVGWidget(
         width = we,
         height = he,
         drawingEnabled = drawingEnabled,
+        liveDrawingEnabled = drawingEnabled && liveDrawingEnabled,
         drawStyle = session.drawStyle(),
         lines = scaledLines.mapIndexed { lineIndex, line ->
             EditableSvgLine(

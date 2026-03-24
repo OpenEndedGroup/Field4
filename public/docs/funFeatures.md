@@ -474,5 +474,11 @@ Finally, `named("foo")` returns a `Box?` called "foo" searching from the current
 
 # Collaborating
 
-Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at it's interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). Additionally, if more than one person has the webpage open at the same time, everything should just work — people will see each other's boxes, and non-overlapping edits to code should merge correctly if possible.
+Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at it's interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). 
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/collab.mp4" type="video/mp4">
+</video>
+
+Additionally, if more than one person has the webpage open at the same time, everything should just work — people will see each other's boxes, and non-overlapping edits to code should merge correctly if possible.
 

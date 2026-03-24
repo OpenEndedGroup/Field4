@@ -261,6 +261,30 @@ fun installThreeJsHandler() {
                     runCatching { editSession.addLine(update) }
                 }
             }
+            "fline-edit-begin-line" -> {
+                val update = runCatching { threeJson.decodeFromJsonElement<FLineBeginLine>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
+                GlobalScope.launch {
+                    runCatching { editSession.beginLine(update) }
+                }
+            }
+            "fline-edit-append-line" -> {
+                val update = runCatching { threeJson.decodeFromJsonElement<FLineAppendLine>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
+                GlobalScope.launch {
+                    runCatching { editSession.appendLine(update) }
+                }
+            }
+            "fline-edit-end-line" -> {
+                val update = runCatching { threeJson.decodeFromJsonElement<FLineEndLine>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
+                GlobalScope.launch {
+                    runCatching { editSession.endLine(update) }
+                }
+            }
             "fline-edit-clear" -> {
                 val update = runCatching { threeJson.decodeFromJsonElement<FLineClearSession>(payload) }.getOrNull()
                     ?: return@add Handled.no

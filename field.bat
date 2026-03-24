@@ -10,7 +10,7 @@ echo Starting Field4...
 echo ===================================
 echo.
 
-call gradlew runJvm
+call gradlew runDesktop
 
 if errorlevel 1 (
     echo.

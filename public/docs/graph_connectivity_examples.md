@@ -22,6 +22,7 @@ val points = List(140) { i ->
 
 val delaunay = vec2DelaunayGraph(points)
 val gabriel = vec2GabrielGraph(points)
+val urquhart = vec2UrquhartGraph(points)
 val rng = vec2RelativeNeighborhoodGraph(points)
 val mst = vec2MinimumSpanningTree(points)
 
@@ -48,6 +49,7 @@ lines(
     listOf(
         graphLine(delaunay, vec(0.52, 0.62, 0.75, 0.25), 1.0),
         graphLine(gabriel, vec(0.56, 0.92, 1.0, 0.45), 1.3),
+        graphLine(urquhart, vec(0.92, 0.55, 1.0, 0.5), 1.45),
         graphLine(rng, vec(1.0, 0.7, 0.32, 0.55), 1.6),
         graphLine(mst, vec(0.56, 1.0, 0.67, 0.95), 2.6),
         cloud
@@ -59,11 +61,75 @@ lines(
 )
 ```
 
-So the scene stays fixed while the graph family changes. A single `graphLine(...)` helper draws Delaunay, Gabriel, relative-neighborhood, and minimum-spanning structures with different visual weights, making the structural differences carry the comparison.
+So the scene stays fixed while the graph family changes. A single `graphLine(...)` helper draws Delaunay, Gabriel, Urquhart, relative-neighborhood, and minimum-spanning structures with different visual weights, making the structural differences carry the comparison.
 
 ![](assets/graph_connectivity_examples/geometric_families.png)
 
-The picture gives you a quick vocabulary for the families. Delaunay is generous, Gabriel is choosier, RNG is choosier still, and the spanning tree is the austerity program. Once you can *see* that progression, choosing the right scaffold for a pathing or clustering problem becomes much easier. For local queries on similar point sets, see [Smile neighbors examples](smile_neighbors_examples.md).
+The picture gives you a quick vocabulary for the families. Delaunay is generous, Gabriel is choosier, Urquhart trims the triangulation toward a transport-like backbone, RNG is choosier still, and the spanning tree is the austerity program. Once you can *see* that progression, choosing the right scaffold for a pathing or clustering problem becomes much easier. For local queries on similar point sets, see [Smile neighbors examples](smile_neighbors_examples.md).
+
+## 3D graph families with `threeLines(...)`
+
+Projected drawings are fine until the point cloud really wants depth. Once points coil, stack, or drift behind one another, the right move is to put the graph into the Three.js viewer and orbit around it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/three_graph_families.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
+:::static
+import afield.graphics.FLine
+import afield.graphics.threeLines
+import afield.stdlib.*
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+
+val points = List(170) { i ->
+    val t = i / 170.0 * PI * 7.0
+    val radius = 95.0 + 34.0 * sin(t * 0.72)
+    val x = cos(t) * radius + cos(t * 2.4) * 22.0
+    val y = sin(t * 1.08) * 118.0 + sin(t * 0.31) * 28.0
+    val z = -230.0 + i * 2.8 + cos(t * 1.6) * 44.0
+    vec(x, y, z)
+}
+
+val knn = vec3KnnGraph(points, k = 4)
+val gabriel = vec3GabrielGraph(points)
+val mst = vec3MinimumSpanningTree(points)
+
+fun graphLine3(graph: PointGraph, color: Vec4, thickness: Double): FLine = FLine().apply {
+    graph.edges.forEach { e ->
+        val a = points[e.i]
+        val b = points[e.j]
+        moveTo(a)
+        lineTo(b)
+    }
+    this.color = color
+    this.thickness = thickness
+}
+
+val cloud = FLine().apply {
+    points.forEach { moveTo(it) }
+    pointed = true
+    pointSize = 0.2
+    stroked = false
+    color = vec(1.0, 1.0, 1.0, 0.78)
+}
+
+threeLines(
+    listOf(
+        graphLine3(knn, vec(0.52, 0.7, 0.95, 0.18), 1.0),
+        graphLine3(gabriel, vec(0.96, 0.64, 0.28, 0.5), 1.6),
+        graphLine3(mst, vec(0.58, 1.0, 0.68, 0.96), 3.1),
+        cloud
+    ),
+    channel = "graph-3d-families",
+    height = 500,
+    editable = false
+)
+```
+
+That view is less about exact planarity-style relationships and more about spatial scaffolding. The faint 4-NN graph gives you the permissive local neighborhood, Gabriel shows the cleaner mid-density structure, and the spanning tree leaves only the bare backbone.
+
+![](assets/graph_connectivity_examples/three_graph_families.png)
+
+This is also where `threeLines(...)` earns its keep: instead of guessing from a flattened projection, you can actually orbit the graph and inspect crossings, depth layering, and long bridges. For now, `vec3UrquhartGraph(...)` still uses the same MST-based approximation as the 3D spanning tree, so a separate 3D Urquhart picture would currently land in the same place.
 
 ## Pathing: anchored cover + A* overlay
 

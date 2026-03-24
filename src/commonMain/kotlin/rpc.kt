@@ -646,6 +646,29 @@ data class FLineAddLine(
 )
 
 @Serializable
+data class FLineBeginLine(
+    val sessionId: String,
+    val lineId: String,
+    val point: FLinePoint3,
+    val style: FLineDrawStyle? = null,
+    val space: FLineEditSpace = FLineEditSpace.VIEW
+)
+
+@Serializable
+data class FLineAppendLine(
+    val sessionId: String,
+    val lineId: String,
+    val points: List<FLinePoint3>,
+    val space: FLineEditSpace = FLineEditSpace.VIEW
+)
+
+@Serializable
+data class FLineEndLine(
+    val sessionId: String,
+    val lineId: String
+)
+
+@Serializable
 data class FLineClearSession(
     val sessionId: String
 )

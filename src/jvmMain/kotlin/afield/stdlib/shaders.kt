@@ -234,6 +234,10 @@ private fun compileStage(
  * Applies an Insert’s preamble(s) into the target box.
  */
 private val preamblePrefixRegex = Regex("^\\s*/\\*(.*?)\\*/\\s*")
+private const val preambleBlockStartMarker = "/*start*/"
+private const val preambleBlockEndMarker = "/*end*/"
+
+private data class PreambleSegment(val lines: List<String>)
 
 private fun preambleLineKey(line: String): String {
     val normalized = line.trimEnd()
@@ -247,24 +251,85 @@ private fun isImportLine(line: String): Boolean {
     return withoutPrefix.trimStart().startsWith("import ")
 }
 
-private fun prefixed(prefix: String, code: String): String = "/*$prefix*/ $code"
+private fun stripPreambleBlockMarkers(line: String): String =
+    line.replace(preambleBlockStartMarker, "").replace(preambleBlockEndMarker, "").trim()
 
-private fun mergePreambleLines(existing: List<String>, incoming: List<String>): List<String> {
-    val merged = LinkedHashMap<String, String>()
+private fun splitPreambleSegments(lines: List<String>): List<PreambleSegment> {
+    val segments = mutableListOf<PreambleSegment>()
+    var currentBlock: MutableList<String>? = null
 
-    existing.forEach { line ->
-        val key = preambleLineKey(line)
-        if (key.isNotEmpty() && !merged.containsKey(key)) {
-            merged[key] = line.trimEnd()
+    fun flushCurrentBlock() {
+        val block = currentBlock ?: return
+        if (block.isNotEmpty()) segments += PreambleSegment(block.toList())
+        currentBlock = null
+    }
+
+    lines.forEach { line ->
+        val normalized = line.trimEnd()
+        if (normalized.isBlank()) return@forEach
+
+        if (currentBlock != null) {
+            currentBlock?.add(normalized)
+            if (normalized.contains(preambleBlockEndMarker)) {
+                flushCurrentBlock()
+            }
+            return@forEach
+        }
+
+        if (normalized.contains(preambleBlockStartMarker)) {
+            currentBlock = mutableListOf(normalized)
+            if (normalized.contains(preambleBlockEndMarker)) {
+                flushCurrentBlock()
+            }
+        } else {
+            segments += PreambleSegment(listOf(normalized))
         }
     }
 
-    incoming.forEach { line ->
-        val normalized = line.trimEnd()
-        val key = preambleLineKey(normalized)
+    flushCurrentBlock()
+
+    return segments
+}
+
+private fun preambleSegmentKey(segment: PreambleSegment): String {
+    val prefixedLine = segment.lines
+        .asSequence()
+        .map(::stripPreambleBlockMarkers)
+        .firstOrNull { preamblePrefixRegex.containsMatchIn(it) }
+
+    if (prefixedLine != null) return preambleLineKey(prefixedLine)
+
+    val normalized = segment.lines.joinToString(separator = "\n") { it.trimEnd() }.trim()
+    return normalized
+}
+
+private fun isImportSegment(segment: PreambleSegment): Boolean {
+    val firstMeaningfulLine = segment.lines
+        .asSequence()
+        .map(::stripPreambleBlockMarkers)
+        .firstOrNull { it.isNotBlank() }
+        ?: return false
+
+    return isImportLine(firstMeaningfulLine)
+}
+
+private fun prefixed(prefix: String, code: String): String = "/*$prefix*/ $code"
+
+private fun mergePreambleSegments(existing: List<String>, incoming: List<String>): List<PreambleSegment> {
+    val merged = LinkedHashMap<String, PreambleSegment>()
+
+    splitPreambleSegments(existing).forEach { segment ->
+        val key = preambleSegmentKey(segment)
+        if (key.isNotEmpty() && !merged.containsKey(key)) {
+            merged[key] = segment
+        }
+    }
+
+    splitPreambleSegments(incoming).forEach { segment ->
+        val key = preambleSegmentKey(segment)
         if (key.isNotEmpty()) {
             // New insertions should win so reloads replace generated bindings in-place.
-            merged[key] = normalized
+            merged[key] = segment
         }
     }
 
@@ -281,10 +346,10 @@ fun applyInsertToPreamble(box: Box, e: Insert) {
     if (incomingLines.isEmpty()) return
 
     val existingLines = b.preamble.lines().map { it.trimEnd() }.filter { it.isNotBlank() }
-    val merged = mergePreambleLines(existingLines, incomingLines)
-    val imports = merged.filter(::isImportLine)
-    val nonImports = merged.filterNot(::isImportLine)
-    b.preamble = (imports + nonImports).joinToString(separator = "\n")
+    val merged = mergePreambleSegments(existingLines, incomingLines)
+    val imports = merged.filter(::isImportSegment)
+    val nonImports = merged.filterNot(::isImportSegment)
+    b.preamble = (imports + nonImports).flatMap { it.lines }.joinToString(separator = "\n")
 
 }
 

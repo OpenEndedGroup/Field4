@@ -1,19 +1,8 @@
 package afield.macros
 
-import afield.Box
-import afield.HasHierarchy
-import afield.KotlinInterface
+import afield.*
 import afield.logger.lprintln
-import afield.macroRegistration
-import afield.macro_printHere
-import afield.marco_printlnHere
-import afield.runAll
-import afield.stdlib.Delegation
-import afield.stdlib.macro_computeModuleHere
-import afield.stdlib.macro_meshModuleHere
-import afield.stdlib.macro_moduleHere
-import afield.stdlib.macro_prop
-import afield.stdlib.macro_root_prop
+import afield.stdlib.*
 import kotlinx.coroutines.runBlocking
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
@@ -117,7 +106,7 @@ fun checkPreambleAndExecute(
 ) {
     val _was = inside.getPropertyRaw("_preamble", null) as String?
     val was: Map<String, String> =
-        if (_was == null) emptyMap<String, String>() else _was.split("\n").filter { it.trim().length > 0 }
+        if (_was == null) emptyMap<String, String>() else _was.preambleSegments()
             .prefixAwareMap()
 
     var now = gatherPreambleUpwards(inside)
@@ -125,7 +114,7 @@ fun checkPreambleAndExecute(
 
     inside.setPropertyRaw("_preamble", now)
 
-    val extra: MutableMap<String, String> = now.split("\n").filter { it.trim().length > 0 }.prefixAwareMap()
+    val extra: MutableMap<String, String> = now.preambleSegments().prefixAwareMap()
     was.forEach {
         if (extra.containsKey(it.key)) {
             if (extra[it.key] != it.value) {
@@ -148,7 +137,7 @@ fun checkPreambleAndExecute(
     // remove duplicate lines in the order that they arrive
 
     val raw = inside.getPropertyRaw("preamble", "") as String
-    val next = (extra + raw.split("\n").filter { it.trim().isNotEmpty() }.prefixAwareMap()).values.joinToString(separator = "\n")
+    val next = (extra + raw.preambleSegments().prefixAwareMap()).values.joinToString(separator = "\n")
     inside.setPropertyRaw("_preamble", next)
     inside.setPropertyRaw("preamble", next)
 }
@@ -161,7 +150,7 @@ fun checkIntroductionAndExecute(
 ) {
     val current = inside.getPropertyRaw("introduction", "") as String
     val was = inside.getPropertyRaw("_introduction", null) as String?
-    
+
     // Execute all of introduction if and only if any of it has changed
     if (current.trim().isNotEmpty() && current != was) {
         runBlocking {
@@ -188,9 +177,52 @@ private fun List<String>.prefixAwareMap(): MutableMap<String, String> {
     return m
 }
 
+private const val preambleBlockStartMarker = "/*start*/"
+private const val preambleBlockEndMarker = "/*end*/"
+
+private fun String.preambleSegments(): List<String> {
+    val segments = mutableListOf<String>()
+    val currentBlock = mutableListOf<String>()
+    var inBlock = false
+
+    fun flushBlock() {
+        if (currentBlock.isNotEmpty()) {
+            segments += currentBlock.joinToString(separator = "\n")
+            currentBlock.clear()
+        }
+        inBlock = false
+    }
+
+    this.lines().forEach { rawLine ->
+        val line = rawLine.trimEnd()
+        if (line.isBlank()) return@forEach
+
+        if (inBlock) {
+            currentBlock += line
+            if (line.contains(preambleBlockEndMarker)) flushBlock()
+            return@forEach
+        }
+
+        if (line.contains(preambleBlockStartMarker)) {
+            inBlock = true
+            currentBlock += line
+            if (line.contains(preambleBlockEndMarker)) flushBlock()
+        } else {
+            segments += line
+        }
+    }
+
+    flushBlock()
+    return segments
+}
+
 private fun String.prefixFor(): String {
     val regex = Regex("^\\s*/\\*(.*?)\\*/")
-    val match = regex.find(this)
+    val match = this.lines()
+        .asSequence()
+        .map { it.replace(preambleBlockStartMarker, "").replace(preambleBlockEndMarker, "").trim() }
+        .mapNotNull { regex.find(it) }
+        .firstOrNull()
     return match?.groupValues?.get(1)?.trim() ?: this
 }
 

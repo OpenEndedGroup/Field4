@@ -1099,6 +1099,66 @@ class Server {
                 Handled.yes
             })
 
+            handlers["fline-edit-begin-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineBeginLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.beginLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error beginning live FLine stroke: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-append-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineAppendLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.appendLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error appending live FLine stroke: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-end-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineEndLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.endLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error ending live FLine stroke: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
             handlers["fline-edit-clear"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<FLineClearSession>(message.payload!!)
                 val session = getFLineEditSession(update.sessionId)

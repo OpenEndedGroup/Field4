@@ -763,42 +763,10 @@ display(
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: {"true" if expects_svg else "false"}
-import afield.forth.ForthInterpreter
-import afield.graphics.FLine
-import afield.h
+import afield.docs.renderForthDocsSnippet
 
 val __forthSource = {source_literal}
-val __forth = ForthInterpreter()
-val __forthStdout = StringBuilder()
-var __forthHadDisplay = false
-
-__forth.onOutput = {{ text ->
-    print(text)
-    __forthStdout.append(text)
-}}
-__forth.onDisplay = {{ channel, content ->
-    __forthHadDisplay = true
-    display(channel, content?.toString() ?: "")
-}}
-
-val __forthDiagnostics = __forth.eval(__forthSource)
-check(__forthDiagnostics.isEmpty()) {{
-    __forthDiagnostics.joinToString("\\n") {{ diag ->
-        val prefix = if (diag.line >= 0) "line ${{diag.line + 1}}: " else ""
-        prefix + diag.message
-    }}
-}}
-
-val __forthLines = __forth.stack.filterIsInstance<FLine>()
-if (__forthLines.isNotEmpty()) {{
-    lines(__forthLines, channel = "lines", w = 460.0, h = 320.0, fitToSize = true)
-}} else if (!__forthHadDisplay && __forthStdout.isNotBlank()) {{
-    display("stdout", __forthStdout.toString())
-}} else if (!__forthHadDisplay && __forth.stack.isNotEmpty()) {{
-    display("stack", __forth.stack.toList().h)
-}} else if (!__forthHadDisplay) {{
-    display("status", "<em>ok</em>")
-}}
+renderForthDocsSnippet(__forthSource)
 """.strip()
         return wrapped + "\n"
 

@@ -303,6 +303,39 @@ window.__flineHoverOut = function(groupEl) {
         };
     }
 
+    function reindexSceneLines(scene) {
+        scene.lines.forEach(function(line, lineIndex) {
+            line.lineIndex = lineIndex;
+            (line.nodes || []).forEach(function(node, nodeIndex) {
+                node.nodeIndex = nodeIndex;
+            });
+        });
+    }
+
+    function removeSceneLineAt(scene, lineIndex) {
+        if (lineIndex < 0 || lineIndex >= scene.lines.length) return;
+        scene.lines.splice(lineIndex, 1);
+        reindexSceneLines(scene);
+    }
+
+    function appendPointsToSceneLine(line, points) {
+        if (!line || !points || !points.length) return 0;
+        var added = 0;
+        points.forEach(function(point) {
+            var previousNode = line.nodes[line.nodes.length - 1];
+            var previousPoint = previousNode && previousNode.to;
+            if (!previousPoint || Math.hypot(point.x - previousPoint[0], point.y - previousPoint[1]) >= 0.25) {
+                line.nodes.push({
+                    nodeIndex: line.nodes.length,
+                    kind: line.nodes.length === 0 ? 'move' : 'line',
+                    to: [point.x, point.y, point.z || 0]
+                });
+                added += 1;
+            }
+        });
+        return added;
+    }
+
     function normalizeDrawPoints(rawPoints) {
         if (!rawPoints || rawPoints.length < 2) return [];
         var normalized = [];
@@ -331,6 +364,35 @@ window.__flineHoverOut = function(groupEl) {
             closed: false,
             style: cloneDrawStyle(style),
             space: 'VIEW'
+        });
+    }
+
+    function sendFLineBeginLine(sessionId, lineId, point, style) {
+        sendViaAfield('fline-edit-begin-line', {
+            sessionId: sessionId,
+            lineId: lineId,
+            point: { x: point.x, y: point.y, z: point.z || 0 },
+            style: cloneDrawStyle(style),
+            space: 'VIEW'
+        });
+    }
+
+    function sendFLineAppendLine(sessionId, lineId, points) {
+        if (!points.length) return;
+        sendViaAfield('fline-edit-append-line', {
+            sessionId: sessionId,
+            lineId: lineId,
+            points: points.map(function(point) {
+                return { x: point.x, y: point.y, z: point.z || 0 };
+            }),
+            space: 'VIEW'
+        });
+    }
+
+    function sendFLineEndLine(sessionId, lineId) {
+        sendViaAfield('fline-edit-end-line', {
+            sessionId: sessionId,
+            lineId: lineId
         });
     }
 
@@ -611,6 +673,66 @@ window.__flineHoverOut = function(groupEl) {
         }
     }
 
+    function createDrawLineId() {
+        return 'draw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function beginLiveDrawStroke(state, point, pointerId) {
+        var style = cloneDrawStyle(state.scene.drawStyle);
+        var stroke = {
+            pointerId: pointerId,
+            points: [clonePoint3(point)],
+            lineId: createDrawLineId(),
+            style: style
+        };
+        state.scene.lines.push(createSceneLineFromPoints(state.scene, stroke.points, style));
+        reindexSceneLines(state.scene);
+        stroke.lineIndex = state.scene.lines.length - 1;
+        state.drawingStroke = stroke;
+        state.selection = new Set();
+        sendFLineBeginLine(state.scene.sessionId, stroke.lineId, point, style);
+    }
+
+    function appendLiveDrawStroke(state, point) {
+        var stroke = state.drawingStroke;
+        if (!stroke) return;
+        var previous = stroke.points[stroke.points.length - 1];
+        if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) < DRAW_SAMPLE_DISTANCE) return;
+        stroke.points.push(clonePoint3(point));
+        var line = state.scene.lines[stroke.lineIndex];
+        if (appendPointsToSceneLine(line, [point]) > 0) {
+            sendFLineAppendLine(state.scene.sessionId, stroke.lineId, [point]);
+        }
+    }
+
+    function finishLiveDrawStroke(state, finalPoint) {
+        var stroke = state.drawingStroke;
+        if (!stroke) return;
+        if (finalPoint) {
+            var previous = stroke.points[stroke.points.length - 1];
+            if (!previous || Math.hypot(finalPoint.x - previous.x, finalPoint.y - previous.y) >= 0.25) {
+                stroke.points.push(clonePoint3(finalPoint));
+                var line = state.scene.lines[stroke.lineIndex];
+                if (appendPointsToSceneLine(line, [finalPoint]) > 0) {
+                    sendFLineAppendLine(state.scene.sessionId, stroke.lineId, [finalPoint]);
+                }
+            }
+        }
+        var sceneLine = state.scene.lines[stroke.lineIndex];
+        if (!sceneLine || sceneLine.nodes.length < 2) {
+            removeSceneLineAt(state.scene, stroke.lineIndex);
+        }
+        sendFLineEndLine(state.scene.sessionId, stroke.lineId);
+        state.drawingStroke = null;
+        state.selection = new Set();
+    }
+
+    function cancelDrawStroke(state) {
+        if (!state.drawingStroke) return;
+        if (state.liveDrawingEnabled) finishLiveDrawStroke(state, null);
+        else state.drawingStroke = null;
+    }
+
     function commitDrawStroke(state) {
         if (!state.drawingStroke) return;
         var points = normalizeDrawPoints(state.drawingStroke.points);
@@ -804,7 +926,7 @@ window.__flineHoverOut = function(groupEl) {
             });
         }
 
-        if (state.drawingStroke && state.drawingStroke.points.length > 0) {
+        if (!state.liveDrawingEnabled && state.drawingStroke && state.drawingStroke.points.length > 0) {
             var previewNodes = pointsToLineNodes(state.drawingStroke.points);
             var previewPath = buildLinePath(previewNodes);
             var previewStyle = cloneDrawStyle(state.scene.drawStyle);
@@ -853,7 +975,7 @@ window.__flineHoverOut = function(groupEl) {
             if (!mode) return;
             button.addEventListener('click', function() {
                 state.mode = mode;
-                state.drawingStroke = null;
+                cancelDrawStroke(state);
                 state.pointerDown = null;
                 state.dragging = null;
                 state.marquee = null;
@@ -905,6 +1027,7 @@ window.__flineHoverOut = function(groupEl) {
             drawGroup: drawGroup,
             clearButton: clearButton,
             drawingEnabled: !!scene.drawingEnabled,
+            liveDrawingEnabled: !!scene.liveDrawingEnabled,
             mode: scene.drawingEnabled && (!scene.lines || scene.lines.length === 0) ? 'draw' : 'edit',
             mask: { point: true, edge: true, face: true },
             uiVisible: true,
@@ -941,7 +1064,7 @@ window.__flineHoverOut = function(groupEl) {
             var target = event.target;
             if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
             state.mode = state.mode === 'draw' ? 'edit' : 'draw';
-            state.drawingStroke = null;
+            cancelDrawStroke(state);
             renderFLineEditor(state);
             event.preventDefault();
             event.stopPropagation();
@@ -951,10 +1074,13 @@ window.__flineHoverOut = function(groupEl) {
             root.focus();
             var pt = getSvgPoint(svg, event);
             if (state.mode === 'draw') {
-                state.drawingStroke = {
-                    pointerId: event.pointerId,
-                    points: [{ x: pt.x, y: pt.y, z: 0 }]
-                };
+                if (state.liveDrawingEnabled) beginLiveDrawStroke(state, { x: pt.x, y: pt.y, z: 0 }, event.pointerId);
+                else {
+                    state.drawingStroke = {
+                        pointerId: event.pointerId,
+                        points: [{ x: pt.x, y: pt.y, z: 0 }]
+                    };
+                }
                 try { svg.setPointerCapture(event.pointerId); } catch (_) {}
                 renderFLineEditor(state);
                 event.preventDefault();
@@ -977,11 +1103,14 @@ window.__flineHoverOut = function(groupEl) {
 
             if (state.mode === 'draw') {
                 if (state.drawingStroke && state.drawingStroke.pointerId === event.pointerId) {
-                    var lastPoint = state.drawingStroke.points[state.drawingStroke.points.length - 1];
-                    if (!lastPoint || Math.hypot(pt.x - lastPoint.x, pt.y - lastPoint.y) >= DRAW_SAMPLE_DISTANCE) {
-                        state.drawingStroke.points.push({ x: pt.x, y: pt.y, z: 0 });
-                        renderFLineEditor(state);
+                    if (state.liveDrawingEnabled) appendLiveDrawStroke(state, { x: pt.x, y: pt.y, z: 0 });
+                    else {
+                        var lastPoint = state.drawingStroke.points[state.drawingStroke.points.length - 1];
+                        if (!lastPoint || Math.hypot(pt.x - lastPoint.x, pt.y - lastPoint.y) >= DRAW_SAMPLE_DISTANCE) {
+                            state.drawingStroke.points.push({ x: pt.x, y: pt.y, z: 0 });
+                        }
                     }
+                    renderFLineEditor(state);
                     event.preventDefault();
                 }
                 return;
@@ -1055,8 +1184,12 @@ window.__flineHoverOut = function(groupEl) {
             if (state.mode === 'draw') {
                 if (state.drawingStroke && state.drawingStroke.pointerId === event.pointerId) {
                     var pt = getSvgPoint(svg, event);
-                    state.drawingStroke.points.push({ x: pt.x, y: pt.y, z: 0 });
-                    commitDrawStroke(state);
+                    if (state.liveDrawingEnabled) finishLiveDrawStroke(state, { x: pt.x, y: pt.y, z: 0 });
+                    else {
+                        state.drawingStroke.points.push({ x: pt.x, y: pt.y, z: 0 });
+                        commitDrawStroke(state);
+                    }
+                    renderFLineEditor(state);
                 }
                 try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
                 return;
