@@ -248,6 +248,25 @@ private fun currentJavaExecutable(): String {
     return File(File(javaHome, "bin"), executable).absolutePath
 }
 
+private fun requiredAgentJvmArgs(): List<String> {
+    val os = (System.getProperty("os.name") ?: "").lowercase()
+    val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
+
+    return buildList {
+        add("--add-opens=java.base/java.net=ALL-UNNAMED")
+        add("-Dorg.lwjgl.system.stackSize=256")
+        add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
+        if (!onWindowsOrLinux) {
+            add("-XstartOnFirstThread")
+            add("-Djoml.format=false")
+            add("-Dorg.lwjgl.util.Debug=true")
+            add("-Dorg.lwjgl.util.DebugLoader=true")
+        }
+        add("--add-modules")
+        add("jdk.incubator.vector")
+    }
+}
+
 private suspend fun gobbleProcessStream(reader: BufferedReader, sink: StringBuilder) {
     withContext(Dispatchers.IO) {
         reader.useLines { lines ->
@@ -316,6 +335,7 @@ private suspend fun runJvmMainViaSubprocess(request: AgentRunJvmMainRequest): Ag
     val timeoutMs = max(1_000L, (request.timeoutSec * 1000.0).roundToLong())
     val command = buildList {
         add(currentJavaExecutable())
+        addAll(requiredAgentJvmArgs())
         add("-cp")
         add(classpath)
         add("afield.AgentJvmMainLauncher")

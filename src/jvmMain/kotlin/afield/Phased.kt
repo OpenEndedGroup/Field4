@@ -1,7 +1,6 @@
 package afield
 
 import kotlinx.coroutines.*
-import org.joml.Vector3f
 import java.util.concurrent.LinkedTransferQueue
 import kotlin.coroutines.*
 
@@ -143,15 +142,23 @@ operator fun Frames.plus(other: Frames): Frames = frames combined@{
 @OptIn(InternalCoroutinesApi::class)
 class Framer : CoroutineDispatcher() {
 
-    var nextList = LinkedTransferQueue<Pair<CoroutineContext, Runnable>>()
+    private val queueLock = Any()
+    private var nextList = LinkedTransferQueue<Pair<CoroutineContext, Runnable>>()
 
     override fun dispatch(context: CoroutineContext, block: Runnable) {
-        nextList.add(context to block)
+        synchronized(queueLock) {
+            nextList.add(context to block)
+        }
 //        println(" framer will dispatch $context $block $nextList ${nextList.size} ${System.identityHashCode(this)}")
     }
 
     fun frame(): Int {
-        var n = nextList.poll()
+        val currentList = synchronized(queueLock) {
+            val current = nextList
+            nextList = LinkedTransferQueue()
+            current
+        }
+        var n = currentList.poll()
         var c = 0
         while (n != null) {
             c++
@@ -160,9 +167,9 @@ class Framer : CoroutineDispatcher() {
             } catch (ex: Throwable) {
                 ex.printStackTrace()
             }
-            n = nextList.poll()
+            n = currentList.poll()
         }
-        if (c == 0) print(".") else print(":")
+//        if (c == 0) print(".") else print(":")
         return c
     }
 

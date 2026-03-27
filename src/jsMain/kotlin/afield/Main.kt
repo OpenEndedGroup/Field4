@@ -41,7 +41,7 @@ external fun interact(selector: HTMLElement): dynamic
 
 external fun notify(text: String, category: String)
 
-external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand: String)
+external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand: String, mode: String)
 
 external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
@@ -105,6 +105,7 @@ private var navigationPanAnimationGeneration = 0
 var launchNumber = 0
 
 external fun launchAll(uid: String, code: String)
+external fun continueAll(uid: String, code: String)
 
 @JsExport
 @JsName("canvasGestures")
@@ -921,6 +922,70 @@ private fun switchSelectionToProperty(
     }
     layoutGlobalEditor()
     return window.asDynamic().globalEditor != null
+}
+
+private fun openNestedDisclosuresForNavigation(targetBox: HTMLElement) {
+    fun openFor(box: HTMLElement) {
+        val nestedIn = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return
+        val parentBox = findBoxElementByUid(nestedIn) ?: return
+        openFor(parentBox)
+
+        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+
+        val contain = outputArea.querySelector(".disclosure-group") ?: return
+        val inter = disclosureInterfaceFor(contain) ?: return
+        runCatching {
+            (inter.open as (String) -> Unit).invoke("nested")
+        }.onFailure {
+            console.info("[nav] failed to open nested disclosure", it)
+        }
+    }
+
+    openFor(targetBox)
+}
+
+private fun navigateToBoxProperty(
+    uid: String,
+    property: String = "code",
+    scrollToLine: Int? = null,
+    highlightLine: Int? = null,
+    syncEditor: Boolean = true
+): Boolean {
+    val box = findBoxElementByUid(uid) ?: return false
+    openNestedDisclosuresForNavigation(box)
+    switchSelectionToProperty(uid, property, syncEditor = syncEditor)
+    val targetLine = scrollToLine ?: highlightLine
+
+    setTimeout({
+        runCatching {
+            ensureBoxVisibleForNavigation(box)
+        }.onFailure {
+            console.info("[nav] failed to scroll to box", it)
+        }
+    }, 50)
+
+    if (targetLine != null) {
+        setTimeout({
+            val w = window.unsafeCast<dynamic>()
+            val editor = w.globalEditor
+            val monaco = w.globalMonaco
+            if (editor != null && editor != undefined && monaco != null && monaco != undefined) {
+                runCatching {
+                    editor.revealLineInCenter(targetLine)
+                    val lineToHighlight = highlightLine ?: targetLine
+                    val range = js("new monaco.Range(lineToHighlight, 1, lineToHighlight, 1)")
+                    editor.setSelection(range)
+                    editor.revealLineInCenter(lineToHighlight)
+                }.onFailure {
+                    console.info("[nav] failed to scroll to line", it)
+                }
+            }
+        }, 100)
+    }
+
+    return true
 }
 
 private fun editorIsSyncedFor(box: HTMLElement, property: String): Boolean {
@@ -2698,6 +2763,9 @@ suspend fun main() {
     window.unsafeCast<dynamic>().switchToProperty = { uid: String, property: String ->
         switchSelectionToProperty(uid, property, syncEditor = true)
     }
+    window.unsafeCast<dynamic>().navigateToBoxProperty = { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
+        navigateToBoxProperty(uid, property, scrollToLine, highlightLine)
+    }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
     window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
@@ -2962,8 +3030,13 @@ suspend fun main() {
     handlers.put("is-running") { message, _ ->
         println(" got is-running message ${message}")
         val isRunning = Json.decodeFromJsonElement<IsRunning>(message.payload!!)
-        setBoxRunning(isRunning.uid, isRunning.isRunning, isRunning.watermark, isRunning.strand)
+        setBoxRunning(isRunning.uid, isRunning.isRunning, isRunning.watermark, isRunning.strand, isRunning.mode)
 
+        Handled.yes
+    }
+    handlers.put("output") { message, _ ->
+        val output = Json.decodeFromJsonElement<Output>(message.payload!!)
+        routeMonacoOutput(output)
         Handled.yes
     }
     handlers.put("peer-output") { message, _ ->
@@ -3331,110 +3404,7 @@ suspend fun main() {
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
-        val boxes = document.body!!.getElementsByClassName("box").asList()
-        val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == sel.uid }
-
-        if (found != null) {
-            val box = found as HTMLElement
-
-            // Open nested disclosure areas if the box is nested
-            fun openNestedDisclosures(targetBox: HTMLElement) {
-                // Check if box is nested inside another box
-                val nestedIn = targetBox.unsafeCast<dynamic>().box_nestedIn as? String
-                if (nestedIn != null) {
-                    // Find the parent box
-                    val parentBoxes = document.body!!.getElementsByClassName("box").asList()
-                    val parentBox = parentBoxes.firstOrNull {
-                        it.unsafeCast<dynamic>().uid == nestedIn
-                    } as? HTMLElement
-
-                    if (parentBox != null) {
-                        // Recursively open parent disclosures first
-                        openNestedDisclosures(parentBox)
-
-                        // Open the nested disclosure for this parent
-                        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
-                        if (outputArea != null) {
-                            val contain = outputArea.querySelector(".disclosure-group")
-                            val di = js("window.disclosureInterface")
-                            if (di != null && di != undefined) {
-                                try {
-                                    val inter = di(contain)
-                                    if (inter.open != null && inter.open != undefined) {
-                                        (inter.open as (String) -> Unit).invoke("nested")
-                                    }
-                                } catch (e: Exception) {
-                                    console.info("[nav] failed to open nested disclosure", e)
-                                }
-                            }
-
-                            // Make sure the output area is visible
-                            outputArea.style.visibility = "visible"
-                            outputArea.style.height = "auto"
-                        }
-                    }
-                }
-            }
-
-            // Open all parent disclosures
-            openNestedDisclosures(box)
-
-            // Scroll the nested area so the target box is visible
-            setTimeout( {
-                try {
-                    ensureBoxVisibleForNavigation(box)
-                } catch (e: Exception) {
-                    console.info("[nav] failed to scroll to box", e)
-                }
-            }, 50)
-
-            // Deselect all boxes first
-            selected.toList().forEach { deselectBox(it) }
-
-            // Select the target box
-            selectBox(box)
-
-            // Set the selected property
-            selectedProperty = sel.property
-            window.unsafeCast<dynamic>().selectedProperty = sel.property
-            selectionContextChanged()
-
-            // Trigger editor to show this property
-            val w = window.unsafeCast<dynamic>()
-            if (w.switchToProperty != null && w.switchToProperty != undefined) {
-                try {
-                    w.switchToProperty(sel.uid, sel.property)
-                } catch (e: Exception) {
-                    console.info("[nav] switchToProperty failed", e)
-                }
-            }
-
-            // Scroll to line if specified
-            if (sel.scrollToLine != null) {
-                setTimeout( {
-                    val editor = w.globalEditor
-                    if (editor != null && editor != undefined) {
-                        try {
-                            val monaco = w.globalMonaco
-                            if (monaco != null && monaco != undefined) {
-                                // Reveal line at center
-                                editor.revealLineInCenter(sel.scrollToLine)
-
-                                // Highlight line if specified
-                                if (sel.highlightLine != null) {
-                                    val line = sel.highlightLine!!
-                                    val range = js("new monaco.Range(line, 1, line, 1)")
-                                    editor.setSelection(range)
-                                    editor.revealLineInCenter(sel.highlightLine)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            console.info("[nav] failed to scroll to line", e)
-                        }
-                    }
-                }, 100)
-            }
-        }
+        navigateToBoxProperty(sel.uid, sel.property, sel.scrollToLine, sel.highlightLine)
 
         Handled.yes
     }
@@ -3987,6 +3957,7 @@ suspend fun main() {
         if (event.altKey) {
             val uid = target.uid as? String ?: return@on
             val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
+            val continueRequested = (event.shiftKey as? Boolean) == true
             if (uid == lastAltDownUid && kotlin.math.abs(stamp - lastAltDownStamp) < 30.0) {
                 return@on
             }
@@ -4005,8 +3976,13 @@ suspend fun main() {
                 notify(" <i>${target.name}</i> is already running", "launch")
                 already = true
             } else {
-                notify("launched <i>${target.name}</i>", "launch")
-                launchAll(target.uid, target["code"])
+                if (continueRequested) {
+                    notify("continuing <i>${target.name}</i>", "launch")
+                    continueAll(target.uid, target["code"])
+                } else {
+                    notify("launched <i>${target.name}</i>", "launch")
+                    launchAll(target.uid, target["code"])
+                }
                 already = false
             }
 
@@ -4018,8 +3994,9 @@ suspend fun main() {
             )
 
             if (!already) {
-                menus.add(json("text" to "launch", "callback" to {
-                    notify("<i>${target.name}</i> will continue", "launch")
+                menus.add(json("text" to "continue", "callback" to {
+                    notify("continuing <i>${target.name}</i>", "launch")
+                    continueAll(target.uid, target["code"])
                 }, "radius" to 1.0, "angle" to 180.0))
             }
 

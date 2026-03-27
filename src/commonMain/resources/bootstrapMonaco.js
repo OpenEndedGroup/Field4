@@ -6,6 +6,7 @@ import {
         monacoStartSelectionMonitor,
         monacoHandleOutput,
         monacoLaunchAll,
+        monacoContinueAll,
         monacoKindForIcon,
         monacoGetEnclosingScope
 } from "./afield.mjs"
@@ -327,42 +328,51 @@ const initMonaco = () => {
         initMarkerSupport(globalEditor)
 }
 
-const setBoxRunning = (uid, isRunning, watermark, strand) => {
-        // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand)
+const syncBoxRunningClass = (box) => {
+        box.classList.remove("running", "running-continued")
+        const runningEntries = box.runningEntries ?? new Map()
+        if (runningEntries.size === 0) return
+
+        const hasFreshLaunch = [...runningEntries.values()].some((mode) => mode !== "continue")
+        box.classList.add(hasFreshLaunch ? "running" : "running-continued")
+}
+
+const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
+        // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand, mode)
         let first = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
         let name = `${watermark}--${strand}`
         if (first) {
                 // Track the highest watermark per strand to ignore stale stop signals
                 first.latestWatermark = first.latestWatermark ?? new Map()
+                first.runningEntries = first.runningEntries ?? new Map()
                 const lastWatermark = first.latestWatermark.get(strand) ?? -Infinity
 
-                // console.log(" is running ", first, first.runningList, watermark, isRunning)
+                // console.log(" is running ", first, first.runningEntries, watermark, isRunning, mode)
                 if (isRunning) {
-                        first.classList.add("running");
-                        first.runningList = first.runningList ?? new Set()
-                        first.runningList.add(name)
+                        first.runningEntries.set(name, mode)
                         if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
-                        setStatusForExecutionMarker(strand, true)
+                        syncBoxRunningClass(first)
+                        setStatusForExecutionMarker(strand, true, mode)
 
                 } else {
                         // Ignore stop messages that are older than the latest start we saw
                         if (watermark < lastWatermark) return
-                        first.runningList = first.runningList ?? new Set()
 
-                        setStatusForExecutionMarker(strand, false)
+                        setStatusForExecutionMarker(strand, false, mode)
 
-                        if (first.runningList.delete(name)) {
+                        if (first.runningEntries.delete(name)) {
 
                         } else {
                                 // TODO
-                                monacoLog("tried to remove a watermark that wasn't there; clearing running list")
-                                first.runningList.clear()
+                                monacoLog("tried to remove a watermark that wasn't there; clearing running state")
+                                first.runningEntries.clear()
                         }
+                        syncBoxRunningClass(first)
                         setTimeout(() => {
-                                if (first.runningList.size === 0) first.classList.remove("running")
+                                syncBoxRunningClass(first)
                         }, 100)
                 }
-                // console.log(" outOfrunning ", first, first.runningList, watermark, isRunning)
+                // console.log(" outOfrunning ", first, first.runningEntries, watermark, isRunning, mode)
         } else {
                 console.warn("warning: tried to set running status on something that doesn't exist?", uid)
         }
@@ -601,6 +611,7 @@ window.handleOutput = monacoHandleOutput
 window.hideMonaco = hideMonaco
 window.showMonaco = showMonaco
 window.launchAll = monacoLaunchAll
+window.continueAll = monacoContinueAll
 
 // Documentation iframe support
 let docsIframeAnimationGeneration = 0

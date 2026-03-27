@@ -30,18 +30,19 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false
 ): EditableFLineViewState? {
-    val fit = computeFitTransform(m.asList(), w, h, fitToSize)
-    val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
+    val lines = m.asList().renderableLines()
+    val fit = computeFitTransform(lines, w, h, fitToSize)
+    val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
     if (editable) {
-        val pairs = m.map { it to it.applyFit(fit) }
+        val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
         display(channel, widget.html)
         return widget.viewState
     } else if (hasInteractive) {
-        val pairs = m.map { it to it.applyFit(fit) }
+        val pairs = lines.map { it to it.applyFit(fit) }
         display(channel, buildInteractiveSVG(pairs, w, h))
     } else {
-        val scaled = m.map { it.applyFit(fit) }
+        val scaled = lines.map { it.applyFit(fit) }
         display(channel, drawToSVG(scaled, w, h))
     }
     return null
@@ -67,18 +68,19 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false
 ): EditableFLineViewState? {
-    val fit = computeFitTransform(m, w, h, fitToSize)
-    val hasInteractive = m.any { it.onClick != null || it.hoverColor != null }
+    val lines = m.renderableLines()
+    val fit = computeFitTransform(lines, w, h, fitToSize)
+    val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
     if (editable) {
-        val pairs = m.map { it to it.applyFit(fit) }
+        val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
         display(channel, widget.html)
         return widget.viewState
     } else if (hasInteractive) {
-        val pairs = m.map { it to it.applyFit(fit) }
+        val pairs = lines.map { it to it.applyFit(fit) }
         display(channel, buildInteractiveSVG(pairs, w, h))
     } else {
-        val scaled = m.map { it.applyFit(fit) }
+        val scaled = lines.map { it.applyFit(fit) }
         display(channel, drawToSVG(scaled, w, h))
     }
     return null
@@ -106,11 +108,12 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false
 ): Map<String, EditableFLineViewState> {
-    val allLines = linesByChannel.values.flatten()
+    val filteredLinesByChannel = linesByChannel.mapValues { (_, lines) -> lines.renderableLines() }
+    val allLines = filteredLinesByChannel.values.flatten()
     val fit = computeFitTransform(allLines, w, h, fitToSize)
     val states = linkedMapOf<String, EditableFLineViewState>()
     if (splitByChannel) {
-        linesByChannel.forEach { (channelName, lines) ->
+        filteredLinesByChannel.forEach { (channelName, lines) ->
             val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
             if (editable) {
                 val pairs = lines.map { it to it.applyFit(fit) }
@@ -159,6 +162,20 @@ fun Box.l(
 private fun Map<String, List<FLine>>.namespaced(prefix: String): Map<String, List<FLine>> =
     this.mapKeys { (k, _) -> "$prefix/$k" }
 
+private fun FLine.safeFast2DBoundsOrNull() = runCatching { fast2DBounds() }.getOrNull()
+
+private fun Collection<FLine>.renderableLines(): List<FLine> =
+    filter { it.safeFast2DBoundsOrNull() != null }
+
+private fun Collection<FLine>.combinedRenderableBoundsOrNull() =
+    mapNotNull { it.safeFast2DBoundsOrNull() }.reduceOrNull { a, b -> a.union(b) }
+
+private fun emptySvg(w: Double, h: Double): String {
+    val width = if (w > 0.0) w else 1.0
+    val height = if (h > 0.0) h else 1.0
+    return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
+}
+
 /**
  * Showcase: render all [FLineGeometryExamples] with sensible defaults.
  *
@@ -198,22 +215,25 @@ fun Box.showFLineGeometryExamples(w: Double = 200.0, h: Double = 200.0, fitToSiz
  * If [w] or [h] are -1, the SVG size is derived from the line bounds.
  */
 fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
+    val lines = n.renderableLines()
+    if (lines.isEmpty()) return emptySvg(w, h)
+
     val ba = ByteArrayOutputStream()
     val o = OutputWStream(ba)
 
     var we = w;
     var he = h;
     if (we == -1.0) {
-        val r = n.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
-        we = r.w+r.x
-        he = r.h+r.y
+        val r = lines.combinedRenderableBoundsOrNull() ?: return emptySvg(w, h)
+        we = r.w + r.x
+        he = r.h + r.y
     }
 
     var s: Canvas? = null
     try {
         s = SVGCanvas.make(Rect.makeWH(we.toFloat(), he.toFloat()), o, true, true)
 
-        n.forEach {
+        lines.forEach {
             outputTo(it, s)
         }
     } finally {
@@ -233,7 +253,7 @@ private fun computeFitTransform(lines: Collection<FLine>, w: Double, h: Double, 
     if (lines.isEmpty()) return null
     if (w <= 0.0 || h <= 0.0) return null
 
-    val bounds = lines.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
+    val bounds = lines.combinedRenderableBoundsOrNull() ?: return null
     if (bounds.w <= 0f || bounds.h <= 0f) return null
 
     val safety = 20f
@@ -364,12 +384,14 @@ fun outputTo(f: FLine, s: Canvas) {
  * `window.__flineHoverOut` to swap the geometry colour on pointer entry/exit.
  */
 internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double): String {
+    val renderablePairs = pairs.filter { (_, scaled) -> scaled.safeFast2DBoundsOrNull() != null }
+    if (renderablePairs.isEmpty()) return emptySvg(w, h)
+
     val we: Double
     val he: Double
     if (w <= 0.0 || h <= 0.0) {
-        val scaledLines = pairs.map { it.second }
-        if (scaledLines.isEmpty()) return "<svg xmlns='http://www.w3.org/2000/svg'/>"
-        val bounds = scaledLines.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
+        val scaledLines = renderablePairs.map { it.second }
+        val bounds = scaledLines.combinedRenderableBoundsOrNull() ?: return emptySvg(w, h)
         we = (bounds.w + bounds.x).toDouble()
         he = (bounds.h + bounds.y).toDouble()
     } else {
@@ -380,7 +402,7 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
     val sb = StringBuilder()
     sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$we" height="$he" style="overflow:visible">""")
 
-    pairs.forEach { (original, scaled) ->
+    renderablePairs.forEach { (original, scaled) ->
         val onClick = original.onClick
         val hoverColor = original.hoverColor
         val hasInteraction = onClick != null || hoverColor != null

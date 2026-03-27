@@ -367,11 +367,32 @@ function registerEmbeddedActions(editor, uid, property) {
 		},
 	});
 
-	// ── Alt+Down: stop all ───────────────────────────────────────────
+	// ── Alt+Shift+Up: continue all ───────────────────────────────────
+	editor.addAction({
+		id: "continue-all",
+		label: "Continue Box",
+		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.UpArrow)],
+		contextMenuGroupId: "execution",
+		contextMenuOrder: 2.1,
+		run: (ed) => {
+			const code = ed.getModel().getValue();
+			if (!code || !code.trim()) return;
+			if (typeof window.continueAll === "function") {
+				window.continueAll(uid, code);
+			} else if (typeof window.launchAll === "function") {
+				window.launchAll(uid, code);
+			}
+		},
+	});
+
+	// ── Alt+Down / Alt+Shift+Down: stop all ──────────────────────────
 	editor.addAction({
 		id: "stop-all",
 		label: "Stop Box",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.DownArrow)],
+		keybindings: [
+			keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.DownArrow),
+			keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.DownArrow),
+		],
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 2.0,
 		run: () => {

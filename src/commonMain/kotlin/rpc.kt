@@ -130,7 +130,13 @@ data class LocalEval(val uid: String, val prompt: String, val kind: String)
 data class Stop_box(val uid: String)
 
 @Serializable
-data class IsRunning(val uid: String, val isRunning: Boolean, val watermark: Int, val strand: String = "default")
+data class IsRunning(
+    val uid: String,
+    val isRunning: Boolean,
+    val watermark: Int,
+    val strand: String = "default",
+    val mode: String = "launch"
+)
 
 @Serializable
 data class Metadata(

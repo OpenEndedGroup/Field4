@@ -1,5 +1,6 @@
 package afield.four.fabricated
 
+import afield.Rect
 import afield.four.Renderer
 import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.defaultBuffer
@@ -64,18 +65,30 @@ object StandardRenderer {
 			return rt
 		}
 
-//		/** Present the lighting RTT to the swapchain with optional grading and viewport. */
-//		fun present(
-//			renderer: Renderer = fromContext(),
-//			target: RenderTarget = renderer.renderList,
-//			name: String = "std-present",
-//			viewport: Rect? = null,
-//			configure: RenderToTexture.ColorGrade.() -> Unit = {}
-//		): ModulePointer =
-//			lighting.blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = configure)
+		/** Present the lighting RTT to the swapchain with optional grading and viewport. */
+		fun present(
+			renderer: Renderer = fromContext(),
+			target: RenderTarget = renderer.renderList,
+			name: String = "std-present",
+			viewport: Rect? = null,
+			configure: RenderToTexture.ColorGrade.() -> Unit = {}
+		): ModulePointer =
+			lighting.blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = configure)
 
 
 		data class PullingMeshPair(val gBuffer: PullingMesh, val shadow: PullingMesh)
+
+		fun PullingMeshPair.setVertexCount(vertexCount: Int): PullingMeshPair {
+			gBuffer.setVertexCount(vertexCount)
+			shadow.setVertexCount(vertexCount)
+			return this
+		}
+
+		fun PullingMeshPair.syncVertexCountFromPositionCursor(strideScalars: Int = 4): PullingMeshPair {
+			gBuffer.syncVertexCountFromPositionCursor(strideScalars)
+			shadow.setVertexCount(gBuffer.mesh.numVert)
+			return this
+		}
 
 		/**
 		 * Register a pair of vertex-pulling meshes into g-buffer and shadow modules, sharing the same
@@ -105,7 +118,7 @@ object StandardRenderer {
 			val maxVerts = triCount * 3
 			val pulling = registerPullingMesh(name, maxVerts, renderer)
 
-			StandardShapes.torus(
+			val write = StandardShapes.torus(
 				positions = pulling.gBuffer.position,
 				normals = pulling.gBuffer.normal,
 				slices = slices,
@@ -114,6 +127,7 @@ object StandardRenderer {
 				majorRadius = majorRadius,
 				config = StandardShapes.WriteConfig(append = false)
 			)
+			pulling.setVertexCount(write.writtenVertices)
 
 			return pulling
 		}
@@ -246,7 +260,18 @@ object StandardRenderer {
 		val mesh: Mesh,
 		val position: FrameBufferGroup,
 		val normal: FrameBufferGroup
-	)
+	) {
+		fun setVertexCount(vertexCount: Int): PullingMesh {
+			require(vertexCount >= 0) { "vertexCount must be non-negative" }
+			mesh.resize(vertexCount, 0, mesh.inside)
+			return this
+		}
+
+		fun syncVertexCountFromPositionCursor(strideScalars: Int = 4): PullingMesh {
+			require(strideScalars > 0) { "strideScalars must be positive" }
+			return setVertexCount(position.cursor / strideScalars)
+		}
+	}
 
 	fun ModulePointer.makePullingMesh(
 		name: String = "pulling-mesh",
@@ -550,4 +575,3 @@ object StandardRenderer {
 		}
 	"""
 }
-

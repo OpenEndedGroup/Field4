@@ -1,5 +1,6 @@
 package afield.four.synth
 
+import afield.logger.lprintln
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.openal.ALC
@@ -25,6 +26,7 @@ class AudioPatchSpec internal constructor(
 ) : LiveGraphInspectable {
     internal val visualTrace = StereoTrace(capacity = 4096, stride = 1)
     internal var visualSampleRate: Int = 48_000
+    internal var inlineSummaryTarget: InlineAudioSummaryTarget? = null
 
     internal interface Renderer {
         fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
@@ -72,6 +74,12 @@ class AudioPatchSpec internal constructor(
         "warmUpCycles" to warmUpCycles
     )
 }
+
+internal data class InlineAudioSummaryTarget(
+    val line: Int,
+    val property: String = "code",
+    val annotation: String? = null
+)
 
 class AudioPatchHandle internal constructor(
     private val engine: FieldAudioEngine,
@@ -167,7 +175,7 @@ private class StereoRenderer(
 class FieldAudioEngine private constructor(
     val sampleRate: Int = 48_000,
     val bufferSize: Int = 512,
-    private val queuedBufferCount: Int = 4,
+    private val queuedBufferCount: Int = 12,
     private val inputChannels: Int = 2
 ) : AutoCloseable {
     companion object {
@@ -178,7 +186,7 @@ class FieldAudioEngine private constructor(
         fun shared(
             sampleRate: Int = 48_000,
             bufferSize: Int = 512,
-            queuedBufferCount: Int = 4,
+            queuedBufferCount: Int = 12,
             inputChannels: Int = 2
         ): FieldAudioEngine {
             val engine = sharedInstance ?: FieldAudioEngine(
@@ -275,6 +283,14 @@ class FieldAudioEngine private constructor(
             audioThread = thread(start = true, isDaemon = true, name = "FieldAudioEngine") {
                 try {
                     runLoop()
+                } catch (t: Throwable) {
+                    lprintln(
+                        "error,audio",
+                        "FieldAudioEngine crashed: ${t.message ?: t.javaClass.simpleName} " +
+                            "(sampleRate=$sampleRate, bufferSize=$bufferSize, queuedBufferCount=$queuedBufferCount, patchCount=${patches.size})"
+                    )
+                    lprintln("error,audio", t.stackTraceToString())
+                    throw t
                 } finally {
                     outputActive = false
                     inputActive = false
@@ -305,30 +321,38 @@ class FieldAudioEngine private constructor(
     }
 
     private fun runLoop() {
-        initializeOutput()
-        initializeCapture()
-        startLatch.countDown()
+        try {
+            initializeOutput()
+            initializeCapture()
+            startLatch.countDown()
 
-        if (!outputActive) return
+            if (!outputActive) return
 
-        repeat(queuedBufferCount) {
-            queueNextBuffer()
-        }
-        ensurePlaying()
-
-        val sleepMillis = ((bufferSize * 1_000.0) / sampleRate / 3.0).roundToInt().coerceAtLeast(1)
-
-        while (!shouldStop.get()) {
-            reclaimProcessedBuffers()
-            while (freeBuffers.isNotEmpty()) {
+            repeat(queuedBufferCount) {
                 queueNextBuffer()
             }
             ensurePlaying()
-            Thread.sleep(sleepMillis.toLong())
-        }
 
-        shutdownCapture()
-        shutdownOutput()
+            val sleepMillis = ((bufferSize * 1_000.0) / sampleRate / 3.0).roundToInt().coerceAtLeast(1)
+
+            while (!shouldStop.get()) {
+                reclaimProcessedBuffers()
+                while (freeBuffers.isNotEmpty()) {
+                    queueNextBuffer()
+                }
+                ensurePlaying()
+                Thread.sleep(sleepMillis.toLong())
+            }
+        } finally {
+            runCatching { shutdownCapture() }.onFailure {
+                lprintln("error,audio", "FieldAudioEngine capture shutdown failed: ${it.message ?: it.javaClass.simpleName}")
+                lprintln("error,audio", it.stackTraceToString())
+            }
+            runCatching { shutdownOutput() }.onFailure {
+                lprintln("error,audio", "FieldAudioEngine output shutdown failed: ${it.message ?: it.javaClass.simpleName}")
+                lprintln("error,audio", it.stackTraceToString())
+            }
+        }
     }
 
     private fun initializeOutput() {

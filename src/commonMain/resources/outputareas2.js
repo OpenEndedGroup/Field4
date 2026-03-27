@@ -899,16 +899,17 @@ function disclosureInterface(container) {
                         const link = target.closest("a[data-box-uid], a[href^='#box:']");
                         if (!link || !container.contains(link)) return;
 
-                        let uid = (link.getAttribute("data-box-uid") || "").trim();
-                        if (!uid) {
-                                const href = link.getAttribute("href") || "";
-                                uid = decodeBoxUidFromHref(href);
-                        }
-                        if (!uid) return;
+                        const navigation = decodeBoxNavigationTarget(link);
+                        if (!navigation.uid) return;
 
                         event.preventDefault();
                         event.stopPropagation();
-                        selectBoxByUidFromOutput(uid);
+                        selectBoxByUidFromOutput(
+                                navigation.uid,
+                                navigation.property,
+                                navigation.scrollToLine,
+                                navigation.highlightLine
+                        );
                 });
         }
 
@@ -930,20 +931,57 @@ function findBoxByUid(uid) {
         return null;
 }
 
-function decodeBoxUidFromHref(href) {
-        if (typeof href !== "string") return "";
-        if (!href.startsWith("#box:")) return "";
-        const raw = href.slice(5).trim();
-        if (!raw) return "";
-        try {
-                return decodeURIComponent(raw);
-        } catch (_error) {
-                return raw;
-        }
+function decodeBoxNavigationTarget(link) {
+        const href = (link && link.getAttribute && link.getAttribute("href")) || "";
+        const fromHref = decodeBoxTargetFromHref(href);
+        const uid = ((link.getAttribute("data-box-uid") || "").trim()) || fromHref.uid || "";
+        const property = ((link.getAttribute("data-box-property") || "").trim()) || fromHref.property || "";
+        const scrollToLine = parseOptionalInt(link.getAttribute("data-box-scroll-to-line")) ?? fromHref.scrollToLine;
+        const highlightLine = parseOptionalInt(link.getAttribute("data-box-highlight-line")) ?? fromHref.highlightLine;
+        return { uid, property, scrollToLine, highlightLine };
 }
 
-function selectBoxByUidFromOutput(uid) {
+function decodeBoxTargetFromHref(href) {
+        if (typeof href !== "string") return { uid: "", property: "", scrollToLine: null, highlightLine: null };
+        if (!href.startsWith("#box:")) return { uid: "", property: "", scrollToLine: null, highlightLine: null };
+
+        const raw = href.slice(5).trim();
+        if (!raw) return { uid: "", property: "", scrollToLine: null, highlightLine: null };
+
+        const queryStart = raw.indexOf("?");
+        const encodedUid = queryStart >= 0 ? raw.slice(0, queryStart) : raw;
+        const query = queryStart >= 0 ? raw.slice(queryStart + 1) : "";
+        let uid = encodedUid;
+        try {
+                uid = decodeURIComponent(encodedUid);
+        } catch (_error) {}
+
+        const params = new URLSearchParams(query);
+        return {
+                uid,
+                property: params.get("property") || "",
+                scrollToLine: parseOptionalInt(params.get("scrollToLine") || params.get("line")),
+                highlightLine: parseOptionalInt(params.get("highlightLine") || params.get("line"))
+        };
+}
+
+function parseOptionalInt(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const parsed = Number.parseInt(String(value), 10);
+        return Number.isFinite(parsed) ? parsed : null;
+}
+
+function selectBoxByUidFromOutput(uid, property = "", scrollToLine = null, highlightLine = null) {
         if (!uid) return false;
+        const navigate = window.navigateToBoxProperty;
+        if (typeof navigate === "function") {
+                try {
+                        return navigate(uid, property || "code", scrollToLine, highlightLine) !== false;
+                } catch (error) {
+                        console.info("[output] navigateToBoxProperty failed", error);
+                }
+        }
+
         const box = findBoxByUid(uid);
         if (!box) {
                 if (typeof window.notify === "function") {
@@ -963,6 +1001,13 @@ function selectBoxByUidFromOutput(uid) {
 
         if (typeof window.selectBox === "function") {
                 window.selectBox(box);
+        }
+        if (property && typeof window.switchToProperty === "function") {
+                try {
+                        window.switchToProperty(uid, property);
+                } catch (error) {
+                        console.info("[output] switchToProperty fallback failed", error);
+                }
         }
         if (typeof box.scrollIntoView === "function") {
                 box.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });

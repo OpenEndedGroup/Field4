@@ -249,6 +249,9 @@ object MacroRegistry {
         callRewrite["computeModuleHere"] = { box, id, args ->
             box.macro_computeModuleHere(args)
         }
+        callRewrite["shadertoyHere"] = { box, id, args ->
+            box.macro_shadertoyHere(args)
+        }
         callRewrite["prop"] = { box, id, args ->
             box.macro_prop(args)
         }
@@ -259,6 +262,12 @@ object MacroRegistry {
             box.macro_printHere(args)
         }
         callRewrite["_println"] = { box, id, args ->
+            box.marco_printlnHere(args)
+        }
+        callRewrite["print"] = { box, id, args ->
+            box.macro_printHere(args)
+        }
+        callRewrite["println"] = { box, id, args ->
             box.marco_printlnHere(args)
         }
 

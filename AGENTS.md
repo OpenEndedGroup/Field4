@@ -23,7 +23,10 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 ## Field Backdoor (Preferred for Agents)
 
 - When you need to verify Field behavior by actually running code, prefer `python3 tools/field_backdoor.py` over driving the browser manually.
+- When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots.
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts `./gradlew runJvm` itself, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
+- For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
+- Reuse the same custom port for one verification session, and pick a new custom port when you want a guaranteed fresh Field JVM. This avoids burning time and tokens debugging old code loaded in some unrelated existing server.
 - Use `--json` for agent automation. The result object includes `ok`, `data`, `events`, and `timedOut`.
 - Use scratch sessions for disposable experiments. Use `--document <name>` when you need to attach to a real saved document.
 - Every run writes a unique log file under `.field-backdoor/logs/`. `status` reports both the session log and the managed server log path.
@@ -32,20 +35,22 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 Minimum hello world:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+python3 tools/field_backdoor.py --json --port 9477 \
   --command 'new-box --name Hello' \
   --command 'run @last --value "println(\"hello world\")"'
 ```
 
 Recommended agent workflow:
 
-1. Run `python3 tools/field_backdoor.py --json --command status` to see whether it started Field and where the logs are.
-2. For quick execution checks, stay in scratch mode and use `new-box`, `connect`, `disconnect`, `set`, `run`, `launch`, `stop`, and `output`.
-3. For larger snippets, prefer `--file -` with a heredoc or pipe. Use `--file <path>` when the code already lives in a file.
-4. Use `--with-playwright` when you know a session will need DOM inspection, screenshots, or output-area capture. This opens or reuses Field's server-owned Playwright browser immediately after the backdoor attaches to its current session, and again after any later `open ...` command.
-5. Use `playwright-open` manually when you want to defer browser startup until later in the session.
-6. Use `editor-open <box> --property code` before `run` or `launch` when you need inline Monaco visualizers like `histogram`, `history`, `stats`, or `pianoRoll` to exist in the editor before a later `screenshot-editor`.
-7. Read the `events` array in JSON output to inspect stdout, `display(...)` output, runtime errors, and running-state transitions.
+1. Pick a custom high port and start with `python3 tools/field_backdoor.py --json --port 9477 --command status` to see whether it started Field, whether `managedServer` is true, and where the logs are.
+2. If you unexpectedly connect to an existing server or suspect stale code, do not keep retrying on the same default port. Pick a new custom port and start a fresh managed Field there.
+3. For quick execution checks, stay in scratch mode and use `new-box`, `connect`, `disconnect`, `set`, `run`, `launch`, `stop`, and `output`.
+4. For larger snippets, prefer `--file -` with a heredoc or pipe. Use `--file <path>` when the code already lives in a file.
+5. Use `--with-playwright` when you know a session will need DOM inspection, screenshots, or output-area capture. This opens or reuses Field's server-owned Playwright browser immediately after the backdoor attaches to its current session, and again after any later `open ...` command.
+6. Use `playwright-open` manually when you want to defer browser startup until later in the session.
+7. Use `editor-open <box> --property code` before `run` or `launch` when you need inline Monaco visualizers like `histogram`, `history`, `stats`, or `pianoRoll` to exist in the editor before a later `screenshot-editor`.
+8. Use `run-jvm-main <entrypoint> --arg ...` for annotated/standalone JVM smoke checks when you do not need a scratch box UI.
+9. Read the `events` array in JSON output to inspect stdout, `display(...)` output, runtime errors, and running-state transitions.
 
 By default this Playwright browser is headless, so screenshot/DOM tests do not steal desktop focus. Set `AFIELD_PLAYWRIGHT_VISIBLE=true` or JVM property `-Dafield.playwright.visible=true` only when you explicitly want to watch the browser while debugging.
 
@@ -229,6 +234,51 @@ When adding a new RPC:
 1. Define payload types in `src/commonMain/kotlin/rpc.kt` (`@Serializable`).
 2. Add a server handler in `src/jvmMain/kotlin/afield/Server.kt` (or in `src/jvmMain/kotlin/afield/server/*`).
 3. Add a frontend sender/receiver in `src/jsMain/kotlin/afield/*` (or JS resources if it’s not in Kotlin/JS).
+
+### Runloop vs Audio Loop
+
+Field has more than one “main loop”, and bugs get hard fast when these are conflated:
+
+- `afield.Runloop` (`src/jvmMain/kotlin/afield/Runloop.kt`) is the JVM-side coordination loop started from `Server.kt`.
+- `FieldAudioEngine` (`src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt`) owns a separate daemon audio thread and mixes fixed-size audio buffers there.
+- The Vulkan renderer also installs `Runloop.preRun` hooks for graphics-side work, but that is still Runloop work, not audio work.
+
+What the Runloop is for:
+
+- Advancing Field’s coarse frame counter (`Runloop.frame`).
+- Executing `preRun`, `main.frame()`, and `postRun` hooks once per Field tick.
+- Main-thread coordination for UI, box/runtime bookkeeping, websocket-adjacent work, and graphics setup that must happen in step with the app frame.
+- Low-rate control updates such as graph/query bookkeeping or scheduling that can tolerate frame-rate timing.
+
+What the Runloop is not for:
+
+- It is not the audio callback.
+- It is not sample-accurate.
+- It must not become the thing that advances oscillator phase, filter state, delay lines, envelopes, or other stateful DSP internals just because some UI/helper code wants a “current value”.
+
+What the audio loop is for:
+
+- Calling `Signal.render(...)` / `generate(...)` on the real synth graph with the audio engine’s `SynthContext`.
+- Owning DSP state progression for oscillators, filters, phase accumulators, feedback paths, and modulation signals.
+- Producing the actual mixed PCM buffers that OpenAL queues.
+
+Practical rule that would have caught the recent bug earlier:
+
+- Treat a synth `Signal` graph as audio-thread-owned unless the specific code is explicitly written for multi-context use.
+- Do not sample the same stateful synth graph from `Runloop`, `GraphBindingRuntime`, docs/preview helpers, or ad hoc inspectors just to obtain a display/control value.
+- If UI/graph code needs to show a current synth value, prefer publishing a snapshot from the real audio render path rather than re-rendering the graph on the Runloop.
+
+Why this matters:
+
+- `Signal` objects often cache per `SynthContext` and per cycle, but many nodes also carry mutable DSP state beyond that cache.
+- Rendering the same signal graph from two contexts can still corrupt behavior if node internals are stateful, even when cache keys are correct.
+- Our recent `Param.modulate(SineOsc(...))` glitch came from the Runloop-side graph-binding sampler advancing the same modulation oscillator that the audio thread was supposed to own.
+
+Debugging checklist:
+
+- If a value is “supposed to be smooth”, confirm which loop is advancing it.
+- If audio dies or sounds discontinuous, check whether any Runloop hook, graph-binding helper, inspector, or warm-up path is touching the same synth objects.
+- When in doubt, search for `Runloop.runLoop`, `preRun`, `postRun`, `GraphBindingRuntime`, and `FieldAudioEngine` before assuming a pure DSP bug.
 
 ---
 

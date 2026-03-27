@@ -517,9 +517,27 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     run {
         val action = js("{}")
+        action.id = "continue-all"
+        action.label = "Continue Box"
+        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.UpArrow))
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "execution"
+        action.contextMenuOrder = 2.1
+        action.run = { ed: dynamic ->
+            monacoRunContinueAll(ed)
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
         action.id = "stop-all"
         action.label = "Stop Box"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow))
+        action.keybindings = arrayOf(
+            keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow),
+            keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.DownArrow)
+        )
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -664,7 +682,8 @@ fun monacoRunExecuteFragment(editor: dynamic) {
 fun monacoRunExecuteAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    val code = w.currentSelectedCode[0].code as? String ?: ""
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
 
     val payload = js("{}")
     payload.uid = uid
@@ -848,8 +867,19 @@ fun monacoRunLaunchFragment(editor: dynamic) {
 fun monacoRunLaunchAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    val code = w.currentSelectedCode[0].code as? String ?: ""
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
     w.launchAll(uid, code)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunContinueAll(editor: dynamic) {
+    val w = js("window")
+    val uid = w.currentSelectedCode[0].uid as String
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
+    w.continueAll(uid, code)
 }
 
 @OptIn(ExperimentalJsExport::class)

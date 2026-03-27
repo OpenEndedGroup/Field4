@@ -78,6 +78,7 @@ object LeafRenderers {
 typealias RootsProvider = () -> Map<String, Any?>
 
 object Inspector {
+    private data class RetainedLink(val obj: Any, val createdAtMs: Long)
 
     // --- Configuration ---------------------------------------------------------------------------
 
@@ -91,6 +92,7 @@ object Inspector {
     fun linkPathFor(obj: Any, browsePath: String = "/browse", uid : String? = null): String {
         val token = uid ?: "r${idGen.getAndIncrement()}"
         linkTokens[token] = WeakReference(obj)
+        retainLinkToken(token, obj)
         return "$browsePath?root=$token"
     }
 
@@ -137,6 +139,31 @@ object Inspector {
 
     // deep-link token store (weak so links don't pin objects)
     private val linkTokens = ConcurrentHashMap<String, WeakReference<Any>>()
+    private val retainedLinkTokens = LinkedHashMap<String, RetainedLink>()
+    private val retainedLinkTokenTtlMs = 10 * 60 * 1000L
+    private val retainedLinkTokenMax = 256
+
+    @Synchronized
+    private fun retainLinkToken(token: String, obj: Any) {
+        val now = System.currentTimeMillis()
+        retainedLinkTokens[token] = RetainedLink(obj, now)
+        cleanupRetainedLinkTokens(now)
+    }
+
+    @Synchronized
+    private fun cleanupRetainedLinkTokens(now: Long) {
+        val it = retainedLinkTokens.entries.iterator()
+        while (it.hasNext()) {
+            val (_, entry) = it.next()
+            if (now - entry.createdAtMs > retainedLinkTokenTtlMs) {
+                it.remove()
+            }
+        }
+        while (retainedLinkTokens.size > retainedLinkTokenMax) {
+            val eldestKey = retainedLinkTokens.entries.firstOrNull()?.key ?: break
+            retainedLinkTokens.remove(eldestKey)
+        }
+    }
 
     private data class Client(val key: Any, val send: (String) -> Unit) {
         override fun equals(other: Any?) = other is Client && other.key === key

@@ -632,12 +632,16 @@ class Server {
             handlers["set-string"] = mutableSetOf({ message, reply ->
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
+                val isEditorStateProperty = set.property.endsWith("_editorState")
 
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     box(set.uid).name = set.value
-                } else
-                    box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
+                } else {
+                    // Monaco view/cursor state should persist with the document, but live rebroadcast
+                    // makes multiple clients on the same box fight over their local editor position.
+                    box(set.uid).setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
+                }
 
                 // If this is a sidecar-backed property, mark it for persistence.
                 if (Box.ioSeparateProperties.containsKey(set.property) && !thisSessionInfo.get().ephemeral) {
@@ -1560,6 +1564,27 @@ class Server {
                                 File("./src/commonMain/resources/h2_explorer.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/lazy-value-fragment") {
+                        handle {
+                            val root = call.request.queryParameters["root"]
+                            val kind = call.request.queryParameters["kind"]
+                            val offset = call.request.queryParameters["offset"]?.toIntOrNull()
+                            val depth = call.request.queryParameters["depth"]?.toIntOrNull() ?: 0
+
+                            if (root.isNullOrBlank() || kind.isNullOrBlank() || offset == null) {
+                                call.respond(HttpStatusCode.BadRequest, "missing or invalid lazy value fragment parameters")
+                                return@handle
+                            }
+
+                            val html = ValueVisualizer.renderLazyFragment(root, kind, offset, depth)
+                            if (html == null) {
+                                call.respond(HttpStatusCode.NotFound, "unknown or expired lazy value token")
+                                return@handle
+                            }
+
+                            call.respondText(html, ContentType.Text.Html)
                         }
                     }
                     route("/inspect") {

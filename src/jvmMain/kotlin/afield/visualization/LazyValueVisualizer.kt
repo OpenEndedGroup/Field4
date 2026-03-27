@@ -15,9 +15,11 @@ private const val H2_IFRAME_HEIGHT_PX = 253
 private const val H2_EMBED_EXPLORER_PATH = "/h2-explorer"
 private const val H2_OUTLINER_PATH = "/tree"
 private const val H2_COLUMNS_PATH = "/browse"
+private const val INLINE_EXPAND_PATH = "/lazy-value-fragment"
 private const val H2_TOKEN_MAX = 256
 private const val H2_TOKEN_TTL_MS = 10 * 60 * 1000L
 private const val H2_MAP_SNAPSHOT_THRESHOLD = 20_000
+private const val H2_OUTPUT_VIEW_THRESHOLD = 32
 
 private object H2TokenRetention {
     private data class Entry(val raw: Any?, val createdAtMs: Long)
@@ -55,8 +57,8 @@ private object H2TokenRetention {
 }
 
 object LazyValueVisualizer {
-    fun visualize(value: Any?): String {
-        if (!isHeavyStructure(value)) return ValueVisualizer.visualize(value)
+    fun visualize(value: Any?, appendable: Boolean = false): String {
+        if (!isHeavyStructure(value)) return ValueVisualizer.visualize(value, appendable = appendable)
 
         val wrapped = wrapForInspector(value, title = "value")
         val token = "h2-${UUID.randomUUID()}"
@@ -66,7 +68,9 @@ object LazyValueVisualizer {
         val embeddedPath = "$H2_EMBED_EXPLORER_PATH?root=$token"
 
         return buildString {
-            append("<div class='value-viz-h2' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:auto;box-sizing:border-box;'>")
+            append("<div class='value-viz-h2")
+            if (appendable) append(" afield-appendable-output")
+            append("' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:auto;box-sizing:border-box;'>")
             append("<div style='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;'>")
             append("<span style='color:#9cf;'>")
             append(escapeHtml(summary(value)))
@@ -99,6 +103,83 @@ object LazyValueVisualizer {
     }
 }
 
+internal fun rememberLazyValueToken(value: Any?): String {
+    val token = "lazy-${UUID.randomUUID()}"
+    H2TokenRetention.remember(token, value)
+    return token
+}
+
+internal fun h2ExplorerPathForToken(token: String): String = "$H2_EMBED_EXPLORER_PATH?root=$token"
+
+private fun collectionSize(value: Any?): Int? = when (value) {
+    is Collection<*> -> value.size
+    is Map<*, *> -> value.size
+    is Array<*> -> value.size
+    is ByteArray -> value.size
+    is ShortArray -> value.size
+    is IntArray -> value.size
+    is LongArray -> value.size
+    is FloatArray -> value.size
+    is DoubleArray -> value.size
+    is BooleanArray -> value.size
+    is CharArray -> value.size
+    is FloatBuffer -> value.limit()
+    else -> null
+}
+
+internal fun shouldOfferH2OutputAreaViewer(value: Any?): Boolean {
+    val size = collectionSize(value) ?: return false
+    if (size < H2_OUTPUT_VIEW_THRESHOLD) return false
+    return when (value) {
+        is List<*>, is Array<*>,
+        is ByteArray, is ShortArray, is IntArray, is LongArray,
+        is FloatArray, is DoubleArray, is BooleanArray, is CharArray,
+        is FloatBuffer -> true
+        else -> false
+    }
+}
+
+internal fun lazyInlineExpanderHtml(
+    value: Any?,
+    label: String,
+    kind: String,
+    offset: Int,
+    depth: Int = 0,
+    title: String? = null,
+    ownerUid: String? = Box.context.get()?.id,
+    offerOutputAreaViewer: Boolean = shouldOfferH2OutputAreaViewer(value)
+): String {
+    val token = rememberLazyValueToken(value)
+    val expandPath = "$INLINE_EXPAND_PATH?root=$token&kind=$kind&offset=$offset&depth=$depth"
+    val outputAreaPath = if (offerOutputAreaViewer) h2ExplorerPathForToken(token) else null
+    val outputAreaTitle = title?.ifBlank { null } ?: "Columns"
+
+    return buildString {
+        append("<span class='afield-lazy-inline'>")
+        append("<a href='#' class='afield-lazy-inline-link' data-afield-lazy-src='")
+        append(escapeHtmlAttr(expandPath))
+        append("' onclick='window.afieldExpandLazyValue && window.afieldExpandLazyValue(this); return false;'")
+        append(" style='color:#aaa;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer;'>")
+        append(escapeHtml(label))
+        append("</a>")
+        if (outputAreaPath != null && !ownerUid.isNullOrBlank()) {
+            append("<span style='color:#666;'> </span>")
+            append("<a href='#' class='afield-lazy-inline-link afield-lazy-inline-side-link'")
+            append(" data-afield-view-src='")
+            append(escapeHtmlAttr(outputAreaPath))
+            append("' data-afield-box-uid='")
+            append(escapeHtmlAttr(ownerUid))
+            append("' data-afield-view-title='")
+            append(escapeHtmlAttr(outputAreaTitle))
+            append("' onclick='window.afieldOpenLazyValueInOutputArea && window.afieldOpenLazyValueInOutputArea(this); return false;'")
+            append(" style='color:#777;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer;'>")
+            append("columns")
+            append("</a>")
+        }
+        append("</span>")
+    }
+}
+
 private fun wrapForInspector(value: Any?, title: String? = null): Any? {
     return when (value) {
         null -> null
@@ -108,6 +189,14 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is Map<*, *> -> PagedMapBrowsable.forMap(value, title)
         is List<*> -> PagedListBrowsable(value, title = title)
         is Array<*> -> PagedListBrowsable(value.asList(), title = title)
+        is ByteArray -> PagedListBrowsable(value.asList(), title = title)
+        is ShortArray -> PagedListBrowsable(value.asList(), title = title)
+        is IntArray -> PagedListBrowsable(value.asList(), title = title)
+        is LongArray -> PagedListBrowsable(value.asList(), title = title)
+        is FloatArray -> PagedListBrowsable(value.asList(), title = title)
+        is DoubleArray -> PagedListBrowsable(value.asList(), title = title)
+        is BooleanArray -> PagedListBrowsable(value.asList(), title = title)
+        is CharArray -> PagedListBrowsable(value.asList(), title = title)
         is FloatBuffer -> FloatBufferBrowsable(value, title = title)
         else -> value
     }

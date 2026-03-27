@@ -72,6 +72,19 @@ fun executing() {
             Handled.yes
         })
 
+    handlers["continue-all"] = mutableSetOf(
+        { message, reply: (Message) -> Unit ->
+
+            val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
+            val box = box(exec.uid)
+
+            FlightRecorder.recordLaunchEntrypoint("continue-all", box, exec, strand = "default")
+            box.ke.continueAll(box, exec, exec.code, "default", reply)
+
+
+            Handled.yes
+        })
+
     handlers["launch-fragment"] = mutableSetOf(
         { message, reply: (Message) -> Unit ->
 

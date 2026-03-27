@@ -1,10 +1,7 @@
 package afield.stdlib
 
-import afield.Box
-import afield.Runloop
-import afield.findWithNameOrNull
-import afield.notify
-import afield.visitParents
+import afield.*
+import afield.four.Renderer
 import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
@@ -15,11 +12,16 @@ import afield.four.util.runTemplate
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
-import afield.preamble
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.joml.Vector3f
+import org.joml.Vector4f
+import org.lwjgl.glfw.GLFW
+import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
+import java.time.LocalDateTime
 
 // ------------------------------
 // Box properties
@@ -70,6 +72,14 @@ fun Box.computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer {
 
 fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
     throw MacroRegistry.MacroNotExpandedException("meshModuleHere should not be callable directly, but should be expanded as a macro")
+}
+
+fun Box.shadertoyHere(p: Parameters): ModulePointer {
+    throw MacroRegistry.MacroNotExpandedException("shadertoyHere should not be callable directly, but should be expanded as a macro")
+}
+
+fun Box.shadertoyHere(p: Parameters.() -> Unit): ModulePointer {
+    throw MacroRegistry.MacroNotExpandedException("shadertoyHere should not be callable directly, but should be expanded as a macro")
 }
 
 
@@ -623,6 +633,177 @@ val defaultFragmentShader = """
     }
 """.trimIndent()
 
+private const val SHADERTOY_VERTEX_TEMPLATE_KEY = "shadertoy.vertexPreamble"
+private const val SHADERTOY_FRAGMENT_TEMPLATE_KEY = "shadertoy.fragmentPreamble"
+
+private val shadertoyVertexPreamble = """
+    #version 450
+""".trimIndent()
+
+private val shadertoyFragmentPreamble = """
+    #version 450
+
+    layout(location = 0) out vec4 uFragColor;
+
+    layout(set = 0, binding = 0) uniform ShadertoyUniforms {
+        vec3 iResolution;
+        float iTime;
+        float iTimeDelta;
+        float iFrameRate;
+        int iFrame;
+        vec4 iMouse;
+        vec4 iDate;
+        vec3 iChannelResolution0;
+        float iChannelTime0;
+        vec3 iChannelResolution1;
+        float iChannelTime1;
+        vec3 iChannelResolution2;
+        float iChannelTime2;
+        vec3 iChannelResolution3;
+        float iChannelTime3;
+    } st;
+
+    layout(set = 0, binding = 1) uniform sampler2D iChannel0;
+    layout(set = 0, binding = 2) uniform sampler2D iChannel1;
+    layout(set = 0, binding = 3) uniform sampler2D iChannel2;
+    layout(set = 0, binding = 4) uniform sampler2D iChannel3;
+
+    #define iResolution st.iResolution
+    #define iTime st.iTime
+    #define iTimeDelta st.iTimeDelta
+    #define iFrameRate st.iFrameRate
+    #define iFrame st.iFrame
+    #define iMouse st.iMouse
+    #define iDate st.iDate
+    #define iChannelTime float[4](st.iChannelTime0, st.iChannelTime1, st.iChannelTime2, st.iChannelTime3)
+    #define iChannelResolution vec3[4](st.iChannelResolution0, st.iChannelResolution1, st.iChannelResolution2, st.iChannelResolution3)
+""".trimIndent()
+
+private fun Box.ensureShadertoyTemplates() {
+    shaderTemplate.putIfAbsent(SHADERTOY_VERTEX_TEMPLATE_KEY, shadertoyVertexPreamble)
+    shaderTemplate.putIfAbsent(SHADERTOY_FRAGMENT_TEMPLATE_KEY, shadertoyFragmentPreamble)
+}
+
+val shadertoyVertexShader = """
+    {{ shadertoy.vertexPreamble }}
+
+    void main() {
+        vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+        gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+    }
+""".trimIndent()
+
+val shadertoyFragmentShader = """
+    {{ shadertoy.fragmentPreamble }}
+
+    void mainImage(out vec4 fragColor, in vec2 fragCoord);
+
+    void main() {
+        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+        mainImage(color, gl_FragCoord.xy);
+        uFragColor = color;
+    }
+
+    void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+        vec2 uv = fragCoord / max(iResolution.xy, vec2(1.0));
+        fragColor = vec4(uv, 0.5 + 0.5 * sin(iTime), 1.0);
+    }
+""".trimIndent()
+
+private data class ShadertoyTimeState(
+    val startedAtNs: Long = System.nanoTime(),
+    var lastFrameSampleNs: Long = startedAtNs,
+    var lastDeltaSeconds: Float = 1f / 60f,
+    var clickOrigin: Vector2Like? = null
+)
+
+private data class Vector2Like(val x: Float, val y: Float)
+
+private object ShadertoyTextures {
+    private val cache = java.util.WeakHashMap<Renderer, Map<String, LoadedTexture>>()
+    private val colors = listOf(
+        "iChannel0" to byteArrayOf(255.toByte(), 255.toByte(), 255.toByte(), 255.toByte()),
+        "iChannel1" to byteArrayOf(255.toByte(), 0, 0, 255.toByte()),
+        "iChannel2" to byteArrayOf(0, 255.toByte(), 0, 255.toByte()),
+        "iChannel3" to byteArrayOf(0, 0, 255.toByte(), 255.toByte())
+    )
+
+    fun forRenderer(renderer: Renderer): Map<String, LoadedTexture> = cache.getOrPut(renderer) {
+        colors.associate { (name, rgba) ->
+            val data = MemoryUtil.memAlloc(4)
+            data.put(rgba)
+            data.flip()
+            name to LoadedTexture.fromRawRGBA(name, 1, 1, data, renderer, VK_FORMAT_R8G8B8A8_SRGB)
+        }
+    }
+}
+
+private fun bindShadertoyUniforms(module: ModulePointer, renderer: Renderer) {
+    val uniforms = module.current.liveUniformStructures["ShadertoyUniforms"] ?: return
+    val timeState = ShadertoyTimeState()
+    val window = renderer.window
+
+    fun cursorNow(): Vector2Like {
+        val c = window.cursor
+        return Vector2Like(c.x, c.y)
+    }
+
+    uniforms.bind("iResolution") {
+        Vector3f(window.width.toFloat(), window.height.toFloat(), 1f)
+    }
+    uniforms.bind("iTime") {
+        ((System.nanoTime() - timeState.startedAtNs) / 1_000_000_000.0).toFloat()
+    }
+    uniforms.bind("iTimeDelta") {
+        val now = System.nanoTime()
+        val delta = ((now - timeState.lastFrameSampleNs) / 1_000_000_000.0).toFloat().coerceAtLeast(0f)
+        timeState.lastFrameSampleNs = now
+        timeState.lastDeltaSeconds = if (delta > 0f) delta else timeState.lastDeltaSeconds
+        timeState.lastDeltaSeconds
+    }
+    uniforms.bind("iFrameRate") {
+        (1f / timeState.lastDeltaSeconds.coerceAtLeast(1f / 1000f))
+    }
+    uniforms.bind("iFrame") {
+        ((System.nanoTime() - timeState.startedAtNs) / 16_666_667L).toInt()
+    }
+    uniforms.bind("iMouse") {
+        val leftDown = window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)
+        val cursor = cursorNow()
+        if (leftDown && timeState.clickOrigin == null) {
+            timeState.clickOrigin = cursor
+        } else if (!leftDown) {
+            timeState.clickOrigin = null
+        }
+        val origin = timeState.clickOrigin ?: cursor
+        val shaderY = window.height.toFloat() - cursor.y
+        val originShaderY = window.height.toFloat() - origin.y
+        Vector4f(cursor.x, shaderY, if (leftDown) origin.x else -origin.x, if (leftDown) originShaderY else -originShaderY)
+    }
+    uniforms.bind("iDate") {
+        val now = LocalDateTime.now()
+        val seconds =
+            now.hour * 3600f + now.minute * 60f + now.second.toFloat() + now.nano / 1_000_000_000f
+        Vector4f(now.year.toFloat(), now.monthValue.toFloat(), now.dayOfMonth.toFloat(), seconds)
+    }
+    for (index in 0..3) {
+        uniforms.bind("iChannelResolution$index") { Vector3f(1f, 1f, 1f) }
+        uniforms.bind("iChannelTime$index") {
+            ((System.nanoTime() - timeState.startedAtNs) / 1_000_000_000.0).toFloat()
+        }
+    }
+}
+
+private fun installShadertoyMesh(module: ModulePointer, renderer: Renderer, name: String = "shadertoy"): Mesh {
+    val existing = module.current.meshes[name]
+    if (existing != null) return existing
+
+    val mesh = Mesh(renderer, module)
+    mesh.resize(3, 0, module)
+    module.current.meshes[name] = mesh
+    return mesh
+}
+
 fun Box.macro_moduleHereWithDefaultShaders(
     args: List<String>,
     vertex: String = defaultVertexShader,
@@ -682,6 +863,16 @@ fun Box.macro_moduleHereWithDefaultShaders(
         clearShaderErrors(this, "vertex", "fragment")
         return insertForShader(vi, fi, resolvesToCall, args)
     }
+}
+
+fun Box.macro_shadertoyHere(args: List<String>): Insert? {
+    ensureShadertoyTemplates()
+    return macro_moduleHereWithDefaultShaders(
+        args,
+        vertex = shadertoyVertexShader,
+        fragment = shadertoyFragmentShader,
+        resolvesToCall = "_shadertoyHere"
+    )
 }
 
 
@@ -788,6 +979,26 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
 
     this._shader = Module(p).pointer()
     return this._shader!!
+}
+
+fun Box._shadertoyHere(p: Parameters.() -> Unit): ModulePointer {
+    return _shadertoyHere(parameters(renderer = fromContext(), p))
+}
+
+fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer {
+    val renderer: Renderer = p.renderer
+    val dummyTextures = ShadertoyTextures.forRenderer(renderer)
+    val previousResolver = p.textureResolver
+
+    p.depthTest = false
+    p.textureResolver = { textureSpec ->
+        dummyTextures[textureSpec.name]?.let { tex -> fromViews(listOf(tex), textureSpec.name) } ?: previousResolver(textureSpec)
+    }
+
+    val module = _moduleHere(p)
+    bindShadertoyUniforms(module, renderer)
+    installShadertoyMesh(module, renderer)
+    return module
 }
 
 fun fromViews(views: List<HasImageView>, name : String ="",sampler : TextureSampler? = null): Pair<HasImageViewArray, TextureSampler> {

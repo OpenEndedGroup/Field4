@@ -1,5 +1,7 @@
 package afield.four.synth
 
+import java.util.IdentityHashMap
+import java.util.WeakHashMap
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.createCoroutine
@@ -89,16 +91,20 @@ abstract class Signal {
 
     private var _cache: FloatArray = FloatArray(0)
     private var _cacheId: Long = -1L
+    private var _cacheContext: SynthContext? = null
+    private var _cacheFrames: Int = 0
 
     /**
      * Evaluate (or replay cache) into [output].
      * Call this from consuming nodes – *never* call [generate] directly.
      */
     fun render(output: FloatArray, numFrames: Int, ctx: SynthContext) {
-        if (ctx.cycleId != _cacheId) {
+        if (ctx !== _cacheContext || ctx.cycleId != _cacheId || _cacheFrames < numFrames) {
             if (_cache.size < numFrames) _cache = FloatArray(numFrames)
             generate(_cache, numFrames, ctx)
+            _cacheContext = ctx
             _cacheId = ctx.cycleId
+            _cacheFrames = numFrames
         }
         System.arraycopy(_cache, 0, output, 0, numFrames)
     }
@@ -112,17 +118,17 @@ abstract class Signal {
     // ── operators ───────────────────────────────────────────────────
 
     operator fun plus(other: Signal): Signal  = BinaryOp(this, other, BinaryOp.Kind.ADD)
-    operator fun plus(value: Float): Signal   = BinaryOp(this, Const(value), BinaryOp.Kind.ADD)
-    operator fun plus(value: Double): Signal  = this + value.toFloat()
+    open operator fun plus(value: Float): Signal   = BinaryOp(this, Const(value), BinaryOp.Kind.ADD)
+    open operator fun plus(value: Double): Signal  = this + value.toFloat()
     operator fun minus(other: Signal): Signal = BinaryOp(this, other, BinaryOp.Kind.SUB)
-    operator fun minus(value: Float): Signal  = BinaryOp(this, Const(value), BinaryOp.Kind.SUB)
-    operator fun minus(value: Double): Signal = this - value.toFloat()
+    open operator fun minus(value: Float): Signal  = BinaryOp(this, Const(value), BinaryOp.Kind.SUB)
+    open operator fun minus(value: Double): Signal = this - value.toFloat()
     operator fun times(other: Signal): Signal = BinaryOp(this, other, BinaryOp.Kind.MUL)
-    operator fun times(value: Float): Signal  = Scale(this, value)
-    operator fun times(value: Double): Signal = Scale(this, value.toFloat())
+    open operator fun times(value: Float): Signal  = Scale(this, value)
+    open operator fun times(value: Double): Signal = Scale(this, value.toFloat())
     operator fun div(other: Signal): Signal   = BinaryOp(this, other, BinaryOp.Kind.DIV)
-    operator fun div(value: Float): Signal    = Scale(this, 1f / value)
-    operator fun div(value: Double): Signal   = Scale(this, 1f / value.toFloat())
+    open operator fun div(value: Float): Signal    = Scale(this, 1f / value)
+    open operator fun div(value: Double): Signal   = Scale(this, 1f / value.toFloat())
     operator fun div(processor: SignalProcessor): Signal = through(processor)
     operator fun unaryMinus(): Signal         = Negate(this)
 
@@ -145,17 +151,31 @@ operator fun Float.plus(sig: Signal): Signal  = sig + this
 operator fun Float.times(sig: Signal): Signal = sig * this
 operator fun Float.minus(sig: Signal): Signal = Const(this) - sig
 
+operator fun Float.plus(param: Param): Param = param + this
 operator fun Double.plus(sig: Signal): Signal  = sig + toFloat()
 operator fun Double.times(sig: Signal): Signal = sig * toFloat()
 operator fun Double.minus(sig: Signal): Signal = Const(toFloat()) - sig
+operator fun Double.plus(param: Param): Param = param + this
+operator fun Int.plus(param: Param): Param = param + toFloat()
 operator fun Int.times(sig: Signal): Signal    = sig * toFloat()
 
 // ═══════════════════════════════════════════════════════════════════
 //  Param – modulatable parameter
 // ═══════════════════════════════════════════════════════════════════
+open class Param(base: Float = 0f) : Signal() {
+    private var rawBase: Float = base
+    @Volatile
+    private var observedValue: Float? = null
 
-
-class Param(var base: Float = 0f) : Signal() {
+    var base: Float
+        get() = observedValue ?: rawBase
+        set(value) {
+            rawBase = value
+            if (!isGraphControlDynamic()) {
+                observedValue = null
+            }
+            GraphBindingRuntime.update(this)
+        }
 
     /**
      * Optional lambda evaluated once per cycle to produce a target value.
@@ -163,9 +183,23 @@ class Param(var base: Float = 0f) : Signal() {
      * [SynthContext.sampleRate], etc.
      */
     var supplier: (SynthContext.() -> Float)? = null
+        set(value) {
+            field = value
+            if (!isGraphControlDynamic()) {
+                observedValue = null
+            }
+            GraphBindingRuntime.update(this)
+        }
 
     /** Optional modulation signal added on top of [base] / supplier. */
     var mod: Signal? = null
+        set(value) {
+            field = value
+            if (!isGraphControlDynamic()) {
+                observedValue = null
+            }
+            GraphBindingRuntime.update(this)
+        }
 
     // Interpolation state (NaN = uninitialised → snap to first value)
     private var current: Float = Float.NaN
@@ -195,11 +229,11 @@ class Param(var base: Float = 0f) : Signal() {
          * ```
          */
         operator fun invoke(block: suspend ParamScope.() -> Any?): Param {
-            val driver = ParamCoroutineDriver(block)
             val p = Param()
-            var last = p.base
             p.supplier = {
-                driver.next(this)?.also { last = it } ?: last
+                ParamCoroutineStates
+                    .stateFor(p, block, this)
+                    .next(this)
             }
             return p
         }
@@ -231,7 +265,7 @@ class Param(var base: Float = 0f) : Signal() {
         }
     }
 
-    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+    open override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         val sup = supplier
         val m = mod
 
@@ -269,18 +303,76 @@ class Param(var base: Float = 0f) : Signal() {
             // ── Constant mode (original behaviour) ──────────────────
             if (m != null) {
                 m.render(output, numFrames, ctx)
-                if (base != 0f) Buf.addScalar(output, base, 0, numFrames)
+                if (rawBase != 0f) Buf.addScalar(output, rawBase, 0, numFrames)
             } else {
-                Buf.fill(output, base, 0, numFrames)
+                Buf.fill(output, rawBase, 0, numFrames)
             }
+        }
+        if (numFrames > 0) {
+            observedValue = output[numFrames - 1]
+        }
+    }
+
+    internal fun isGraphControlDynamic(): Boolean = supplier != null || mod != null
+
+    internal fun tickGraphControl(context: GraphBindingContext) = Unit
+
+    internal fun refreshGraphControl(context: GraphBindingContext) {
+        if (!isGraphControlDynamic()) {
+            observedValue = null
+        }
+    }
+
+    internal fun evaluateControl(ctx: SynthContext): Float {
+        val base = supplier?.invoke(ctx) ?: rawBase
+        val modulation = mod ?: return base
+        val buf = ctx.acquireBuf(1)
+        try {
+            modulation.render(buf, 1, ctx)
+            return base + buf[0]
+        } finally {
+            ctx.releaseBuf(buf)
         }
     }
 
     /** Convenience: set modulation and return `this` for chaining. */
     fun modulate(signal: Signal): Param { mod = signal; return this }
 
+    override operator fun plus(value: Float): Param = OffsetParam(this, value)
+
+    override operator fun plus(value: Double): Param = this + value.toFloat()
+
+    operator fun plus(value: Int): Param = this + value.toFloat()
+
+    override operator fun minus(value: Float): Param = OffsetParam(this, -value)
+
+    override operator fun minus(value: Double): Param = this - value.toFloat()
+
+    operator fun minus(value: Int): Param = this - value.toFloat()
+
+    protected fun publishObservedValue(value: Float?) {
+        observedValue = value
+    }
+
     override fun toString(): String =
         "Param(base=$base, supplier=${supplier != null}, mod=${mod != null})"
+}
+
+private class OffsetParam(
+    private val source: Param,
+    private val offset: Float
+) : Param(source.base + offset) {
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        source.render(output, numFrames, ctx)
+        if (offset != 0f) {
+            Buf.addScalar(output, offset, 0, numFrames)
+        }
+        if (numFrames > 0) {
+            publishObservedValue(output[numFrames - 1])
+        }
+    }
+
+    override fun toString(): String = "OffsetParam(source=$source, offset=$offset)"
 }
 
 class ParamScope internal constructor() {
@@ -392,6 +484,29 @@ private class ParamCoroutineDriver(
                 failure = result.exceptionOrNull()
             }
         })
+    }
+}
+
+private class ParamCoroutineState(
+    private val driver: ParamCoroutineDriver
+) {
+    private var last = 0f
+
+    fun next(ctx: SynthContext): Float = synchronized(this) {
+        driver.next(ctx)?.also { last = it } ?: last
+    }
+}
+
+private object ParamCoroutineStates {
+    private val states = WeakHashMap<Any, MutableMap<SynthContext, ParamCoroutineState>>()
+
+    fun stateFor(
+        owner: Any,
+        block: suspend ParamScope.() -> Any?,
+        ctx: SynthContext
+    ): ParamCoroutineState = synchronized(this) {
+        val byContext = states.getOrPut(owner) { WeakHashMap() }
+        byContext.getOrPut(ctx) { ParamCoroutineState(ParamCoroutineDriver(block)) }
     }
 }
 

@@ -261,8 +261,16 @@ fun Box.streamProcess(
 }
 
 
+private fun printedPayload(arguments: Array<out Any>): Any? {
+    return when (arguments.size) {
+        0 -> ""
+        1 -> arguments[0]
+        else -> arguments.asList()
+    }
+}
+
 fun Box._printHere(line: Int, vararg a: Any) {
-    output.proxy(a.joinToString("\n"), false, line)
+    output.proxy(printedPayload(a), false, line)
 }
 
 fun Box.macro_printHere(contents: List<String>): Insert? {
@@ -276,7 +284,7 @@ fun Box.macro_printHere(contents: List<String>): Insert? {
 }
 
 fun Box._printlnHere(line: Int, vararg a: Any) {
-    output.proxy(a.joinToString("\n"), true, line)
+    output.proxy(printedPayload(a), true, line)
 }
 
 fun Box.marco_printlnHere(contents: List<String>): Insert? {
@@ -370,6 +378,23 @@ fun Box.logs(
 ) {
     val filter = LogFilterBuilder().apply(build).build(latestOnly)
     logs(channel = channel, filter = filter, latestOnly = latestOnly, subId = subId)
+}
+
+fun Box.transcriptEntries(): List<LinkedHashMap<String, Any?>> = FlightRecorder.entriesFor(this)
+
+fun Box.transcriptPayload(): LinkedHashMap<String, Any?> = FlightRecorder.payloadFor(this)
+
+fun Box.transcriptHtml(): String = FlightRecorder.htmlFor(this)
+
+fun Box.transcript(channel: String = "transcript") {
+    val html = transcriptHtml().ifBlank {
+        """
+        <div style="padding:16px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(17,20,24,0.9);color:rgba(255,255,255,0.68);">
+            No transcript entries yet.
+        </div>
+        """.trimIndent()
+    }
+    display(channel, html)
 }
 
 // Slider support

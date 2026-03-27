@@ -33,6 +33,11 @@ interface HasHierarchy : HasProperties {
     var parents: MutableSet<Box>
 }
 
+data class CachedLaunchReturn(
+    val code: String,
+    val returnValue: Any
+)
+
 open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : HasOutput by output, HasProperties,
     HasHierarchy {
 
@@ -60,6 +65,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var runGeneration = mutableMapOf("default" to -1)
     var fragmentGeneration: Int = -1
     var jobs = mutableListOf<Job>()
+    val cachedLaunchReturns = mutableMapOf<String, CachedLaunchReturn>()
+    val currentLaunchModes = mutableMapOf<String, String>()
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
@@ -548,12 +555,27 @@ fun syncExecutionStatus() {
             val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
 
             if (hasActiveJobs) {
-                // Send is-running messages for each strand that has been used
-                box.runGeneration.forEach { (strand, generation) ->
-                    if (generation >= 0) {
-                        val message = Message("is-running").payload(IsRunning(box.id, true, generation, strand))
-                        sessionInfo.sessions.forEach { _send(it, message) }
-                    }
+                val activeModes = box.currentLaunchModes.toMap()
+                val strandsToSync = if (activeModes.isNotEmpty()) {
+                    activeModes.keys
+                } else {
+                    box.runGeneration.keys
+                }
+
+                strandsToSync.forEach { strand ->
+                    val generation = box.runGeneration[strand] ?: return@forEach
+                    if (generation < 0) return@forEach
+
+                    val message = Message("is-running").payload(
+                        IsRunning(
+                            box.id,
+                            true,
+                            generation,
+                            strand,
+                            activeModes[strand] ?: "launch"
+                        )
+                    )
+                    sessionInfo.sessions.forEach { _send(it, message) }
                 }
             }
         }

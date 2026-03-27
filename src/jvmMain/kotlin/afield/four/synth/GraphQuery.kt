@@ -1,10 +1,13 @@
 package afield.four.synth
 
+import afield.Runloop
 import afield.ToHTML
-import java.util.IdentityHashMap
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.random.Random
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
@@ -70,6 +73,10 @@ class PathSet internal constructor(
 
     fun writable(): PathSet = PathSet(root, refs.filter { it.writable })
 
+    fun dedup(): PathSet = PathSet(root, deduplicateRefs(refs))
+
+    fun deduplicated(): PathSet = dedup()
+
     fun matching(pattern: String): PathSet {
         val segments = splitGlob(pattern)
         return PathSet(root, refs.filter { globMatches(it.pathSegments, segments) })
@@ -112,46 +119,113 @@ enum class ParamModulationMode {
     ADD
 }
 
+internal interface ParamBinding {
+    val isNativeParam: Boolean
+    fun asParamOrNull(): Param?
+    fun getBase(): Float
+    fun setBase(value: Float)
+    fun getSupplier(): (SynthContext.() -> Float)?
+    fun setSupplier(value: (SynthContext.() -> Float)?)
+    fun getModulation(): Signal?
+    fun setModulation(value: Signal?)
+}
+
+private class NativeParamBinding(
+    private val param: Param
+) : ParamBinding {
+    override val isNativeParam: Boolean = true
+
+    override fun asParamOrNull(): Param = param
+
+    override fun getBase(): Float = param.base
+
+    override fun setBase(value: Float) {
+        param.base = value
+    }
+
+    override fun getSupplier(): (SynthContext.() -> Float)? = param.supplier
+
+    override fun setSupplier(value: (SynthContext.() -> Float)?) {
+        param.supplier = value
+    }
+
+    override fun getModulation(): Signal? = param.mod
+
+    override fun setModulation(value: Signal?) {
+        param.mod = value
+    }
+}
+
+private class NumericPathBinding(
+    private val state: ScalarPathState
+) : ParamBinding {
+    override val isNativeParam: Boolean = false
+
+    override fun asParamOrNull(): Param? = null
+
+    override fun getBase(): Float = state.base
+
+    override fun setBase(value: Float) {
+        state.base = value
+    }
+
+    override fun getSupplier(): (SynthContext.() -> Float)? = state.supplier
+
+    override fun setSupplier(value: (SynthContext.() -> Float)?) {
+        state.supplier = value
+    }
+
+    override fun getModulation(): Signal? = state.modulation
+
+    override fun setModulation(value: Signal?) {
+        state.modulation = value
+    }
+}
+
 class ParamPath internal constructor(
     private val primaryRef: GraphPathRef,
-    val aliases: List<String>
+    val aliases: List<String>,
+    private val binding: ParamBinding
 ) {
     val path: String get() = primaryRef.path
     val rawPath: String get() = primaryRef.rawPath
-    val param: Param get() = primaryRef.get() as Param
+    val isNativeParam: Boolean get() = binding.isNativeParam
+    val param: Param get() = binding.asParamOrNull()
+        ?: error("Path '$path' refers to a scalar value, not a synth Param")
+    fun paramOrNull(): Param? = binding.asParamOrNull()
 
     var base: Float
-        get() = param.base
+        get() = binding.getBase()
         set(value) {
-            param.base = value
+            binding.setBase(value)
         }
 
     var supplier: (SynthContext.() -> Float)?
-        get() = param.supplier
+        get() = binding.getSupplier()
         set(value) {
-            param.supplier = value
+            binding.setSupplier(value)
         }
 
     var modulation: Signal?
-        get() = param.mod
+        get() = binding.getModulation()
         set(value) {
-            param.mod = value
+            binding.setModulation(value)
         }
 
     fun clearModulation(): ParamPath {
-        param.mod = null
+        binding.setModulation(null)
         return this
     }
 
     fun clearSupplier(): ParamPath {
-        param.supplier = null
+        binding.setSupplier(null)
         return this
     }
 
     fun modulate(signal: Signal, mode: ParamModulationMode = ParamModulationMode.REPLACE): ParamPath {
-        param.mod = when (mode) {
+        modulation = when (mode) {
             ParamModulationMode.REPLACE -> signal
-            ParamModulationMode.ADD -> param.mod?.let { it + signal } ?: signal
+            ParamModulationMode.ADD -> modulation?.let { it + signal } ?: signal
         }
         return this
     }
@@ -166,27 +240,41 @@ class ParamSet internal constructor(
     companion object {
         internal fun from(root: Any?, refs: List<GraphPathRef>): ParamSet {
             val grouped = IdentityHashMap<Param, MutableList<GraphPathRef>>()
+            val scalarRefs = mutableListOf<GraphPathRef>()
             refs.forEach { ref ->
                 val value = ref.get()
-                if (value is Param) {
-                    grouped.getOrPut(value) { mutableListOf() }.add(ref)
+                when (value) {
+                    is Param -> grouped.getOrPut(value) { mutableListOf() }.add(ref)
+                    is Number -> if (ref.writable) scalarRefs += ref
                 }
+            }
+            val entries = mutableListOf<ParamPath>()
+            grouped.entries.forEach { (param, paramRefs) ->
+                val primary = paramRefs.first()
+                val aliases = paramRefs.map { it.path }.distinct()
+                entries += ParamPath(
+                    primaryRef = GraphPathRef(
+                        pathSegments = primary.pathSegments,
+                        owner = primary.owner,
+                        getter = { param },
+                        setter = null
+                    ),
+                    aliases = aliases,
+                    binding = NativeParamBinding(param)
+                )
+            }
+            groupRefsBySlot(scalarRefs).forEach { scalarGroup ->
+                val primary = scalarGroup.first()
+                val state = ScalarPathRegistry.stateFor(primary) ?: return@forEach
+                entries += ParamPath(
+                    primaryRef = primary,
+                    aliases = scalarGroup.map { it.path }.distinct(),
+                    binding = NumericPathBinding(state)
+                )
             }
             return ParamSet(
                 root = root,
-                entries = grouped.entries.map { (param, paramRefs) ->
-                    val primary = paramRefs.first()
-                    val aliases = paramRefs.map { it.path }.distinct()
-                    ParamPath(
-                        primaryRef = GraphPathRef(
-                            pathSegments = primary.pathSegments,
-                            owner = primary.owner,
-                            getter = { param },
-                            setter = null
-                        ),
-                        aliases = aliases
-                    )
-                }.sortedBy { it.path }
+                entries = entries.sortedBy { it.path }
             )
         }
     }
@@ -196,7 +284,7 @@ class ParamSet internal constructor(
 
     fun paths(): List<String> = entries.map { it.path }
 
-    fun params(): List<Param> = entries.map { it.param }
+    fun params(): List<Param> = entries.mapNotNull { it.paramOrNull() }
 
     fun bases(): List<Float> = entries.map { it.base }
 
@@ -293,8 +381,14 @@ class ParamSet internal constructor(
             append("<td style='padding:2px 6px 2px 0;vertical-align:top;color:#8cf;'>${escapeHtml(entry.path)}</td>")
             append("<td style='padding:2px 6px 2px 0;vertical-align:top;color:#ccc;'>${formatGraphFloat(entry.base)}</td>")
             append("<td style='padding:2px 0;vertical-align:top;color:#888;'>")
-            append(if (entry.modulation != null) "mod" else "base")
-            if (entry.supplier != null) append(" + supplier")
+            if (!entry.isNativeParam) {
+                append("scalar")
+                if (entry.modulation != null) append(" + mod")
+                if (entry.supplier != null) append(" + supplier")
+            } else {
+                append(if (entry.modulation != null) "mod" else "base")
+                if (entry.supplier != null) append(" + supplier")
+            }
             if (entry.aliases.size > 1) append(" (${entry.aliases.size} aliases)")
             append("</td>")
             append("</tr>")
@@ -573,6 +667,216 @@ private fun formatGraphFloat(value: Float): String {
     return String.format(java.util.Locale.US, "%.${decimals}f", value)
 }
 
+private fun groupRefsBySlot(refs: List<GraphPathRef>): List<List<GraphPathRef>> {
+    val nullOwner = Any()
+    val byOwner = IdentityHashMap<Any, LinkedHashMap<String, MutableList<GraphPathRef>>>()
+    val groups = mutableListOf<MutableList<GraphPathRef>>()
+    refs.forEach { ref ->
+        val owner = ref.owner ?: nullOwner
+        val segment = ref.pathSegments.lastOrNull().orEmpty()
+        val bySegment = byOwner.getOrPut(owner) { linkedMapOf() }
+        val group = bySegment.getOrPut(segment) {
+            mutableListOf<GraphPathRef>().also { groups += it }
+        }
+        group += ref
+    }
+    return groups
+}
+
+private fun deduplicateRefs(refs: List<GraphPathRef>): List<GraphPathRef> =
+    groupRefsBySlot(refs).map { it.first() }
+
+private fun coerceNumericValue(sample: Number, value: Float): Any = when (sample) {
+    is Float -> value
+    is Double -> value.toDouble()
+    is Int -> value.roundToInt()
+    is Long -> value.roundToLong()
+    is Short -> value.roundToInt().toShort()
+    is Byte -> value.roundToInt().toByte()
+    else -> value
+}
+
+internal interface GraphRuntimeDriven {
+    fun isGraphDynamic(): Boolean
+    fun tickGraph(context: GraphBindingContext)
+    fun refreshGraphNow(context: GraphBindingContext)
+}
+
+internal class GraphBindingContext(
+    val name: String,
+    sampleRate: Float,
+    bufferSize: Int
+) {
+    internal val synth = SynthContext(sampleRate, bufferSize)
+    private var scratch = FloatArray(bufferSize.coerceAtLeast(1))
+
+    val tickId: Long get() = synth.cycleId
+    val time: Float get() = synth.time
+
+    fun sample(signal: Signal): Float {
+        signal.render(scratch, 1, synth)
+        return scratch[0]
+    }
+
+    internal fun advance(deltaTime: Float) {
+        synth.cycleId += 1
+        synth.time += deltaTime
+    }
+}
+
+private class ScalarPathState(
+    private val ref: GraphPathRef,
+    private val sample: Number
+) : GraphRuntimeDriven {
+    private val lock = Any()
+    private var _base: Float = (ref.get() as? Number)?.toFloat()
+        ?: error("Path '${ref.path}' no longer resolves to a numeric value")
+    private var _supplier: (SynthContext.() -> Float)? = null
+    private var _modulation: Signal? = null
+
+    var base: Float
+        get() = synchronized(lock) { _base }
+        set(value) {
+            val shouldApplyImmediately = synchronized(lock) {
+                _base = value
+                !isDynamicLocked()
+            }
+            if (shouldApplyImmediately) apply(value)
+        }
+
+    var supplier: (SynthContext.() -> Float)?
+        get() = synchronized(lock) { _supplier }
+        set(value) {
+            synchronized(lock) {
+                _supplier = value
+            }
+            GraphBindingRuntime.update(this)
+        }
+
+    var modulation: Signal?
+        get() = synchronized(lock) { _modulation }
+        set(value) {
+            synchronized(lock) {
+                _modulation = value
+            }
+            GraphBindingRuntime.update(this)
+        }
+
+    fun isDynamic(): Boolean = synchronized(lock) { isDynamicLocked() }
+
+    override fun isGraphDynamic(): Boolean = isDynamic()
+
+    override fun tickGraph(context: GraphBindingContext) {
+        val (base, supplier, modulation) = synchronized(lock) {
+            Triple(_base, _supplier, _modulation)
+        }
+        val supplied = supplier?.invoke(context.synth) ?: base
+        val value = supplied + (modulation?.let { context.sample(it) } ?: 0f)
+        apply(value)
+    }
+
+    override fun refreshGraphNow(context: GraphBindingContext) {
+        if (isDynamic()) tickGraph(context) else apply(base)
+    }
+
+    private fun apply(value: Float) {
+        ref.set(coerceNumericValue(sample, value))
+    }
+
+    private fun isDynamicLocked(): Boolean = _supplier != null || _modulation != null
+}
+
+private object ScalarPathRegistry {
+    private val nullOwner = Any()
+    private val byOwner = IdentityHashMap<Any, MutableMap<String, ScalarPathState>>()
+
+    fun stateFor(ref: GraphPathRef): ScalarPathState? {
+        val sample = ref.get() as? Number ?: return null
+        val owner = ref.owner ?: nullOwner
+        val segment = ref.pathSegments.lastOrNull().orEmpty()
+        return synchronized(this) {
+            val bySegment = byOwner.getOrPut(owner) { linkedMapOf() }
+            bySegment.getOrPut(segment) { ScalarPathState(ref, sample) }
+        }
+    }
+}
+
+private class NativeParamRuntimeState(
+    private val param: Param
+) : GraphRuntimeDriven {
+    override fun isGraphDynamic(): Boolean = false
+
+    override fun tickGraph(context: GraphBindingContext) = Unit
+
+    override fun refreshGraphNow(context: GraphBindingContext) {
+        param.refreshGraphControl(context)
+    }
+}
+
+private object ParamRuntimeRegistry {
+    private val states = IdentityHashMap<Param, NativeParamRuntimeState>()
+
+    fun stateFor(param: Param): NativeParamRuntimeState = synchronized(this) {
+        states.getOrPut(param) { NativeParamRuntimeState(param) }
+    }
+}
+
+internal object GraphBindingRuntime {
+    private const val RUNLOOP_HOOK_KEY = "graphquery.dynamicBindings"
+    private val contexts = ConcurrentHashMap<String, GraphBindingContext>()
+    private val activeTargets = linkedSetOf<GraphRuntimeDriven>()
+    private val lock = Any()
+    private var hookInstalled = false
+    private var lastRunloopNanos = 0L
+
+    fun update(target: GraphRuntimeDriven) {
+        synchronized(lock) {
+            installRunloopHookIfNeeded()
+            if (target.isGraphDynamic()) activeTargets += target else activeTargets -= target
+        }
+        target.refreshGraphNow(contextFor("runloop", 1f / 60f))
+    }
+
+    fun update(param: Param) {
+        update(ParamRuntimeRegistry.stateFor(param))
+    }
+
+    fun tick(contextName: String, deltaTime: Float, sampleRate: Float = if (deltaTime > 0f) 1f / deltaTime else 60f) {
+        val targets = synchronized(lock) { activeTargets.toList() }
+        if (targets.isEmpty()) return
+        val context = contextFor(contextName, sampleRate)
+        context.advance(deltaTime)
+        targets.forEach { it.tickGraph(context) }
+    }
+
+    private fun installRunloopHookIfNeeded() {
+        if (hookInstalled) return
+        Runloop.runLoop.preRun[RUNLOOP_HOOK_KEY] = sequence {
+            while (true) {
+                tickRunloop()
+                yield(Unit)
+            }
+        }
+        hookInstalled = true
+    }
+
+    private fun tickRunloop() {
+        val now = System.nanoTime()
+        val deltaTime = if (lastRunloopNanos == 0L) {
+            1f / 60f
+        } else {
+            ((now - lastRunloopNanos).coerceAtLeast(1L) / 1_000_000_000.0).toFloat()
+        }
+        lastRunloopNanos = now
+        tick("runloop", deltaTime, sampleRate = if (deltaTime > 0f) 1f / deltaTime else 60f)
+    }
+
+    private fun contextFor(name: String, sampleRate: Float): GraphBindingContext =
+        contexts.compute(name) { _, existing ->
+            if (existing != null) existing else GraphBindingContext(name = name, sampleRate = sampleRate, bufferSize = 1)
+        }!!
+    }
+
 fun Any?.graphPaths(
     pattern: String = "**",
     options: GraphWalkOptions = GraphWalkOptions()
@@ -582,5 +886,13 @@ fun Any?.params(
     pattern: String = "**",
     options: GraphWalkOptions = GraphWalkOptions()
 ): ParamSet = graphPaths(pattern, options).params()
+
+fun tickGraphBindings(
+    contextName: String,
+    deltaTime: Float,
+    sampleRate: Float = if (deltaTime > 0f) 1f / deltaTime else 60f
+) {
+    GraphBindingRuntime.tick(contextName, deltaTime, sampleRate)
+}
 
 infix fun Any?.matches(pattern: String): ParamSet = params(pattern)

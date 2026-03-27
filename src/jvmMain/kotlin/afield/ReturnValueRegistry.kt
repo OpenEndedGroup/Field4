@@ -194,13 +194,19 @@ fun registerFramesReturnValue() {
             } catch (e: CancellationException) {
             } catch (t: Throwable) {
                 lprintln("error,execution", t.stackTraceToString())
-                var firstLine = -1
+                var fallbackFirstLine = -1
+                var firstLineInThisBox = -1
                 t.stackTrace.forEach { e ->
-                    if (firstLine == -1 && e.fileName.contains(inside.id)) {
-                        firstLine = e.lineNumber
+                    if (fallbackFirstLine == -1) {
+                        fallbackFirstLine = e.lineNumber
+                    }
+                    if (e.fileName?.contains(inside.id) == true && firstLineInThisBox == -1) {
+                        firstLineInThisBox = e.lineNumber
                     }
                 }
-                inside.error(t.message ?: "", line = firstLine)
+                val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
+                val message = t.message?.takeIf { it.isNotBlank() } ?: t.javaClass.name
+                inside.error(message, line = firstLine)
             } finally {
                 notify(false, strand, generation)
             }

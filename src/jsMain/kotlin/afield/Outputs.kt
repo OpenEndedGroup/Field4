@@ -43,6 +43,10 @@ private var outputMaxHeightPx = 500.0
 private var outputScrollTailExistingPx = 40.0
 private var outputScrollTailNewPx = 46.0
 
+private fun executionMarkerStateClass(mode: String): String {
+    return if (mode == "continue") "running-continued" else "running"
+}
+
 private fun debounceTimeout(key: String, delay: Int, fn: () -> Unit) {
     debounceTimers[key]?.let { window.clearTimeout(it) }
     val id = window.setTimeout({
@@ -61,6 +65,74 @@ private fun weakHash(d: dynamic): Double {
         d.__weakheash__ = v
         v
     }
+}
+
+private fun isStructuralClosingLine(text: String): Boolean {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return true
+    return trimmed.all { it == '}' || it == ')' || it == ']' || it == ';' }
+}
+
+private fun normalizeInlineOutputTargetLine(editor: dynamic, lineNumber: Int): Int {
+    val model = editor.getModel() ?: return lineNumber
+    var line = lineNumber
+    val lineCount = ((model.getLineCount() as? Number)?.toInt() ?: line).coerceAtLeast(1)
+    if (line > lineCount) line = lineCount
+    if (line < 1) line = 1
+
+    while (line > 1) {
+        val lineText = (model.getLineContent(line) as? String) ?: break
+        if (!isStructuralClosingLine(lineText)) break
+        line--
+    }
+    return line
+}
+
+private fun sameEditor(a: dynamic, b: dynamic): Boolean {
+    return weakHash(a) == weakHash(b)
+}
+
+private fun findReusableOutput(editor: dynamic, belowLine: Int, extraClass: String): dynamic {
+    val candidates = knownOutputs.filter { output ->
+        val outputEditor = output.editor ?: return@filter false
+        sameEditor(outputEditor, editor) && (output.kind as? String) == extraClass
+    }
+
+    val exact = candidates
+        .filter { (it.line as? Number)?.toInt() == belowLine }
+        .maxByOrNull { (it.insertionOrder as? Number)?.toInt() ?: -1 }
+    if (exact != null) return exact
+
+    return candidates
+        .filter {
+            val line = (it.line as? Number)?.toInt() ?: return@filter false
+            kotlin.math.abs(line - belowLine) <= 1
+        }
+        .sortedWith(
+            compareBy<dynamic> {
+                kotlin.math.abs(((it.line as? Number)?.toInt() ?: Int.MAX_VALUE) - belowLine)
+            }.thenByDescending {
+                (it.insertionOrder as? Number)?.toInt() ?: -1
+            }
+        )
+        .firstOrNull()
+}
+
+private fun isAppendableRichHtml(text: String): Boolean {
+    return text.contains("afield-appendable-output")
+}
+
+private fun findKnownOutputForElement(element: HTMLElement?): dynamic {
+    val outputRoot = element?.closest(".execution_output") as? HTMLElement ?: return null
+    return knownOutputs.firstOrNull { output ->
+        (output.domNode as? HTMLElement) == outputRoot
+    }
+}
+
+private fun scheduleKnownOutputRecompute(element: HTMLElement?) {
+    val output = findKnownOutputForElement(element) ?: return
+    val editor = output.editor ?: js("window").globalMonacoEditor ?: return
+    scheduleOutputHeightRecompute(editor, output)
 }
 
 private fun flash(node: dynamic) {
@@ -533,6 +605,154 @@ fun toggleArea(id: String) {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
+fun afieldToggleLazyOutput(buttonLike: dynamic) {
+    val button = buttonLike as? HTMLElement ?: return
+    val wrapper = button.parentElement as? HTMLElement ?: return
+    val panel = wrapper.querySelector(".afield-lazy-output-panel") as? HTMLElement ?: return
+    val ds = button.dataset.asDynamic()
+    val originalLabel = (ds.afieldBrowseLabel as? String)?.ifBlank { null } ?: button.textContent ?: "…"
+    val isOpen = (ds.afieldBrowseOpen as? String) == "1"
+
+    if (isOpen) {
+        panel.style.display = "none"
+        ds.afieldBrowseOpen = "0"
+        button.textContent = originalLabel
+        scheduleKnownOutputRecompute(wrapper)
+        return
+    }
+
+    if ((ds.afieldBrowseLoaded as? String) != "1") {
+        val src = ds.afieldBrowseSrc as? String ?: return
+        val iframeHeight = (panel.dataset.asDynamic().afieldBrowseHeight as? String)?.toIntOrNull() ?: 264
+
+        val header = document.createElement("div") as HTMLElement
+        header.style.display = "flex"
+        header.style.justifyContent = "flex-end"
+        header.style.marginBottom = "6px"
+
+        val link = document.createElement("a") as HTMLElement
+        link.setAttribute("href", src)
+        link.setAttribute("target", "_blank")
+        link.setAttribute("rel", "noopener noreferrer")
+        link.textContent = "open inspector"
+        link.style.color = "#8cf"
+        link.style.fontSize = "11px"
+        link.style.textDecoration = "none"
+        header.appendChild(link)
+
+        val iframe = document.createElement("iframe") as HTMLElement
+        iframe.setAttribute("src", src)
+        iframe.setAttribute("loading", "lazy")
+        iframe.setAttribute("data-afield-autosize", "off")
+        iframe.style.width = "100%"
+        iframe.style.height = "${iframeHeight}px"
+        iframe.style.border = "1px solid rgba(255,255,255,0.14)"
+        iframe.style.borderRadius = "6px"
+        iframe.style.background = "rgba(0,0,0,0.72)"
+        iframe.style.display = "block"
+        iframe.addEventListener("load", { _: dynamic ->
+            scheduleKnownOutputRecompute(wrapper)
+        })
+
+        panel.style.paddingTop = "6px"
+        panel.style.marginTop = "8px"
+        panel.style.borderTop = "1px solid rgba(255,255,255,0.1)"
+        panel.style.display = "block"
+        panel.appendChild(header)
+        panel.appendChild(iframe)
+        ds.afieldBrowseLoaded = "1"
+    } else {
+        panel.style.display = "block"
+    }
+
+    ds.afieldBrowseOpen = "1"
+    button.textContent = "hide"
+    scheduleKnownOutputRecompute(wrapper)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun afieldExpandLazyValue(linkLike: dynamic) {
+    val link = linkLike as? HTMLElement ?: return
+    val src = link.getAttribute("data-afield-lazy-src")?.takeIf { it.isNotBlank() } ?: return
+    val wrapper = link.parentElement as? HTMLElement ?: return
+    val parent = wrapper.parentElement as? HTMLElement
+    val ds = link.dataset.asDynamic()
+    if ((ds.afieldLazyLoading as? String) == "1") return
+
+    val originalHtml = wrapper.outerHTML
+    ds.afieldLazyLoading = "1"
+    link.textContent = "loading…"
+
+    window.fetch(src).then({ response: dynamic ->
+        val ok = response.ok as? Boolean ?: false
+        if (!ok) {
+            val status = response.status?.toString() ?: "?"
+            js("throw new Error('lazy value request failed: ' + status)")
+        }
+        response.text()
+    }).then({ html: dynamic ->
+        wrapper.outerHTML = html as String
+        scheduleKnownOutputRecompute(parent)
+        null
+    }).catch { err: dynamic ->
+        console.error("[lazy-value] expand failed", err)
+        wrapper.outerHTML = originalHtml
+        scheduleKnownOutputRecompute(parent)
+        null
+    }
+}
+
+private fun upsertLazyValueViewer(boxUid: String, title: String, src: String) {
+    val box = findBoxByUid(boxUid) ?: run {
+        console.warn("[lazy-value] box not found for viewer: $boxUid")
+        return
+    }
+
+    val outputArea = box.getElementsByClassName("outputArea").item(0) as? HTMLElement ?: return
+    outputArea.style.visibility = "visible"
+    outputArea.style.height = "auto"
+
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val factory = js("window.disclosureInterface") ?: run {
+        console.info("[lazy-value] disclosureInterface not ready yet; skipping viewer")
+        return
+    }
+    val inter = factory(contain)
+    val normalized = title.lowercase()
+        .replace(Regex("[^a-z0-9]+"), "-")
+        .trim('-')
+        .ifBlank { "value" }
+    val channelId = "__lazy_view__$normalized"
+    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(channelId, title, "") as HTMLElement
+    contentRoot.innerHTML = """
+        <div class="value-viz-output-viewer" style="display:flex;flex-direction:column;gap:8px;">
+            <iframe data-afield-autosize="off" src="${src}" loading="lazy"
+                style="width:100%;height:320px;border:1px solid rgba(255,255,255,0.14);border-radius:4px;background:#000;display:block;"></iframe>
+        </div>
+    """.trimIndent()
+    (inter.open as (String) -> Unit).invoke(channelId)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun afieldOpenLazyValueInOutputArea(linkLike: dynamic) {
+    val link = linkLike as? HTMLElement ?: return
+    val boxUid = link.getAttribute("data-afield-box-uid")?.takeIf { it.isNotBlank() } ?: return
+    val src = link.getAttribute("data-afield-view-src")?.takeIf { it.isNotBlank() } ?: return
+    val title = link.getAttribute("data-afield-view-title")?.takeIf { it.isNotBlank() } ?: "Columns"
+    upsertLazyValueViewer(boxUid, title, src)
+}
+
+@Suppress("unused")
+private val installAfieldToggleLazyOutputOnWindow = run {
+    window.asDynamic().afieldToggleLazyOutput = ::afieldToggleLazyOutput
+    window.asDynamic().afieldExpandLazyValue = ::afieldExpandLazyValue
+    window.asDynamic().afieldOpenLazyValueInOutputArea = ::afieldOpenLazyValueInOutputArea
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun addInlineOutput(
     editor: dynamic,
     lineNumber: Int,
@@ -618,7 +838,7 @@ fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
 
     val options = js("{}")
     options.isWholeLine = true
-    options.linesDecorationsClassName = "$className running"
+    options.linesDecorationsClassName = "$className ${executionMarkerStateClass("launch")}"
 
     val decoration = js("{}")
     decoration.range = range
@@ -632,11 +852,11 @@ fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun setStatusForExecutionMarker(className: String, running: Boolean) {
+fun setStatusForExecutionMarker(className: String, running: Boolean, mode: String) {
     executionDecorations.forEachIndexed { index, decor ->
         if (decor._sourceClassname == className) {
             decor.options.linesDecorationsClassName =
-                if (running) "$className running" else className
+                if (running) "$className ${executionMarkerStateClass(mode)}" else className
             decor.range = executionsCollection.getRange(index)
         }
     }
@@ -882,6 +1102,7 @@ fun addOutput(
     val isHTML = looksLikeHTML(text)
     val hasEmbeddedIframe = text.contains("<iframe", ignoreCase = true)
     val richHtml = isHTML || hasEmbeddedIframe
+    val replaceRichHtml = richHtml && !isAppendableRichHtml(text)
     if (!richHtml) {
         textClean = textClean.replace("\n", "<br>")
     }
@@ -893,6 +1114,10 @@ fun addOutput(
     if (belowLine == -1) {
         belowLine = (editor.getModel().getValue() as String).split("\n").size
     }
+    if (!richHtml && extraClass != "error") {
+        belowLine = normalizeInlineOutputTargetLine(editor, belowLine)
+    }
+    val canInline = !textClean.contains("<br>") && extraClass != "error" && !richHtml
 
     val edDecor = editorDecorationsFor(editor)
     var repeatedInlineOutput = false
@@ -922,12 +1147,10 @@ fun addOutput(
         }
     }
 
-    val found = knownOutputs.firstOrNull { output ->
-        (output.line as? Number)?.toInt() == belowLine && (output.kind as? String) == extraClass
-    }
+    val found = if (canInline) null else findReusableOutput(editor, belowLine, extraClass)
     if (found != null) {
-        found.autoScroll = !richHtml
-        val shouldPulse = if (richHtml) {
+        found.autoScroll = !replaceRichHtml
+        val shouldPulse = if (replaceRichHtml) {
             val repeatedContent = updateOutputFlashSignature(found, textClean)
             found.domNodeInner.innerHTML = textClean
             repeatedContent
@@ -943,11 +1166,16 @@ fun addOutput(
             resetOutputErrorMarkerState(editor, found)
         }
 
+        val annotationNode = found.domNodeAnnotation as? HTMLElement
+        if (annotationNode != null) {
+            annotationNode.innerHTML = annotation ?: ""
+        }
+
         val domNode = found.domNode as HTMLElement
         domNode.className = ""
         domNode.classList.add("execution_output")
         domNode.classList.add(extraClass)
-        domNode.style.asDynamic().overflow = if (richHtml) "hidden" else "scroll"
+        domNode.style.asDynamic().overflow = if (replaceRichHtml) "hidden" else "scroll"
         domNode.style.zIndex = "11"
         if (shouldPulse) {
             pulseOutput(found.domNodeInner)
@@ -986,23 +1214,19 @@ fun addOutput(
         allowInline = true
     }
 
-    if (allowInline &&
-        !textClean.contains("<br>") &&
-        extraClass != "error" &&
-        !richHtml
-    ) {
+    if (allowInline && canInline) {
         addInlineOutput(editor, belowLine, textClean, extraClass, frameMarker, shouldFlash = repeatedInlineOutput)
     } else {
         editor.changeViewZones { changeAccessor: dynamic ->
             val domNode = document.createElement("div") as HTMLElement
-            domNode.style.asDynamic().overflow = if (richHtml) "hidden" else "scroll"
+            domNode.style.asDynamic().overflow = if (replaceRichHtml) "hidden" else "scroll"
             domNode.classList.add(extraClass)
             domNode.classList.add("execution_output")
 
             val domNodeAnnotation = document.createElement("div") as HTMLElement
             val domNodeInner = document.createElement("div") as HTMLElement
             domNode.appendChild(domNodeInner)
-            if (richHtml) {
+            if (replaceRichHtml) {
                 domNodeInner.innerHTML = textClean
             } else {
                 appendWithBadge(domNodeInner, textClean)
@@ -1020,7 +1244,7 @@ fun addOutput(
             domNodeInner.style.padding = "6px 6px 4px 6px"
             domNodeInner.style.marginLeft = "3px"
             domNodeInner.style.fontSize = "10px"
-            domNodeInner.style.asDynamic().overflowX = if (richHtml) "hidden" else "scroll"
+            domNodeInner.style.asDynamic().overflowX = if (replaceRichHtml) "hidden" else "scroll"
 
             domNode.style.zIndex = "11"
 
@@ -1045,14 +1269,14 @@ fun addOutput(
                 wheel.stopImmediatePropagation()
             }
 
-            var lines = if (richHtml) {
+            var lines = if (replaceRichHtml) {
                 2
             } else {
                 min(5, textClean.split("\n").size) + 1
             }
             lines = max(2, lines)
 
-            if (!richHtml) {
+            if (!replaceRichHtml) {
                 window.setTimeout({
                     scrollOutputToBottom(domNode, domNodeInner, outputScrollTailNewPx)
                 }, 100)
@@ -1086,8 +1310,8 @@ fun addOutput(
             output.domNodeControl = domNodeControl
             output.insertionOrder = ++orderCounter
             output.kind = extraClass
-            output.flashSignature = if (richHtml) textClean else null
-            output.autoScroll = !richHtml
+            output.flashSignature = if (replaceRichHtml) textClean else null
+            output.autoScroll = !replaceRichHtml
             output.userCollapsed = false
             output.editor = editor
             updateOutputControlVisibility(output)

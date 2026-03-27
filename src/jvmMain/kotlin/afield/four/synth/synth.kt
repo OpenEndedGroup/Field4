@@ -628,7 +628,7 @@ import kotlin.experimental.ExperimentalTypeInference
 fun audioEngine(
     sampleRate: Int = 48_000,
     bufferSize: Int = 512,
-    queuedBufferCount: Int = 4,
+    queuedBufferCount: Int = 12,
     inputChannels: Int = 2
 ): FieldAudioEngine = FieldAudioEngine.shared(
     sampleRate = sampleRate,

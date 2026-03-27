@@ -57,10 +57,17 @@ object ValuePrinterRegistry {
  * Compact, monochrome visualizer for common Kotlin and JOML types
  */
 object ValueVisualizer {
-    private const val MAX_LIST_PREVIEW = 5
+    private const val MAX_LIST_PREVIEW = 20
+    private const val LIST_INLINE_ELISION_THRESHOLD = 30
+    private const val LIST_EXPANSION_CHUNK = 8
     private const val MAX_STRING_LENGTH = 100
+    private const val STRING_EXPANSION_CHUNK = 160
     private const val MAX_MAP_ENTRIES = 5
+    private const val MAP_EXPANSION_CHUNK = 6
     private const val MAX_DEPTH = 3
+    private const val MAX_OBJECT_FIELDS = 8
+    private const val OBJECT_EXPANSION_CHUNK = 8
+    private const val BYTE_EXPANSION_CHUNK = 16
     private const val FLINE_THUMBNAIL_WIDTH = 136
     private const val FLINE_THUMBNAIL_HEIGHT = 84
     private const val FLINE_SIGNATURE_FULL_MAX_NODES = 80
@@ -92,9 +99,11 @@ object ValueVisualizer {
     /**
      * Visualize any value and return compact HTML representation
      */
-    fun visualize(value: Any?): String {
+    fun visualize(value: Any?, appendable: Boolean = false): String {
         return buildString {
-            append("<div class='value-viz' style='font-family: \"Iosevka Web\", monospace; font-size: 12px; color: #ccc; line-height: 1.4;'>")
+            append("<div class='value-viz")
+            if (appendable) append(" afield-appendable-output")
+            append("' style='font-family: \"Iosevka Web\", monospace; font-size: 12px; color: #ccc; line-height: 1.4;'>")
             // Use identity hash set to track visited objects and detect circular references
             val visited = mutableSetOf<Int>()
             append(visualizeValue(value, 0, visited))
@@ -102,9 +111,14 @@ object ValueVisualizer {
         }
     }
 
-    private fun visualizeValue(value: Any?, depth: Int, visited: MutableSet<Int>): String {
+    private fun visualizeValue(
+        value: Any?,
+        depth: Int,
+        visited: MutableSet<Int>,
+        respectDepthLimit: Boolean = true
+    ): String {
         // Check depth limit
-        if (depth > MAX_DEPTH) return "<span style='color: #888;'>…</span>"
+        if (respectDepthLimit && depth > MAX_DEPTH) return formatDepthLimitedValue(value)
 
         return when (value) {
             null -> "<span style='color: #888;'>null</span>"
@@ -123,7 +137,7 @@ object ValueVisualizer {
                     visited.add(identityHash)
                 }
 
-                ValuePrinterRegistry.getPrinter(value)?.invoke(value) ?: visualizeBuiltIn(value, depth, visited)
+                ValuePrinterRegistry.getPrinter(value)?.invoke(value) ?: visualizeBuiltIn(value, depth, visited, respectDepthLimit)
             }
         }
     }
@@ -147,7 +161,12 @@ object ValueVisualizer {
         }
     }
 
-    private fun visualizeBuiltIn(value: Any, depth: Int, visited: MutableSet<Int>): String = when (value) {
+    private fun visualizeBuiltIn(
+        value: Any,
+        depth: Int,
+        visited: MutableSet<Int>,
+        respectDepthLimit: Boolean
+    ): String = when (value) {
         // Primitives
         is Boolean -> "<span style='color: #f88;'>${value}</span>"
         is Number -> formatNumber(value)
@@ -175,10 +194,10 @@ object ValueVisualizer {
 //        is Matrix4dc -> formatMatrix(Matrix4f(value))
 
         // Collections
-        is Map<*, *> -> formatMap(value, depth, visited)
-        is List<*> -> formatList(value, depth, visited)
-        is Set<*> -> formatSet(value, depth, visited)
-        is Array<*> -> formatArray(value, depth, visited)
+        is Map<*, *> -> formatMap(value, depth, visited, respectDepthLimit)
+        is List<*> -> formatList(value, depth, visited, respectDepthLimit = respectDepthLimit)
+        is Set<*> -> formatSet(value, depth, visited, respectDepthLimit)
+        is Array<*> -> formatArray(value, depth, visited, respectDepthLimit)
         is ByteArray -> formatByteArray(value)
         is IntArray -> formatIntArray(value)
         is FloatArray -> formatFloatArray(value)
@@ -187,10 +206,54 @@ object ValueVisualizer {
 
         // Data classes
         else -> if (value::class.isData) {
-            formatDataClass(value, depth, visited)
+            formatDataClass(value, depth, visited, respectDepthLimit)
         } else {
-            // Fallback
-            "<span style='color: #aaa;'>${escape(value.toString())}</span>"
+            formatFallbackObject(value)
+        }
+    }
+
+    private fun formatDepthLimitedValue(value: Any?): String = when (value) {
+        null -> "<span style='color: #888;'>null</span>"
+        is Boolean -> "<span style='color: #f88;'>${value}</span>"
+        is Number -> formatNumber(value)
+        is Char -> "<span style='color: #8f8;'>'${escape(value.toString())}'</span>"
+        is String -> formatString(value)
+        else -> lazyInlineExpanderHtml(
+            value = value,
+            label = "…",
+            kind = "full",
+            offset = 0,
+            title = value::class.simpleName ?: value::class.java.simpleName
+        )
+    }
+
+    private fun formatFallbackObject(value: Any): String {
+        val className = value::class.simpleName ?: value::class.java.simpleName.ifBlank { "Object" }
+        val rendered = value.toString()
+        val preview = rendered.take(MAX_STRING_LENGTH)
+
+        return buildString {
+            append("<span style='color: #cc8;'>")
+            append(escape(className))
+            append("</span>")
+            if (preview.isNotBlank()) {
+                append("<span style='color: #666;'> </span>")
+                append("<span style='color: #aaa;'>")
+                append(escape(preview))
+                append("</span>")
+            }
+            if (rendered.length > MAX_STRING_LENGTH) {
+                append(" ")
+                append(
+                    lazyInlineExpanderHtml(
+                        value = value,
+                        label = "… +${rendered.length - MAX_STRING_LENGTH} chars",
+                        kind = "full",
+                        offset = 0,
+                        title = className
+                    )
+                )
+            }
         }
     }
 
@@ -460,12 +523,28 @@ object ValueVisualizer {
     }
 
     private fun formatString(s: String): String {
-        val escaped = escape(s)
         return if (s.length > MAX_STRING_LENGTH) {
-            val preview = escaped.substring(0, MAX_STRING_LENGTH)
-            """<span style='color: #8f8;'>$preview…</span> <span style='color: #888;'>(</span>${formatNumberToken(s.length)}<span style='color: #888;'> chars)</span>"""
+            val preview = escape(s.take(MAX_STRING_LENGTH))
+            buildString {
+                append("<span style='color: #8f8;'>")
+                append(preview)
+                append("</span>")
+                append(" ")
+                append(
+                    lazyInlineExpanderHtml(
+                        value = s,
+                        label = "… +${s.length - MAX_STRING_LENGTH} chars",
+                        kind = "string",
+                        offset = MAX_STRING_LENGTH,
+                        title = "String"
+                    )
+                )
+                append(" <span style='color: #888;'>(</span>")
+                append(formatNumberToken(s.length))
+                append("<span style='color: #888;'> chars)</span>")
+            }
         } else {
-            "<span style='color: #8f8;'>$escaped</span>"
+            "<span style='color: #8f8;'>${escape(s)}</span>"
         }
     }
 
@@ -496,8 +575,30 @@ object ValueVisualizer {
     private fun formatSizeSuffix(size: Int): String =
         """ <span style='color: #666;'>(</span>${formatNumberToken(size)}<span style='color: #666;'>)</span>"""
 
-    private fun formatMoreSuffix(extra: Int, noun: String): String =
-        """ <span style='color: #888;'>… +</span>${formatNumberToken(extra)}<span style='color: #888;'> more $noun</span>"""
+    private fun previewCountForListLike(size: Int): Int {
+        if (size <= 0) return 0
+        return if (size > LIST_INLINE_ELISION_THRESHOLD) MAX_LIST_PREVIEW else size
+    }
+
+    private fun formatMoreSuffix(
+        extra: Int,
+        noun: String,
+        value: Any?,
+        title: String,
+        kind: String,
+        offset: Int,
+        depth: Int
+    ): String {
+        if (extra <= 0) return ""
+        return " " + lazyInlineExpanderHtml(
+            value = value,
+            label = "… +$extra more $noun",
+            kind = kind,
+            offset = offset,
+            depth = depth,
+            title = title
+        )
+    }
 
     private fun formatStatsSummary(stats: Stats): String {
         return buildString {
@@ -620,21 +721,39 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatList(list: List<*>, depth: Int, visited: MutableSet<Int>): String {
+    private fun formatList(
+        list: List<*>,
+        depth: Int,
+        visited: MutableSet<Int>,
+        expandValue: Any? = list,
+        expandTitle: String = list::class.simpleName ?: "List",
+        respectDepthLimit: Boolean = true
+    ): String {
         if (list.isEmpty()) return "<span style='color: #888;'>[empty list]</span>"
 
         val size = list.size
+        val previewCount = previewCountForListLike(size)
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
 
-            val preview = list.take(MAX_LIST_PREVIEW)
+            val preview = list.take(previewCount)
             preview.forEachIndexed { i, item ->
                 if (i > 0) append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(item, depth + 1, visited))
+                append(visualizeValue(item, depth + 1, visited, respectDepthLimit))
             }
 
-            if (size > MAX_LIST_PREVIEW) {
-                append(formatMoreSuffix(size - MAX_LIST_PREVIEW, "items"))
+            if (size > previewCount) {
+                append(
+                    formatMoreSuffix(
+                        size - previewCount,
+                        "items",
+                        expandValue,
+                        expandTitle,
+                        "list",
+                        previewCount,
+                        depth
+                    )
+                )
 
                 // Add summary stats if all numbers
                 if (list.all { it is Number }) {
@@ -650,21 +769,32 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatSet(set: Set<*>, depth: Int, visited: MutableSet<Int>): String {
+    private fun formatSet(set: Set<*>, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
         if (set.isEmpty()) return "<span style='color: #888;'>{empty set}</span>"
 
         val size = set.size
+        val previewCount = previewCountForListLike(size)
         return buildString {
             append("<span style='color: #aaa;'>{</span>")
 
-            val preview = set.take(MAX_LIST_PREVIEW)
+            val preview = set.take(previewCount)
             preview.forEachIndexed { i, item ->
                 if (i > 0) append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(item, depth + 1, visited))
+                append(visualizeValue(item, depth + 1, visited, respectDepthLimit))
             }
 
-            if (size > MAX_LIST_PREVIEW) {
-                append(formatMoreSuffix(size - MAX_LIST_PREVIEW, "items"))
+            if (size > previewCount) {
+                append(
+                    formatMoreSuffix(
+                        size - previewCount,
+                        "items",
+                        set,
+                        set::class.simpleName ?: "Set",
+                        "list",
+                        previewCount,
+                        depth
+                    )
+                )
             }
 
             append("<span style='color: #aaa;'>}</span>")
@@ -672,7 +802,7 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatMap(map: Map<*, *>, depth: Int, visited: MutableSet<Int>): String {
+    private fun formatMap(map: Map<*, *>, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
         if (map.isEmpty()) return "<span style='color: #888;'>{empty map}</span>"
 
         val size = map.size
@@ -687,11 +817,11 @@ object ValueVisualizer {
                 val needsComma = i < entries.lastIndex || hasMore
                 append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
                 append("<div>")
-                append(visualizeValue(key, depth + 1, visited))
+                append(visualizeValue(key, depth + 1, visited, respectDepthLimit))
                 append("</div>")
                 append("<div style='color: #888; justify-self: center;'>→</div>")
                 append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
-                append(visualizeValue(value, depth + 1, visited))
+                append(visualizeValue(value, depth + 1, visited, respectDepthLimit))
                 if (needsComma) append("<span style='color: #888;'>,</span>")
                 append("</div>")
                 append("</div>")
@@ -699,7 +829,17 @@ object ValueVisualizer {
 
             if (hasMore) {
                 append("<div style='margin-left: 10px;'>")
-                append(formatMoreSuffix(size - MAX_MAP_ENTRIES, "entries"))
+                append(
+                    formatMoreSuffix(
+                        size - MAX_MAP_ENTRIES,
+                        "entries",
+                        map,
+                        map::class.simpleName ?: "Map",
+                        "map",
+                        MAX_MAP_ENTRIES,
+                        depth
+                    )
+                )
                 append("</div>")
             }
 
@@ -709,8 +849,15 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatArray(arr: Array<*>, depth: Int, visited: MutableSet<Int>): String {
-        return formatList(arr.toList(), depth, visited)
+    private fun formatArray(arr: Array<*>, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
+        return formatList(
+            arr.toList(),
+            depth,
+            visited,
+            expandValue = arr,
+            expandTitle = arr::class.simpleName ?: "Array",
+            respectDepthLimit = respectDepthLimit
+        )
     }
 
     private fun formatByteArray(arr: ByteArray): String {
@@ -721,7 +868,16 @@ object ValueVisualizer {
             val preview = arr.take(8)
             append(preview.joinToString(" ") { formatNumberToken("%02x".format(it)) })
             if (arr.size > 8) {
-                append(" <span style='color: #888;'>…</span>")
+                append(" ")
+                append(
+                    lazyInlineExpanderHtml(
+                        value = arr,
+                        label = "… +${arr.size - 8} more bytes",
+                        kind = "bytes",
+                        offset = 8,
+                        title = arr::class.simpleName ?: "ByteArray"
+                    )
+                )
             }
             append("<span style='color: #c8f;'>]</span>")
             append(formatSizeSuffix(arr.size))
@@ -731,15 +887,26 @@ object ValueVisualizer {
     private fun formatIntArray(arr: IntArray): String {
         if (arr.isEmpty()) return "<span style='color: #888;'>[empty ints]</span>"
 
+        val previewCount = previewCountForListLike(arr.size)
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
-            val preview = arr.take(MAX_LIST_PREVIEW)
+            val preview = arr.take(previewCount)
             append("<span style='color: #8cf;'>")
             append(preview.joinToString(", "))
             append("</span>")
 
-            if (arr.size > MAX_LIST_PREVIEW) {
-                append(formatMoreSuffix(arr.size - MAX_LIST_PREVIEW, "items"))
+            if (arr.size > previewCount) {
+                append(
+                    formatMoreSuffix(
+                        arr.size - previewCount,
+                        "items",
+                        arr,
+                        arr::class.simpleName ?: "IntArray",
+                        "list",
+                        previewCount,
+                        0
+                    )
+                )
                 val stats = calculateStats(arr.map { it.toDouble() })
                 append(formatStatsSummary(stats))
             }
@@ -752,15 +919,26 @@ object ValueVisualizer {
     private fun formatFloatArray(arr: FloatArray): String {
         if (arr.isEmpty()) return "<span style='color: #888;'>[empty floats]</span>"
 
+        val previewCount = previewCountForListLike(arr.size)
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
-            val preview = arr.take(MAX_LIST_PREVIEW)
+            val preview = arr.take(previewCount)
             append("<span style='color: #8cf;'>")
             append(preview.joinToString(", ") { fmt(it) })
             append("</span>")
 
-            if (arr.size > MAX_LIST_PREVIEW) {
-                append(formatMoreSuffix(arr.size - MAX_LIST_PREVIEW, "items"))
+            if (arr.size > previewCount) {
+                append(
+                    formatMoreSuffix(
+                        arr.size - previewCount,
+                        "items",
+                        arr,
+                        arr::class.simpleName ?: "FloatArray",
+                        "list",
+                        previewCount,
+                        0
+                    )
+                )
                 val stats = calculateStats(arr.map { it.toDouble() })
                 append(formatStatsSummary(stats))
             }
@@ -773,15 +951,26 @@ object ValueVisualizer {
     private fun formatDoubleArray(arr: DoubleArray): String {
         if (arr.isEmpty()) return "<span style='color: #888;'>[empty doubles]</span>"
 
+        val previewCount = previewCountForListLike(arr.size)
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
-            val preview = arr.take(MAX_LIST_PREVIEW)
+            val preview = arr.take(previewCount)
             append("<span style='color: #8cf;'>")
             append(preview.joinToString(", ") { fmt(it) })
             append("</span>")
 
-            if (arr.size > MAX_LIST_PREVIEW) {
-                append(formatMoreSuffix(arr.size - MAX_LIST_PREVIEW, "items"))
+            if (arr.size > previewCount) {
+                append(
+                    formatMoreSuffix(
+                        arr.size - previewCount,
+                        "items",
+                        arr,
+                        arr::class.simpleName ?: "DoubleArray",
+                        "list",
+                        previewCount,
+                        0
+                    )
+                )
                 val stats = calculateStats(arr.toList())
                 append(formatStatsSummary(stats))
             }
@@ -791,9 +980,9 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatDataClass(obj: Any, depth: Int, visited: MutableSet<Int>): String {
+    private fun formatDataClass(obj: Any, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
         val className = obj::class.simpleName ?: "DataClass"
-        
+
         return try {
             val properties = obj::class.memberProperties
             if (properties.isEmpty()) {
@@ -805,21 +994,38 @@ object ValueVisualizer {
                 append("<span style='color: #cc8;'>$className</span> <span style='color: #aaa;'>{</span>")
 
                 val entries = properties.toList()
-                entries.forEachIndexed { i, prop ->
-                    val needsComma = i < entries.lastIndex
+                val previewEntries = entries.take(MAX_OBJECT_FIELDS)
+                val hasMore = entries.size > previewEntries.size
+                previewEntries.forEachIndexed { i, prop ->
+                    val needsComma = i < previewEntries.lastIndex || hasMore
                     val propValue = try {
                         prop.getter.call(obj)
                     } catch (e: Exception) {
                         "[error: ${e.message}]"
                     }
-                    
+
                     append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
                     append("<div style='color: #aaf;'>${prop.name}</div>")
                     append("<div style='color: #888; justify-self: center;'>→</div>")
                     append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
-                    append(visualizeValue(propValue, depth + 1, visited))
+                    append(visualizeValue(propValue, depth + 1, visited, respectDepthLimit))
                     if (needsComma) append("<span style='color: #888;'>,</span>")
                     append("</div>")
+                    append("</div>")
+                }
+
+                if (hasMore) {
+                    append("<div style='margin-left: 10px;'>")
+                    append(
+                        lazyInlineExpanderHtml(
+                            value = obj,
+                            label = "… +${entries.size - previewEntries.size} more fields",
+                            kind = "object",
+                            offset = previewEntries.size,
+                            depth = depth,
+                            title = className
+                        )
+                    )
                     append("</div>")
                 }
 
@@ -829,6 +1035,215 @@ object ValueVisualizer {
         } catch (e: Exception) {
             "<span style='color: #f88;'>$className [reflection failed: ${e.message}]</span>"
         }
+    }
+
+    internal fun renderLazyFragment(token: String, kind: String, offset: Int, depth: Int): String? {
+        val value = h2GetRawValue(token) ?: return null
+        val safeOffset = offset.coerceAtLeast(0)
+        val safeDepth = depth.coerceAtLeast(0)
+        val visited = mutableSetOf<Int>()
+
+        return when (kind.lowercase()) {
+            "full" -> visualizeValue(value, safeDepth, visited, respectDepthLimit = false)
+            "string" -> renderStringContinuation(value as? String ?: return null, safeOffset)
+            "list" -> renderListContinuation(value, safeOffset, safeDepth, visited)
+            "map" -> renderMapContinuation(value as? Map<*, *> ?: return null, safeOffset, safeDepth, visited)
+            "object" -> renderDataClassContinuation(value, safeOffset, safeDepth, visited)
+            "bytes" -> renderByteArrayContinuation(value as? ByteArray ?: return null, safeOffset)
+            else -> null
+        }
+    }
+
+    private fun renderStringContinuation(value: String, offset: Int): String {
+        val safeStart = offset.coerceIn(0, value.length)
+        if (safeStart >= value.length) return ""
+        val nextEnd = min(value.length, safeStart + STRING_EXPANSION_CHUNK)
+
+        return buildString {
+            append("<span style='color: #8f8;'>")
+            append(escape(value.substring(safeStart, nextEnd)))
+            append("</span>")
+            if (nextEnd < value.length) {
+                append(" ")
+                append(
+                    lazyInlineExpanderHtml(
+                        value = value,
+                        label = "… +${value.length - nextEnd} chars",
+                        kind = "string",
+                        offset = nextEnd,
+                        title = "String"
+                    )
+                )
+            }
+        }
+    }
+
+    private fun renderByteArrayContinuation(value: ByteArray, offset: Int): String {
+        val safeStart = offset.coerceIn(0, value.size)
+        if (safeStart >= value.size) return ""
+        val nextEnd = min(value.size, safeStart + BYTE_EXPANSION_CHUNK)
+
+        return buildString {
+            append(value.sliceArray(safeStart until nextEnd).joinToString(" ") { formatNumberToken("%02x".format(it)) })
+            if (nextEnd < value.size) {
+                append(" ")
+                append(
+                    lazyInlineExpanderHtml(
+                        value = value,
+                        label = "… +${value.size - nextEnd} more bytes",
+                        kind = "bytes",
+                        offset = nextEnd,
+                        title = value::class.simpleName ?: "ByteArray"
+                    )
+                )
+            }
+        }
+    }
+
+    private fun renderListContinuation(value: Any?, offset: Int, depth: Int, visited: MutableSet<Int>): String? {
+        val list = toListLike(value) ?: return null
+        val safeStart = offset.coerceIn(0, list.size)
+        if (safeStart >= list.size) return ""
+        val nextEnd = min(list.size, safeStart + LIST_EXPANSION_CHUNK)
+        val title = valueTitle(value, "List")
+
+        return buildString {
+            for (i in safeStart until nextEnd) {
+                append("<span style='color: #888;'>, </span>")
+                append(visualizeValue(list[i], depth + 1, visited, respectDepthLimit = false))
+            }
+            if (nextEnd < list.size) {
+                append(
+                    formatMoreSuffix(
+                        list.size - nextEnd,
+                        "items",
+                        value,
+                        title,
+                        "list",
+                        nextEnd,
+                        depth
+                    )
+                )
+            }
+        }
+    }
+
+    private fun renderMapContinuation(
+        value: Map<*, *>,
+        offset: Int,
+        depth: Int,
+        visited: MutableSet<Int>
+    ): String {
+        val entries = value.entries.toList()
+        val safeStart = offset.coerceIn(0, entries.size)
+        if (safeStart >= entries.size) return ""
+        val nextEnd = min(entries.size, safeStart + MAP_EXPANSION_CHUNK)
+        val hasMore = nextEnd < entries.size
+        val title = valueTitle(value, "Map")
+
+        return buildString {
+            entries.subList(safeStart, nextEnd).forEachIndexed { index, (key, entryValue) ->
+                val needsComma = index < (nextEnd - safeStart - 1) || hasMore
+                append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
+                append("<div>")
+                append(visualizeValue(key, depth + 1, visited, respectDepthLimit = false))
+                append("</div>")
+                append("<div style='color: #888; justify-self: center;'>→</div>")
+                append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
+                append(visualizeValue(entryValue, depth + 1, visited, respectDepthLimit = false))
+                if (needsComma) append("<span style='color: #888;'>,</span>")
+                append("</div>")
+                append("</div>")
+            }
+            if (hasMore) {
+                append("<div style='margin-left: 10px;'>")
+                append(
+                    formatMoreSuffix(
+                        entries.size - nextEnd,
+                        "entries",
+                        value,
+                        title,
+                        "map",
+                        nextEnd,
+                        depth
+                    )
+                )
+                append("</div>")
+            }
+        }
+    }
+
+    private fun renderDataClassContinuation(
+        value: Any?,
+        offset: Int,
+        depth: Int,
+        visited: MutableSet<Int>
+    ): String {
+        val obj = value ?: return ""
+        if (!obj::class.isData) {
+            return visualizeValue(obj, depth, visited, respectDepthLimit = false)
+        }
+
+        val entries = obj::class.memberProperties.toList()
+        val safeStart = offset.coerceIn(0, entries.size)
+        if (safeStart >= entries.size) return ""
+        val nextEnd = min(entries.size, safeStart + OBJECT_EXPANSION_CHUNK)
+        val hasMore = nextEnd < entries.size
+        val className = valueTitle(obj, "DataClass")
+
+        return buildString {
+            entries.subList(safeStart, nextEnd).forEachIndexed { index, prop ->
+                val needsComma = index < (nextEnd - safeStart - 1) || hasMore
+                val propValue = try {
+                    prop.getter.call(obj)
+                } catch (e: Exception) {
+                    "[error: ${e.message}]"
+                }
+
+                append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
+                append("<div style='color: #aaf;'>${prop.name}</div>")
+                append("<div style='color: #888; justify-self: center;'>→</div>")
+                append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
+                append(visualizeValue(propValue, depth + 1, visited, respectDepthLimit = false))
+                if (needsComma) append("<span style='color: #888;'>,</span>")
+                append("</div>")
+                append("</div>")
+            }
+            if (hasMore) {
+                append("<div style='margin-left: 10px;'>")
+                append(
+                    lazyInlineExpanderHtml(
+                        value = obj,
+                        label = "… +${entries.size - nextEnd} more fields",
+                        kind = "object",
+                        offset = nextEnd,
+                        depth = depth,
+                        title = className
+                    )
+                )
+                append("</div>")
+            }
+        }
+    }
+
+    private fun toListLike(value: Any?): List<*>? = when (value) {
+        is List<*> -> value
+        is Set<*> -> value.toList()
+        is Array<*> -> value.toList()
+        is ByteArray -> value.asList()
+        is ShortArray -> value.asList()
+        is IntArray -> value.asList()
+        is LongArray -> value.asList()
+        is FloatArray -> value.asList()
+        is DoubleArray -> value.asList()
+        is BooleanArray -> value.asList()
+        is CharArray -> value.asList()
+        else -> null
+    }
+
+    private fun valueTitle(value: Any?, fallback: String): String {
+        val title = value?.let { it::class.simpleName ?: it::class.java.simpleName }
+        return title?.ifBlank { fallback } ?: fallback
     }
 
 

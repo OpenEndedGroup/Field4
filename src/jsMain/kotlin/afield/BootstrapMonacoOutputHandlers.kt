@@ -381,3 +381,19 @@ fun monacoLaunchAll(uid: String, code: String) {
         Handled.yes
     }
 }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoContinueAll(uid: String, code: String) {
+    val payload = js("{}")
+    payload.uid = uid
+    payload.type = "continue"
+    payload.line = 0
+    payload.code = code
+    payload.singleLine = false
+
+    sendWithReply("continue-all", payload, "exec_$uid") { message: dynamic, response: dynamic ->
+        monacoHandleOutput(response, message, uid)
+        Handled.yes
+    }
+}

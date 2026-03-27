@@ -30,9 +30,11 @@ Note that Field differentiates between running a piece of code (a line or two or
 
 ## Saving and Loading
 
-Field saves regularly (around every 5 seconds or so if there's something that's changed). It's important to note that reloading the webpage refreshes your connection to Field, but it doesn't reboot it — what ever you launched is still running. If you want to restart Field, press `ctrl-c` in the terminal you launched it from and start it again. If you can figure out how to connect remotely to you machine you can run the front end (the web-browser) on any other machine you like.
+The place to start is https://localhost:9092/welcome. That's where you can load files, and make new ones.
 
-To change what document you are looking at in the browser, edit that url at the top:
+Field saves regularly (around every 5 seconds or so if there's something that's changed). It's important to note that reloading the webpage refreshes your connection to Field, but it doesn't reboot it — what ever you launched is still running. If you want to restart Field, press `ctrl-c` in the terminal you launched it from and start it again (or select quit from the welcome page). Since the front end is just a webpage, if you can figure out how to connect remotely to you machine you can run the front end (the web-browser) on any other machine you like.
+
+To change what document you are looking at in a browser, edit that url at the top (or go back to the welcome page).
 
 ```diffstatic {data-lang=text}
 https://localhost:9092/?file=editThisNameHereToLoadSomethingElse

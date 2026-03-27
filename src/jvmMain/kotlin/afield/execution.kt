@@ -3,12 +3,19 @@ package afield
 import afield.ai.Ai4GlslAutocomplete
 import afield.ai.KotlinSourceIndex
 import afield.ai.glslSpecForProperty
+import afield.four.synth.AudioPatchSpec
+import afield.four.synth.InlineAudioSummaryTarget
 import afield.logger.lprintln
 import afield.macros.standardExecutionPractice
 import afield.stdlib.*
-import io.ktor.websocket.WebSocketSession
-import kotlinx.coroutines.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.descriptors.FunctionDescriptor
+import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
@@ -36,6 +43,15 @@ interface BoxExecution {
         strand: String = "default",
         reply: ((Message) -> Unit)
     )
+    fun continueAll(
+        inside: Box,
+        execute: Execute,
+        code: String = execute.code,
+        strand: String = "default",
+        reply: ((Message) -> Unit)
+    ) {
+        launchAll(inside, execute, code, strand, reply)
+    }
 
     fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: ((Message) -> Unit))
 
@@ -56,6 +72,104 @@ private fun simplifyTypeForOutput(type: String?): String {
     return type.replace("kotlin.", "")
 }
 
+private val completionDescriptorRenderer = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
+    withDefinedIn = false
+}
+
+private fun renderCompletionType(type: org.jetbrains.kotlin.types.KotlinType?): String {
+    if (type == null) return "Unit"
+    return runCatching { completionDescriptorRenderer.renderType(type) }
+        .getOrElse { simplifyTypeForOutput(type.toString()) }
+}
+
+private fun renderCompletionParameter(parameter: ValueParameterDescriptor): String {
+    val renderedType = renderCompletionType(parameter.varargElementType ?: parameter.type)
+    return buildString {
+        if (parameter.isCrossinline) append("crossinline ")
+        if (parameter.isNoinline) append("noinline ")
+        if (parameter.varargElementType != null) append("vararg ")
+        append(parameter.name.asString())
+        append(": ")
+        append(renderedType)
+        if (parameter.declaresDefaultValue()) append(" = ...")
+    }
+}
+
+private fun renderFunctionCompletionSignature(descriptor: FunctionDescriptor): String {
+    val receiver = descriptor.extensionReceiverParameter?.let { renderCompletionType(it.type) + "." }.orEmpty()
+    val prefix = buildString {
+        if (descriptor.isSuspend) append("suspend ")
+        append("fun ")
+        append(receiver)
+        append(descriptor.name.asString())
+    }
+    val parameters = descriptor.valueParameters.map(::renderCompletionParameter)
+    val returnType = renderCompletionType(descriptor.returnType)
+    val singleLine = "$prefix(${parameters.joinToString(", ")}): $returnType"
+
+    if (parameters.size <= 2 && singleLine.length <= 100) return singleLine
+
+    return buildString {
+        append(prefix)
+        append("(\n")
+        parameters.forEachIndexed { index, parameter ->
+            append("    ")
+            append(parameter)
+            if (index != parameters.lastIndex) append(',')
+            append('\n')
+        }
+        append("): ")
+        append(returnType)
+    }
+}
+
+private fun buildCompletionDocumentation(
+    descriptor: DeclarationDescriptor,
+    existingDocumentation: String
+): String {
+    if (descriptor !is FunctionDescriptor) return existingDocumentation.trim()
+
+    val sections = mutableListOf<String>()
+    sections += buildString {
+        append("```kotlin\n")
+        append(renderFunctionCompletionSignature(descriptor))
+        append("\n```")
+    }
+
+    existingDocumentation.trim().takeIf { it.isNotEmpty() }?.let { sections += it }
+
+    descriptor.valueParameters.takeIf { it.isNotEmpty() }?.let { parameters ->
+        sections += buildString {
+            append("**Parameters**\n")
+            parameters.forEach { parameter ->
+                append("- `")
+                append(renderCompletionParameter(parameter))
+                append("`\n")
+            }
+        }.trimEnd()
+    }
+
+    descriptor.extensionReceiverParameter?.let { receiver ->
+        sections += "**Receiver** `${renderCompletionType(receiver.type)}`"
+    }
+
+    descriptor.returnType?.let { returnType ->
+        sections += "**Returns** `${renderCompletionType(returnType)}`"
+    }
+
+    return sections.joinToString("\n\n").trim()
+}
+
+private fun renderPrintedOutput(content: Any?): String {
+    return when (content) {
+        null -> ""
+        is String -> content
+        is CharSequence -> content.toString()
+        is Number, is Boolean, is Char, is Enum<*> -> content.toString()
+        else -> ValueVisualizer.visualize(content, appendable = true)
+    }
+}
+
 internal fun dispatchExecutionOutput(
     box: Box,
     reply: ((Message) -> Unit)?,
@@ -73,7 +187,7 @@ internal fun dispatchExecutionOutput(
 
 fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: WebSocketSession? = thisSession.get()) {
     box.output.proxy = { content, nl, line ->
-        val n = content?.toString() ?: ""
+        val n = renderPrintedOutput(content)
         if (n.trim().length > 0) {
             dispatchExecutionOutput(
                 box,
@@ -111,6 +225,19 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
 
 @Suppress("UnstableApiUsage")
 class KotlinExecution : BoxExecution {
+    private fun normalizedLaunchCode(exec: Execute): String {
+        val leadingLines = exec.line.coerceAtLeast(0)
+        return "\n".repeat(leadingLines) + exec.code.trimEnd()
+    }
+
+    private fun cacheLaunchReturnValue(box: Box, strand: String, code: String, returnValue: Any?) {
+        if (returnValue == null) {
+            box.cachedLaunchReturns.remove(strand)
+            return
+        }
+        box.cachedLaunchReturns[strand] = CachedLaunchReturn(code, returnValue)
+    }
+
     override fun executeFragment(box: Box, exec: Execute, reply: ((Message) -> Unit)) {
         val originSession = thisSession.get()
 
@@ -158,7 +285,7 @@ class KotlinExecution : BoxExecution {
     override fun executeAll(box: Box, exec: Execute, reply: ((Message) -> Unit)) {
         val originSession = thisSession.get()
 
-        val code = exec.code
+        val code = exec.code.trimEnd()
 
         val wm = ++box.fragmentGeneration
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
@@ -177,9 +304,7 @@ class KotlinExecution : BoxExecution {
 
         box.preamble = "" // still controversial
 
-        val ln = Math.max(0, exec.line)
-
-        val code = ("\n" * ln) + exec.code.trimEnd()
+        val normalizedCode = normalizedLaunchCode(exec)
 
         inMain {
 
@@ -190,13 +315,52 @@ class KotlinExecution : BoxExecution {
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}
             // this is just the field2 design
 
-            execute(box, code, reply, originSession, exec.line) { returnValue ->
+            execute(box, normalizedCode, reply, originSession, exec.line) { returnValue ->
+                val launchMode = "launch"
+                box.currentLaunchModes[strand] = launchMode
 
+                cacheLaunchReturnValue(box, strand, normalizedCode, returnValue)
                 configureOutputProxies(box, reply, originSession)
 
                 launchReturnValue(box, returnValue, strand = strand, { isRunning, strand, watermark ->
-                    send(Message("is-running").payload(IsRunning(exec.uid, isRunning, watermark, strand)))
+                    if (!isRunning && box.runGeneration[strand] == watermark) {
+                        box.currentLaunchModes.remove(strand)
+                    }
+                    send(
+                        Message("is-running").payload(
+                            IsRunning(exec.uid, isRunning, watermark, strand, launchMode)
+                        )
+                    )
                 })
+            }
+        }
+    }
+
+    override fun continueAll(box: Box, exec: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
+        val cached = box.cachedLaunchReturns[strand]
+        val normalizedCode = normalizedLaunchCode(exec)
+
+        if (cached == null || cached.code != normalizedCode) {
+            lprintln("debug,execution", "continue cache miss for ${box.id} on strand $strand")
+            launchAll(box, exec, code, strand, reply)
+            return
+        }
+
+        val originSession = thisSession.get()
+        val launchMode = "continue"
+        box.currentLaunchModes[strand] = launchMode
+        lprintln("debug,execution", "continuing cached return value for ${box.id} on strand $strand")
+        inMain {
+            configureOutputProxies(box, reply, originSession)
+            launchReturnValue(box, cached.returnValue, strand = strand) { isRunning, notifiedStrand, watermark ->
+                if (!isRunning && box.runGeneration[notifiedStrand] == watermark) {
+                    box.currentLaunchModes.remove(notifiedStrand)
+                }
+                send(
+                    Message("is-running").payload(
+                        IsRunning(exec.uid, isRunning, watermark, notifiedStrand, launchMode)
+                    )
+                )
             }
         }
     }
@@ -218,10 +382,11 @@ class KotlinExecution : BoxExecution {
                 var hasError = false
                 var output = mutableListOf<String>("")
                 box.output.proxy = { content, nl, line ->
-                    output[output.size - 1] = output[output.size - 1] + content.toString()
+                    val rendered = renderPrintedOutput(content)
+                    output[output.size - 1] = output[output.size - 1] + rendered
                     if (nl) output.add("")
 
-                    lprintln("debug,execution", "out $content")
+//                    lprintln("debug,execution", "out $content")
                     dispatchExecutionOutput(
                         box,
                         reply,
@@ -229,7 +394,7 @@ class KotlinExecution : BoxExecution {
                             uid = box.id,
                             line = line.i,
                             kind = "normal",
-                            html = content.toString().trim() + (if (nl) "\n" else ""),
+                            html = rendered.trim() + (if (nl) "\n" else ""),
                             frame = Runloop.runLoop.frame.toInt()
                         ),
                         originSession = originSession
@@ -384,10 +549,16 @@ class KotlinExecution : BoxExecution {
                         }
 
                         is ResultValue.Value -> {
+                            val audioPatch = returnValue.value as? AudioPatchSpec
                             if (size == 0) {
                                 val name = returnValue.name
-                                val value = returnValue.value.h
                                 val type = simplifyTypeForOutput(returnValue.type)
+                                val annotation = "<i>${name}=</i>${type}"
+                                audioPatch?.inlineSummaryTarget = InlineAudioSummaryTarget(
+                                    line = ln + dur,
+                                    annotation = annotation
+                                )
+                                val value = returnValue.value.h
 
                                 if (value.length > 0) {
                                     dispatchExecutionOutput(
@@ -398,7 +569,7 @@ class KotlinExecution : BoxExecution {
                                             line = ln + dur,
                                             kind = "normal",
                                             html = value,
-                                            annotation = "<i>${name}=</i>${type}",
+                                            annotation = annotation,
                                             frame = Runloop.runLoop.frame.toInt()
                                         ),
                                         originSession = originSession
@@ -415,7 +586,7 @@ class KotlinExecution : BoxExecution {
                                     ),
                                     originSession = originSession
                                 )
-                            }
+                            } else audioPatch?.inlineSummaryTarget = null
 
                             handleReturn(returnValue.value)
                         }
@@ -470,7 +641,7 @@ class KotlinExecution : BoxExecution {
         // Helper function to calculate bounds for replacing a prefix
         fun calculateBounds(lines: List<String>, currentLineIndex: Int, prefixInLine: String, currentPosition: Int): Pair<Int, Int> {
             // Calculate line start position, accounting for newline characters
-            val lineStart = lines.take(currentLineIndex).sumOf { it.length + 1 }
+            val lineStart = lines.take(currentLineIndex).sumOf { lineText: String -> lineText.length + 1 }
             val beforeCursor = lines[currentLineIndex].substring(0, minOf(column, lines[currentLineIndex].length))
             val prefixStart = beforeCursor.lastIndexOf(prefixInLine)
             return if (prefixStart >= 0) {
@@ -750,20 +921,16 @@ class KotlinExecution : BoxExecution {
             return c.metadata.map {
 //                println(it.extraInfo)
                 var extraDoc = ""
-                val descriptor = it.extraInfo.getOrDefault("original", null)
+                val descriptor = it.extraInfo.getOrDefault("original", null) as? DeclarationDescriptor
                 var mainText = it.displayText
                 var symbolName: String? = null
                 val rawSymbolName = it.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
 
                 descriptor?.let {
-                    if (descriptor is DeclarationDescriptor) {
 //                                                mainText = DescriptorRenderer.HTML.render(descriptor as DeclarationDescriptor)
-                        mainText = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
-                            withDefinedIn = false
-                        }.render(descriptor as DeclarationDescriptor) + "\n"
-                        // Extract symbol name for KDoc lookup
-                        symbolName = descriptor.name.asString()
-                    }
+                    mainText = completionDescriptorRenderer.render(descriptor) + "\n"
+                    // Extract symbol name for KDoc lookup
+                    symbolName = descriptor.name.asString()
                     (it as? Annotated)?.let {
                         it.annotations.forEach {
                             if (it.fqName.toString() == "afield.Doc") {
@@ -792,7 +959,7 @@ class KotlinExecution : BoxExecution {
                     tail = it.tail,
                     text = it.text,
                     displayText = mainText.trim(),
-                    documentation = extraDoc.trim()
+                    documentation = descriptor?.let { buildCompletionDocumentation(it, extraDoc) } ?: extraDoc.trim()
                 )
 
                 if (shouldEnrich) {
