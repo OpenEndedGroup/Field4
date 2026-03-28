@@ -14,6 +14,7 @@ nav:
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Staging area:
+      - Fabricate Renderer: fabricate_renderer.md
       - Interactive Guides: interactive_guides.md
       - Guide Chat: guide_chat.md
       - Some VR: vr_sketch2.md

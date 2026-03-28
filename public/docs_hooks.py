@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -37,6 +38,7 @@ SCRIPT_VERSION = 8
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 20.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
+RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
 RUNNER_MODE_ALIASES = {
@@ -48,6 +50,22 @@ RUNNER_MODE_ALIASES = {
     "rebuild": "strict",
     "always": "always",
 }
+GRAPHICS_CONTEXT_WAIT_SEC = 0.5
+GRAPHICS_CONTEXT_ALIAS = "graphics-window"
+GRAPHICS_CONTEXT_WINDOW_CODE = """
+import afield.four.Renderer
+import afield.four.util.Window
+
+prop<Window>(window)
+prop<Renderer>(renderer)
+
+once.renderer {
+    window = Window("Field")
+    Renderer(window)
+}
+
+start(renderer::run)
+""".strip()
 FENCE_OPEN_RE = re.compile(
     rf"^(?P<indent>[ ]{{0,3}})(?P<fence>`{{3,}})(?P<runner>{'|'.join(re.escape(name) for name in FENCE_NAMES)})"
     r"(?P<rest>.*?)(?P<newline>\r?\n)?$"
@@ -73,6 +91,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
 @dataclass(frozen=True)
 class RunnerOptions:
     screenshot: str
+    source_image: str | None
     capture: str
     execution: str
     wait: float
@@ -89,6 +108,7 @@ class RunnerOptions:
     box_h: float
     open_outputs: bool
     with_editor: bool
+    graphics_context: bool
     force: bool
     video: str | None  # path to .mp4 output; when set, records video instead of screenshot
     duration: float  # video duration in seconds (default 5.0)
@@ -111,15 +131,26 @@ class RunnerState:
         self.shared_log_path = config_path.parent / ".field-docs-runner-field.log"
         self.runner_mode = resolve_runner_mode(os.environ.get(RUNNER_MODE_ENV))
         self.backdoor_port = int(os.environ.get(RUNNER_PORT_ENV, "9092"))
+        self.continue_on_error = resolve_continue_on_error(
+            os.environ.get(RUNNER_CONTINUE_ON_ERROR_ENV),
+            runner_mode=self.runner_mode,
+        )
         self._shared_field_process: subprocess.Popen[str] | None = None
         self._shared_field_started_by_runner = False
         self._closed = False
+        self.failures: list[str] = []
         self.runner_source_digest = compute_runner_source_digest(self.repo_root)
         self.cache, self.cache_metadata = self._load_cache()
         self.dirty = False
         LOG.info("Field docs runner mode: %s", self.runner_mode)
+        LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
         self._ensure_shared_field_server()
         atexit.register(self.close)
+
+    def handle_capture_error(self, *, page_path: Path, output_path: Path, error: Exception) -> None:
+        message = f"{page_path.name} -> {output_path}: {error}"
+        self.failures.append(message)
+        LOG.warning("Field docs runner skipping failed asset: %s", message)
 
     def _http_health_ok(self, port: int, timeout: float = 1.5) -> bool:
         url = f"https://localhost:{port}/health"
@@ -183,6 +214,45 @@ class RunnerState:
             f"See {self.shared_log_path}"
         )
 
+    def _stop_shared_field_server(self) -> None:
+        if not self._shared_field_started_by_runner:
+            return
+        process = self._shared_field_process
+        if process is None:
+            return
+        if process.poll() is not None:
+            self._shared_field_process = None
+            return
+        LOG.info("Field docs runner stopping shared Field server")
+        try:
+            if os.name == "nt":
+                process.terminate()
+            else:
+                os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            self._shared_field_process = None
+            return
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            try:
+                if os.name == "nt":
+                    process.kill()
+                else:
+                    os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                self._shared_field_process = None
+                return
+            process.wait(timeout=5)
+        self._shared_field_process = None
+
+    def _restart_shared_field_server(self, *, reason: str) -> None:
+        if not self._shared_field_started_by_runner:
+            return
+        LOG.warning("Field docs runner restarting shared Field server: %s", reason)
+        self._stop_shared_field_server()
+        self._ensure_shared_field_server()
+
     def _load_cache(self) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
         try:
             payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
@@ -241,32 +311,7 @@ class RunnerState:
             return
         self._closed = True
         self.save()
-        if not self._shared_field_started_by_runner:
-            return
-        process = self._shared_field_process
-        if process is None:
-            return
-        if process.poll() is not None:
-            return
-        LOG.info("Field docs runner stopping shared Field server")
-        try:
-            if os.name == "nt":
-                process.terminate()
-            else:
-                os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            return
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            try:
-                if os.name == "nt":
-                    process.kill()
-                else:
-                    os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                return
-            process.wait(timeout=5)
+        self._stop_shared_field_server()
 
     def ensure_video(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """Record a short video clip instead of taking a screenshot."""
@@ -333,6 +378,21 @@ class RunnerState:
                     timeout=runner_subprocess_timeout(options=video_options, is_video=True),
                 )
             except subprocess.TimeoutExpired as exc:
+                if attempt < RUNNER_RETRIES:
+                    self._restart_shared_field_server(
+                        reason=f"timeout while recording {page_path.name} -> {video_path}"
+                    )
+                    LOG.warning(
+                        "Field docs runner video attempt %s/%s timed out for %s -> %s; retrying",
+                        attempt,
+                        RUNNER_RETRIES,
+                        page_path.name,
+                        video_path,
+                    )
+                    continue
+                self._restart_shared_field_server(
+                    reason=f"final timeout while recording {page_path.name} -> {video_path}"
+                )
                 raise RuntimeError(
                     f"Field docs runner video timed out for {page_path.name} -> {video_path}.\n"
                     f"Command: {shlex.join(command)}\n"
@@ -341,12 +401,19 @@ class RunnerState:
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
+                self._restart_shared_field_server(
+                    reason=f"failed video capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {video_path}"
+                )
                 LOG.warning(
                     "Field docs runner video attempt %s/%s failed for %s -> %s; retrying",
                     attempt,
                     RUNNER_RETRIES,
                     page_path.name,
                     video_path,
+                )
+            else:
+                self._restart_shared_field_server(
+                    reason=f"final failed video capture attempt for {page_path.name} -> {video_path}"
                 )
         assert completed is not None
         if completed.returncode != 0:
@@ -436,6 +503,21 @@ class RunnerState:
                     timeout=runner_subprocess_timeout(options=options, is_video=False),
                 )
             except subprocess.TimeoutExpired as exc:
+                if attempt < RUNNER_RETRIES:
+                    self._restart_shared_field_server(
+                        reason=f"timeout while capturing {page_path.name} -> {screenshot_path}"
+                    )
+                    LOG.warning(
+                        "Field docs runner attempt %s/%s timed out for %s -> %s; retrying",
+                        attempt,
+                        RUNNER_RETRIES,
+                        page_path.name,
+                        screenshot_path,
+                    )
+                    continue
+                self._restart_shared_field_server(
+                    reason=f"final timeout while capturing {page_path.name} -> {screenshot_path}"
+                )
                 raise RuntimeError(
                     f"Field docs runner timed out for {page_path.name} -> {screenshot_path}.\n"
                     f"Command: {shlex.join(command)}\n"
@@ -444,12 +526,19 @@ class RunnerState:
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
+                self._restart_shared_field_server(
+                    reason=f"failed capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {screenshot_path}"
+                )
                 LOG.warning(
                     "Field docs runner attempt %s/%s failed for %s -> %s; retrying",
                     attempt,
                     RUNNER_RETRIES,
                     page_path.name,
                     screenshot_path,
+                )
+            else:
+                self._restart_shared_field_server(
+                    reason=f"final failed capture attempt for {page_path.name} -> {screenshot_path}"
                 )
         assert completed is not None
         if completed.returncode != 0:
@@ -475,10 +564,20 @@ class RunnerState:
                 f"Command: {shlex.join(command)}\n"
                 f"{output_gap}"
             )
+        if options.source_image:
+            copy_source_image(
+                source_path=resolve_auxiliary_output_path(page_path, options.source_image),
+                destination_path=screenshot_path,
+                timeout_sec=options.timeout,
+            )
         self.cache[cache_key] = digest
         self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
         self.save()
+        if options.graphics_context:
+            self._restart_shared_field_server(
+                reason=f"completed graphics-context capture for {page_path.name} -> {screenshot_path}"
+            )
 
 
 STATE: RunnerState | None = None
@@ -497,6 +596,10 @@ def on_page_markdown(markdown: str, page: Any, config: Any, files: Any) -> str:
 def on_post_build(config: Any) -> None:
     del config
     if STATE is not None:
+        if STATE.failures:
+            LOG.warning("Field docs runner skipped %s asset(s) due to capture failures", len(STATE.failures))
+            for failure in STATE.failures:
+                LOG.warning("Field docs runner skipped asset detail: %s", failure)
         STATE.save()
         STATE.close()
 
@@ -575,21 +678,39 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 line_number=start_line,
             )
             code = wrap_runnable_code_for_language(code=code, language_key=language_key)
+            screenshot_succeeded = False
+            video_succeeded = False
             if options.screenshot:
-                state.ensure_screenshot(code=code, options=options, page_path=page_path, block_index=block_index)
-                register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=resolve_output_path(page_path, options.screenshot))
+                screenshot_path = resolve_output_path(page_path, options.screenshot)
+                try:
+                    state.ensure_screenshot(code=code, options=options, page_path=page_path, block_index=block_index)
+                    screenshot_succeeded = True
+                except RuntimeError as exc:
+                    if not state.continue_on_error:
+                        raise
+                    state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc)
+                if screenshot_succeeded:
+                    register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
             if options.video:
-                state.ensure_video(code=code, options=options, page_path=page_path, block_index=block_index)
-                register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=resolve_output_path(page_path, options.video))
+                video_path = resolve_output_path(page_path, options.video)
+                try:
+                    state.ensure_video(code=code, options=options, page_path=page_path, block_index=block_index)
+                    video_succeeded = True
+                except RuntimeError as exc:
+                    if not state.continue_on_error:
+                        raise
+                    state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc)
+                if video_succeeded:
+                    register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
 
         out.append(open_line.replace(fence_name, RUNNER_TARGETS[fence_name], 1))
         out.extend(rewritten_body)
         out.append(closing_line)
         if fence_name in RUNNER_FENCES and options.embed:
-            if options.screenshot:
+            if options.screenshot and screenshot_succeeded:
                 out.append("\n")
                 out.append(f"![{options.alt or options.box_name}]({markdown_path_for(page_path, options.screenshot)})\n")
-            if options.video:
+            if options.video and video_succeeded:
                 video_rel = embedded_asset_path_for(
                     page_path=page_path,
                     asset=options.video,
@@ -616,6 +737,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     raw_attrs = open_line.split(runner_name, 1)[1].strip()
     attrs = parse_attrs(raw_attrs)
     screenshot = first_attr(attrs, "screenshot", "path")
+    source_image = first_attr(attrs, "source-image", "source_image", "native-image", "native_image")
     video = first_attr(attrs, "video")
     if not screenshot and not video:
         raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\" and/or video=\"...\"")
@@ -655,6 +777,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
 
     return RunnerOptions(
         screenshot=screenshot,
+        source_image=source_image,
         capture=capture,
         execution=execution,
         wait=parse_float(first_attr(attrs, "wait"), default=0.75),
@@ -671,6 +794,10 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         box_h=parse_float(first_attr(attrs, "h"), default=default_box_h),
         open_outputs=open_outputs,
         with_editor=with_editor,
+        graphics_context=parse_bool(
+            first_attr(attrs, "graphics-context", "graphics_context", "graphicsContext"),
+            default=False,
+        ),
         force=parse_bool(first_attr(attrs, "force"), default=False),
         video=video,
         duration=parse_float(first_attr(attrs, "duration"), default=5.0),
@@ -725,6 +852,12 @@ def resolve_runner_mode(raw: str | None) -> str:
         supported = ", ".join(sorted(RUNNER_MODE_ALIASES))
         raise RuntimeError(f"Unsupported {RUNNER_MODE_ENV}={raw!r}; expected one of: {supported}")
     return resolved
+
+
+def resolve_continue_on_error(raw: str | None, *, runner_mode: str) -> bool:
+    if raw is None or not raw.strip():
+        return runner_mode == "incremental"
+    return parse_bool(raw, default=runner_mode == "incremental")
 
 
 def fence_language_key(*, open_line: str, fence_name: str) -> str:
@@ -911,6 +1044,13 @@ def resolve_output_path(page_path: Path, screenshot: str) -> Path:
     return (page_path.parent / path).resolve()
 
 
+def resolve_auxiliary_output_path(page_path: Path, path_value: str) -> Path:
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    return (page_path.parent / path).resolve()
+
+
 def markdown_path_for(page_path: Path, screenshot: str) -> str:
     absolute = resolve_output_path(page_path, screenshot)
     return Path(os.path.relpath(absolute, start=page_path.parent)).as_posix()
@@ -962,6 +1102,7 @@ def compute_runner_source_digest(repo_root: Path) -> str:
 
 def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
     return {
+        "sourceImage": options.source_image,
         "capture": options.capture,
         "effectiveCapture": effective_capture_mode(options),
         "execution": options.execution,
@@ -977,6 +1118,7 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "boxH": options.box_h,
         "openOutputs": options.open_outputs,
         "withEditor": options.with_editor,
+        "graphicsContext": options.graphics_context,
         "video": options.video,
         "duration": options.duration,
         "fps": options.fps,
@@ -1035,6 +1177,27 @@ def short_digest(value: str | None) -> str:
     if not value:
         return "missing"
     return value[:12]
+
+
+def copy_source_image(*, source_path: Path, destination_path: Path, timeout_sec: float) -> None:
+    deadline = time.monotonic() + max(timeout_sec, 1.0)
+    last_size = -1
+    stable_reads = 0
+    while time.monotonic() < deadline:
+        if source_path.exists():
+            size = source_path.stat().st_size
+            if size > 0:
+                if size == last_size:
+                    stable_reads += 1
+                else:
+                    stable_reads = 0
+                last_size = size
+                if stable_reads >= 1:
+                    destination_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(source_path, destination_path)
+                    return
+        time.sleep(0.1)
+    raise RuntimeError(f"Timed out waiting for source image {source_path}")
 
 
 def cache_status_label(*, cache_allowed: bool, force: bool) -> str:
@@ -1132,11 +1295,17 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
     problems: list[str] = []
     for result in results:
         command = str(result.get("command", "<unknown command>"))
-        if result.get("timedOut"):
+        data = result.get("data")
+        best_effort_timeout = (
+            isinstance(data, dict)
+            and command.startswith("stop ")
+            and "--best-effort" in command
+            and bool(data.get("bestEffort"))
+        )
+        if result.get("timedOut") and not best_effort_timeout:
             problems.append(f"{command}: timed out")
         if not bool(result.get("ok", False)):
             error_text = None
-            data = result.get("data")
             if isinstance(data, dict):
                 raw_error = data.get("error")
                 if raw_error is not None:
@@ -1174,6 +1343,9 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
 
 
 def extract_backdoor_output_gap(*, stdout: str, code: str, options: RunnerOptions) -> str | None:
+    if options.graphics_context:
+        return None
+
     results = parse_backdoor_results(stdout)
     if not results:
         return None
@@ -1263,7 +1435,31 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
     ]
     if options.document:
         command.extend(["--document", options.document])
-    command.extend(["--command", shlex.join([
+    backdoor_commands: list[str] = []
+    if options.graphics_context:
+        window_path = repo_root / "build" / "field-docs-runner" / f"{options.box_name}-graphics-context.kt"
+        window_path.parent.mkdir(parents=True, exist_ok=True)
+        window_path.write_text(GRAPHICS_CONTEXT_WINDOW_CODE + "\n", encoding="utf-8")
+        backdoor_commands.append(shlex.join([
+            "new-box",
+            "--name", "window",
+            "--alias", GRAPHICS_CONTEXT_ALIAS,
+            "--x", "0",
+            "--y", "0",
+            "--w", "100",
+            "--h", "100",
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "launch",
+            f"@{GRAPHICS_CONTEXT_ALIAS}",
+            "--property", "code",
+            "--file", str(window_path),
+            "--timeout", str(options.timeout),
+        ]))
+        if GRAPHICS_CONTEXT_WAIT_SEC > 0:
+            backdoor_commands.append(shlex.join(["sleep", str(GRAPHICS_CONTEXT_WAIT_SEC)]))
+    backdoor_commands.append(shlex.join([
         "new-box",
         "--name", options.box_name,
         "--x", str(options.box_x),
@@ -1271,37 +1467,44 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
         "--w", str(options.box_w),
         "--h", str(options.box_h),
         "--timeout", str(options.timeout),
-    ])])
+    ]))
+    if options.graphics_context:
+        backdoor_commands.append(shlex.join([
+            "connect",
+            f"@{GRAPHICS_CONTEXT_ALIAS}",
+            "@last",
+            "--timeout", str(options.timeout),
+        ]))
     if capture_mode == "editor":
-        command.extend(["--command", shlex.join([
+        backdoor_commands.append(shlex.join([
             "set",
             "@last",
             options.property_name,
             "--file", "-",
-        ])])
-        command.extend(["--command", shlex.join([
+        ]))
+        backdoor_commands.append(shlex.join([
             "editor-open",
             "@last",
             "--property", options.property_name,
             "--padding", str(options.padding),
             "--timeout", str(options.timeout),
-        ])])
-        command.extend(["--command", shlex.join([
+        ]))
+        backdoor_commands.append(shlex.join([
             "launch" if options.execution == "launch" else "run",
             "@last",
             "--property", options.property_name,
             "--timeout", str(options.timeout),
-        ])])
+        ]))
     else:
-        command.extend(["--command", shlex.join([
+        backdoor_commands.append(shlex.join([
             "launch" if options.execution == "launch" else "run",
             "@last",
             "--property", options.property_name,
             "--file", "-",
             "--timeout", str(options.timeout),
-        ])])
+        ]))
     if options.wait > 0:
-        command.extend(["--command", shlex.join(["sleep", str(options.wait)])])
+        backdoor_commands.append(shlex.join(["sleep", str(options.wait)]))
 
     if is_video:
         # Use record-* commands instead of screenshot-*
@@ -1315,7 +1518,7 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
                 "--fps", str(options.fps),
                 "--timeout", str(options.timeout),
             ]
-            command.extend(["--command", shlex.join(parts)])
+            backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             parts = [
                 "record-editor",
@@ -1329,7 +1532,7 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
-            command.extend(["--command", shlex.join(parts)])
+            backdoor_commands.append(shlex.join(parts))
         else:
             parts = [
                 "record-window",
@@ -1344,9 +1547,11 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
                 parts.append("--open-outputs")
             if options.with_editor:
                 parts.append("--with-editor")
-            command.extend(["--command", shlex.join(parts)])
+            backdoor_commands.append(shlex.join(parts))
     else:
-        if capture_mode == "box":
+        if options.source_image:
+            pass
+        elif capture_mode == "box":
             parts = [
                 "screenshot-box",
                 "@last",
@@ -1354,7 +1559,7 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
                 "--padding", str(options.padding),
                 "--timeout", str(options.timeout),
             ]
-            command.extend(["--command", shlex.join(parts)])
+            backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             parts = [
                 "screenshot-editor",
@@ -1366,7 +1571,7 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
-            command.extend(["--command", shlex.join(parts)])
+            backdoor_commands.append(shlex.join(parts))
         else:
             parts = [
                 "screenshot-window",
@@ -1379,12 +1584,21 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
                 parts.append("--open-outputs")
             if options.with_editor:
                 parts.append("--with-editor")
-            command.extend(["--command", shlex.join(parts)])
+            backdoor_commands.append(shlex.join(parts))
 
     if options.execution == "launch":
-        command.extend(["--command", shlex.join([
+        backdoor_commands.append(shlex.join([
             "stop",
             "@last",
             "--timeout", str(options.timeout),
-        ])])
+        ]))
+    if options.graphics_context:
+        backdoor_commands.append(shlex.join([
+            "stop",
+            f"@{GRAPHICS_CONTEXT_ALIAS}",
+            "--best-effort",
+            "--timeout", str(options.timeout),
+        ]))
+    for command_line in backdoor_commands:
+        command.extend(["--command", command_line])
     return command

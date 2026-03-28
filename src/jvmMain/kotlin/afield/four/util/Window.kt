@@ -1,6 +1,7 @@
 package afield.four.util
 
 import afield.Rect
+import afield.four.Renderer
 import afield.stdlib.Vec2
 import afield.stdlib.d
 import afield.stdlib.i
@@ -28,6 +29,9 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     var isResized: Boolean = false
     var width: Int
         private set
+
+    @Volatile
+    var associatedRenderer: Renderer? = null
 
     // --- Scroll accumulator (since last poll)
     private var scrollAccumX = 0.0

@@ -152,6 +152,7 @@ class MultiPingPongRenderToTexture(
         name: String = "rtt-blit",
         viewport: Rect? = null,
         sourceRect: Rect? = null,
+        blend: Boolean = false,
         additive: Boolean = false,
         configure: RenderToTexture.ColorGrade.() -> Unit = {}
     ): ModulePointer {
@@ -164,6 +165,7 @@ class MultiPingPongRenderToTexture(
             name = name,
             viewport = viewport,
             sourceRect = sourceRect,
+            blend = blend,
             additive = additive,
             configure = configure
         )

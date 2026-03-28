@@ -3,6 +3,7 @@ package afield
 import afield.server.Browsable
 import afield.server.Inspector
 import java.nio.FloatBuffer
+import java.nio.IntBuffer
 import java.util.LinkedHashMap
 import java.util.UUID
 import kotlin.math.abs
@@ -95,11 +96,12 @@ object LazyValueVisualizer {
         is List<*> -> "${value::class.simpleName ?: "List"} (size=${value.size})"
         is Array<*> -> "${value::class.simpleName ?: "Array"} (size=${value.size})"
         is FloatBuffer -> "FloatBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
+        is IntBuffer -> "IntBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         else -> value::class.simpleName ?: value::class.java.simpleName
     }
 
     private fun isHeavyStructure(value: Any?): Boolean {
-        return value is Map<*, *> || value is List<*> || value is Array<*> || value is FloatBuffer
+        return value is Map<*, *> || value is List<*> || value is Array<*> || value is FloatBuffer || value is IntBuffer
     }
 }
 
@@ -124,6 +126,7 @@ private fun collectionSize(value: Any?): Int? = when (value) {
     is BooleanArray -> value.size
     is CharArray -> value.size
     is FloatBuffer -> value.limit()
+    is IntBuffer -> value.limit()
     else -> null
 }
 
@@ -134,7 +137,7 @@ internal fun shouldOfferH2OutputAreaViewer(value: Any?): Boolean {
         is List<*>, is Array<*>,
         is ByteArray, is ShortArray, is IntArray, is LongArray,
         is FloatArray, is DoubleArray, is BooleanArray, is CharArray,
-        is FloatBuffer -> true
+        is FloatBuffer, is IntBuffer -> true
         else -> false
     }
 }
@@ -186,6 +189,7 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is PagedListBrowsable -> value
         is PagedMapBrowsable -> value
         is FloatBufferBrowsable -> value
+        is IntBufferBrowsable -> value
         is Map<*, *> -> PagedMapBrowsable.forMap(value, title)
         is List<*> -> PagedListBrowsable(value, title = title)
         is Array<*> -> PagedListBrowsable(value.asList(), title = title)
@@ -198,6 +202,7 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is BooleanArray -> PagedListBrowsable(value.asList(), title = title)
         is CharArray -> PagedListBrowsable(value.asList(), title = title)
         is FloatBuffer -> FloatBufferBrowsable(value, title = title)
+        is IntBuffer -> IntBufferBrowsable(value, title = title)
         else -> value
     }
 }
@@ -504,6 +509,131 @@ private class FloatBufferRowsBrowsable(
                     append("<td style='padding:2px 6px;border-bottom:1px solid #222;text-align:right;color:#ddd;'>")
                     if (index < totalValues) {
                         append(escapeHtml(fmtFloat(buffer.get(index))))
+                    } else {
+                        append("&nbsp;")
+                    }
+                    append("</td>")
+                }
+                append("</tr>")
+            }
+
+            append("</tbody></table></div>")
+        }
+    }
+}
+
+private class IntBufferBrowsable(
+    buffer: IntBuffer,
+    private val title: String? = null
+) : Browsable {
+
+    private val readOnly: IntBuffer = buffer.asReadOnlyBuffer()
+    private val position: Int = buffer.position()
+    private val limit: Int = buffer.limit()
+    private val capacity: Int = buffer.capacity()
+
+    override fun heading(): String = title ?: "IntBuffer"
+
+    override fun dir(): Map<String, Any?> {
+        val out = LinkedHashMap<String, Any?>()
+        out["position"] = position
+        out["limit"] = limit
+        out["capacity"] = capacity
+
+        for (stride in 1..16) {
+            val rows = ceilDiv(limit, stride)
+            out["stride $stride ($rows rows)"] = IntBufferRowsBrowsable(
+                buffer = readOnly,
+                stride = stride,
+                rowStart = 0,
+                rowEndExclusive = rows,
+                title = "stride $stride"
+            )
+        }
+        return out
+    }
+
+    override fun html(): String {
+        return "<div>IntBuffer pos=$position limit=$limit capacity=$capacity</div>"
+    }
+}
+
+private class IntBufferRowsBrowsable(
+    private val buffer: IntBuffer,
+    private val stride: Int,
+    private val rowStart: Int,
+    private val rowEndExclusive: Int,
+    private val title: String
+) : Browsable {
+
+    private val safeStride = stride.coerceAtLeast(1)
+    private val totalValues = buffer.limit()
+    private val totalRows = ceilDiv(totalValues, safeStride)
+    private val safeStart = rowStart.coerceIn(0, totalRows)
+    private val safeEnd = rowEndExclusive.coerceIn(safeStart, totalRows)
+    private val rowCount = safeEnd - safeStart
+
+    override fun heading(): String {
+        return "$title ${rangeLabel(safeStart, safeEnd)}"
+    }
+
+    override fun dir(): Map<String, Any?>? {
+        if (rowCount <= 0) return null
+        if (rowCount <= H2_FLOAT_ROWS_LEAF_SIZE) return null
+
+        val childSpan = computeChildSpan(rowCount, H2_FLOAT_ROWS_LEAF_SIZE)
+        val out = LinkedHashMap<String, Any?>()
+        var s = safeStart
+        while (s < safeEnd) {
+            val e = minOf(s + childSpan, safeEnd)
+            out[rangeLabel(s, e)] = IntBufferRowsBrowsable(
+                buffer = buffer,
+                stride = safeStride,
+                rowStart = s,
+                rowEndExclusive = e,
+                title = title
+            )
+            s = e
+        }
+        return out
+    }
+
+    override fun html(): String {
+        if (rowCount <= 0) return "<i>empty</i>"
+        if (rowCount > H2_FLOAT_ROWS_LEAF_SIZE) {
+            return "<div>${escapeHtml(heading())}</div>"
+        }
+
+        return buildString {
+            append("<div style='font-family:\"Iosevka Web\",monospace;font-size:11px;line-height:1.3;'>")
+            append("<div style='margin-bottom:6px;color:#bbb;'>")
+            append("rows ")
+            append(safeStart)
+            append("..")
+            append(safeEnd - 1)
+            append(" | stride ")
+            append(safeStride)
+            append("</div>")
+            append("<table style='border-collapse:collapse;width:100%;'>")
+            append("<thead><tr>")
+            append("<th style='text-align:left;padding:2px 6px;border-bottom:1px solid #333;color:#aaa;'>row</th>")
+            for (c in 0 until safeStride) {
+                append("<th style='text-align:right;padding:2px 6px;border-bottom:1px solid #333;color:#aaa;'>")
+                append(c)
+                append("</th>")
+            }
+            append("</tr></thead><tbody>")
+
+            for (row in safeStart until safeEnd) {
+                append("<tr>")
+                append("<td style='padding:2px 6px;border-bottom:1px solid #222;color:#9cf;'>")
+                append(row)
+                append("</td>")
+                for (c in 0 until safeStride) {
+                    val index = row * safeStride + c
+                    append("<td style='padding:2px 6px;border-bottom:1px solid #222;text-align:right;color:#ddd;'>")
+                    if (index < totalValues) {
+                        append(buffer.get(index))
                     } else {
                         append("&nbsp;")
                     }

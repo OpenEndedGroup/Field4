@@ -26,6 +26,7 @@ class SwapChain(
     var surfaceFormat: SurfaceFormat
     var swapChainExtent: VkExtent2D
     val syncSemaphoresList: Array<SyncSemaphores>
+    val supportsTransferSrc: Boolean
     var vkSwapChain: Long = 0
 
     var currentFrame: Int = 0
@@ -45,6 +46,8 @@ class SwapChain(
             )
 
             var numImages = calcNumImages(surfCapabilities, requestedImages)
+            supportsTransferSrc =
+                (surfCapabilities.supportedUsageFlags() and VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0
 
             surfaceFormat = calcSurfaceFormat(physicalDevice, surface)
 
@@ -58,7 +61,10 @@ class SwapChain(
                 .imageColorSpace(surfaceFormat.colorSpace)
                 .imageExtent(swapChainExtent)
                 .imageArrayLayers(1)
-                .imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .imageUsage(
+                    VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
+                        (if (supportsTransferSrc) VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT else 0)
+                )
                 .preTransform(surfCapabilities.currentTransform())
                 .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                 .clipped(true)

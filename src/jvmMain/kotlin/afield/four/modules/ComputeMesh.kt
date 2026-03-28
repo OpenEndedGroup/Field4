@@ -254,8 +254,8 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
                 for (pc in inside.ci.pushConstants) {
                     push.setMembers(pc.members)
                 }
-                pushConstantBuffer.clear()
                 try {
+                    pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
                         throw MissingRefException("risk of GPU null ref `$it`")
                     }
@@ -265,7 +265,6 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
                     return false
                 }
                 pushConstantBuffer.clear()
-
                 vkCmdPushConstants(
                     cmd.vkCommandBuffer,
                     inside.pipelineLayout,

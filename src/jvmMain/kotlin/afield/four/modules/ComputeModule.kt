@@ -92,7 +92,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
         parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")
     }
 
-    val pushConstantSize = (ci.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = ci.pushConstants.maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -338,7 +338,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             val cmd = command.vkCommandBuffer
             VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline)
 
-            val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+            val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
 
             liveUniformStructures.forEach { (name, structure) ->
                 val target = (uniforms[name] as Uniform).buffer

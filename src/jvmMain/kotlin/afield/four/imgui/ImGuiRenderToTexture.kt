@@ -170,7 +170,7 @@ class ImGuiRenderToTexture(
     ): ModulePointer {
         target.preTargets[name] = this
         val src = if (flipYWhenBlittingToScreen) Rect(0.0, 1.0, 1.0, -1.0) else null
-        return blitToScreen(renderer = renderer, target = target, name = blitName, sourceRect = src)
+        return blitToScreen(renderer = renderer, target = target, name = blitName, sourceRect = src, blend = true)
     }
 
     fun cleanup() {

@@ -9,6 +9,7 @@ import afield.four.device.*
 import afield.four.device.Queue
 import afield.four.device.Queue.GraphicsQueue
 import afield.four.device.Queue.PresentQueue
+import afield.four.texture.image_layout_transition
 import afield.four.modules.ComputeModulePointer
 import afield.four.modules.MeshModulePointer
 import afield.four.modules.ModulePointer
@@ -18,6 +19,7 @@ import afield.four.util.AutoDisposer
 import afield.four.util.MapOfSequences
 import afield.four.util.Options
 import afield.four.util.Window
+import afield.util.PngEncoder
 import afield.logTime
 import afield.logTime_
 import afield.logger.lprintln
@@ -27,6 +29,10 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.lang.Runnable
+import java.nio.ByteBuffer
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -162,6 +168,19 @@ class Renderer(
         var graphicsPoolsPerThread: MutableMap<Long, CommandPool> = mutableMapOf()
     )
 
+    private data class WindowCaptureRequest(
+        val outputPath: String,
+        val completion: CompletableDeferred<String>
+    )
+
+    private data class RecordedWindowCapture(
+        val request: WindowCaptureRequest,
+        val stagingBuffer: afield.four.buffers.VulkanBuffer,
+        val width: Int,
+        val height: Int,
+        val format: Int
+    )
+
     data class ProfilerState(
         val profiler: GpuProfiler,
         var markers: Array<FrameMarkers>,
@@ -233,6 +252,8 @@ class Renderer(
     private val defaultContext get() = windowContexts.first()
     fun windowContext(index: Int = 0): WindowContext = windowContexts[index]
     fun renderTargetFor(windowIndex: Int = 0): RenderTarget = windowContext(windowIndex).renderTarget
+    private val windowCaptureLock = Any()
+    private val pendingWindowCaptures = mutableMapOf<Int, ArrayDeque<WindowCaptureRequest>>()
 
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
@@ -416,6 +437,11 @@ class Renderer(
             }
         }
 
+        // Geometry/uniform writes are indexed by the acquired swapchain image. Make sure that
+        // image slot is no longer in-flight on the GPU before any CPU-side writes touch its
+        // per-image buffers.
+        ctx.fences[imageIndex].fenceWait()
+
         ctx.currentImage = imageIndex
         if (windowIndex == 0) currentImage = imageIndex
         return imageIndex
@@ -598,6 +624,7 @@ class Renderer(
         computeCommandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         pipelineCache = PipelineCache(device)
         windows.forEachIndexed { idx, w ->
+            w.associatedRenderer = this
             val surfaceOverride = if (idx == 0) primarySurface else null
             windowContexts += createWindowContext(w, idx, surfaceOverride)
         }
@@ -651,6 +678,7 @@ class Renderer(
         device.cleanup()
         physicalDevice.cleanup()
         instance.cleanup()
+        windows.forEach { it.associatedRenderer = null }
     }
 
     var frameCounter = 0L
@@ -692,6 +720,183 @@ class Renderer(
             "info,perf",
             "vertex_upload frame=${stats.frameId} total=${"%.3f".format(mib(stats.totalBytes))}MiB recorded=${"%.3f".format(mib(stats.recordedBytes))}MiB immediate=${"%.3f".format(mib(stats.immediateBytes))}MiB"
         )
+    }
+
+    fun supportsDirectWindowCapture(window: Window = this.window): Boolean {
+        val windowIndex = windows.indexOf(window)
+        if (windowIndex < 0) return false
+        return windowContexts.getOrNull(windowIndex)?.swapChain?.supportsTransferSrc == true
+    }
+
+    suspend fun captureWindowToFile(
+        window: Window = this.window,
+        outputPath: String,
+        timeoutMs: Long = 15_000L
+    ): String {
+        val windowIndex = windows.indexOf(window)
+        require(windowIndex >= 0) { "Window is not owned by this renderer" }
+        require(supportsDirectWindowCapture(window)) { "Swapchain does not support transfer-source capture" }
+
+        val completion = CompletableDeferred<String>()
+        synchronized(windowCaptureLock) {
+            pendingWindowCaptures
+                .getOrPut(windowIndex) { ArrayDeque() }
+                .addLast(WindowCaptureRequest(outputPath, completion))
+        }
+        return withTimeout(timeoutMs) { completion.await() }
+    }
+
+    private fun dequeueWindowCaptureRequests(windowIndex: Int): List<WindowCaptureRequest> {
+        synchronized(windowCaptureLock) {
+            val queue = pendingWindowCaptures.remove(windowIndex) ?: return emptyList()
+            return buildList(queue.size) {
+                while (queue.isNotEmpty()) add(queue.removeFirst())
+            }
+        }
+    }
+
+    private fun recordPendingWindowCaptures(
+        ctx: WindowContext,
+        ctxIndex: Int,
+        imageIndex: Int,
+        cmd: CommandBuffer
+    ): List<RecordedWindowCapture> {
+        val requests = dequeueWindowCaptureRequests(ctxIndex)
+        if (requests.isEmpty()) return emptyList()
+
+        val width = ctx.swapChain.swapChainExtent.width()
+        val height = ctx.swapChain.swapChainExtent.height()
+        if (width <= 0 || height <= 0) {
+            val error = IllegalStateException("Window has invalid capture size ${width}x$height")
+            requests.forEach { request ->
+                request.completion.completeExceptionally(error)
+            }
+            return emptyList()
+        }
+
+        val byteCount = width.toLong() * height.toLong() * 4L
+        val format = ctx.swapChain.surfaceFormat.imageFormat
+        val captures = requests.map { request ->
+            RecordedWindowCapture(
+                request = request,
+                stagingBuffer = afield.four.buffers.VulkanBuffer(
+                    renderer = this,
+                    requestedSize = byteCount,
+                    usage = VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    reqMask = VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                ),
+                width = width,
+                height = height,
+                format = format
+            )
+        }
+
+        MemoryStack.stackPush().use { stack ->
+            val colorRange = VkImageSubresourceRange.calloc(stack)
+                .aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT)
+                .baseMipLevel(0)
+                .levelCount(1)
+                .baseArrayLayer(0)
+                .layerCount(1)
+
+            image_layout_transition(
+                cmd.vkCommandBuffer,
+                ctx.swapChain.imageViews[imageIndex].image,
+                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_2_COPY_BIT,
+                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_ACCESS_2_TRANSFER_READ_BIT,
+                KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                colorRange
+            )
+
+            val copyRegion = VkBufferImageCopy.calloc(1, stack)
+            copyRegion[0]
+                .bufferOffset(0L)
+                .bufferRowLength(0)
+                .bufferImageHeight(0)
+                .imageSubresource(
+                    VkImageSubresourceLayers.calloc(stack)
+                        .aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mipLevel(0)
+                        .baseArrayLayer(0)
+                        .layerCount(1)
+                )
+                .imageOffset(VkOffset3D.calloc(stack).x(0).y(0).z(0))
+                .imageExtent(VkExtent3D.calloc(stack).width(width).height(height).depth(1))
+
+            captures.forEach { capture ->
+                VK10.vkCmdCopyImageToBuffer(
+                    cmd.vkCommandBuffer,
+                    ctx.swapChain.imageViews[imageIndex].image,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    capture.stagingBuffer.buffer,
+                    copyRegion
+                )
+            }
+
+            image_layout_transition(
+                cmd.vkCommandBuffer,
+                ctx.swapChain.imageViews[imageIndex].image,
+                VK_PIPELINE_STAGE_2_COPY_BIT,
+                VK_PIPELINE_STAGE_2_NONE,
+                VK_ACCESS_2_TRANSFER_READ_BIT,
+                0,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                colorRange
+            )
+        }
+
+        return captures
+    }
+
+    private fun completeWindowCapture(capture: RecordedWindowCapture) {
+        try {
+            val rgba = ByteBuffer.allocate(capture.width * capture.height * 4)
+            capture.stagingBuffer.mapAndRead_bytes {
+                rewind()
+                when (capture.format) {
+                    VK10.VK_FORMAT_B8G8R8A8_UNORM,
+                    VK10.VK_FORMAT_B8G8R8A8_SRGB -> {
+                        while (remaining() >= 4) {
+                            val b = get()
+                            val g = get()
+                            val r = get()
+                            val a = get()
+                            rgba.put(r).put(g).put(b).put(a)
+                        }
+                    }
+
+                    VK10.VK_FORMAT_R8G8B8A8_UNORM,
+                    VK10.VK_FORMAT_R8G8B8A8_SRGB -> {
+                        while (hasRemaining()) {
+                            rgba.put(get())
+                        }
+                    }
+
+                    else -> {
+                        throw IllegalStateException("Unsupported window capture format ${capture.format}")
+                    }
+                }
+            }
+            rgba.flip()
+            val pngBytes = PngEncoder.encodeFromBuffer(rgba, capture.width, capture.height)
+            Files.write(
+                Path.of(capture.request.outputPath),
+                pngBytes,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE
+            )
+            capture.request.completion.complete(capture.request.outputPath)
+        } catch (t: Throwable) {
+            capture.request.completion.completeExceptionally(t)
+            lprintln("warning,graphics", "direct window capture failed: ${t.message}")
+        } finally {
+            capture.stagingBuffer.cleanup()
+        }
     }
 
     fun render() {
@@ -775,7 +980,7 @@ class Renderer(
                             )
                         }
 
-                        graphicsRecording.await()
+                        val recordedWindowCaptures = graphicsRecording.await()
                         CPUSpan.time("submit_gfx[$ctxIndex]") {
                             submit(
                                 ctx,
@@ -784,6 +989,12 @@ class Renderer(
                                 graphQueue,
                                 ctx.computeFinishedSemaphores[imageIndex]
                             )
+                        }
+                        if (recordedWindowCaptures.isNotEmpty()) {
+                            ctx.fences[imageIndex].fenceWait()
+                            recordedWindowCaptures.forEach { capture ->
+                                completeWindowCapture(capture)
+                            }
                         }
                     }
                 }
@@ -931,7 +1142,8 @@ class Renderer(
         ctxIndex: Int,
         imageIndex: Int,
         frameId: Long
-    ) {
+    ): List<RecordedWindowCapture> {
+        var recordedWindowCaptures: List<RecordedWindowCapture> = emptyList()
         CPUSpan.time("record_gfx[$ctxIndex]") {
             // Ensure the per-image graphics fence from any previous use is complete before re-recording
             ctx.fences[imageIndex].fenceWait()
@@ -1041,6 +1253,7 @@ class Renderer(
                 }
 
                 ctx.renderTarget.render(cmd, imageIndex)
+                recordedWindowCaptures = recordPendingWindowCaptures(ctx, ctxIndex, imageIndex, cmd)
 
                 cmd.endLabel() // end "RenderTargets"
 
@@ -1066,6 +1279,7 @@ class Renderer(
                 currentCommandBuffer = null
             }
         }
+        return recordedWindowCaptures
     }
 
     class ImageNotAvailable(s: String) : RuntimeException(s)

@@ -225,8 +225,7 @@ class Module(val parameters: Parameters) : Renderable {
     val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
 
     val namedInputs = vi.inputs.associateBy { it.name }
-    val pushConstantSize =
-        (vi.pushConstants.associateBy { it.name } + fi.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = (vi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -809,7 +808,7 @@ class Module(val parameters: Parameters) : Renderable {
                     EXTExtendedDynamicState3.vkCmdSetDepthClampEnableEXT(cmd, false)
                 }
 
-                val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+                val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
 
                 uniforms.values.forEach { upd ->
                     upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)

@@ -621,7 +621,16 @@ fun activateThisProcessMac(processName: String) {
 }
 
 // helper for docs, not for rendering things for real
-suspend fun Window.raiseAndScreenshot(waitFrames: Int, outPath: String) {
+suspend fun Window.raiseAndScreenshot(waitFrames: Int, outPath: String, captureTimeoutMs: Long = 15_000L) {
+    associatedRenderer?.takeIf { it.supportsDirectWindowCapture(this) }?.let { renderer ->
+        waitFrames {
+            lprintln("info,doc", " -- waiting for renderer frame capture --")
+            yield()
+        }
+        renderer.captureWindowToFile(this, outPath, timeoutMs = captureTimeoutMs)
+        return
+    }
+
     GLFW.glfwShowWindow(windowHandle)
     GLFW.glfwFocusWindow(windowHandle)
     activateThisProcessMac(processName = "java") // or your actual app/bundle name

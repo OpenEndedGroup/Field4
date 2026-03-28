@@ -97,6 +97,19 @@ object StandardShapes {
         par_shapes_scale(mesh, radius, radius, radius)
     }
 
+    fun cube(
+        positions: DynamicallyWriteable,
+        normals: DynamicallyWriteable,
+        size: Float = 1f,
+        center: Vec3? = null,
+        config: WriteConfig = WriteConfig()
+    ): ShapeWriteResult = buildAndWrite(positions, normals, config, {
+        par_shapes_create_cube()
+    }) { mesh ->
+        par_shapes_scale(mesh, size, size, size)
+        center?.let { par_shapes_translate(mesh, it.x, it.y, it.z) }
+    }
+
     fun torus(
         positions: DynamicallyWriteable,
         normals: DynamicallyWriteable,

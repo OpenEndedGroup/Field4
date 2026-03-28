@@ -93,8 +93,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
     val mi = Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
     val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
 
-    val pushConstantSize =
-        (ti.pushConstants.associateBy { it.name } + mi.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = (ti.pushConstants + mi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -487,7 +486,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 var vpcr: VkPushConstantRange.Buffer? = null
                 if (pushConstantSize > 0) {
                     vpcr = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT)
+                        .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT or VK_SHADER_STAGE_FRAGMENT_BIT)
                         .offset(0)
                         .size(pushConstantSize)
                 }
@@ -615,7 +614,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 EXTExtendedDynamicState3.vkCmdSetDepthClampEnableEXT(cmd, false)
             }
 
-            val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+            val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
 
             uniforms.values.forEach { upd ->
                 upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)

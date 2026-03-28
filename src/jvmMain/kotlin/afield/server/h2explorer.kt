@@ -18,6 +18,7 @@ import org.joml.Vector3fc
 import org.joml.Vector4dc
 import org.joml.Vector4fc
 import java.nio.FloatBuffer
+import java.nio.IntBuffer
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -143,6 +144,7 @@ private fun preview(value: Any?): String {
         is Map<*, *> -> "Map(size=${value.size})"
         is Array<*> -> "Array(size=${value.size})"
         is FloatBuffer -> "FloatBuffer(pos=${value.position()}, limit=${value.limit()}, cap=${value.capacity()})"
+        is IntBuffer -> "IntBuffer(pos=${value.position()}, limit=${value.limit()}, cap=${value.capacity()})"
         else -> clipText(value.toString().replace('\n', ' '))
     }
 }
@@ -202,6 +204,42 @@ private class FloatBufferSource(buffer: FloatBuffer) : H2Source {
             for (c in 0 until s) {
                 val idx = base + c
                 cells.add(if (idx < totalValues) fmtNumber(data.get(idx)) else "")
+            }
+            out.add(H2Row(index = row, cells = cells))
+        }
+        return out
+    }
+}
+
+private class IntBufferSource(buffer: IntBuffer) : H2Source {
+    private val data = buffer.asReadOnlyBuffer()
+    private val totalValues = data.limit()
+
+    override val kind: String = "intbuffer"
+    override val title: String = "IntBuffer"
+    override val minStride: Int = 1
+    override val maxStride: Int = H2_EXPLORER_MAX_STRIDE
+    override val defaultStride: Int = chooseDefaultStride(totalValues)
+
+    override fun totalRows(stride: Int): Int = ceilDiv(totalValues, stride.coerceAtLeast(1))
+
+    override fun columns(stride: Int): List<String> {
+        val s = stride.coerceAtLeast(1)
+        return (0 until s).map { "c$it" }
+    }
+
+    override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
+        val s = stride.coerceAtLeast(1)
+        val totalRows = totalRows(s)
+        val safeStart = start.coerceIn(0, totalRows)
+        val safeEnd = (safeStart + count.coerceAtLeast(0)).coerceIn(safeStart, totalRows)
+        val out = ArrayList<H2Row>(safeEnd - safeStart)
+        for (row in safeStart until safeEnd) {
+            val base = row * s
+            val cells = ArrayList<String>(s)
+            for (c in 0 until s) {
+                val idx = base + c
+                cells.add(if (idx < totalValues) data.get(idx).toString() else "")
             }
             out.add(H2Row(index = row, cells = cells))
         }
@@ -354,6 +392,7 @@ private fun makeSource(value: Any?): H2Source {
     return when (value) {
         null -> ScalarSource(null)
         is FloatBuffer -> FloatBufferSource(value)
+        is IntBuffer -> IntBufferSource(value)
         is List<*> -> ListSource(value)
         is Array<*> -> ListSource(value.asList())
         is Map<*, *> -> MapSource(value)

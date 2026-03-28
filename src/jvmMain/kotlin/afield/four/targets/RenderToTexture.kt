@@ -84,6 +84,7 @@ open class RenderToTexture(
 
     // depth (optional)
     var depthImageView: ImageView? = null
+    var depthSampledImageView: ImageView? = null
     var depthImage: Image? = null
 
     // Track current layouts across frames (base color level and depth).
@@ -259,6 +260,19 @@ open class RenderToTexture(
                 .mipLevels(1)
 
             depthImageView = ImageView(renderer.device, depthImage!!, depthViewData)
+            depthSampledImageView =
+                if (this.parameters.depthSampled && depthAspect != VK_IMAGE_ASPECT_DEPTH_BIT) {
+                    ImageView(
+                        renderer.device,
+                        depthImage!!,
+                        ImageViewData()
+                            .format(this.parameters.depthFormat)
+                            .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                            .mipLevels(1)
+                    )
+                } else {
+                    depthImageView
+                }
         }
 
         // per-swapchain command buffers & fences
@@ -306,6 +320,7 @@ open class RenderToTexture(
         name: String = "rtt-blit",
         viewport: Rect? = null,
         sourceRect: Rect? = null,
+        blend: Boolean = false,
         additive: Boolean = false,
         configure: ColorGrade.() -> Unit = {}
     ): ModulePointer {
@@ -322,6 +337,7 @@ open class RenderToTexture(
             depth = 1
             depthFormat = Options.defaultDepthFormat
             depthTest = false
+            this.blend = blend || additive
             if (additive) {
                 colorBlendOp = VK_BLEND_OP_ADD
                 alphaBlendOp = VK_BLEND_OP_ADD
