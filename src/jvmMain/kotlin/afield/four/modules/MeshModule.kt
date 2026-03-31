@@ -1,6 +1,7 @@
 package afield.four.modules
 
 import afield.Named
+import afield.four.Target
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.buffers.buffer
@@ -70,6 +71,16 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         m.value.inside = this
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
     fun enable() {
         current.enable()
     }
@@ -87,7 +98,9 @@ class MeshModule(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
 
-    var meshes = mutableMapOf<String, MeshMesh>()
+    var meshes = linkedMapOf<String, MeshMesh>()
+    var before = linkedMapOf<String, Target>()
+    var after = linkedMapOf<String, Target>()
 
     val ti = Introspection(parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler)
     val mi = Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
@@ -638,6 +651,10 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 mesh.compute(this, command, pushConstantBuffer)
             }
 
+            after.forEach { (_, target) ->
+                target.render(command, parameters.renderer.currentImage)
+            }
+
             command.endLabel()
         }
     }
@@ -656,6 +673,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
             (it.value as? MeshMesh)?.let { mm -> mm.inside = this.pointer() }
             true
         }
+        before.putAll(old.before)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
@@ -698,6 +717,16 @@ class MeshModule(val parameters: Parameters) : Renderable {
     operator fun plusAssign(m: Pair<String, MeshMesh>) {
         meshes[m.first] = m.second
         m.second.inside = this.pointer()
+    }
+
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        before[m.first] = m.second.target
     }
 
 }

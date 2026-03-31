@@ -53,6 +53,191 @@ const monacoLog = (...args) => {
 };
 
 const kindForIcon = monacoKindForIcon
+const SYMBOL_CONTEXT_DEBOUNCE_MS = 180
+const SYMBOL_CONTEXT_CACHE_MAX = 200
+
+const setEditorContextBadge = (editor, html = "") => {
+        const node = editor && editor._domElement && editor._domElement.querySelector(".hoverlay-left")
+        if (!node) return
+
+        const next = (html || "").trim()
+        if (next.length === 0) {
+                node.innerHTML = ""
+                node.style.opacity = "0"
+                node.style.pointerEvents = "none"
+                return
+        }
+
+        node.innerHTML = next
+        node.style.opacity = "1"
+        node.style.pointerEvents = "auto"
+}
+
+window.setEditorContextBadge = setEditorContextBadge
+
+const ensureSymbolContextState = () => {
+        if (!window.afieldSymbolContextState) {
+                window.afieldSymbolContextState = {
+                        inFlight: null,
+                        queued: null,
+                        latestDesiredKey: null,
+                        lastNotifiedKey: null,
+                        cache: new Map(),
+                }
+        }
+        return window.afieldSymbolContextState
+}
+
+const trimSymbolContextCache = (cache) => {
+        while (cache.size > SYMBOL_CONTEXT_CACHE_MAX) {
+                const firstKey = cache.keys().next()
+                if (firstKey.done) break
+                cache.delete(firstKey.value)
+        }
+}
+
+const findIdentifierBounds = (text, offset) => {
+        if (!text || text.length === 0) return null
+        const safeOffset = Math.max(0, Math.min(offset, text.length))
+        const isIdentifierChar = (ch) => /[A-Za-z0-9_]/.test(ch)
+
+        let probe = -1
+        if (safeOffset < text.length && isIdentifierChar(text[safeOffset])) {
+                probe = safeOffset
+        } else if (safeOffset > 0 && isIdentifierChar(text[safeOffset - 1])) {
+                probe = safeOffset - 1
+        }
+        if (probe < 0) return null
+
+        let start = probe
+        while (start > 0 && isIdentifierChar(text[start - 1])) start--
+
+        let end = probe + 1
+        while (end < text.length && isIdentifierChar(text[end])) end++
+
+        if (end <= start) return null
+        return {
+                start,
+                end,
+                text: text.slice(start, end),
+        }
+}
+
+const buildSymbolContextRequest = (editor, resolveContext) => {
+        if (!editor || typeof editor.hasTextFocus === "function" && !editor.hasTextFocus()) return null
+        const model = editor.getModel && editor.getModel()
+        if (!model || model.getLanguageId() !== "kotlin") return null
+
+        const context = resolveContext ? resolveContext(editor) : null
+        if (!context || !context.uid || !context.property) return null
+
+        const position = editor.getPosition && editor.getPosition()
+        if (!position) return null
+
+        const allCode = model.getValue()
+        const offset = model.getOffsetAt(position)
+        const bounds = findIdentifierBounds(allCode, offset)
+        if (!bounds || !bounds.text) return null
+
+        return {
+                key: `${context.uid}::${context.property}::${model.getVersionId()}::${bounds.start}:${bounds.end}`,
+                editor,
+                payload: {
+                        uid: context.uid,
+                        property: context.property,
+                        allCode,
+                        line: position.lineNumber,
+                        column: position.column,
+                        position: offset,
+                },
+        }
+}
+
+const dispatchSymbolContextRequest = (request) => {
+        const state = ensureSymbolContextState()
+        state.inFlight = request
+
+        sendWithReply("symbol-context", request.payload, "symbol-context", (message, payload) => {
+                const completed = state.inFlight
+                state.inFlight = null
+
+                if (completed && payload && typeof payload.html === "string") {
+                        state.cache.set(completed.key, payload.html)
+                        trimSymbolContextCache(state.cache)
+
+                        if (state.latestDesiredKey === completed.key) {
+                                setEditorContextBadge(completed.editor, payload.html)
+                                state.lastNotifiedKey = completed.key
+                        }
+                }
+
+                if (state.queued && (!completed || state.queued.key !== completed.key)) {
+                        const next = state.queued
+                        state.queued = null
+                        dispatchSymbolContextRequest(next)
+                }
+
+                return true
+        })
+}
+
+const queueSymbolContextRequest = (request) => {
+        const state = ensureSymbolContextState()
+        state.latestDesiredKey = request.key
+
+        if (state.lastNotifiedKey === request.key) return
+        if (state.inFlight && state.inFlight.key === request.key) return
+        if (state.queued && state.queued.key === request.key) return
+
+        if (state.cache.has(request.key)) {
+                const cached = state.cache.get(request.key)
+                setEditorContextBadge(request.editor, cached)
+                state.lastNotifiedKey = request.key
+                return
+        }
+
+        if (state.inFlight) {
+                state.queued = request
+                return
+        }
+
+        dispatchSymbolContextRequest(request)
+}
+
+const installSymbolContextMonitor = (editor, resolveContext) => {
+        if (!editor || editor._afieldSymbolContextInstalled) return
+        editor._afieldSymbolContextInstalled = true
+
+        let debounceTimer = null
+        const schedule = () => {
+                if (debounceTimer !== null) clearTimeout(debounceTimer)
+                debounceTimer = setTimeout(() => {
+                        debounceTimer = null
+                        const request = buildSymbolContextRequest(editor, resolveContext)
+                        if (!request) {
+                                setEditorContextBadge(editor, "")
+                                return
+                        }
+                        queueSymbolContextRequest(request)
+                }, SYMBOL_CONTEXT_DEBOUNCE_MS)
+        }
+
+        editor.onDidChangeCursorPosition(() => {
+                schedule()
+        })
+        if (typeof editor.onDidFocusEditorText === "function") {
+                editor.onDidFocusEditorText(() => {
+                        schedule()
+                })
+        }
+        editor.onDidChangeModelContent(() => {
+                const state = ensureSymbolContextState()
+                state.lastNotifiedKey = null
+                schedule()
+        })
+    }
+
+window.installSymbolContextMonitor = installSymbolContextMonitor
 
 const isSuggestWidgetVisible = () => {
         const widget = document.querySelector('.editor-widget.suggest-widget');
@@ -322,6 +507,15 @@ const initMonaco = () => {
 
         globalEditor.getModel().onDidChangeContent((event) => {
                 clearAllDecorations()
+        })
+
+        installSymbolContextMonitor(ed, () => {
+                const selected = window.currentSelectedCode || []
+                if (!selected[0] || !selected[0].uid) return null
+                return {
+                        uid: selected[0].uid,
+                        property: window.currentSelectedProperty || "code",
+                }
         })
 
         beginLineTracking(globalEditor)

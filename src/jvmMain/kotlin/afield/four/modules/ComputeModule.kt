@@ -1,7 +1,10 @@
 package afield.four.modules
 
+import afield.four.Target
+import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
+import afield.four.buffers.VulkanBuffer
 import afield.four.buffers.buffer
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
@@ -69,6 +72,24 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         (m.second as? ComputeMesh)?.let { it.inside = this }
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
+    fun zeroBefore(name: String, buffer: FrameBufferGroup) {
+        current.zeroBefore[name] = buffer
+    }
+
+    fun zeroBefore(name: String, buffer: VulkanBuffer) {
+        current.zeroBefore[name] = FrameBufferGroup(buffer.renderer, n = 1, buffers = mutableListOf(buffer))
+    }
+
     fun enable() {
         current.enable()
     }
@@ -84,7 +105,10 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
 
-    val meshes = mutableMapOf<String, ComputeTask>()
+    val meshes = linkedMapOf<String, ComputeTask>()
+    val before = linkedMapOf<String, Target>()
+    val zeroBefore = linkedMapOf<String, FrameBufferGroup>()
+    val after = linkedMapOf<String, Target>()
 
     val ci = Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
 
@@ -336,6 +360,15 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             command.beginLabel(parameters.name, labelColor)
 
             val cmd = command.vkCommandBuffer
+
+            before.values.forEach { target ->
+                target.render(command, parameters.renderer.currentImage)
+            }
+
+            zeroBefore.values.forEach { buffer ->
+                buffer.get(write = true).zero(command)
+            }
+
             VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline)
 
             val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
@@ -361,8 +394,9 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 mesh.compute(this, command, pushConstantBuffer)
             }
 
-
-
+            after.values.forEach { target ->
+                target.render(command, parameters.renderer.currentImage)
+            }
             command.endLabel()
         }
     }
@@ -381,6 +415,9 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             (it.value as? ComputeMesh)?.let { cm -> cm.inside = this.pointer() }
             true
         }
+        before.putAll(old.before)
+        zeroBefore.putAll(old.zeroBefore)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
@@ -412,5 +449,13 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             )
             return lp[0]
         }
+    }
+
+    fun zeroBefore(name: String, buffer: FrameBufferGroup) {
+        zeroBefore[name] = buffer
+    }
+
+    fun zeroBefore(name: String, buffer: VulkanBuffer) {
+        zeroBefore[name] = FrameBufferGroup(buffer.renderer, n = 1, buffers = mutableListOf(buffer))
     }
 }

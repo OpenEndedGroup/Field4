@@ -4,8 +4,8 @@ package afield
 
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.completion.Ai4KotlinAutocomplete
-import afield.graphics.getFLineEditSession
 import afield.four.util.Options
+import afield.graphics.getFLineEditSession
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
@@ -744,6 +744,20 @@ class Server {
                 val box = box(exec.uid)
 
                 box.ke.complete(box, exec, reply)
+
+                Handled.yes
+            })
+
+            handlers["symbol-context"] = mutableSetOf({ message, reply ->
+                val exec = Json.decodeFromJsonElement<SymbolContextRequest>(message.payload!!)
+                val box = box(exec.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    val result = (box.ke as? KotlinExecution)
+                        ?.describeSymbolContext(box, exec)
+                        ?: SymbolContextResponse()
+                    reply(Message("symbol-context").payload(result))
+                }
 
                 Handled.yes
             })

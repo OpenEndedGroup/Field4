@@ -141,7 +141,7 @@ Internally we also have a log viewer (`logs('log')`)
 
 ## 'printing' (editable) geometry
 
-Field has extensive support for adding 2d and 3d geometry to the canvas, essentially by `display`ing bundles of `FLine` objects. You can see [fline_examples](../fline_examples) for more information. But here's a taste:
+Field has extensive support for adding 2d and 3d geometry to the canvas, essentially by `display`ing bundles of `FLine` objects. You can see [fline_examples](fline_examples.md) for more information. But here's a taste:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_editable2.png" embed=true}
 :::static
@@ -175,11 +175,11 @@ Its important to note that not just editing a copy of the FLine. It mutates the 
 	<source src="../assets/3dlines.mp4" type="video/mp4">
 </video>
 
-See [fline_examples](../fline_examples) for more.
+See [fline_examples](fline_examples.md) for more.
 
 ## "Printing" UI and data visualization
 
-Take a look at [visualizers](../visualizers) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code.
+Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code.
 
 Additionally, we can write code that extends and decorates our text editor in a variety of ways. Docs are limited, but this gives us a [Strudel](https://strudel.cc/) feel (in a very different language) without too much work at all:
 

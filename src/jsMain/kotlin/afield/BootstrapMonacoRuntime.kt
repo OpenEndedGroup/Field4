@@ -179,6 +179,9 @@ private fun monitorSelection() {
         w.currentEditorGeneration = currentGen + 1
 
         w.clear(globalEditor)
+        if (w.setEditorContextBadge != null) {
+            w.setEditorContextBadge(globalEditor, "")
+        }
 
         currentSelectedCode = next
         currentSelectedProperty = nextProperty

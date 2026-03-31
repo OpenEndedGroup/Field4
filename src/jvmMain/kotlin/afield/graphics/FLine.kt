@@ -5,6 +5,7 @@ import afield.Rect
 import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.Cursor
+import kotlinx.serialization.Serializable
 import org.joml.Vector3d
 import org.joml.minus
 import org.joml.plus
@@ -108,6 +109,7 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
  * [FLine] for chaining; use [here] to access the most recently added [Node] when you
  * need per-instruction properties (for example, `color` or `pointSize`).
  */
+@Serializable(with = FLineSerializer::class)
 class FLine : HasProperties {
 
     var nodes = arrayListOf<Node>()

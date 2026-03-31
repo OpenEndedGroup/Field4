@@ -3,6 +3,7 @@ package afield.four.modules
 import afield.Named
 import afield.Rect
 import afield.four.Renderer
+import afield.four.Target
 import afield.four.buffers.*
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
@@ -203,6 +204,26 @@ class ModulePointer(var current: Module) : Renderable {
         m.value.inside = this
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_namedTarget")
+    operator fun plusAssign(m: Named<Target>) {
+        current.after[m.name] = m.value
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
+    @JvmName("plusAssign_namedBeforeTarget")
+    operator fun plusAssign(m: Named<BeforeTarget>) {
+        current.before[m.name] = m.value.target
+    }
+
     fun enable() {
         current.enable()
     }
@@ -219,7 +240,9 @@ fun Module.pointer() = ModulePointer(this)
 class Module(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
-    var meshes = mutableMapOf<String, Mesh>()
+    var meshes = linkedMapOf<String, Mesh>()
+    var before = linkedMapOf<String, Target>()
+    var after = linkedMapOf<String, Target>()
 
     val vi = Introspection(parameters.vertex, ShaderKind.VERTEX_SHADER, errorHandler = parameters.errorHandler)
     val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
@@ -830,6 +853,10 @@ class Module(val parameters: Parameters) : Renderable {
                     mesh.draw(this, command, pushConstantBuffer)
                 }
 
+                after.forEach { (_, target) ->
+                    target.render(command, renderer.currentImage)
+                }
+
                 if (profiler != null) {
                     profiler.endPipelineStats(cmd, psScope)
                     profiler.endPerfCounters(cmd, frameIndex, perfScope)
@@ -858,6 +885,8 @@ class Module(val parameters: Parameters) : Renderable {
             it.value.resize(it.value.numVert, it.value.numTriangle, inside = this.pointer())
             true
         }
+        before.putAll(old.before)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
@@ -899,7 +928,24 @@ class Module(val parameters: Parameters) : Renderable {
         m.second.inside = this.pointer()
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        before[m.first] = m.second.target
+    }
+
 }
+
+@JvmInline
+value class BeforeTarget(val target: Target)
+
+fun before(a: (CommandBuffer, Int) -> Unit) = BeforeTarget(object : Target {
+    override fun render(command: CommandBuffer, index: Int) = a(command, index)
+})
 
 // ---------- helper (unchanged) ----------
 

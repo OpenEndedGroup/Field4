@@ -49,6 +49,9 @@ RUNNER_MODE_ALIASES = {
     "fresh": "strict",
     "rebuild": "strict",
     "always": "always",
+    "never": "never",
+    "skip": "never",
+    "off": "never",
 }
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_ALIAS = "graphics-window"
@@ -144,7 +147,8 @@ class RunnerState:
         self.dirty = False
         LOG.info("Field docs runner mode: %s", self.runner_mode)
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
-        self._ensure_shared_field_server()
+        if self.runner_mode != "never":
+            self._ensure_shared_field_server()
         atexit.register(self.close)
 
     def handle_capture_error(self, *, page_path: Path, output_path: Path, error: Exception) -> None:
@@ -682,24 +686,40 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
             video_succeeded = False
             if options.screenshot:
                 screenshot_path = resolve_output_path(page_path, options.screenshot)
-                try:
-                    state.ensure_screenshot(code=code, options=options, page_path=page_path, block_index=block_index)
-                    screenshot_succeeded = True
-                except RuntimeError as exc:
-                    if not state.continue_on_error:
-                        raise
-                    state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc)
+                if state.runner_mode == "never":
+                    screenshot_succeeded = screenshot_path.exists()
+                    LOG.info(
+                        "Field docs runner mode=never: %s screenshot asset %s",
+                        "using existing" if screenshot_succeeded else "skipping missing",
+                        screenshot_path,
+                    )
+                else:
+                    try:
+                        state.ensure_screenshot(code=code, options=options, page_path=page_path, block_index=block_index)
+                        screenshot_succeeded = True
+                    except RuntimeError as exc:
+                        if not state.continue_on_error:
+                            raise
+                        state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc)
                 if screenshot_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
             if options.video:
                 video_path = resolve_output_path(page_path, options.video)
-                try:
-                    state.ensure_video(code=code, options=options, page_path=page_path, block_index=block_index)
-                    video_succeeded = True
-                except RuntimeError as exc:
-                    if not state.continue_on_error:
-                        raise
-                    state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc)
+                if state.runner_mode == "never":
+                    video_succeeded = video_path.exists()
+                    LOG.info(
+                        "Field docs runner mode=never: %s video asset %s",
+                        "using existing" if video_succeeded else "skipping missing",
+                        video_path,
+                    )
+                else:
+                    try:
+                        state.ensure_video(code=code, options=options, page_path=page_path, block_index=block_index)
+                        video_succeeded = True
+                    except RuntimeError as exc:
+                        if not state.continue_on_error:
+                            raise
+                        state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc)
                 if video_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
 

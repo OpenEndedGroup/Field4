@@ -77,6 +77,14 @@ python3 tools/run_field_tests.py --refresh-catalog
 cd public && FIELD_DOCS_RUNNER_MODE=always mkdocs build
 ```
 
+When you only need to rebuild the HTML around already-generated captures, use:
+
+```bash
+cd public && FIELD_DOCS_RUNNER_MODE=never mkdocs build
+```
+
+That skips all screenshot/video execution and uses whatever assets already exist on disk.
+
 If either step exposes a compile error, runtime error, empty capture, or obviously broken screenshot/video, fix the underlying code or documentation and rerun.
 If a timed-out snippet leaves later probes stuck before they emit `is-running`, restart the managed Field JVM and retry the repro once from a clean server before chasing secondary failures.
 

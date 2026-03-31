@@ -139,6 +139,11 @@ h3 {
     .md-sidebar--primary .md-nav__item--nested > .md-nav {
         background-color: var(--mono-bg) !important;
     }
+
+    .md-sidebar--primary > .md-sidebar__scrollwrap > .md-sidebar__inner > .md-nav > .md-nav__list > .md-nav__item:first-child > .md-nav__link .md-ellipsis {
+        display: inline-block;
+        padding-top: 50px;
+    }
 }
 
 /* ── header / footer / nav — flatten ─────────────────────────── */
@@ -317,25 +322,12 @@ html[data-field-homepage="true"] .md-content__inner .md-typeset > * {
 html[data-field-homepage="true"] .md-header,
 html[data-field-homepage="true"] .md-main,
 html[data-field-homepage="true"] .md-content,
-html[data-field-homepage="true"] .md-content__inner,
-html[data-field-homepage="true"] .md-sidebar,
-html[data-field-homepage="true"] .md-sidebar__scrollwrap,
-html[data-field-homepage="true"] .md-nav,
-html[data-field-homepage="true"] .md-nav__list {
+html[data-field-homepage="true"] .md-content__inner {
     background: transparent !important;
 }
 
 html[data-field-homepage="true"] .md-main {
     z-index: 1;
-}
-
-html[data-field-homepage="true"] .md-sidebar,
-html[data-field-homepage="true"] .md-sidebar__scrollwrap,
-html[data-field-homepage="true"] .md-sidebar__inner,
-html[data-field-homepage="true"] .md-sidebar .md-nav {
-    position: relative;
-    z-index: 4;
-    pointer-events: auto;
 }
 
 html[data-field-homepage="true"] .md-main__inner {
@@ -346,6 +338,45 @@ html[data-field-homepage="true"] .md-content__inner {
     min-height: calc(100vh - 3rem);
     padding-top: 5rem;
     padding-bottom: 5rem;
+}
+
+@media screen and (min-width: 76.234375em) {
+    html[data-field-homepage="true"] .md-sidebar,
+    html[data-field-homepage="true"] .md-sidebar__scrollwrap,
+    html[data-field-homepage="true"] .md-sidebar__inner,
+    html[data-field-homepage="true"] .md-sidebar .md-nav,
+    html[data-field-homepage="true"] .md-nav__list {
+        background: transparent !important;
+    }
+
+    html[data-field-homepage="true"] .md-sidebar,
+    html[data-field-homepage="true"] .md-sidebar__scrollwrap,
+    html[data-field-homepage="true"] .md-sidebar__inner,
+    html[data-field-homepage="true"] .md-sidebar .md-nav {
+        position: relative;
+        z-index: 4;
+        pointer-events: auto;
+    }
+}
+
+@media screen and (max-width: 76.234375em) {
+    html[data-field-homepage="true"] .md-sidebar--primary {
+        position: fixed;
+        z-index: 10;
+        background: var(--mono-bg) !important;
+        pointer-events: auto;
+    }
+
+    html[data-field-homepage="true"] .md-sidebar--primary .md-sidebar__scrollwrap,
+    html[data-field-homepage="true"] .md-sidebar--primary .md-sidebar__inner,
+    html[data-field-homepage="true"] .md-sidebar--primary .md-nav,
+    html[data-field-homepage="true"] .md-sidebar--primary .md-nav__list {
+        background: var(--mono-bg) !important;
+    }
+
+    html[data-field-homepage="true"] .md-overlay {
+        z-index: -1;
+    }
 }
 
 .field-docs-image-lightbox {
@@ -458,6 +489,10 @@ html[data-field-homepage="true"] .md-content__inner {
     margin: 0;
 }
 
+.md-nav__icon {
+    visibility: hidden;
+}
+
 .md-nav__list,
 .md-nav__item--nested > .md-nav__list {
     gap: 0;
@@ -540,8 +575,8 @@ html[data-field-homepage="true"] .md-content__inner {
     }
 
     /* border on __inner = nav-content height, sticky, always visible (not inside the clip) */
-    .md-sidebar--primary  .md-sidebar__inner { border-left: 1px solid black;  }
-    .md-sidebar--secondary .md-sidebar__inner { border-right:  1px solid black;  }
+    .md-sidebar--primary  .md-sidebar__inner { border-left: 10px solid black;  }
+    .md-sidebar--secondary .md-sidebar__inner { border-right:  10px solid black;  }
 
     /* fade nav content while leaving the sticky border visible */
     .md-sidebar--primary .md-sidebar__inner > .md-nav,

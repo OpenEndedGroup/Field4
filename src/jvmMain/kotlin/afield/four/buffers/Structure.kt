@@ -131,6 +131,37 @@ class Structure(var members: List<Introspected.Member> = emptyList()) : BufferWr
         return this
     }
 
+    fun primeBufferReferences(cmd: CommandBuffer, autowireReferences: (String) -> () -> HasBuffer) {
+        nullPointerChecks = pointers.filter { it.value }.toMutableMap()
+        offsets.keys.forEach { name ->
+            val raw = bindings[name]?.invoke() ?: values[name]
+            raw?.let { primeValue(it, cmd, name) }
+        }
+        if (nullPointerChecks.isNotEmpty()) {
+            nullPointerChecks.keys.toList().forEach { name ->
+                val buffer = autowireReferences(name)
+                bindings[name] = { buffer }
+                primeValue(buffer, cmd, name)
+            }
+        }
+    }
+
+    private fun primeValue(v: Any, cmd: CommandBuffer, name: String) {
+        when (v) {
+            is HasUniform<*> -> {
+                val resolved = v.evaluateUniform() ?: return
+                primeValue(resolved, cmd, name)
+            }
+            is HasBuffer -> {
+                val address = v.getGPUAddress(cmd)
+                if (address <= 0) {
+                    throw IllegalArgumentException(" buffer for member ${name} does not have a gpu address. Make sure you call .addressable() on it's buffer parameters")
+                }
+                nullPointerChecks.remove(name)
+            }
+        }
+    }
+
 
     fun writeToBuffer(f: ByteBuffer, cmd : CommandBuffer, autowireReferences: (String) -> () -> HasBuffer) {
         nullPointerChecks = pointers.filter { it.value }.toMutableMap()

@@ -117,6 +117,40 @@ fun computeMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
     }
 }
 
+/** COMPUTE write -> graphics shader read / write. */
+fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
+    MemoryStack.stackPush().use { stack ->
+        val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+        if (buffer != null) {
+            val b = VkBufferMemoryBarrier2.calloc(1, stack)
+            b[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer.buffer)
+                .offset(0L)
+                .size(buffer.requestedSize)
+
+            dep.pBufferMemoryBarriers(b)
+        } else {
+            val m = VkMemoryBarrier2.calloc(1, stack)
+            m[0]
+                .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+
+            dep.pMemoryBarriers(m)
+        }
+        vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+    }
+}
+
 fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_WHOLE_SIZE) {
     MemoryStack.stackPush().use { stack ->
         val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
@@ -143,6 +177,39 @@ fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_
                 .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
                 .dstStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
                 .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT)
+
+            dep.pMemoryBarriers(m)
+        }
+        vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+    }
+}
+
+fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_WHOLE_SIZE) {
+    MemoryStack.stackPush().use { stack ->
+        val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+        if (buffer != null) {
+            val b = VkBufferMemoryBarrier2.calloc(1, stack)
+            b[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer)
+                .offset(0L)
+                .size(size)
+
+            dep.pBufferMemoryBarriers(b)
+        } else {
+            val m = VkMemoryBarrier2.calloc(1, stack)
+            m[0]
+                .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
 
             dep.pMemoryBarriers(m)
         }

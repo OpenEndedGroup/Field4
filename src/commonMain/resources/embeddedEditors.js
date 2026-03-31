@@ -173,6 +173,10 @@ function createEmbeddedEditor(container, uid, property, language, initialValue) 
 	// ── Register minimal actions on this editor ───────────────────────
 	registerEmbeddedActions(editor, uid, property);
 
+	if (typeof window.installSymbolContextMonitor === "function") {
+		window.installSymbolContextMonitor(editor, () => ({ uid, property }));
+	}
+
 	const entry = {
 		editorId,
 		editor,

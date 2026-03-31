@@ -339,6 +339,11 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
     hover.textContent = ".code"
     editor._domElement.appendChild(hover)
 
+    val context = document.createElement("div")
+    context.className = "hoverlay-left"
+    context.innerHTML = ""
+    editor._domElement.appendChild(context)
+
     run {
         val action = js("{}")
         action.id = "ai-assist-error"

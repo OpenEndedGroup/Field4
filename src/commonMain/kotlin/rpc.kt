@@ -188,6 +188,22 @@ data class CompletionResolveRequest(
 data class CompletionResolveResult(val documentation: String)
 
 @Serializable
+data class SymbolContextRequest(
+    val uid: String,
+    val line: Int,
+    val allCode: String,
+    val column: Int,
+    val position: Int,
+    val property: String = "code",
+)
+
+@Serializable
+data class SymbolContextResponse(
+    val symbol: String = "",
+    val html: String = ""
+)
+
+@Serializable
 data class Hello(
     val filename: String,
     val username: String,

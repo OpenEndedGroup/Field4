@@ -47,8 +47,11 @@ val smileVersion = "5.0.1"
 val javaToolchainVersion = 25
 
 // Bytedeco FFmpeg for video support
-val ffmpegVersion = "7.1-1.5.11"
-val javacppVersion = "1.5.11"
+val ffmpegVersion = "6.1.1-1.5.10"
+val opencvVersion = "4.9.0-1.5.10"
+val openblasVersion = "0.3.26-1.5.10"
+val javacppVersion = "1.5.10"
+val javacvVersion = "1.5.10"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 val electronDir = layout.projectDirectory.dir("electron")
 
@@ -366,8 +369,12 @@ kotlin {
 
                 // Bytedeco FFmpeg for video texture support
                 implementation("org.bytedeco:javacpp:$javacppVersion")
+                implementation("org.bytedeco:javacv:$javacvVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$ffmpegPlatform")
+                implementation("org.bytedeco:opencv:$opencvVersion")
+                implementation("org.bytedeco:opencv:$opencvVersion:$ffmpegPlatform")
+                implementation("org.bytedeco:openblas:$openblasVersion:$ffmpegPlatform")
 
                 implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0")
                 implementation("com.github.stephengold:jolt-jni-Linux64:3.6.0:DebugSp")

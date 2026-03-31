@@ -4,6 +4,7 @@ import afield.Rect
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
+import afield.four.buffers.MissingRefException
 import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
@@ -557,6 +558,20 @@ open class RenderToTexture(
             modules.values.forEach { mp ->
                 mp.current.meshes.values.forEach { mesh ->
                     mesh.prepareForDraw(command)
+                    mesh.push.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+                mp.current.liveUniformStructures.values.forEach { structure ->
+                    structure.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+            }
+
+            modules.values.forEach { mp ->
+                mp.current.before.values.forEach { target ->
+                    target.render(command, index)
                 }
             }
 

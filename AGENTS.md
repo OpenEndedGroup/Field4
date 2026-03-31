@@ -153,6 +153,7 @@ This regenerates `build/field-tests/catalog.json`, then runs each discovered `FI
 - Use `FIELD_DOCS_RUNNER_MODE=incremental` for fast local iteration against an already-clean cache.
 - Use `FIELD_DOCS_RUNNER_MODE=strict` when runner logic changes should invalidate cached captures through `public/docs_hooks.py` digest changes.
 - Use `FIELD_DOCS_RUNNER_MODE=always` when you need every screenshot/video to be regenerated regardless of cache state.
+- Use `FIELD_DOCS_RUNNER_MODE=never` when you want MkDocs to skip all capture execution entirely and just use whatever screenshot/video files already exist on disk.
 - When docs screenshots show the red Field error marker or empty/incorrect output, treat that as a real failure: capture the compiler/runtime error from the backdoor/test runner, fix the snippet or runtime, and rerun the docs page.
 - If a backdoor or smoke-suite run times out and later probes stop reaching `is-running`, restart the managed Field JVM before trusting subsequent failures; a wedged snippet can poison later manual debugging runs.
 - Prefer fixing the underlying example or capture behavior rather than hand-editing generated assets.
@@ -440,6 +441,7 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
   - Fast incremental docs build: `cd public && FIELD_DOCS_RUNNER_MODE=incremental mkdocs build`
   - Strict docs build that re-runs screenshots even after runner changes: `cd public && FIELD_DOCS_RUNNER_MODE=strict mkdocs build`
   - Full recapture build that bypasses the screenshot/video cache entirely: `cd public && FIELD_DOCS_RUNNER_MODE=always mkdocs build`
+  - No-capture docs build that reuses existing assets without starting Field: `cd public && FIELD_DOCS_RUNNER_MODE=never mkdocs build`
   - Serve built site (matches Field’s default docs iframe URL): `cd public && python3 -m http.server 8000`
   - Browse: `http://localhost:8000/field4/`
 
