@@ -13,6 +13,38 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
+
+@OptIn(ExperimentalSerializationApi::class)
+inline fun <reified T> toJSONFile(file: File, value: T) {
+    try {
+        file.parentFile?.mkdirs()
+        val serializer = FieldJson.serializersModule.serializer(typeOf<T>()) as KSerializer<T>
+        file.safeSave(FieldJson.encodeToString(serializer, value))
+    } catch (t: Throwable) {
+        throw SerializationException(
+            "Couldn't save to ${file.absolutePath}: ${t.message}",
+            t
+        )
+    }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+inline fun <reified T> fromJSONFile(file: File, defaultValue: () -> T): T {
+    try {
+        if (file.exists()) {
+            val serializer = FieldJson.serializersModule.serializer(typeOf<T>()) as KSerializer<T>
+            return FieldJson.decodeFromString(serializer, file.readText())
+        } else {
+            return defaultValue()
+        }
+    } catch (t: Throwable) {
+        throw SerializationException(
+            "Couldn't save to ${file.absolutePath}: ${t.message}",
+            t
+        )
+    }
+}
+
 class SavedJsonValue<T>(
     private val serializer: KSerializer<T>,
     private val defaultValue: () -> T
@@ -88,6 +120,7 @@ inline fun <reified T> saved(noinline defaultValue: () -> T): SavedJsonValue<T> 
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> saved(): SavedJsonValue<T> {
     val type = typeOf<T>()
+
     @Suppress("UNCHECKED_CAST")
     val serializer = FieldJson.serializersModule.serializer(type) as KSerializer<T>
     return SavedJsonValue(serializer) { defaultSavedValue(type) as T }

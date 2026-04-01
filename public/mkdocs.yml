@@ -29,6 +29,7 @@ nav:
       - Correlations Examples: correlations_examples.md
       - Graph Connectivity Examples: graph_connectivity_examples.md
       - Sorting Networks Examples: sorting_networks_examples.md
+      - Interaction Nets Examples: interaction_nets_examples.md
       - Boolean Networks Examples: boolean_networks_examples.md
       - Boolean Network Music Examples: boolean_network_music_examples.md
 

@@ -349,6 +349,57 @@ private fun disclosureTitleClientRect(disclosure: HTMLElement): Rect? {
     return Rect(disclosureRect.x, disclosureRect.y, targetWidth, targetHeight)
 }
 
+private fun cssPixelsOrZero(raw: String?): Double =
+    raw?.removeSuffix("px")?.trim()?.toDoubleOrNull() ?: 0.0
+
+private fun hasStyledBox(element: HTMLElement): Boolean {
+    val style = window.getComputedStyle(element)
+    val background = style.backgroundColor?.trim()?.lowercase()
+    val hasBackground = background != null &&
+        background != "transparent" &&
+        background != "rgba(0, 0, 0, 0)" &&
+        background != "rgba(0,0,0,0)"
+    val borderWidth = cssPixelsOrZero(style.borderTopWidth) +
+        cssPixelsOrZero(style.borderRightWidth) +
+        cssPixelsOrZero(style.borderBottomWidth) +
+        cssPixelsOrZero(style.borderLeftWidth)
+    return hasBackground || borderWidth > 0.0
+}
+
+private fun disclosureBodyClientRect(disclosure: HTMLElement): Rect? {
+    val content = disclosure.querySelector(".disclosure-content") as? HTMLElement ?: return null
+    if (!isOverlayVisible(content)) return null
+
+    val rects = content.querySelectorAll("*").asList()
+        .mapNotNull { node ->
+            val element = node as? Element ?: return@mapNotNull null
+            if (!isOverlayVisible(element)) return@mapNotNull null
+            val rect = domRectToRect(element.getBoundingClientRect())
+            if (rect.w <= 2.0 || rect.h <= 2.0) return@mapNotNull null
+
+            when (element) {
+                is SVGElement,
+                is HTMLCanvasElement,
+                is HTMLIFrameElement,
+                is HTMLImageElement,
+                is HTMLTableElement,
+                is HTMLVideoElement -> rect
+
+                is HTMLElement -> {
+                    val text = element.textContent?.trim().orEmpty()
+                    val include = element.children.length == 0 ||
+                        hasStyledBox(element) ||
+                        text.isNotEmpty()
+                    if (include) rect else null
+                }
+
+                else -> null
+            }
+        }
+
+    return unionRects(rects)?.expand(6.0)
+}
+
 private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
     val outputArea = box.querySelector(".outputArea") as? HTMLElement ?: return emptyList()
     if (outputArea.style.visibility == "hidden") return emptyList()
@@ -361,10 +412,37 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
             if (rect.w <= 2.0 || rect.h <= 2.0) return@mapNotNull null
             element
         }
-    val disclosureRects = disclosureElements.map { domRectToRect(it.getBoundingClientRect()) }
-    if (disclosureRects.size > 1) {
-        return disclosureRects
+    fun disclosureScreenshotRect(disclosure: HTMLElement): Rect? {
+        val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
+        if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
+        val disclosureTitleRect = disclosureTitleClientRect(disclosure)
+        val svgRects = disclosure.querySelectorAll("svg").asList()
+            .mapNotNull { node ->
+                val svg = node as? SVGElement ?: return@mapNotNull null
+                if (!isOverlayVisible(svg as Element)) return@mapNotNull null
+                svgContentClientRect(svg) ?: domRectToRect(svg.getBoundingClientRect())
+            }
+        if (svgRects.isNotEmpty()) {
+            val maxArea = svgRects.maxOf { it.w * it.h }
+            val meaningful = svgRects.filter { rect ->
+                val area = rect.w * rect.h
+                area >= max(2500.0, maxArea * 0.15)
+            }
+            val bodyRect = unionRects(
+                meaningful.ifEmpty {
+                    listOf(svgRects.maxByOrNull { it.w * it.h } ?: svgRects.last())
+                }
+            ) ?: disclosureRect
+            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+        }
+        val bodyRect = disclosureBodyClientRect(disclosure) ?: disclosureRect
+        return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
     }
+
+    if (disclosureElements.size > 1) {
+        return disclosureElements.mapNotNull(::disclosureScreenshotRect)
+    }
+
     val disclosureTitleRect = disclosureElements.firstOrNull()?.let(::disclosureTitleClientRect)
 
     val svgRects = outputArea.querySelectorAll("svg").asList()
@@ -386,9 +464,7 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
         return trimmed.map { rect -> unionRects(listOf(disclosureTitleRect, rect)) ?: rect }
     }
 
-    if (disclosureRects.isNotEmpty()) {
-        return disclosureRects
-    }
+    disclosureElements.firstOrNull()?.let(::disclosureScreenshotRect)?.let { return listOf(it) }
     return listOf(domRectToRect(outputArea.getBoundingClientRect()))
 }
 

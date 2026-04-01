@@ -2,9 +2,20 @@
 
 package afield.stdlib
 
+import afield.Box
+import afield.Rect
+import afield.graphics.FLine
+import afield.graphics.drawToSVG
+import afield.graphics.lines
 import org.joml.minus
 import org.joml.plus
+import java.util.*
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sin
 import kotlin.random.Random
 
 /**
@@ -21,7 +32,7 @@ import kotlin.random.Random
  *     2) an escape hatch for arbitrary custom rewrites in ordinary Kotlin
  * - configurable active-pair scheduling
  * - a simple force-directed layout with incremental seeding of rewrite RHS nodes at the LHS center
- * - SVG export for quick inspection
+ * - FLine/output rendering plus SVG export for quick inspection
  * - a small lambda-oriented bundle including APP, LAM, DUP, ERASE, ROOT, VAR, CONST
  *
  * Design intent:
@@ -140,6 +151,73 @@ data class LayoutConfig(
 
 internal data class Motion(var velocity: Vec2 = Vec2())
 
+data class NodeState(
+    var energy: Double = 1.0,
+    var phase: Double = 0.0,
+    var hue: Double = 0.0,
+    var age: Double = 0.0,
+    val scalars: MutableMap<String, Double> = linkedMapOf()
+) {
+    fun copyDeep(): NodeState = NodeState(
+        energy = energy,
+        phase = phase,
+        hue = hue,
+        age = age,
+        scalars = LinkedHashMap(scalars)
+    )
+
+    fun evolved(
+        energyScale: Double = 1.0,
+        energyBias: Double = 0.0,
+        phaseShift: Double = 0.0,
+        hueShift: Double = 0.0,
+        ageDelta: Double = 0.0
+    ): NodeState = copyDeep().apply {
+        energy = (energy * energyScale + energyBias).coerceAtLeast(0.0)
+        phase += phaseShift
+        hue += hueShift
+        age += ageDelta
+    }
+
+    fun split(
+        parts: Int,
+        branch: Int,
+        attenuation: Double = 1.0,
+        hueSpread: Double = 0.0,
+        phaseSpread: Double = 0.0,
+        ageDelta: Double = 0.0
+    ): NodeState {
+        require(parts > 0) { "parts must be > 0" }
+        require(branch in 0 until parts) { "branch $branch out of range for $parts parts" }
+        val centeredIndex = branch - (parts - 1) / 2.0
+        return copyDeep().apply {
+            energy = (energy / parts * attenuation).coerceAtLeast(0.0)
+            hue += centeredIndex * hueSpread
+            phase += centeredIndex * phaseSpread
+            age += ageDelta
+        }
+    }
+
+    companion object {
+        fun blend(a: NodeState, b: NodeState, weightToFirst: Double = 0.5): NodeState {
+            val t = weightToFirst.coerceIn(0.0, 1.0)
+            val merged = linkedMapOf<String, Double>()
+            (a.scalars.keys + b.scalars.keys).distinct().forEach { key ->
+                val av = a.scalars[key] ?: 0.0
+                val bv = b.scalars[key] ?: 0.0
+                merged[key] = av * t + bv * (1.0 - t)
+            }
+            return NodeState(
+                energy = a.energy * t + b.energy * (1.0 - t),
+                phase = a.phase * t + b.phase * (1.0 - t),
+                hue = a.hue * t + b.hue * (1.0 - t),
+                age = a.age * t + b.age * (1.0 - t),
+                scalars = merged
+            )
+        }
+    }
+}
+
 // =========================
 // Net data model
 // =========================
@@ -161,7 +239,8 @@ class Port internal constructor(
 
 class Node internal constructor(
     val id: String,
-    val type: AgentType
+    val type: AgentType,
+    val state: NodeState = NodeState()
 ) {
     val ports: List<Port> = buildList {
         add(Port(this@Node, 0, PortKind.PRINCIPAL))
@@ -211,14 +290,19 @@ class Net internal constructor(
 
     fun node(id: String): Node = _nodes[id] ?: error("Unknown node: $id")
     fun positionOf(node: Node): Vec2 = positions[node.id] ?: Vec2()
+    fun velocityOf(node: Node): Vec2 = motions[node.id]?.velocity ?: Vec2()
 
     fun setPosition(node: Node, p: Vec2) {
         positions[node.id] = p
     }
 
-    fun create(type: AgentType, id: String = ids.next(type.name.lowercase())): Node {
+    fun setVelocity(node: Node, velocity: Vec2) {
+        motions.getOrPut(node.id) { Motion() }.velocity = Vec2(velocity)
+    }
+
+    fun create(type: AgentType, id: String = ids.next(type.name.lowercase()), state: NodeState = NodeState()): Node {
         require(id !in _nodes) { "Duplicate node id: $id" }
-        val node = Node(id, type)
+        val node = Node(id, type, state.copyDeep())
         _nodes[id] = node
         positions[id] = positions[id] ?: vec(Random.nextDouble(-30.0, 30.0), Random.nextDouble(-30.0, 30.0))
         motions[id] = motions[id] ?: Motion()
@@ -273,15 +357,19 @@ class Net internal constructor(
     internal fun absorb(fragment: NetFragment, placement: Placement): FragmentEmbed {
         val mapping = LinkedHashMap<NodeRef, Node>()
         for ((ref, spec) in fragment.nodeSpecs) {
-            val created = create(spec.type, ids.next(spec.suggestedPrefix))
+            val created = create(spec.type, ids.next(spec.suggestedPrefix), spec.state)
             setPosition(created, placement.base + spec.offset)
-            motions[created.id]?.velocity = Vec2()
+            setVelocity(created, spec.impulse)
             mapping[ref] = created
         }
         for ((a, b) in fragment.pendingInternalConnections) {
             connect(mapping[a.node]!!.ports[a.portIndex], mapping[b.node]!!.ports[b.portIndex])
         }
         return FragmentEmbed(mapping)
+    }
+
+    fun incrementAges(dt: Double = 1.0) {
+        nodes.forEach { it.state.age += dt }
     }
 
     fun relax(iterations: Int = 1, config: LayoutConfig = LayoutConfig()) {
@@ -334,6 +422,200 @@ class Net internal constructor(
         }
     }
 
+    fun totalEnergy(): Double = nodes.sumOf { it.state.energy }
+
+    fun averageAge(): Double = if (nodes.isEmpty()) 0.0 else nodes.sumOf { it.state.age } / nodes.size.toDouble()
+
+    fun toFLines(
+        velocityScale: Double = 18.0
+    ): List<FLine> {
+        if (nodes.isEmpty()) return emptyList()
+
+        val nodeList = nodes.toList()
+        val activeKeys = activePairs().map { it.canonicalKey() }.toSet()
+        val activeNodeIds = activeKeys.flatMap { listOf(it.first, it.second) }.toSet()
+        val nodeRadius = nodeList.associate { it.id to renderRadius(it) }
+        val principalAngles = nodeList.associate { it.id to principalAngleFor(it) }
+
+        fun portPosition(port: Port): Vec2 {
+            val center = positionOf(port.node)
+            val radius = nodeRadius.getValue(port.node.id) * if (port.index == 0) 1.0 else 0.92
+            val angle = portAngleFor(port.node, port.index, principalAngles.getValue(port.node.id))
+            return vec(
+                center.x + cos(angle) * radius,
+                center.y + sin(angle) * radius
+            )
+        }
+
+        val out = mutableListOf<FLine>()
+
+        edges.forEach { edge ->
+            val active = edge.a.kind == PortKind.PRINCIPAL &&
+                edge.b.kind == PortKind.PRINCIPAL &&
+                ActivePair(edge.a.node, edge.b.node).canonicalKey() in activeKeys
+            out += FLine().apply {
+                moveTo(portPosition(edge.a))
+                lineTo(portPosition(edge.b))
+                stroked = true
+                filled = false
+                thickness = edgeThickness(edge, active)
+                color = edgeColor(edge, active)
+            }
+        }
+
+        nodeList.forEach { node ->
+            val center = positionOf(node)
+            val radius = nodeRadius.getValue(node.id)
+            val hue = nodeHue01(node)
+            val fill = hsl(
+                hue,
+                0.74,
+                (0.68 - node.state.energy * 0.06 + node.state.age * 0.01).coerceIn(0.26, 0.82),
+                0.92
+            )
+            val stroke = hsl(
+                hue,
+                0.78,
+                (0.34 + node.state.energy * 0.04).coerceIn(0.18, 0.52),
+                0.98
+            )
+
+            if (node.id in activeNodeIds) {
+                out += FLine().apply {
+                    circle(center.x.toDouble(), center.y.toDouble(), radius + 10.0, segments = 32)
+                    filled = false
+                    stroked = true
+                    thickness = 1.4
+                    color = hsl(hue, 0.86, 0.60, (0.10 + node.state.energy * 0.08).coerceIn(0.10, 0.34))
+                }
+            }
+
+            val velocity = velocityOf(node)
+            if (velocity.lengthSquared().toDouble() > 0.01) {
+                out += FLine().apply {
+                    moveTo(center)
+                    lineTo(
+                        vec(
+                            center.x + velocity.x * velocityScale.toFloat(),
+                            center.y + velocity.y * velocityScale.toFloat()
+                        )
+                    )
+                    stroked = true
+                    filled = false
+                    thickness = 1.2
+                    color = hsl(hue, 0.62, 0.72, 0.35)
+                }
+            }
+
+            out += FLine().apply {
+                circle(center.x.toDouble(), center.y.toDouble(), radius, segments = 40)
+                filled = true
+                stroked = false
+                color = fill
+            }
+            out += FLine().apply {
+                circle(center.x.toDouble(), center.y.toDouble(), radius, segments = 40)
+                filled = false
+                stroked = true
+                thickness = (1.5 + node.state.energy * 1.25).coerceIn(1.5, 4.2)
+                color = stroke
+            }
+
+            out += FLine().apply {
+                stroked = true
+                filled = false
+                thickness = 0.9
+                color = hsl(hue, 0.38, 0.72, 0.28)
+                node.ports.forEach { port ->
+                    moveTo(center)
+                    lineTo(portPosition(port))
+                }
+            }
+
+            out += FLine().apply {
+                pointed = true
+                pointSize = (radius * 0.18).coerceIn(2.6, 5.0)
+                color = vec(1.0, 0.96, 0.90, 0.96)
+                moveTo(portPosition(node.principal))
+            }
+
+            if (node.type.auxPorts > 0) {
+                out += FLine().apply {
+                    pointed = true
+                    pointSize = (radius * 0.12).coerceIn(1.8, 3.6)
+                    color = hsl(hue, 0.42, 0.86, 0.76)
+                    repeat(node.type.auxPorts) { index ->
+                        moveTo(portPosition(node.aux(index)))
+                    }
+                }
+            }
+        }
+
+        return out.filter { it.nodes.isNotEmpty() }
+    }
+
+    fun summaryHtml(title: String = "Interaction net", maxNodes: Int = 8): String {
+        val active = activePairs()
+        val nodeRows = nodes
+            .sortedWith(compareByDescending<Node> { it.state.energy }.thenBy { it.id })
+            .take(maxNodes)
+            .joinToString("") { node ->
+                """
+                    <tr>
+                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;color:#f5f8fd;">${escapeInteractionHtml(node.id)}</td>
+                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;color:#9dc1ff;">${escapeInteractionHtml(node.type.name)}</td>
+                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;text-align:right;color:#f2d28b;">${fmt(node.state.energy)}</td>
+                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;text-align:right;color:#b9d7ff;">${fmt(node.state.age)}</td>
+                    </tr>
+                """.trimIndent()
+            }
+        val activeHtml = if (active.isEmpty()) {
+            """<div style="margin-top:10px;color:#91a4ba;">No active principal-principal pairs.</div>"""
+        } else {
+            active.take(6).joinToString(
+                prefix = """<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">""",
+                postfix = "</div>"
+            ) { pair ->
+                """
+                    <div style="padding:6px 8px;background:#101822;border:1px solid #1e2a39;border-radius:7px;color:#dce6f3;">
+                        ${escapeInteractionHtml(pair.left.id)}:${escapeInteractionHtml(pair.left.type.name)}
+                        &#8596;
+                        ${escapeInteractionHtml(pair.right.id)}:${escapeInteractionHtml(pair.right.type.name)}
+                    </div>
+                """.trimIndent()
+            }
+        }
+        val more = if (nodes.size > maxNodes) {
+            """<div style="margin-top:10px;color:#91a4ba;">+${nodes.size - maxNodes} more nodes not shown.</div>"""
+        } else ""
+
+        return interactionSummaryCard(
+            title = title,
+            body = """
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;">
+                    ${interactionMetric("nodes", nodes.size.toString())}
+                    ${interactionMetric("edges", edges.size.toString())}
+                    ${interactionMetric("active pairs", active.size.toString())}
+                    ${interactionMetric("total energy", fmt(totalEnergy()))}
+                    ${interactionMetric("mean age", fmt(averageAge()))}
+                </div>
+                <table style="width:100%;margin-top:12px;border-collapse:collapse;font-size:12px;">
+                    <thead>
+                        <tr style="text-align:left;color:#91a4ba;">
+                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;">node</th>
+                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;">type</th>
+                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;text-align:right;">energy</th>
+                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;text-align:right;">age</th>
+                        </tr>
+                    </thead>
+                    <tbody>$nodeRows</tbody>
+                </table>
+                $more
+                $activeHtml
+            """.trimIndent()
+        )
+    }
+
     fun toSvg(width: Int = 900, height: Int = 700, padding: Double = 40.0): String {
         if (nodes.isEmpty()) {
             return """
@@ -343,59 +625,115 @@ class Net internal constructor(
             """.trimIndent()
         }
 
-        val xs = nodes.map { positionOf(it).x }
-        val ys = nodes.map { positionOf(it).y }
-        val minX = xs.minOrNull()!!
-        val maxX = xs.maxOrNull()!!
-        val minY = ys.minOrNull()!!
-        val maxY = ys.maxOrNull()!!
-        val spanX = max(maxX - minX, 1.0f)
-        val spanY = max(maxY - minY, 1.0f)
-        val scale = minOf((width - 2 * padding) / spanX, (height - 2 * padding) / spanY)
-
-        fun map(p: Vec2): Vec2 = vec(
-            padding + (p.x - minX) * scale,
-            padding + (p.y - minY) * scale
-        )
-
-        val sb = StringBuilder()
-        sb.appendLine("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"$width\" height=\"$height\" viewBox=\"0 0 $width $height\">")
-        sb.appendLine("  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>")
-        sb.appendLine("  <g stroke=\"#444\" stroke-width=\"2\" fill=\"none\">")
-        for (e in edges) {
-            val a = map(positionOf(e.a.node))
-            val b = map(positionOf(e.b.node))
-            sb.appendLine("    <line x1=\"${fmt(a.x)}\" y1=\"${fmt(a.y)}\" x2=\"${fmt(b.x)}\" y2=\"${fmt(b.y)}\"/>")
+        val fitted = fitLinesToBox(toFLines(), width.toDouble(), height.toDouble(), padding)
+        val background = FLine().apply {
+            moveTo(0.0, 0.0)
+            lineTo(width.toDouble(), 0.0)
+            lineTo(width.toDouble(), height.toDouble())
+            lineTo(0.0, height.toDouble())
+            close()
+            filled = true
+            stroked = false
+            color = vec(1.0, 1.0, 1.0, 1.0)
         }
-        sb.appendLine("  </g>")
-        sb.appendLine("  <g font-family=\"monospace\" font-size=\"12\" text-anchor=\"middle\">")
-        for (n in nodes) {
-            val p = map(positionOf(n))
-            val r = 21
-            val fill = when (n.type.name) {
-                "APP" -> "#eef7ff"
-                "LAM" -> "#f6f0ff"
-                "DUP" -> "#fff3e8"
-                "ERASE" -> "#fff0f0"
-                else -> "#f8fbff"
-            }
-            sb.appendLine("    <circle cx=\"${fmt(p.x)}\" cy=\"${fmt(p.y)}\" r=\"$r\" fill=\"$fill\" stroke=\"#1a1a1a\" stroke-width=\"2\"/>")
-            sb.appendLine("    <circle cx=\"${fmt(p.x)}\" cy=\"${fmt(p.y - 14)}\" r=\"4\" fill=\"#1a1a1a\"/>")
-            sb.appendLine("    <text x=\"${fmt(p.x)}\" y=\"${fmt(p.y + 4)}\">${escapeXml(n.type.name)}</text>")
-            sb.appendLine("    <text x=\"${fmt(p.x)}\" y=\"${fmt(p.y + 36)}\" fill=\"#666\">${escapeXml(n.id)}</text>")
-        }
-        sb.appendLine("  </g>")
-        sb.appendLine("</svg>")
-        return sb.toString()
+        return drawToSVG(listOf(background) + fitted, width.toDouble(), height.toDouble())
     }
 
-    private fun fmt(v: Number): String = "%.2f".format(v)
+    private fun renderRadius(node: Node): Double =
+        (18.0 + node.state.energy * 5.5).coerceIn(16.0, 34.0)
 
-    private fun escapeXml(s: String): String = s
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
+    private fun nodeHue01(node: Node): Double =
+        wrapUnit(baseHueDegrees(node.type.name) / 360.0 + node.state.hue * 0.22)
+
+    private fun baseHueDegrees(typeName: String): Double = when (typeName) {
+        "APP" -> 208.0
+        "LAM" -> 280.0
+        "DUP" -> 28.0
+        "ERASE" -> 8.0
+        "ROOT" -> 160.0
+        "VAR" -> 190.0
+        "CONST" -> 48.0
+        else -> 200.0
+    }
+
+    private fun principalAngleFor(node: Node): Double {
+        val center = positionOf(node)
+        connected(node.principal)?.let { peer ->
+            val delta = positionOf(peer.node) - center
+            val lenSq = delta.x * delta.x + delta.y * delta.y
+            if (lenSq > 1e-4f) return atan2(delta.y.toDouble(), delta.x.toDouble())
+        }
+
+        val auxAngles = (0 until node.type.auxPorts).mapNotNull { auxIndex ->
+            connected(node.aux(auxIndex))?.let { peer ->
+                val delta = positionOf(peer.node) - center
+                val lenSq = delta.x * delta.x + delta.y * delta.y
+                if (lenSq > 1e-4f) atan2(delta.y.toDouble(), delta.x.toDouble()) else null
+            }
+        }
+
+        if (auxAngles.isNotEmpty()) {
+            val dx = auxAngles.sumOf { cos(it) }
+            val dy = auxAngles.sumOf { sin(it) }
+            if (dx * dx + dy * dy > 1e-6) return atan2(-dy, -dx)
+        }
+
+        return node.state.phase * PI * 0.5 - PI / 2.0
+    }
+
+    private fun portAngleFor(node: Node, portIndex: Int, principalAngle: Double): Double {
+        if (portIndex == 0) return principalAngle
+        if (node.type.auxPorts <= 1) return principalAngle + PI
+        val spread = min(1.65, 0.85 + 0.18 * node.type.auxPorts)
+        val t = (portIndex - 1).toDouble() / (node.type.auxPorts - 1).toDouble()
+        return principalAngle + PI + (-spread / 2.0 + spread * t)
+    }
+
+    private fun edgeThickness(edge: Edge, active: Boolean): Double {
+        val energy = (edge.a.node.state.energy + edge.b.node.state.energy) * 0.5
+        return when {
+            active -> (2.6 + energy * 0.9).coerceIn(2.2, 5.2)
+            edge.a.kind != edge.b.kind -> (1.6 + energy * 0.35).coerceIn(1.4, 3.2)
+            else -> (1.1 + energy * 0.25).coerceIn(1.0, 2.4)
+        }
+    }
+
+    private fun edgeColor(edge: Edge, active: Boolean): Vec4 {
+        val hue = wrapUnit((nodeHue01(edge.a.node) + nodeHue01(edge.b.node)) * 0.5)
+        val energy = (edge.a.node.state.energy + edge.b.node.state.energy) * 0.5
+        val saturation = if (active) 0.84 else if (edge.a.kind != edge.b.kind) 0.54 else 0.32
+        val lightness = if (active) 0.60 else (0.72 - energy * 0.05).coerceIn(0.44, 0.76)
+        val alpha = if (active) 0.90 else if (edge.a.kind != edge.b.kind) 0.58 else 0.36
+        return hsl(hue, saturation, lightness, alpha)
+    }
+
+    private fun fitLinesToBox(lines: List<FLine>, width: Double, height: Double, padding: Double): List<FLine> {
+        val bounds = lines
+            .mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
+            .reduceOrNull(Rect::union)
+            ?: return lines
+        if (bounds.w <= 0.0 || bounds.h <= 0.0) return lines
+
+        val safePadding = padding.coerceAtLeast(0.0)
+        val scale = minOf(
+            (width - safePadding * 2.0) / bounds.w,
+            (height - safePadding * 2.0) / bounds.h
+        )
+        if (!scale.isFinite() || scale <= 0.0) return lines
+
+        val offsetX = safePadding - bounds.x * scale + ((width - safePadding * 2.0) - bounds.w * scale) * 0.5
+        val offsetY = safePadding - bounds.y * scale + ((height - safePadding * 2.0) - bounds.h * scale) * 0.5
+
+        return lines.map { line ->
+            line.transform { p ->
+                vec(
+                    p.x * scale + offsetX,
+                    p.y * scale + offsetY,
+                    p.z
+                )
+            }
+        }
+    }
 }
 
 // =========================
@@ -406,8 +744,14 @@ class NodeRef internal constructor(val name: String) {
     override fun toString(): String = name
 }
 
-data class PortRef internal constructor(val node: NodeRef, val portIndex: Int)
-internal data class NodeSpec(val type: AgentType, val suggestedPrefix: String, val offset: Vec2)
+data class PortRef(val node: NodeRef, val portIndex: Int)
+internal data class NodeSpec(
+    val type: AgentType,
+    val suggestedPrefix: String,
+    val offset: Vec2,
+    val state: NodeState = NodeState(),
+    val impulse: Vec2 = Vec2()
+)
 
 class NetFragment internal constructor(
     internal val nodeSpecs: LinkedHashMap<NodeRef, NodeSpec> = LinkedHashMap(),
@@ -422,10 +766,16 @@ class NetFragment internal constructor(
 class FragmentBuilder {
     private val fragment = NetFragment()
 
-    fun node(name: String, type: AgentType, at: Vec2 = Vec2()): NodeRef {
+    fun node(
+        name: String,
+        type: AgentType,
+        at: Vec2 = Vec2(),
+        state: NodeState = NodeState(),
+        impulse: Vec2 = Vec2()
+    ): NodeRef {
         val ref = NodeRef(name)
         require(ref !in fragment.nodeSpecs) { "Duplicate fragment node name: $name" }
-        fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at)
+        fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at, state.copyDeep(), Vec2(impulse))
         return ref
     }
 
@@ -452,6 +802,7 @@ fun fragment(block: FragmentBuilder.() -> Unit): NetFragment = FragmentBuilder()
 
 class FragmentEmbed internal constructor(private val nodeMap: Map<NodeRef, Node>) {
     operator fun get(ref: NodeRef): Node = nodeMap[ref] ?: error("Unknown embedded ref: $ref")
+    val nodes: Collection<Node> get() = nodeMap.values
 }
 
 // =========================
@@ -459,9 +810,16 @@ class FragmentEmbed internal constructor(private val nodeMap: Map<NodeRef, Node>
 // =========================
 
 class NetBuilder(private val net: Net) {
-    fun node(type: AgentType, id: String? = null, at: Vec2 = Vec2()): Node {
-        val n = net.create(type, id ?: net.ids.next(type.name.lowercase()))
+    fun node(
+        type: AgentType,
+        id: String? = null,
+        at: Vec2 = Vec2(),
+        state: NodeState = NodeState(),
+        impulse: Vec2 = Vec2()
+    ): Node {
+        val n = net.create(type, id ?: net.ids.next(type.name.lowercase()), state)
         net.setPosition(n, at)
+        net.setVelocity(n, impulse)
         return n
     }
 
@@ -490,9 +848,17 @@ fun net(block: NetBuilder.() -> Unit): Net {
 // =========================
 
 data class PairSignature(val left: AgentType, val right: AgentType) {
-    fun matches(a: Node, b: Node): Boolean =
-        (a.type == left && b.type == right) || (a.type == right && b.type == left)
+    fun matches(a: Node, b: Node): Boolean = bind(a, b) != null
+
+    fun bind(a: Node, b: Node): SignatureBinding? = when {
+        a.type == left && b.type == right -> SignatureBinding(a, b, swapped = false)
+        a.type == right && b.type == left -> SignatureBinding(b, a, swapped = true)
+        else -> null
+    }
 }
+
+data class SignatureBinding(val first: Node, val second: Node, val swapped: Boolean)
+data class RuleMatch(val rule: RewriteRule, val binding: SignatureBinding)
 
 data class PairContext(
     val first: Node,
@@ -500,22 +866,73 @@ data class PairContext(
     val firstAuxPeers: List<Port?>,
     val secondAuxPeers: List<Port?>,
     val center: Vec2,
-    val radius: Double
+    val radius: Double,
+    val firstVelocity: Vec2,
+    val secondVelocity: Vec2,
+    val axis: Vec2,
+    val normal: Vec2
 ) {
     fun auxPeer(nodeOrdinal: Int, auxIndex: Int): Port? = when (nodeOrdinal) {
         0 -> firstAuxPeers.getOrNull(auxIndex)
         1 -> secondAuxPeers.getOrNull(auxIndex)
         else -> error("nodeOrdinal must be 0 or 1")
     }
+
+    fun state(nodeOrdinal: Int): NodeState = when (nodeOrdinal) {
+        0 -> first.state
+        1 -> second.state
+        else -> error("nodeOrdinal must be 0 or 1")
+    }
+
+    fun stateCopy(nodeOrdinal: Int): NodeState = state(nodeOrdinal).copyDeep()
+
+    fun velocity(nodeOrdinal: Int): Vec2 = when (nodeOrdinal) {
+        0 -> Vec2(firstVelocity)
+        1 -> Vec2(secondVelocity)
+        else -> error("nodeOrdinal must be 0 or 1")
+    }
+
+    fun blendedState(weightToFirst: Double = 0.5): NodeState = NodeState.blend(first.state, second.state, weightToFirst)
+
+    val pairEnergy: Double get() = first.state.energy + second.state.energy
+
+    fun branchImpulse(branch: Int, branches: Int = 2, amount: Double = radius * 0.35): Vec2 {
+        require(branches > 0) { "branches must be > 0" }
+        require(branch in 0 until branches) { "branch $branch out of range for $branches branches" }
+        val centered = branch - (branches - 1) / 2.0
+        return Vec2(normal).mul((centered * amount).toFloat())
+    }
 }
+
+data class RewriteEvent(
+    val kind: String,
+    val at: Vec2,
+    val magnitude: Double = 1.0,
+    val data: Map<String, Double> = emptyMap()
+)
+
+data class ReductionStep(
+    val ruleName: String,
+    val context: PairContext,
+    val swapped: Boolean,
+    val removedNodeIds: List<String>,
+    val createdNodeIds: List<String>,
+    val events: List<RewriteEvent>
+)
 
 class RewriteBuilder internal constructor(private val ctx: PairContext) {
     private val result = RewriteResult()
 
-    fun node(name: String, type: AgentType, at: Vec2 = Vec2()): NodeRef {
+    fun node(
+        name: String,
+        type: AgentType,
+        at: Vec2 = Vec2(),
+        state: NodeState = NodeState(),
+        impulse: Vec2 = Vec2()
+    ): NodeRef {
         val ref = NodeRef(name)
         require(ref !in result.fragment.nodeSpecs) { "Duplicate rewrite node name: $name" }
-        result.fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at)
+        result.fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at, state.copyDeep(), Vec2(impulse))
         return ref
     }
 
@@ -543,13 +960,23 @@ class RewriteBuilder internal constructor(private val ctx: PairContext) {
         if (a != null && b != null) result.passthroughs += a to b
     }
 
+    fun emit(
+        kind: String,
+        magnitude: Double = ctx.pairEnergy,
+        at: Vec2 = ctx.center,
+        data: Map<String, Double> = emptyMap()
+    ) {
+        result.events += RewriteEvent(kind, Vec2(at), magnitude, LinkedHashMap(data))
+    }
+
     fun build(): RewriteResult = result
 }
 
 class RewriteResult internal constructor(
     internal val fragment: NetFragment = NetFragment(),
     internal val reconnections: MutableList<Pair<PortRef, Port>> = mutableListOf(),
-    internal val passthroughs: MutableList<Pair<Port, Port>> = mutableListOf()
+    internal val passthroughs: MutableList<Pair<Port, Port>> = mutableListOf(),
+    internal val events: MutableList<RewriteEvent> = mutableListOf()
 )
 
 class RewriteRule(
@@ -572,11 +999,18 @@ data class ExternalEndpoint(val nodeOrdinal: Int, val auxIndex: Int) : AutoEndpo
 class AutoRuleBuilder internal constructor(private val ctx: PairContext) {
     private val fragment = NetFragment()
     private val endpoints = mutableListOf<Pair<AutoEndpoint, AutoEndpoint>>()
+    private val events = mutableListOf<RewriteEvent>()
 
-    fun node(name: String, type: AgentType, at: Vec2 = Vec2()): NodeRef {
+    fun node(
+        name: String,
+        type: AgentType,
+        at: Vec2 = Vec2(),
+        state: NodeState = NodeState(),
+        impulse: Vec2 = Vec2()
+    ): NodeRef {
         val ref = NodeRef(name)
         require(ref !in fragment.nodeSpecs) { "Duplicate rewrite node name: $name" }
-        fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at)
+        fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at, state.copyDeep(), Vec2(impulse))
         return ref
     }
 
@@ -606,8 +1040,17 @@ class AutoRuleBuilder internal constructor(private val ctx: PairContext) {
         endpoints += (this as AutoEndpoint) to (other as AutoEndpoint)
     }
 
+    fun emit(
+        kind: String,
+        magnitude: Double = ctx.pairEnergy,
+        at: Vec2 = ctx.center,
+        data: Map<String, Double> = emptyMap()
+    ) {
+        events += RewriteEvent(kind, Vec2(at), magnitude, LinkedHashMap(data))
+    }
+
     fun build(): RewriteResult {
-        val out = RewriteResult(fragment = fragment)
+        val out = RewriteResult(fragment = fragment, events = events.toMutableList())
         for ((a, b) in endpoints) {
             when {
                 a is InternalEndpoint && b is InternalEndpoint -> out.fragment.pendingInternalConnections += a.ref to b.ref
@@ -651,7 +1094,12 @@ class RuleBook {
         }
     }
 
-    fun find(a: Node, b: Node): RewriteRule? = rules.firstOrNull { it.signature.matches(a, b) }
+    fun find(a: Node, b: Node): RewriteRule? = findMatch(a, b)?.rule
+
+    fun findMatch(a: Node, b: Node): RuleMatch? =
+        rules.firstNotNullOfOrNull { rule ->
+            rule.signature.bind(a, b)?.let { RuleMatch(rule, it) }
+        }
 }
 
 fun rules(block: RuleBook.() -> Unit): RuleBook = RuleBook().apply(block)
@@ -660,60 +1108,126 @@ enum class ActivationOrder {
     FIRST_FOUND,
     LEFTMOST_BY_ID,
     RIGHTMOST_BY_ID,
-    RANDOM
+    RANDOM,
+    HIGHEST_PAIR_ENERGY,
+    LOWEST_PAIR_ENERGY
+}
+
+data class PairCandidate(val pair: ActivePair, val match: RuleMatch, val context: PairContext) {
+    val rule: RewriteRule get() = match.rule
+}
+
+fun interface PairSelector {
+    fun select(net: Net, candidates: List<PairCandidate>): PairCandidate?
+}
+
+object PairSelectors {
+    val firstFound = PairSelector { _, candidates -> candidates.firstOrNull() }
+    val leftmostById = PairSelector { _, candidates -> candidates.minByOrNull { minOf(it.context.first.id, it.context.second.id) } }
+    val rightmostById = PairSelector { _, candidates -> candidates.maxByOrNull { maxOf(it.context.first.id, it.context.second.id) } }
+    val highestPairEnergy = PairSelector { _, candidates -> candidates.maxByOrNull { it.context.pairEnergy } }
+    val lowestPairEnergy = PairSelector { _, candidates -> candidates.minByOrNull { it.context.pairEnergy } }
+
+    fun random(random: Random = Random.Default): PairSelector =
+        PairSelector { _, candidates ->
+            if (candidates.isEmpty()) null else candidates[random.nextInt(candidates.size)]
+        }
+
+    fun nearest(point: Vec2): PairSelector =
+        PairSelector { _, candidates ->
+            candidates.minByOrNull { Vec2(it.context.center).distance(point) }
+        }
+
+    fun from(order: ActivationOrder): PairSelector = when (order) {
+        ActivationOrder.FIRST_FOUND -> firstFound
+        ActivationOrder.LEFTMOST_BY_ID -> leftmostById
+        ActivationOrder.RIGHTMOST_BY_ID -> rightmostById
+        ActivationOrder.RANDOM -> random()
+        ActivationOrder.HIGHEST_PAIR_ENERGY -> highestPairEnergy
+        ActivationOrder.LOWEST_PAIR_ENERGY -> lowestPairEnergy
+    }
 }
 
 class Reducer(
     private val rules: RuleBook,
-    private val order: ActivationOrder = ActivationOrder.FIRST_FOUND,
+    private val selector: PairSelector = PairSelectors.firstFound,
     private val layout: LayoutConfig = LayoutConfig()
 ) {
-    fun step(net: Net): Boolean {
-        val pair = selectPair(net) ?: return false
-        val rule = rules.find(pair.left, pair.right) ?: return false
-        apply(net, pair, rule)
-        return true
+    constructor(
+        rules: RuleBook,
+        order: ActivationOrder,
+        layout: LayoutConfig = LayoutConfig()
+    ) : this(rules, PairSelectors.from(order), layout)
+
+    fun step(net: Net): Boolean = stepDetailed(net) != null
+
+    fun stepDetailed(net: Net): ReductionStep? {
+        val candidate = selectCandidate(net) ?: return null
+        return apply(net, candidate)
     }
 
     fun reduce(net: Net, maxSteps: Int = Int.MAX_VALUE, onStep: ((Int, Net) -> Unit)? = null): Int {
         var steps = 0
-        while (steps < maxSteps && step(net)) {
+        while (steps < maxSteps && stepDetailed(net) != null) {
             steps++
             onStep?.invoke(steps, net)
         }
         return steps
     }
 
-    private fun selectPair(net: Net): ActivePair? {
-        val pairs = net.activePairs().filter { rules.find(it.left, it.right) != null }
-        if (pairs.isEmpty()) return null
-        return when (order) {
-            ActivationOrder.FIRST_FOUND -> pairs.first()
-            ActivationOrder.LEFTMOST_BY_ID -> pairs.minBy { minOf(it.left.id, it.right.id) }
-            ActivationOrder.RIGHTMOST_BY_ID -> pairs.maxBy { maxOf(it.left.id, it.right.id) }
-            ActivationOrder.RANDOM -> pairs.random()
+    fun reduceDetailed(
+        net: Net,
+        maxSteps: Int = Int.MAX_VALUE,
+        onStep: ((Int, Net, ReductionStep) -> Unit)? = null
+    ): Int {
+        var steps = 0
+        while (steps < maxSteps) {
+            val detail = stepDetailed(net) ?: break
+            steps++
+            onStep?.invoke(steps, net, detail)
         }
+        return steps
     }
 
-    private fun apply(net: Net, pair: ActivePair, rule: RewriteRule) {
-        val (a, b) = pair
-        val pa = net.positionOf(a)
-        val pb = net.positionOf(b)
-        val center = (pa + pb) / 2.0f
-        val radius = max((pb - pa).length().toDouble() / 2.0, 12.0)
+    private fun selectCandidate(net: Net): PairCandidate? =
+        selector.select(net, activeCandidates(net))
 
-        val context = PairContext(
-            first = a,
-            second = b,
-            firstAuxPeers = (0 until a.type.auxPorts).map { net.connected(a.aux(it)) },
-            secondAuxPeers = (0 until b.type.auxPorts).map { net.connected(b.aux(it)) },
-            center = center,
-            radius = radius
+    private fun activeCandidates(net: Net): List<PairCandidate> =
+        net.activePairs().mapNotNull { pair ->
+            rules.findMatch(pair.left, pair.right)?.let { match ->
+                val context = contextFor(net, match.binding.first, match.binding.second)
+                PairCandidate(pair, match, context)
+            }
+        }
+
+    private fun contextFor(net: Net, first: Node, second: Node): PairContext {
+        val pa = net.positionOf(first)
+        val pb = net.positionOf(second)
+        val delta = pb - pa
+        val deltaLength = max(delta.length(), 0.0001f)
+        val axis = if (deltaLength < 1e-4f) vec(1.0, 0.0) else Vec2(delta).normalize()
+        val normal = vec(-axis.y, axis.x)
+        return PairContext(
+            first = first,
+            second = second,
+            firstAuxPeers = (0 until first.type.auxPorts).map { net.connected(first.aux(it)) },
+            secondAuxPeers = (0 until second.type.auxPorts).map { net.connected(second.aux(it)) },
+            center = (pa + pb) / 2.0f,
+            radius = max((pb - pa).length().toDouble() / 2.0, 12.0),
+            firstVelocity = net.velocityOf(first),
+            secondVelocity = net.velocityOf(second),
+            axis = axis,
+            normal = normal
         )
-        val out = rule.rewrite(context)
+    }
 
-        net.remove(a)
-        net.remove(b)
+    private fun apply(net: Net, candidate: PairCandidate): ReductionStep {
+        val pair = candidate.pair
+        val out = candidate.rule.rewrite(candidate.context)
+
+        net.incrementAges(1.0)
+        net.remove(pair.left)
+        net.remove(pair.right)
 
         for ((p, q) in out.passthroughs) {
             if (net.connected(p) == null && net.connected(q) == null) {
@@ -721,7 +1235,7 @@ class Reducer(
             }
         }
 
-        val embed = net.absorb(out.fragment, Placement(center, radius))
+        val embed = net.absorb(out.fragment, Placement(candidate.context.center, candidate.context.radius))
 
         for ((newPortRef, oldPeer) in out.reconnections) {
             val newPort = embed[newPortRef.node].ports[newPortRef.portIndex]
@@ -731,6 +1245,14 @@ class Reducer(
         }
 
         net.relax(iterations = 8, config = layout)
+        return ReductionStep(
+            ruleName = candidate.rule.name,
+            context = candidate.context,
+            swapped = candidate.match.binding.swapped,
+            removedNodeIds = listOf(pair.left.id, pair.right.id),
+            createdNodeIds = embed.nodes.map { it.id },
+            events = out.events.map { RewriteEvent(it.kind, Vec2(it.at), it.magnitude, LinkedHashMap(it.data)) }
+        )
     }
 }
 
@@ -752,6 +1274,140 @@ object Types {
 fun Net.writeSvg(path: String, width: Int = 900, height: Int = 700) {
     java.io.File(path).writeText(toSvg(width, height))
 }
+
+fun Box.showInteractionNet(
+    net: Net,
+    channel: String = "interaction-net",
+    summaryChannel: String? = "$channel-summary",
+    title: String = "Interaction net",
+    w: Double = 920.0,
+    h: Double = 560.0,
+    fitToSize: Boolean = true
+): List<FLine> {
+    val rendered = net.toFLines()
+    lines(rendered, channel = channel, w = w, h = h, fitToSize = fitToSize)
+    summaryChannel?.let { display(it, net.summaryHtml(title = title)) }
+    return rendered
+}
+
+fun Box.showInteractionSummary(
+    channel: String = "interaction-net-summary",
+    vararg cards: String
+) {
+    display(channel, interactionSummaryGrid(*cards))
+}
+
+fun Box.showInteractionOverview(
+    graphicLines: List<FLine>,
+    cards: List<String>,
+    channel: String = "interaction-net-overview",
+    graphicTitle: String = "Comparison",
+    graphicWidth: Double = 1040.0,
+    graphicHeight: Double = 340.0
+): String {
+    val html = interactionOverviewHtml(
+        cards = cards,
+        graphicHtml = drawToSVG(graphicLines, graphicWidth, graphicHeight),
+        graphicTitle = graphicTitle
+    )
+    display(channel, html)
+    return html
+}
+
+fun interactionSummaryGrid(vararg cards: String): String {
+    val content = cards.filter { it.isNotBlank() }.joinToString("")
+    return """
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;">
+            $content
+        </div>
+    """.trimIndent()
+}
+
+private fun interactionOverviewHtml(
+    cards: List<String>,
+    graphicHtml: String,
+    graphicTitle: String
+): String = """
+    <div style="display:flex;flex-direction:column;gap:12px;">
+        ${interactionSummaryGrid(*cards.toTypedArray())}
+        <div style="padding:12px;background:linear-gradient(180deg,#0d1219,#090d12);border:1px solid #202b38;border-radius:10px;">
+            <div style="font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#91a4ba;">${escapeInteractionHtml(graphicTitle)}</div>
+            <div style="margin-top:10px;">$graphicHtml</div>
+        </div>
+    </div>
+""".trimIndent()
+
+fun ReductionStep.summaryHtml(title: String = "Reduction step"): String {
+    val removed = if (removedNodeIds.isEmpty()) "none" else removedNodeIds.joinToString(", ")
+    val created = if (createdNodeIds.isEmpty()) "none" else createdNodeIds.joinToString(", ")
+    val eventsHtml = if (events.isEmpty()) {
+        """<div style="margin-top:10px;color:#91a4ba;">No emitted rewrite events.</div>"""
+    } else {
+        events.joinToString(
+            prefix = """<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">""",
+            postfix = "</div>"
+        ) { event ->
+            """
+                <div style="padding:6px 8px;background:#101822;border:1px solid #1e2a39;border-radius:7px;color:#dce6f3;">
+                    ${escapeInteractionHtml(event.kind)} @ ${fmt(event.magnitude)}
+                </div>
+            """.trimIndent()
+        }
+    }
+    return interactionSummaryCard(
+        title = title,
+        body = """
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;">
+                ${interactionMetric("rule", escapeInteractionHtml(ruleName))}
+                ${interactionMetric("swapped", if (swapped) "yes" else "no")}
+                ${interactionMetric("pair energy", fmt(context.pairEnergy))}
+            </div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="padding:8px 10px;background:#101822;border:1px solid #1e2a39;border-radius:7px;color:#dce6f3;">
+                    <strong style="color:#91a4ba;">removed</strong>: ${escapeInteractionHtml(removed)}
+                </div>
+                <div style="padding:8px 10px;background:#101822;border:1px solid #1e2a39;border-radius:7px;color:#dce6f3;">
+                    <strong style="color:#91a4ba;">created</strong>: ${escapeInteractionHtml(created)}
+                </div>
+            </div>
+            $eventsHtml
+        """.trimIndent()
+    )
+}
+
+private fun FLine.circle(cx: Double, cy: Double, r: Double, segments: Int = 24) {
+    for (j in 0..segments) {
+        val a = 2.0 * PI * j / segments
+        val nx = cx + r * cos(a)
+        val ny = cy + r * sin(a)
+        if (j == 0) moveTo(nx, ny) else lineTo(nx, ny)
+    }
+    close()
+}
+
+private fun fmt(v: Number): String = String.format(Locale.US, "%.2f", v.toDouble())
+
+private fun wrapUnit(v: Double): Double = ((v % 1.0) + 1.0) % 1.0
+
+private fun escapeInteractionHtml(s: String): String = s
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\"", "&quot;")
+
+private fun interactionMetric(label: String, value: String): String = """
+    <div style="padding:8px 10px;background:#101822;border:1px solid #1e2a39;border-radius:7px;">
+        <div style="font-size:11px;letter-spacing:0.04em;text-transform:uppercase;color:#91a4ba;">${escapeInteractionHtml(label)}</div>
+        <div style="margin-top:4px;font-size:15px;color:#f5f8fd;">$value</div>
+    </div>
+""".trimIndent()
+
+private fun interactionSummaryCard(title: String, body: String): String = """
+    <div style="font-family:monospace;background:linear-gradient(180deg,#111720,#0b0f15);color:#e7edf5;border:1px solid #223041;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#dce6f3;">${escapeInteractionHtml(title)}</div>
+        <div style="margin-top:10px;">$body</div>
+    </div>
+""".trimIndent()
 
 // =========================
 // Lambda-oriented helpers
@@ -784,64 +1440,210 @@ object Lambda {
     val ROOT = Types.agent("ROOT", 0)
     val CONST = Types.agent("CONST", 0)
 
+    private fun PairContext.structuralEcho(nodeOrdinal: Int, branch: Int, attenuation: Double = 0.9): NodeState =
+        stateCopy(nodeOrdinal).split(
+            parts = 2,
+            branch = branch,
+            attenuation = attenuation,
+            hueSpread = 0.05,
+            phaseSpread = 0.12,
+            ageDelta = 1.0
+        )
+
+    private fun PairContext.operatorTrace(nodeOrdinal: Int, branch: Int, attenuation: Double = 0.82): NodeState =
+        stateCopy(nodeOrdinal).split(
+            parts = 2,
+            branch = branch,
+            attenuation = attenuation,
+            hueSpread = 0.08,
+            phaseSpread = 0.16,
+            ageDelta = 1.0
+        )
+
+    private fun PairContext.decayOf(nodeOrdinal: Int, branch: Int): NodeState =
+        stateCopy(nodeOrdinal).split(
+            parts = 2,
+            branch = branch,
+            attenuation = 0.55,
+            hueSpread = 0.02,
+            phaseSpread = 0.04,
+            ageDelta = 1.0
+        ).evolved(energyBias = 0.05)
+
     fun rules(): RuleBook = rules {
         // Linear beta: APP(fun,arg) ⟂ LAM(binder,body)
-        autoRule("beta-linear", APP, LAM) {
+        autoRule("beta-linear", APP, LAM) { ctx ->
             ext(1, 1) to ext(0, 0) // lambda body becomes the result in the application's context
             ext(1, 0) to ext(0, 1) // binder is connected to the application argument
+            emit(
+                "beta",
+                magnitude = ctx.pairEnergy,
+                data = mapOf(
+                    "energy" to ctx.pairEnergy,
+                    "age" to ctx.blendedState().age
+                )
+            )
         }
 
         // ERASE against atoms: delete both sides and reconnect nothing.
-        autoRule("erase-var", ERASE, VAR) {}
-        autoRule("erase-const", ERASE, CONST) {}
-        autoRule("erase-root", ERASE, ROOT) {}
+        autoRule("erase-var", ERASE, VAR) { ctx ->
+            emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
+        }
+        autoRule("erase-const", ERASE, CONST) { ctx ->
+            emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
+        }
+        autoRule("erase-root", ERASE, ROOT) { ctx ->
+            emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
+        }
 
         // ERASE against structure: recursively erase each auxiliary subtree.
-        autoRule("erase-app", ERASE, APP) {
-            val eFun = node("ef", ERASE, at = vec(-18.0, -16.0))
-            val eArg = node("ea", ERASE, at = vec(18.0, -16.0))
+        autoRule("erase-app", ERASE, APP) { ctx ->
+            val eFun = node(
+                "ef",
+                ERASE,
+                at = vec(-18.0, -16.0),
+                state = ctx.decayOf(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val eArg = node(
+                "ea",
+                ERASE,
+                at = vec(18.0, -16.0),
+                state = ctx.decayOf(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             principal(eFun) to ext(1, 0)
             principal(eArg) to ext(1, 1)
+            emit("prune", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-        autoRule("erase-lam", ERASE, LAM) {
-            val eBinder = node("eb", ERASE, at = vec(-18.0, -16.0))
-            val eBody = node("ebody", ERASE, at = vec(18.0, -16.0))
+        autoRule("erase-lam", ERASE, LAM) { ctx ->
+            val eBinder = node(
+                "eb",
+                ERASE,
+                at = vec(-18.0, -16.0),
+                state = ctx.decayOf(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val eBody = node(
+                "ebody",
+                ERASE,
+                at = vec(18.0, -16.0),
+                state = ctx.decayOf(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             principal(eBinder) to ext(1, 0)
             principal(eBody) to ext(1, 1)
+            emit("prune", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-        autoRule("erase-dup", ERASE, DUP) {
-            val eLeft = node("el", ERASE, at = vec(-18.0, -16.0))
-            val eRight = node("er", ERASE, at = vec(18.0, -16.0))
+        autoRule("erase-dup", ERASE, DUP) { ctx ->
+            val eLeft = node(
+                "el",
+                ERASE,
+                at = vec(-18.0, -16.0),
+                state = ctx.decayOf(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val eRight = node(
+                "er",
+                ERASE,
+                at = vec(18.0, -16.0),
+                state = ctx.decayOf(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             principal(eLeft) to ext(1, 0)
             principal(eRight) to ext(1, 1)
+            emit("prune", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
         // DUP against atoms: materialize two copies, one for each duplicate demand.
-        autoRule("dup-var", DUP, VAR) {
-            val v1 = node("v1", VAR, at = vec(-22.0, 0.0))
-            val v2 = node("v2", VAR, at = vec(22.0, 0.0))
+        autoRule("dup-var", DUP, VAR) { ctx ->
+            val v1 = node(
+                "v1",
+                VAR,
+                at = vec(-22.0, 0.0),
+                state = ctx.structuralEcho(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val v2 = node(
+                "v2",
+                VAR,
+                at = vec(22.0, 0.0),
+                state = ctx.structuralEcho(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             principal(v1) to ext(0, 0)
             principal(v2) to ext(0, 1)
+            emit("duplicate", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-        autoRule("dup-const", DUP, CONST) {
-            val c1 = node("c1", CONST, at = vec(-22.0, 0.0))
-            val c2 = node("c2", CONST, at = vec(22.0, 0.0))
+        autoRule("dup-const", DUP, CONST) { ctx ->
+            val c1 = node(
+                "c1",
+                CONST,
+                at = vec(-22.0, 0.0),
+                state = ctx.structuralEcho(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val c2 = node(
+                "c2",
+                CONST,
+                at = vec(22.0, 0.0),
+                state = ctx.structuralEcho(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             principal(c1) to ext(0, 0)
             principal(c2) to ext(0, 1)
+            emit("duplicate", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-        autoRule("dup-root", DUP, ROOT) {
-            val r1 = node("r1", ROOT, at = vec(-22.0, 0.0))
-            val r2 = node("r2", ROOT, at = vec(22.0, 0.0))
+        autoRule("dup-root", DUP, ROOT) { ctx ->
+            val r1 = node(
+                "r1",
+                ROOT,
+                at = vec(-22.0, 0.0),
+                state = ctx.structuralEcho(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val r2 = node(
+                "r2",
+                ROOT,
+                at = vec(22.0, 0.0),
+                state = ctx.structuralEcho(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             principal(r1) to ext(0, 0)
             principal(r2) to ext(0, 1)
+            emit("duplicate", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
         // DUP against structure: create two copies of the node and recursive DUPs for each field.
-        autoRule("dup-app", DUP, APP) {
-            val appL = node("appL", APP, at = vec(-34.0, 8.0))
-            val appR = node("appR", APP, at = vec(34.0, 8.0))
-            val dFun = node("dFun", DUP, at = vec(-22.0, -34.0))
-            val dArg = node("dArg", DUP, at = vec(22.0, -34.0))
+        autoRule("dup-app", DUP, APP) { ctx ->
+            val appL = node(
+                "appL",
+                APP,
+                at = vec(-34.0, 8.0),
+                state = ctx.structuralEcho(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val appR = node(
+                "appR",
+                APP,
+                at = vec(34.0, 8.0),
+                state = ctx.structuralEcho(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
+            val dFun = node(
+                "dFun",
+                DUP,
+                at = vec(-22.0, -34.0),
+                state = ctx.operatorTrace(0, 0),
+                impulse = Vec2(ctx.axis).mul((-ctx.radius * 0.35).toFloat())
+            )
+            val dArg = node(
+                "dArg",
+                DUP,
+                at = vec(22.0, -34.0),
+                state = ctx.operatorTrace(0, 1),
+                impulse = Vec2(ctx.axis).mul((ctx.radius * 0.35).toFloat())
+            )
 
             principal(appL) to ext(0, 0)
             principal(appR) to ext(0, 1)
@@ -853,13 +1655,38 @@ object Lambda {
             aux(dFun, 1) to aux(appR, 0)
             aux(dArg, 0) to aux(appL, 1)
             aux(dArg, 1) to aux(appR, 1)
+            emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
-        autoRule("dup-lam", DUP, LAM) {
-            val lamL = node("lamL", LAM, at = vec(-34.0, 8.0))
-            val lamR = node("lamR", LAM, at = vec(34.0, 8.0))
-            val dBinder = node("dBinder", DUP, at = vec(-22.0, -34.0))
-            val dBody = node("dBody", DUP, at = vec(22.0, -34.0))
+        autoRule("dup-lam", DUP, LAM) { ctx ->
+            val lamL = node(
+                "lamL",
+                LAM,
+                at = vec(-34.0, 8.0),
+                state = ctx.structuralEcho(1, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val lamR = node(
+                "lamR",
+                LAM,
+                at = vec(34.0, 8.0),
+                state = ctx.structuralEcho(1, 1),
+                impulse = ctx.branchImpulse(1)
+            )
+            val dBinder = node(
+                "dBinder",
+                DUP,
+                at = vec(-22.0, -34.0),
+                state = ctx.operatorTrace(0, 0),
+                impulse = Vec2(ctx.axis).mul((-ctx.radius * 0.35).toFloat())
+            )
+            val dBody = node(
+                "dBody",
+                DUP,
+                at = vec(22.0, -34.0),
+                state = ctx.operatorTrace(0, 1),
+                impulse = Vec2(ctx.axis).mul((ctx.radius * 0.35).toFloat())
+            )
 
             principal(lamL) to ext(0, 0)
             principal(lamR) to ext(0, 1)
@@ -871,30 +1698,51 @@ object Lambda {
             aux(dBinder, 1) to aux(lamR, 0)
             aux(dBody, 0) to aux(lamL, 1)
             aux(dBody, 1) to aux(lamR, 1)
+            emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
         // A modest custom rule example remains available as the escape hatch.
-        rule("dup-erase-annihilate", DUP, ERASE) { _ ->
-            val e0 = node("e0", ERASE, at = vec(-16.0, 0.0))
-            val e1 = node("e1", ERASE, at = vec(16.0, 0.0))
+        rule("dup-erase-annihilate", DUP, ERASE) { ctx ->
+            val e0 = node(
+                "e0",
+                ERASE,
+                at = vec(-16.0, 0.0),
+                state = ctx.decayOf(0, 0),
+                impulse = ctx.branchImpulse(0)
+            )
+            val e1 = node(
+                "e1",
+                ERASE,
+                at = vec(16.0, 0.0),
+                state = ctx.decayOf(0, 1),
+                impulse = ctx.branchImpulse(1)
+            )
             reconnect(principal(e0), 0, 0)
             reconnect(principal(e1), 0, 1)
+            emit("annihilate", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy))
         }
     }
 
-    /** ((λx. x) c) in the linear fragment. */
-    fun identityAppliedToConstant(): Net = net {
-        val root = node(ROOT, id = "root", at = vec(-180.0, 0.0))
-        val app = node(APP, id = "app", at = vec(-60.0, 0.0))
-        val lam = node(LAM, id = "lam", at = vec(60.0, 0.0))
-        val variable = node(VAR, id = "x", at = vec(180.0, -40.0))
-        val constant = node(CONST, id = "c", at = vec(180.0, 60.0))
+    /**
+     * A minimal APP/LAM bridge demo.
+     *
+     * This is intentionally not a faithful lambda-term encoder. It is just the
+     * smallest valid net that exercises the beta-style APP ⟂ LAM rewrite in this
+     * simplified substrate.
+     */
+    fun betaBridgeDemo(): Net = net {
+        val root = node(ROOT, id = "root", at = vec(-180.0, 0.0), state = NodeState(energy = 0.8, hue = 0.02))
+        val app = node(APP, id = "app", at = vec(-60.0, 0.0), state = NodeState(energy = 1.15, phase = 0.1, hue = -0.03))
+        val lam = node(LAM, id = "lam", at = vec(60.0, 0.0), state = NodeState(energy = 1.05, phase = 0.3, hue = 0.08))
+        val binder = node(VAR, id = "binder", at = vec(180.0, -70.0), state = NodeState(energy = 0.7, phase = 0.45, hue = 0.12))
+        val body = node(VAR, id = "body", at = vec(180.0, 0.0), state = NodeState(energy = 0.95, phase = 0.55, hue = 0.16))
+        val constant = node(CONST, id = "c", at = vec(180.0, 80.0), state = NodeState(energy = 1.3, phase = 0.75, hue = 0.18))
 
         app.principal to lam.principal
         app.aux(0) to root.principal
         app.aux(1) to constant.principal
-        lam.aux(0) to variable.principal
-        lam.aux(1) to variable.principal
+        lam.aux(0) to binder.principal
+        lam.aux(1) to body.principal
     }
 
     /**
@@ -902,10 +1750,10 @@ object Lambda {
      * This is not a full term encoder, but it gives the rewrite system something resource-sensitive to do.
      */
     fun duplicatedConstantDemo(): Net = net {
-        val rootL = node(ROOT, id = "rootL", at = vec(-220.0, -40.0))
-        val rootR = node(ROOT, id = "rootR", at = vec(-220.0, 80.0))
-        val dup = node(DUP, id = "dup", at = vec(-90.0, 20.0))
-        val constant = node(CONST, id = "k", at = vec(60.0, 20.0))
+        val rootL = node(ROOT, id = "rootL", at = vec(-220.0, -40.0), state = NodeState(energy = 0.8, hue = -0.02))
+        val rootR = node(ROOT, id = "rootR", at = vec(-220.0, 80.0), state = NodeState(energy = 0.8, hue = 0.02))
+        val dup = node(DUP, id = "dup", at = vec(-90.0, 20.0), state = NodeState(energy = 1.4, phase = 0.2, hue = 0.0))
+        val constant = node(CONST, id = "k", at = vec(60.0, 20.0), state = NodeState(energy = 1.8, phase = 0.6, hue = 0.14))
 
         dup.principal to constant.principal
         dup.aux(0) to rootL.principal
@@ -914,10 +1762,10 @@ object Lambda {
 
     /** Erase an application tree to demonstrate explicit garbage collection. */
     fun eraseApplicationDemo(): Net = net {
-        val er = node(ERASE, id = "erase", at = vec(-140.0, 0.0))
-        val app = node(APP, id = "app", at = vec(0.0, 0.0))
-        val f = node(CONST, id = "f", at = vec(150.0, -60.0))
-        val x = node(VAR, id = "x", at = vec(150.0, 60.0))
+        val er = node(ERASE, id = "erase", at = vec(-140.0, 0.0), state = NodeState(energy = 0.9, hue = -0.05))
+        val app = node(APP, id = "app", at = vec(0.0, 0.0), state = NodeState(energy = 1.25, phase = 0.1, hue = 0.04))
+        val f = node(CONST, id = "f", at = vec(150.0, -60.0), state = NodeState(energy = 1.1, phase = 0.5, hue = 0.2))
+        val x = node(VAR, id = "x", at = vec(150.0, 60.0), state = NodeState(energy = 0.75, phase = 0.35, hue = -0.08))
 
         er.principal to app.principal
         app.aux(0) to f.principal
@@ -931,25 +1779,26 @@ object Lambda {
 
 fun main() {
     val lambdaRules = Lambda.rules()
+    val reducer = Reducer(lambdaRules, order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 
-    val linear = Lambda.identityAppliedToConstant()
+    val linear = Lambda.betaBridgeDemo()
     linear.relax(20)
     linear.writeSvg("/mnt/data/lambda_linear_before.svg")
-    Reducer(lambdaRules).step(linear)
+    println(reducer.stepDetailed(linear))
     linear.relax(60)
     linear.writeSvg("/mnt/data/lambda_linear_after.svg")
 
     val dupDemo = Lambda.duplicatedConstantDemo()
     dupDemo.relax(20)
     dupDemo.writeSvg("/mnt/data/lambda_dup_before.svg")
-    Reducer(lambdaRules).step(dupDemo)
+    println(reducer.stepDetailed(dupDemo))
     dupDemo.relax(60)
     dupDemo.writeSvg("/mnt/data/lambda_dup_after.svg")
 
     val eraseDemo = Lambda.eraseApplicationDemo()
     eraseDemo.relax(20)
     eraseDemo.writeSvg("/mnt/data/lambda_erase_before.svg")
-    Reducer(lambdaRules).reduce(eraseDemo, maxSteps = 4)
+    reducer.reduceDetailed(eraseDemo, maxSteps = 4) { step, _, detail -> println("step=$step detail=$detail") }
     eraseDemo.relax(60)
     eraseDemo.writeSvg("/mnt/data/lambda_erase_after.svg")
 
