@@ -27,8 +27,10 @@ import java.net.URL
 import java.net.URLClassLoader
 import java.util.concurrent.Executors
 import kotlin.reflect.*
+import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.reflect.jvm.kotlinProperty
+import kotlin.reflect.jvm.isAccessible
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.dependencies.*
 import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
@@ -742,7 +744,8 @@ class KotlinInterface(
 
     class KotlinContext(
         val vars: HashMap<String, KotlinVariableInfo> = HashMap(),
-        val functions: HashMap<String, KotlinFunctionInfo> = HashMap()
+        val functions: HashMap<String, KotlinFunctionInfo> = HashMap(),
+        var generation: Int = 0
     )
 
 
@@ -941,6 +944,9 @@ class KotlinInterface(
                 newSnippets.reverse()
                 refreshVariables(newSnippets)
                 refreshMethods(newSnippets)
+                if (newSnippets.isNotEmpty()) {
+                    context.generation++
+                }
 
                 lastProcessedSnippet = evaluator.lastEvaluatedSnippet
             } catch (e: ReflectiveOperationException) {
@@ -1184,13 +1190,15 @@ class KotlinInterface(
         @Throws(ReflectiveOperationException::class)
         private fun refreshVariables(lines: List<Any>) {
             for (line in lines) {
+                val seen = mutableSetOf<String>()
                 val fields = line.javaClass.declaredFields
-                findVariables(fields, line)
+                findVariables(fields, line, seen)
+                findKotlinProperties(line, seen)
             }
         }
 
         @Throws(IllegalAccessException::class)
-        private fun findVariables(fields: Array<Field>, o: Any) {
+        private fun findVariables(fields: Array<Field>, o: Any, seen: MutableSet<String>) {
             for (field in fields) {
                 val fieldName = field.name
                 if (fieldName.contains("$\$implicitReceiver") || fieldName.contains("script$") || fieldName.endsWith("\$delegate")) {
@@ -1202,12 +1210,35 @@ class KotlinInterface(
                 val descriptor = field.kotlinProperty
                 if (descriptor != null) {
                     context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
+                    seen += descriptor.name
                     val isExported = field.isAnnotationPresent(exported::class.java) ||
                             descriptor.annotations.any { it.annotationClass == exported::class } ||
                             descriptor.getter.annotations.any { it.annotationClass == exported::class }
                     if (isExported) {
                         processExportedProperty(descriptor.name, descriptor, value)
                     }
+                }
+            }
+        }
+
+        private fun findKotlinProperties(o: Any, seen: MutableSet<String>) {
+            for (descriptor in o::class.memberProperties) {
+                val name = descriptor.name
+                if (name in seen || name.contains("$\$implicitReceiver") || name.contains("script$")) continue
+                if (descriptor.parameters.size != 1) continue
+
+                val value = runCatching {
+                    descriptor.isAccessible = true
+                    descriptor.getter.call(o)
+                }.getOrNull() ?: continue
+
+                context.vars[name] = KotlinVariableInfo(value, descriptor, o)
+                seen += name
+
+                val isExported = descriptor.annotations.any { it.annotationClass == exported::class } ||
+                        descriptor.getter.annotations.any { it.annotationClass == exported::class }
+                if (isExported) {
+                    processExportedProperty(name, descriptor, value)
                 }
             }
         }

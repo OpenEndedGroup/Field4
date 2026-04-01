@@ -179,7 +179,12 @@ See [fline_examples](fline_examples.md) for more.
 
 ## "Printing" UI and data visualization
 
-Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code.
+Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code. Field is set up to run a type and current-value driven 'autocomplete' as the cursor moves around the editor. Just to give you an active hint about what you might type (and what those parameters are in the function you are changing), and what value that variable currently has:
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/autoauto.mp4" type="video/mp4">
+</video>
+
 
 Additionally, we can write code that extends and decorates our text editor in a variety of ways. Docs are limited, but this gives us a [Strudel](https://strudel.cc/) feel (in a very different language) without too much work at all:
 

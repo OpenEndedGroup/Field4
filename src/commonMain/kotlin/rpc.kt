@@ -195,12 +195,14 @@ data class SymbolContextRequest(
     val column: Int,
     val position: Int,
     val property: String = "code",
+    val forceRefresh: Boolean = false,
 )
 
 @Serializable
 data class SymbolContextResponse(
     val symbol: String = "",
-    val html: String = ""
+    val html: String = "",
+    val isLiveValue: Boolean = false
 )
 
 @Serializable

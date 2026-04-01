@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
 import java.util.LinkedHashMap
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
+import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
@@ -173,18 +174,45 @@ private fun escapeNotifyHtml(text: String): String {
         .replace("'", "&#39;")
 }
 
-private fun normalizeGeneratedBoxIdCandidate(value: String): String {
-    return value
-        .removeSuffix("_")
-        .replace('_', '-')
+private val generatedBoxIdRegex = Regex(
+    pattern = """\b(B?[0-9a-f]{8}(?:[_-][0-9a-f]{4}){3}[_-][0-9a-f]{12})(?:__\d+)?\b""",
+    options = setOf(RegexOption.IGNORE_CASE)
+)
+
+private data class ContainerSummary(
+    val text: String,
+    val html: String
+)
+
+private fun boxContextLabel(currentBox: Box, targetBox: Box): String {
+    return when {
+        targetBox.name.isNotBlank() -> targetBox.name
+        targetBox.id == currentBox.id -> "this box"
+        else -> "box ${targetBox.id.take(8)}"
+    }
 }
 
-private fun resolveGeneratedBoxLabel(box: Box, rawContainer: String): String? {
-    val candidates = Regex("""\b([A-Za-z][A-Za-z0-9_]*?)(?:__\d+)\b""")
+private fun canonicalGeneratedBoxIdCandidate(value: String): String {
+    val canonical = value
+        .removeSuffix("_")
+        .replace("_", "")
+        .replace("-", "")
+        .lowercase()
+    return canonical
+}
+
+private fun canonicalSessionBoxId(value: String): String {
+    return value
+        .replace("_", "")
+        .replace("-", "")
+        .lowercase()
+}
+
+private fun resolveGeneratedBoxSummary(box: Box, rawContainer: String): ContainerSummary? {
+    val candidates = generatedBoxIdRegex
         .findAll(rawContainer)
         .map { it.groupValues[1] }
         .toList()
-    if (candidates.isEmpty()) return null
 
     val sessionBoxes = buildList {
         add(box)
@@ -193,24 +221,72 @@ private fun resolveGeneratedBoxLabel(box: Box, rawContainer: String): String? {
         }
     }
 
+    lprintln(
+        "debug,symbol-context",
+        "resolveGeneratedBoxSummary raw='$rawContainer' currentBox='${box.id}' currentName='${box.name}' candidates=$candidates sessionBoxes=${sessionBoxes.map { "${it.id}:${it.name}" }}"
+    )
+
     candidates.forEach { candidate ->
-        val normalized = normalizeGeneratedBoxIdCandidate(candidate)
-        val match = sessionBoxes.firstOrNull { it.id == normalized }
+        val canonical = canonicalGeneratedBoxIdCandidate(candidate)
+        val match = sessionBoxes.firstOrNull { canonicalSessionBoxId(it.id) == canonical }
         if (match != null) {
-            return match.name.ifBlank { match.id }
+            val label = boxContextLabel(box, match)
+            lprintln(
+                "debug,symbol-context",
+                "resolveGeneratedBoxSummary matched candidate='$candidate' canonical='$canonical' to box='${match.id}' name='${match.name}' label='$label'"
+            )
+            return ContainerSummary(
+                text = label,
+                html = "<i>${escapeNotifyHtml(label)}</i>"
+            )
         }
     }
+
+    val rawCanonical = canonicalGeneratedBoxIdCandidate(rawContainer)
+        .filter { it in '0'..'9' || it in 'a'..'f' }
+    if (rawCanonical.length >= 32) {
+        val match = sessionBoxes.firstOrNull { rawCanonical.contains(canonicalSessionBoxId(it.id)) }
+        if (match != null) {
+            val label = boxContextLabel(box, match)
+            lprintln(
+                "debug,symbol-context",
+                "resolveGeneratedBoxSummary matched rawCanonical='$rawCanonical' to box='${match.id}' name='${match.name}' label='$label'"
+            )
+            return ContainerSummary(
+                text = label,
+                html = "<i>${escapeNotifyHtml(label)}</i>"
+            )
+        }
+    }
+
+    lprintln(
+        "debug,symbol-context",
+        "resolveGeneratedBoxSummary no-match raw='$rawContainer' rawCanonical='$rawCanonical'"
+    )
 
     return null
 }
 
-private fun prettifyContainerSummary(box: Box, rawContainer: String): String {
-    resolveGeneratedBoxLabel(box, rawContainer)?.let { return it }
-    return rawContainer.replace(Regex("""\b([A-Za-z][A-Za-z0-9_]*?)__\d+\b"""), "$1")
+private fun prettifyContainerSummary(box: Box, rawContainer: String): ContainerSummary {
+    resolveGeneratedBoxSummary(box, rawContainer)?.let {
+        lprintln("debug,symbol-context", "prettifyContainerSummary resolved raw='$rawContainer' -> text='${it.text}'")
+        return it
+    }
+    val text = rawContainer.replace(generatedBoxIdRegex) { matchResult ->
+        matchResult.groupValues[1]
+            .removeSuffix("_")
+            .replace('_', '-')
+            .replaceFirstChar { it.lowercase() }
+    }
+    lprintln("debug,symbol-context", "prettifyContainerSummary fallback raw='$rawContainer' -> text='$text'")
+    return ContainerSummary(
+        text = text,
+        html = escapeNotifyHtml(text)
+    )
 }
 
-private fun descriptorContainerSummary(box: Box, descriptor: DeclarationDescriptor): String {
-    val container = descriptor.containingDeclaration ?: return ""
+private fun descriptorContainerSummary(box: Box, descriptor: DeclarationDescriptor): ContainerSummary? {
+    val container = descriptor.containingDeclaration ?: return null
     val raw = when (container) {
         is PackageViewDescriptor -> container.fqName.asString()
         else -> completionDescriptorRenderer.render(container)
@@ -229,16 +305,96 @@ private fun buildFunctionSymbolContextHtml(box: Box, descriptor: FunctionDescrip
         append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
         append(escapeNotifyHtml(renderFunctionCompletionSignature(descriptor)))
         append("</code></div>")
-        if (container.isNotBlank()) {
+        if (container != null && container.text.isNotBlank()) {
             append("<div style='color:#777;'>declared in ")
-            append(escapeNotifyHtml(container))
+            append(container.html)
             append("</div>")
         }
         append("</div>")
     }
 }
 
-private fun buildVariableSymbolContextHtml(box: Box, descriptor: VariableDescriptor): String {
+private fun shouldShowVariableValueDisclosure(value: Any?): Boolean {
+    return when (value) {
+        null,
+        is Number,
+        is Boolean,
+        is Char,
+        is String,
+        is Enum<*> -> false
+        else -> true
+    }
+}
+
+private fun renderVariableValueDisclosure(value: Any?): String {
+    if (!shouldShowVariableValueDisclosure(value)) return ""
+    val rendered = runCatching { value.h }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: return ""
+    return "<div class='afield-symbol-context-disclosure-body' style='margin-top:4px; overflow:auto;'>$rendered</div>"
+}
+
+private fun renderVariableLocationSection(
+    label: String,
+    container: ContainerSummary?,
+    value: Any?
+): String {
+    if (container == null || container.text.isBlank()) return ""
+    val locationHtml = "<span style='color:#777;'>$label ${container.html}</span>"
+    val disclosure = renderVariableValueDisclosure(value)
+    if (disclosure.isBlank()) {
+        return "<div>$locationHtml</div>"
+    }
+    return buildString {
+        append("<details class='afield-symbol-context-disclosure' style='margin-top:2px;'>")
+        append("<summary tabindex='-1' onfocus='this.blur()' style='color:#777; cursor:pointer; user-select:none; outline:none; box-shadow:none;'>")
+        append(locationHtml)
+        append("</summary>")
+        append(disclosure)
+        append("</details>")
+    }
+}
+
+private fun buildRuntimeVariableSymbolContextHtml(
+    box: Box,
+    info: KotlinInterface.KotlinVariableInfo,
+    declarationOverride: String? = null,
+    locationLabel: String = "declared in"
+): String {
+    val declaration = declarationOverride
+        ?: runCatching { KotlinInterface.shortenType(info.descriptor.toString()) }
+            .getOrDefault(info.toString(true))
+    val rawLocation = KotlinInterface.shortenType(info.line.javaClass.name)
+    val location = prettifyContainerSummary(box, rawLocation)
+    lprintln(
+        "debug,symbol-context",
+        "buildRuntimeVariableSymbolContextHtml symbol='${info.name}' declaration='$declaration' rawLocation='$rawLocation' location='${location.text}' valueType='${info.value?.javaClass?.name}'"
+    )
+    return buildString {
+        append("<div style='display:inline-block; max-width: 620px;'>")
+        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+        append(escapeNotifyHtml(declaration))
+        append("</code></div>")
+        append(renderVariableLocationSection(label = locationLabel, container = location, value = info.value))
+        append("</div>")
+    }
+}
+
+private fun buildVariableSymbolContextHtml(
+    box: Box,
+    descriptor: VariableDescriptor,
+    runtimeInfo: KotlinInterface.KotlinVariableInfo? = null
+): String {
+    if (runtimeInfo != null) {
+        return buildRuntimeVariableSymbolContextHtml(
+            box = box,
+            info = runtimeInfo,
+            declarationOverride = completionDescriptorRenderer.render(descriptor),
+            locationLabel = "declared in"
+        )
+    }
+
     val declaration = completionDescriptorRenderer.render(descriptor)
     val container = descriptorContainerSummary(box, descriptor)
     return buildString {
@@ -246,11 +402,7 @@ private fun buildVariableSymbolContextHtml(box: Box, descriptor: VariableDescrip
         append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
         append(escapeNotifyHtml(declaration))
         append("</code></div>")
-        if (container.isNotBlank()) {
-            append("<div style='color:#777;'>declared in ")
-            append(escapeNotifyHtml(container))
-            append("</div>")
-        }
+        append(renderVariableLocationSection(label = "declared in", container = container, value = null))
         append("</div>")
     }
 }
@@ -259,12 +411,23 @@ private fun buildSymbolContextHtml(
     box: Box,
     descriptor: DeclarationDescriptor?,
     fallbackDisplay: String,
-    fallbackDocumentation: String
+    fallbackDocumentation: String,
+    runtimeVariableInfo: KotlinInterface.KotlinVariableInfo? = null
 ): String {
+    runtimeVariableInfo?.let {
+        val declarationOverride = (descriptor as? VariableDescriptor)?.let(completionDescriptorRenderer::render)
+        return buildRuntimeVariableSymbolContextHtml(
+            box = box,
+            info = it,
+            declarationOverride = declarationOverride,
+            locationLabel = "declared in"
+        )
+    }
+
     descriptor?.let {
         return when (it) {
             is FunctionDescriptor -> buildFunctionSymbolContextHtml(box, it)
-            is VariableDescriptor -> buildVariableSymbolContextHtml(box, it)
+            is VariableDescriptor -> buildVariableSymbolContextHtml(box, it, runtimeVariableInfo)
             else -> {
                 val rendered = completionDescriptorRenderer.render(it)
                 val container = descriptorContainerSummary(box, it)
@@ -273,9 +436,9 @@ private fun buildSymbolContextHtml(
                     append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
                     append(escapeNotifyHtml(rendered))
                     append("</code></div>")
-                    if (container.isNotBlank()) {
+                    if (container != null && container.text.isNotBlank()) {
                         append("<div style='color:#777;'>declared in ")
-                        append(escapeNotifyHtml(container))
+                        append(container.html)
                         append("</div>")
                     }
                     append("</div>")
@@ -324,11 +487,36 @@ private fun completionCandidateName(variant: SourceCodeCompletionVariant): Strin
         .trim()
 }
 
+private fun symbolContextResponse(symbol: String = "", html: String = ""): SymbolContextResponse {
+    return SymbolContextResponse(
+        symbol = symbol,
+        html = html,
+        isLiveValue = html.contains("afield-symbol-context-disclosure")
+    )
+}
+
+private suspend fun isolatedSymbolContextComplete(
+    box: Box,
+    allCode: String,
+    position: Int
+): KotlinInterface.CompletionResult {
+    val analysisKi = KotlinInterface(
+        implicitReceivers = listOf(KotlinType(Box::class)),
+        filePrefix = "${box.id}_symbol_context"
+    )
+    analysisKi.associatedBox = box
+    Box.withBoxContext(box) {
+        analysisKi.exec(intro, implicits = listOf(box))
+    }
+    return analysisKi.complete(allCode, position)
+}
+
 private data class SymbolContextCacheKey(
     val property: String,
     val codeHash: Int,
     val codeLength: Int,
-    val cursor: Int
+    val cursor: Int,
+    val contextGeneration: Int
 )
 
 private object KotlinSymbolContextCache {
@@ -357,31 +545,27 @@ private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContex
             append(escapeNotifyHtml(info.toString(true)))
             append("</code></div>")
             append("<div style='color:#777;'>defined in ")
-            append(escapeNotifyHtml(location))
+            append(location.html)
             append("</div>")
             append("</div>")
         }
-        return SymbolContextResponse(symbol = symbol, html = html)
+        return symbolContextResponse(symbol = symbol, html = html)
     }
 
     box.ki.context.vars[symbol]?.let { info ->
-        val declaration = runCatching { KotlinInterface.shortenType(info.descriptor.toString()) }
-            .getOrDefault(info.toString(true))
-        val location = prettifyContainerSummary(box, KotlinInterface.shortenType(info.line.javaClass.name))
-        val html = buildString {
-            append("<div style='display:inline-block; max-width: 620px;'>")
-            append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
-            append(escapeNotifyHtml(declaration))
-            append("</code></div>")
-            append("<div style='color:#777;'>defined in ")
-            append(escapeNotifyHtml(location))
-            append("</div>")
-            append("</div>")
-        }
-        return SymbolContextResponse(symbol = symbol, html = html)
+        return symbolContextResponse(
+            symbol = symbol,
+            html = buildRuntimeVariableSymbolContextHtml(
+                box = box,
+                info = info,
+                declarationOverride = runCatching { KotlinInterface.shortenType(info.descriptor.toString()) }
+                    .getOrDefault(info.toString(true)),
+                locationLabel = "defined in"
+            )
+        )
     }
 
-    return SymbolContextResponse(symbol = symbol, html = "")
+    return symbolContextResponse(symbol = symbol, html = "")
 }
 
 private fun renderPrintedOutput(content: Any?): String {
@@ -497,7 +681,7 @@ class KotlinExecution : BoxExecution {
         box._currentlyExecutingFragment = true
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
-            execute(box, code, reply, originSession, 0, finishedHandler = {
+            execute(box, code, reply, originSession, 0, runSetupBlocks = false, finishedHandler = {
                 box._currentlyExecutingFragment = false
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
@@ -596,6 +780,7 @@ class KotlinExecution : BoxExecution {
         reply: ((Message) -> Unit)?,
         originSession: WebSocketSession?,
         ln: Int,
+        runSetupBlocks: Boolean = true,
         finishedHandler: () -> Unit = {},
         handleReturn: (Any?) -> Unit
     ) {
@@ -651,6 +836,13 @@ class KotlinExecution : BoxExecution {
                 var first = true
                 compileError.forEach {
                     lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
+                    it.location?.start?.line?.let { lineNumber ->
+                        val lineIndex = lineNumber - 1
+                        val sourceLine = code.lines().getOrNull(lineIndex)
+                        if (sourceLine != null) {
+                            lprintln("debug,execution", "compile error source line $lineNumber: $sourceLine")
+                        }
+                    }
                     if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                         var message = it.message
                         message = improveMessage(box, message)
@@ -723,7 +915,7 @@ class KotlinExecution : BoxExecution {
                     originSession = originSession
                 )
 
-            }, implicits = listOf(box))
+            }, implicits = listOf(box), runSetupBlocks = runSetupBlocks)
 
             if (!hasError) {
                 var size = 0
@@ -1051,20 +1243,32 @@ class KotlinExecution : BoxExecution {
             property = request.property,
             codeHash = request.allCode.hashCode(),
             codeLength = request.allCode.length,
-            cursor = request.position
+            cursor = request.position,
+            contextGeneration = box.ki.context.generation
         )
-        KotlinSymbolContextCache.get(cacheKey)?.let { return it }
+        if (!request.forceRefresh) {
+            KotlinSymbolContextCache.get(cacheKey)?.let { return it }
+        }
 
         val bounds = findSymbolBoundsAt(request.allCode, request.position)
         if (bounds == null || bounds.text.isBlank()) {
             val empty = SymbolContextResponse()
-            KotlinSymbolContextCache.put(cacheKey, empty)
+            if (!request.forceRefresh) {
+                KotlinSymbolContextCache.put(cacheKey, empty)
+            }
             return empty
         }
 
         val symbol = bounds.text
+        if (request.forceRefresh) {
+            val runtimeOnly = fallbackRuntimeSymbolContext(box, symbol)
+            if (runtimeOnly.html.isNotBlank()) {
+                return runtimeOnly
+            }
+        }
+
         val response = runCatching {
-            when (val completion = runBlocking { box.ki.complete(request.allCode, bounds.end) }) {
+            when (val completion = runBlocking { isolatedSymbolContextComplete(box, request.allCode, bounds.end) }) {
                 is KotlinInterface.CompletionResult.Success -> {
                     val bestVariant = completion.metadata
                         .firstOrNull { completionCandidateName(it) == symbol }
@@ -1072,13 +1276,14 @@ class KotlinExecution : BoxExecution {
 
                     if (bestVariant != null) {
                         val descriptor = bestVariant.extraInfo["original"] as? DeclarationDescriptor
-                        SymbolContextResponse(
+                        symbolContextResponse(
                             symbol = symbol,
                             html = buildSymbolContextHtml(
                                 box = box,
                                 descriptor = descriptor,
                                 fallbackDisplay = bestVariant.displayText,
-                                fallbackDocumentation = bestVariant.tail
+                                fallbackDocumentation = bestVariant.tail,
+                                runtimeVariableInfo = box.ki.context.vars[symbol]
                             )
                         )
                     } else {
@@ -1092,7 +1297,9 @@ class KotlinExecution : BoxExecution {
             fallbackRuntimeSymbolContext(box, symbol)
         }
 
-        KotlinSymbolContextCache.put(cacheKey, response)
+        if (!request.forceRefresh && !response.isLiveValue) {
+            KotlinSymbolContextCache.put(cacheKey, response)
+        }
         return response
     }
 

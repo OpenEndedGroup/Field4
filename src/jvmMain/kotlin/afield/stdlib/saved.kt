@@ -13,7 +13,7 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class   SavedJsonValue<T>(
+class SavedJsonValue<T>(
     private val serializer: KSerializer<T>,
     private val defaultValue: () -> T
 ) : ReadWriteProperty<Any?, T> {

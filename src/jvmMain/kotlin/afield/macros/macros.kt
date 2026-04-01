@@ -14,7 +14,8 @@ suspend fun standardExecutionPractice(
     onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onCompileError default handler $it") },
     onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onEvalError default handler $it") },
     onEvalException: (Throwable) -> Unit = { lprintln("error,macros", "onEvalException default handler $it"); throw it },
-    implicits: List<Any> = emptyList()
+    implicits: List<Any> = emptyList(),
+    runSetupBlocks: Boolean = true
 ): List<ResultValue?> {
 
     var lines = s.lines()
@@ -38,8 +39,10 @@ suspend fun standardExecutionPractice(
             line.replace("__line__", "${ll - 1}")
         }.joinToString("\n")
 
-        checkPreambleAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
-        checkIntroductionAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+        if (runSetupBlocks) {
+            checkPreambleAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+            checkIntroductionAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+        }
         val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
         at = it
         result.add(ret)

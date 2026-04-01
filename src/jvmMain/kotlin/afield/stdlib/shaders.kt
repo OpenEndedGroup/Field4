@@ -45,7 +45,7 @@ var Box.meshShader by Inheritance<MeshModulePointer?>()
 var Box._meshShader by Delegation<MeshModulePointer?>()
 
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
-    defaultValue = {HashMap<String, Any>()})
+    defaultValue = { HashMap<String, Any>() })
 
 // ------------------------------
 // Public macro placeholders (expanded by MacroRegistry)
@@ -382,7 +382,10 @@ private fun runShaderReloadAction(
         val success = try {
             reload(selected)
         } catch (t: Throwable) {
-            lprintln("error,graphics", "unexpected error reloading shader in '${selected.name}' (${selected.id}): ${t.message}")
+            lprintln(
+                "error,graphics",
+                "unexpected error reloading shader in '${selected.name}' (${selected.id}): ${t.message}"
+            )
             selected.error(t.message ?: "shader reload failed", "code", -1)
             false
         }
@@ -778,7 +781,12 @@ private fun bindShadertoyUniforms(module: ModulePointer, renderer: Renderer) {
         val origin = timeState.clickOrigin ?: cursor
         val shaderY = window.height.toFloat() - cursor.y
         val originShaderY = window.height.toFloat() - origin.y
-        Vector4f(cursor.x, shaderY, if (leftDown) origin.x else -origin.x, if (leftDown) originShaderY else -originShaderY)
+        Vector4f(
+            cursor.x,
+            shaderY,
+            if (leftDown) origin.x else -origin.x,
+            if (leftDown) originShaderY else -originShaderY
+        )
     }
     uniforms.bind("iDate") {
         val now = LocalDateTime.now()
@@ -992,7 +1000,9 @@ fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer {
 
     p.depthTest = false
     p.textureResolver = { textureSpec ->
-        dummyTextures[textureSpec.name]?.let { tex -> fromViews(listOf(tex), textureSpec.name) } ?: previousResolver(textureSpec)
+        dummyTextures[textureSpec.name]?.let { tex -> fromViews(listOf(tex), textureSpec.name) } ?: previousResolver(
+            textureSpec
+        )
     }
 
     val module = _moduleHere(p)
@@ -1001,18 +1011,25 @@ fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer {
     return module
 }
 
-fun fromViews(views: List<HasImageView>, name : String ="",sampler : TextureSampler? = null): Pair<HasImageViewArray, TextureSampler> {
+var Box.customTextureResolver by Inheritance<((Box, String) -> HasImageViewArray?)?>()
+
+fun fromViews(
+    views: List<HasImageView>,
+    name: String = "",
+    sampler: TextureSampler? = null
+): Pair<HasImageViewArray, TextureSampler> {
     require(views.isNotEmpty()) { "No image views found for texture $name" }
     val provider = object : HasImageViewArray {
         override val imageViewArray = views
     }
-    val sampler0 = sampler?: TextureSampler(
+    val sampler0 = sampler ?: TextureSampler(
         renderer = fromContext(),
         views.first().imageView.imageViewData.mipLevels,
         true
     )
     return provider to sampler0
 }
+
 private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?): (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler> =
     { textureSpec ->
 
@@ -1023,9 +1040,24 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
             lprintln("debug,graphics", "searching for texture ${textureSpec.name}")
             val name = textureSpec.name
 
+            val c = customTextureResolver
+            var found : Pair<HasImageViewArray, TextureSampler>? = null
 
+            if (c != null) {
+                val r = c(this, name)
+                if (r != null) {
+                    val views = r.imageViewArray
+                    require(views.isNotEmpty()) { "HasImageViewArray $name has no image views" }
+                    val sampler = TextureSampler(
+                        renderer = fromContext(),
+                        views.first().imageView.imageViewData.mipLevels,
+                        true
+                    )
+                     found = r to sampler
+                }
+            }
 
-            val r =
+            val r = found ?:
                 findWithNameOrNull<HasImageViewArray>(this, name)?.let { provider ->
                     val views = provider.imageViewArray
                     require(views.isNotEmpty()) { "HasImageViewArray $name has no image views" }
@@ -1039,7 +1071,10 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
                     ?: findWithNameOrNull<HasImageView>(this, name)?.let { hv -> fromViews(listOf(hv), name) }
                     ?: findWithNameOrNull<ImageView>(this, name)?.let { view -> fromViews(listOf(view), name) }
                     ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let { arr -> fromViews(arr.toList(), name) }
-                    ?: findWithNameOrNull<Array<ImageView>>(this, name)?.let { arr -> fromViews(arr.map { it as HasImageView }, name) }
+                    ?: findWithNameOrNull<Array<ImageView>>(
+                        this,
+                        name
+                    )?.let { arr -> fromViews(arr.map { it as HasImageView }, name) }
                     ?: findWithNameOrNull<LoadedTexture>(this, name)?.let { tex -> fromViews(listOf(tex), name) }
                     ?: findWithNameOrNull<RenderToTexture>(this, name)?.let { rtt -> fromViews(listOf(rtt), name) }
                     ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
@@ -1054,7 +1089,10 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_computeModuleHere(args: List<String>): Insert {
 
-    this.actions += "computeModuleHere_reload" to Action("Reload Compute Shader|alt r", "reloads the compute shader in this box") {
+    this.actions += "computeModuleHere_reload" to Action(
+        "Reload Compute Shader|alt r",
+        "reloads the compute shader in this box"
+    ) {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
                 runShaderReloadAction(
@@ -1143,7 +1181,10 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_meshModuleHere(args: List<String>): Insert {
 
-    this.actions += "meshModuleHere_reload" to Action("Reload Mesh Shader|alt r", "reloads the mesh shader in this box") {
+    this.actions += "meshModuleHere_reload" to Action(
+        "Reload Mesh Shader|alt r",
+        "reloads the mesh shader in this box"
+    ) {
         runBlocking {
             GlobalScope.launch(Runloop.runLoop.main) {
                 runShaderReloadAction(

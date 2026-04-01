@@ -55,29 +55,108 @@ const monacoLog = (...args) => {
 const kindForIcon = monacoKindForIcon
 const SYMBOL_CONTEXT_DEBOUNCE_MS = 180
 const SYMBOL_CONTEXT_CACHE_MAX = 200
+const SYMBOL_CONTEXT_POLL_MS = 250
 
-const setEditorContextBadge = (editor, html = "") => {
+const stopSymbolContextPolling = (editor) => {
+        if (!editor || editor._afieldSymbolContextPollTimer == null) return
+        clearInterval(editor._afieldSymbolContextPollTimer)
+        editor._afieldSymbolContextPollTimer = null
+}
+
+const captureBadgeViewState = (node) => {
+        const details = node && node.querySelector("details.afield-symbol-context-disclosure")
+        const body = node && node.querySelector(".afield-symbol-context-disclosure-body")
+        return {
+                detailsOpen: !!(details && details.open),
+                scrollTop: body ? body.scrollTop : 0,
+        }
+}
+
+const applyDisclosureLayout = (editor, node) => {
+        if (!node) return
+        const body = node.querySelector(".afield-symbol-context-disclosure-body")
+        if (!body) return
+        const layoutHeight = (editor && typeof editor.getLayoutInfo === "function" && editor.getLayoutInfo())
+                ? editor.getLayoutInfo().height
+                : ((editor && editor._domElement && editor._domElement.clientHeight) || 0)
+        const maxHeight = layoutHeight > 0 ? Math.min(200, Math.floor(layoutHeight / 2)) : 200
+        body.style.maxHeight = `${Math.max(0, maxHeight)}px`
+        body.style.overflow = "auto"
+}
+
+const syncSymbolContextPolling = (editor) => {
+        if (!editor) return
+        const meta = editor._afieldSymbolContextMeta
+        const node = editor && editor._domElement && editor._domElement.querySelector(".hoverlay-left")
+        const details = node && node.querySelector("details.afield-symbol-context-disclosure")
+        const shouldPoll = !!(meta && meta.isLiveValue && details && details.open)
+        if (!shouldPoll) {
+                stopSymbolContextPolling(editor)
+                return
+        }
+        if (editor._afieldSymbolContextPollTimer != null) return
+
+        editor._afieldSymbolContextPollTimer = setInterval(() => {
+                const request = buildSymbolContextRequest(editor, editor._afieldSymbolContextResolveContext, { allowUnfocused: true })
+                if (!request || !editor._afieldSymbolContextMeta || request.key !== editor._afieldSymbolContextMeta.key) {
+                        stopSymbolContextPolling(editor)
+                        return
+                }
+                const state = ensureSymbolContextState()
+                if (state.inFlight != null) return
+                dispatchSymbolContextRequest(request, { forceRefresh: true })
+        }, SYMBOL_CONTEXT_POLL_MS)
+}
+
+const attachDisclosureToggle = (editor, node) => {
+        if (!node) return
+        const details = node.querySelector("details.afield-symbol-context-disclosure")
+        if (!details) {
+                syncSymbolContextPolling(editor)
+                return
+        }
+        details.addEventListener("toggle", () => {
+                syncSymbolContextPolling(editor)
+        })
+}
+
+const setEditorContextBadge = (editor, payload = null) => {
         const node = editor && editor._domElement && editor._domElement.querySelector(".hoverlay-left")
         if (!node) return
 
-        const next = (html || "").trim()
+        const previousState = captureBadgeViewState(node)
+        const next = ((payload && payload.html) || "").trim()
         if (next.length === 0) {
                 node.innerHTML = ""
                 node.style.opacity = "0"
                 node.style.pointerEvents = "none"
+                editor._afieldSymbolContextMeta = null
+                stopSymbolContextPolling(editor)
                 return
         }
 
         node.innerHTML = next
+        if (previousState.detailsOpen) {
+                const details = node.querySelector("details.afield-symbol-context-disclosure")
+                if (details) details.open = true
+        }
+        applyDisclosureLayout(editor, node)
+        const body = node.querySelector(".afield-symbol-context-disclosure-body")
+        if (body && previousState.detailsOpen) {
+                body.scrollTop = previousState.scrollTop
+        }
         node.style.opacity = "1"
         node.style.pointerEvents = "auto"
+        editor._afieldSymbolContextMeta = payload
+        attachDisclosureToggle(editor, node)
+        syncSymbolContextPolling(editor)
 }
 
 window.setEditorContextBadge = setEditorContextBadge
 
 const ensureSymbolContextState = () => {
         if (!window.afieldSymbolContextState) {
-                window.afieldSymbolContextState = {
+                        window.afieldSymbolContextState = {
                         inFlight: null,
                         queued: null,
                         latestDesiredKey: null,
@@ -123,8 +202,9 @@ const findIdentifierBounds = (text, offset) => {
         }
 }
 
-const buildSymbolContextRequest = (editor, resolveContext) => {
-        if (!editor || typeof editor.hasTextFocus === "function" && !editor.hasTextFocus()) return null
+const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
+        const allowUnfocused = !!options.allowUnfocused
+        if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
         const model = editor.getModel && editor.getModel()
         if (!model || model.getLanguageId() !== "kotlin") return null
 
@@ -149,24 +229,49 @@ const buildSymbolContextRequest = (editor, resolveContext) => {
                         line: position.lineNumber,
                         column: position.column,
                         position: offset,
+                        forceRefresh: false,
                 },
         }
 }
 
-const dispatchSymbolContextRequest = (request) => {
+const dispatchSymbolContextRequest = (request, options = {}) => {
         const state = ensureSymbolContextState()
         state.inFlight = request
 
-        sendWithReply("symbol-context", request.payload, "symbol-context", (message, payload) => {
+        const requestPayload = {
+                ...request.payload,
+                forceRefresh: !!options.forceRefresh,
+        }
+
+        sendWithReply("symbol-context", requestPayload, "symbol-context", (message, payload) => {
                 const completed = state.inFlight
                 state.inFlight = null
 
                 if (completed && payload && typeof payload.html === "string") {
-                        state.cache.set(completed.key, payload.html)
-                        trimSymbolContextCache(state.cache)
+                        const cachedPayload = {
+                                html: payload.html || "",
+                                isLiveValue: !!payload.isLiveValue,
+                                key: completed.key,
+                        }
+                        if (!cachedPayload.isLiveValue) {
+                                state.cache.set(completed.key, cachedPayload)
+                                trimSymbolContextCache(state.cache)
+                        } else {
+                                state.cache.delete(completed.key)
+                        }
 
                         if (state.latestDesiredKey === completed.key) {
-                                setEditorContextBadge(completed.editor, payload.html)
+                                const previousHtml = completed.editor && completed.editor._afieldSymbolContextMeta
+                                        ? completed.editor._afieldSymbolContextMeta.html
+                                        : null
+                                if (previousHtml !== cachedPayload.html ||
+                                        !completed.editor._afieldSymbolContextMeta ||
+                                        completed.editor._afieldSymbolContextMeta.isLiveValue !== cachedPayload.isLiveValue) {
+                                        setEditorContextBadge(completed.editor, cachedPayload)
+                                } else {
+                                        completed.editor._afieldSymbolContextMeta = cachedPayload
+                                        syncSymbolContextPolling(completed.editor)
+                                }
                                 state.lastNotifiedKey = completed.key
                         }
                 }
@@ -191,9 +296,13 @@ const queueSymbolContextRequest = (request) => {
 
         if (state.cache.has(request.key)) {
                 const cached = state.cache.get(request.key)
+                if (cached && cached.isLiveValue) {
+                        state.cache.delete(request.key)
+                } else {
                 setEditorContextBadge(request.editor, cached)
                 state.lastNotifiedKey = request.key
                 return
+                }
         }
 
         if (state.inFlight) {
@@ -207,6 +316,7 @@ const queueSymbolContextRequest = (request) => {
 const installSymbolContextMonitor = (editor, resolveContext) => {
         if (!editor || editor._afieldSymbolContextInstalled) return
         editor._afieldSymbolContextInstalled = true
+        editor._afieldSymbolContextResolveContext = resolveContext
 
         let debounceTimer = null
         const schedule = () => {
@@ -223,6 +333,7 @@ const installSymbolContextMonitor = (editor, resolveContext) => {
         }
 
         editor.onDidChangeCursorPosition(() => {
+                stopSymbolContextPolling(editor)
                 schedule()
         })
         if (typeof editor.onDidFocusEditorText === "function") {
@@ -233,6 +344,7 @@ const installSymbolContextMonitor = (editor, resolveContext) => {
         editor.onDidChangeModelContent(() => {
                 const state = ensureSymbolContextState()
                 state.lastNotifiedKey = null
+                stopSymbolContextPolling(editor)
                 schedule()
         })
     }
