@@ -115,7 +115,18 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String, 
         }
 
         // Sidecar-able properties (excluding "code")
-        val sidecarProperties = listOf("vertex", "fragment", "compute", "task", "mesh")
+        val sidecarProperties = listOf(
+            "vertex",
+            "fragment",
+            "compute",
+            "task",
+            "mesh",
+            "vertex_s",
+            "fragment_s",
+            "compute_s",
+            "task_s",
+            "mesh_s"
+        )
 
         // Build documentation from metadata properties
         val docBuilder = StringBuilder()

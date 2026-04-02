@@ -1862,6 +1862,11 @@ fun languageNameForProperty(box: Box, property: String): String {
         "compute" -> "GLSL (compute)"
         "mesh" -> "GLSL (mesh)"
         "task" -> "GLSL (task)"
+        "vertex_s" -> "Slang (vertex)"
+        "fragment_s" -> "Slang (fragment)"
+        "compute_s" -> "Slang (compute)"
+        "mesh_s" -> "Slang (mesh)"
+        "task_s" -> "Slang (task)"
         else -> "Kotlin"
     }
 }

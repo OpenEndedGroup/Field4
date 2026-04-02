@@ -187,14 +187,6 @@ fun BooleanNetwork.findAttractors(): List<Attractor> {
     }
 }
 
-private fun FLine.rect(x: Double, y: Double, w: Double, h: Double) {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
-}
-
 private fun FLine.circle(cx: Double, cy: Double, r: Double, segments: Int = 24) {
     for (j in 0..segments) {
         val a = 2.0 * PI * j / segments

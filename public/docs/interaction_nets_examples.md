@@ -26,46 +26,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/beta_bridge.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-beta-bridge" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.graphics.FLine
 import afield.stdlib.*
-import kotlin.math.min
-
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
-    filled = true
-    stroked = true
-    thickness = 1.0
-    this.color = color
-}
-
-fun arrow(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().apply {
-    moveTo(x0, y0)
-    lineTo(x1, y1)
-    stroked = true
-    filled = false
-    pointed = true
-    pointSize = 10.0
-    thickness = 2.0
-    color = vec(0.92, 0.90, 0.84, 0.95)
-}
-
-fun fitInto(frame: Rect, lines: List<FLine>, padding: Double = 26.0): List<FLine> {
-    val bounds = lines.mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
-        .reduceOrNull { a, b -> a.union(b) } ?: return lines
-    val availableW = (frame.w - padding * 2.0).coerceAtLeast(1.0)
-    val availableH = (frame.h - padding * 2.0).coerceAtLeast(1.0)
-    val scale = min(
-        availableW / bounds.w.coerceAtLeast(1.0),
-        availableH / bounds.h.coerceAtLeast(1.0)
-    )
-    val offsetX = frame.x + padding - bounds.x * scale + (availableW - bounds.w * scale) * 0.5
-    val offsetY = frame.y + padding - bounds.y * scale + (availableH - bounds.h * scale) * 0.5
-    return lines.map { (it * scale) + vec(offsetX, offsetY, 0.0) }
-}
 
 val reducer = Reducer(Lambda.rules())
 val net = net {
@@ -92,12 +53,17 @@ val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
 val comparisonLines = listOf(
-    panel(beforeFrame.x, beforeFrame.y, beforeFrame.w, beforeFrame.h, vec(0.08, 0.13, 0.18, 0.56)),
-    panel(afterFrame.x, afterFrame.y, afterFrame.w, afterFrame.h, vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(beforeFrame.right + 34.0, 170.0, afterFrame.x - 34.0, 170.0),
+    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+    arrow(
+        beforeFrame.right + 34.0, 170.0,
+        afterFrame.x - 34.0, 170.0,
+        color = vec(0.92, 0.90, 0.84, 0.95),
+        thickness = 2.0
+    ),
 ) +
-    fitInto(beforeFrame, beforeLines) +
-    fitInto(afterFrame, afterLines)
+    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+    afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
@@ -139,46 +105,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/energy_scheduler.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-energy-scheduler" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.graphics.FLine
 import afield.stdlib.*
-import kotlin.math.min
-
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
-    filled = true
-    stroked = true
-    thickness = 1.0
-    this.color = color
-}
-
-fun arrow(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().apply {
-    moveTo(x0, y0)
-    lineTo(x1, y1)
-    stroked = true
-    filled = false
-    pointed = true
-    pointSize = 10.0
-    thickness = 2.0
-    color = vec(0.92, 0.90, 0.84, 0.95)
-}
-
-fun fitInto(frame: Rect, lines: List<FLine>, padding: Double = 26.0): List<FLine> {
-    val bounds = lines.mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
-        .reduceOrNull { a, b -> a.union(b) } ?: return lines
-    val availableW = (frame.w - padding * 2.0).coerceAtLeast(1.0)
-    val availableH = (frame.h - padding * 2.0).coerceAtLeast(1.0)
-    val scale = min(
-        availableW / bounds.w.coerceAtLeast(1.0),
-        availableH / bounds.h.coerceAtLeast(1.0)
-    )
-    val offsetX = frame.x + padding - bounds.x * scale + (availableW - bounds.w * scale) * 0.5
-    val offsetY = frame.y + padding - bounds.y * scale + (availableH - bounds.h * scale) * 0.5
-    return lines.map { (it * scale) + vec(offsetX, offsetY, 0.0) }
-}
 
 val reducer = Reducer(Lambda.rules(), order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 val net = net {
@@ -210,12 +137,17 @@ val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
 val comparisonLines = listOf(
-    panel(beforeFrame.x, beforeFrame.y, beforeFrame.w, beforeFrame.h, vec(0.08, 0.13, 0.18, 0.56)),
-    panel(afterFrame.x, afterFrame.y, afterFrame.w, afterFrame.h, vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(beforeFrame.right + 34.0, 170.0, afterFrame.x - 34.0, 170.0),
+    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+    arrow(
+        beforeFrame.right + 34.0, 170.0,
+        afterFrame.x - 34.0, 170.0,
+        color = vec(0.92, 0.90, 0.84, 0.95),
+        thickness = 2.0
+    ),
 ) +
-    fitInto(beforeFrame, beforeLines) +
-    fitInto(afterFrame, afterLines)
+    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+    afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
@@ -257,46 +189,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/duplication.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-duplication" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.graphics.FLine
 import afield.stdlib.*
-import kotlin.math.min
-
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
-    filled = true
-    stroked = true
-    thickness = 1.0
-    this.color = color
-}
-
-fun arrow(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().apply {
-    moveTo(x0, y0)
-    lineTo(x1, y1)
-    stroked = true
-    filled = false
-    pointed = true
-    pointSize = 10.0
-    thickness = 2.0
-    color = vec(0.92, 0.90, 0.84, 0.95)
-}
-
-fun fitInto(frame: Rect, lines: List<FLine>, padding: Double = 26.0): List<FLine> {
-    val bounds = lines.mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
-        .reduceOrNull { a, b -> a.union(b) } ?: return lines
-    val availableW = (frame.w - padding * 2.0).coerceAtLeast(1.0)
-    val availableH = (frame.h - padding * 2.0).coerceAtLeast(1.0)
-    val scale = min(
-        availableW / bounds.w.coerceAtLeast(1.0),
-        availableH / bounds.h.coerceAtLeast(1.0)
-    )
-    val offsetX = frame.x + padding - bounds.x * scale + (availableW - bounds.w * scale) * 0.5
-    val offsetY = frame.y + padding - bounds.y * scale + (availableH - bounds.h * scale) * 0.5
-    return lines.map { (it * scale) + vec(offsetX, offsetY, 0.0) }
-}
 
 val reducer = Reducer(Lambda.rules(), order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 val net = Lambda.duplicatedConstantDemo()
@@ -310,12 +203,17 @@ val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
 val comparisonLines = listOf(
-    panel(beforeFrame.x, beforeFrame.y, beforeFrame.w, beforeFrame.h, vec(0.08, 0.13, 0.18, 0.56)),
-    panel(afterFrame.x, afterFrame.y, afterFrame.w, afterFrame.h, vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(beforeFrame.right + 34.0, 170.0, afterFrame.x - 34.0, 170.0),
+    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+    arrow(
+        beforeFrame.right + 34.0, 170.0,
+        afterFrame.x - 34.0, 170.0,
+        color = vec(0.92, 0.90, 0.84, 0.95),
+        thickness = 2.0
+    ),
 ) +
-    fitInto(beforeFrame, beforeLines) +
-    fitInto(afterFrame, afterLines)
+    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+    afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
@@ -357,46 +255,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/erase.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-erase" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.graphics.FLine
 import afield.stdlib.*
-import kotlin.math.min
-
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
-    filled = true
-    stroked = true
-    thickness = 1.0
-    this.color = color
-}
-
-fun arrow(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().apply {
-    moveTo(x0, y0)
-    lineTo(x1, y1)
-    stroked = true
-    filled = false
-    pointed = true
-    pointSize = 10.0
-    thickness = 2.0
-    color = vec(0.92, 0.90, 0.84, 0.95)
-}
-
-fun fitInto(frame: Rect, lines: List<FLine>, padding: Double = 26.0): List<FLine> {
-    val bounds = lines.mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
-        .reduceOrNull { a, b -> a.union(b) } ?: return lines
-    val availableW = (frame.w - padding * 2.0).coerceAtLeast(1.0)
-    val availableH = (frame.h - padding * 2.0).coerceAtLeast(1.0)
-    val scale = min(
-        availableW / bounds.w.coerceAtLeast(1.0),
-        availableH / bounds.h.coerceAtLeast(1.0)
-    )
-    val offsetX = frame.x + padding - bounds.x * scale + (availableW - bounds.w * scale) * 0.5
-    val offsetY = frame.y + padding - bounds.y * scale + (availableH - bounds.h * scale) * 0.5
-    return lines.map { (it * scale) + vec(offsetX, offsetY, 0.0) }
-}
 
 val reducer = Reducer(Lambda.rules())
 val net = Lambda.eraseApplicationDemo()
@@ -410,12 +269,17 @@ val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
 val comparisonLines = listOf(
-    panel(beforeFrame.x, beforeFrame.y, beforeFrame.w, beforeFrame.h, vec(0.08, 0.13, 0.18, 0.56)),
-    panel(afterFrame.x, afterFrame.y, afterFrame.w, afterFrame.h, vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(beforeFrame.right + 34.0, 170.0, afterFrame.x - 34.0, 170.0),
+    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+    arrow(
+        beforeFrame.right + 34.0, 170.0,
+        afterFrame.x - 34.0, 170.0,
+        color = vec(0.92, 0.90, 0.84, 0.95),
+        thickness = 2.0
+    ),
 ) +
-    fitInto(beforeFrame, beforeLines) +
-    fitInto(afterFrame, afterLines)
+    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+    afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,

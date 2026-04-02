@@ -38,6 +38,8 @@ private fun normalizeGlslPreamble(code: String): String {
     }.trimEnd()
 }
 
+private fun normalizeSlangSource(code: String): String = code.trimEnd()
+
 /**
  * Wraps top-level Kotlin script into a fun SCRIPT() block with preamble/postamble markers.
  * Keeps leading import/@file lines at top.
@@ -149,6 +151,36 @@ val GLSL_COMPUTE: LanguageSpec = LanguageSpec(
     unwrap = ::normalizeGlslPreamble
 )
 
+val SLANG_VERTEX: LanguageSpec = LanguageSpec(
+    name = "Slang (vertex)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
+val SLANG_FRAGMENT: LanguageSpec = LanguageSpec(
+    name = "Slang (fragment)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
+val SLANG_MESH: LanguageSpec = LanguageSpec(
+    name = "Slang (mesh)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
+val SLANG_TASK: LanguageSpec = LanguageSpec(
+    name = "Slang (task)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
+val SLANG_COMPUTE: LanguageSpec = LanguageSpec(
+    name = "Slang (compute)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
 private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
     "vertex" to GLSL_VERTEX,
     "fragment" to GLSL_FRAGMENT,
@@ -157,8 +189,22 @@ private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
     "compute" to GLSL_COMPUTE
 )
 
+private val SLANG_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
+    "vertex_s" to SLANG_VERTEX,
+    "fragment_s" to SLANG_FRAGMENT,
+    "mesh_s" to SLANG_MESH,
+    "task_s" to SLANG_TASK,
+    "compute_s" to SLANG_COMPUTE
+)
+
+private val SHADER_PROPERTY_SPECS: Map<String, LanguageSpec> =
+    GLSL_PROPERTY_SPECS + SLANG_PROPERTY_SPECS
+
 fun glslSpecForProperty(property: String): LanguageSpec? =
     GLSL_PROPERTY_SPECS[property.lowercase()]
+
+fun shaderSpecForProperty(property: String): LanguageSpec? =
+    SHADER_PROPERTY_SPECS[property.lowercase()]
 
 /**
  * Language spec for the Nano micro-computer assembly language.

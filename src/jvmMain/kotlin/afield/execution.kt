@@ -2,7 +2,7 @@ package afield
 
 import afield.ai.Ai4GlslAutocomplete
 import afield.ai.KotlinSourceIndex
-import afield.ai.glslSpecForProperty
+import afield.ai.shaderSpecForProperty
 import afield.four.synth.AudioPatchSpec
 import afield.four.synth.InlineAudioSummaryTarget
 import afield.logger.lprintln
@@ -1316,7 +1316,7 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        if (glslSpecForProperty(property) != null) {
+        if (shaderSpecForProperty(property) != null) {
             val docName = File(thisSessionInfo.get().filename).name
             val fileKey = "afield://$docName/${box.id}/$property"
             GlobalScope.launch(Dispatchers.IO) {
@@ -1338,7 +1338,12 @@ class KotlinExecution : BoxExecution {
                     "fragment" to box.fragment,
                     "mesh" to box.mesh,
                     "task" to box.task,
-                    "compute" to box.compute
+                    "compute" to box.compute,
+                    "vertex_s" to box.getPropertyRaw("vertex_s") as? String,
+                    "fragment_s" to box.getPropertyRaw("fragment_s") as? String,
+                    "mesh_s" to box.getPropertyRaw("mesh_s") as? String,
+                    "task_s" to box.getPropertyRaw("task_s") as? String,
+                    "compute_s" to box.getPropertyRaw("compute_s") as? String
                 )
                 shaderProps.forEach { (name, value) ->
                     if (name != property && !value.isNullOrBlank()) {
@@ -1362,7 +1367,7 @@ class KotlinExecution : BoxExecution {
                 val metadata = candidates.take(3).mapIndexed { idx, candidate ->
                     val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
                     val doc = buildString {
-                        val notes = candidate.documentation.ifBlank { "AI4 GLSL completion" }
+                        val notes = candidate.documentation.ifBlank { "AI4 shader completion" }
                         append("**Notes**\n")
                         notes.lineSequence().forEach { line ->
                             val trimmed = line.trim()
@@ -1370,7 +1375,9 @@ class KotlinExecution : BoxExecution {
                         }
                         if (candidate.text.isNotBlank()) {
                             append("\n**Insertion**\n")
-                            append("```glsl\n")
+                            append("```")
+                            append(if (property.lowercase().endsWith("_s")) "slang" else "glsl")
+                            append("\n")
                             append(candidate.text.trimEnd())
                             append("\n```\n")
                         }

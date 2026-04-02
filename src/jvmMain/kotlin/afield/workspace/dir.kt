@@ -244,6 +244,11 @@ private val workspaceSearchProperties = linkedSetOf(
     "compute",
     "task",
     "mesh",
+    "fragment_s",
+    "vertex_s",
+    "compute_s",
+    "task_s",
+    "mesh_s",
     "customization",
     "remote_js",
     "metadata"

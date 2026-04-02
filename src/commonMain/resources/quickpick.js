@@ -212,10 +212,15 @@ function bootstrapAnywhereProviders() {
         const propertyNames = [
                 "code",
                 "vertex",
+                "vertex_s",
                 "fragment",
+                "fragment_s",
                 "compute",
+                "compute_s",
                 "task",
+                "task_s",
                 "mesh",
+                "mesh_s",
                 "preamble",
                 "metadata",
         ]

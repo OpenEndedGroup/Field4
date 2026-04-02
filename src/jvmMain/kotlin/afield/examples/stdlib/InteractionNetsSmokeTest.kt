@@ -1,6 +1,8 @@
 package afield.examples.stdlib
 
 import afield.Box
+import afield.Rect
+import afield.graphics.FLine
 import afield.stdlib.*
 import kotlin.math.abs
 
@@ -25,6 +27,7 @@ object InteractionNetsSmokeTest {
             testEnergyBiasedSchedulerPrefersHotterPair()
             testDuplicationSplitsStateAndReportsEvent()
             testEraseRuleCreatesDecayAgents()
+            testDrawingHelpersProvideReusableFLinePrimitives()
             testFLineRendererFeedsOutputAreas()
             println("Interaction nets smoke tests passed")
             true
@@ -132,6 +135,32 @@ object InteractionNetsSmokeTest {
         require(created.all { it.type == Lambda.ERASE }) { "erase-app should only create ERASE agents" }
         created.forEach {
             requireClose(it.state.energy, 0.39375, message = "Decay agents should attenuate inherited energy")
+        }
+    }
+
+    private fun testDrawingHelpersProvideReusableFLinePrimitives() {
+        val panel = Rect(10.0, 20.0, 30.0, 40.0).toFLine(
+            color = vec(0.2, 0.3, 0.4, 0.5),
+            filled = true
+        )
+        require(panel.nodes.size == 5) { "Rect.toFLine should create a closed rectangular path" }
+        require(panel.nodes.last() is FLine.Close) { "Rect.toFLine should close the contour" }
+        require(panel.filled && panel.stroked) { "Rect.toFLine should keep sensible stroke/fill defaults" }
+
+        val fitted = listOf(panel).fitInto(Rect(0.0, 0.0, 100.0, 100.0), padding = 10.0)
+        val fittedBounds = fitted.single().fast2DBounds()
+        require(fittedBounds.left >= 10.0 - 1e-6 && fittedBounds.top >= 10.0 - 1e-6) {
+            "fitInto should keep geometry inside the padded frame"
+        }
+        require(fittedBounds.right <= 90.0 + 1e-6 && fittedBounds.bottom <= 90.0 + 1e-6) {
+            "fitInto should keep geometry inside the padded frame"
+        }
+
+        val arrowLine = arrow(0.0, 0.0, 120.0, 0.0)
+        require(arrowLine.nodes.any { it is FLine.Close }) { "arrow should emit a real closed arrowhead" }
+        val arrowBounds = arrowLine.fast2DBounds()
+        require(arrowBounds.left >= -1e-6 && arrowBounds.right <= 120.0 + 1e-6) {
+            "arrow bounds should stay anchored to the requested segment"
         }
     }
 

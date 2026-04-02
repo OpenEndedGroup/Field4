@@ -3409,14 +3409,29 @@ suspend fun main() {
                     notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
                 }
 
+                "fragment_s" -> {
+                    found.unsafeCast<dynamic>().fragment_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "fragment_s", set.value)
+                }
+
                 "task" -> {
                     found.unsafeCast<dynamic>().task = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "task", set.value)
                 }
 
+                "task_s" -> {
+                    found.unsafeCast<dynamic>().task_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "task_s", set.value)
+                }
+
                 "mesh" -> {
                     found.unsafeCast<dynamic>().mesh = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "mesh", set.value)
+                }
+
+                "mesh_s" -> {
+                    found.unsafeCast<dynamic>().mesh_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "mesh_s", set.value)
                 }
 
                 "metadata" -> {
@@ -3427,6 +3442,11 @@ suspend fun main() {
                 "compute" -> {
                     found.unsafeCast<dynamic>().compute = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "compute", set.value)
+                }
+
+                "compute_s" -> {
+                    found.unsafeCast<dynamic>().compute_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "compute_s", set.value)
                 }
 
                 "preamble" -> {
@@ -3442,6 +3462,11 @@ suspend fun main() {
                 "vertex" -> {
                     found.unsafeCast<dynamic>().vertex = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "vertex", set.value)
+                }
+
+                "vertex_s" -> {
+                    found.unsafeCast<dynamic>().vertex_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "vertex_s", set.value)
                 }
 
                 "customization" -> {

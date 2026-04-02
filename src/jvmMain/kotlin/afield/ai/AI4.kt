@@ -25,9 +25,15 @@ val GLSL_FRAGMENT get() = afield.ai.core.GLSL_FRAGMENT
 val GLSL_MESH get() = afield.ai.core.GLSL_MESH
 val GLSL_TASK get() = afield.ai.core.GLSL_TASK
 val GLSL_COMPUTE get() = afield.ai.core.GLSL_COMPUTE
+val SLANG_VERTEX get() = afield.ai.core.SLANG_VERTEX
+val SLANG_FRAGMENT get() = afield.ai.core.SLANG_FRAGMENT
+val SLANG_MESH get() = afield.ai.core.SLANG_MESH
+val SLANG_TASK get() = afield.ai.core.SLANG_TASK
+val SLANG_COMPUTE get() = afield.ai.core.SLANG_COMPUTE
 fun wrapScript(script: String) = afield.ai.core.wrapScript(script)
 fun unwrapScriptLenient(wrapped: String) = afield.ai.core.unwrapScriptLenient(wrapped)
 fun glslSpecForProperty(property: String) = afield.ai.core.glslSpecForProperty(property)
+fun shaderSpecForProperty(property: String) = afield.ai.core.shaderSpecForProperty(property)
 
 // Tool schemas ---------------------------------------------------------------
 

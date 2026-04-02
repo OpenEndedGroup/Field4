@@ -162,7 +162,12 @@ class AfieldVirtualFileSystem(
             "fragment",
             "mesh",
             "task",
-            "compute"
+            "compute",
+            "vertex_s",
+            "fragment_s",
+            "mesh_s",
+            "task_s",
+            "compute_s"
         )
 
         val DEFAULT_LANGUAGE_BY_PROPERTY: Map<String, String> = mapOf(
@@ -171,7 +176,12 @@ class AfieldVirtualFileSystem(
             "fragment" to "GLSL (fragment)",
             "mesh" to "GLSL (mesh)",
             "task" to "GLSL (task)",
-            "compute" to "GLSL (compute)"
+            "compute" to "GLSL (compute)",
+            "vertex_s" to "Slang (vertex)",
+            "fragment_s" to "Slang (fragment)",
+            "mesh_s" to "Slang (mesh)",
+            "task_s" to "Slang (task)",
+            "compute_s" to "Slang (compute)"
         )
     }
 }

@@ -30,12 +30,17 @@ var Box.fragment by Inheritance<String?>()
 var Box.vertex by Inheritance<String?>()
 var Box.task by Inheritance<String?>()
 var Box.mesh by Inheritance<String?>()
+var Box.fragment_s by Inheritance<String?>()
+var Box.vertex_s by Inheritance<String?>()
+var Box.task_s by Inheritance<String?>()
+var Box.mesh_s by Inheritance<String?>()
 var Box._fragment by Delegation<String?>()
 var Box._vertex by Delegation<String?>()
 var Box._task by Delegation<String?>()
 var Box._mesh by Delegation<String?>()
 
 var Box.compute by Inheritance<String?>()
+var Box.compute_s by Inheritance<String?>()
 var Box._compute by Delegation<String?>()
 
 var Box._shader by Delegation<ModulePointer?>()
@@ -88,7 +93,17 @@ fun Box.shadertoyHere(p: Parameters.() -> Unit): ModulePointer {
 // ------------------------------
 private val glslSourceLineRegex = Regex("""\b(?:ERROR|WARNING):\s*\d+:(\d+):""", RegexOption.IGNORE_CASE)
 private val fileLineRegex = Regex(""":[ \t]*(\d+):\s*(?:error|warning)\b""", RegexOption.IGNORE_CASE)
+private val slangSourceLineRegex = Regex("""\((\d+)\):\s*(?:error|warning)\b""", RegexOption.IGNORE_CASE)
 private val anyColonLineRegex = Regex(""":(\d+):""")
+private val explicitLineRegex = Regex("""\bline\s+(\d+)\b""", RegexOption.IGNORE_CASE)
+
+private val slangShaderPropertyByBase = mapOf(
+    "vertex" to "vertex_s",
+    "fragment" to "fragment_s",
+    "compute" to "compute_s",
+    "task" to "task_s",
+    "mesh" to "mesh_s"
+)
 
 private data class ShaderIncludeRef(val boxName: String, val property: String) {
     val key = "${boxName.trim()}.${property.trim()}"
@@ -97,7 +112,26 @@ private data class ShaderIncludeRef(val boxName: String, val property: String) {
 fun numberFromErrorMessage(m: String): Int? {
     glslSourceLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
     fileLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
+    slangSourceLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
+    explicitLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
     return anyColonLineRegex.findAll(m).mapNotNull { it.groupValues.getOrNull(1)?.toIntOrNull() }.lastOrNull()
+}
+
+private fun slangPropertyFor(baseProperty: String): String? = slangShaderPropertyByBase[baseProperty.lowercase()]
+
+private fun shaderPropertyVariants(baseProperty: String): List<String> =
+    listOfNotNull(baseProperty.lowercase(), slangPropertyFor(baseProperty))
+
+private fun isSlangShaderProperty(property: String): Boolean =
+    property.lowercase().endsWith("_s") && baseShaderProperty(property) in slangShaderPropertyByBase
+
+private fun baseShaderProperty(property: String): String = when (property.lowercase()) {
+    "vertex", "vertex_s" -> "vertex"
+    "fragment", "fragment_s" -> "fragment"
+    "compute", "compute_s" -> "compute"
+    "task", "task_s" -> "task"
+    "mesh", "mesh_s" -> "mesh"
+    else -> property.lowercase()
 }
 
 private fun defaultShaderProperty(kind: ShaderKind): String = when (kind) {
@@ -110,15 +144,15 @@ private fun defaultShaderProperty(kind: ShaderKind): String = when (kind) {
 }
 
 private fun shaderKindForProperty(property: String, fallback: ShaderKind): ShaderKind = when (property.lowercase()) {
-    "vertex" -> ShaderKind.VERTEX_SHADER
-    "fragment" -> ShaderKind.FRAGMENT_SHADER
-    "compute" -> ShaderKind.COMPUTE_SHADER
-    "task" -> ShaderKind.TASK_SHADER
-    "mesh" -> ShaderKind.MESH_SHADER
+    "vertex", "vertex_s" -> ShaderKind.VERTEX_SHADER
+    "fragment", "fragment_s" -> ShaderKind.FRAGMENT_SHADER
+    "compute", "compute_s" -> ShaderKind.COMPUTE_SHADER
+    "task", "task_s" -> ShaderKind.TASK_SHADER
+    "mesh", "mesh_s" -> ShaderKind.MESH_SHADER
     else -> fallback
 }
 
-private fun parseShaderIncludeRef(path: String, fallbackKind: ShaderKind): ShaderIncludeRef {
+private fun parseShaderIncludeRef(path: String, defaultProperty: String): ShaderIncludeRef {
     val trimmed = path.trim()
     require(trimmed.isNotEmpty()) { "Empty shader include path." }
     val dot = trimmed.lastIndexOf('.')
@@ -133,7 +167,7 @@ private fun parseShaderIncludeRef(path: String, fallbackKind: ShaderKind): Shade
         }
         return ShaderIncludeRef(boxName, property)
     }
-    return ShaderIncludeRef(trimmed, defaultShaderProperty(fallbackKind))
+    return ShaderIncludeRef(trimmed, defaultProperty)
 }
 
 private fun findBoxByNameForInclude(inside: Box, requestedName: String): Box? {
@@ -162,10 +196,15 @@ private fun getIncludePropertyValue(box: Box, property: String): String? {
     val normalized = property.trim()
     return when (normalized.lowercase()) {
         "vertex" -> box.vertex
+        "vertex_s" -> box.vertex_s
         "fragment" -> box.fragment
+        "fragment_s" -> box.fragment_s
         "compute" -> box.compute
+        "compute_s" -> box.compute_s
         "task" -> box.task
+        "task_s" -> box.task_s
         "mesh" -> box.mesh
+        "mesh_s" -> box.mesh_s
         else -> box.getPropertyRaw(normalized) as? String
     }
 }
@@ -174,10 +213,11 @@ private fun preprocess(
     inside: Box,
     source: String,
     kind: ShaderKind,
+    defaultProperty: String = defaultShaderProperty(kind),
     includeStack: List<String> = emptyList()
 ): String {
     val includeResolver = IncludeResolver { includePath, line, _ ->
-        val includeRef = parseShaderIncludeRef(includePath, kind)
+        val includeRef = parseShaderIncludeRef(includePath, defaultProperty)
         val includeKey = includeRef.key
         if (includeStack.contains(includeKey)) {
             val chain = (includeStack + includeKey).joinToString(" -> ")
@@ -196,7 +236,13 @@ private fun preprocess(
             )
 
         val nestedKind = shaderKindForProperty(includeRef.property, kind)
-        val expandedInclude = preprocess(inside, includeBody, nestedKind, includeStack + includeKey)
+        val expandedInclude = preprocess(
+            inside,
+            includeBody,
+            nestedKind,
+            defaultProperty = includeRef.property,
+            includeStack = includeStack + includeKey
+        )
         buildString {
             append(expandedInclude)
             if (!expandedInclude.endsWith('\n')) append('\n')
@@ -208,7 +254,7 @@ private fun preprocess(
 }
 
 fun preprocess(inside: Box, code: String, kind: ShaderKind): String {
-    return preprocess(inside, code, kind, emptyList())
+    return preprocess(inside, code, kind, defaultShaderProperty(kind), emptyList())
 }
 
 /**
@@ -219,21 +265,143 @@ fun preprocess(inside: Box, code: String, kind: ShaderKind): String {
  */
 private data class CompileResult(val introspection: Introspection?, val hadError: Boolean)
 
+private data class PreparedShaderStage(
+    val kind: ShaderKind,
+    val baseProperty: String,
+    val sourceProperty: String,
+    val source: String,
+    val preprocessedSource: String,
+    val glslSource: String,
+    val usedSlang: Boolean
+) {
+    val logLabel: String
+        get() = if (usedSlang) "$baseProperty shader (slang)" else "$baseProperty shader"
+}
+
+private fun shaderPropertyValue(box: Box, property: String): String? = when (property.lowercase()) {
+    "vertex" -> box.vertex
+    "vertex_s" -> box.vertex_s
+    "fragment" -> box.fragment
+    "fragment_s" -> box.fragment_s
+    "compute" -> box.compute
+    "compute_s" -> box.compute_s
+    "task" -> box.task
+    "task_s" -> box.task_s
+    "mesh" -> box.mesh
+    "mesh_s" -> box.mesh_s
+    else -> box.getPropertyRaw(property) as? String
+}
+
+private fun hasShaderSource(box: Box, baseProperty: String): Boolean =
+    shaderPropertyVariants(baseProperty).any { property ->
+        !shaderPropertyValue(box, property).isNullOrBlank()
+    }
+
+private fun sourcePropertyForStage(box: Box, baseProperty: String): String {
+    val normalized = baseProperty.lowercase()
+    val slangProperty = slangPropertyFor(normalized)
+    val slangSource = slangProperty?.let { shaderPropertyValue(box, it) }
+    return if (!slangSource.isNullOrBlank()) slangProperty else normalized
+}
+
+private fun assignPreparedShaderStage(box: Box, stage: PreparedShaderStage) {
+    when (stage.baseProperty) {
+        "vertex" -> box._vertex = stage.glslSource
+        "fragment" -> box._fragment = stage.glslSource
+        "compute" -> box._compute = stage.glslSource
+        "task" -> box._task = stage.glslSource
+        "mesh" -> box._mesh = stage.glslSource
+    }
+}
+
+private fun clearShaderErrorsForBaseProperties(box: Box, vararg baseProperties: String) {
+    val properties = baseProperties
+        .flatMap(::shaderPropertyVariants)
+        .distinct()
+        .toTypedArray()
+    clearShaderErrors(box, *properties)
+}
+
+private fun reportShaderStageError(
+    box: Box,
+    propertyForUI: String,
+    logLabel: String,
+    message: String,
+    throwable: Throwable? = null
+) {
+    val trimmed = message.trim().ifBlank { throwable?.message ?: logLabel }
+    lprintln("error,graphics", "error during $logLabel $trimmed")
+    throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
+    box.error(trimmed, propertyForUI, numberFromErrorMessage(trimmed) ?: 0)
+}
+
+private fun prepareShaderStage(box: Box, kind: ShaderKind, baseProperty: String): PreparedShaderStage? {
+    val sourceProperty = sourcePropertyForStage(box, baseProperty)
+    val source = shaderPropertyValue(box, sourceProperty)?.takeIf { it.isNotBlank() } ?: run {
+        reportShaderStageError(
+            box,
+            sourceProperty,
+            "$baseProperty shader setup",
+            "No shader source found for property '$sourceProperty'."
+        )
+        return null
+    }
+
+    val preprocessedSource = try {
+        preprocess(box, source, kind, defaultProperty = sourceProperty)
+    } catch (t: Throwable) {
+        reportShaderStageError(
+            box,
+            sourceProperty,
+            "$baseProperty shader preprocessing",
+            t.message ?: "while preprocessing $baseProperty shader",
+            t
+        )
+        return null
+    }
+
+    val usedSlang = isSlangShaderProperty(sourceProperty)
+    val glslSource = if (usedSlang) {
+        try {
+            SlangCompiler.compileToGlsl(preprocessedSource, kind, "$sourceProperty.slang")
+        } catch (t: Throwable) {
+            reportShaderStageError(
+                box,
+                sourceProperty,
+                "$baseProperty shader transpilation",
+                t.message ?: "slangc failed for $sourceProperty",
+                t
+            )
+            return null
+        }
+    } else {
+        preprocessedSource
+    }
+
+    return PreparedShaderStage(
+        kind = kind,
+        baseProperty = baseProperty,
+        sourceProperty = sourceProperty,
+        source = source,
+        preprocessedSource = preprocessedSource,
+        glslSource = glslSource,
+        usedSlang = usedSlang
+    )
+}
+
 private fun compileStage(
     box: Box,
-    source: String,
-    kind: ShaderKind,
-    stageLabelForUI: String // e.g. "vertex", "fragment", "compute", "task", "mesh"
+    stage: PreparedShaderStage
 ): CompileResult {
     var hadError = false
     val i = Introspection(
-        source,
-        kind,
+        stage.glslSource,
+        stage.kind,
         errorHandler = { message, throwable ->
             val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during $stageLabelForUI shader compilation $message$throwableMsg")
+            lprintln("error,graphics", "error during ${stage.logLabel} compilation $message$throwableMsg")
             throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            box.error(message, stageLabelForUI, numberFromErrorMessage(message) ?: 0)
+            box.error(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
             hadError = true
         }
     )
@@ -399,11 +567,15 @@ private fun runShaderReloadAction(
 // Graphics (vertex/fragment) reload path
 // ------------------------------
 fun reloadShader(box: Box): Boolean {
-    box._fragment = preprocess(box, box.fragment!!, ShaderKind.FRAGMENT_SHADER)
-    box._vertex = preprocess(box, box.vertex!!, ShaderKind.VERTEX_SHADER)
+    clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
+    val vertexStage = prepareShaderStage(box, ShaderKind.VERTEX_SHADER, "vertex") ?: return false
+    val fragmentStage = prepareShaderStage(box, ShaderKind.FRAGMENT_SHADER, "fragment") ?: return false
 
-    val (vi, vErr) = compileStage(box, box._vertex!!, ShaderKind.VERTEX_SHADER, "vertex")
-    val (fi, fErr) = compileStage(box, box._fragment!!, ShaderKind.FRAGMENT_SHADER, "fragment")
+    assignPreparedShaderStage(box, vertexStage)
+    assignPreparedShaderStage(box, fragmentStage)
+
+    val (vi, vErr) = compileStage(box, vertexStage)
+    val (fi, fErr) = compileStage(box, fragmentStage)
 
     if (vErr || fErr) {
         lprintln("error,graphics", "shader compilation failed; skipping module reload.")
@@ -421,7 +593,7 @@ fun reloadShader(box: Box): Boolean {
 
     // todo: patch error handler if you need finer-grained feedback
     box._shader!!.reload(p, forceReresolve = true)
-    clearShaderErrors(box, "vertex", "fragment")
+    clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
     return true
 }
 
@@ -490,9 +662,11 @@ private fun buildComputeInsert(ci: Introspection): Insert {
 }
 
 fun reloadComputeShader(box: Box): Boolean {
-    box._compute = preprocess(box, box.compute!!, ShaderKind.COMPUTE_SHADER)
+    clearShaderErrorsForBaseProperties(box, "compute")
+    val computeStage = prepareShaderStage(box, ShaderKind.COMPUTE_SHADER, "compute") ?: return false
+    assignPreparedShaderStage(box, computeStage)
 
-    val (ci, cErr) = compileStage(box, box._compute!!, ShaderKind.COMPUTE_SHADER, "compute")
+    val (ci, cErr) = compileStage(box, computeStage)
     if (cErr) {
         lprintln("error,graphics", "compute shader compilation failed; skipping compute module reload.")
         return false
@@ -507,7 +681,7 @@ fun reloadComputeShader(box: Box): Boolean {
     }
     // todo: patch error handler if you need finer-grained feedback
     box._computeShader!!.reload(p)
-    clearShaderErrors(box, "compute")
+    clearShaderErrorsForBaseProperties(box, "compute")
     return true
 }
 
@@ -575,13 +749,18 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
 }
 
 fun reloadMeshShader(box: Box): Boolean {
-    box._task = preprocess(box, box.task!!, ShaderKind.TASK_SHADER)
-    box._mesh = preprocess(box, box.mesh!!, ShaderKind.MESH_SHADER)
-    box._fragment = preprocess(box, box.fragment!!, ShaderKind.FRAGMENT_SHADER)
+    clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
+    val taskStage = prepareShaderStage(box, ShaderKind.TASK_SHADER, "task") ?: return false
+    val meshStage = prepareShaderStage(box, ShaderKind.MESH_SHADER, "mesh") ?: return false
+    val fragmentStage = prepareShaderStage(box, ShaderKind.FRAGMENT_SHADER, "fragment") ?: return false
 
-    val (ti, tErr) = compileStage(box, box._task!!, ShaderKind.TASK_SHADER, "task")
-    val (mi, mErr) = compileStage(box, box._mesh!!, ShaderKind.MESH_SHADER, "mesh")
-    val (fi, fErr) = compileStage(box, box._fragment!!, ShaderKind.FRAGMENT_SHADER, "fragment")
+    assignPreparedShaderStage(box, taskStage)
+    assignPreparedShaderStage(box, meshStage)
+    assignPreparedShaderStage(box, fragmentStage)
+
+    val (ti, tErr) = compileStage(box, taskStage)
+    val (mi, mErr) = compileStage(box, meshStage)
+    val (fi, fErr) = compileStage(box, fragmentStage)
 
     if (tErr || mErr || fErr) {
         lprintln("error,graphics", "mesh pipeline compilation failed; skipping mesh module reload.")
@@ -599,7 +778,7 @@ fun reloadMeshShader(box: Box): Boolean {
     }
     // todo: patch error handler if you need finer-grained feedback
     box._meshShader!!.reload(p)
-    clearShaderErrors(box, "task", "mesh", "fragment")
+    clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
     return true
 }
 
@@ -832,43 +1011,36 @@ fun Box.macro_moduleHereWithDefaultShaders(
         }
     }
 
-    if ((this.fragment?.trim()?.length ?: 0) == 0 || (this.vertex?.trim()?.length ?: 0) == 0) {
+    if (!hasShaderSource(this, "fragment") || !hasShaderSource(this, "vertex")) {
         this.setPropertyRaw(
-            "fragment", fragment
+            "fragment",
+            shaderPropertyValue(this, "fragment")?.takeIf { it.isNotBlank() } ?: fragment
         )
         this.setPropertyRaw(
-            "vertex", vertex
+            "vertex",
+            shaderPropertyValue(this, "vertex")?.takeIf { it.isNotBlank() } ?: vertex
         )
     }
 
     // Prepare code & introspect
-    this._fragment = preprocess(this, this.fragment!!, ShaderKind.FRAGMENT_SHADER)
-    this._vertex = preprocess(this, this.vertex!!, ShaderKind.VERTEX_SHADER)
+    clearShaderErrorsForBaseProperties(this, "vertex", "fragment")
+    val vertexStage = prepareShaderStage(this, ShaderKind.VERTEX_SHADER, "vertex")
+    val fragmentStage = prepareShaderStage(this, ShaderKind.FRAGMENT_SHADER, "fragment")
+    val vi = vertexStage?.let {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
+    val fi = fragmentStage?.let {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
 
-    var hasError = false
-    val vi = Introspection(
-        this._vertex!!, ShaderKind.VERTEX_SHADER, errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during vertex shader compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            this.error(message, "vertex", numberFromErrorMessage(message) ?: 0)
-            hasError = true
-        })
-    val fi = Introspection(
-        this._fragment!!, ShaderKind.FRAGMENT_SHADER, errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during fragment shader compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            this.error(message, "fragment", numberFromErrorMessage(message) ?: 0)
-            hasError = true
-        })
-
-    if (hasError) {
+    if (vi == null || fi == null) {
         var here = args[0]
         if (args.size == 2) here += args[1]
         return Insert(here = "$resolvesToCall$here")
     } else {
-        clearShaderErrors(this, "vertex", "fragment")
+        clearShaderErrorsForBaseProperties(this, "vertex", "fragment")
         return insertForShader(vi, fi, resolvesToCall, args)
     }
 }
@@ -1106,7 +1278,7 @@ fun Box.macro_computeModuleHere(args: List<String>): Insert {
         }
     }
 
-    if (this.compute == null) {
+    if (!hasShaderSource(this, "compute")) {
         this.setPropertyRaw(
             "compute", """
 #version 450
@@ -1129,22 +1301,17 @@ void main() {
         )
     }
 
-    this._compute = preprocess(this, this.compute!!, ShaderKind.COMPUTE_SHADER)
+    clearShaderErrorsForBaseProperties(this, "compute")
+    val computeStage = prepareShaderStage(this, ShaderKind.COMPUTE_SHADER, "compute")
+    val ci = computeStage?.let {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
 
-    var hasError = false
-    val ci = Introspection(
-        this._compute!!, ShaderKind.COMPUTE_SHADER, errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during compute shader compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            this.error(message, "compute", numberFromErrorMessage(message) ?: 0)
-            hasError = true
-        })
-
-    if (hasError) {
+    if (ci == null) {
         return Insert(here = "_computeModuleHere${args[0]}")
     } else {
-        clearShaderErrors(this, "compute")
+        clearShaderErrorsForBaseProperties(this, "compute")
         val insert = buildComputeInsert(ci)
         return insert.copy(here = run {
             var here = "_computeModuleHere${args[0]}"
@@ -1198,7 +1365,7 @@ fun Box.macro_meshModuleHere(args: List<String>): Insert {
         }
     }
 
-    if ((this.task?.trim()?.length ?: 0) == 0) {
+    if (!hasShaderSource(this, "task")) {
         this.setPropertyRaw(
             "task", """
 #version 450
@@ -1219,7 +1386,7 @@ void main ()
         )
     }
 
-    if ((this.mesh?.trim()?.length ?: 0) == 0) {
+    if (!hasShaderSource(this, "mesh")) {
         this.setPropertyRaw(
             "mesh", """
 #version 450
@@ -1249,7 +1416,7 @@ void main ()
         )
     }
 
-    if ((this.fragment?.trim()?.length ?: 0) == 0) {
+    if (!hasShaderSource(this, "fragment")) {
         this.setPropertyRaw(
             "fragment", """
  #version 450
@@ -1262,40 +1429,28 @@ void main()
         )
     }
 
-    this._task = preprocess(this, this.task!!, ShaderKind.TASK_SHADER)
-    this._mesh = preprocess(this, this.mesh!!, ShaderKind.MESH_SHADER)
-    this._fragment = preprocess(this, this.fragment!!, ShaderKind.FRAGMENT_SHADER)
+    clearShaderErrorsForBaseProperties(this, "task", "mesh", "fragment")
+    val taskStage = prepareShaderStage(this, ShaderKind.TASK_SHADER, "task")
+    val meshStage = prepareShaderStage(this, ShaderKind.MESH_SHADER, "mesh")
+    val fragmentStage = prepareShaderStage(this, ShaderKind.FRAGMENT_SHADER, "fragment")
 
-    var hasError = false
-    val ti = Introspection(
-        this._task!!, ShaderKind.TASK_SHADER, errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during task shader compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            this.error(message, "task", numberFromErrorMessage(message) ?: 0)
-            hasError = true
-        })
-    val mi = Introspection(
-        this._mesh!!, ShaderKind.MESH_SHADER, errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during mesh shader compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            this.error(message, "mesh", numberFromErrorMessage(message) ?: 0)
-            hasError = true
-        })
-    val fi = Introspection(
-        this._fragment!!, ShaderKind.FRAGMENT_SHADER, errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during fragment shader compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            this.error(message, "fragment", numberFromErrorMessage(message) ?: 0)
-            hasError = true
-        })
+    val ti = taskStage?.let {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
+    val mi = meshStage?.let {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
+    val fi = fragmentStage?.let {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
 
-    if (hasError) {
+    if (ti == null || mi == null || fi == null) {
         return Insert(here = "_meshModuleHere${args[0]}")
     } else {
-        clearShaderErrors(this, "task", "mesh", "fragment")
+        clearShaderErrorsForBaseProperties(this, "task", "mesh", "fragment")
         val insert = buildMeshInsert(ti, mi, fi)
         return insert.copy(here = run {
             var here = "_meshModuleHere${args[0]}"

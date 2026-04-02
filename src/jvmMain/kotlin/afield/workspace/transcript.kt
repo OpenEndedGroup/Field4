@@ -7,8 +7,31 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
-private val launchSnapshotProperties = listOf("code", "vertex", "fragment", "task", "mesh", "compute")
-private val launchedPropertyChangeProperties = setOf("vertex", "fragment", "task", "mesh", "compute")
+private val launchSnapshotProperties = listOf(
+    "code",
+    "vertex",
+    "fragment",
+    "task",
+    "mesh",
+    "compute",
+    "vertex_s",
+    "fragment_s",
+    "task_s",
+    "mesh_s",
+    "compute_s"
+)
+private val launchedPropertyChangeProperties = setOf(
+    "vertex",
+    "fragment",
+    "task",
+    "mesh",
+    "compute",
+    "vertex_s",
+    "fragment_s",
+    "task_s",
+    "mesh_s",
+    "compute_s"
+)
 
 object FlightRecorder {
 
@@ -419,7 +442,9 @@ object FlightRecorder {
 
         val type = entry["type"]?.toString()?.takeIf { it.isNotBlank() } ?: return null
         return when (type) {
-            "code", "vertex", "fragment", "task", "mesh", "compute", "preamble", "introduction" -> type
+            "code", "vertex", "fragment", "task", "mesh", "compute",
+            "vertex_s", "fragment_s", "task_s", "mesh_s", "compute_s",
+            "preamble", "introduction" -> type
             else -> null
         }
     }

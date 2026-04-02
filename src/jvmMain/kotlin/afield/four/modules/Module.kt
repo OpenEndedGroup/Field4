@@ -157,7 +157,15 @@ class ModulePointer(var current: Module) : Renderable {
         }
 
         val oSsboResolver = p.ssboResolver
-        p.ssboResolver = { oSsboResolver(it) }
+        p.ssboResolver = {
+            val prev = current.uniforms[it.name]
+            if (prev == null) oSsboResolver(it) else {
+                val prevSrc = prev.source
+                if (prevSrc == null) oSsboResolver(it)
+                else if (prevSrc.checkCompatibility(it) == false) oSsboResolver(it)
+                else oSsboResolver(prevSrc)
+            }
+        }
 
         val oTextureResolver = p.textureResolver
         p.textureResolver = {

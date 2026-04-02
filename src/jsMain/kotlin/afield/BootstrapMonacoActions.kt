@@ -588,9 +588,9 @@ fun monacoRunAiAssistError(editor: dynamic) {
 }
 
 private fun shaderReloadActionForProperty(property: String): String? = when (property.lowercase()) {
-    "vertex", "fragment" -> "moduleHere_reload"
-    "compute" -> "computeModuleHere_reload"
-    "mesh", "task" -> "meshModuleHere_reload"
+    "vertex", "fragment", "vertex_s", "fragment_s" -> "moduleHere_reload"
+    "compute", "compute_s" -> "computeModuleHere_reload"
+    "mesh", "task", "mesh_s", "task_s" -> "meshModuleHere_reload"
     else -> null
 }
 

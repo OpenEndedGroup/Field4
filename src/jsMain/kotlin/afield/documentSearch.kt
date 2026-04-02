@@ -29,6 +29,11 @@ private val searchableProperties = listOf(
     "compute",
     "task",
     "mesh",
+    "vertex_s",
+    "fragment_s",
+    "compute_s",
+    "task_s",
+    "mesh_s",
     "preamble",
     "metadata"
 )

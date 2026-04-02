@@ -65,6 +65,62 @@ private fun spvcReflectJson(spirvBytecode: ByteBuffer): String {
     }
 }
 
+private val slangStorageBlockPrefixes = listOf(
+    "StructuredBuffer_",
+    "RWStructuredBuffer_",
+    "ByteAddressBuffer_",
+    "RWByteAddressBuffer_",
+    "AppendStructuredBuffer_",
+    "ConsumeStructuredBuffer_",
+    "RasterizerOrderedStructuredBuffer_",
+    "RasterizerOrderedByteAddressBuffer_"
+)
+
+private val interfaceBlockDeclarationRegex = Regex(
+    """layout\s*\([^)]*\)\s*(?:(?:readonly|writeonly|coherent|volatile|restrict)\s+)*buffer\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{.*?\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;""",
+    setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE)
+)
+
+private fun extractSlangStorageBlockAliases(source: String): Map<String, String> {
+    val aliases = mutableMapOf<String, String>()
+    interfaceBlockDeclarationRegex.findAll(source).forEach { match ->
+        val blockType = match.groupValues[1]
+        val instanceName = match.groupValues[2]
+        if (blockType == instanceName) return@forEach
+        if (slangStorageBlockPrefixes.any { blockType.startsWith(it) }) {
+            aliases[blockType] = instanceName
+        }
+    }
+    return aliases
+}
+
+private val slangNumericSuffixRegex = Regex("""^(.*)_\d+$""")
+
+private fun demangleSimpleSlangName(name: String): String {
+    val match = slangNumericSuffixRegex.matchEntire(name) ?: return name
+    return match.groupValues[1]
+}
+
+private fun Introspected.Member.withOffsetAndDemangledName(baseOffset: Int = 0): Introspected.Member {
+    val adjustedType = type.map { members ->
+        members.map { it.withOffsetAndDemangledName() }
+    }
+    return copy(
+        name = demangleSimpleSlangName(name),
+        offset = baseOffset + offset,
+        type = adjustedType
+    )
+}
+
+private fun normalizePushConstantMembers(blockName: String, members: List<Introspected.Member>): List<Introspected.Member> {
+    val isSlangEntryPointWrapper = blockName == "entryPointParams" || blockName.startsWith("entryPointParams_")
+    if (!isSlangEntryPointWrapper || members.size != 1) return members
+
+    val wrapper = members.first()
+    val nestedMembers = wrapper.type.fold({ null }, { it }) ?: return members
+    return nestedMembers.map { it.withOffsetAndDemangledName(wrapper.offset) }
+}
+
 enum class ImageType(val vulkan_format: Int) {
     rgba16f(VK10.VK_FORMAT_R16G16B16A16_SFLOAT)
 }
@@ -226,6 +282,7 @@ class Introspection(
             code = spirv
             val json = spvcReflectJson(data)
             val j = JSONObject(json)
+            val slangStorageBlockAliases = extractSlangStorageBlockAliases(source)
 
             lprintln("debug,graphics", j.toString())
 
@@ -324,7 +381,7 @@ class Introspection(
                 for (i in 0 until ui.length()) {
                     val uo = ui.getJSONObject(i)
                     val name = uo.getString("name")
-                    val ty = types[uo.getString("type")]!!
+                    val ty = normalizePushConstantMembers(name, types[uo.getString("type")]!!)
 
                     val size = if (ty.isEmpty()) 0 else {
                         ty.maxOf { m ->
@@ -346,12 +403,16 @@ class Introspection(
                 val ui = j.getJSONArray("ssbos")
                 for (i in 0 until ui.length()) {
                     val uo = ui.getJSONObject(i)
-                    val name = uo.getString("name")
+                    val reflectedName = uo.getString("name")
+                    val name = slangStorageBlockAliases[reflectedName] ?: reflectedName
                     val ty = types[uo.getString("type")]!!
                     val blockSize =
                         uo.getInt("block_size") // this block size contains 0 of the flexible array element at the end, just the header
                     val location = uo.getInt("binding")
                     val set = uo.getInt("set")
+                    if (name != reflectedName) {
+                        lprintln("debug,graphics", "Resolved Slang SSBO alias $reflectedName -> $name")
+                    }
                     ssbo.add(UBO(name, blockSize, set, location, ty))
                 }
             }

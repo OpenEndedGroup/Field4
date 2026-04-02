@@ -38,6 +38,11 @@ fun installAi4() {
         name.equals(GLSL_MESH.name, ignoreCase = true) -> GLSL_MESH
         name.equals(GLSL_TASK.name, ignoreCase = true) -> GLSL_TASK
         name.equals(GLSL_COMPUTE.name, ignoreCase = true) -> GLSL_COMPUTE
+        name.equals(SLANG_VERTEX.name, ignoreCase = true) -> SLANG_VERTEX
+        name.equals(SLANG_FRAGMENT.name, ignoreCase = true) -> SLANG_FRAGMENT
+        name.equals(SLANG_MESH.name, ignoreCase = true) -> SLANG_MESH
+        name.equals(SLANG_TASK.name, ignoreCase = true) -> SLANG_TASK
+        name.equals(SLANG_COMPUTE.name, ignoreCase = true) -> SLANG_COMPUTE
         name.equals("nano", ignoreCase = true) -> NANO_ASM
         else -> LanguageSpec(
             name = name,
@@ -103,7 +108,19 @@ fun installAi4() {
         val docPath = sessionInfo.filename
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
-        val textProperties = linkedSetOf("code", "vertex", "fragment", "mesh", "task", "compute").apply {
+        val textProperties = linkedSetOf(
+            "code",
+            "vertex",
+            "fragment",
+            "mesh",
+            "task",
+            "compute",
+            "vertex_s",
+            "fragment_s",
+            "mesh_s",
+            "task_s",
+            "compute_s"
+        ).apply {
             if (exec.property.isNotBlank()) add(exec.property)
         }
 
@@ -114,6 +131,11 @@ fun installAi4() {
             "compute" -> "GLSL (compute)"
             "mesh" -> "GLSL (mesh)"
             "task" -> "GLSL (task)"
+            "vertex_s" -> "Slang (vertex)"
+            "fragment_s" -> "Slang (fragment)"
+            "compute_s" -> "Slang (compute)"
+            "mesh_s" -> "Slang (mesh)"
+            "task_s" -> "Slang (task)"
             "customization", "remote_js" -> "JavaScript"
             "metadata" -> "YAML"
             else -> languageNameForProperty(target, property)
@@ -131,6 +153,7 @@ fun installAi4() {
                 lower.endsWith(".kt") || lower.endsWith(".kts") -> "Kotlin"
                 lower.endsWith(".glsl") || lower.endsWith(".vert") || lower.endsWith(".frag")
                     || lower.endsWith(".comp") || lower.endsWith(".mesh") || lower.endsWith(".task") -> "GLSL"
+                lower.endsWith(".slang") -> "Slang"
                 lower.endsWith(".js") || lower.endsWith(".mjs") || lower.endsWith(".cjs") -> "JavaScript"
                 lower.endsWith(".ts") || lower.endsWith(".tsx") -> "TypeScript"
                 lower.endsWith(".java") -> "Java"
@@ -212,7 +235,18 @@ fun installAi4() {
                 )
             }
 
-            val hasGraphicsProperties = listOf("vertex", "fragment", "mesh", "task", "compute")
+            val hasGraphicsProperties = listOf(
+                "vertex",
+                "fragment",
+                "mesh",
+                "task",
+                "compute",
+                "vertex_s",
+                "fragment_s",
+                "mesh_s",
+                "task_s",
+                "compute_s"
+            )
                 .any { property -> textPropertyContents(box, property) != null }
             if (hasGraphicsProperties || exec.prompt.contains("moduleHere") || exec.prompt.contains("renderer")) {
                 val guidePath = Paths.get(System.getProperty("user.dir")).resolve("src/VULKAN_GRAPHICS_SYSTEM.md")

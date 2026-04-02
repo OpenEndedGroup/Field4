@@ -708,31 +708,7 @@ class Net internal constructor(
     }
 
     private fun fitLinesToBox(lines: List<FLine>, width: Double, height: Double, padding: Double): List<FLine> {
-        val bounds = lines
-            .mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
-            .reduceOrNull(Rect::union)
-            ?: return lines
-        if (bounds.w <= 0.0 || bounds.h <= 0.0) return lines
-
-        val safePadding = padding.coerceAtLeast(0.0)
-        val scale = minOf(
-            (width - safePadding * 2.0) / bounds.w,
-            (height - safePadding * 2.0) / bounds.h
-        )
-        if (!scale.isFinite() || scale <= 0.0) return lines
-
-        val offsetX = safePadding - bounds.x * scale + ((width - safePadding * 2.0) - bounds.w * scale) * 0.5
-        val offsetY = safePadding - bounds.y * scale + ((height - safePadding * 2.0) - bounds.h * scale) * 0.5
-
-        return lines.map { line ->
-            line.transform { p ->
-                vec(
-                    p.x * scale + offsetX,
-                    p.y * scale + offsetY,
-                    p.z
-                )
-            }
-        }
+        return lines.fitInto(Rect(0.0, 0.0, width, height), padding = padding)
     }
 }
 

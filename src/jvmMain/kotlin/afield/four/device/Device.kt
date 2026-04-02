@@ -110,9 +110,15 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
                 features().fragmentStoresAndAtomics(true)
                 features().vertexPipelineStoresAndAtomics(true)
+                features().shaderInt64(true)
                 features().robustBufferAccess(Options.robustness)
                 // Request pipeline statistics only when profiling is on; driver may ignore if unsupported
                 features().pipelineStatisticsQuery(profilingEnabled)
+            }
+
+            val features11 = VkPhysicalDeviceVulkan11Features.calloc(stack).apply {
+                `sType$Default`()
+                shaderDrawParameters(true)
             }
 
             val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack).apply {
@@ -166,8 +172,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 .sType(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT)
                 .extendedDynamicState(true)
 
-            // Link pNext chain: features2 -> v12 -> v13
-            features.pNext(features12.address())
+            // Link pNext chain: features2 -> v11 -> v12 -> v13
+            features.pNext(features11.address())
+            features11.pNext(features12.address())
             features12.pNext(features13.address())
             var tail = features13.address()
 

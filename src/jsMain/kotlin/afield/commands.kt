@@ -1207,10 +1207,15 @@ fun registerBuiltinCommands() {
                 if (!uid) return;
                 const props = [
                     {label:'fragment',  description:'Fragment Shader (GLSL)'},
+                    {label:'fragment_s', description:'Fragment Shader (Slang)'},
                     {label:'vertex',    description:'Vertex Shader (GLSL)'},
+                    {label:'vertex_s',  description:'Vertex Shader (Slang)'},
                     {label:'compute',   description:'Compute Shader (GLSL)'},
+                    {label:'compute_s', description:'Compute Shader (Slang)'},
                     {label:'task',      description:'Task Shader (GLSL)'},
+                    {label:'task_s',    description:'Task Shader (Slang)'},
                     {label:'mesh',      description:'Mesh Shader (GLSL)'},
+                    {label:'mesh_s',    description:'Mesh Shader (Slang)'},
                     {label:'preamble',  description:'Kotlin (preamble)'},
                     {label:'introduction', description:'Kotlin (introduction)'},
                     {label:'metadata',  description:'Metadata (YAML)'},

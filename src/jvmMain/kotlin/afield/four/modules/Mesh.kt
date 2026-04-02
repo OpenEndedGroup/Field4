@@ -59,6 +59,7 @@ inline fun <reified A> fromContext(defaultValue: A? = null): A {
 
 inline fun <reified A> fromContextWithNameOrNull(name: String, defaultValue: A? = null): A? {
     val f = Box.context.get()
+    if (f == null) return defaultValue
 
     val a =
         f.properties.entries.firstOrNull { it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class) }

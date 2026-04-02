@@ -41,6 +41,11 @@ const PROPERTY_LANGUAGES = {
 	compute:      "glsl",
 	task:         "glsl",
 	mesh:         "glsl",
+	vertex_s:     "slang",
+	fragment_s:   "slang",
+	compute_s:    "slang",
+	task_s:       "slang",
+	mesh_s:       "slang",
 	preamble:     "kotlin",
 	introduction: "kotlin",
 	metadata:     "yaml",
@@ -56,7 +61,18 @@ function languageForProperty(property) {
 
 const SYNC_DEBOUNCE_MS = 300;
 
-const GLSL_PROPERTIES = new Set(["fragment", "vertex", "compute", "task", "mesh"]);
+const GLSL_PROPERTIES = new Set([
+	"fragment",
+	"vertex",
+	"compute",
+	"task",
+	"mesh",
+	"fragment_s",
+	"vertex_s",
+	"compute_s",
+	"task_s",
+	"mesh_s",
+]);
 
 const EMBEDDED_EDITOR_OPTIONS = {
 	theme: "dark",
@@ -204,11 +220,16 @@ function shaderReloadAction(property) {
 	switch (property) {
 		case "vertex":
 		case "fragment":
+		case "vertex_s":
+		case "fragment_s":
 			return "moduleHere_reload";
 		case "compute":
+		case "compute_s":
 			return "computeModuleHere_reload";
 		case "mesh":
 		case "task":
+		case "mesh_s":
+		case "task_s":
 			return "meshModuleHere_reload";
 		default:
 			return null;
