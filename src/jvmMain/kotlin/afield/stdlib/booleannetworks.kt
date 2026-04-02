@@ -209,9 +209,9 @@ fun BooleanNetwork.drawUnrolled(
     cellSize: Double = 24.0,
 ): List<FLine> {
     val steps = trajectory.size
-    val on = FLine().apply { filled = true; stroked = false; color = vec(0.94, 0.93, 0.86, 1.0) }
-    val off = FLine().apply { filled = true; stroked = false; color = vec(0.14, 0.14, 0.18, 1.0) }
-    val grid = FLine().apply {
+    val on = fline { filled = true; stroked = false; color = vec(0.94, 0.93, 0.86, 1.0) }
+    val off = fline { filled = true; stroked = false; color = vec(0.14, 0.14, 0.18, 1.0) }
+    val grid = fline {
         stroked = true
         filled = false
         thickness = 0.5
@@ -252,19 +252,19 @@ fun BooleanNetwork.drawNetworkGraph(
         pad + radius * cos(angle) to pad + radius * sin(angle)
     }
 
-    val edgeLines = FLine().apply {
+    val edgeLines = fline {
         stroked = true
         filled = false
         thickness = 1.2
         color = vec(0.75, 0.75, 0.75, 0.60)
     }
-    val selfLoops = FLine().apply {
+    val selfLoops = fline {
         stroked = true
         filled = false
         thickness = 1.2
         color = vec(1.0, 0.70, 0.30, 0.75)
     }
-    val nodeFill = FLine().apply {
+    val nodeFill = fline {
         filled = true
         stroked = true
         thickness = 1.5
@@ -326,19 +326,19 @@ fun BooleanNetwork.drawStateTransitionGraph(radius: Double = 200.0): List<FLine>
     val attractorStateSet = mutableSetOf<Int>()
     findAttractors().forEach { attr -> attr.cycle.forEach { attractorStateSet += stateToInt(it) } }
 
-    val arrows = FLine().apply {
+    val arrows = fline {
         stroked = true
         filled = false
         thickness = 1.0
         color = vec(0.68, 0.68, 0.68, 0.55)
     }
-    val attrNodes = FLine().apply {
+    val attrNodes = fline {
         filled = true
         stroked = true
         thickness = 1.5
         color = vec(1.0, 0.52, 0.18, 0.95)
     }
-    val transNodes = FLine().apply {
+    val transNodes = fline {
         filled = true
         stroked = false
         color = vec(0.28, 0.48, 0.82, 0.70)
@@ -381,15 +381,15 @@ fun BooleanNetwork.drawAttractorBasins(
     samplesPerAttractor: Int = 6,
     cellSize: Double = 16.0,
 ): List<FLine> {
-    val on = FLine().apply { filled = true; stroked = false; color = vec(0.94, 0.93, 0.86, 1.0) }
-    val off = FLine().apply { filled = true; stroked = false; color = vec(0.14, 0.14, 0.18, 1.0) }
-    val sep = FLine().apply {
+    val on = fline { filled = true; stroked = false; color = vec(0.94, 0.93, 0.86, 1.0) }
+    val off = fline { filled = true; stroked = false; color = vec(0.14, 0.14, 0.18, 1.0) }
+    val sep = fline {
         stroked = true
         filled = false
         thickness = 1.0
         color = vec(1.0, 0.6, 0.2, 0.6)
     }
-    val grid = FLine().apply {
+    val grid = fline {
         stroked = true
         filled = false
         thickness = 0.4
@@ -452,18 +452,18 @@ fun drawRhythmGrid(
     val lanes = steps.maxOfOrNull { it.size } ?: 0
     if (lanes <= 0) return emptyList()
 
-    val off = FLine().apply {
+    val off = fline {
         filled = true
         stroked = false
         color = vec(0.14, 0.14, 0.18, 0.95)
     }
-    val grid = FLine().apply {
+    val grid = fline {
         filled = false
         stroked = true
         thickness = 0.6
         color = vec(1.0, 1.0, 1.0, 0.08)
     }
-    val accents = FLine().apply {
+    val accents = fline {
         filled = false
         stroked = true
         thickness = 1.2
@@ -477,7 +477,7 @@ fun drawRhythmGrid(
         vec(1.0, 0.88, 0.28, 0.96),
         vec(0.44, 0.92, 0.92, 0.96),
     ).map { color ->
-        FLine().apply {
+        fline {
             filled = true
             stroked = false
             this.color = color

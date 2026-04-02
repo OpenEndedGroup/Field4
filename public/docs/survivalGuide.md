@@ -13,7 +13,8 @@ The cheat-sheet can be accessed by pressing the '?' key. Right now it looks like
 <span class="leftKey">alt-down</span> <span class="rightKey"><b>stops</b> a launched box</span><br>
 <span class="leftKey">alt-return</span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
 <span class="leftKey">alt-drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
-<span class="leftKey">esc-esc</span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
+<span class="leftKey">esc-esc</span> <span class="rightKey"><b>clear newest output</b> annotation from the current editor</span><br>
+<span class="leftKey">esc-esc-esc</span> <span class="rightKey"><b>clear all outputs</b> from the current editor</span><br><br>
 <span class="leftKey">command-space</span> <span class="rightKey">opens <b>autocomplete</b></span><br><br>
 <span class="leftKey">g</span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
 <span class="leftKey">u</span> <span class="rightKey"><b>ungroups</b> boxes</span><br>
@@ -61,4 +62,3 @@ With AI support enabled, this will include up to 3 AI generated suggests of what
 ## Next
 
 Take [a Tour](funFeatures.md); check out the [Kotlin guide](kotlin_overview.md); understand the [AI features](aiFeatures.md).
-

@@ -16,7 +16,7 @@ val attrs = net.findAttractors()
 
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
+fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     moveTo(x, y)
     lineTo(x + w, y)
     lineTo(x + w, y + h)
@@ -65,7 +65,7 @@ val shown = attrs.take(2)
 
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
+fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     moveTo(x, y)
     lineTo(x + w, y)
     lineTo(x + w, y + h)
@@ -132,13 +132,13 @@ val maxY = listOf(
 ).max() + 0.5
 
 fun guides() = listOf(
-    FLine().apply {
+    fline {
         moveTo(80, 580); lineTo(1100, 580)
         moveTo(80, 120); lineTo(80, 580)
         color = vec(1, 1, 1, 0.22)
         thickness = 1.1
     },
-    FLine().apply {
+    fline {
         for (i in 0..8) {
             val y = 580.0 - i / 8.0 * 430.0
             moveTo(80, y); lineTo(1100, y)
@@ -152,7 +152,7 @@ fun guides() = listOf(
     }
 )
 
-fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = FLine().apply {
+fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = fline {
     values.forEachIndexed { i, value ->
         val x = 80.0 + i.toDouble() / (values.size - 1).coerceAtLeast(1).toDouble() * 1020.0
         val y = 580.0 - value / maxY * 430.0
@@ -162,7 +162,7 @@ fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = FLine()
     this.thickness = thickness
 }
 
-fun markers(values: List<Double>, color: Vec4, size: Double): FLine = FLine().apply {
+fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
     filled = true
     stroked = false
     values.forEachIndexed { i, value ->
@@ -240,7 +240,7 @@ val gated =
 
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
+fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     moveTo(x, y)
     lineTo(x + w, y)
     lineTo(x + w, y + h)

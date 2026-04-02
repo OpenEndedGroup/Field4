@@ -212,6 +212,7 @@ function bootstrapAnywhereProviders() {
         const propertyNames = [
                 "code",
                 "vertex",
+                "vertex_fragment",
                 "vertex_s",
                 "fragment",
                 "fragment_s",

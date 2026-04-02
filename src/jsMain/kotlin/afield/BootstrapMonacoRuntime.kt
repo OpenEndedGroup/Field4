@@ -132,18 +132,25 @@ private fun monitorSelection() {
     val currentLen = (currentSelectedCode.length as? Number)?.toInt() ?: 0
     if (currentLen == 1) {
         val codeDiv = currentSelectedCode[0]
-        val curUid = codeDiv.uid as? String
+        val nc = globalEditor.getModel().getValue() as String
+        val propertyValue = codeDiv[currentSelectedProperty] as? String ?: ""
+        val vs = js("JSON.stringify")(globalEditor.saveViewState()) as String
+        val editorStateKey = "${currentSelectedProperty}_editorState"
+        val mainEditorHasFocus = runCatching {
+            globalEditor.hasTextFocus() as? Boolean ?: false
+        }.getOrDefault(false)
+        val embeddedPeer = if (w.embeddedEditors != null && w.embeddedEditors != undefined) {
+            w.embeddedEditors.getFor(codeDiv.uid, currentSelectedProperty)
+        } else null
+        val hasEmbeddedPeer = embeddedPeer != null && embeddedPeer != undefined
 
-        // Skip save-back from main editor when an embedded editor owns this property
-        val embeddedOwnsProperty = if (curUid != null && w.embeddedEditors != null && w.embeddedEditors != undefined) {
-            val entry = w.embeddedEditors.getFor(curUid, currentSelectedProperty)
-            entry != null && entry != undefined
-        } else false
-
-        if (!embeddedOwnsProperty) {
-            val nc = globalEditor.getModel().getValue() as String
-            val vs = js("JSON.stringify")(globalEditor.saveViewState()) as String
-            val editorStateKey = "${currentSelectedProperty}_editorState"
+        if (hasEmbeddedPeer && !mainEditorHasFocus && nc != propertyValue) {
+            notifyPotentialEditedPropertyHasBeenRemoteUpdated(
+                codeDiv.uid as String,
+                currentSelectedProperty,
+                propertyValue
+            )
+        } else {
             if (codeDiv[editorStateKey] != vs) {
                 codeDiv[editorStateKey] = vs
                 val payload = js("{}")
@@ -153,8 +160,11 @@ private fun monitorSelection() {
                 send("set-string", payload)
             }
 
-            if (nc != codeDiv[currentSelectedProperty]) {
+            if (nc != propertyValue) {
                 codeDiv[currentSelectedProperty] = nc
+                if (hasEmbeddedPeer) {
+                    notifyEmbeddedEditorOfRemoteUpdate(codeDiv.uid as String, currentSelectedProperty, nc)
+                }
                 currentValueAtOrigination = codeDiv[currentSelectedProperty] as? String ?: ""
                 recentChangeCache.add(currentValueAtOrigination)
                 if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)

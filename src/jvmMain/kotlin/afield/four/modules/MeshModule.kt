@@ -110,9 +110,12 @@ class MeshModule(val parameters: Parameters) : Renderable {
     var before = linkedMapOf<String, Target>()
     var after = linkedMapOf<String, Target>()
 
-    val ti = Introspection(parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler)
-    val mi = Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
-    val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
+    val ti = parameters.taskIntrospection
+        ?: Introspection(parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler)
+    val mi = parameters.meshIntrospection
+        ?: Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
+    val fi = parameters.fragmentIntrospection
+        ?: Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
 
     val pushConstantSize = (ti.pushConstants + mi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
@@ -183,98 +186,97 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
                 bindingList.forEach { bind ->
                     var kind = 0
+                    var descriptorCount = 1
+
+                    fun noteBinding(stageFlag: Int, descriptorType: Int, count: Int = 1) {
+                        where = where or stageFlag
+                        if (kind == 0) kind = descriptorType
+                        else require(kind == descriptorType) {
+                            "binding $bind in set $set resolves to multiple descriptor types"
+                        }
+                        descriptorCount = maxOf(descriptorCount, count)
+                    }
 
                     ti.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
                     mi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
                     fi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
 
                     ti.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
                     mi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
                     fi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
 
                     // (1) Match on binding for textures/images too
                     ti.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_TASK_BIT_EXT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
                     mi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_MESH_BIT_EXT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
                     fi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
 
                     ti.images.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
                     mi.images.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
                     fi.images.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
 
                     if (kind == 0) throw IllegalArgumentException(" couldn't find $bind for $bindingList")
                     kinds.add(kind)
+                    lens.add(descriptorCount)
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(

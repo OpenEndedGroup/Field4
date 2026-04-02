@@ -13,6 +13,7 @@ import afield.FLineTranslatePoints
 import afield.stdlib.Vec3
 import afield.stdlib.color
 import afield.stdlib.filled
+import afield.stdlib.fline
 import afield.stdlib.pointSize
 import afield.stdlib.pointed
 import afield.stdlib.stroked
@@ -146,7 +147,7 @@ internal class FLineEditSession(
         FLineEditSpace.VIEW -> viewPointToModel(point)
     }
 
-    private fun styledLine(style: FLineDrawStyle) = FLine().apply {
+    private fun styledLine(style: FLineDrawStyle) = fline {
         color = style.color.toVec4()
         thickness = style.thickness
         stroked = style.stroked

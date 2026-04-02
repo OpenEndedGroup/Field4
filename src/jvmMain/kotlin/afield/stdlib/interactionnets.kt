@@ -453,7 +453,7 @@ class Net internal constructor(
             val active = edge.a.kind == PortKind.PRINCIPAL &&
                 edge.b.kind == PortKind.PRINCIPAL &&
                 ActivePair(edge.a.node, edge.b.node).canonicalKey() in activeKeys
-            out += FLine().apply {
+            out += fline {
                 moveTo(portPosition(edge.a))
                 lineTo(portPosition(edge.b))
                 stroked = true
@@ -481,7 +481,7 @@ class Net internal constructor(
             )
 
             if (node.id in activeNodeIds) {
-                out += FLine().apply {
+                out += fline {
                     circle(center.x.toDouble(), center.y.toDouble(), radius + 10.0, segments = 32)
                     filled = false
                     stroked = true
@@ -492,7 +492,7 @@ class Net internal constructor(
 
             val velocity = velocityOf(node)
             if (velocity.lengthSquared().toDouble() > 0.01) {
-                out += FLine().apply {
+                out += fline {
                     moveTo(center)
                     lineTo(
                         vec(
@@ -507,13 +507,13 @@ class Net internal constructor(
                 }
             }
 
-            out += FLine().apply {
+            out += fline {
                 circle(center.x.toDouble(), center.y.toDouble(), radius, segments = 40)
                 filled = true
                 stroked = false
                 color = fill
             }
-            out += FLine().apply {
+            out += fline {
                 circle(center.x.toDouble(), center.y.toDouble(), radius, segments = 40)
                 filled = false
                 stroked = true
@@ -521,7 +521,7 @@ class Net internal constructor(
                 color = stroke
             }
 
-            out += FLine().apply {
+            out += fline {
                 stroked = true
                 filled = false
                 thickness = 0.9
@@ -532,7 +532,7 @@ class Net internal constructor(
                 }
             }
 
-            out += FLine().apply {
+            out += fline {
                 pointed = true
                 pointSize = (radius * 0.18).coerceIn(2.6, 5.0)
                 color = vec(1.0, 0.96, 0.90, 0.96)
@@ -540,7 +540,7 @@ class Net internal constructor(
             }
 
             if (node.type.auxPorts > 0) {
-                out += FLine().apply {
+                out += fline {
                     pointed = true
                     pointSize = (radius * 0.12).coerceIn(1.8, 3.6)
                     color = hsl(hue, 0.42, 0.86, 0.76)
@@ -626,7 +626,7 @@ class Net internal constructor(
         }
 
         val fitted = fitLinesToBox(toFLines(), width.toDouble(), height.toDouble(), padding)
-        val background = FLine().apply {
+        val background = fline {
             moveTo(0.0, 0.0)
             lineTo(width.toDouble(), 0.0)
             lineTo(width.toDouble(), height.toDouble())

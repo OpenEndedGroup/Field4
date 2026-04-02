@@ -1080,21 +1080,21 @@ private fun validateLayers(
     return layers
 }
 
-private fun pointCloudLine(pointSize: Double): FLine = FLine().apply {
+private fun pointCloudLine(pointSize: Double): FLine = fline {
     pointed = true
     stroked = false
     filled = false
     this.pointSize = pointSize
 }
 
-private fun edgeLine(thickness: Double): FLine = FLine().apply {
+private fun edgeLine(thickness: Double): FLine = fline {
     pointed = false
     stroked = true
     filled = false
     this.thickness = thickness
 }
 
-private fun guideLine(): FLine = FLine().apply {
+private fun guideLine(): FLine = fline {
     pointed = false
     stroked = true
     filled = false

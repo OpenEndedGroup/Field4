@@ -748,7 +748,7 @@ val linear = LinearParameter(start = 5f, end = 20f)
 Use another curve's Y coordinate to drive a parameter:
 
 ```kotlin
-val controlCurve = FLine().apply {
+val controlCurve = fline {
     moveTo(0f, 5f)
     lineTo(50f, 20f)
     lineTo(100f, 5f)
@@ -864,7 +864,7 @@ Combine multiple parameterized operations:
 
 ```kotlin
 // Create a wavy line
-val base = FLine().apply {
+val base = fline {
     moveTo(0f, 50f)
     for (i in 1..100) {
         lineTo(i.toFloat(), 50f + sin(i / 10f) * 20f)
@@ -894,7 +894,7 @@ Here's a complete example showing several operations:
 
 ```kotlin
 // Create a simple square
-val square = FLine().apply {
+val square = fline {
     moveTo(0f, 0f)
     lineTo(100f, 0f)
     lineTo(100f, 100f)

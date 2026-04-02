@@ -342,7 +342,7 @@ function disclosureInterface(container) {
 
         function scheduleAutoSize(id, reason = "content") {
                 const d = disclosures.get(id);
-                if (!d || d.inline) return;
+                if (!usesContentAutoSize(d)) return;
 
                 const st = ensureState(id);
                 st.pendingAutoSize = true;
@@ -395,7 +395,7 @@ function disclosureInterface(container) {
                 const st = ensureState(id);
                 st.contentVersion = (st.contentVersion || 0) + 1;
                 states.set(id, st);
-                if (!st.userSized) {
+                if (!st.userSized && usesContentAutoSize(disclosures.get(id))) {
                         scheduleAutoSize(id, reason);
                 }
         }
@@ -523,6 +523,18 @@ function disclosureInterface(container) {
 
         function isInlineId(id) {
                 return typeof id === "string" && id.startsWith(INLINE_CHANNEL_PREFIX);
+        }
+
+        function autoSizeModeForDisclosure(d) {
+                if (!d || d.inline) return "content";
+                const mode = d.cw?.dataset?.afieldAutoSizeMode;
+                return typeof mode === "string" && mode.trim()
+                        ? mode.trim().toLowerCase()
+                        : "content";
+        }
+
+        function usesContentAutoSize(d) {
+                return !d?.inline && autoSizeModeForDisclosure(d) !== "fixed";
         }
 
         function inlineTitle(title) {
@@ -676,7 +688,7 @@ function disclosureInterface(container) {
                 states.set(id, st);
                 bindContentLoadEvents(id, d);
                 observeContentTargets(id, d);
-                if (!st.userSized && st.lastAutoSizedContentVersion !== (st.contentVersion || 0)) {
+                if (usesContentAutoSize(d) && !st.userSized && st.lastAutoSizedContentVersion !== (st.contentVersion || 0)) {
                         scheduleAutoSize(id, "open");
                 }
                 refreshConnectionLayoutForNested(id);

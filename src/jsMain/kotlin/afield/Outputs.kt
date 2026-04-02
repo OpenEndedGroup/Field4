@@ -67,6 +67,40 @@ private fun weakHash(d: dynamic): Double {
     }
 }
 
+private fun focusedMonacoEditorOrNull(): dynamic {
+    val w = js("window")
+    val embeddedEditor = runCatching {
+        val registry = w.embeddedEditors
+        val entry = if (registry != null) registry.getFocused() else null
+        entry?.editor
+    }.getOrNull()
+    if (embeddedEditor != null) return embeddedEditor
+
+    val globalEditor = w.globalMonacoEditor ?: return null
+    val hasTextFocus = runCatching {
+        globalEditor.hasTextFocus() as Boolean
+    }.getOrDefault(false)
+    return if (hasTextFocus) globalEditor else null
+}
+
+private fun activeMonacoEditor(): dynamic {
+    val w = js("window")
+    return focusedMonacoEditorOrNull() ?: w.globalMonacoEditor
+}
+
+private fun outputEditorOrNull(output: dynamic): dynamic {
+    val outputEditor = output.editor
+    if (outputEditor != null) return outputEditor
+    return js("window").globalMonacoEditor
+}
+
+private fun knownOutputsForEditor(editor: dynamic): List<dynamic> {
+    return knownOutputs.filter { output ->
+        val outputEditor = outputEditorOrNull(output) ?: return@filter false
+        sameEditor(outputEditor, editor)
+    }
+}
+
 private fun isStructuralClosingLine(text: String): Boolean {
     val trimmed = text.trim()
     if (trimmed.isEmpty()) return true
@@ -385,6 +419,34 @@ private fun resetOutputErrorMarkerState(editor: dynamic, output: dynamic) {
     clearOutputErrorMarkerDecoration(editor, output)
 }
 
+private fun clearEditorDecorations(editor: dynamic) {
+    val decorations = perEditorDecorations.remove(weakHash(editor)) ?: return
+    decorations.contents.clear()
+    decorations.collection?.clear()
+}
+
+private fun clearOutputsForEditor(editor: dynamic, clearInlineDecorations: Boolean = false) {
+    val outputs = knownOutputsForEditor(editor)
+    if (outputs.isNotEmpty()) {
+        outputs.forEach { output ->
+            resetOutputErrorMarkerState(editor, output)
+        }
+        editor.changeViewZones { changeAccessor: dynamic ->
+            outputs.forEach { output ->
+                changeAccessor.removeZone(output.id)
+            }
+        }
+        outputs.forEach { output ->
+            val domNode = output.domNode as? HTMLElement
+            domNode?.parentElement?.removeChild(domNode)
+        }
+        knownOutputs.removeAll(outputs.toSet())
+    }
+    if (clearInlineDecorations) {
+        clearEditorDecorations(editor)
+    }
+}
+
 private fun setOutputErrorMarkerDecoration(
     editor: dynamic,
     output: dynamic,
@@ -537,9 +599,10 @@ fun clearErrors(editor: dynamic) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun removeNewestOutput() {
+    val editor = activeMonacoEditor() ?: return
     var bestOrder = -1
     var best: dynamic = null
-    for (output in knownOutputs) {
+    for (output in knownOutputsForEditor(editor)) {
         val insertionOrder = (output.insertionOrder as? Number)?.toInt() ?: -1
         if (insertionOrder > bestOrder) {
             bestOrder = insertionOrder
@@ -547,14 +610,21 @@ fun removeNewestOutput() {
         }
     }
     if (best != null) {
-        val w = js("window")
-        val editor = best.editor ?: w.globalMonacoEditor
         resetOutputErrorMarkerState(editor, best)
         editor.changeViewZones { changeAccessor: dynamic ->
             changeAccessor.removeZone(best.id)
         }
+        val domNode = best.domNode as? HTMLElement
+        domNode?.parentElement?.removeChild(domNode)
         knownOutputs.remove(best)
     }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun clearFocusedEditorOutputs() {
+    val editor = activeMonacoEditor() ?: return
+    clearOutputsForEditor(editor, clearInlineDecorations = true)
 }
 
 @OptIn(ExperimentalJsExport::class)

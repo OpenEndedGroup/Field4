@@ -1859,6 +1859,7 @@ fun languageNameForProperty(box: Box, property: String): String {
     else return when (property) {
         "vertex" -> "GLSL (vertex)"
         "fragment" -> "GLSL (fragment)"
+        "vertex_fragment" -> "Slang (vertex+fragment)"
         "compute" -> "GLSL (compute)"
         "mesh" -> "GLSL (mesh)"
         "task" -> "GLSL (task)"

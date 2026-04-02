@@ -118,6 +118,7 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String, 
         val sidecarProperties = listOf(
             "vertex",
             "fragment",
+            "vertex_fragment",
             "compute",
             "task",
             "mesh",

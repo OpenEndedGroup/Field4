@@ -48,9 +48,9 @@ for (i in 0 until 420) {
 }
 
 val guides = listOf(
-    FLine().apply { moveTo(0, 250); lineTo(1000, 250); color = vec(1,1,1,0.22); thickness = 1.2 },
-    FLine().apply { moveTo(0, 120); lineTo(1000, 120); color = vec(1,1,1,0.08); thickness = 1.0 },
-    FLine().apply { moveTo(0, 380); lineTo(1000, 380); color = vec(1,1,1,0.08); thickness = 1.0 }
+    fline { moveTo(0, 250); lineTo(1000, 250); color = vec(1,1,1,0.22); thickness = 1.2 },
+    fline { moveTo(0, 120); lineTo(1000, 120); color = vec(1,1,1,0.08); thickness = 1.0 },
+    fline { moveTo(0, 380); lineTo(1000, 380); color = vec(1,1,1,0.08); thickness = 1.0 }
 )
 
 lines(
@@ -100,7 +100,7 @@ for (i in 0 until 360) {
     eb += betaEvents(x)
 }
 
-fun line(values: List<Float>, y0: Double, amp: Double, color: Vec4, thickness: Double): FLine = FLine().apply {
+fun line(values: List<Float>, y0: Double, amp: Double, color: Vec4, thickness: Double): FLine = fline {
     val n = values.size.coerceAtLeast(2)
     for (i in values.indices) {
         val x = i.toDouble() / (n - 1).toDouble() * 1000.0

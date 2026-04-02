@@ -110,7 +110,8 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     val zeroBefore = linkedMapOf<String, FrameBufferGroup>()
     val after = linkedMapOf<String, Target>()
 
-    val ci = Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
+    val ci = parameters.computeIntrospection
+        ?: Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
 
     var csm: Long = createShaderModule(ci.code.bytecode()!!).also {
         parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")

@@ -241,6 +241,7 @@ private val workspaceSearchProperties = linkedSetOf(
     "code",
     "fragment",
     "vertex",
+    "vertex_fragment",
     "compute",
     "task",
     "mesh",

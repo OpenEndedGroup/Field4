@@ -181,6 +181,12 @@ val SLANG_COMPUTE: LanguageSpec = LanguageSpec(
     unwrap = ::normalizeSlangSource
 )
 
+val SLANG_VERTEX_FRAGMENT: LanguageSpec = LanguageSpec(
+    name = "Slang (vertex+fragment)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
 private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
     "vertex" to GLSL_VERTEX,
     "fragment" to GLSL_FRAGMENT,
@@ -192,6 +198,7 @@ private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
 private val SLANG_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
     "vertex_s" to SLANG_VERTEX,
     "fragment_s" to SLANG_FRAGMENT,
+    "vertex_fragment" to SLANG_VERTEX_FRAGMENT,
     "mesh_s" to SLANG_MESH,
     "task_s" to SLANG_TASK,
     "compute_s" to SLANG_COMPUTE

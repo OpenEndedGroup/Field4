@@ -30,7 +30,7 @@ Some of these effects are language dependant. For example, if you are editing a 
 
 Often your code does something — draws a line, loads a model, makes a sound. But when you are puzzled as to what is running, and where, and when you are confused as to how your variables are varying, nothing beats a good old print statement. Field has a few different ways of doing this.
 
-### `print(...)` — The first is easy:
+### `print(...)` — obviously:
 
 ```diffstatic {data-lang=kotlin}
 print("hello world")
@@ -42,7 +42,7 @@ That just prints things at the end of the code you executed, taking up a single 
 Or, if it doesn't fit on a single line, a little block:
 ![](assets/screenshot_28.png)
 
-You can close blocks with the 'x' symbol in the margin, or by `double-tap Esc`.
+You can close blocks with the 'x' symbol in the margin, or by `double-tap Esc`, which you'll likely be pressing a lot. `triple-tap Esc` will get rid of all the outputs inside the current editor.
 
 ### `_print(...)` — 'print here':
 
@@ -65,22 +65,24 @@ This can be handy in longer, more interesting code, for example:
 	<source src="../assets/screen-recording-2026-03-21.mp4" type="video/mp4">
 </video>
 
-And is quite performance, so you can just use them as output:
+And is quite performant, so you can just use them as output:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/lotsOfPrinting.mp4" type="video/mp4">
 </video>
 
 
+There's a little bit of design here — if they are `_print`'ing but not changing they turn white, otherwise, the thought is that the text changing is enough for you to direct your attention to the line. 
+
 So, if you don't know what that variable is, drop in a `_print()` and find out.
 
 ## Printing complex things
 
-Appending `.h` or `.h2` will cause Field to work much harder to make the thing that you are printing pretty.
+Appending `.h` or even `.h2` will cause Field to work much harder to make the thing that you are printing pretty.
 
 ![](assets/screenshot_31.png)
 
-`.h2` is particularly suited to lists and maps with _lots_ of data in them, indeed, intelligently paging in and out just the parts of the data that you are actually looking at.
+`.h2` is particularly suited to lists and maps with _lots_ of data in them, — Field, intelligently pages in and out just the parts of the data that you are actually looking at.
 
 ![](assets/screenshot_32.png)
 
@@ -139,14 +141,16 @@ Internally we also have a log viewer (`logs('log')`)
 
 ![](assets/screenshot_37.png)
 
+Some systems, like the Vulkan graphics system, expose interface that make them particularly clear when presented with these viewers — to help answer the question, just what exactly am I drawing here and in what order and why is my frame-rate so bad?
+
 ## 'printing' (editable) geometry
 
-Field has extensive support for adding 2d and 3d geometry to the canvas, essentially by `display`ing bundles of `FLine` objects. You can see [fline_examples](fline_examples.md) for more information. But here's a taste:
+Field has extensive support for adding 2d and 3d geometry to the canvas, essentially by `display`ing bundles of `FLine` objects. You can see [fline_examples](fline_examples.md) for a lot more information. But here's a taste:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_editable2.png" embed=true}
 :::static
 
-val petal = FLine().apply {
+val petal = fline {
     moveTo(0, -120)
     cubicTo(90, -100, 140, -20, 0, 120)
     cubicTo(-140, -20, -90, -100, 0, -120)
@@ -157,7 +161,7 @@ val petal = FLine().apply {
     color = vec(0.95, 0.42, 0.6, 0.34)
 }
 
-val stem = FLine().apply {
+val stem = fline {
     moveTo(0, 120)
     cubicTo(10, 180, -20, 230, 0, 300)
     thickness = 5.0
@@ -195,7 +199,7 @@ Additionally, we can write code that extends and decorates our text editor in a 
 
 ## Other output area related things
 
-You can remove output areas you no longer want to see by option clicking their disclosure triangles:
+You can remove output areas you no longer want to see by `option-click`ing their disclosure triangles:
 
 ![](assets/screenshot_38.png)
 
@@ -267,7 +271,7 @@ A few keyboard shortcuts for getting around Field.
 	<source src="../assets/Screen-Recording-2026-03-21-at-14.14.34.mp4" type="video/mp4">
 </video>
 
-`command/ctrl-f` does the Find you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
+`command/ctrl-f` does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-14.16.23.mp4" type="video/mp4">
@@ -289,7 +293,7 @@ To help you find that snippet of code.
 
 # Keyframes and timelines
 
-One of the reason that Field even has a 2D infinite canvas for code is so that the space of the boxes can become meaningful. Traditionally, in 'time-goes-from-left-to-right' apps (Premier, AfterEffects, Davinci, Motion, etc) somewhere there's an idea of directly editing a function over time with the mouse. Field has a really _very_ fully featured keyframe edtior available for boxes to use:
+One of the reason that Field even has a 2D infinite canvas for code is so that the space of the boxes can become meaningful. Traditionally, in 'time-goes-from-left-to-right' apps (Premier, AfterEffects, Davinci, Motion, etc) somewhere there's an idea of directly editing a function over time with the mouse. Field has a really _very_ fully featured keyframe editor available for boxes to use:
 
 ```diffstatic {data-lang=kotlin}
 keyframes(channel="k", name="keyframe", defaults=listOf(vec(0.2, 0.5), vec(0.5, 2.0)))
@@ -442,7 +446,7 @@ Means that in the children:
 _print(foo)
 ```
 
-Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. 
+Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. This code accumulates but it's essentially a layer of inherited auto-regenerateble glue code between boxes and their children.  
 
 Anything that has an exportable type in Kotlin can travel — this includes Kotlin lambdas, `Vec3` etc. But, alas, not types defined inside boxes.
 
@@ -452,7 +456,7 @@ Properties also have a few other uses. One is to conspire to run code exactly on
 prop<Vec2>(myVec)
 
 once.myVec {
-    // will stay the same for this whole session
+    // `myVec` will stay the same for this whole session
     vec(1,2).noise(10.0) 
 }
 ```
@@ -487,3 +491,12 @@ Field's back-end just serves pages to any browser that contacts it; it's just us
 
 Additionally, if more than one person has the webpage open at the same time, everything should just work — people will see each other's boxes, and non-overlapping edits to code should merge correctly if possible.
 
+## Multiple editors
+
+The document-level command 'Add Editor to Output Area` will allow you to pin a particular property of a box to a boxes output zone:
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/multieditor.mp4" type="video/mp4">
+</video>
+
+These addition, fully functional editors, give you a place to keep code (or outputs embedded in code!) that you keep coming back to.

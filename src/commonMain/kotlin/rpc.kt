@@ -238,6 +238,7 @@ data class AgentBoxSnapshot(
     val preamble: String? = null,
     val fragment: String? = null,
     val vertex: String? = null,
+    val vertex_fragment: String? = null,
     val fragment_s: String? = null,
     val vertex_s: String? = null,
     val compute: String? = null,

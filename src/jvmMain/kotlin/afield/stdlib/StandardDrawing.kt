@@ -7,6 +7,11 @@ import java.awt.Stroke
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * Preferred builder for [FLine] geometry in sketches and examples.
+ */
+inline fun fline(block: FLine.() -> Unit): FLine = FLine().apply(block)
+
 var FLine.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
 var FLine.Node.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
 var FLine.thickness by Delegation<Double?>()
@@ -27,7 +32,7 @@ var FLine.onClick by Delegation<(() -> Unit)?>()
  */
 var FLine.hoverColor by Delegation<Vec4?>()
 
-fun seg(a: Vec2, b: Vec2, pointed: Boolean = false, color: Vec4 = vec(1, 1, 1, 1)) = FLine().apply {
+fun seg(a: Vec2, b: Vec2, pointed: Boolean = false, color: Vec4 = vec(1, 1, 1, 1)) = fline {
     moveTo(a.x, a.y); lineTo(b.x, b.y)
     if (pointed) this.pointed = true
     this.color = Vec4(color)
@@ -62,7 +67,7 @@ fun Rect.toFLine(
     filled: Boolean = false,
     stroked: Boolean = true,
     thickness: Double? = if (stroked) 1.0 else null
-): FLine = FLine().apply {
+): FLine = fline {
     rect(this@toFLine)
     this.color = Vec4(color)
     this.filled = filled
@@ -153,7 +158,7 @@ fun arrow(
     val delta = Vec2(end).sub(start)
     val length = delta.length().toDouble()
     if (length <= 1e-6) {
-        return FLine().apply {
+        return fline {
             this.color = Vec4(color)
             this.stroked = true
             this.filled = false
@@ -189,7 +194,7 @@ fun arrow(
     if (startHead) shaftStart.add(Vec2(direction).mul(resolvedHeadLength.toFloat()))
     if (endHead) shaftEnd.sub(Vec2(direction).mul(resolvedHeadLength.toFloat()))
 
-    return FLine().apply {
+    return fline {
         if (Vec2(shaftEnd).sub(shaftStart).lengthSquared() > 1e-8f) {
             moveTo(shaftStart)
             lineTo(shaftEnd)

@@ -26,7 +26,7 @@ val urquhart = vec2UrquhartGraph(points)
 val rng = vec2RelativeNeighborhoodGraph(points)
 val mst = vec2MinimumSpanningTree(points)
 
-fun graphLine(graph: PointGraph, color: Vec4, thickness: Double): FLine = FLine().apply {
+fun graphLine(graph: PointGraph, color: Vec4, thickness: Double): FLine = fline {
     graph.edges.forEach { e ->
         val a = points[e.i]
         val b = points[e.j]
@@ -37,7 +37,7 @@ fun graphLine(graph: PointGraph, color: Vec4, thickness: Double): FLine = FLine(
     this.thickness = thickness
 }
 
-val cloud = FLine().apply {
+val cloud = fline {
     points.forEach { p -> moveTo(p.x, p.y) }
     pointed = true
     pointSize = 3.2
@@ -93,7 +93,7 @@ val knn = vec3KnnGraph(points, k = 4)
 val gabriel = vec3GabrielGraph(points)
 val mst = vec3MinimumSpanningTree(points)
 
-fun graphLine3(graph: PointGraph, color: Vec4, thickness: Double): FLine = FLine().apply {
+fun graphLine3(graph: PointGraph, color: Vec4, thickness: Double): FLine = fline {
     graph.edges.forEach { e ->
         val a = points[e.i]
         val b = points[e.j]
@@ -104,7 +104,7 @@ fun graphLine3(graph: PointGraph, color: Vec4, thickness: Double): FLine = FLine
     this.thickness = thickness
 }
 
-val cloud = FLine().apply {
+val cloud = fline {
     points.forEach { moveTo(it) }
     pointed = true
     pointSize = 0.2
@@ -148,7 +148,7 @@ val cover = graphAnchoredGreedyThenDiameterCover(base, anchor)
 val goal = points.indices.last
 val path = vec2AStarPath(base, points, start = anchor, goal = goal)
 
-fun edgeLine(graph: PointGraph, c: Vec4, t: Double): FLine = FLine().apply {
+fun edgeLine(graph: PointGraph, c: Vec4, t: Double): FLine = fline {
     graph.edges.forEach { e -> moveTo(points[e.i].x, points[e.i].y); lineTo(points[e.j].x, points[e.j].y) }
     color = c
     thickness = t
@@ -159,7 +159,7 @@ val baseLine = edgeLine(base, vec(0.62, 0.7, 0.8, 0.25), 1.0)
 val coverLines = cover.paths.mapIndexed { i, p ->
     val hue = (i % 12) / 12.0
     val c = okhsv(hue, 0.82, 0.96, 0.92)
-    FLine().apply {
+    fline {
         p.edges.forEach { e -> moveTo(points[e.i].x, points[e.i].y); lineTo(points[e.j].x, points[e.j].y) }
         color = c
         thickness = 2.3
@@ -167,7 +167,7 @@ val coverLines = cover.paths.mapIndexed { i, p ->
 }
 
 val aStar = path?.let { p ->
-    FLine().apply {
+    fline {
         p.nodes.forEachIndexed { idx, node ->
             val pt = points[node]
             if (idx == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
@@ -177,7 +177,7 @@ val aStar = path?.let { p ->
     }
 }
 
-val dots = FLine().apply {
+val dots = fline {
     points.forEach { p -> moveTo(p.x, p.y) }
     pointed = true
     pointSize = 3.0

@@ -27,7 +27,7 @@ for (i in 0 until 420) {
     xiVals += (rollingXi.push(x, y) ?: 0.0).toFloat()
 }
 
-fun line(values: List<Float>, y0: Double, amp: Double, c: Vec4): FLine = FLine().apply {
+fun line(values: List<Float>, y0: Double, amp: Double, c: Vec4): FLine = fline {
     val n = values.size.coerceAtLeast(2)
     values.forEachIndexed { i, v ->
         val x = 50.0 + i.toDouble() / (n - 1).toDouble() * 980.0
@@ -38,7 +38,7 @@ fun line(values: List<Float>, y0: Double, amp: Double, c: Vec4): FLine = FLine()
     thickness = 2.3
 }
 
-val guide = FLine().apply { moveTo(50, 500); lineTo(1030, 500); color = vec(1,1,1,0.2); thickness = 1.1 }
+val guide = fline { moveTo(50, 500); lineTo(1030, 500); color = vec(1,1,1,0.2); thickness = 1.1 }
 
 lines(
     listOf(
@@ -86,7 +86,7 @@ val bars = metrics.mapIndexed { i, (_, v) ->
     val x1 = x0 + 110.0
     val y0 = 520.0
     val y1 = 520.0 - vv * 340.0
-    FLine().apply {
+    fline {
         moveTo(x0, y0)
         lineTo(x1, y0)
         lineTo(x1, y1)

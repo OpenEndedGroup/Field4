@@ -28,6 +28,7 @@ import java.time.LocalDateTime
 // ------------------------------
 var Box.fragment by Inheritance<String?>()
 var Box.vertex by Inheritance<String?>()
+var Box.vertex_fragment by Inheritance<String?>()
 var Box.task by Inheritance<String?>()
 var Box.mesh by Inheritance<String?>()
 var Box.fragment_s by Inheritance<String?>()
@@ -104,6 +105,7 @@ private val slangShaderPropertyByBase = mapOf(
     "task" to "task_s",
     "mesh" to "mesh_s"
 )
+private const val sharedVertexFragmentProperty = "vertex_fragment"
 
 private data class ShaderIncludeRef(val boxName: String, val property: String) {
     val key = "${boxName.trim()}.${property.trim()}"
@@ -119,11 +121,15 @@ fun numberFromErrorMessage(m: String): Int? {
 
 private fun slangPropertyFor(baseProperty: String): String? = slangShaderPropertyByBase[baseProperty.lowercase()]
 
-private fun shaderPropertyVariants(baseProperty: String): List<String> =
-    listOfNotNull(baseProperty.lowercase(), slangPropertyFor(baseProperty))
+private fun shaderPropertyVariants(baseProperty: String): List<String> {
+    val normalized = baseProperty.lowercase()
+    val shared = if (normalized == "vertex" || normalized == "fragment") listOf(sharedVertexFragmentProperty) else emptyList()
+    return shared + listOfNotNull(normalized, slangPropertyFor(normalized))
+}
 
 private fun isSlangShaderProperty(property: String): Boolean =
-    property.lowercase().endsWith("_s") && baseShaderProperty(property) in slangShaderPropertyByBase
+    property.lowercase() == sharedVertexFragmentProperty ||
+        property.lowercase().endsWith("_s") && baseShaderProperty(property) in slangShaderPropertyByBase
 
 private fun baseShaderProperty(property: String): String = when (property.lowercase()) {
     "vertex", "vertex_s" -> "vertex"
@@ -196,6 +202,7 @@ private fun getIncludePropertyValue(box: Box, property: String): String? {
     val normalized = property.trim()
     return when (normalized.lowercase()) {
         "vertex" -> box.vertex
+        "vertex_fragment" -> box.vertex_fragment
         "vertex_s" -> box.vertex_s
         "fragment" -> box.fragment
         "fragment_s" -> box.fragment_s
@@ -272,7 +279,9 @@ private data class PreparedShaderStage(
     val source: String,
     val preprocessedSource: String,
     val glslSource: String,
-    val usedSlang: Boolean
+    val usedSlang: Boolean,
+    val spirv: ShaderSPIRVUtils.SPIRV? = null,
+    val reflectionJson: String? = null
 ) {
     val logLabel: String
         get() = if (usedSlang) "$baseProperty shader (slang)" else "$baseProperty shader"
@@ -280,6 +289,7 @@ private data class PreparedShaderStage(
 
 private fun shaderPropertyValue(box: Box, property: String): String? = when (property.lowercase()) {
     "vertex" -> box.vertex
+    "vertex_fragment" -> box.vertex_fragment
     "vertex_s" -> box.vertex_s
     "fragment" -> box.fragment
     "fragment_s" -> box.fragment_s
@@ -299,6 +309,9 @@ private fun hasShaderSource(box: Box, baseProperty: String): Boolean =
 
 private fun sourcePropertyForStage(box: Box, baseProperty: String): String {
     val normalized = baseProperty.lowercase()
+    if ((normalized == "vertex" || normalized == "fragment") && !shaderPropertyValue(box, sharedVertexFragmentProperty).isNullOrBlank()) {
+        return sharedVertexFragmentProperty
+    }
     val slangProperty = slangPropertyFor(normalized)
     val slangSource = slangProperty?.let { shaderPropertyValue(box, it) }
     return if (!slangSource.isNullOrBlank()) slangProperty else normalized
@@ -361,7 +374,25 @@ private fun prepareShaderStage(box: Box, kind: ShaderKind, baseProperty: String)
     }
 
     val usedSlang = isSlangShaderProperty(sourceProperty)
-    val glslSource = if (usedSlang) {
+    var spirv: ShaderSPIRVUtils.SPIRV? = null
+    var reflectionJson: String? = null
+    val glslSource = if (sourceProperty == sharedVertexFragmentProperty) {
+        try {
+            val compiled = SlangCompiler.compileSharedStage(preprocessedSource, kind, "$sourceProperty.slang")
+            spirv = compiled.spirv
+            reflectionJson = compiled.reflectionJson
+            compiled.glslSource
+        } catch (t: Throwable) {
+            reportShaderStageError(
+                box,
+                sourceProperty,
+                "$baseProperty shader transpilation",
+                t.message ?: "slangc failed for $sourceProperty",
+                t
+            )
+            return null
+        }
+    } else if (usedSlang) {
         try {
             SlangCompiler.compileToGlsl(preprocessedSource, kind, "$sourceProperty.slang")
         } catch (t: Throwable) {
@@ -385,7 +416,9 @@ private fun prepareShaderStage(box: Box, kind: ShaderKind, baseProperty: String)
         source = source,
         preprocessedSource = preprocessedSource,
         glslSource = glslSource,
-        usedSlang = usedSlang
+        usedSlang = usedSlang,
+        spirv = spirv,
+        reflectionJson = reflectionJson
     )
 }
 
@@ -394,17 +427,24 @@ private fun compileStage(
     stage: PreparedShaderStage
 ): CompileResult {
     var hadError = false
-    val i = Introspection(
-        stage.glslSource,
-        stage.kind,
-        errorHandler = { message, throwable ->
-            val throwableMsg = throwable?.message?.let { " $it" } ?: ""
-            lprintln("error,graphics", "error during ${stage.logLabel} compilation $message$throwableMsg")
-            throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-            box.error(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
-            hadError = true
-        }
-    )
+    val handler = { message: String, throwable: Throwable ->
+        val throwableMsg = throwable.message?.let { " $it" } ?: ""
+        lprintln("error,graphics", "error during ${stage.logLabel} compilation $message$throwableMsg")
+        lprintln("error,graphics", throwable.stackTraceToString())
+        box.error(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
+        hadError = true
+    }
+    val i = if (stage.spirv != null && stage.reflectionJson != null) {
+        Introspection.fromSlangReflection(
+            source = stage.glslSource,
+            kind = stage.kind,
+            spirv = stage.spirv,
+            reflectionJson = stage.reflectionJson,
+            errorHandler = handler
+        )
+    } else {
+        Introspection(stage.glslSource, stage.kind, errorHandler = handler)
+    }
     return CompileResult(if (hadError) null else i, hadError)
 }
 
@@ -589,6 +629,8 @@ fun reloadShader(box: Box): Boolean {
     val p = box._shader!!.current.parameters.copy().apply {
         vertex = box._vertex!!
         fragment = box._fragment!!
+        vertexIntrospection = vi
+        fragmentIntrospection = fi
     }
 
     // todo: patch error handler if you need finer-grained feedback
@@ -600,6 +642,10 @@ fun reloadShader(box: Box): Boolean {
 // ------------------------------
 // Compute helpers (DRY the previously duplicated postImport construction)
 // ------------------------------
+private fun kotlinBindingTypeName(member: Introspected.Member): String =
+    if (member.physicalPointer) "afield.four.buffers.HasBuffer"
+    else member.type.fold({ it.kotlinTypeName }, { "Any" })
+
 private fun buildComputeInsert(ci: Introspection): Insert {
     var postImport = ""
 
@@ -610,9 +656,7 @@ private fun buildComputeInsert(ci: Introspection): Insert {
                 "compute-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
             ) + "\n"
-            val ty = member.type.fold({ it.kotlinTypeName }) {
-                if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
-            }
+            val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "compute-pc-binding:${member.name}",
                 "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()"
@@ -635,7 +679,7 @@ private fun buildComputeInsert(ci: Introspection): Insert {
             "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>()"
         ) + "\n"
         ubo.members.forEach { m ->
-            val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
+            val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "compute-ubo-member:${ubo.name}:${m.name}",
                 "var Structure.${m.name} by Structure.FromStructure<$ty>()"
@@ -678,6 +722,7 @@ fun reloadComputeShader(box: Box): Boolean {
 
     val p = box._computeShader!!.current.parameters.copy().apply {
         compute = box._compute!!
+        computeIntrospection = ci
     }
     // todo: patch error handler if you need finer-grained feedback
     box._computeShader!!.reload(p)
@@ -698,9 +743,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
                 "mesh-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
             ) + "\n"
-            val ty = member.type.fold({ it.kotlinTypeName }) {
-                if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
-            }
+            val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "mesh-pc-binding:${member.name}",
                 "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()"
@@ -723,7 +766,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
             "var MeshMesh.${ubo.name} by MeshMesh.FromStructure<Structure>()"
         ) + "\n"
         ubo.members.forEach { m ->
-            val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
+            val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "mesh-ubo-member:${ubo.name}:${m.name}",
                 "var Structure.${m.name} by Structure.FromStructure<$ty>()"
@@ -775,6 +818,9 @@ fun reloadMeshShader(box: Box): Boolean {
         mesh = box._mesh!!
         task = box._task!!
         fragment = box._fragment!!
+        taskIntrospection = ti
+        meshIntrospection = mi
+        fragmentIntrospection = fi
     }
     // todo: patch error handler if you need finer-grained feedback
     box._meshShader!!.reload(p)
@@ -1081,9 +1127,7 @@ fun insertForShader(
                 "graphics-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
             ) + "\n"
-            val ty = member.type.fold({ it.kotlinTypeName }, {
-                if (member.physicalPointer) "afield.four.buffers.HasBuffer" else "Any"
-            })
+            val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "graphics-pc-binding:${member.name}",
                 "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()"
@@ -1102,7 +1146,7 @@ fun insertForShader(
             "val ModulePointer.${it.name} by FromUniform()"
         ) + "\n"
         it.members.forEach { m ->
-            val ty = m.type.fold({ it.kotlinTypeName }, { "Any" })
+            val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "graphics-ubo-member:${it.name}:${m.name}",
                 "var Structure.${m.name} by Structure.FromStructure<$ty>()"
@@ -1140,8 +1184,31 @@ fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
 }
 
 fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
-    p.vertex = this._vertex!!
-    p.fragment = this._fragment!!
+    if (!shaderPropertyValue(this, sharedVertexFragmentProperty).isNullOrBlank()) {
+        clearShaderErrorsForBaseProperties(this, "vertex", "fragment")
+        val vertexStage = prepareShaderStage(this, ShaderKind.VERTEX_SHADER, "vertex")
+            ?: throw IllegalStateException("Unable to prepare shared vertex shader")
+        val fragmentStage = prepareShaderStage(this, ShaderKind.FRAGMENT_SHADER, "fragment")
+            ?: throw IllegalStateException("Unable to prepare shared fragment shader")
+
+        assignPreparedShaderStage(this, vertexStage)
+        assignPreparedShaderStage(this, fragmentStage)
+
+        val vertexCompile = compileStage(this, vertexStage)
+        val fragmentCompile = compileStage(this, fragmentStage)
+        val vi = vertexCompile.introspection
+            ?: throw IllegalStateException("Unable to compile shared vertex shader")
+        val fi = fragmentCompile.introspection
+            ?: throw IllegalStateException("Unable to compile shared fragment shader")
+
+        p.vertex = this._vertex!!
+        p.fragment = this._fragment!!
+        p.vertexIntrospection = vi
+        p.fragmentIntrospection = fi
+    } else {
+        p.vertex = this._vertex!!
+        p.fragment = this._fragment!!
+    }
 
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 

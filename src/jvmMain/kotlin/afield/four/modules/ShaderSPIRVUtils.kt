@@ -13,6 +13,7 @@ import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Paths
 
@@ -43,6 +44,13 @@ class CompilerError(override val message : String) : Exception(message) {
 }
 
 object ShaderSPIRVUtils {
+    fun wrapBytecode(bytes: ByteArray): SPIRV {
+        val buffer = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+        buffer.put(bytes)
+        buffer.flip()
+        return SPIRV(0L, buffer)
+    }
+
     fun compileShaderFile(shaderFile: String?, shaderKind: ShaderKind): SPIRV? {
         return compileShaderAbsoluteFile(
             ClassLoader.getSystemClassLoader().getResource(shaderFile).toExternalForm(), shaderKind
@@ -110,7 +118,9 @@ object ShaderSPIRVUtils {
         }
 
         override fun free() {
-            Shaderc.shaderc_result_release(handle)
+            if (handle != 0L) {
+                Shaderc.shaderc_result_release(handle)
+            }
             bytecode = null // Help the GC
         }
     }

@@ -27,7 +27,7 @@ fun bar(bin: HistogramBin, maxCount: Int, idx: Int, total: Int): FLine {
     val x0 = 60.0 + idx.toDouble() / total.toDouble() * 920.0
     val x1 = 60.0 + (idx + 1).toDouble() / total.toDouble() * 920.0
     val h = if (maxCount <= 0) 0.0 else 360.0 * (bin.count.toDouble() / maxCount.toDouble())
-    return FLine().apply {
+    return fline {
         moveTo(x0, 520.0)
         lineTo(x0, 520.0 - h)
         lineTo(x1, 520.0 - h)
@@ -43,7 +43,7 @@ fun bar(bin: HistogramBin, maxCount: Int, idx: Int, total: Int): FLine {
 val maxCount = hist.bins.maxOfOrNull { it.count } ?: 1
 val bars = hist.bins.mapIndexed { i, b -> bar(b, maxCount, i, hist.bins.size) }
 
-fun vMark(x: Double, c: Vec4): FLine = FLine().apply {
+fun vMark(x: Double, c: Vec4): FLine = fline {
     val nx = 60.0 + ((x - hist.min) / (hist.max - hist.min + 1e-9)).coerceIn(0.0, 1.0) * 920.0
     moveTo(nx, 150.0)
     lineTo(nx, 540.0)
@@ -91,7 +91,7 @@ for (i in 0 until 420) {
 val pts = vbuf.values()
 val lenStats = vbuf.snapshot().length
 
-val trail = FLine().apply {
+val trail = fline {
     pts.forEachIndexed { i, p ->
         val x = 540.0 + p.x
         val y = 280.0 + p.y
@@ -101,7 +101,7 @@ val trail = FLine().apply {
     thickness = 2.2
 }
 
-val dots = FLine().apply {
+val dots = fline {
     pts.forEach { p -> moveTo(540.0 + p.x, 280.0 + p.y) }
     pointed = true
     pointSize = 3.0
@@ -109,7 +109,7 @@ val dots = FLine().apply {
     color = vec(1.0, 0.7, 0.36, 0.7)
 }
 
-val lenBand = FLine().apply {
+val lenBand = fline {
     moveTo(40, 560)
     lineTo(1040, 560)
     color = vec(1,1,1,0.18)

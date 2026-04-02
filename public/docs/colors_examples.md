@@ -14,7 +14,7 @@ import afield.stdlib.*
 fun swatchRow(y0: Double, colors: List<Vec4>, h: Double): List<FLine> = colors.mapIndexed { i, c ->
     val x0 = 40.0 + i * 90.0
     val x1 = x0 + 78.0
-    FLine().apply {
+    fline {
         moveTo(x0, y0)
         lineTo(x1, y0)
         lineTo(x1, y0 + h)
@@ -60,7 +60,7 @@ import kotlin.math.sin
 val bg = rgb(0.06, 0.08, 0.11, 1.0)
 val palette = paletteForBackground(bg, count = 7, saturation = 0.78, lightness = 0.63, minContrast = 3.5)
 
-fun ring(radius: Double, phase: Double, color: Vec4): FLine = FLine().apply {
+fun ring(radius: Double, phase: Double, color: Vec4): FLine = fline {
     val n = 260
     for (i in 0..n) {
         val t = i / n.toDouble() * PI * 2.0

@@ -26,14 +26,14 @@ with(Functions) {
 
     val shaped = ((base + overtone + detail) * hannWindow(d)).softClip(c(1.25))
 
-    fun hLine(y: Double, color: Vec4, thickness: Double): FLine = FLine().apply {
+    fun hLine(y: Double, color: Vec4, thickness: Double): FLine = fline {
         moveTo(x0, y)
         lineTo(x1, y)
         this.color = color
         this.thickness = thickness
     }
 
-    fun frame(color: Vec4 = vec(1.0, 1.0, 1.0, 0.28), thickness: Double = 1.6): FLine = FLine().apply {
+    fun frame(color: Vec4 = vec(1.0, 1.0, 1.0, 0.28), thickness: Double = 1.6): FLine = fline {
         moveTo(x0, y0)
         lineTo(x1, y0)
         lineTo(x1, y1)
@@ -62,7 +62,7 @@ with(Functions) {
         hLine(220.0, vec(1.0, 1.0, 1.0, 0.35), 1.6),
         hLine(220.0 - 85.0, vec(1.0, 1.0, 1.0, 0.18), 1.0),
         hLine(220.0 + 85.0, vec(1.0, 1.0, 1.0, 0.18), 1.0),
-        FLine().apply {
+        fline {
             moveTo((x0 + x1) * 0.5, y0)
             lineTo((x0 + x1) * 0.5, y1)
             color = vec(1.0, 1.0, 1.0, 0.12)
@@ -130,7 +130,7 @@ with(Functions) {
     val b = asLine(blurred, vec(0.45, 0.95, 0.72, 0.95), 2.6)
     val c = asLine(held, vec(0.66, 0.82, 1.0, 1.0), 2.0)
 
-    val frame = FLine().apply {
+    val frame = fline {
         moveTo(x0, y0)
         lineTo(x1, y0)
         lineTo(x1, y1)
@@ -140,7 +140,7 @@ with(Functions) {
         thickness = 1.4
     }
 
-    val center = FLine().apply {
+    val center = fline {
         moveTo(x0, 200.0)
         lineTo(x1, 200.0)
         color = vec(1.0, 1.0, 1.0, 0.14)
@@ -191,7 +191,7 @@ with(Functions) {
         return f
     }
 
-    val frame = FLine().apply {
+    val frame = fline {
         moveTo(120.0, 60.0)
         lineTo(880.0, 60.0)
         lineTo(880.0, 440.0)
@@ -202,13 +202,13 @@ with(Functions) {
     }
 
     val cross = listOf(
-        FLine().apply {
+        fline {
             moveTo(120.0, cy)
             lineTo(880.0, cy)
             color = vec(1.0, 1.0, 1.0, 0.12)
             thickness = 1.0
         },
-        FLine().apply {
+        fline {
             moveTo(cx, 60.0)
             lineTo(cx, 440.0)
             color = vec(1.0, 1.0, 1.0, 0.12)
@@ -273,7 +273,7 @@ with(Functions) {
     line.color = vec(0.62, 0.95, 1.0, 0.95)
     line.thickness = 2.0
 
-    val frame = FLine().apply {
+    val frame = fline {
         moveTo(120.0, 60.0)
         lineTo(880.0, 60.0)
         lineTo(880.0, 440.0)
@@ -283,7 +283,7 @@ with(Functions) {
         thickness = 1.4
     }
 
-    val ringGuide = FLine().apply {
+    val ringGuide = fline {
         val n = 220
         for (i in 0..n) {
             val a = i.toDouble() / n.toDouble() * Math.PI * 2.0
@@ -326,7 +326,7 @@ with(Functions) {
         thickness = 2.0
     }
 
-    val frame = FLine().apply {
+    val frame = fline {
         moveTo(40.0, 50.0)
         lineTo(940.0, 50.0)
         lineTo(940.0, 390.0)
@@ -364,7 +364,7 @@ with(Functions) {
         thickness = 2.6
     }
 
-    val frame = FLine().apply {
+    val frame = fline {
         moveTo(40.0, 50.0)
         lineTo(940.0, 50.0)
         lineTo(940.0, 390.0)
@@ -374,7 +374,7 @@ with(Functions) {
         thickness = 1.4
     }
 
-    val center = FLine().apply {
+    val center = fline {
         moveTo(40.0, 220.0)
         lineTo(940.0, 220.0)
         color = vec(1.0, 1.0, 1.0, 0.12)

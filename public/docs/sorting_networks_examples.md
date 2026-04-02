@@ -16,7 +16,7 @@ val merge = SortingNetwork.oddEvenMerge(10)
 
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
-fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = FLine().apply {
+fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     moveTo(x, y)
     lineTo(x + w, y)
     lineTo(x + w, y + h)
@@ -96,13 +96,13 @@ val bubbleProfile = profile(bubble)
 val mergeProfile = profile(merge)
 
 fun axis() = listOf(
-    FLine().apply {
+    fline {
         moveTo(70, 580); lineTo(1120, 580)
         moveTo(70, 120); lineTo(70, 580)
         color = vec(1, 1, 1, 0.22)
         thickness = 1.2
     },
-    FLine().apply {
+    fline {
         for (i in 0..8) {
             val y = 580.0 - i / 8.0 * 430.0
             moveTo(70, y); lineTo(1120, y)
@@ -117,7 +117,7 @@ fun axis() = listOf(
     }
 )
 
-fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = FLine().apply {
+fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = fline {
     values.forEachIndexed { i, v ->
         val x = 70.0 + i.toDouble() / (values.size - 1).coerceAtLeast(1).toDouble() * 1050.0
         val y = 580.0 - v * 430.0
@@ -127,7 +127,7 @@ fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = FLine()
     this.thickness = thickness
 }
 
-fun markers(values: List<Double>, color: Vec4, size: Double): FLine = FLine().apply {
+fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
     filled = true
     stroked = false
     values.forEachIndexed { i, v ->
@@ -189,14 +189,14 @@ val best = SortingNetwork.anneal(
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun chartFrame(x: Double, y: Double, w: Double, h: Double) = listOf(
-    FLine().apply {
+    fline {
         moveTo(x, y); lineTo(x + w, y); lineTo(x + w, y + h); lineTo(x, y + h); close()
         filled = true
         stroked = true
         thickness = 1.0
         color = vec(0.10, 0.12, 0.16, 0.55)
     },
-    FLine().apply {
+    fline {
         moveTo(x, y + h); lineTo(x + w, y + h)
         moveTo(x, y); lineTo(x, y + h)
         color = vec(1, 1, 1, 0.18)
@@ -213,7 +213,7 @@ fun plotMetric(
     maxX: Double,
     maxY: Double,
     color: Vec4
-): FLine = FLine().apply {
+): FLine = fline {
     values.forEachIndexed { idx, (iteration, value) ->
         val x = originX + iteration / maxX * width
         val y = originY + height - value / maxY * height
@@ -349,14 +349,14 @@ val minDepth = runs.minOf { it.best.depth() }.toDouble()
 val maxDepthPoint = runs.maxOf { it.best.depth() }.toDouble()
 
 fun chartFrame(x: Double, y: Double, w: Double, h: Double) = listOf(
-    FLine().apply {
+    fline {
         moveTo(x, y); lineTo(x + w, y); lineTo(x + w, y + h); lineTo(x, y + h); close()
         filled = true
         stroked = true
         thickness = 1.0
         color = vec(0.10, 0.12, 0.16, 0.55)
     },
-    FLine().apply {
+    fline {
         moveTo(x, y + h); lineTo(x + w, y + h)
         moveTo(x, y); lineTo(x, y + h)
         color = vec(1, 1, 1, 0.18)
@@ -372,7 +372,7 @@ fun traceCurve(
     height: Double,
     maxY: Double,
     color: Vec4,
-): FLine = FLine().apply {
+): FLine = fline {
     values.forEachIndexed { idx, (iteration, value) ->
         val x = originX + iteration / iterations.toDouble() * width
         val y = originY + height - value / maxY * height
@@ -386,7 +386,7 @@ fun scatterPoints(): List<FLine> =
     runs.map { run ->
         val x = 80.0 + (run.best.comparators.size - minComparators) / (maxComparators - minComparators + 1e-9) * 1080.0
         val y = 880.0 - (run.best.depth() - minDepth) / (maxDepthPoint - minDepth + 1e-9) * 180.0
-        FLine().apply {
+        fline {
             filled = true
             stroked = false
             moveTo(x - 7, y - 7)

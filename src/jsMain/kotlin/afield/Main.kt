@@ -27,6 +27,7 @@ import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
 import org.w3c.dom.url.URLSearchParams
 import registerDoubleTap
+import tripleTap
 import web.cssom.important
 import web.timers.setTimeout
 import kotlin.js.json
@@ -2863,6 +2864,10 @@ suspend fun main() {
         removeNewestOutput()
         null
     }
+    tripleTap["Escape"] = {
+        clearFocusedEditorOutputs()
+        null
+    }
 
     doubleTap["Shift"] = {
         val w = window.unsafeCast<dynamic>()
@@ -3407,6 +3412,11 @@ suspend fun main() {
                 "fragment" -> {
                     found.unsafeCast<dynamic>().fragment = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
+                }
+
+                "vertex_fragment" -> {
+                    found.unsafeCast<dynamic>().vertex_fragment = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "vertex_fragment", set.value)
                 }
 
                 "fragment_s" -> {

@@ -17,7 +17,7 @@ val ramp = smoothTo<Float>(steps = 180) { 1.0f }
 
 val values = List(220) { ramp() }
 
-val curve = FLine().apply {
+val curve = fline {
     values.forEachIndexed { i, v ->
         val x = 40.0 + i.toDouble() / (values.size - 1).toDouble() * 980.0
         val y = 560.0 - v * 420.0
@@ -28,8 +28,8 @@ val curve = FLine().apply {
 }
 
 val guides = listOf(
-    FLine().apply { moveTo(40, 560); lineTo(1020, 560); color = vec(1,1,1,0.24); thickness = 1.2 },
-    FLine().apply { moveTo(40, 140); lineTo(1020, 140); color = vec(1,1,1,0.14); thickness = 1.0 }
+    fline { moveTo(40, 560); lineTo(1020, 560); color = vec(1,1,1,0.24); thickness = 1.2 },
+    fline { moveTo(40, 140); lineTo(1020, 140); color = vec(1,1,1,0.14); thickness = 1.0 }
 )
 
 lines(guides + curve, channel = "interpolants-scalar", w = 1080.0, h = 640.0, fitToSize = true)
@@ -55,7 +55,7 @@ val q = smoothTo<Float>(steps = 140) { 1.0f }
 (q as NeedsStartingValue<Float>).startAt(0.0f)
 val y = List(180) { q() }
 
-val f = FLine().apply {
+val f = fline {
     y.forEachIndexed { i, v ->
         val x = 40.0 + i.toDouble() / (y.size - 1).toDouble() * 980.0
         val yy = 560.0 - v * 420.0
@@ -78,7 +78,7 @@ val y = List(220) {
     v
 }
 
-val f = FLine().apply {
+val f = fline {
     y.forEachIndexed { i, v ->
         val x = 40.0 + i.toDouble() / (y.size - 1).toDouble() * 980.0
         val yy = 560.0 - v * 420.0

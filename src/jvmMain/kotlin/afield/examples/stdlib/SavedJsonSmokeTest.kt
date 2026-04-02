@@ -5,6 +5,7 @@ import afield.SessionInformation
 import afield.graphics.FLine
 import afield.stdlib.Vec3
 import afield.stdlib.color
+import afield.stdlib.fline
 import afield.stdlib.saved
 import afield.stdlib.vec
 import java.io.File
@@ -177,7 +178,7 @@ object SavedJsonSmokeTest {
     }
 
     private fun sampleLine(x: Float, label: String): FLine {
-        return FLine().apply {
+        return fline {
             moveTo(x, x + 1f, x + 2f)
             lineTo(x + 3f, x + 4f, x + 5f)
             properties["label"] = label

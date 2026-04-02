@@ -1207,6 +1207,7 @@ fun registerBuiltinCommands() {
                 if (!uid) return;
                 const props = [
                     {label:'fragment',  description:'Fragment Shader (GLSL)'},
+                    {label:'vertex_fragment', description:'Shared Vertex+Fragment Shader (Slang)'},
                     {label:'fragment_s', description:'Fragment Shader (Slang)'},
                     {label:'vertex',    description:'Vertex Shader (GLSL)'},
                     {label:'vertex_s',  description:'Vertex Shader (Slang)'},

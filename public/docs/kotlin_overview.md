@@ -668,7 +668,7 @@ foreach (var i in Enumerable.Range(0, 3))
 
 ### Building objects: `apply` and `also` (fluent setup)
 
-In Field sketches you’ll often see patterns like `FLine().apply { ... }`. This is Kotlin’s way to “make an object, configure it, and return it” in one expression.
+In Field sketches you’ll often see patterns like `fline { ... }`. This is a small Field helper built on Kotlin’s `apply { ... }`, which lets you make an object, configure it, and return it in one expression.
 
 This is especially handy when the methods you’re calling don’t return the object (for example, `FLine.moveTo(...)` returns a `Node`, so it can’t be chained in the usual fluent style).
 
@@ -679,8 +679,8 @@ import afield.stdlib.*
 
 // These three are equivalent: they all build the same FLine.
 
-// 1) `apply { ... }`: inside the block, `this` is the object.
-val f1 = FLine().apply {
+// 1) `fline { ... }`: preferred in Field. Inside the block, `this` is the object.
+val f1 = fline {
   moveTo(50, 50)
   lineTo(200, 120)
   thickness = 4.0

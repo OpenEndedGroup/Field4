@@ -195,6 +195,7 @@ private fun snapshotFor(box: Box): AgentBoxSnapshot {
         preamble = box.getPropertyRaw("preamble") as? String,
         fragment = box.getPropertyRaw("fragment") as? String,
         vertex = box.getPropertyRaw("vertex") as? String,
+        vertex_fragment = box.getPropertyRaw("vertex_fragment") as? String,
         fragment_s = box.getPropertyRaw("fragment_s") as? String,
         vertex_s = box.getPropertyRaw("vertex_s") as? String,
         compute = box.getPropertyRaw("compute") as? String,

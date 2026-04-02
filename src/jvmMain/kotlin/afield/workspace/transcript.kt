@@ -11,6 +11,7 @@ private val launchSnapshotProperties = listOf(
     "code",
     "vertex",
     "fragment",
+    "vertex_fragment",
     "task",
     "mesh",
     "compute",
@@ -23,6 +24,7 @@ private val launchSnapshotProperties = listOf(
 private val launchedPropertyChangeProperties = setOf(
     "vertex",
     "fragment",
+    "vertex_fragment",
     "task",
     "mesh",
     "compute",
@@ -443,7 +445,7 @@ object FlightRecorder {
         val type = entry["type"]?.toString()?.takeIf { it.isNotBlank() } ?: return null
         return when (type) {
             "code", "vertex", "fragment", "task", "mesh", "compute",
-            "vertex_s", "fragment_s", "task_s", "mesh_s", "compute_s",
+            "vertex_s", "fragment_s", "vertex_fragment", "task_s", "mesh_s", "compute_s",
             "preamble", "introduction" -> type
             else -> null
         }

@@ -146,6 +146,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "preamble",
             "fragment",
             "vertex",
+            "vertex_fragment",
             "mesh",
             "task",
             "fragment_s",
@@ -182,6 +183,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "introduction",
             "fragment",
             "vertex",
+            "vertex_fragment",
             "task",
             "mesh",
             "fragment_s",
@@ -214,6 +216,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         var ioSeparateProperties = mutableMapOf(
             "fragment" to "glsl",
             "vertex" to "glsl",
+            "vertex_fragment" to "slang",
             "compute" to "glsl",
             "task" to "glsl",
             "mesh" to "glsl",

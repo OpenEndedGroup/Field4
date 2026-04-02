@@ -384,6 +384,7 @@ fun openEditorInOutput(uid: String, property: String) {
 
     // Create the disclosure panel
     val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(channelId, title, "")
+    (contentRoot as HTMLElement).asDynamic().dataset.afieldAutoSizeMode = "fixed"
 
     // Read current value from the box DOM element
     val currentValue = box.asDynamic()[property] as? String ?: ""
@@ -428,4 +429,3 @@ fun openEditorInOutput(uid: String, property: String) {
         }
     }
 }
-

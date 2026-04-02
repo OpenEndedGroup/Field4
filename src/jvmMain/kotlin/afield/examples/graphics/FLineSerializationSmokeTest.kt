@@ -7,6 +7,7 @@ import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import afield.stdlib.color
 import afield.stdlib.filled
+import afield.stdlib.fline
 import afield.stdlib.onClick
 import afield.stdlib.pointSize
 import afield.stdlib.stroked
@@ -56,7 +57,7 @@ object FLineSerializationSmokeTest {
     }
 
     private fun testRoundTripsEmbeddedFLine() {
-        val line = FLine().apply {
+        val line = fline {
             moveTo(1f, 2f, 3f)
             here.properties["tag"] = "start"
             here.properties["weight"] = 7

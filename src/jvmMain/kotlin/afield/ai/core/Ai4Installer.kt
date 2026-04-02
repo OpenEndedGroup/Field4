@@ -112,6 +112,7 @@ fun installAi4() {
             "code",
             "vertex",
             "fragment",
+            "vertex_fragment",
             "mesh",
             "task",
             "compute",
@@ -128,6 +129,7 @@ fun installAi4() {
             "code" -> target.ke.languageName
             "vertex" -> "GLSL (vertex)"
             "fragment" -> "GLSL (fragment)"
+            "vertex_fragment" -> "Slang (vertex+fragment)"
             "compute" -> "GLSL (compute)"
             "mesh" -> "GLSL (mesh)"
             "task" -> "GLSL (task)"
@@ -241,9 +243,10 @@ fun installAi4() {
                 "mesh",
                 "task",
                 "compute",
-                "vertex_s",
-                "fragment_s",
-                "mesh_s",
+            "vertex_s",
+            "fragment_s",
+            "vertex_fragment",
+            "mesh_s",
                 "task_s",
                 "compute_s"
             )

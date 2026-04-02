@@ -38,6 +38,7 @@ const PROPERTY_LANGUAGES = {
 	code:         "kotlin",
 	vertex:       "glsl",
 	fragment:     "glsl",
+	vertex_fragment:"slang",
 	compute:      "glsl",
 	task:         "glsl",
 	mesh:         "glsl",
@@ -64,6 +65,7 @@ const SYNC_DEBOUNCE_MS = 300;
 const GLSL_PROPERTIES = new Set([
 	"fragment",
 	"vertex",
+	"vertex_fragment",
 	"compute",
 	"task",
 	"mesh",
@@ -167,20 +169,51 @@ function createEmbeddedEditor(container, uid, property, language, initialValue) 
 	}
 
 	// ── Content sync → server ─────────────────────────────────────────
-	let syncTimer = null;
-	let lastSentValue = value;
+	const entry = {
+		editorId,
+		editor,
+		model,
+		uid,
+		property,
+		language: lang,
+		container,
+		disposeContentListener: null,
+		syncTimer: null,
+		lastSentValue: value,
+		suppressNextContentSync: false,
+	};
 
 	const contentListener = editor.onDidChangeModelContent(() => {
-		if (syncTimer !== null) clearTimeout(syncTimer);
-		syncTimer = setTimeout(() => {
-			syncTimer = null;
+		if (entry.suppressNextContentSync) {
+			entry.suppressNextContentSync = false;
+			return;
+		}
+		if (entry.syncTimer !== null) clearTimeout(entry.syncTimer);
+		entry.syncTimer = setTimeout(() => {
+			entry.syncTimer = null;
 			const current = model.getValue();
-			if (current === lastSentValue) return;
-			lastSentValue = current;
+			if (current === entry.lastSentValue) return;
+			entry.lastSentValue = current;
 
 			// Also update the DOM property on the box element
 			const box = findBoxElement(uid);
 			if (box) box[property] = current;
+			const selected = window.currentSelectedCode;
+			const selectedUid = selected && selected.length === 1 ? selected[0]?.uid : null;
+			const selectedProperty = window.currentSelectedProperty || "code";
+			const globalEditor = window.globalEditor;
+			const mainEditorHasFocus = !!(globalEditor && typeof globalEditor.hasTextFocus === "function" && globalEditor.hasTextFocus());
+			if (selected && selected.length === 1) {
+				selected[0][property] = current;
+			}
+			if (globalEditor && !mainEditorHasFocus && selectedUid === uid && selectedProperty === property) {
+				const mainCurrent = globalEditor.getModel && globalEditor.getModel() ? globalEditor.getModel().getValue() : "";
+				if (mainCurrent !== current) {
+					const selection = globalEditor.getSelection ? globalEditor.getSelection() : null;
+					globalEditor.setValue(current);
+					if (selection) globalEditor.setSelection(selection);
+				}
+			}
 
 			send("set-string", { uid, property, value: current });
 		}, SYNC_DEBOUNCE_MS);
@@ -193,18 +226,7 @@ function createEmbeddedEditor(container, uid, property, language, initialValue) 
 		window.installSymbolContextMonitor(editor, () => ({ uid, property }));
 	}
 
-	const entry = {
-		editorId,
-		editor,
-		model,
-		uid,
-		property,
-		language: lang,
-		container,
-		disposeContentListener: contentListener,
-		syncTimer,
-		lastSentValue,
-	};
+	entry.disposeContentListener = contentListener;
 	registry.set(editorId, entry);
 
 	return editorId;
@@ -220,6 +242,7 @@ function shaderReloadAction(property) {
 	switch (property) {
 		case "vertex":
 		case "fragment":
+		case "vertex_fragment":
 		case "vertex_s":
 		case "fragment_s":
 			return "moduleHere_reload";
@@ -705,10 +728,16 @@ function notifyEmbeddedEditorOfRemoteUpdate(uid, property, newValue) {
 	// Avoid echo: if the new value matches what we last sent, skip
 	if (newValue === entry.lastSentValue) return;
 	if (newValue === currentValue) return;
+	if (entry.syncTimer !== null) {
+		clearTimeout(entry.syncTimer);
+		entry.syncTimer = null;
+	}
+	const previousSyncedValue = entry.lastSentValue;
+	entry.lastSentValue = newValue;
 
 	// Try 3-way merge if diff module is available
 	if (window.diff && typeof window.diff.mergeDigIn === "function") {
-		const base = entry.lastSentValue || "";
+		const base = previousSyncedValue || "";
 		// mergeDigIn expects arrays of lines and returns { result: [...lines] }
 		const merged = window.diff.mergeDigIn(
 			currentValue.split("\n"),
@@ -717,6 +746,7 @@ function notifyEmbeddedEditorOfRemoteUpdate(uid, property, newValue) {
 		);
 		const result = (merged && merged.result) ? merged.result.join("\n") : newValue;
 		if (result !== currentValue) {
+			entry.suppressNextContentSync = true;
 			const sel = entry.editor.getSelection();
 			entry.editor.setValue(result);
 			if (sel) entry.editor.setSelection(sel);
@@ -724,10 +754,10 @@ function notifyEmbeddedEditorOfRemoteUpdate(uid, property, newValue) {
 	} else {
 		// No diff module — overwrite if user hasn't changed anything
 		if (currentValue === entry.lastSentValue || currentValue === "") {
+			entry.suppressNextContentSync = true;
 			entry.editor.setValue(newValue);
 		}
 	}
-	entry.lastSentValue = newValue;
 }
 
 // ── DOM helpers ───────────────────────────────────────────────────────

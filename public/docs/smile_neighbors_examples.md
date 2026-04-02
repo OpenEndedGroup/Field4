@@ -23,7 +23,7 @@ val kExact = exact.kNearest(q, 10)
 val kApprox = approx.kNearest(q, 10)
 val radius = exact.withinRadius(q, 140.0)
 
-val cloud = FLine().apply {
+val cloud = fline {
     points.forEach { p -> moveTo(p.x, p.y) }
     pointed = true
     pointSize = 3.0
@@ -31,7 +31,7 @@ val cloud = FLine().apply {
     color = vec(0.7, 0.78, 0.88, 0.7)
 }
 
-fun edgeSet(neighbors: List<VecNeighbor2>, c: Vec4, t: Double): FLine = FLine().apply {
+fun edgeSet(neighbors: List<VecNeighbor2>, c: Vec4, t: Double): FLine = fline {
     neighbors.forEach { n ->
         moveTo(q.x, q.y)
         lineTo(n.point.x, n.point.y)
@@ -40,7 +40,7 @@ fun edgeSet(neighbors: List<VecNeighbor2>, c: Vec4, t: Double): FLine = FLine().
     thickness = t
 }
 
-val queryDot = FLine().apply {
+val queryDot = fline {
     moveTo(q.x, q.y)
     pointed = true
     pointSize = 10.0
@@ -83,12 +83,12 @@ val q = vec(550.0, 330.0)
 val index = vec2NN(points, mode = VecNNMode.APPROXIMATE)
 val nn = index.kNearest(q, 14)
 
-val edges = FLine().apply {
+val edges = fline {
     nn.forEach { n -> moveTo(q.x, q.y); lineTo(n.point.x, n.point.y) }
     color = vec(0.62, 0.9, 1.0, 0.95)
     thickness = 2.0
 }
-val dots = FLine().apply { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
+val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
 lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 :::after
 import afield.graphics.FLine
@@ -103,12 +103,12 @@ val index = vec2NN(
 )
 val nn = index.kNearest(q, 14)
 
-val edges = FLine().apply {
+val edges = fline {
     nn.forEach { n -> moveTo(q.x, q.y); lineTo(n.point.x, n.point.y) }
     color = vec(0.56, 1.0, 0.68, 0.95)
     thickness = 2.4
 }
-val dots = FLine().apply { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
+val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
 lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 ```
 

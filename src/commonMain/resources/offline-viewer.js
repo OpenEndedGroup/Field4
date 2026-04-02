@@ -345,7 +345,7 @@ function showEditorForBox(box) {
     const container = document.getElementById('editor-container');
     const props = box.properties || {};
 
-    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_s', 'fragment', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s'];
+    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_fragment', 'vertex_s', 'fragment', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s'];
 
     // Get list of properties that contain code
     const codeProperties = editablePropsOrder.filter(key => typeof props[key] === 'string');
@@ -427,6 +427,7 @@ function getLanguageForProperty(property) {
         'clojure': 'clojure',
         'javascript': 'javascript',
         'vertex': 'cpp',
+        'vertex_fragment': 'cpp',
         'vertex_s': 'cpp',
         'fragment': 'cpp',
         'fragment_s': 'cpp',

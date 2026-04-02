@@ -1336,6 +1336,7 @@ class KotlinExecution : BoxExecution {
                 val shaderProps = listOf(
                     "vertex" to box.vertex,
                     "fragment" to box.fragment,
+                    "vertex_fragment" to box.getPropertyRaw("vertex_fragment") as? String,
                     "mesh" to box.mesh,
                     "task" to box.task,
                     "compute" to box.compute,
@@ -1376,7 +1377,7 @@ class KotlinExecution : BoxExecution {
                         if (candidate.text.isNotBlank()) {
                             append("\n**Insertion**\n")
                             append("```")
-                            append(if (property.lowercase().endsWith("_s")) "slang" else "glsl")
+                            append(if (property.lowercase().endsWith("_s") || property == "vertex_fragment") "slang" else "glsl")
                             append("\n")
                             append(candidate.text.trimEnd())
                             append("\n```\n")
