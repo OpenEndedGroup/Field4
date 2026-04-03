@@ -4058,6 +4058,147 @@ fun FLine.byGaussianProcessInterpolating(
 // ---------- Filtered geometry (EMA, One Euro, alpha-beta / 1$) ----------
 
 /**
+ * How a driver-style smoother is allowed to retarget the sampled source line.
+ */
+enum class FLineDriverTargetUpdateMode {
+    /**
+     * Never revisit earlier samples; target search only moves forward.
+     */
+    FORWARD_ONLY,
+
+    /**
+     * Always pick the closest sample inside a local search window, even if
+     * that means stepping backwards on the source line.
+     */
+    WINDOWED_NEAREST,
+
+    /**
+     * Search a local window, but only step backwards when the earlier sample
+     * is meaningfully closer than the current anchor.
+     */
+    STICKY_WINDOWED_NEAREST
+}
+
+/**
+ * Configuration for [FLine.byDriverSmoothing].
+ *
+ * Angular quantities are expressed per output sample step because this
+ * smoother operates on a resampled polyline rather than real time.
+ */
+data class FLineDriverSmoothingConfig(
+    val maxAngularVelocity: Float = 0.3f,
+    val maxAngularAcceleration: Float = 0.06f,
+    val lookaheadSamples: Int = 4,
+    val forwardSearchSamples: Int = 18,
+    val backwardSearchSamples: Int = 6,
+    val backwardRetargetHysteresis: Float = 0.15f,
+    val linearStepScale: Float = 1f,
+    val targetUpdateMode: FLineDriverTargetUpdateMode = FLineDriverTargetUpdateMode.STICKY_WINDOWED_NEAREST
+) {
+    init {
+        require(maxAngularVelocity >= 0f) { "maxAngularVelocity must be >= 0" }
+        require(maxAngularAcceleration >= 0f) { "maxAngularAcceleration must be >= 0" }
+        require(lookaheadSamples >= 0) { "lookaheadSamples must be >= 0" }
+        require(forwardSearchSamples >= 0) { "forwardSearchSamples must be >= 0" }
+        require(backwardSearchSamples >= 0) { "backwardSearchSamples must be >= 0" }
+        require(backwardRetargetHysteresis in 0f..0.999f) {
+            "backwardRetargetHysteresis must be in [0, 1)"
+        }
+        require(linearStepScale >= 0f) { "linearStepScale must be >= 0" }
+    }
+}
+
+private val driverForwardAxis = vec(1f, 0f, 0f)
+
+private fun initialForwardDirection(points: List<Vec3>): Vec3 {
+    for (i in 1 until points.size) {
+        val delta = Vec3(points[i]).sub(points[i - 1])
+        if (delta.lengthSquared() > 1e-8f) return delta.normalize()
+    }
+    return Vec3(driverForwardAxis)
+}
+
+private fun clampVectorMagnitude(v: Vec3, maxMagnitude: Float): Vec3 {
+    if (maxMagnitude <= 0f) return vec(0f, 0f, 0f)
+    val length = v.length()
+    if (length <= maxMagnitude || length <= 1e-8f) return Vec3(v)
+    return Vec3(v).mul(maxMagnitude / length)
+}
+
+private fun orthogonalUnit(v: Vec3): Vec3 {
+    val base = if (abs(v.x) < 0.9f) vec(1f, 0f, 0f) else vec(0f, 1f, 0f)
+    var ortho = Vec3(v).cross(base)
+    if (ortho.lengthSquared() <= 1e-8f) ortho = Vec3(v).cross(vec(0f, 0f, 1f))
+    return if (ortho.lengthSquared() <= 1e-8f) {
+        vec(0f, 1f, 0f)
+    } else {
+        ortho.normalize()
+    }
+}
+
+private fun shortestRotationAxisAngle(from: Vec3, to: Vec3): Pair<Vec3, Float> {
+    val fromN = if (from.lengthSquared() <= 1e-8f) Vec3(driverForwardAxis) else Vec3(from).normalize()
+    val toN = if (to.lengthSquared() <= 1e-8f) Vec3(driverForwardAxis) else Vec3(to).normalize()
+    val cross = Vec3(fromN).cross(toN)
+    val sinAngle = cross.length()
+    val cosAngle = fromN.dot(toN).coerceIn(-1f, 1f)
+    return if (sinAngle > 1e-6f) {
+        Pair(cross.div(sinAngle), atan2(sinAngle, cosAngle))
+    } else if (cosAngle < 0f) {
+        Pair(orthogonalUnit(fromN), PI.toFloat())
+    } else {
+        Pair(vec(0f, 0f, 1f), 0f)
+    }
+}
+
+private fun orientationFromForward(forward: Vec3): Quaternionf {
+    val target = if (forward.lengthSquared() <= 1e-8f) Vec3(driverForwardAxis) else Vec3(forward).normalize()
+    return Quaternionf().rotationTo(driverForwardAxis, target)
+}
+
+private fun nearestWindowedDriverAnchor(
+    points: List<Vec3>,
+    driverPosition: Vec3,
+    currentAnchor: Int,
+    config: FLineDriverSmoothingConfig
+): Int {
+    val last = points.lastIndex
+    val clampedCurrent = currentAnchor.coerceIn(0, last)
+    val currentDistance = driverPosition.distance(points[clampedCurrent])
+
+    val searchStart = when (config.targetUpdateMode) {
+        FLineDriverTargetUpdateMode.FORWARD_ONLY -> clampedCurrent
+        FLineDriverTargetUpdateMode.WINDOWED_NEAREST,
+        FLineDriverTargetUpdateMode.STICKY_WINDOWED_NEAREST -> (clampedCurrent - config.backwardSearchSamples).coerceAtLeast(0)
+    }
+    val searchEnd = (clampedCurrent + config.forwardSearchSamples).coerceAtMost(last)
+
+    var bestIndex = clampedCurrent
+    var bestDistance = currentDistance
+    for (i in searchStart..searchEnd) {
+        val distance = driverPosition.distance(points[i])
+        if (distance < bestDistance) {
+            bestDistance = distance
+            bestIndex = i
+        }
+    }
+
+    return when (config.targetUpdateMode) {
+        FLineDriverTargetUpdateMode.FORWARD_ONLY,
+        FLineDriverTargetUpdateMode.WINDOWED_NEAREST -> bestIndex
+
+        FLineDriverTargetUpdateMode.STICKY_WINDOWED_NEAREST -> {
+            if (bestIndex >= clampedCurrent) {
+                bestIndex
+            } else {
+                val requiredDistance = currentDistance * (1f - config.backwardRetargetHysteresis)
+                if (bestDistance <= requiredDistance) bestIndex else clampedCurrent
+            }
+        }
+    }
+}
+
+/**
  * Simple exponential moving average over sampled points.
  */
 fun FLine.byEmaFiltering(
@@ -4156,6 +4297,74 @@ fun FLine.byAlphaBetaFiltering(
         v = Vec3(v).add(Vec3(residual).mul(beta / dt))
         filtered.add(Vec3(x))
     }
+    val blended = mixSamples(points, filtered, dryWet, wetModulator)
+    return blended.toFLine()
+}
+
+/**
+ * Driver-style pursuit smoother over a sampled polyline.
+ *
+ * The output starts aligned with the first non-degenerate segment of the
+ * sampled source, then steers toward a target sample with bounded angular
+ * acceleration and bounded angular velocity. Targeting supports forward-only
+ * motion, unrestricted local retargeting, or a sticky local mode that only
+ * jumps backwards when an earlier point is clearly closer.
+ */
+fun FLine.byDriverSmoothing(
+    config: FLineDriverSmoothingConfig = FLineDriverSmoothingConfig(),
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null,
+    sampler: FLineSampler? = null
+): FLine {
+    val points = this.samplePoints(samples, sampler = sampler)
+    if (points.size < 2) return this.copy()
+
+    val filtered = ArrayList<Vec3>(points.size)
+    var driverPosition = Vec3(points.first())
+    var orientation = orientationFromForward(initialForwardDirection(points))
+    var angularVelocity = vec(0f, 0f, 0f)
+    var anchorIndex = 0
+    filtered += Vec3(driverPosition)
+
+    for (i in 1 until points.size) {
+        anchorIndex = nearestWindowedDriverAnchor(points, driverPosition, anchorIndex, config)
+        val targetIndex = (anchorIndex + config.lookaheadSamples).coerceAtMost(points.lastIndex)
+        val target = points[targetIndex]
+        val toTarget = Vec3(target).sub(driverPosition)
+
+        if (toTarget.lengthSquared() > 1e-8f) {
+            val currentForward = driverForwardAxis * orientation
+            val (rotationAxis, headingError) = shortestRotationAxisAngle(currentForward, toTarget)
+            val desiredAngularVelocity = Vec3(rotationAxis).mul(min(headingError, config.maxAngularVelocity))
+            val velocityDelta = clampVectorMagnitude(
+                Vec3(desiredAngularVelocity).sub(angularVelocity),
+                config.maxAngularAcceleration
+            )
+            angularVelocity = clampVectorMagnitude(
+                Vec3(angularVelocity).add(velocityDelta),
+                config.maxAngularVelocity
+            )
+        } else {
+            angularVelocity = clampVectorMagnitude(
+                Vec3(angularVelocity),
+                config.maxAngularVelocity
+            )
+        }
+
+        val angularSpeed = angularVelocity.length()
+        if (angularSpeed > 1e-8f) {
+            val rotationAxis = Vec3(angularVelocity).div(angularSpeed)
+            val deltaQuat = Quaternionf().setAngleAxis(angularSpeed, rotationAxis.x, rotationAxis.y, rotationAxis.z)
+            orientation = Quaternionf(deltaQuat).mul(orientation).normalize()
+        }
+
+        val stepLength = points[i].distance(points[i - 1]) * config.linearStepScale
+        val currentForward = driverForwardAxis * orientation
+        driverPosition = Vec3(driverPosition).add(Vec3(currentForward).mul(stepLength))
+        filtered += Vec3(driverPosition)
+    }
+
     val blended = mixSamples(points, filtered, dryWet, wetModulator)
     return blended.toFLine()
 }

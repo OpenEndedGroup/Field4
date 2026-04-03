@@ -15,6 +15,7 @@ FLineGeometry provides comprehensive extension functions for FLine objects for c
 - [Boolean Operations](#boolean-operations)
 - [Geometric Queries](#geometric-queries)
 - [Path Operations](#path-operations)
+- [Single-Contour Interpolation](#single-contour-interpolation)
 - [Advanced Curve Fitting](#advanced-curve-fitting)
 - [Pattern Generation](#pattern-generation)
 - [Arcs and Higher-Order Curves](#arcs-and-higher-order-curves)
@@ -350,6 +351,47 @@ Extract a sub-curve between two t parameters:
 
 ```kotlin
 val subCurve = myLine.byExtracting( tStart = 1.5f, tEnd = 3.2f)
+```
+
+## Single-Contour Interpolation
+
+For repeated morphing between two single-contour `FLine`s, use `FLineInterpolator` from
+`src/jvmMain/kotlin/afield/graphics/FLineInterpolation.kt`.
+
+```kotlin
+val interpolator = lineA.interpolatorTo(
+    lineB,
+    FLineInterpolationConfig(
+        alignment = FLineInterpolationAlignment(
+            rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D
+        ),
+        matching = FLineInterpolationMatching(
+            denseSampleCount = 256,
+            allowClosedOrderRotation = true,
+            allowReverseOrder = true
+        ),
+        motion = FLineInterpolationMotion(
+            spatialSpinAngle = PI.toFloat(),
+            spatialSpinMode = FLineInterpolationSpinMode.MIDPOINT_RETURN,
+            orderSpin = 0.5f
+        )
+    )
+)
+
+val halfway = interpolator.lineAt(0.5f)
+```
+
+Key ideas:
+- Setup is intentionally heavier than evaluation. It densifies each line, aligns them for matching, chooses reversal and seam shift with a Hungarian assignment, then caches a common basis for fast repeated evaluation.
+- Node-to-segment projection is part of setup, so if one line has a node near the middle of a segment on the other line the target contour is subdivided there before the final basis is built.
+- `spatialSpinMode = FLineInterpolationSpinMode.MIDPOINT_RETURN` gives a flourish in the middle of the morph while still hitting both keyframes exactly. The same idea is available for `orderSpin` via `orderSpinMode`.
+- `orderSpin` rotates the point order through the morph and is most useful for closed contours; `spatialSpinAngle` adds ordinary geometric rotation on top of the blended result.
+- This primitive currently expects one contour only: zero or one `MoveTo`, with multi-contour composition left for a later layer.
+
+For one-off evaluation there is also:
+
+```kotlin
+val once = lineA.byInterpolatingTo(lineB, t = 0.35f)
 ```
 
 ## Advanced Curve Fitting
@@ -938,4 +980,3 @@ The utility uses:
 - Java2D Area for robust boolean operations
 - JOML (Java OpenGL Math Library) for vector math
 - Custom implementations for algorithms like convex hull, simplification, etc.
-

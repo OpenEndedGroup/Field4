@@ -679,6 +679,82 @@ val wave = polylineFrom(pts, closed = false).apply {
 lines(wave, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
+### Arrows: `arrow(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun arrow(
+    x0: Double,
+    y0: Double,
+    x1: Double,
+    y1: Double,
+    color: Vec4 = vec(1.0, 1.0, 1.0, 1.0),
+    thickness: Double = 2.0,
+    headLength: Double = Double.NaN,
+    headWidth: Double = Double.NaN,
+    startHead: Boolean = false,
+    endHead: Boolean = true
+): FLine
+
+fun arrow(
+    from: Vec2,
+    to: Vec2,
+    color: Vec4 = vec(1.0, 1.0, 1.0, 1.0),
+    thickness: Double = 2.0,
+    headLength: Double = Double.NaN,
+    headWidth: Double = Double.NaN,
+    startHead: Boolean = false,
+    endHead: Boolean = true
+): FLine
+```
+
+`arrow(...)` builds a real shaft plus one or two arrowheads, so it reads better in diagrams and annotations than faking direction with a fat point at the end of a line.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/arrows_arrow.png" embed=true}
+:::static
+
+fun card(x: Double, y: Double, tint: Vec4) = fline {
+    rect(x, y, 72, 54)
+    filled = true
+    stroked = true
+    thickness = 2.0
+    color = tint
+}
+
+val left = card(24.0, 102.0, vec(0.32, 0.84, 1.0, 0.18))
+val top = card(174.0, 42.0, vec(1.0, 0.72, 0.24, 0.18))
+val right = card(324.0, 152.0, vec(0.48, 1.0, 0.66, 0.18))
+
+val flow = arrow(
+    96.0, 129.0,
+    174.0, 69.0,
+    color = vec(0.92, 0.96, 1.0, 0.95),
+    thickness = 3.0
+)
+
+val feedback = arrow(
+    vec(246.0, 69.0),
+    vec(324.0, 179.0),
+    color = vec(1.0, 0.72, 0.24, 0.95),
+    thickness = 4.0,
+    headLength = 22.0,
+    headWidth = 16.0
+)
+
+val sync = arrow(
+    vec(324.0, 194.0),
+    vec(96.0, 144.0),
+    color = vec(0.46, 1.0, 0.72, 0.92),
+    thickness = 2.6,
+    headLength = 16.0,
+    headWidth = 12.0,
+    startHead = true,
+    endHead = true
+)
+
+lines(listOf(left, top, right, flow, feedback, sync), w = 420.0, h = 260.0, fitToSize = true)
+```
+
 ### Smooth polylines: cubic splines
 
 ```diffstatic {data-lang=kotlin}
@@ -1243,7 +1319,7 @@ val perlin = base.byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 
 lines(listOf(clean, gauss, oriented, perlin), w = 420.0, h = 260.0, fitToSize = true)
 ```
 
-### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta) {#filters-and-gp}
+### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta / driver pursuit) {#filters-and-gp}
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1285,6 +1361,30 @@ fun FLine.byAlphaBetaFiltering(
     wetModulator: ParameterFunction? = null
 ): FLine
 
+enum class FLineDriverTargetUpdateMode {
+    FORWARD_ONLY,
+    WINDOWED_NEAREST,
+    STICKY_WINDOWED_NEAREST
+}
+
+data class FLineDriverSmoothingConfig(
+    maxAngularVelocity: Float = 0.3f,
+    maxAngularAcceleration: Float = 0.06f,
+    lookaheadSamples: Int = 4,
+    forwardSearchSamples: Int = 18,
+    backwardSearchSamples: Int = 6,
+    backwardRetargetHysteresis: Float = 0.15f,
+    linearStepScale: Float = 1f,
+    targetUpdateMode: FLineDriverTargetUpdateMode = FLineDriverTargetUpdateMode.STICKY_WINDOWED_NEAREST
+)
+
+fun FLine.byDriverSmoothing(
+    config: FLineDriverSmoothingConfig = FLineDriverSmoothingConfig(),
+    samples: Int = 200,
+    dryWet: Float = 1f,
+    wetModulator: ParameterFunction? = null
+): FLine
+
 fun FLine.byOneDollarFiltering(
     targetSamples: Int = 64,
     targetSize: Float = 200f,
@@ -1299,6 +1399,7 @@ These all take a sampled version of your path and return a “regularized” pol
 - `byEmaFiltering` is a simple [exponential moving average](https://en.wikipedia.org/wiki/Exponential_smoothing) (cheap, effective, but it lags).
 - `byOneEuroFiltering` adapts smoothing based on speed (good for interactive cursors/gestures; see the [1€ filter](https://cristal.univ-lille.fr/~casiez/1euro/)).
 - `byAlphaBetaFiltering` is a light constant-velocity tracker (good for jitter + latency tradeoffs; [alpha-beta filter](https://en.wikipedia.org/wiki/Alpha_beta_filter)).
+- `byDriverSmoothing` is a pursuit-style smoother: it samples the source, looks ahead on that sampled path, and steers a driver toward the target with bounded angular acceleration and bounded angular velocity. The search policy controls whether the driver can revisit earlier samples when they become closer.
 - `byGaussianProcessInterpolating` does a smooth GP fit along arc length ([Gaussian process regression](https://en.wikipedia.org/wiki/Gaussian_process_regression); book: [GPML](http://www.gaussianprocess.org/gpml/)) and can generate *variations* with `drawSamples=true`.
 - `byOneDollarFiltering` normalizes a gesture (rotate + scale + resample; the [$1 Recognizer](https://depts.washington.edu/madlab/proj/dollar/)) so noisy input becomes more comparable.
 
@@ -1356,6 +1457,84 @@ val oneDollarPlaced = oneDollar + vec(210, 140, 0)
 
 lines(listOf(showRaw, ema, oneEuro, ab, gpMean, oneDollarPlaced), w = 420.0, h = 260.0, fitToSize = true)
 ```
+
+#### Driver smoothing in 2D
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/driver_smoothing_2d.png" embed=true}
+:::static
+import afield.graphics.*
+
+val f = fline {
+    moveTo(0, 0)
+    cubicTo(10, 20, 30, 20, 20, 40)
+    cubicTo(60, 20, 30, 20, 40, 20)
+} * 3
+
+val sweep = 10.alphas { t ->
+    f.byDriverSmoothing(
+        config = FLineDriverSmoothingConfig(
+            maxAngularVelocity = 1f / (1f + t.f * 20f),
+            maxAngularAcceleration = 0.10f,
+            targetUpdateMode = FLineDriverTargetUpdateMode.FORWARD_ONLY,
+            forwardSearchSamples = 20
+        ),
+        samples = 180
+    ).apply {
+        filled = false
+        stroked = true
+        thickness = 3.0
+        color = vec(
+            0.28 + t * 0.58,
+            0.94 - t * 0.24,
+            1.0 - t * 0.36,
+            0.90
+        )
+    } + vec(t * 300.0, 0.0)
+}
+
+lines(sweep, w = 720.0, h = 220.0, fitToSize = true)
+```
+
+This is the “same path, different steering envelope” view. On the left the driver can turn quickly, so it hugs the source. As `maxAngularVelocity` drops, the chased line has to commit earlier and sweep wider.
+
+#### Driver smoothing in 3D
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/driver_smoothing_3d.png" embed=true wait="1.0" capture="box" open-outputs="true" w="1200"}
+:::static
+import afield.graphics.*
+
+val f = fline {
+    moveTo(0, 0, 0)
+    cubicTo(30, 10, 20, 2, 30, 20, 20, 40)
+    cubicTo(20, 60, 20, 2, 30, -50, 40, 20)
+} * 3
+
+val sweep3d = 10.alphas { t ->
+    f.byDriverSmoothing(
+        config = FLineDriverSmoothingConfig(
+            maxAngularVelocity = 1f / (1f + t.f * 20f),
+            maxAngularAcceleration = 0.10f,
+            targetUpdateMode = FLineDriverTargetUpdateMode.FORWARD_ONLY,
+            forwardSearchSamples = 20
+        ),
+        samples = 180
+    ).apply {
+        filled = false
+        stroked = true
+        thickness = 3.0
+        color = vec(
+            0.32 + t * 0.54,
+            0.86 - t * 0.22,
+            1.0 - t * 0.26,
+            0.88
+        )
+    } + vec(t * 300.0, 0.0, 0.0)
+}
+
+threeLines(sweep3d, channel = "driver3d", height = 430, editable = false)
+```
+
+This is the same sweep idea as the 2D version, but the source curve itself bends through depth and the smoothed family stays genuinely 3D. The steering is quaternion-based internally, so the driver turns toward the lookahead target with bounded angular acceleration and bounded angular velocity in space rather than flattening down to XY first.
 
 ### Offsetting / parallel curves
 
@@ -1690,6 +1869,244 @@ val snippet = a.byExtracting(tStart = 0.8f, tEnd = 1.9f).apply {
 
 lines(listOf(a, b, mid, snippet), w = 420.0, h = 260.0, fitToSize = true)
 ```
+
+### Contour-aware morphing: `FLineInterpolator`
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.graphics.*
+
+class FLineInterpolator(
+    from: FLine,
+    to: FLine,
+    config: FLineInterpolationConfig = FLineInterpolationConfig()
+)
+
+fun FLine.interpolatorTo(
+    other: FLine,
+    config: FLineInterpolationConfig = FLineInterpolationConfig()
+): FLineInterpolator
+
+fun FLine.byInterpolatingTo(
+    other: FLine,
+    t: Float,
+    config: FLineInterpolationConfig = FLineInterpolationConfig(),
+    motion: FLineInterpolationMotion = config.motion
+): FLine
+
+fun FLineInterpolator.lineAt(
+    t: Float,
+    motion: FLineInterpolationMotion = config.motion
+): FLine
+```
+
+If `byBlendingWith(...)` is the “same control structure, just lerp it” tool, `FLineInterpolator` is the more serious morphing tool. It resamples, matches, and re-parameterizes one contour against another, so it copes much better when the two shapes have different point counts or different seams. Right now the reliable path is a single contour only: one `moveTo(...)`, with open contours as the safest default.
+
+#### Vanilla: one interpolator, several frames
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_vanilla.png" embed=true}
+:::static
+import afield.graphics.*
+
+val f = fline {
+    moveTo(0, 0)
+    cubicTo(10, 20, 30, 20, 20, 40)
+    cubicTo(60, 20, 30, 20, 40, 20)
+} * 3
+
+val f2 = fline {
+    moveTo(10, 60)
+    cubicTo(10, 20, 30, 20, 90, 40)
+    cubicTo(60, 20, 30, 20, 20, 20)
+    cubicTo(10, 200, 30, 20, 30, 20)
+} * 3 + vec(300, 0)
+
+val ii = FLineInterpolator(f, f2)
+
+fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
+    filled = false
+    stroked = true
+    thickness = thick
+    color = tint
+}
+
+val ghosts = listOf(
+    ink(f.copy(), vec(0.78, 0.9, 1.0, 0.20), 1.8),
+    ink(f2.copy(), vec(1.0, 0.76, 0.52, 0.20), 1.8)
+)
+
+val frames = (0 until 10).map { i ->
+    val t = i / 9f
+    ink(
+        ii.lineAt(t),
+        vec(
+            0.28 + i * 0.06,
+            0.94 - i * 0.05,
+            1.0 - i * 0.08,
+            0.88
+        ),
+        3.0
+    )
+}
+
+lines(ghosts + frames, w = 560.0, h = 360.0, fitToSize = true)
+```
+
+This is the basic pattern: two contours in, one reusable interpolator out, then sample `lineAt(t)` as many times as you want.
+
+#### Spicy 1: rotation-aware matching
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_rotation_matching.png" embed=true}
+:::static
+import afield.graphics.*
+
+fun asymmetricStroke() = polylineFrom(
+    listOf(
+        vec(-150, 20),
+        vec(-80, -110),
+        vec(-10, -30),
+        vec(35, 120),
+        vec(90, 40),
+        vec(150, -60)
+    )
+).apply {
+    filled = false
+    stroked = true
+    thickness = 2.0
+}
+
+val start = asymmetricStroke()
+val end = asymmetricStroke()
+    .byRotating2D(1.7f, center = vec(0f, 0f))
+    .byScaling2D(0.78f, 1.24f, center = vec(0f, 0f))
+    .byShearing2D(0.18f, -0.08f)
+
+val vanillaMid = start.interpolatorTo(end).lineAt(0.5f).apply {
+    filled = false
+    stroked = true
+    thickness = 3.0
+    color = vec(1.0, 0.58, 0.22, 0.8)
+}
+
+val alignedMid = start.interpolatorTo(
+    end,
+    config = FLineInterpolationConfig(
+        alignment = FLineInterpolationAlignment(
+            rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
+            scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL
+        )
+    )
+).lineAt(0.5f).apply {
+    filled = false
+    stroked = true
+    thickness = 3.0
+    color = vec(0.42, 1.0, 0.68, 0.8)
+}
+
+fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
+    filled = false
+    stroked = true
+    thickness = 1.8
+    color = tint
+}
+
+val leftShift = vec(-190, 0, 0)
+val rightShift = vec(190, 0, 0)
+
+val panels = listOf(
+    fline {
+        rect(-330, -160, 300, 320)
+        filled = true
+        stroked = false
+        color = vec(0.12, 0.15, 0.19, 0.28)
+    },
+    fline {
+        rect(30, -160, 300, 320)
+        filled = true
+        stroked = false
+        color = vec(0.15, 0.12, 0.09, 0.28)
+    }
+)
+
+val comparison = panels +
+    listOf(
+        ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + leftShift,
+        ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + leftShift,
+        vanillaMid + leftShift,
+        ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + rightShift,
+        ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + rightShift,
+        alignedMid + rightShift
+    )
+
+lines(comparison, w = 720.0, h = 360.0, fitToSize = true)
+```
+
+Left is the default midpoint. Right pre-aligns the shapes before correspondence using `FIT_LINE_2D`, which is much better once the target has been rotated and rescaled.
+
+#### Spicy 2: extra motion at evaluation time
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_motion_spins.png" source-image="generated/flineinterpolator_motion_spins_source.png" embed=true}
+:::static
+import afield.graphics.*
+
+val f = fline {
+    moveTo(0, 0)
+    cubicTo(10, 20, 30, 20, 20, 40)
+    cubicTo(60, 20, 30, 20, 40, 20)
+} * 3
+
+val f2 = fline {
+    moveTo(10, 60)
+    cubicTo(10, 20, 30, 20, 90, 40)
+    cubicTo(60, 20, 30, 20, 20, 20)
+    cubicTo(10, 200, 30, 20, 30, 20)
+} * 3 + vec(300, 0)
+
+val ii = FLineInterpolator(
+    f,
+    f2,
+    FLineInterpolationConfig(
+        motion = FLineInterpolationMotion(
+            spatialSpinAngle = 1f,
+            spatialSpinAxis = vec(0f, 1f, 0.25f),
+            spatialSpinMode = FLineInterpolationSpinMode.MIDPOINT_RETURN
+        )
+    )
+)
+
+val shift = vec(28, 8, 0)
+
+fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
+    filled = false
+    stroked = true
+    thickness = thick
+    color = tint
+}
+
+val frames = (0 until 10).map { i ->
+    val t = i / 9f
+    ink(
+        ii.lineAt(t)
+            .byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
+        vec(
+            0.24 + i * 0.07,
+            0.92 - i * 0.05,
+            1.0 - i * 0.08,
+            0.9
+        ),
+        3.0
+    )
+}
+
+val ghosts = listOf(
+    ink(f.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift, vec(0.78, 0.9, 1.0, 0.18), 1.8),
+    ink(f2.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift, vec(1.0, 0.76, 0.52, 0.18), 1.8)
+)
+
+lines(ghosts + frames, w = 460.0, h = 240.0, fitToSize = true)
+```
+
+This is the same base demo, but with `spatialSpinAngle = 1f` in the interpolator config and a perspective projection on the evaluated lines. The source and target still land in the same places; the extra depth only appears in the middle of the morph.
 
 ### Circle fitting + subdivision
 

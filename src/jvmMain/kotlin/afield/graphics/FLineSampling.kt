@@ -159,7 +159,10 @@ object FLineSamplers {
         val out = ArrayList<FLineSample>(count)
         for (i in 0 until count) {
             val target = if (count == 1) 0f else i.toFloat() / (count - 1).toFloat() * total
-            val idx = cumulative.binarySearch(target).let { if (it >= 0) it else (-it - 1).coerceIn(1, n - 1) }
+            val idx = cumulative.binarySearch(target).let {
+                if (it >= 0) it.coerceIn(1, n - 1)
+                else (-it - 1).coerceIn(1, n - 1)
+            }
             val c0 = cumulative[idx - 1]
             val c1 = cumulative[idx]
             val alpha = if (abs(c1 - c0) <= 1e-6f) 0f else ((target - c0) / (c1 - c0)).coerceIn(0f, 1f)
