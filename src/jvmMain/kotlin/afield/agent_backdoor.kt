@@ -58,6 +58,7 @@ private fun cleanupDetachedSession(info: SessionInformation) {
 
 internal fun detachDocumentSession(session: WebSocketSession, info: SessionInformation? = sessions.remove(session)): SessionInformation? {
     val target = info ?: return null
+    detachSpreadsheetClient(session)
     target.sessions.remove(session)
     cleanupDetachedSession(target)
     return target

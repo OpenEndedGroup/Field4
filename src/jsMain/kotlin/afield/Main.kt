@@ -98,6 +98,11 @@ private var axisAlpha = axisAlphaIdle
 private var axisAlphaTarget = axisAlphaIdle
 private var backgroundFadeTimeoutHandle: Int? = null
 private var backgroundLerpHandle: Int? = null
+
+private var editorOpacity = 1.0
+private var editorOpacityTarget = 1.0
+private const val editorOpacityPanning = 0.5
+private const val editorOpacityIdle = 1.0
 private var navigationPanAnimationHandle: Int? = null
 private var navigationPanAnimationGeneration = 0
 
@@ -1641,17 +1646,26 @@ private fun applyBackgroundAlphas() {
     mainViewport.style.setProperty("--axis-alpha", axisAlpha.toString())
 }
 
+private fun applyEditorOpacity() {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
+    if (container.style.visibility == "hidden" || container.style.opacity == "0") return
+    container.style.opacity = editorOpacity.toString()
+}
+
 private fun stepBackgroundLerp(): Boolean {
     val deltaSmall = dotAlphaSmallTarget - dotAlphaSmall
     val deltaLarge = dotAlphaLargeTarget - dotAlphaLarge
     val deltaAxis = axisAlphaTarget - axisAlpha
-    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005
+    val deltaEditor = editorOpacityTarget - editorOpacity
+    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005 || abs(deltaEditor) > 0.005
 
     dotAlphaSmall += deltaSmall * 0.18
     dotAlphaLarge += deltaLarge * 0.18
     axisAlpha += deltaAxis * 0.18
+    editorOpacity += deltaEditor * 0.15
 
     applyBackgroundAlphas()
+    applyEditorOpacity()
     return changed
 }
 
@@ -1670,6 +1684,7 @@ private fun bumpBackgroundVisibility() {
     dotAlphaSmallTarget = dotAlphaSmallActive
     dotAlphaLargeTarget = dotAlphaLargeActive
     axisAlphaTarget = axisAlphaActive
+    editorOpacityTarget = editorOpacityPanning
     scheduleBackgroundLerp()
 
     backgroundFadeTimeoutHandle?.let { window.clearTimeout(it) }
@@ -1677,6 +1692,7 @@ private fun bumpBackgroundVisibility() {
         dotAlphaSmallTarget = dotAlphaSmallIdle
         dotAlphaLargeTarget = dotAlphaLargeIdle
         axisAlphaTarget = axisAlphaIdle
+        editorOpacityTarget = editorOpacityIdle
         scheduleBackgroundLerp()
     }, 420)
 }

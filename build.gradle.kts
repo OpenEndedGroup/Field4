@@ -217,6 +217,8 @@ kotlin {
                 implementation("org.slf4j:slf4j-api:2.0.16")
                 runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
 
+                implementation("eu.sirotin.kotunil:kotunil-jvm:4.2.3")
+
                 implementation(project.dependencies.platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
 
                 implementation("org.lwjgl:lwjgl:$lwjglVersion")
