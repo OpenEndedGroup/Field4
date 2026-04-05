@@ -45,6 +45,14 @@ object Options {
 
     var openXRClearColor: FloatArray = floatArrayOf(0f, 0f, 0f, 1f)
 
+    // When true, the swap chain will prefer an HDR surface format (scRGB or HDR10) over the
+    // default 8-bit sRGB.  On macOS a small JVM→ObjC FFI call also sets
+    // CAMetalLayer.wantsExtendedDynamicRangeContent = YES so the OS actually delivers EDR
+    // headroom.  Requires VK_EXT_swapchain_colorspace on the instance and a display that
+    // advertises an HDR colorspace; falls back silently to sRGB when the hardware doesn't
+    // support any HDR format.
+    var enableHDR: Boolean = false
+
     // When true, prints OpenXR input diagnostics (interaction profiles, bound sources).
     var openXRDebugInput: Boolean = true
 
