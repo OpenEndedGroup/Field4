@@ -1,14 +1,16 @@
 package afield
 
 
+import afield.Generator.Companion.isMain
 import afield.four.util.MapOfSequences
 import afield.logger.lprintln
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.max
 
-@OptIn(DelicateCoroutinesApi::class)
-fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, block = block)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
+fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, start = if (isMain.load()) CoroutineStart.UNDISPATCHED else CoroutineStart.DEFAULT, block = block)
 
 class Runloop {
 

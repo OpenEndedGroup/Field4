@@ -4,6 +4,8 @@ package afield
 
 import CanvasGestures
 import clipRay
+import connectCenters
+import getCenter
 import doubleTap
 import handleCustomizationRequest
 import handleEvalRequest
@@ -29,6 +31,7 @@ import org.w3c.dom.url.URLSearchParams
 import registerDoubleTap
 import tripleTap
 import web.cssom.important
+import web.timers.clearTimeout
 import web.timers.setTimeout
 import kotlin.js.json
 import kotlin.math.abs
@@ -200,6 +203,150 @@ private fun findBoxElementByUid(uid: String): HTMLElement? {
             ?: it.getAttribute("data-uid")
         candidate == uid
     } as? HTMLElement
+}
+
+private var actorArcCounter = 0
+private const val ACTOR_ARC_LAYER_ID = "actor-arc-layer"
+private const val ACTOR_ARC_DURATION_MS = 150
+private const val ACTOR_ARC_DOT_RADIUS = 3.25
+
+// dedup: key → (SVG group, current timeout handle)
+private val activeArcs = mutableMapOf<String, Pair<SVGElement, web.timers.Timeout>>()
+
+private fun arcKey(arc: ActorArc): String =
+    "${arc.senderUid}|${arc.handlerUid}|${arc.targetUid}|${arc.isReply}"
+
+private fun ensureActorArcLayer(): SVGSVGElement {
+    val existing = document.getElementById(ACTOR_ARC_LAYER_ID) as? SVGSVGElement
+    if (existing != null) return existing
+
+    val svgNs = "http://www.w3.org/2000/svg"
+    val layer = document.createElementNS(svgNs, "svg") as SVGSVGElement
+    layer.id = ACTOR_ARC_LAYER_ID
+    layer.setAttribute("style", "position: absolute; top:0; bottom:0; left:0; right:0; z-index: 19; pointer-events: none")
+    layer.setAttribute("height", "100%")
+    layer.setAttribute("width", "100%")
+    document.body?.appendChild(layer)
+    console.log("[actor-arc] created SVG layer")
+    return layer
+}
+
+/**
+ * Get a box's world-space DOMRect (screen rect offset by mainTranslation).
+ */
+private fun boxWorldRect(uid: String): DOMRect? {
+    val el = findBoxElementByUid(uid) ?: return null
+    val r = el.getBoundingClientRect()
+    return DOMRect(r.x - mainTranslation[0], r.y - mainTranslation[1], r.width, r.height)
+}
+
+private fun drawActorArc(arc: ActorArc) {
+    console.log("[actor-arc] drawActorArc: sender=${arc.senderUid} target=${arc.targetUid} handler=${arc.handlerUid} reply=${arc.isReply}")
+
+    val svgNs = "http://www.w3.org/2000/svg"
+    val layer = ensureActorArcLayer()
+
+    val vbw = window.innerWidth.toDouble()
+    val vbh = window.innerHeight.toDouble()
+    layer.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+
+    val key = arcKey(arc)
+    val existing = activeArcs[key]
+    if (existing != null) {
+        // same arc already on screen – cancel old timeout and schedule a fresh one
+        clearTimeout(existing.second)
+        val handle = setTimeout({ existing.first.remove(); activeArcs.remove(key) }, ACTOR_ARC_DURATION_MS)
+        activeArcs[key] = existing.first to handle
+        return
+    }
+
+    val group = document.createElementNS(svgNs, "g") as SVGElement
+    group.id = "actor-arc-${actorArcCounter++}"
+    val color = if (arc.isReply) "rgba(120, 220, 160, 0.85)" else "rgba(235, 150, 70, 0.85)"
+
+    if (arc.isReply) {
+        val senderUid = arc.senderUid
+        if (senderUid == null) {
+            console.log("[actor-arc] reply arc skipped: senderUid is null")
+            return
+        }
+        val fromRect = boxWorldRect(arc.handlerUid)
+        val toRect = boxWorldRect(senderUid)
+        if (fromRect == null || toRect == null) return
+        drawClippedLine(group, fromRect, toRect, color, svgNs)
+    } else {
+        val senderUid = arc.senderUid
+        if (senderUid == null) {
+            console.log("[actor-arc] send arc skipped: senderUid is null")
+            return
+        }
+        val fromRect = boxWorldRect(senderUid)
+        val handlerRect = boxWorldRect(arc.handlerUid)
+        if (fromRect == null || handlerRect == null) return
+        val (senderClip, handlerClip) = drawClippedLine(group, fromRect, handlerRect, color, svgNs)
+
+        if (arc.handlerUid != arc.targetUid && senderClip != null && handlerClip != null) {
+            val targetRect = boxWorldRect(arc.targetUid) ?: return
+            // start 2/3 along the sender→handler line
+            val branchPt = Point(
+                senderClip.x + (handlerClip.x - senderClip.x) * 2.0 / 3.0,
+                senderClip.y + (handlerClip.y - senderClip.y) * 2.0 / 3.0
+            )
+            val targetCenter = getCenter(targetRect)
+            val dx = targetCenter.x - branchPt.x
+            val dy = targetCenter.y - branchPt.y
+            val toClip = clipRay(targetRect, -dx, -dy)
+            drawLineBetweenPoints(group, branchPt, toClip.point, "rgba(180, 130, 255, 0.85)", svgNs)
+        }
+    }
+
+    layer.appendChild(group)
+
+    val handle = setTimeout({
+        group.remove()
+        activeArcs.remove(key)
+    }, ACTOR_ARC_DURATION_MS)
+    activeArcs[key] = group to handle
+}
+
+/**
+ * Draw a straight line between two box rects, clipped to their edges
+ * (matching parent→child connection placement), with a small dot at
+ * the receiving (end) side. Returns the clipped start/end points.
+ */
+private fun drawClippedLine(parent: SVGElement, fromRect: DOMRect, toRect: DOMRect, color: String, svgNs: String): Pair<Point?, Point?> {
+    val (fromClip, toClip) = connectCenters(fromRect, toRect)
+    val a = fromClip.point
+    val b = toClip.point
+    if (a.distance(b) < 1.0) return null to null
+
+    drawLineBetweenPoints(parent, a, b, color, svgNs)
+    return a to b
+}
+
+/**
+ * Draw a straight line between two points with a small dot at the end.
+ */
+private fun drawLineBetweenPoints(parent: SVGElement, a: Point, b: Point, color: String, svgNs: String) {
+    if (a.distance(b) < 1.0) return
+
+    val line = document.createElementNS(svgNs, "line") as SVGElement
+    line.setAttribute("x1", a.x.toString())
+    line.setAttribute("y1", a.y.toString())
+    line.setAttribute("x2", b.x.toString())
+    line.setAttribute("y2", b.y.toString())
+    line.setAttribute("stroke", color)
+    line.setAttribute("stroke-width", "1")
+    line.setAttribute("fill", "none")
+    parent.appendChild(line)
+
+    // dot at receiving end
+    val dot = document.createElementNS(svgNs, "circle") as SVGElement
+    dot.setAttribute("cx", b.x.toString())
+    dot.setAttribute("cy", b.y.toString())
+    dot.setAttribute("r", ACTOR_ARC_DOT_RADIUS.toString())
+    dot.setAttribute("fill", color)
+    parent.appendChild(dot)
 }
 
 private fun domRectToRect(r: dynamic): Rect {
@@ -2866,6 +3013,18 @@ suspend fun main() {
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
 
+    // Intercept clicks on box-reference links anywhere in the document (Monaco view zones, output areas, etc.)
+    document.addEventListener("click", { event ->
+        val target = (event.target as? Element) ?: return@addEventListener
+        val link = target.closest("a[data-box-uid], a[href^='#box:']") ?: return@addEventListener
+        val uid = link.getAttribute("data-box-uid")?.trim()?.takeIf { it.isNotBlank() }
+            ?: link.getAttribute("href")?.removePrefix("#box:")?.trim()?.takeIf { it.isNotBlank() }
+            ?: return@addEventListener
+        event.preventDefault()
+        event.stopPropagation()
+        navigateToBoxProperty(uid)
+    })
+
     // Initialize the box snapping system
     boxSnappingSystem.initialize()
 
@@ -3375,6 +3534,12 @@ suspend fun main() {
         set.entries.forEach { entry ->
             Provisional.set(entry.uid, entry.property, entry.contents)
         }
+        Handled.yes
+    }
+
+    handlers.put("actor-arc") { message, _ ->
+        val arc = Json.decodeFromJsonElement<ActorArc>(message.payload!!)
+        drawActorArc(arc)
         Handled.yes
     }
 

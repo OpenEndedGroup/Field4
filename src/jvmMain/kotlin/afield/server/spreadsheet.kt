@@ -4,6 +4,9 @@ import afield.graphics.FLine
 import afield.logger.lprintln
 import afield.stdlib.Quantity
 import afield.stdlib.autoScaleExpression
+import afield.stdlib.formatExpression
+import afield.stdlib.formatQuantityDisplay
+import afield.stdlib.formatUnitSuperscripts
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
@@ -2141,17 +2144,12 @@ private fun formatSpreadsheetValue(value: Any?): String = when (value) {
     null -> ""
     is Unit -> ""
     is Quantity -> {
-        if (value.displayUnit != null) {
-            val sym = value.displaySymbol
-            if (sym.isNotEmpty()) "${formatNumber(value.displayValue)} $sym" else formatNumber(value.displayValue)
-        } else {
-            val (scaled, sym) = autoScaleExpression(value.expression)
-            if (sym.isNotEmpty()) "${formatNumber(scaled)} $sym" else formatNumber(scaled)
-        }
+        val (v, sym) = formatQuantityDisplay(value)
+        if (sym.isNotEmpty()) "${formatNumber(v)} $sym" else formatNumber(v)
     }
     is Expression -> {
-        val (scaled, sym) = autoScaleExpression(value)
-        if (sym.isNotEmpty()) "${formatNumber(scaled)} $sym" else formatNumber(value.value)
+        val (v, sym) = formatExpression(value)
+        if (sym.isNotEmpty()) "${formatNumber(v)} $sym" else formatNumber(value.value)
     }
     is Double -> formatNumber(value)
     is Float -> formatNumber(value.toDouble())

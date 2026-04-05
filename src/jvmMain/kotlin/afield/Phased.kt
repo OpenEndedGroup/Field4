@@ -1,7 +1,10 @@
 package afield
 
+import afield.Generator.Companion.isMain
 import kotlinx.coroutines.*
 import java.util.concurrent.LinkedTransferQueue
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.*
 
 class Frames {
@@ -152,6 +155,9 @@ class Framer : CoroutineDispatcher() {
 //        println(" framer will dispatch $context $block $nextList ${nextList.size} ${System.identityHashCode(this)}")
     }
 
+
+
+    @OptIn(ExperimentalAtomicApi::class)
     fun frame(): Int {
         val currentList = synchronized(queueLock) {
             val current = nextList
@@ -163,9 +169,12 @@ class Framer : CoroutineDispatcher() {
         while (n != null) {
             c++
             try {
+                isMain.store(true)
                 n.second.run()
             } catch (ex: Throwable) {
                 ex.printStackTrace()
+            } finally {
+                isMain.store(false)
             }
             n = currentList.poll()
         }
@@ -228,6 +237,11 @@ class Generator<In, Out> internal constructor(
     private var pendingOutput: Out? = null
     private var waitingContinuation: Continuation<In>? = null
 
+    companion object
+    {
+        @OptIn(ExperimentalAtomicApi::class)
+        val isMain : AtomicBoolean = AtomicBoolean(false)
+    }
     /**
      * Starts the coroutine and runs until the first `yield`.
      * Returns the first yielded value, or null if the generator completed

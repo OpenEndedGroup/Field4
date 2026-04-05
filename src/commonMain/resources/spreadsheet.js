@@ -134,10 +134,7 @@ function injectStyles() {
             padding: 8px;
             gap: 8px;
             overflow: hidden;
-            background:
-                radial-gradient(circle at top left, rgba(82, 121, 255, 0.12), transparent 30%),
-                radial-gradient(circle at bottom right, rgba(45, 231, 165, 0.08), transparent 24%),
-                var(--sheet-bg);
+            background: var(--sheet-bg);
             box-sizing: border-box;
         }
 
@@ -160,9 +157,14 @@ function injectStyles() {
             align-items: center;
             min-width: 0;
             min-height: 34px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+            background: transparent;
             border: 1px solid var(--sheet-grid);
-            box-shadow: var(--sheet-shadow);
+            border-radius: 5px;
+            box-shadow: none;
+        }
+
+        .sheet-formula-bar:focus-within {
+            border-color: var(--field-cyan);
         }
 
         .sheet-formula-input {
@@ -228,8 +230,9 @@ function injectStyles() {
             position: relative;
             z-index: 1;
             border: 1px solid var(--sheet-grid);
+            border-radius: 5px;
             background: var(--sheet-panel);
-            box-shadow: var(--sheet-shadow);
+            box-shadow: none;
         }
 
         .sheet-row {
@@ -251,9 +254,9 @@ function injectStyles() {
             align-items: center;
             justify-content: center;
             box-sizing: border-box;
-            border-right: 1px solid var(--sheet-grid);
-            border-bottom: 1px solid var(--sheet-grid-strong);
-            background: var(--sheet-header);
+            border-right: none;
+            border-bottom: none;
+            background: rgba(255, 255, 255, 0.06);
             color: var(--sheet-muted);
             font-size: 10px;
             user-select: none;
@@ -347,7 +350,8 @@ function injectStyles() {
         }
 
         .sheet-cell:focus {
-            box-shadow: inset 0 0 0 2px var(--sheet-selected-ring);
+            box-shadow: inset 0 0 0 1.5px var(--field-cyan);
+            border-radius: 5px;
             z-index: 2;
         }
 

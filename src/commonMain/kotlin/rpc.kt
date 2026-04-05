@@ -833,3 +833,11 @@ data class NameHistoryVersion(val versionIndex: Int, val name: String)
 
 @Serializable
 data class RestoreVersion(val versionIndex: Int)
+
+@Serializable
+data class ActorArc(
+    val senderUid: String?,
+    val targetUid: String,
+    val handlerUid: String,
+    val isReply: Boolean = false
+)

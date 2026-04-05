@@ -235,9 +235,11 @@ object MacroRegistry {
     class MacroExpansionProblem(msg: String) : Exception(msg)
 
     val callRewrite = mutableMapOf<String, (Box, String, List<String>) -> Insert?>()
+    val callRewriteWithContext = mutableMapOf<String, (Box, String, List<String>, ContainingFunction?) -> Insert?>()
 
-    fun rewrite(box: Box, identifier: String, arguments: List<String>): Insert? {
-        val a = callRewrite.get(identifier)?.invoke(box, identifier, arguments)
+    fun rewrite(box: Box, identifier: String, arguments: List<String>, containingFunction: ContainingFunction? = null): Insert? {
+        val a = callRewriteWithContext.get(identifier)?.invoke(box, identifier, arguments, containingFunction)
+            ?: callRewrite.get(identifier)?.invoke(box, identifier, arguments)
         return a
     }
 
@@ -277,6 +279,12 @@ object MacroRegistry {
         runAll(macroRegistration)
     }
 }
+
+data class ContainingFunction(
+    val name: String,
+    val parameterList: String,
+    val returnType: String
+)
 
 data class Insert(
     val start: String = "",

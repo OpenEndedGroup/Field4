@@ -82,7 +82,7 @@ object ValueVisualizer {
         options = setOf(RegexOption.IGNORE_CASE)
     )
     private val BOX_ID_TOKEN_REGEX = Regex(
-        pattern = "(?<![A-Za-z0-9_])(_[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12})(__(\\d+))?(?![A-Za-z0-9_])",
+        pattern = "(?<![A-Za-z0-9_])(_[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12})(__(\\d+))?(@[0-9a-f]+)?(?![A-Za-z0-9_])",
         options = setOf(RegexOption.IGNORE_CASE)
     )
 
@@ -203,6 +203,7 @@ object ValueVisualizer {
         is FloatArray -> formatFloatArray(value)
         is DoubleArray -> formatDoubleArray(value)
         is FLine -> formatFLine(value)
+        is Box -> formatBox(value)
 
         // Data classes
         else -> if (value::class.isData) {
@@ -254,6 +255,25 @@ object ValueVisualizer {
                     )
                 )
             }
+        }
+    }
+
+    private fun formatBox(box: Box): String {
+        val displayName = box.name.ifBlank { box.id }
+        val escapedUid = escapeHtmlText(box.id)
+        return buildString {
+            append("<a href='#box:")
+            append(escapedUid)
+            append("' data-box-uid='")
+            append(escapedUid)
+            append("' style='text-decoration:none;cursor:pointer;'>")
+            append("<span style='color:#fff;font-weight:300;'>")
+            append(BOX_SYMBOL)
+            append("</span>")
+            append("<span style='color:#fff;font-weight:300;font-style:italic;'>")
+            append(escapeHtmlText(displayName))
+            append("</span>")
+            append("</a>")
         }
     }
 
@@ -1353,7 +1373,6 @@ object ValueVisualizer {
 
         BOX_ID_TOKEN_REGEX.findAll(text).forEach { match ->
             val boxId = match.groups[1]?.value ?: return@forEach
-            val runSuffix = match.groups[2]?.value.orEmpty()
             val boxRef = nameCache.getOrPut(boxId) { lookupBoxReference(boxId) } ?: return@forEach
 
             val start = match.range.first
@@ -1362,7 +1381,7 @@ object ValueVisualizer {
 
             val prefix = text.substring(cursor, start)
             out.append(if (escapePlainText) escapeHtmlText(prefix) else prefix)
-            out.append(formatStyledBoxReference(boxRef, runSuffix))
+            out.append(formatStyledBoxReference(boxRef))
             cursor = endExclusive
             replacedAny = true
         }
@@ -1380,7 +1399,7 @@ object ValueVisualizer {
         return rewriteBoxReferencesInText(s, escapePlainText = true)
     }
 
-    private fun formatStyledBoxReference(boxRef: BoxReference, runSuffix: String): String {
+    private fun formatStyledBoxReference(boxRef: BoxReference): String {
         val escapedUid = escapeHtmlText(boxRef.uid)
         return buildString {
             append("<a href='#box:")
@@ -1394,7 +1413,6 @@ object ValueVisualizer {
             append("<span style='color:#fff;font-weight:300;font-style:italic;'>")
             append(escapeHtmlText(boxRef.name))
             append("</span>")
-            if (runSuffix.isNotEmpty()) append("<span style='color:#bbb;'>${escapeHtmlText(runSuffix)}</span>")
             append("</a>")
         }
     }

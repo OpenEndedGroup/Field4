@@ -3,18 +3,19 @@ package afield
 //import org.jetbrains.kotlin.scripting.ide_services.compiler.KJvmReplCompilerWithIdeServices
 import afield.logger.lblock
 import afield.logger.lprintln
+import afield.macros.ContainingFunction
 import afield.macros.MacroRegistry
 import afield.stdlib.applyInsertToPreamble
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.com.intellij.lang.Language
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
@@ -28,9 +29,9 @@ import java.net.URLClassLoader
 import java.util.concurrent.Executors
 import kotlin.reflect.*
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.reflect.jvm.kotlinProperty
-import kotlin.reflect.jvm.isAccessible
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.dependencies.*
 import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
@@ -362,7 +363,19 @@ class KotlinInterface(
                                             ns = ns.nextSibling
                                         }
 
-                                        val e = MacroRegistry.rewrite(box, it.text, t)
+
+                                        // won't work for inferred return types
+                                        val containingFunction  = expression.parentOfType<KtNamedFunction>()
+                                        val containingFunctionName = containingFunction?.name
+                                        val valueParameterList = (containingFunction?.valueParameterList as? KtParameterList)?.text
+                                        val returnParameterText = (containingFunction?.typeReference as? KtTypeReference)?.text
+
+                                        val containingFunctionInfo = if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
+                                            ContainingFunction(containingFunctionName, valueParameterList, returnParameterText)
+                                        else null
+
+                                        val e = MacroRegistry.rewrite(box, it.text, t, containingFunctionInfo)
+
                                         if (e != null) {
                                             if (e.start.length > 0) {
                                                 edits.add((0 to 0) to e.preamble)
@@ -389,6 +402,7 @@ class KotlinInterface(
 
                         is KtNameReferenceExpression -> {
                         }
+
                     }
                 }
                 while (edits.size > 0) {
