@@ -98,6 +98,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     addIfSupported(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
                 }
 
+                // VK_EXT_hdr_metadata lets us advertise mastering-display primaries to the OS/compositor
+                // for HDR10 swap chains.  Opt-in only; safe to skip when unsupported.
+                if (Options.enableHDR) {
+                    addIfSupported(EXTHdrMetadata.VK_EXT_HDR_METADATA_EXTENSION_NAME)
+                }
+
             }
 
             val requiredExtensions = stack.mallocPointer(extNames.size).apply {
