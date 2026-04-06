@@ -58,6 +58,27 @@ Yields:
 
 And a quick `f1`-"Accept All Provisional (Everywhere)" gets your code working. In addition to the code and the usual set of tools, this agent gets the error message on the screen as part of it's prompt.
 
+## Really "wishful thinking" coding.
+
+Wishful thinking coding is a top down process by which you pretend that you have a complex function that does the thing you want and then iteratively decompose it into smaller pretend functions. Eventually, the idea is, you get to functions that are so small it's not worth pretending any more (or you realize your architecture is bad and try again). AI can enter this way of breaking programs down quite directly. Field supports this:
+
+```diffstatic {data-lang=kotlin}
+var f = FLine()
+
+fun randomWiggle(radius : Double, center : Vec3) : FLine {
+    ai("makes an FLine that wiggles around center")
+}
+
+lines(randomWiggle(100.0, vec(1,2,3)))
+```
+
+Automatically, upon first run, that function notices that it doesn't exist yet, asks the LLM to write one, iterates on it until it compiles and then, having compiled it, continues on. On subsequent executions Field notices that it already has a function definition to hand (changing the signature or the prompt gets you a fresh function).
+
+![](assets/screenshot_56.png)
+
+You can find the place where these AI functions are 'stored' in the `attic` property associated with the box. 
+
+
 # Behind the scenes
 
 Behind the scene's there's a couple of things going on. First of all, for any of this to work, you'll need your own OpenAI platform key. You can introduce this into the terminal that you are running Field from. On Mac, you can `export OPENAI_API_KEY=sk-proj-QU_auyboSk_OpQmTfJ37HiQLxTXV4XQaNLrgDB93XY8ZioJIdzLYWxXqivnH63LsmyP0X1wSHmT3BlbkFJfZF3ZXoRj7R1ETrBOS1MLHJ2iItWSlqd24opyhfLslAucbXZO4tgguXPd329RAORBF7A0CT8A` (that's not a real key). Alternatively you can run:

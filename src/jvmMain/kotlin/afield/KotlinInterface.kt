@@ -330,7 +330,7 @@ class KotlinInterface(
         return runBlocking { complete(s, cursor) }
     }
 
-    fun applyMacros(box: Box, _s: String): String {
+    fun applyMacros(box: Box, _s: String, skipMacros: Set<String> = emptySet(), previewOnly: Boolean = false): String {
         var s = _s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {
@@ -351,6 +351,8 @@ class KotlinInterface(
                             expression.children.forEach {
                                 when (it) {
                                     is KtNameReferenceExpression -> {
+                                        if (it.text in skipMacros) return@forEach
+
                                         lprintln(
                                             "debug,kotlin",
                                             "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}"
@@ -377,18 +379,22 @@ class KotlinInterface(
                                         val e = MacroRegistry.rewrite(box, it.text, t, containingFunctionInfo)
 
                                         if (e != null) {
-                                            if (e.start.length > 0) {
-                                                edits.add((0 to 0) to e.preamble)
-                                            }
-                                            if (e.afterImports.length > 0) {
-                                                val a = findLastImport(s)
-                                                edits.add((a to a) to e.afterImports)
+                                            if (!previewOnly) {
+                                                if (e.start.length > 0) {
+                                                    edits.add((0 to 0) to e.preamble)
+                                                }
+                                                if (e.afterImports.length > 0) {
+                                                    val a = findLastImport(s)
+                                                    edits.add((a to a) to e.afterImports)
+                                                }
                                             }
 
                                             edits.add((expression.startOffset to expression.endOffset) to e.here)
 
-                                            if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {
-                                                applyInsertToPreamble(box, e)
+                                            if (!previewOnly) {
+                                                if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {
+                                                    applyInsertToPreamble(box, e)
+                                                }
                                             }
                                         }
                                     }

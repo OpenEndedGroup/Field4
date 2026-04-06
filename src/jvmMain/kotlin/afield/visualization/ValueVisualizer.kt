@@ -312,6 +312,26 @@ object ValueVisualizer {
         val height: Double get() = (maxY - minY).toDouble()
     }
 
+    private fun compressSignatureRuns(sig: String): String = buildString {
+        var i = 0
+        while (i < sig.length) {
+            val ch = sig[i]
+            if (ch in "MLCZ") {
+                var run = 1
+                while (i + run < sig.length && sig[i + run] == ch) run++
+                if (run > 6) {
+                    append("(${ch}x$run)")
+                } else {
+                    repeat(run) { append(ch) }
+                }
+                i += run
+            } else {
+                append(ch)
+                i++
+            }
+        }
+    }
+
     private fun formatFLine(line: FLine): String {
         val nodes = line.nodes
         if (nodes.isEmpty()) {
@@ -352,13 +372,14 @@ object ValueVisualizer {
         } else null
 
         val shownSignature = signature?.let {
-            if (nodeCount <= FLINE_SIGNATURE_FULL_MAX_NODES) {
+            val raw = if (nodeCount <= FLINE_SIGNATURE_FULL_MAX_NODES) {
                 it
             } else {
                 val head = it.take(FLINE_SIGNATURE_HEAD)
                 val tail = it.takeLast(FLINE_SIGNATURE_TAIL)
                 "$head … $tail"
             }
+            compressSignatureRuns(raw)
         }
 
         val length = if (showLength) runCatching { line.cursor(0.5f).lengthD().toDouble() }.getOrNull() else null

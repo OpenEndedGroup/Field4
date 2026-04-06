@@ -762,6 +762,17 @@ class FLine : HasProperties {
         }
     }
 
+    @JvmName("invoke_1")
+    fun invoke(f : FLine.() -> FLine) : FLine {
+        return f.invoke(this)
+    }
+
+    @JvmName("invoke_2")
+    fun invoke(f : FLine.() -> Unit) : FLine{
+        f.invoke(this)
+        return this;
+    }
+
     /**
      * Tessellate filled subpaths into triangle indices.
      *

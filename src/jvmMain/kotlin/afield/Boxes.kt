@@ -17,6 +17,7 @@ var needsResync = ConcurrentSet<Pair<Box, String>>()
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
+var Box.attic by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
@@ -144,6 +145,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_language",
             "filename",
             "preamble",
+            "attic",
             "fragment",
             "vertex",
             "vertex_fragment",
@@ -181,6 +183,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "filename",
             "preamble",
             "introduction",
+            "attic",
             "fragment",
             "vertex",
             "vertex_fragment",

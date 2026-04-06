@@ -17,6 +17,7 @@ internal val monacoPropertyNames = arrayOf(
     "mesh_s",
     "preamble",
     "introduction",
+    "attic",
     "metadata"
 )
 internal val monacoPropertyDescriptions = arrayOf(
@@ -34,6 +35,7 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Mesh Shader (Slang)",
     "Kotlin (preamble)",
     "Kotlin (introduction)",
+    "Kotlin (attic)",
     "Metadata about this box"
 )
 internal val monacoPropertyLanguages = arrayOf(
@@ -49,6 +51,7 @@ internal val monacoPropertyLanguages = arrayOf(
     "slang",
     "slang",
     "slang",
+    "kotlin",
     "kotlin",
     "kotlin",
     "yaml"

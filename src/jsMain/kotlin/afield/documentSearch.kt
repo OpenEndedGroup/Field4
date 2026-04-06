@@ -36,6 +36,7 @@ private val searchableProperties = listOf(
     "task_s",
     "mesh_s",
     "preamble",
+    "attic",
     "metadata"
 )
 

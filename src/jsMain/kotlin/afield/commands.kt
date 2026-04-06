@@ -1219,6 +1219,7 @@ fun registerBuiltinCommands() {
                     {label:'mesh_s',    description:'Mesh Shader (Slang)'},
                     {label:'preamble',  description:'Kotlin (preamble)'},
                     {label:'introduction', description:'Kotlin (introduction)'},
+                    {label:'attic',     description:'Kotlin (attic)'},
                     {label:'metadata',  description:'Metadata (YAML)'},
                     {label:'code',      description:'Kotlin (main)'},
                 ];

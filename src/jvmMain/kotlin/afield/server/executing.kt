@@ -53,6 +53,7 @@ fun executing() {
                     box.ki = makeKIHere(box)
                 box.properties["_preamble"] = "" // remove record of previous preamble line execs
                 box.properties["_introduction"] = "" // ditto for introduction
+                box.properties.remove("_attic")
                 box.ke.executeAll(box, exec, reply)
             }
 

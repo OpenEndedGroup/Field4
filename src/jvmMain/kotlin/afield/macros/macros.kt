@@ -42,6 +42,7 @@ suspend fun standardExecutionPractice(
         if (runSetupBlocks) {
             checkPreambleAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
             checkIntroductionAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+            checkAtticAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
         }
         val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
         at = it
@@ -164,6 +165,38 @@ fun checkIntroductionAndExecute(
             println(" finished introduction ")
         }
         inside.setPropertyRaw("_introduction", current)
+    }
+}
+
+fun checkAtticAndExecute(
+    inside: Box,
+    onCompileError: (List<ScriptDiagnostic>) -> Unit,
+    onEvalError: (List<ScriptDiagnostic>) -> Unit,
+    onEvalException: (Throwable) -> Unit
+) {
+    val current = inside.getPropertyRaw("attic", "") as String
+    val was = inside.getPropertyRaw("_attic", null) as String?
+
+    val currentTrimmed = current.trim()
+    val isEmpty = currentTrimmed.isEmpty()
+    val isSame = current == was
+
+    lprintln("info,attic", "checkAtticAndExecute for '${inside.name}' (${inside.id}): " +
+            "empty=$isEmpty, same=$isSame, currentLen=${currentTrimmed.length}, wasLen=${was?.trim()?.length ?: -1}")
+
+    if (!isEmpty && !isSame) {
+        lprintln("info,attic", "attic changed for '${inside.name}' — executing all of it (${currentTrimmed.lines().size} lines)")
+        runBlocking {
+            inside.ki.exec(
+                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+            )
+        }
+        inside.setPropertyRaw("_attic", current)
+        lprintln("info,attic", "attic execution complete for '${inside.name}', _attic cache updated")
+    } else if (isEmpty) {
+        lprintln("info,attic", "attic is empty for '${inside.name}' — skipping")
+    } else {
+        lprintln("info,attic", "attic unchanged for '${inside.name}' — skipping (already executed)")
     }
 }
 

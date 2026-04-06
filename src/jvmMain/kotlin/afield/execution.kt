@@ -13,19 +13,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
-import org.jetbrains.kotlin.descriptors.FunctionDescriptor
-import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
-import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
-import org.jetbrains.kotlin.descriptors.VariableDescriptor
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
-import java.util.LinkedHashMap
-import kotlin.script.experimental.api.SourceCodeCompletionVariant
 import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
+import kotlin.script.experimental.api.SourceCodeCompletionVariant
 
 @RunsAt(newRoot)
 fun installKEActions(root : Box) {
@@ -300,6 +295,7 @@ private fun descriptorContainerSummary(box: Box, descriptor: DeclarationDescript
 
 private fun buildFunctionSymbolContextHtml(box: Box, descriptor: FunctionDescriptor): String {
     val container = descriptorContainerSummary(box, descriptor)
+    val funcName = descriptor.name.asString()
     return buildString {
         append("<div style='display:inline-block; max-width: 620px;'>")
         append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
@@ -309,6 +305,20 @@ private fun buildFunctionSymbolContextHtml(box: Box, descriptor: FunctionDescrip
             append("<div style='color:#777;'>declared in ")
             append(container.html)
             append("</div>")
+        }
+        // Check if this function was AI-generated (lives in the attic)
+        val attic = box.attic
+        if (attic.isNotBlank()) {
+            val atticName = if (funcName.startsWith("__")) funcName else "__$funcName"
+            if (attic.contains("// @ai-gen: $atticName")) {
+                val uid = box.id
+                append("<div style='color:#b0b0ff; cursor:pointer; margin-top:2px;' ")
+                append("onclick=\"if(window.switchToProperty) window.switchToProperty('")
+                append(escapeNotifyHtml(uid))
+                append("','attic')\">")
+                append("\uD83E\uDD16 ai-generated — <u>view in attic</u>")
+                append("</div>")
+            }
         }
         append("</div>")
     }
@@ -711,6 +721,7 @@ class KotlinExecution : BoxExecution {
         val originSession = thisSession.get()
 
         box.preamble = "" // still controversial
+        box.properties.remove("_attic") //?
 
         val normalizedCode = normalizedLaunchCode(exec)
 
@@ -967,6 +978,22 @@ class KotlinExecution : BoxExecution {
                         is ResultValue.Value -> {
                             val audioPatch = returnValue.value as? AudioPatchSpec
                             if (size == 0) {
+                                if (returnValue.value == null) {
+                                    dispatchExecutionOutput(
+                                        box,
+                                        reply,
+                                        Output(
+                                            uid = box.id,
+                                            line = dur,
+                                            kind = "ok",
+                                            html = "ok",
+                                            frame = Runloop.runLoop.frame.toInt()
+                                        ),
+                                        originSession = originSession
+                                    )
+                                    handleReturn(null)
+                                    return@forEach
+                                }
                                 val name = returnValue.name
                                 val type = simplifyTypeForOutput(returnValue.type)
                                 val annotation = "<i>${name}=</i>${type}"

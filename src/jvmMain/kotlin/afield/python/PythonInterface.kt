@@ -1,6 +1,7 @@
 package afield.python
 
 import afield.*
+import afield.logger.lprintln
 import afield.python.PythonInterface.Companion.conf
 import afield.python.PythonInterface.Companion.deliverErr
 import afield.python.PythonInterface.Companion.deliverStdOut
@@ -11,8 +12,6 @@ import afield.python.PythonInterface.Companion.thisLineOffset
 import afield.runtime.TopologyWatcher
 import afield.runtime.applyRuntimeToggle
 import afield.stdlib.Delegation
-import afield.logger.lprintln
-import io.ktor.websocket.WebSocketSession
 import jep.*
 import jep.python.PyCallable
 import jep.python.PyObject
@@ -93,7 +92,11 @@ class PythonExecution : BoxExecution {
             })
             SharedInterpreter.setConfig(conf);
             inited = true
-            globalInterpreter = SharedInterpreter()
+            globalInterpreter = object : SharedInterpreter() {
+                override fun isValidThread() {
+                    return
+                }
+            }
 
 
             val startupText = """
@@ -637,6 +640,8 @@ print(" python interpreter has finished starting up ")
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
         inMain {
+
+            hackJepThreadContext()
             var withholdEndNotification = false
             configureOutputProxies(inside, reply, originSession)
             hasHadOutput = false
@@ -705,6 +710,7 @@ print(" python interpreter has finished starting up ")
                     inside.output.proxy("ok", false, execute.line + execute.code.split("\n").count())
                 }
             } catch (j: JepException) {
+                j.printStackTrace()
                 val n = j.message!!
                 val f = syntaxError.find(n)
                 if (f != null) {
@@ -754,6 +760,11 @@ print(" python interpreter has finished starting up ")
         }
     }
 
+    private fun hackJepThreadContext() {
+
+        // we have to, via reflection, set Jep
+    }
+
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         executeFragment(inside, execute, reply)
     }
@@ -769,6 +780,7 @@ print(" python interpreter has finished starting up ")
         val i = interpreter(inside)
 
         inMain {
+            hackJepThreadContext()
             val code = "_ret = await cancel_tasks('${inside.id}', timeout=1.5)"
             i.set("_code", code)
             val locals = inside._pythonLocals
@@ -782,6 +794,7 @@ print(" python interpreter has finished starting up ")
         inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit
     ) {
         inMain {
+            hackJepThreadContext()
             val line = completionRequest.line
             val col = completionRequest.column - 1
 
@@ -829,7 +842,7 @@ _interpreter_output = _interpreter.complete($line, $col)
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
         // For Python, construct a function call: symbolName()
         val functionCall = "${executeSymbol.symbol}()"
-        
+
         // Create an Execute object for executeFragment
         val exec = Execute(
             uid = executeSymbol.uid,
@@ -838,7 +851,7 @@ _interpreter_output = _interpreter.complete($line, $col)
             code = functionCall,
             singleLine = true
         )
-        
+
         // Execute as a fragment
         executeFragment(inside, exec, reply)
     }

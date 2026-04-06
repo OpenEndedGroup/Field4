@@ -11,7 +11,7 @@ You can run code in Field the following ways (from the commonplace to the rare)
  * `alt-up arrow` — launches the currently edited box. `alt-down arrow` stops.
  * `alt-click` — launches the clicked-on box while the mouse is down. Swipe up to let go and keep launched; `alt-click / swipe down` stops. e.g.:
 
-<video controls autoplay loop muted playsinline style="width: min(50%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/launching.mp4" type="video/mp4">
 </video>
 
@@ -24,7 +24,7 @@ You can run code in Field the following ways (from the commonplace to the rare)
 
 What's the difference between 'running' and 'launching'? Boxes have the opportunity to end with an object that could 'keep on going by itself'. These objects, on launching, get threaded into the animation loop. Every launched box gets one 'go' at computing per animation cycle in a consistent order.  
 
-Some of these effects are language dependant. For example, if you are editing a GLSL shader property, alt-enter recompiles and reloads the shader instead.
+Some of these effects are language dependent. For example, if you are editing a GLSL shader property, alt-enter recompiles and reloads the shader instead.
 
 ## Printing things
 
@@ -61,7 +61,7 @@ Gives us something like this:
 
 This can be handy in longer, more interesting code, for example:
 
-<video controls autoplay loop muted playsinline style="width: min(50%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/screen-recording-2026-03-21.mp4" type="video/mp4">
 </video>
 
@@ -171,7 +171,7 @@ val stem = fline {
 lines(listOf(petal, stem), w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
-Its important to note that not just editing a copy of the FLine. It mutates the actual `FLine` object that you passed in — so this is a way of interacting with code, note just witnessing it's effects.
+It's important to note that you're not just editing a copy of the FLine. It mutates the actual `FLine` object that you passed in — so this is a way of interacting with code, not just witnessing its effects.
 
 3d (and indeed 3d editing) work as well:
 
@@ -203,7 +203,7 @@ You can remove output areas you no longer want to see by `option-click`ing their
 
 ![](assets/screenshot_38.png)
 
-Programmatic control over output areas is though these functions:
+Programmatic control over output areas is through these functions:
 
 ```diffstatic {data-lang=kotlin}
 displayOpen("foo")
@@ -212,7 +212,7 @@ displayClear("foo")
 displayClearAll()
 ```
 
-Progress bars are useful for showing you how a box is getting through it's processing:
+Progress bars are useful for showing you how a box is getting through its processing:
 
 ```diffstatic {data-lang=kotlin}
 var z = 0
@@ -224,9 +224,70 @@ loop {
 
 Yields (when launched):
 
-<video controls autoplay loop muted playsinline style="width: min(50%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-13.48.57.mp4" type="video/mp4">
 </video>
+
+# Multi-language, multi-paradigm
+
+Field's primary language for live coding is Kotlin, which we've found to be expressive and fun (but by no means flawless). We've added a compile-time macro system to it for extra flexibility and joy and the graphics system does some GLSL-driven code-generation. All in all it's working for it quite well. However, being on the JVM does give us access to some other options.
+
+## Python
+
+Via the JEP project, Python works splendidly in Field and we are incentivized to keep going in this direction. Autocompletion is driven by Jedi, and Field's central concept of launching (and stopping) boxes is supported by a custom async runner.
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/tinypython.mp4" type="video/mp4">
+</video>
+
+This means, in effect, that you can live code things like OpenCV and Torch with Jupyter-level autocomplete and Field-level AI support. We'd like Field to be an alternative to Jupyter. Thanks to JEP, interoperation between NumPy and Field's memory buffers is perfectly reasonable. And code like this:
+
+```diffstatic {data-lang=python}
+:::static
+from afield.python import PythonInterface
+
+box = PythonInterface.thisBox
+box.setName("property access from boxes")
+
+box.setPropertyRaw("foo", 10, False)
+```
+
+Works as you'd expect. We remain ever-so-slightly sketched out by Python's threading model, and its obvious incompatibilities with Kotlin's coroutines - so there may still be bugs here.
+
+## Clojure
+
+Clojure is another wonderful JVM language that we have a lot of respect for:
+
+![](assets/screenshot_54.png)
+
+We have rainbow parens?
+
+## some-Forth
+
+Primarily for teaching purposes, a bizarrely useful and full featured dialect of Forth, with full JVM interop:
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/someForth.mp4" type="video/mp4">
+</video>
+
+## a-Nano
+
+Nano is a little teaching assembly language with completely over the top integrated visualizers. We're using (a GPU accelerated) version of this language for a little ALife research.
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/somenano.mp4" type="video/mp4">
+</video>
+
+## Spreadsheets!
+
+The most successful and most important programming paradigm of all time — the spreadsheet — has deep integration into Field.
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+	<source src="../assets/somesheet.mp4" type="video/mp4">
+</video>
+
+Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a very deep and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it. 
+
 
 ## Document History
 
@@ -254,11 +315,11 @@ A few keyboard shortcuts for getting around Field.
 
 `f1` — pressing `f1` when you are in the editor brings up the command palette for that box; pressing it _again_ brings up the command palette for Field as a whole:
 
-<video controls autoplay loop muted playsinline style="width: min(50%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-4.03.42.mp4" type="video/mp4">
 </video>
 
-`Double tap-command/control` (command on Mac, control on Windows/Linux) in the editor gives you an affordance that let's you use the cursor keys to switch box:
+`Double tap-command/control` (command on Mac, control on Windows/Linux) in the editor gives you an affordance that lets you use the cursor keys to switch box:
 
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
@@ -446,7 +507,7 @@ Means that in the children:
 _print(foo)
 ```
 
-Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. This code accumulates but it's essentially a layer of inherited auto-regenerateble glue code between boxes and their children.  
+Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. This code accumulates but it's essentially a layer of inherited auto-regeneratable glue code between boxes and their children.  
 
 Anything that has an exportable type in Kotlin can travel — this includes Kotlin lambdas, `Vec3` etc. But, alas, not types defined inside boxes.
 
@@ -483,7 +544,7 @@ Finally, `named("foo")` returns a `Box?` called "foo" searching from the current
 
 # Collaborating
 
-Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at it's interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). 
+Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at its interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). 
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
 	<source src="../assets/collab.mp4" type="video/mp4">
@@ -499,4 +560,4 @@ The document-level command 'Add Editor to Output Area` will allow you to pin a p
 	<source src="../assets/multieditor.mp4" type="video/mp4">
 </video>
 
-These addition, fully functional editors, give you a place to keep code (or outputs embedded in code!) that you keep coming back to.
+These additional, fully functional editors, give you a place to keep code (or outputs embedded in code!) that you keep coming back to.
