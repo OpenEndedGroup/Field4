@@ -11,7 +11,7 @@ You can run code in Field the following ways (from the commonplace to the rare)
  * `alt-up arrow` — launches the currently edited box. `alt-down arrow` stops.
  * `alt-click` — launches the clicked-on box while the mouse is down. Swipe up to let go and keep launched; `alt-click / swipe down` stops. e.g.:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/launching.mp4" type="video/mp4">
 </video>
 
@@ -61,13 +61,13 @@ Gives us something like this:
 
 This can be handy in longer, more interesting code, for example:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/screen-recording-2026-03-21.mp4" type="video/mp4">
 </video>
 
 And is quite performant, so you can just use them as output:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/lotsOfPrinting.mp4" type="video/mp4">
 </video>
 
@@ -175,7 +175,7 @@ It's important to note that you're not just editing a copy of the FLine. It muta
 
 3d (and indeed 3d editing) work as well:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/3dlines.mp4" type="video/mp4">
 </video>
 
@@ -185,14 +185,14 @@ See [fline_examples](fline_examples.md) for more.
 
 Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code. Field is set up to run a type and current-value driven 'autocomplete' as the cursor moves around the editor. Just to give you an active hint about what you might type (and what those parameters are in the function you are changing), and what value that variable currently has:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/autoauto.mp4" type="video/mp4">
 </video>
 
 
 Additionally, we can write code that extends and decorates our text editor in a variety of ways. Docs are limited, but this gives us a [Strudel](https://strudel.cc/) feel (in a very different language) without too much work at all:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/pat.mp4" type="video/mp4">
 </video>
 
@@ -224,7 +224,7 @@ loop {
 
 Yields (when launched):
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-13.48.57.mp4" type="video/mp4">
 </video>
 
@@ -236,7 +236,7 @@ Field's primary language for live coding is Kotlin, which we've found to be expr
 
 Via the JEP project, Python works splendidly in Field and we are incentivized to keep going in this direction. Autocompletion is driven by Jedi, and Field's central concept of launching (and stopping) boxes is supported by a custom async runner.
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/tinypython.mp4" type="video/mp4">
 </video>
 
@@ -266,7 +266,7 @@ We have rainbow parens?
 
 Primarily for teaching purposes, a bizarrely useful and full featured dialect of Forth, with full JVM interop:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/someForth.mp4" type="video/mp4">
 </video>
 
@@ -274,7 +274,7 @@ Primarily for teaching purposes, a bizarrely useful and full featured dialect of
 
 Nano is a little teaching assembly language with completely over the top integrated visualizers. We're using (a GPU accelerated) version of this language for a little ALife research.
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/somenano.mp4" type="video/mp4">
 </video>
 
@@ -282,11 +282,39 @@ Nano is a little teaching assembly language with completely over the top integra
 
 The most successful and most important programming paradigm of all time — the spreadsheet — has deep integration into Field.
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/somesheet.mp4" type="video/mp4">
 </video>
 
 Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a very deep and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it. 
+
+## Actors / Message-passing
+
+We can think about 'the box' as taking on the role of "an actor". This marries very well with animation in general (the choreography of things over time) and Kotlin's flexible coroutine system. Given two boxes:
+
+```diffstatic {data-lang=python}
+:::static
+onMessage<Vec2> {  
+    reply(payload.lengthSquared())
+}
+```
+
+```diffstatic {data-lang=python}
+:::static
+onMessage<Vec3> {  
+    100.alphas {
+        /// animate from payload up to something sle
+        frame()
+    }
+    reply(payload.lengthSquared() + 10) // reply
+}
+```
+
+We can start sending messages around. Messages propagate upwards until they find a box that has an `onMessage<T>` of the correct type.
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
+	<source src="../assets/messagePassing.mp4" type="video/mp4">
+</video>
 
 
 ## Document History
@@ -315,26 +343,26 @@ A few keyboard shortcuts for getting around Field.
 
 `f1` — pressing `f1` when you are in the editor brings up the command palette for that box; pressing it _again_ brings up the command palette for Field as a whole:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-4.03.42.mp4" type="video/mp4">
 </video>
 
 `Double tap-command/control` (command on Mac, control on Windows/Linux) in the editor gives you an affordance that lets you use the cursor keys to switch box:
 
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-14.12.21.mp4" type="video/mp4">
 </video>
 
 `Double tap-shift` opens the 'open anything' search box:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-14.14.34.mp4" type="video/mp4">
 </video>
 
 `command/ctrl-f` does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-14.16.23.mp4" type="video/mp4">
 </video>
 
@@ -346,7 +374,7 @@ The first page of the bundled version of Field is accessible from any web-browse
 
 There you can make new documents or find that document you just _know_ you edited last week. It also has full text search over the whole workspace:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/welcoming.mp4" type="video/mp4">
 </video>
 
@@ -385,7 +413,7 @@ k.onChange = {
 
 Gets you a smoothed curve that's still editable, by editing the underlying keyframes that make it.
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/keyframing.mp4" type="video/mp4">
 </video>
 
@@ -405,7 +433,7 @@ Edited keyframes are stored inside the box — the `defaults` is just there in c
 
 Inserting a `field.timeSlider` template from the `f1` menu gets you a box that a) draws itself as a vertical line and b) launches and stops boxes it passes over:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/ts.mp4" type="video/mp4">
 </video>
 
@@ -475,7 +503,7 @@ autorun = true
 
 When `caps-lock` is lit boxes snap to other boxes when you move them around or resize them — good for aligning things when we're in timeline mode.
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/snapping.mp4" type="video/mp4">
 </video>
 
@@ -489,7 +517,7 @@ By default every box of code is pretty isolated from all of the other boxes. Thi
 
 We can connect boxes together using the `connect` command, selecting the parent and then the child and pressing `g`:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/connecting.mp4" type="video/mp4">
 </video>
 
@@ -528,7 +556,7 @@ This is useful in the graphics system because you often only want to open exactl
 
 Boxes can be nested inside other boxes (`f1` "nest ...")
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/nesting.mp4" type="video/mp4">
 </video>
 
@@ -546,7 +574,7 @@ Finally, `named("foo")` returns a `Box?` called "foo" searching from the current
 
 Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at its interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). 
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/collab.mp4" type="video/mp4">
 </video>
 
@@ -556,7 +584,7 @@ Additionally, if more than one person has the webpage open at the same time, eve
 
 The document-level command 'Add Editor to Output Area` will allow you to pin a particular property of a box to a boxes output zone:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 560px);">
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/multieditor.mp4" type="video/mp4">
 </video>
 

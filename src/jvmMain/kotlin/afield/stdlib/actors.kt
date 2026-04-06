@@ -186,6 +186,37 @@ sealed class SendResult<out T> {
     data object NoHandler : SendResult<Nothing>()
     /** The handler threw an exception. */
     data class Error(val exception: Throwable) : SendResult<Nothing>()
+
+    /** Transform the value if Ok, otherwise pass through the failure unchanged. */
+    inline fun <R> map(transform: (T?) -> R): SendResult<R> = when (this) {
+        is Ok -> Ok(transform(value))
+        is NoHandler -> NoHandler
+        is Error -> Error(exception)
+    }
+
+    /** Return the value if Ok, otherwise null. */
+    fun getOrNull(): T? = when (this) {
+        is Ok -> value
+        else -> null
+    }
+
+    /** Return the value if Ok, otherwise [default]. */
+    inline fun getOrElse(default: () -> @UnsafeVariance T?): T? = when (this) {
+        is Ok -> value
+        else -> default()
+    }
+
+    /** Run [action] if Ok, return this for chaining. */
+    inline fun onOk(action: (T?) -> Unit): SendResult<T> {
+        if (this is Ok) action(value)
+        return this
+    }
+
+    /** Run [action] if not Ok, return this for chaining. */
+    inline fun onFailure(action: (SendResult<@UnsafeVariance T>) -> Unit): SendResult<T> {
+        if (this !is Ok) action(this)
+        return this
+    }
 }
 
 /**
