@@ -2,6 +2,7 @@ package afield.four.synth
 
 import afield.*
 import kotlinx.coroutines.*
+import kotlin.math.absoluteValue
 
 @RunsAt(returnValueRegistration, priority = 11)
 fun registerPatPatternReturnValue() {
@@ -32,11 +33,42 @@ fun registerPatPatternReturnValue() {
                     clock = typed.clock
                 ).iterator()
 
-                while (isActive && inside.runGeneration[strand] == generation && iterator.hasNext()) {
-                    val event = iterator.next()
-                    if (scope.now > event.start + 1e-6) continue
+                var peekedEvent: PatScheduledEvent<Any?>? = null
+
+                while (isActive && inside.runGeneration[strand] == generation) {
+                    // Load bucket of simultaneous events
+                    val bucket = mutableListOf<PatScheduledEvent<Any?>>()
+                    var bucketTime: Double? = null
+
+                    // Start with peeked event if we have one
+                    if (peekedEvent != null) {
+                        bucketTime = peekedEvent.start
+                        bucket.add(peekedEvent)
+                        peekedEvent = null
+                    }
+
+                    // Load more events at the same time
+                    while (iterator.hasNext()) {
+                        val event = iterator.next()
+                        if (scope.now > event.start + 1e-6) continue
+
+                        if (bucketTime == null) {
+                            bucketTime = event.start
+                            bucket.add(event)
+                        } else if ((event.start - bucketTime).absoluteValue < 1e-9) {
+                            bucket.add(event)
+                        } else {
+                            // Different time: save for next iteration
+                            peekedEvent = event
+                            break
+                        }
+                    }
+
+                    if (bucket.isEmpty()) break
+
+                    val eventTime = bucketTime!!
                     waitUntil(
-                        target = event.start - typed.ahead,
+                        target = eventTime - typed.ahead,
                         scope = scope,
                         inside = inside,
                         strand = strand,
@@ -44,15 +76,18 @@ fun registerPatPatternReturnValue() {
                     )
                     if (!isActive || inside.runGeneration[strand] != generation) break
 
-                    if (typed.dispatchOnMain) {
-                        withContext(Runloop.runLoop.main + Box.boxContextElement(inside)) {
+                    // Dispatch all simultaneous events in this bucket
+                    for (event in bucket) {
+                        if (typed.dispatchOnMain) {
+                            withContext(Runloop.runLoop.main + Box.boxContextElement(inside)) {
+                                Box.withBoxContextNow(inside) {
+                                    typed.callback(scope, event)
+                                }
+                            }
+                        } else {
                             Box.withBoxContextNow(inside) {
                                 typed.callback(scope, event)
                             }
-                        }
-                    } else {
-                        Box.withBoxContextNow(inside) {
-                            typed.callback(scope, event)
                         }
                     }
                 }

@@ -38,6 +38,7 @@ val lwjglNatives = when {
 val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
+
 val kotlinVersion = "2.3.0"
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
@@ -45,6 +46,7 @@ val logbackVersion = "1.2.11"
 val imguiVersion = "1.90.0"
 val smileVersion = "5.0.1"
 val javaToolchainVersion = 25
+val graalvmVersion = "25.0.2"
 
 // Bytedeco FFmpeg for video support
 val ffmpegVersion = "6.1.1-1.5.10"
@@ -96,7 +98,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaToolchainVersion)
         // Constrain vendor to avoid Foojay returning non-directly-downloadable builds (which can 4xx on /redirect).
-        vendor = JvmVendorSpec.ADOPTIUM
+//        vendor = JvmVendorSpec.ADOPTIUM
+        vendor = JvmVendorSpec.GRAAL_VM
     }
     }
 
@@ -384,6 +387,10 @@ kotlin {
                 implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0:DebugSp")
                 implementation("com.github.stephengold:jolt-jni-MacOSX64:3.6.0:DebugSp")
                 implementation("com.github.stephengold:jolt-jni-MacOSX_ARM64:3.6.0:DebugSp")
+
+                implementation("org.graalvm.polyglot:polyglot:${graalvmVersion}")
+                implementation("org.graalvm.polyglot:wasm:${graalvmVersion}")
+                implementation("org.graalvm.polyglot:js:${graalvmVersion}")
 
             }
         }

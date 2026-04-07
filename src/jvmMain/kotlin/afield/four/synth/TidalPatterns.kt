@@ -32,6 +32,17 @@
             pat("[hh hh hh hh]").degradeBy(0.2)
         )
 
+     Simultaneous events (chords in music contexts):
+
+        val triad = pat("c, e, g")     // All three fire at once during the same beat
+        val voicing = pat("<c e g>, <g b d>")  // Pick one set per cycle, stacked
+
+     Arpeggiate over a chord or note sequence:
+
+        val bassArp = pat("bass bass bass").arp(60, 64, 67, speed = 4) // C major chord, 4 steps
+        val upAndDown = pat("pad").arp(listOf("C3", "E3", "G3"), mode = ArpMode.UPDOWN, speed = 8)
+        val randomArp = pat("keys").arp(48, 50, 52, 55, 57, mode = ArpMode.RANDOM, seed = 42)
+
  3. Schedule into seconds:
 
         val events = pat("kick <snare rim>")
@@ -277,13 +288,17 @@ data class PatSourceSpan(
     }
 }
 
-data class PatEvent<A>(val arc: PatArc, val value: A, val sourceSpan: PatSourceSpan? = null) {
+data class PatEvent<A>(val arc: PatArc, val value: A, val sourceSpan: PatSourceSpan? = null, val annotations: Map<String, String> = emptyMap(), val additionalSpans: List<PatSourceSpan> = emptyList()) {
     fun shift(by: PatQ) = copy(arc = arc.shift(by))
     fun scale(by: PatQ) = copy(arc = arc.scale(by))
+    fun mergeAnnotations(extra: Map<String, String>) = if (extra.isEmpty()) this else copy(annotations = annotations + extra)
+    fun addSpan(span: PatSourceSpan?) = if (span == null) this else copy(additionalSpans = additionalSpans + span)
 
     override fun toString(): String {
         val source = sourceSpan?.let { ", source=$it" } ?: ""
-        return "PatEvent(arc=$arc, value=${synthPrettyValue(value)}$source)"
+        val ann = if (annotations.isEmpty()) "" else ", annotations=$annotations"
+        val extra = if (additionalSpans.isEmpty()) "" else ", +${additionalSpans.size} spans"
+        return "PatEvent(arc=$arc, value=${synthPrettyValue(value)}$source$ann$extra)"
     }
 }
 
@@ -293,7 +308,9 @@ data class PatScheduledEvent<A>(
     val value: A,
     val cycleIndex: Long,
     val arc: PatArc,
-    val sourceSpan: PatSourceSpan? = null
+    val sourceSpan: PatSourceSpan? = null,
+    val annotations: Map<String, String> = emptyMap(),
+    val additionalSpans: List<PatSourceSpan> = emptyList()
 ) {
     init {
         require(start.isFinite()) { "start must be finite" }
@@ -307,9 +324,16 @@ data class PatScheduledEvent<A>(
     val sourceText: String?
         get() = sourceSpan?.text
 
+    operator fun get(key: String): String? = annotations[key]
+
+    val allSpans: List<PatSourceSpan>
+        get() = listOfNotNull(sourceSpan) + additionalSpans
+
     override fun toString(): String {
         val source = sourceText?.let { ", source=${it.prettyQuoted(24)}" } ?: ""
-        return "PatScheduledEvent(start=${start.prettyNumber()}, end=${end.prettyNumber()}, value=${synthPrettyValue(value)}, cycle=$cycleIndex, arc=$arc$source)"
+        val ann = if (annotations.isEmpty()) "" else ", annotations=$annotations"
+        val extra = if (additionalSpans.isEmpty()) "" else ", +${additionalSpans.size} spans"
+        return "PatScheduledEvent(start=${start.prettyNumber()}, end=${end.prettyNumber()}, value=${synthPrettyValue(value)}, cycle=$cycleIndex, arc=$arc$source$ann$extra)"
     }
 }
 
@@ -349,7 +373,9 @@ class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
                 value = event.value,
                 cycleIndex = qFloor(event.arc.start),
                 arc = event.arc,
-                sourceSpan = event.sourceSpan
+                sourceSpan = event.sourceSpan,
+                annotations = event.annotations,
+                additionalSpans = event.additionalSpans
             )
             if (clock == null || scheduled.start + 1e-9 >= queryStart) {
                 yield(scheduled)
@@ -358,7 +384,7 @@ class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
     }
 
     fun <B> map(transform: (A) -> B): PatPattern<B> = PatPattern { absArc ->
-        events(absArc).map { PatEvent(it.arc, transform(it.value), it.sourceSpan) }
+        events(absArc).map { PatEvent(it.arc, transform(it.value), it.sourceSpan, it.annotations, it.additionalSpans) }
     }
 
     fun respond(
@@ -439,7 +465,7 @@ fun <A> within(window: PatArc, pattern: PatPattern<A>): PatPattern<A> =
         pattern.events(childAbs).map { event ->
             val startAbs = windowAbs.start + (event.arc.start - base) * window.dur
             val endAbs = windowAbs.start + (event.arc.end - base) * window.dur
-            PatEvent(PatArc(startAbs, endAbs).shift(-base), event.value, event.sourceSpan)
+            PatEvent(PatArc(startAbs, endAbs).shift(-base), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
         }
     }
 
@@ -472,7 +498,7 @@ fun <A> PatPattern<A>.rev(): PatPattern<A> =
         events(reflectedAbs).map { event ->
             val startLocal = PatQ.ONE - (event.arc.end - base)
             val endLocal = PatQ.ONE - (event.arc.start - base)
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan)
+            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
         }
     }
 
@@ -485,7 +511,7 @@ fun <A> PatPattern<A>.zoom(start: PatQ, len: PatQ): PatPattern<A> =
         events(absArc).map { event ->
             val startLocal = (event.arc.start - (base + start)) / len
             val endLocal = (event.arc.end - (base + start)) / len
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan)
+            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
         }
     }
 
@@ -493,7 +519,7 @@ fun <A> PatPattern<A>.delay(by: PatQ): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
         val absArc = subArc.shift(base - by)
-        events(absArc).map { event -> PatEvent(event.arc.shift(-base + by), event.value, event.sourceSpan) }
+        events(absArc).map { event -> PatEvent(event.arc.shift(-base + by), event.value, event.sourceSpan, event.annotations, event.additionalSpans) }
     }
 
 fun <A> PatPattern<A>.fast(n: Int): PatPattern<A> = cat(*Array(max(1, n)) { this })
@@ -506,7 +532,7 @@ fun <A> PatPattern<A>.slow(n: Int): PatPattern<A> =
         events(srcAbs).map { event ->
             val startLocal = (event.arc.start - base) / factor
             val endLocal = (event.arc.end - base) / factor
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan)
+            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
         }
     }
 
@@ -625,7 +651,7 @@ fun <A> PatPattern<A>.striate(n: Int, rotation: Int = 0): PatPattern<A> =
                 for (index in 0 until slices) {
                     val rotated = (index + rot) % slices
                     val start = event.arc.start + step * PatQ.of(rotated)
-                    add(PatEvent(PatArc(start, start + step), event.value, event.sourceSpan))
+                    add(PatEvent(PatArc(start, start + step), event.value, event.sourceSpan, event.annotations, event.additionalSpans))
                 }
             }
         }
@@ -641,7 +667,7 @@ fun <A> PatPattern<A>.stutter(n: Int, gap: PatQ = PatQ.ZERO): PatPattern<A> =
                 for (index in 0 until repeats) {
                     val start = event.arc.start + slot * PatQ.of(index)
                     val end = start + play
-                    if (end > start) add(PatEvent(PatArc(start, end), event.value, event.sourceSpan))
+                    if (end > start) add(PatEvent(PatArc(start, end), event.value, event.sourceSpan, event.annotations, event.additionalSpans))
                 }
             }
         }
@@ -664,13 +690,135 @@ fun <A> PatPattern<A>.timeScale(ratio: PatQ): PatPattern<A> =
             PatEvent(
                 PatArc((event.arc.start - base) / ratio, (event.arc.end - base) / ratio),
                 event.value,
-                event.sourceSpan
+                event.sourceSpan,
+                event.annotations,
+                event.additionalSpans
             )
         }
     }
 
 fun <A> PatPattern<A>.density(ratio: Double): PatPattern<A> =
     timeScale(if (ratio <= 0.0) PatQ.ONE else PatQ.fromDouble(ratio))
+
+enum class ArpMode {
+    UP, DOWN, UPDOWN, DOWNUP, RANDOM, PINGPONG
+}
+
+fun <A> PatPattern<A>.arp(
+    notes: List<A>,
+    mode: ArpMode = ArpMode.UP,
+    speed: Int = 1,
+    hold: Boolean = false,
+    seed: Int = 0
+): PatPattern<A> {
+    if (notes.isEmpty()) return silence()
+    
+    val noteCount = notes.size
+    val arpLength = max(1, speed)
+    val modeSequence = when (mode) {
+        ArpMode.UP -> (0 until noteCount).toList()
+        ArpMode.DOWN -> (noteCount - 1 downTo 0).toList()
+        ArpMode.UPDOWN -> (0 until noteCount).toList() + (noteCount - 2 downTo 1).toList()
+        ArpMode.DOWNUP -> (noteCount - 1 downTo 0).toList() + (1 until noteCount - 1).toList()
+        ArpMode.PINGPONG -> (0 until noteCount).toList() + (noteCount - 2 downTo 1).toList()
+        ArpMode.RANDOM -> {
+            val rand = kotlin.random.Random(seed)
+            (0 until noteCount).map { rand.nextInt(noteCount) }
+        }
+    }
+    
+    return fromCycleIndexed { subArc, tile ->
+        val base = PatQ.of(tile)
+        val absArc = subArc.shift(base)
+        val events = events(absArc)
+        val out = mutableListOf<PatEvent<A>>()
+        
+        var eventCounter = 0
+        for (event in events) {
+            val eventDur = event.arc.dur
+            val stepDur = eventDur / PatQ.of(arpLength)
+            
+            for (step in 0 until arpLength) {
+                val globalStep = eventCounter * arpLength + step
+                val noteIdx = (globalStep % modeSequence.size).let { 
+                    if (globalStep >= modeSequence.size && hold) noteCount - 1 
+                    else modeSequence[it]
+                }
+                
+                val stepStart = event.arc.start + stepDur * PatQ.of(step)
+                val stepEnd = if (step == arpLength - 1) event.arc.end 
+                              else event.arc.start + stepDur * PatQ.of(step + 1)
+                
+                out += PatEvent(
+                    PatArc(stepStart, stepEnd).shift(-base),
+                    notes[noteIdx],
+                    event.sourceSpan,
+                    event.annotations,
+                    event.additionalSpans
+                )
+            }
+            eventCounter++
+        }
+        out
+    }
+}
+
+fun <A> PatPattern<A>.arp(
+    vararg notes: A,
+    mode: ArpMode = ArpMode.UP,
+    speed: Int = 1,
+    hold: Boolean = false,
+    seed: Int = 0
+): PatPattern<A> = arp(notes.toList(), mode, speed, hold, seed)
+
+fun PatPattern<String>.arp(indexPattern: String): PatPattern<String> = arp(pat(indexPattern))
+
+fun PatPattern<String>.arp(indexPattern: PatPattern<String>): PatPattern<String> = fromCycleIndexed { subArc, tile ->
+    val base = PatQ.of(tile)
+    val absArc = subArc.shift(base)
+    val sourceEvents = events(absArc)
+    if (sourceEvents.isEmpty()) return@fromCycleIndexed emptyList()
+
+    val groupedByArc = sourceEvents
+        .groupBy { it.arc }
+        .entries
+        .sortedWith(compareBy({ it.key.start }, { it.key.end }))
+
+    val out = mutableListOf<PatEvent<String>>()
+
+    for ((arc, chordEvents) in groupedByArc) {
+        if (chordEvents.isEmpty()) continue
+        val indexEvents = indexPattern.events(arc)
+
+        for (indexEvent in indexEvents) {
+            val inter = indexEvent.arc.intersect(arc) ?: continue
+            val parsedIndex = parseArpIndexToken(indexEvent.value) ?: continue
+            val selected = chordEvents[floorMod(parsedIndex.toLong(), chordEvents.size)]
+            out += PatEvent(inter.shift(-base), selected.value, selected.sourceSpan, selected.annotations, selected.additionalSpans + listOfNotNull(indexEvent.sourceSpan))
+        }
+    }
+
+    out
+}
+
+fun PatPattern<String>.zip(valuePattern: String, key: String): PatPattern<String> = zip(pat(valuePattern), key)
+
+fun PatPattern<String>.zip(valuePattern: PatPattern<String>, key: String): PatPattern<String> = fromCycleIndexed { subArc, tile ->
+    val base = PatQ.of(tile)
+    val absArc = subArc.shift(base)
+    val sourceEvents = events(absArc)
+    if (sourceEvents.isEmpty()) return@fromCycleIndexed emptyList()
+
+    val zipEvents = valuePattern.events(absArc)
+    sourceEvents.map { event ->
+        val overlapping = zipEvents.firstOrNull { it.arc.intersect(event.arc) != null }
+        if (overlapping != null) {
+            event.mergeAnnotations(mapOf(key to overlapping.value)).addSpan(overlapping.sourceSpan).copy(arc = event.arc.shift(-base))
+        } else {
+            event.copy(arc = event.arc.shift(-base))
+        }
+    }
+}
 
 object MiniPat {
     sealed interface Node
@@ -1236,6 +1384,8 @@ private fun floorMod(value: Long, modulus: Int): Int {
     return if (mod < 0L) (mod + modulus).toInt() else mod.toInt()
 }
 
+private fun parseArpIndexToken(token: String): Int? = token.trim().toIntOrNull()
+
 private fun hashQ(q: PatQ): Int = 31 * q.n.hashCode() + q.d.hashCode()
 
 private fun eventKey(cycle: Long, arc: PatArc, salt: Int): Long {
@@ -1258,44 +1408,77 @@ private fun <T> List<T>.rotateRight(steps: Int): List<T> {
     return subList(split, size) + subList(0, split)
 }
 
+private val PAT_HIGHLIGHT_EXTRA_COLORS = listOf("#f0a", "#0fa", "#fa0", "#a0f", "#0ff", "#ff0")
+
 fun <A> Marker.patHighlight(
     event: PatScheduledEvent<A>,
     key: String = "active",
     color: String = "#0af"
 ): PatScheduledEvent<A> {
+    val hintLine = patHighlightHintLine()
+
+    // Primary span
     val decorationKey = "__pat_highlight__${name}__$key"
     val span = event.sourceSpan
     if (span == null) {
         box.decorationState.remove(decorationKey)
-        return event
-    }
-    val range = findPatDecorationRange(box, span, hintLine = span.lineHint ?: patHighlightHintLine())
-    if (range == null) {
-        box.decorationState.remove(decorationKey)
-        return event
-    }
-    val className = "patAtom_${name}_${key}".map { if (it.isLetterOrDigit()) it else '_' }.joinToString("")
-    val css = """
-        .${className} {
-            background: color-mix(in srgb, ${color} 28%, transparent);
-            border-bottom: 1px solid color-mix(in srgb, ${color} 92%, white);
-            box-shadow: inset 0 0 0 1px color-mix(in srgb, ${color} 45%, transparent);
-            border-radius: 3px;
+    } else {
+        val range = findPatDecorationRange(box, span, hintLine = span.lineHint ?: hintLine)
+        if (range == null) {
+            box.decorationState.remove(decorationKey)
+        } else {
+            val className = "patAtom_${name}_${key}".map { if (it.isLetterOrDigit()) it else '_' }.joinToString("")
+            val css = """
+                .${className} {
+                    background: color-mix(in srgb, ${color} 28%, transparent);
+                    border-bottom: 1px solid color-mix(in srgb, ${color} 92%, white);
+                    box-shadow: inset 0 0 0 1px color-mix(in srgb, ${color} 45%, transparent);
+                    border-radius: 3px;
+                }
+            """.trimIndent().replace("\n", " ")
+            box.decorationState[decorationKey] = RawDecoration(
+                range.lineStart, range.colStart, range.lineEnd, range.colEnd, className, mapOf(className to css)
+            )
         }
-    """.trimIndent().replace("\n", " ")
-    box.decorationState[decorationKey] = RawDecoration(
-        range.lineStart,
-        range.colStart,
-        range.lineEnd,
-        range.colEnd,
-        className,
-        mapOf(className to css)
-    )
+    }
+
+    // Additional spans (from arp, zip, etc.)
+    val maxExtra = 6
+    for (i in 0 until maxExtra) {
+        val extraKey = "__pat_highlight__${name}__${key}__x$i"
+        if (i < event.additionalSpans.size) {
+            val extraSpan = event.additionalSpans[i]
+            val extraRange = findPatDecorationRange(box, extraSpan, hintLine = extraSpan.lineHint ?: hintLine)
+            if (extraRange != null) {
+                val extraColor = PAT_HIGHLIGHT_EXTRA_COLORS[i % PAT_HIGHLIGHT_EXTRA_COLORS.size]
+                val extraClassName = "patAtom_${name}_${key}_x$i".map { if (it.isLetterOrDigit()) it else '_' }.joinToString("")
+                val extraCss = """
+                    .${extraClassName} {
+                        background: color-mix(in srgb, ${extraColor} 28%, transparent);
+                        border-bottom: 1px solid color-mix(in srgb, ${extraColor} 92%, white);
+                        box-shadow: inset 0 0 0 1px color-mix(in srgb, ${extraColor} 45%, transparent);
+                        border-radius: 3px;
+                    }
+                """.trimIndent().replace("\n", " ")
+                box.decorationState[extraKey] = RawDecoration(
+                    extraRange.lineStart, extraRange.colStart, extraRange.lineEnd, extraRange.colEnd, extraClassName, mapOf(extraClassName to extraCss)
+                )
+            } else {
+                box.decorationState.remove(extraKey)
+            }
+        } else {
+            box.decorationState.remove(extraKey)
+        }
+    }
+
     return event
 }
 
 fun Marker.clearPatHighlight(key: String = "active") {
     box.decorationState.remove("__pat_highlight__${name}__$key")
+    for (i in 0 until 6) {
+        box.decorationState.remove("__pat_highlight__${name}__${key}__x$i")
+    }
 }
 
 private data class PatDecorationRange(
@@ -1368,6 +1551,11 @@ private fun locatePatSourceLiteral(box: Box, context: PatParseContext, hintLine:
         val stackDistance = frameLines.minOfOrNull { abs(it - line) } ?: Int.MAX_VALUE / 4
         val hintDistance = bestHint?.let { abs(it - line) } ?: stackDistance
         hintDistance + stackDistance
+    }.thenBy { occurrence ->
+        // Prefer occurrences that are exact string literals (bounded by quotes)
+        val before = if (occurrence > 0) code[occurrence - 1] else ' '
+        val after = if (occurrence + source.length < code.length) code[occurrence + source.length] else ' '
+        if (before == '"' && after == '"') 0 else 1
     }.thenBy { it }) ?: return null
     return PatSourceAnchor(code = code, sourceStart = chosen, lineStart = lineForAbsoluteOffset(code, chosen))
 }

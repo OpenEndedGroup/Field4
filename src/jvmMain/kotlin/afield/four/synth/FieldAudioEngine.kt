@@ -179,6 +179,8 @@ class FieldAudioEngine private constructor(
     private val inputChannels: Int = 2
 ) : AutoCloseable {
     companion object {
+        private const val NON_FINITE_LOG_INTERVAL_NS = 2_000_000_000L
+
         @Volatile
         private var sharedInstance: FieldAudioEngine? = null
 
@@ -241,6 +243,13 @@ class FieldAudioEngine private constructor(
     @Volatile
     var outputActive: Boolean = false
         private set
+
+    @Volatile
+    var nonFiniteSamplesSanitized: Long = 0L
+        private set
+
+    private var nonFiniteSamplesSinceLog: Long = 0L
+    private var nextNonFiniteLogAtNs: Long = System.nanoTime() + NON_FINITE_LOG_INTERVAL_NS
 
     fun monoInput(): Signal {
         start()
@@ -440,8 +449,8 @@ class FieldAudioEngine private constructor(
 
         pcmBuffer.clear()
         for (i in 0 until bufferSize) {
-            val left = (mixL[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).roundToInt().toShort()
-            val right = (mixR[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).roundToInt().toShort()
+            val left = (sanitizePcmSample(mixL[i]) * Short.MAX_VALUE).roundToInt().toShort()
+            val right = (sanitizePcmSample(mixR[i]) * Short.MAX_VALUE).roundToInt().toShort()
             pcmBuffer.putShort(left)
             pcmBuffer.putShort(right)
         }
@@ -452,6 +461,28 @@ class FieldAudioEngine private constructor(
         if (alGetError() != AL_NO_ERROR) {
             freeBuffers += bufferId
         }
+    }
+
+    private fun sanitizePcmSample(sample: Float): Float {
+        if (!sample.isFinite()) {
+            recordNonFiniteSample()
+            return 0f
+        }
+        return sample.coerceIn(-1f, 1f)
+    }
+
+    private fun recordNonFiniteSample() {
+        nonFiniteSamplesSanitized += 1
+        nonFiniteSamplesSinceLog += 1
+        val now = System.nanoTime()
+        if (now < nextNonFiniteLogAtNs) return
+
+        lprintln(
+            "warning,audio",
+            "FieldAudioEngine sanitized non-finite samples: +$nonFiniteSamplesSinceLog (total=$nonFiniteSamplesSanitized)"
+        )
+        nonFiniteSamplesSinceLog = 0L
+        nextNonFiniteLogAtNs = now + NON_FINITE_LOG_INTERVAL_NS
     }
 
     private fun pollCapture() {
