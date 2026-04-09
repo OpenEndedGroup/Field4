@@ -158,17 +158,23 @@
 package afield.four.synth
 
 import afield.Box
+import afield.KotlinInterface
 import afield.RawDecoration
 import afield.decorationState
 import afield.locationForTextStringOnStack
+import afield.logger.lprintln
 import afield.stdlib.Marker
 import java.math.BigInteger
 import java.time.Instant
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.script.experimental.api.ResultValue
+import kotlinx.coroutines.runBlocking
 
 data class PatQ(val n: BigInteger, val d: BigInteger) : Comparable<PatQ> {
     init { require(d != BigInteger.ZERO) { "Denominator cannot be 0" } }
@@ -834,6 +840,7 @@ object MiniPat {
     data class Slow(val expr: Node, val n: Int) : Node
     data class Elongate(val expr: Node, val steps: Int) : Node
     data class Euclid(val expr: Node, val pulses: Int, val steps: Int, val offset: Int = 0) : Node
+    data class Expr(val body: String, val sourceSpan: PatSourceSpan) : Node
 
     fun parseToAst(
         source: String,
@@ -949,6 +956,9 @@ object MiniPat {
                     }
                     Choice(alts)
                 }
+                peek() == '{' && index + 1 < src.length && src[index + 1] == '{' -> {
+                    readExpr()
+                }
                 match('{') -> {
                     val parts = mutableListOf<Node>()
                     while (true) {
@@ -1032,10 +1042,38 @@ object MiniPat {
                 }
             }
         }
+
+        private fun readExpr(): Expr {
+            val outerStart = index
+            index += 2 // skip opening {{
+            val bodyStart = index
+            var depth = 1
+            while (index + 1 < src.length) {
+                if (src[index] == '{' && src[index + 1] == '{') {
+                    depth++
+                    index += 2
+                    continue
+                }
+                if (src[index] == '}' && src[index + 1] == '}') {
+                    depth--
+                    if (depth == 0) {
+                        val body = src.substring(bodyStart, index)
+                        val span = PatSourceSpan(parseContext, outerStart, index + 2)
+                        index += 2 // skip closing }}
+                        return Expr(body, span)
+                    }
+                    index += 2
+                    continue
+                }
+                index++
+            }
+            error("Unterminated {{...}} expression starting at $outerStart")
+        }
     }
 
     private fun compileNode(node: Node): PatPattern<String> = when (node) {
         is Atom -> pure(node.name, node.sourceSpan)
+        is Expr -> compileExpr(node)
         is Rest -> silence()
         is Seq -> when (node.items.size) {
             0 -> silence()
@@ -1087,6 +1125,19 @@ object MiniPat {
             val pulses = node.pulses.coerceAtLeast(0)
             val steps = node.steps.coerceAtLeast(1)
             euclidFill(pulses, steps, rotation = -node.offset, on = compileNode(node.expr))
+        }
+    }
+
+    private fun compileExpr(node: Expr): PatPattern<String> {
+        val body = node.body
+        val span = node.sourceSpan
+        return fromCycleIndexed { subArc, tile ->
+            val base = PatQ.of(tile)
+            val inter = PatArc(PatQ.ZERO, PatQ.ONE).intersect(subArc) ?: return@fromCycleIndexed emptyList()
+            val midT = ((inter.start + inter.end) / PatQ.of(2)).toDouble()
+            val value = PatExprEvaluator.evaluate(body, cycle = tile, t = midT)
+                ?: return@fromCycleIndexed emptyList() // failed expression → silence
+            listOf(PatEvent(inter, value, span))
         }
     }
 
@@ -1192,6 +1243,91 @@ object MiniPat {
     }
 
     private fun isSilentSeq(node: Node): Boolean = node is Seq && node.items.isEmpty()
+}
+
+/**
+ * Thread-local context for evaluating `{{...}}` expressions inside patterns.
+ * Expression bodies can read [cycle] (0-based cycle index) and [t] (fractional
+ * position inside the queried arc, 0.0..1.0).
+ */
+object PatExprContext {
+    internal val current = ThreadLocal<PatExprFrame?>()
+
+    /** The 0-based cycle index of the current query. */
+    val cycle: Long get() = current.get()?.cycle ?: 0L
+
+    /** Fractional position inside the queried sub-arc (0.0 .. 1.0). */
+    val t: Double get() = current.get()?.t ?: 0.0
+}
+
+internal data class PatExprFrame(val cycle: Long, val t: Double)
+
+private inline fun <T> withPatExprFrame(cycle: Long, t: Double, block: () -> T): T {
+    val prev = PatExprContext.current.get()
+    PatExprContext.current.set(PatExprFrame(cycle, t))
+    return try {
+        block()
+    } finally {
+        PatExprContext.current.set(prev)
+    }
+}
+
+/**
+ * Compiles and caches Kotlin expressions that appear inside `{{...}}` tokens
+ * in pattern strings.  Each unique expression body is compiled once; evaluations
+ * receive [PatExprContext] via a ThreadLocal so the expression can reference
+ * `PatExprContext.cycle` and `PatExprContext.t`.
+ */
+private object PatExprEvaluator {
+    private val lock = Any()
+    private val compiled = ConcurrentHashMap<String, KotlinInterface.CompiledSnippet>()
+    private val compiler = KotlinInterface(filePrefix = "PAT_EXPR_")
+
+    fun evaluate(body: String, cycle: Long, t: Double): String? {
+        val source = buildSource(body)
+        val snippet = synchronized(lock) {
+            compiled[source] ?: runBlocking {
+                compiler.compileSnippet(source, implicits = emptyList(), onCompileError = {
+                    lprintln("error,pat", "pat expression compile error: $it")
+                })
+            }?.also { compiled[source] = it }
+        }
+        if (snippet == null) {
+            lprintln("error,pat", "pat expression failed to compile: $body")
+            return null
+        }
+        return withPatExprFrame(cycle, t) {
+            try {
+                val result = snippet.evalAndWait(
+                    updateContext = false,
+                    implicits = emptyList(),
+                    onEvalError = { lprintln("error,pat", "pat expression eval error: $it") },
+                    onEvalException = { lprintln("error,pat", "pat expression eval exception: $it") }
+                )
+                when (result) {
+                    is ResultValue.Value -> result.value?.toString()
+                    is ResultValue.Error -> {
+                        lprintln("error,pat", "pat expression runtime error: ${result.error}")
+                        null
+                    }
+                    else -> null
+                }
+            } catch (ex: Throwable) {
+                lprintln("error,pat", "pat expression threw: ${ex.message}")
+                null
+            }
+        }
+    }
+
+    private fun buildSource(body: String): String = """
+        import kotlin.math.*
+        import afield.four.synth.PatExprContext
+        run {
+            val cycle = PatExprContext.cycle
+            val t = PatExprContext.t
+            $body
+        }
+    """.trimIndent()
 }
 
 fun pat(source: String): PatPattern<String> = MiniPat.parse(source, parseContext = currentPatParseContext(source))

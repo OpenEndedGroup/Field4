@@ -26,6 +26,11 @@ class KeyframeEvaluator(jsonString: String) {
 
     lateinit var session: WebSocketSession
 
+    /** True when the iframe WebSocket is connected and still open. */
+    val hasLiveSession: Boolean
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        get() = ::session.isInitialized && !session.outgoing.isClosedForSend
+
     /** The box ID + name uid this evaluator is associated with */
     var associatedBoxId: String? = null
     var associatedName: String? = null
@@ -566,11 +571,19 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
     // Use a channel that includes the name so multiple keyframes on the same
     // channel don't overwrite each other's iframes.
     val displayChannel = if (channel == name) channel else "$channel/$name"
-    display(
-        displayChannel, """
+
+    // Only send the display/iframe if the evaluator isn't already live —
+    // re-sending it would replace the renderer causing flicker and zoom reset.
+    val existing = knownKeyframeTargets[uid]
+    val alreadyLive = existing != null && existing.hasLiveSession
+
+    if (!alreadyLive) {
+        display(
+            displayChannel, """
 <iframe src='/keyframe?uid=${uid}' style='border:none;padding:0;margin:0;width:100%;height:100%'>
 """
-    )
+        )
+    }
 
     // Load persisted keyframe data if available
     val persistedData = loadKeyframeData(this, name)

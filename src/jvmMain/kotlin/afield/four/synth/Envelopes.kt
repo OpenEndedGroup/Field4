@@ -308,7 +308,7 @@ class EnvelopeFollower(
 ) : Signal() {
     enum class Mode { PEAK, RMS }
 
-    private var env = 0f
+    var env = 0f
     internal val vizEnvelopeTrace = ScalarTrace(capacity = 4096, stride = 8)
     @Volatile internal var vizCurrentLevel: Float = 0f
     @Volatile internal var vizModeLabel: String = mode.name
