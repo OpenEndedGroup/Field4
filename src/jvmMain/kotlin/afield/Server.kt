@@ -1243,6 +1243,29 @@ class Server {
                 Handled.yes
             })
 
+            handlers["file-upload-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FileUploadUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received file upload: ${update.controlId} with ${update.files.size} file(s)")
+
+                // Always store for polling (Python widgets read via getFileUploadData)
+                storeFileUploadData(update.controlId, update.files)
+
+                // Also call explicit callback if registered (Kotlin widgets)
+                val callback = getFileUploadCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.files)
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in file upload callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                }
+
+                Handled.yes
+            })
+
             handlers["color-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<ColorUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})")

@@ -656,8 +656,20 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
                 first.runningEntries = first.runningEntries ?? new Map()
                 const lastWatermark = first.latestWatermark.get(strand) ?? -Infinity
 
+                const parseRunningEntry = (entryName) => {
+                        const separatorIndex = entryName.indexOf("--")
+                        if (separatorIndex <= 0) return null
+                        const entryWatermark = Number(entryName.substring(0, separatorIndex))
+                        const entryStrand = entryName.substring(separatorIndex + 2)
+                        if (!Number.isFinite(entryWatermark)) return null
+                        return { entryWatermark, entryStrand }
+                }
+
                 // console.log(" is running ", first, first.runningEntries, watermark, isRunning, mode)
                 if (isRunning) {
+                        // Ignore delayed start events for a strand when we have already seen a newer watermark.
+                        if (watermark < lastWatermark) return
+
                         first.runningEntries.set(name, mode)
                         if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
                         syncBoxRunningClass(first)
@@ -669,9 +681,23 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
 
                         setStatusForExecutionMarker(strand, false, mode)
 
+                        let removedAny = false
                         if (first.runningEntries.delete(name)) {
+                                removedAny = true
+                        }
 
-                        } else {
+                        // Also prune any stale entries for this strand that are at or below this stop watermark.
+                        for (const runningEntryName of [...first.runningEntries.keys()]) {
+                                const parsed = parseRunningEntry(runningEntryName)
+                                if (!parsed) continue
+                                if (parsed.entryStrand !== strand) continue
+                                if (parsed.entryWatermark <= watermark) {
+                                        first.runningEntries.delete(runningEntryName)
+                                        removedAny = true
+                                }
+                        }
+
+                        if (!removedAny) {
                                 // TODO
                                 monacoLog("tried to remove a watermark that wasn't there; clearing running state")
                                 first.runningEntries.clear()

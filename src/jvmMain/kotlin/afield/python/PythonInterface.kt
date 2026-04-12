@@ -62,7 +62,9 @@ fun pythonTopologyNeedsUpdating(values: Collection<Box>) {
 
 
 var interpretersForBoxes = mutableMapOf<Box, SharedInterpreter>()
-lateinit var globalInterpreter: SharedInterpreter
+var globalInterpreter: SharedInterpreter? = null
+/** Venv site-packages path resolved during init, used to fix sys.path before JEP's import */
+var resolvedVenvSitePackagesPath: String? = null
 
 @Suppress("UNCHECKED_CAST")
 class PythonExecution : BoxExecution {
@@ -91,12 +93,40 @@ class PythonExecution : BoxExecution {
                 }
             })
             SharedInterpreter.setConfig(conf);
-            inited = true
+
+            // JEP 4.3.1 sets Jep.threadUsed=true during setConfig, which then
+            // prevents SharedInterpreter from initializing on this thread.
+            // Reset it via reflection so our custom SharedInterpreter can init.
+            try {
+                val jepClass = Class.forName("jep.Jep")
+                val threadUsedField = jepClass.getDeclaredField("threadUsed")
+                threadUsedField.isAccessible = true
+                val threadLocal = threadUsedField.get(null) as ThreadLocal<*>
+                threadLocal.remove()
+            } catch (e: Exception) {
+                lprintln("warning: could not reset Jep.threadUsed via reflection: $e")
+            }
+
             globalInterpreter = object : SharedInterpreter() {
                 override fun isValidThread() {
                     return
                 }
+                override fun configureInterpreter(config: jep.JepConfig) {
+                    // Pre-insert venv site-packages into sys.path and clear any
+                    // cached jep module BEFORE JEP's configureInterpreter runs
+                    // "import jep".  Without this, Python finds the base
+                    // installation's (miniconda) jep 4.2.2 instead of the
+                    // venv's 4.3.1, causing a setupImporter() arity mismatch.
+                    val venvSP = resolvedVenvSitePackagesPath
+                    if (venvSP != null) {
+                        val escaped = venvSP.replace("\\", "\\\\").replace("'", "\\'")
+                        exec("import sys; sys.path.insert(0, '$escaped')")
+                        exec("for k in [k for k in sys.modules if k == 'jep' or k.startswith('jep.')]: del sys.modules[k]")
+                    }
+                    super.configureInterpreter(config)
+                }
             }
+            inited = true
 
 
             val startupText = """
@@ -119,8 +149,20 @@ import linecache
 import secrets
 import ast
 
-sys.executable = "/opt/homebrew/Caskroom/miniconda/base/bin/python"
+sys.executable = "${PythonInterface.resolvedPythonExecutable?.replace("\\", "\\\\") ?: "/usr/bin/python3"}"
 print(" python interpreter is starting up ")
+${if (PythonInterface.resolvedVenvPath != null) """
+# Activate venv site-packages
+_venv_path = "${PythonInterface.resolvedVenvPath!!.replace("\\", "\\\\")}"
+import site as _site, glob as _glob
+for _sp in _glob.glob(_venv_path + "/lib/python*/site-packages"):
+    if _sp not in sys.path:
+        sys.path.insert(0, _sp)
+        _site.addsitedir(_sp)
+sys.prefix = _venv_path
+sys.exec_prefix = _venv_path
+print(f" venv activated: {_venv_path}")
+""" else ""}
 
 class CooperativeEventLoop(asyncio.AbstractEventLoop):
     def __init__(self):
@@ -579,6 +621,225 @@ def _print(*a):
         print(" ".join([str(x) for x in a]))
 
 # ---------------------------
+# Display API (IPython-compatible)
+# ---------------------------
+
+import html as _html_mod
+import base64 as _base64_mod
+
+class HTML:
+    ""${'"'}Raw HTML display object.""${'"'}
+    def __init__(self, data=""):
+        self.data = str(data)
+    def _repr_html_(self):
+        return self.data
+
+class Image:
+    ""${'"'}Image display object. Supports data (bytes), url, or filename.""${'"'}
+    def __init__(self, data=None, url=None, filename=None, width=None, height=None, format=None):
+        self._data = data
+        self.url = url
+        self.filename = filename
+        self.width = width
+        self.height = height
+        self.format = format
+    def _repr_html_(self):
+        style = ""
+        if self.width:
+            style += f"width:{self.width}px;" if isinstance(self.width, (int, float)) else f"width:{self.width};"
+        if self.height:
+            style += f"height:{self.height}px;" if isinstance(self.height, (int, float)) else f"height:{self.height};"
+        style_attr = f' style="{style}"' if style else ""
+        if self.url:
+            return f'<img src="{_html_mod.escape(self.url)}"{style_attr}>'
+        if self.filename:
+            import mimetypes
+            mime = mimetypes.guess_type(self.filename)[0] or "image/png"
+            with open(self.filename, "rb") as f:
+                b64 = _base64_mod.b64encode(f.read()).decode("ascii")
+            return f'<img src="data:{mime};base64,{b64}"{style_attr}>'
+        if self._data:
+            fmt = self.format or "png"
+            mime = f"image/{fmt}"
+            if isinstance(self._data, bytes):
+                b64 = _base64_mod.b64encode(self._data).decode("ascii")
+            else:
+                b64 = _base64_mod.b64encode(bytes(self._data)).decode("ascii")
+            return f'<img src="data:{mime};base64,{b64}"{style_attr}>'
+        return ""
+
+class Markdown:
+    ""${'"'}Markdown display object — rendered as a preformatted block unless a markdown library is available.""${'"'}
+    def __init__(self, data=""):
+        self.data = str(data)
+    def _repr_html_(self):
+        try:
+            import markdown as _md
+            return _md.markdown(self.data, extensions=["fenced_code", "tables"])
+        except ImportError:
+            return "<pre>" + _html_mod.escape(self.data) + "</pre>"
+
+class Math:
+    ""${'"'}LaTeX math display object.""${'"'}
+    def __init__(self, data=""):
+        self.data = str(data)
+    def _repr_html_(self):
+        escaped = _html_mod.escape(self.data)
+        return '<div class="math">' + escaped + '</div>'
+
+class JSON:
+    ""${'"'}JSON display object — pretty-printed in a <pre> block.""${'"'}
+    def __init__(self, data=None):
+        self.data = data
+    def _repr_html_(self):
+        import json as _json
+        txt = _json.dumps(self.data, indent=2, default=str)
+        return "<pre>" + _html_mod.escape(txt) + "</pre>"
+
+def _to_html(obj):
+    ""${'"'}Convert a display object to HTML. Handles IPython display protocol, PIL images, matplotlib figures, and plain objects.""${'"'}
+    # PIL / Pillow Image
+    try:
+        import PIL.Image
+        if isinstance(obj, PIL.Image.Image):
+            import io as _io
+            buf = _io.BytesIO()
+            fmt = "PNG" if obj.mode in ("RGBA", "LA", "PA", "P") else "JPEG"
+            obj.save(buf, format=fmt)
+            b64 = _base64_mod.b64encode(buf.getvalue()).decode("ascii")
+            mime = "image/png" if fmt == "PNG" else "image/jpeg"
+            return f'<img src="data:{mime};base64,{b64}">'
+    except ImportError:
+        pass
+    # matplotlib Figure
+    try:
+        import matplotlib.figure
+        if isinstance(obj, matplotlib.figure.Figure):
+            import io as _io
+            buf = _io.BytesIO()
+            obj.savefig(buf, format="png", bbox_inches="tight")
+            buf.seek(0)
+            b64 = _base64_mod.b64encode(buf.getvalue()).decode("ascii")
+            return f'<img src="data:image/png;base64,{b64}">'
+    except ImportError:
+        pass
+    # IPython-style _repr_ protocol
+    if hasattr(obj, "_repr_html_"):
+        h = obj._repr_html_()
+        if h is not None:
+            return h
+    if hasattr(obj, "_repr_svg_"):
+        s = obj._repr_svg_()
+        if s is not None:
+            return s
+    if hasattr(obj, "_repr_png_"):
+        png = obj._repr_png_()
+        if png is not None:
+            b64 = _base64_mod.b64encode(png if isinstance(png, bytes) else bytes(png)).decode("ascii")
+            return f'<img src="data:image/png;base64,{b64}">'
+    if hasattr(obj, "_repr_jpeg_"):
+        jpg = obj._repr_jpeg_()
+        if jpg is not None:
+            b64 = _base64_mod.b64encode(jpg if isinstance(jpg, bytes) else bytes(jpg)).decode("ascii")
+            return f'<img src="data:image/jpeg;base64,{b64}">'
+    return "<pre>" + _html_mod.escape(str(obj)) + "</pre>"
+
+def display(*objs, channel="main"):
+    ""${'"'}Display objects as HTML in a Field output area. Compatible with IPython display objects.""${'"'}
+    from afield.python import PythonInterface
+    box = PythonInterface.thisBox
+    if not box:
+        for o in objs:
+            print(o)
+        return
+    for obj in objs:
+        box.display(channel, _to_html(obj))
+    PythonInterface.hasHadOutput = True
+
+def clear_output(wait=False, channel=None):
+    ""${'"'}Clear the output area. If channel is None, clears all channels.""${'"'}
+    from afield.python import PythonInterface
+    box = PythonInterface.thisBox
+    if not box:
+        return
+    from afield import OutputsKt
+    if channel:
+        OutputsKt.displayClear(box, channel)
+    else:
+        OutputsKt.displayClearAll(box)
+
+# ---------------------------
+# FileUpload widget
+# ---------------------------
+
+class FileUpload:
+    ""${'"'}File upload widget compatible with ipywidgets.FileUpload API.
+
+    Usage:
+        uploader = FileUpload(accept='.csv', multiple=False)
+        display(uploader)
+        # After user selects file(s), uploader.value is populated.
+        # Access uploader.value in a later cell or execution:
+        for f in uploader.value:
+            print(f['name'], len(f['content']), 'bytes')
+    ""${'"'}
+    def __init__(self, accept='', multiple=False, description='Upload'):
+        self.accept = accept
+        self.multiple = multiple
+        self.description = description
+        self._value = ()
+        self._last_seen = ()
+        self._callbacks = []
+        self._control_id = None
+
+    @property
+    def value(self):
+        ""${'"'}Returns uploaded files as a tuple of dicts with keys: name, type, size, content (bytes).""${'"'}
+        if self._control_id:
+            from afield import OutputsKt
+            entries = OutputsKt.getFileUploadData(self._control_id)
+            if entries is not None:
+                result = []
+                for i in range(entries.size()):
+                    entry = entries.get(i)
+                    result.append({
+                        'name': str(entry.getName()),
+                        'type': str(entry.getType()),
+                        'size': int(entry.getSize()),
+                        'content': _base64_mod.b64decode(entry.getDataBase64())
+                    })
+                new_value = tuple(result)
+                if new_value != self._last_seen:
+                    old = self._value
+                    self._value = new_value
+                    self._last_seen = new_value
+                    change = {'new': new_value, 'old': old, 'owner': self, 'name': 'value', 'type': 'change'}
+                    for cb in self._callbacks:
+                        try:
+                            cb(change)
+                        except Exception as e:
+                            print(f"FileUpload callback error: {e}")
+        return self._value
+
+    def observe(self, handler, names=None):
+        ""${'"'}Register a callback for when files are uploaded. Fires on next .value access.""${'"'}
+        self._callbacks.append(handler)
+
+    def _repr_html_(self):
+        import uuid as _uuid
+        self._control_id = "file-upload-" + str(_uuid.uuid4())
+        accept_attr = f'accept="{_html_mod.escape(self.accept)}"' if self.accept else ''
+        multiple_attr = 'multiple' if self.multiple else ''
+        return (
+            '<div class="field-control field-file-upload">'
+            f'<label class="field-label" style="flex:0 0 auto;">{_html_mod.escape(self.description)}</label>'
+            f'<input type="file" id="{self._control_id}" {accept_attr} {multiple_attr}'
+            f' onchange="handleFileUploadInput(this)" style="flex:1 1 auto;" />'
+            f'<span class="field-value" id="{self._control_id}-status"></span>'
+            '</div>'
+        )
+
+# ---------------------------
 # Monitoring & control API
 # ---------------------------
 
@@ -627,10 +888,10 @@ print(" python interpreter has finished starting up ")
             """.trimIndent()
 
             lprintln("info,python", "calling startup text for python interpreter")
-            globalInterpreter.exec(startupText)
+            globalInterpreter!!.exec(startupText)
             lprintln("info,python", "finished calling startup text for python interpreter")
         }
-        return globalInterpreter
+        return globalInterpreter ?: throw IllegalStateException("Python/JEP interpreter failed to initialize. Check the startup log for details.")
     }
 
     val syntaxError = Regex("<class\\s+'([^']+)'>:\\s+\\('([^']+)',\\s+\\('<string>',\\s*(\\d+),")
@@ -711,6 +972,7 @@ print(" python interpreter has finished starting up ")
                 }
             } catch (j: JepException) {
                 j.printStackTrace()
+                hasHadOutput = true
                 val n = j.message!!
                 val f = syntaxError.find(n)
                 if (f != null) {
@@ -879,11 +1141,128 @@ class PythonInterface {
         @JvmField
         var hasHadOutput = false
 
+        /** The resolved venv path (if any), exposed so startup code can configure sys.prefix etc. */
+        var resolvedVenvPath: String? = null
+        /** The resolved python executable path, used by startup code for sys.executable */
+        var resolvedPythonExecutable: String? = null
+
+        /**
+         * Resolve JEP configuration from a venv directory.
+         *
+         * Given a venv root (e.g. `/path/to/project/.venv`), this:
+         * 1. Locates the `libjep` native library inside the venv's site-packages
+         * 2. Finds the python executable
+         * 3. Configures [MainInterpreter] accordingly
+         *
+         * Set via:
+         * - system property `-Dafield.python.venv=/path/to/.venv`
+         * - env var `FIELD_PYTHON_VENV=/path/to/.venv`
+         */
+        private fun resolveVenv(venvPath: java.io.File): Boolean {
+            lprintln("info,python", "resolving Python venv at: $venvPath")
+
+            if (!venvPath.isDirectory) {
+                lprintln("warning,python", "venv path is not a directory: $venvPath")
+                return false
+            }
+
+            // --- 1. Find the jep native library and site-packages in the venv ---
+            val libDir = java.io.File(venvPath, "lib")
+            if (!libDir.isDirectory) {
+                lprintln("warning,python", "venv has no lib/ directory")
+                return false
+            }
+
+            var venvSitePackages: java.io.File? = null
+            val jepLib = libDir.listFiles()
+                ?.filter { it.isDirectory && it.name.startsWith("python") }
+                ?.flatMap { pyDir ->
+                    val sitePackages = java.io.File(pyDir, "site-packages")
+                    val jepDir = java.io.File(sitePackages, "jep")
+                    val libs = jepDir.listFiles()?.filter { f ->
+                        f.name.startsWith("libjep") || (f.name.startsWith("jep") && f.name.endsWith(".dll"))
+                    }?.toList() ?: emptyList()
+                    if (libs.isNotEmpty() && venvSitePackages == null) {
+                        venvSitePackages = sitePackages
+                    }
+                    libs
+                }?.firstOrNull()
+
+            if (jepLib == null) {
+                lprintln("warning,python", "could not find libjep in $venvPath — did you run 'pip install jep'?")
+                return false
+            }
+
+            // --- 2. Find the python executable in the venv ---
+            val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+            val venvBin = java.io.File(venvPath, if (isWindows) "Scripts" else "bin")
+            val pythonExe = if (isWindows) {
+                java.io.File(venvBin, "python.exe")
+            } else {
+                java.io.File(venvBin, "python3").takeIf { it.exists() } ?: java.io.File(venvBin, "python")
+            }
+
+            // --- 3. Configure JEP ---
+            // pythonHome must point to the base Python installation (where the
+            // stdlib lives — encodings, codecs, etc.).  A venv doesn't carry a
+            // full stdlib copy, so pointing pythonHome at the venv itself causes
+            // "failed to get the Python codec of the filesystem encoding".
+            //
+            // We resolve the base installation by following the python executable
+            // symlink back to its real location, then walking up to the prefix.
+            // The venv's site-packages are added via addIncludePaths so the
+            // venv's jep Python code is found before the base installation's.
+            val realPython = pythonExe.toPath().toRealPath().toFile()
+            // e.g. /opt/homebrew/Caskroom/miniconda/base/bin/python3.11
+            //   -> base prefix = /opt/homebrew/Caskroom/miniconda/base
+            val pythonHome = realPython.parentFile?.parentFile
+            lprintln("info,python", "venv python home (base): ${pythonHome?.absolutePath}")
+            lprintln("info,python", "venv jep library: ${jepLib.absolutePath}")
+            lprintln("info,python", "venv python exe:  ${pythonExe.absolutePath} -> ${realPython.absolutePath}")
+            lprintln("info,python", "venv site-packages: $venvSitePackages")
+
+            if (pythonHome == null || !pythonHome.isDirectory) {
+                lprintln("warning,python", "could not resolve base python home from $realPython")
+                return false
+            }
+
+            MainInterpreter.setInitParams(PyConfig().setPythonHome(pythonHome.absolutePath))
+            MainInterpreter.setJepLibraryPath(jepLib.absolutePath)
+
+            if (venvSitePackages != null) {
+                conf.addIncludePaths(venvSitePackages!!.absolutePath)
+                resolvedVenvSitePackagesPath = venvSitePackages!!.absolutePath
+            }
+
+            resolvedVenvPath = venvPath.absolutePath
+            resolvedPythonExecutable = pythonExe.absolutePath
+            return true
+        }
+
         init {
             lprintln("info,python", "set python config")
-            //TODO!! — needs to be configurable, and configurable really early I suppose
-            MainInterpreter.setInitParams(PyConfig().setPythonHome("/opt/homebrew/Caskroom/miniconda/base/"))
-            MainInterpreter.setJepLibraryPath("/opt/homebrew/Caskroom/miniconda/base/lib/python3.11/site-packages/jep/libjep.jnilib")
+
+            // Resolution order:
+            // 1. System property: -Dafield.python.venv=/path/to/.venv
+            // 2. Environment variable: FIELD_PYTHON_VENV=/path/to/.venv
+            // 3. Fallback to hardcoded miniconda paths (legacy)
+            val venvProp = System.getProperty("afield.python.venv")
+                ?: System.getenv("FIELD_PYTHON_VENV")
+
+            val resolved = if (venvProp != null) {
+                resolveVenv(java.io.File(venvProp))
+            } else {
+                false
+            }
+
+            if (!resolved) {
+                if (venvProp != null) {
+                    lprintln("warning,python", "venv resolution failed for $venvProp, falling back to hardcoded miniconda paths")
+                }
+                MainInterpreter.setInitParams(PyConfig().setPythonHome("/opt/homebrew/Caskroom/miniconda/base/"))
+                MainInterpreter.setJepLibraryPath("/opt/homebrew/Caskroom/miniconda/base/lib/python3.11/site-packages/jep/libjep.jnilib")
+                resolvedPythonExecutable = "/opt/homebrew/Caskroom/miniconda/base/bin/python"
+            }
         }
 
         @JvmStatic

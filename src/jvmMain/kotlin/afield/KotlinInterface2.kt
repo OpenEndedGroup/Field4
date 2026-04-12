@@ -418,6 +418,11 @@ class KotlinInterface2(
                     addMembersFromClass(klass, completionSite.prefix, results)
                 }
 
+                // Members from lambda receiver types (e.g., inside `fline { }`, FLine methods are available)
+                for (receiverClass in detectLambdaReceiverTypes(s, cursor)) {
+                    addMembersFromClass(receiverClass, completionSite.prefix, results)
+                }
+
                 // Keywords
                 val keywords = listOf(
                     "val", "var", "fun", "class", "object", "interface", "if", "else", "when",
@@ -687,13 +692,13 @@ class KotlinInterface2(
                 // Null-returning lambda for incremental compilation providers
                 val incrementalProvidersLambda = java.lang.reflect.Proxy.newProxyInstance(
                     classLoader,
-                    arrayOf(kotlin.jvm.functions.Function1::class.java)
+                    arrayOf(kotlin.Function1::class.java)
                 ) { _, _, _ -> null }
 
                 // No-op lambda for session configurator init
                 val initLambda = java.lang.reflect.Proxy.newProxyInstance(
                     classLoader,
-                    arrayOf(kotlin.jvm.functions.Function1::class.java)
+                    arrayOf(kotlin.Function1::class.java)
                 ) { _, _, _ -> kotlin.Unit }
 
                 // The method signature is:
@@ -1013,6 +1018,55 @@ class KotlinInterface2(
         } catch (e: Exception) {
             lprintln("debug,kotlin", "FIR expression type resolution failed: ${e.message}")
             return null
+        }
+    }
+
+    /**
+     * Detect lambda receiver types at the cursor position using a FIR probe.
+     *
+     * When the cursor is inside a lambda with a receiver (e.g. `fline { moveTo^ }`),
+     * the compiler resolves `this` to the receiver type of the lambda.
+     * We synthesize `val __this_probe__ = this` at the cursor and run FIR resolution
+     * to discover what `this` refers to.
+     *
+     * Returns a list of KClass receiver types that should contribute members
+     * to name completion (excluding the REPL-level implicit receivers which are
+     * already handled separately).
+     */
+    private fun detectLambdaReceiverTypes(s: String, cursor: Int): List<KClass<*>> {
+        try {
+            val introImports = intro.lines()
+                .filter { it.trimStart().startsWith("import ") }
+                .joinToString("\n")
+
+            // Code context: everything before the cursor
+            val codeContext = s.substring(0, cursor)
+
+            // Include synthetic declarations for REPL context variables
+            val contextDecls = buildContextDeclarationsForFir(codeContext)
+
+            // Insert a probe that captures `this` — if we're inside a receiver lambda,
+            // FIR will resolve `this` to the lambda's receiver type
+            val probeSource = "$introImports\n$contextDecls\n${codeContext}val __this_probe__ = this\n${s.substring(cursor)}\n"
+
+            val (varTypes, _) = resolveTypesViaFir(probeSource)
+            val resolved = varTypes["__this_probe__"] ?: return emptyList()
+
+            // Filter out the REPL-level implicit receivers since they're already included
+            val implicitReceiverClasses = implicitReceivers.mapNotNull { kotlinType ->
+                try { kotlinType.fromClass } catch (_: Exception) { null }
+            }.toSet()
+
+            if (resolved in implicitReceiverClasses) return emptyList()
+
+            // Skip uninteresting types
+            if (resolved == Any::class || resolved == Nothing::class || resolved == Unit::class) return emptyList()
+
+            lprintln("debug,kotlin", "Detected lambda receiver type: ${resolved.simpleName}")
+            return listOf(resolved)
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "Lambda receiver detection failed: ${e.message}")
+            return emptyList()
         }
     }
 
@@ -1698,36 +1752,68 @@ class KotlinInterface2(
     }
 
     private fun addStaticMembersIfPackageOrClass(receiverText: String, prefix: String, results: MutableList<SourceCodeCompletionVariant>) {
-        // Try to resolve as a fully-qualified class name for static member / companion access
-        val klass = try {
-            classLoader?.loadClass(receiverText)?.kotlin
-        } catch (_: Exception) { null } ?: return
+        // Try to resolve as a class name (supports short names like "Math" → java.lang.Math)
+        val klass = resolveTypeName(receiverText) ?: return
 
-        // Add companion object members
+        val nameFilter: (String) -> Boolean = { name ->
+            prefix.isEmpty() || name.startsWith(prefix, ignoreCase = true)
+        }
+        val seen = mutableSetOf<String>()
+
+        // Add companion object members (Kotlin classes)
         try {
-            val companion = klass.companionObject ?: return
-            for (prop in companion.memberProperties) {
-                val name = prop.name
-                if (prefix.isNotEmpty() && !name.startsWith(prefix, ignoreCase = true)) continue
-                if (name.contains("$")) continue
-                val typeStr = try { shortenType(prop.returnType.toString()) } catch (_: Exception) { "Any?" }
-                val kind = if (prop is KMutableProperty<*>) "var" else "val"
-                val deprecated = if (prop.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
-                results.add(SourceCodeCompletionVariant(
-                    text = name, displayText = "$kind $name", tail = ": $typeStr",
-                    icon = kind, deprecationLevel = deprecated,
-                ))
+            val companion = klass.companionObject
+            if (companion != null) {
+                for (prop in companion.memberProperties) {
+                    val name = prop.name
+                    if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                    val typeStr = try { shortenType(prop.returnType.toString()) } catch (_: Exception) { "Any?" }
+                    val kind = if (prop is KMutableProperty<*>) "var" else "val"
+                    val deprecated = if (prop.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+                    results.add(SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = ": $typeStr",
+                        icon = kind, deprecationLevel = deprecated,
+                    ))
+                }
+                for (func in companion.declaredFunctions) {
+                    val name = func.name
+                    if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                    val paramsStr = formatKotlinParams(func.parameters.filter { it.kind == KParameter.Kind.VALUE })
+                    val returnTypeStr = try { shortenType(func.returnType.toString()) } catch (_: Exception) { "Any?" }
+                    val deprecated = if (func.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+                    results.add(SourceCodeCompletionVariant(
+                        text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                        icon = "method", deprecationLevel = deprecated,
+                    ))
+                }
             }
-            for (func in companion.declaredFunctions) {
-                val name = func.name
-                if (prefix.isNotEmpty() && !name.startsWith(prefix, ignoreCase = true)) continue
-                if (name.contains("$")) continue
-                val paramsStr = formatKotlinParams(func.parameters.filter { it.kind == KParameter.Kind.VALUE })
-                val returnTypeStr = try { shortenType(func.returnType.toString()) } catch (_: Exception) { "Any?" }
-                val deprecated = if (func.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+        } catch (_: Exception) {}
+
+        // Add Java static methods and fields (e.g., Math.random(), Math.PI)
+        try {
+            val javaClass = klass.java
+            for (method in javaClass.methods) {
+                if (!Modifier.isStatic(method.modifiers)) continue
+                val name = method.name
+                if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                if (name in setOf("getClass", "wait", "notify", "notifyAll")) continue
+                val paramsStr = formatJavaMethodParams(method)
+                val returnTypeStr = formatMethodReturnType(method)
+                val deprecated = isDeprecated(method)
                 results.add(SourceCodeCompletionVariant(
                     text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
                     icon = "method", deprecationLevel = deprecated,
+                ))
+            }
+            for (field in javaClass.fields) {
+                if (!Modifier.isStatic(field.modifiers)) continue
+                val name = field.name
+                if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                val typeStr = try { shortenType(field.type.kotlin.simpleName ?: field.type.simpleName) } catch (_: Exception) { "Any?" }
+                val kind = if (Modifier.isFinal(field.modifiers)) "val" else "var"
+                results.add(SourceCodeCompletionVariant(
+                    text = name, displayText = "$kind $name", tail = ": $typeStr",
+                    icon = kind,
                 ))
             }
         } catch (_: Exception) {}
@@ -1742,20 +1828,18 @@ class KotlinInterface2(
         return s.substring(start + 1, cursor)
     }
 
-
-    @JvmOverloads
     override fun completeAndWait(s: String, cursor: Int): CompletionResult {
         return runBlocking { complete(s, cursor) }
     }
 
-    override fun applyMacros(box: Box, _s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
-        var s = _s
+    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
+        var rewritten = s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {
             do {
                 val factory = PsiFileFactory.getInstance(psiProject)
                 val lang = Language.findLanguageByID("kotlin")!!
-                val instance = factory.createFileFromText(lang, s)
+                val instance = factory.createFileFromText(lang, rewritten)
 
                 val edits = mutableListOf<Pair<Pair<Int, Int>, String>>()
 
@@ -1803,7 +1887,7 @@ class KotlinInterface2(
                                                     edits.add((0 to 0) to e.preamble)
                                                 }
                                                 if (e.afterImports.length > 0) {
-                                                    val a = findLastImport(s)
+                                                        val a = findLastImport(rewritten)
                                                     edits.add((a to a) to e.afterImports)
                                                 }
                                             }
@@ -1831,7 +1915,7 @@ class KotlinInterface2(
                 while (edits.size > 0) {
                     lprintln("debug,kotlin", "applying edits")
                     val e = edits.pop()
-                    s = s.replaceRange(e.first.first, e.first.second, e.second)
+                    rewritten = rewritten.replaceRange(e.first.first, e.first.second, e.second)
                     val shrink = (e.first.second - e.first.first) - e.second.length
                     edits.forEachIndexed { index, it ->
                         val a = if (it.first.first > e.first.first) it.first.first - shrink else it.first.first
@@ -1841,9 +1925,9 @@ class KotlinInterface2(
                 }
             } while (needsRerun)
 
-            lprintln("debug,kotlin", "final string is:\n$s")
+            lprintln("debug,kotlin", "final string is:\n$rewritten")
         }
-        return s
+        return rewritten
     }
 
 
@@ -1929,8 +2013,6 @@ class KotlinInterface2(
 
         return null
     }
-
-    @JvmOverloads
     override fun execAndWait(
         s: String,
         onCompileError: (List<ScriptDiagnostic>) -> Unit,
@@ -1985,8 +2067,6 @@ class KotlinInterface2(
                 }
             }
         }
-
-        @JvmOverloads
         override fun evalAndWait(
             updateContext: Boolean,
             implicits: List<Any>,
@@ -2016,8 +2096,6 @@ class KotlinInterface2(
             }
         }
     }
-
-    @JvmOverloads
     override fun compileSnippetAndWait(
         s: String,
         implicits: List<Any>,
@@ -2216,29 +2294,29 @@ class KotlinInterface2(
         private fun createBoundFunctionReference(function: KFunction<*>, line: Any): Any {
             val arity = function.parameters.count { it.kind != KParameter.Kind.INSTANCE }
             val functionInterface = when (arity) {
-                0 -> kotlin.jvm.functions.Function0::class.java
-                1 -> kotlin.jvm.functions.Function1::class.java
-                2 -> kotlin.jvm.functions.Function2::class.java
-                3 -> kotlin.jvm.functions.Function3::class.java
-                4 -> kotlin.jvm.functions.Function4::class.java
-                5 -> kotlin.jvm.functions.Function5::class.java
-                6 -> kotlin.jvm.functions.Function6::class.java
-                7 -> kotlin.jvm.functions.Function7::class.java
-                8 -> kotlin.jvm.functions.Function8::class.java
-                9 -> kotlin.jvm.functions.Function9::class.java
-                10 -> kotlin.jvm.functions.Function10::class.java
-                11 -> kotlin.jvm.functions.Function11::class.java
-                12 -> kotlin.jvm.functions.Function12::class.java
-                13 -> kotlin.jvm.functions.Function13::class.java
-                14 -> kotlin.jvm.functions.Function14::class.java
-                15 -> kotlin.jvm.functions.Function15::class.java
-                16 -> kotlin.jvm.functions.Function16::class.java
-                17 -> kotlin.jvm.functions.Function17::class.java
-                18 -> kotlin.jvm.functions.Function18::class.java
-                19 -> kotlin.jvm.functions.Function19::class.java
-                20 -> kotlin.jvm.functions.Function20::class.java
-                21 -> kotlin.jvm.functions.Function21::class.java
-                22 -> kotlin.jvm.functions.Function22::class.java
+                0 -> kotlin.Function0::class.java
+                1 -> kotlin.Function1::class.java
+                2 -> kotlin.Function2::class.java
+                3 -> kotlin.Function3::class.java
+                4 -> kotlin.Function4::class.java
+                5 -> kotlin.Function5::class.java
+                6 -> kotlin.Function6::class.java
+                7 -> kotlin.Function7::class.java
+                8 -> kotlin.Function8::class.java
+                9 -> kotlin.Function9::class.java
+                10 -> kotlin.Function10::class.java
+                11 -> kotlin.Function11::class.java
+                12 -> kotlin.Function12::class.java
+                13 -> kotlin.Function13::class.java
+                14 -> kotlin.Function14::class.java
+                15 -> kotlin.Function15::class.java
+                16 -> kotlin.Function16::class.java
+                17 -> kotlin.Function17::class.java
+                18 -> kotlin.Function18::class.java
+                19 -> kotlin.Function19::class.java
+                20 -> kotlin.Function20::class.java
+                21 -> kotlin.Function21::class.java
+                22 -> kotlin.Function22::class.java
                 else -> throw IllegalArgumentException("Cannot export function '${function.name}': arity $arity is not supported")
             }
 

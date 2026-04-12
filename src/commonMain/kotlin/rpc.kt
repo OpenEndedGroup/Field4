@@ -719,6 +719,12 @@ data class StringUpdate(val controlId: String, val value: String)
 @Serializable
 data class ColorUpdate(val controlId: String, val r: Double, val g: Double, val b: Double, val a: Double)
 
+@Serializable
+data class FileUploadUpdate(val controlId: String, val files: List<FileUploadEntry>)
+
+@Serializable
+data class FileUploadEntry(val name: String, val size: Long, val type: String, val dataBase64: String)
+
 // Layers system messages
 @Serializable
 data class SetVisibleLayers(val layers: List<String>, val animated: Boolean = false, val duration: Double = 300.0)

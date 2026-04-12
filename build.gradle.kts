@@ -317,7 +317,7 @@ kotlin {
                 implementation(files("libs/analysis-api-2.4.255-SNAPSHOT.jar"))
                 implementation(files("libs/analysis-api-fir-generator-2.4.255-SNAPSHOT.jar"))
 
-                implementation(files("libs/jep-4.2.2.jar"))
+                implementation(files("libs/jep-4.3.1.jar"))
 
 
                 implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinScriptingVersion")

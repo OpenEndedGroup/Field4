@@ -680,6 +680,10 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
             originSession = originSession
         )
     }
+
+    box.output.displayProxy = { channel, content ->
+        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, content.toString())))
+    }
 }
 
 

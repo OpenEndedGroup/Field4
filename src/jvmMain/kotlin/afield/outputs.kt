@@ -21,7 +21,7 @@ interface HasOutput {
     fun print(message: Any?)
     fun println(message: Any?)
     fun display(message: Any?)
-    fun display(channel: String, message: Any?)
+        fun display(channel: String, message: Any?)
 
     // an error of null,,-1 means 'clear errors'
     fun error(message: Any?, property: String = "code", line: Int = -1)
@@ -686,6 +686,51 @@ fun Box.stringInput(
     registerStringCallback(controlId, onUpdate)
 
     val html = buildStringInputHtml(controlId, label, initialValue)
+    display(channel, html)
+}
+
+// File upload control
+private val fileUploadCallbacks = java.util.concurrent.ConcurrentHashMap<String, (List<FileUploadEntry>) -> Unit>()
+
+internal fun registerFileUploadCallback(controlId: String, callback: (List<FileUploadEntry>) -> Unit) {
+    fileUploadCallbacks[controlId] = callback
+}
+
+internal fun getFileUploadCallback(controlId: String): ((List<FileUploadEntry>) -> Unit)? {
+    return fileUploadCallbacks[controlId]
+}
+
+// Shared storage for uploaded file data (used for polling from Python)
+private val fileUploadData = java.util.concurrent.ConcurrentHashMap<String, List<FileUploadEntry>>()
+
+fun storeFileUploadData(controlId: String, files: List<FileUploadEntry>) {
+    fileUploadData[controlId] = files
+}
+
+fun getFileUploadData(controlId: String): List<FileUploadEntry>? = fileUploadData[controlId]
+
+private fun buildFileUploadHtml(controlId: String, label: String, accept: String, multiple: Boolean): String {
+    val multipleAttr = if (multiple) "multiple" else ""
+    val acceptAttr = if (accept.isNotEmpty()) "accept=\"$accept\"" else ""
+    return """
+        <div class="field-control field-file-upload">
+            <label class="field-label" style="flex:0 0 auto;">$label</label>
+            <input type="file" id="$controlId" $acceptAttr $multipleAttr onchange="handleFileUploadInput(this)" style="flex:1 1 auto;" />
+            <span class="field-value" id="${controlId}-status"></span>
+        </div>
+    """.trimIndent()
+}
+
+fun Box.fileUpload(
+    label: String = "Upload",
+    accept: String = "",
+    multiple: Boolean = false,
+    channel: String = "controls",
+    onUpload: (List<FileUploadEntry>) -> Unit
+) {
+    val controlId = "file-upload-${UUID.randomUUID()}"
+    registerFileUploadCallback(controlId, onUpload)
+    val html = buildFileUploadHtml(controlId, label, accept, multiple)
     display(channel, html)
 }
 

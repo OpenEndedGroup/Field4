@@ -1587,6 +1587,56 @@ window.handleStringInput = function(inputElement) {
     });
 };
 
+// File upload control support
+window.handleFileUploadInput = function(inputElement) {
+    const controlId = inputElement.id;
+    const statusEl = document.getElementById(controlId + '-status');
+    const files = inputElement.files;
+    if (!files || files.length === 0) return;
+
+    if (statusEl) statusEl.textContent = 'Reading...';
+
+    const entries = [];
+    let remaining = files.length;
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64 = e.target.result.split(',')[1] || '';
+            entries.push({
+                name: file.name,
+                size: file.size,
+                type: file.type || 'application/octet-stream',
+                dataBase64: base64
+            });
+            remaining--;
+            if (remaining === 0) {
+                sendViaAfield('file-upload-update', {
+                    controlId: controlId,
+                    files: entries
+                });
+                if (statusEl) {
+                    statusEl.textContent = entries.length === 1
+                        ? entries[0].name
+                        : entries.length + ' files';
+                }
+            }
+        };
+        reader.onerror = function() {
+            remaining--;
+            if (remaining === 0 && entries.length > 0) {
+                sendViaAfield('file-upload-update', {
+                    controlId: controlId,
+                    files: entries
+                });
+            }
+            if (statusEl) statusEl.textContent = 'Error reading file';
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
 // Color picker control support
 window.handleColorInput = function(colorElement) {
     const controlId = colorElement.id;
