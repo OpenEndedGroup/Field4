@@ -4318,6 +4318,19 @@ suspend fun main() {
             val uid = target.uid as? String ?: return@on
             val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
             val continueRequested = (event.shiftKey as? Boolean) == true
+
+            // Shift+Alt+Click: custom marking menu
+            if (continueRequested) {
+                if (uid == lastAltDownUid && kotlin.math.abs(stamp - lastAltDownStamp) < 30.0) {
+                    return@on
+                }
+                lastAltDownUid = uid
+                lastAltDownStamp = stamp
+                if (!target.classList.contains("box")) return@on
+                requestCustomMarkingMenu(uid, event.x as Double, event.y as Double, event)
+                return@on
+            }
+
             if (uid == lastAltDownUid && kotlin.math.abs(stamp - lastAltDownStamp) < 30.0) {
                 return@on
             }

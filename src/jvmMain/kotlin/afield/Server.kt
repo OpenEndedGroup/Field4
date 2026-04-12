@@ -1077,6 +1077,31 @@ class Server {
                 Handled.yes
             })
 
+            handlers["custom-marking-request"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<CustomMarkingRequest>(message.payload!!)
+                val info = thisSessionInfo.get()
+                val box = info.boxes[request.uid]
+                if (box != null) {
+                    val entries = prepareCustomMarkingEntries(box)
+                    val response = CustomMarkingResponse(request.uid, entries)
+                    reply(Message(message.replyTo ?: "custom-marking-response").payload(response))
+                }
+                Handled.yes
+            })
+
+            handlers["custom-marking-fire"] = mutableSetOf({ message, reply ->
+                val fire = Json.decodeFromJsonElement<CustomMarkingFire>(message.payload!!)
+                GlobalScope.launch {
+                    try {
+                        fireCustomMarkingCallback(fire.callbackId)
+                    } catch (e: Exception) {
+                        lprintln("error,custom-marking", "Error in custom marking callback: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+                Handled.yes
+            })
+
             handlers["fline-edit-translate"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<FLineTranslatePoints>(message.payload!!)
                 val session = getFLineEditSession(update.sessionId)
