@@ -6,10 +6,10 @@ import afield.logger.lprintln
 import afield.macros.ContainingFunction
 import afield.macros.MacroRegistry
 import afield.stdlib.applyInsertToPreamble
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
@@ -63,6 +63,8 @@ class KotlinInterface2(
     override var classLoader: ClassLoader? = null,
     val filePrefix: String = "EVAL_"
 ) : KotlinScriptEngine {
+
+    override val compilationDispatcher get() = Dispatchers.Default
 
     internal inner class SourceCodeImpl(number: Int, override val text: String) : SourceCode {
         override val name: String? = "${filePrefix}_\$$number"
@@ -221,15 +223,17 @@ class KotlinInterface2(
         messageCollector.clear()
 
         var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
-        coroutineScope {
-            print(" -- inside coroutineScope")
-            async {
-                val ns = measureNanoTime {
-                    r = compiler.compile(code, compilerConfig)
+        val ns = measureNanoTime {
+            if (KotlinEngineConfig.offloadCompilation) {
+                // K2 is thread-safe — use the default pool so the Runloop keeps running frames
+                r = withContext(compilationDispatcher) {
+                    compiler.compile(code, compilerConfig)
                 }
-                lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async)")
-            }.await()
+            } else {
+                r = compiler.compile(code, compilerConfig)
+            }
         }
+        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
 
         return r!!
     }

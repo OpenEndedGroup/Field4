@@ -3,7 +3,7 @@ package afield.macros
 import afield.*
 import afield.logger.lprintln
 import afield.stdlib.*
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
@@ -32,7 +32,12 @@ suspend fun standardExecutionPractice(
     var result = mutableListOf<ResultValue?>()
     breaks.forEach {
         val code = lines.subList(at, it).joinToString("\n")
-        val code2 = ki.applyMacros(implicits[0] as Box, code)
+        // Offload macro expansion (PSI parsing + AST rewriting) off the Framer
+        val code2 = if (KotlinEngineConfig.offloadCompilation) {
+            withContext(ki.compilationDispatcher) { ki.applyMacros(implicits[0] as Box, code) }
+        } else {
+            ki.applyMacros(implicits[0] as Box, code)
+        }
 
         val code3 = code2.split("\n").mapIndexedNotNull { index, line ->
             ll++
@@ -114,7 +119,7 @@ fun gatherPreambleUpwards(startingAt: Box): String {
     return total
 }
 
-fun checkPreambleAndExecute(
+suspend fun checkPreambleAndExecute(
     inside: Box,
     onCompileError: (List<ScriptDiagnostic>) -> Unit,
     onEvalError: (List<ScriptDiagnostic>) -> Unit,
@@ -142,7 +147,7 @@ fun checkPreambleAndExecute(
     }
 
     val extraLines = extra.values.joinToString(separator = "\n")
-    if (extraLines.trim().isNotEmpty()) runBlocking {
+    if (extraLines.trim().isNotEmpty()) {
         println(" preamble, extra lines are ${extraLines}, executing")
         (inside as Box).ki.exec(
             extraLines, onCompileError, onEvalError, onEvalException, implicits = listOf(inside as Box)
@@ -158,7 +163,7 @@ fun checkPreambleAndExecute(
     inside.setPropertyRaw("preamble", next)
 }
 
-fun checkIntroductionAndExecute(
+suspend fun checkIntroductionAndExecute(
     inside: Box,
     onCompileError: (List<ScriptDiagnostic>) -> Unit,
     onEvalError: (List<ScriptDiagnostic>) -> Unit,
@@ -169,18 +174,16 @@ fun checkIntroductionAndExecute(
 
     // Execute all of introduction if and only if any of it has changed
     if (current.trim().isNotEmpty() && current != was) {
-        runBlocking {
-            println(" introduction has changed, executing all of it")
-            inside.ki.exec(
-                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
-            )
-            println(" finished introduction ")
-        }
+        println(" introduction has changed, executing all of it")
+        inside.ki.exec(
+            current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+        )
+        println(" finished introduction ")
         inside.setPropertyRaw("_introduction", current)
     }
 }
 
-fun checkAtticAndExecute(
+suspend fun checkAtticAndExecute(
     inside: Box,
     onCompileError: (List<ScriptDiagnostic>) -> Unit,
     onEvalError: (List<ScriptDiagnostic>) -> Unit,
@@ -198,11 +201,9 @@ fun checkAtticAndExecute(
 
     if (!isEmpty && !isSame) {
         lprintln("info,attic", "attic changed for '${inside.name}' — executing all of it (${currentTrimmed.lines().size} lines)")
-        runBlocking {
-            inside.ki.exec(
-                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
-            )
-        }
+        inside.ki.exec(
+            current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+        )
         inside.setPropertyRaw("_attic", current)
         lprintln("info,attic", "attic execution complete for '${inside.name}', _attic cache updated")
     } else if (isEmpty) {

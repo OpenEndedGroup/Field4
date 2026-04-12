@@ -1,5 +1,7 @@
 package afield
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import kotlin.reflect.*
 import kotlin.script.experimental.api.*
@@ -20,6 +22,14 @@ interface KotlinScriptEngine {
     var compilerConfig: ScriptCompilationConfiguration
     var classLoader: ClassLoader?
     var execNumber: Int
+
+    /**
+     * Dispatcher for CPU-bound compilation and macro-expansion work.
+     * K1 returns its single [KotlinInterface.compilationThread] (K1 is not thread-safe).
+     * K2 returns [Dispatchers.Default] (K2 supports concurrent compilation).
+     */
+    val compilationDispatcher: CoroutineDispatcher
+        get() = Dispatchers.Default
 
     suspend fun exec(
         s: String,
@@ -395,6 +405,17 @@ object KotlinEngineConfig {
         "k2" -> Backend.K2
         else -> Backend.K1
     }
+
+    /**
+     * When true (default), compilation runs on a background dispatcher so the Runloop
+     * frame loop is not blocked while the Kotlin compiler works.
+     *
+     * K2 dispatches to [kotlinx.coroutines.Dispatchers.Default] (multi-threaded).
+     * K1 dispatches to its single [KotlinInterface.compilationThread] (K1 is not thread-safe).
+     *
+     * Set to false to force compilation on the calling dispatcher (legacy behaviour).
+     */
+    var offloadCompilation: Boolean = System.getProperty("afield.kotlin.offloadCompilation", "true").toBoolean()
 }
 
 

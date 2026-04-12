@@ -7,9 +7,8 @@ import afield.macros.ContainingFunction
 import afield.macros.MacroRegistry
 import afield.stdlib.applyInsertToPreamble
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.com.intellij.lang.Language
@@ -51,6 +50,8 @@ class KotlinInterface(
 
     override var classLoader: ClassLoader? = null, val filePrefix: String = "EVAL_"
 ) : KotlinScriptEngine {
+
+    override val compilationDispatcher get() = compilationThread
 
     internal inner class SourceCodeImpl(number: Int, override val text: String) : SourceCode {
         override val name: String? = "${filePrefix}_\$$number"
@@ -180,22 +181,21 @@ class KotlinInterface(
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>> {
         val code = SourceCodeImpl(id++, s)
         var r: ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>? = null
-//        val r2 = cache.get(s)
-//        if (r2!=null) return r2
 
         lprintln("info,kotlin,perf", "\t\t compile code $s")
 
-        coroutineScope {
-            print(" -- inside coroutineScope")
-            async(compilationThread) {
-                val ns = measureNanoTime {
-                    r = compiler.compile(code, compilerConfig)
+        val ns = measureNanoTime {
+            if (KotlinEngineConfig.offloadCompilation) {
+                // K1 is NOT thread-safe — always use the single compilationThread
+                r = withContext(compilationDispatcher) {
+                    compiler.compile(code, compilerConfig)
                 }
-                lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async)")
-            }.await()
+            } else {
+                r = compiler.compile(code, compilerConfig)
+            }
         }
+        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
 
-//        cache.put(s, r)
         return r!!
     }
 
