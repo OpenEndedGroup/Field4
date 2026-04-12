@@ -70,6 +70,67 @@ external object Provisional {
     fun set(uid: String, property: String, contents: String)
 }
 
+/**
+ * Tracks box loading progress so the "finished loading" notification
+ * is shown only after all visible boxes have transitioned from offline,
+ * or after a 2-second idle timeout (whichever comes first).
+ *
+ * Tracking begins automatically on the first [boxAdded] call — no explicit
+ * start is needed. [start] kicks off the idle timeout for documents with
+ * no boxes at all.
+ */
+object LoadingTracker {
+    private var totalBoxes = 0
+    private var onlineBoxes = 0
+    private var timeoutHandle: Int? = null
+    private var finished = false
+
+    /**
+     * Kick off the idle timeout so empty documents (no boxes) still
+     * eventually show the "finished loading" notification.
+     */
+    fun start() {
+        if (finished) return
+        resetTimeout()
+    }
+
+    /** A new box was added to the document. */
+    fun boxAdded() {
+        if (finished) return
+        totalBoxes++
+        updateNotification()
+        resetTimeout()
+    }
+
+    /** A box transitioned from offline to online. */
+    fun boxOnline() {
+        if (finished) return
+        onlineBoxes++
+        updateNotification()
+        resetTimeout()
+        if (onlineBoxes >= totalBoxes && totalBoxes > 0) {
+            finish()
+        }
+    }
+
+    private fun updateNotification() {
+        notify("waiting for boxes \u2014 $onlineBoxes/$totalBoxes online <<spinner>>", "setup")
+    }
+
+    private fun resetTimeout() {
+        timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
+        timeoutHandle = kotlinx.browser.window.setTimeout({ finish() }, 2000)
+    }
+
+    private fun finish() {
+        if (finished) return
+        finished = true
+        timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
+        timeoutHandle = null
+        notify("finished loading \u2014 press <b>?</b> for help", "setup")
+    }
+}
+
 lateinit var mainViewport: HTMLElement
 lateinit var mainCanvas: HTMLElement
 lateinit var overlaySVGLayer: SVGSVGElement
@@ -3084,6 +3145,7 @@ suspend fun main() {
             mainCanvas.append {
                 createBox("", frame = set.value, uid = u, sendInitialSync = false)
             }
+            LoadingTracker.boxAdded()
         } else {
             val box = found as HTMLElement
             applyFrameToBox(box, set.value)
@@ -3253,6 +3315,7 @@ suspend fun main() {
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
                         canvasGestures.rebuildConnectionGroup()
+                        LoadingTracker.boxOnline()
                     }
                 }
             }
@@ -4520,7 +4583,7 @@ suspend fun main() {
         hideMonaco()
 
         later({
-            notify("finished loading — press <b>?</b> for help", "setup")
+            LoadingTracker.start()
             (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = ""
         }, 100)
 

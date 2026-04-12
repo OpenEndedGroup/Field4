@@ -777,8 +777,8 @@ class Server {
                     notify("Kotlin AI completion… <<spinner>>", "ai_completions")
                 }
                 val bounds = runCatching {
-                    KotlinInterface.getTokenBounds(exec.allCode, exec.position)
-                }.getOrElse { KotlinInterface.Companion.CompletionTokenBounds(exec.position, exec.position) }
+                    getTokenBounds(exec.allCode, exec.position)
+                }.getOrElse { CompletionTokenBounds(exec.position, exec.position) }
 
                 if (box.ke !is KotlinExecution) {
                     lprintln("info,ai_completions", "kotlin-ai skip: box is not KotlinExecution (uid=${exec.uid})")

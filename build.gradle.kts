@@ -39,7 +39,7 @@ val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
 
-val kotlinVersion = "2.3.0"
+val kotlinVersion = "2.4.20"
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
@@ -77,7 +77,7 @@ fun requiredRunJvmArgs(): List<String> {
 }
 
 plugins {
-    kotlin("multiplatform") version "2.3.0"
+    kotlin("multiplatform") version "2.3.20"
     kotlin("plugin.serialization") version "2.3.0"
     id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
@@ -309,15 +309,13 @@ kotlin {
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
-                val kotlinScriptingVersion = "2.3.0"
+                val kotlinScriptingVersion = "2.4.0-Beta1"
 
                 /*
                 gently customized versions of the kotlin scripting front-end to provide better completion and skip the history check on the repl evaluator to allow us to reused compiled fragments
                  */
-//                implementation(files("libs/kotlin-scripting-common-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-jvm-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-ide-services-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-ide-common-2.2.255-SNAPSHOT.jar"))
+                implementation(files("libs/analysis-api-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/analysis-api-fir-generator-2.4.255-SNAPSHOT.jar"))
 
                 implementation(files("libs/jep-4.2.2.jar"))
 
@@ -327,11 +325,12 @@ kotlin {
                 implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinScriptingVersion")
                 implementation("com.facebook:ktfmt:0.54")
 
-                implementation(files("libs/kotlin-scripting-ide-services-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-common-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jsr223-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-host-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-ide-services-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-common-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-jsr223-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-host-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/names-2.4.255-SNAPSHOT.jar"))
 
 //                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinScriptingVersion")
                 implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies:$kotlinScriptingVersion")
@@ -618,11 +617,25 @@ tasks.register("runDesktop") {
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
 
+        val os = System.getProperty("os.name").lowercase()
+        val isWindows = os.contains("windows")
+
         val backendCommand = mutableListOf<String>()
         backendCommand += javaExecutable
         backendCommand += backendJvmArgs
-        backendCommand += "-cp"
-        backendCommand += runJvmTask.classpath.asPath
+
+        // On Windows, the classpath can exceed the ~32K command-line limit.
+        // Write it to a temporary argfile and use Java's @argfile syntax.
+        if (isWindows) {
+            val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
+            argFile.parentFile.mkdirs()
+            argFile.writeText("-cp\n${runJvmTask.classpath.asPath}\n")
+            backendCommand += "@${argFile.absolutePath}"
+        } else {
+            backendCommand += "-cp"
+            backendCommand += runJvmTask.classpath.asPath
+        }
+
         backendCommand += backendMain
         backendCommand += (runJvmTask.args ?: emptyList()).map { it.toString() }
 
@@ -635,9 +648,6 @@ tasks.register("runDesktop") {
             }
             .start()
         forwardProcessOutput(backendProcess)
-
-        val os = System.getProperty("os.name").lowercase()
-        val isWindows = os.contains("windows")
         val isMac = os.contains("mac")
         val electronCommand = if (isWindows) {
             listOf(electronDir.file("node_modules/.bin/electron.cmd").asFile.absolutePath, ".")

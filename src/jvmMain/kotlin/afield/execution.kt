@@ -6,6 +6,7 @@ import afield.ai.shaderSpecForProperty
 import afield.four.synth.AudioPatchSpec
 import afield.four.synth.InlineAudioSummaryTarget
 import afield.logger.lprintln
+import afield.macros.gatherPreambleUpwards
 import afield.macros.standardExecutionPractice
 import afield.stdlib.*
 import io.ktor.websocket.*
@@ -368,14 +369,14 @@ private fun renderVariableLocationSection(
 
 private fun buildRuntimeVariableSymbolContextHtml(
     box: Box,
-    info: KotlinInterface.KotlinVariableInfo,
+    info: KotlinVariableInfo,
     declarationOverride: String? = null,
     locationLabel: String = "declared in"
 ): String {
     val declaration = declarationOverride
-        ?: runCatching { KotlinInterface.shortenType(info.descriptor.toString()) }
+        ?: runCatching { shortenType(info.descriptor.toString()) }
             .getOrDefault(info.toString(true))
-    val rawLocation = KotlinInterface.shortenType(info.line.javaClass.name)
+    val rawLocation = shortenType(info.line.javaClass.name)
     val location = prettifyContainerSummary(box, rawLocation)
     lprintln(
         "debug,symbol-context",
@@ -394,7 +395,7 @@ private fun buildRuntimeVariableSymbolContextHtml(
 private fun buildVariableSymbolContextHtml(
     box: Box,
     descriptor: VariableDescriptor,
-    runtimeInfo: KotlinInterface.KotlinVariableInfo? = null
+    runtimeInfo: KotlinVariableInfo? = null
 ): String {
     if (runtimeInfo != null) {
         return buildRuntimeVariableSymbolContextHtml(
@@ -422,7 +423,7 @@ private fun buildSymbolContextHtml(
     descriptor: DeclarationDescriptor?,
     fallbackDisplay: String,
     fallbackDocumentation: String,
-    runtimeVariableInfo: KotlinInterface.KotlinVariableInfo? = null
+    runtimeVariableInfo: KotlinVariableInfo? = null
 ): String {
     runtimeVariableInfo?.let {
         val declarationOverride = (descriptor as? VariableDescriptor)?.let(completionDescriptorRenderer::render)
@@ -488,7 +489,7 @@ private fun findSymbolBoundsAt(code: String, position: Int): SymbolBounds? {
 }
 
 private fun completionCandidateName(variant: SourceCodeCompletionVariant): String {
-    val descriptor = variant.extraInfo["original"] as? DeclarationDescriptor
+    val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
     if (descriptor != null) return descriptor.name.asString()
     return variant.text
         .substringBefore('<')
@@ -509,7 +510,7 @@ private suspend fun isolatedSymbolContextComplete(
     box: Box,
     allCode: String,
     position: Int
-): KotlinInterface.CompletionResult {
+): CompletionResult {
     val analysisKi = KotlinInterface(
         implicitReceivers = listOf(KotlinType(Box::class)),
         filePrefix = "${box.id}_symbol_context"
@@ -546,9 +547,24 @@ private object KotlinSymbolContextCache {
     }
 }
 
+private fun resolveInheritedPropertyWithSource(box: Box, name: String): Pair<Any?, Box?> {
+    box.getPropertyRaw(name)?.let { return it to box }
+    val seen = mutableSetOf(box)
+    var fringe = setOf(box)
+    while (fringe.isNotEmpty()) {
+        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
+        seen.addAll(nextFringe)
+        for (parent in nextFringe) {
+            parent.getPropertyRaw(name)?.let { return it to parent }
+        }
+        fringe = nextFringe
+    }
+    return null to null
+}
+
 private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContextResponse {
     box.ki.context.functions[symbol]?.let { info ->
-        val location = prettifyContainerSummary(box, KotlinInterface.shortenType(info.line.javaClass.name))
+        val location = prettifyContainerSummary(box, shortenType(info.line.javaClass.name))
         val html = buildString {
             append("<div style='display:inline-block; max-width: 620px;'>")
             append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
@@ -568,11 +584,37 @@ private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContex
             html = buildRuntimeVariableSymbolContextHtml(
                 box = box,
                 info = info,
-                declarationOverride = runCatching { KotlinInterface.shortenType(info.descriptor.toString()) }
+                declarationOverride = runCatching { shortenType(info.descriptor.toString()) }
                     .getOrDefault(info.toString(true)),
                 locationLabel = "defined in"
             )
         )
+    }
+
+    // Check if symbol corresponds to a preamble-defined extension property (e.g. from prop<T>())
+    runCatching {
+        val preamble = gatherPreambleUpwards(box)
+        val propRegex = Regex("""var\s+Box\.${Regex.escape(symbol)}\s+by\s+(?:Inheritance|Delegation|InheritanceFromContext)\s*<\s*([^>]+?)\s*>""")
+        propRegex.find(preamble)?.let { match ->
+            val declaredType = shortenType(match.groupValues[1].trim())
+            val (value, sourceBox) = resolveInheritedPropertyWithSource(box, symbol)
+            val declaration = "var Box.$symbol: $declaredType"
+            val locationLabel = if (sourceBox != null && sourceBox.id != box.id) "inherited from" else "property of"
+            val locationBox = sourceBox ?: box
+            val container = ContainerSummary(
+                text = boxContextLabel(box, locationBox),
+                html = "<i>${escapeNotifyHtml(boxContextLabel(box, locationBox))}</i>"
+            )
+            val html = buildString {
+                append("<div style='display:inline-block; max-width: 620px;'>")
+                append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+                append(escapeNotifyHtml(declaration))
+                append("</code></div>")
+                append(renderVariableLocationSection(label = locationLabel, container = container, value = value))
+                append("</div>")
+            }
+            return symbolContextResponse(symbol = symbol, html = html)
+        }
     }
 
     return symbolContextResponse(symbol = symbol, html = "")
@@ -691,7 +733,7 @@ class KotlinExecution : BoxExecution {
         box._currentlyExecutingFragment = true
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
-            execute(box, code, reply, originSession, 0, runSetupBlocks = false, finishedHandler = {
+            execute(box, code, reply, originSession, 0, runSetupBlocks = true, finishedHandler = {
                 box._currentlyExecutingFragment = false
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
@@ -1296,13 +1338,13 @@ class KotlinExecution : BoxExecution {
 
         val response = runCatching {
             when (val completion = runBlocking { isolatedSymbolContextComplete(box, request.allCode, bounds.end) }) {
-                is KotlinInterface.CompletionResult.Success -> {
+                is CompletionResult.Success -> {
                     val bestVariant = completion.metadata
                         .firstOrNull { completionCandidateName(it) == symbol }
                         ?: completion.metadata.firstOrNull { completionCandidateName(it).startsWith(symbol) }
 
                     if (bestVariant != null) {
-                        val descriptor = bestVariant.extraInfo["original"] as? DeclarationDescriptor
+                        val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
                         symbolContextResponse(
                             symbol = symbol,
                             html = buildSymbolContextHtml(
@@ -1432,12 +1474,12 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        fun completionFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
+        fun completionFor(c: CompletionResult.Success): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             return c.metadata.map {
 //                println(it.extraInfo)
                 var extraDoc = ""
-                val descriptor = it.extraInfo.getOrDefault("original", null) as? DeclarationDescriptor
+                val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
                 var mainText = it.displayText
                 var symbolName: String? = null
                 val rawSymbolName = it.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
@@ -1462,12 +1504,56 @@ class KotlinExecution : BoxExecution {
                     candidateName.isNotBlank() &&
                     candidateName.startsWith(activeToken)
 
-                // Try to get KDoc from the source index for afield symbols
-                if (shouldEnrich && extraDoc.isEmpty() && symbolName != null) {
-                    val kdoc = KotlinSourceIndex.getKDocForSymbol(symbolName)
-                    if (kdoc != null) {
-                        extraDoc = kdoc
+                // Try to get KDoc from the source index for afield symbols.
+                // Skip for dot-completion (member access) since the simple name is ambiguous —
+                // e.g. "add" could be Vector3f.add or LittleHistory.add.
+                val isDotCompletion = c.bounds.start > 0 && allCode.let { code ->
+                    val charBefore = code.getOrNull(c.bounds.start - 1)
+                    charBefore == '.' || (charBefore == '?' && c.bounds.start > 1 && code[c.bounds.start - 2] == '.')
+                }
+
+                // KDoc lookup for name completions (not dot-completion) — check extraInfo first, then index
+                if (extraDoc.isEmpty() && candidateName.isNotEmpty() && !isDotCompletion) {
+                    // Check if KDoc was embedded in the completion item
+                    val embeddedKdoc = it.extraInfo?.get("kdoc") as? String
+                    if (!embeddedKdoc.isNullOrBlank()) {
+                        extraDoc = embeddedKdoc
+                    } else {
+                        val kdoc = try { KotlinSourceIndex.getKDocForSymbol(candidateName) } catch (_: Exception) { null }
+                        if (kdoc != null) {
+                            extraDoc = kdoc
+                        }
                     }
+                }
+
+                // For dot-completion, try qualified KDoc lookup using receiver type from extraInfo
+                if (isDotCompletion && extraDoc.isEmpty() && candidateName.isNotEmpty()) {
+                    val receiverType = it.extraInfo?.get("receiverType") as? String
+                    if (receiverType != null) {
+                        val kdoc = try { KotlinSourceIndex.getKDocForSymbol("$receiverType.$candidateName") } catch (_: Exception) { null }
+                        if (kdoc != null) {
+                            extraDoc = kdoc
+                        }
+                    }
+                }
+
+                // For K2 without descriptor, build documentation from the display text (signature)
+                val documentation = if (descriptor != null) {
+                    buildCompletionDocumentation(descriptor, extraDoc)
+                } else if (it.displayText.isNotBlank()) {
+                    // Build signature-based documentation for all K2 items
+                    buildString {
+                        append("```kotlin\n")
+                        append(it.displayText)
+                        if (it.tail.isNotBlank()) append(it.tail)
+                        append("\n```")
+                        if (extraDoc.isNotBlank()) {
+                            append("\n\n")
+                            append(extraDoc.trim())
+                        }
+                    }
+                } else {
+                    extraDoc.trim()
                 }
 
                 val rawMetadata = Metadata(
@@ -1475,7 +1561,7 @@ class KotlinExecution : BoxExecution {
                     tail = it.tail,
                     text = it.text,
                     displayText = mainText.trim(),
-                    documentation = descriptor?.let { buildCompletionDocumentation(it, extraDoc) } ?: extraDoc.trim()
+                    documentation = documentation
                 )
 
                 if (shouldEnrich) {
@@ -1491,7 +1577,7 @@ class KotlinExecution : BoxExecution {
             }
         }
 
-        fun importHelpFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
+        fun importHelpFor(c: CompletionResult.Success): List<Metadata> {
             val s = allCode.substring(c.bounds.start, c.bounds.end)
             if (s.length>0)
             return classesWithPrefix(s).map {
@@ -1511,7 +1597,7 @@ class KotlinExecution : BoxExecution {
             launch(Runloop.runLoop.main) {
                 val c = box.ki.complete(allCode, position)
                 when (c) {
-                    is KotlinInterface.CompletionResult.Success -> {
+                    is CompletionResult.Success -> {
                         val synthetic = KotlinCompletionSupport.namedArgumentCompletions(box, allCode, position)
                         val boundsStart = synthetic?.bounds?.start ?: c.bounds.start
                         val boundsEnd = synthetic?.bounds?.end ?: c.bounds.end

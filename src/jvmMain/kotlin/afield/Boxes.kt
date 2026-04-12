@@ -49,7 +49,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     val properties = mutableMapOf<String, Any?>()
     val markers = mutableMapOf<String, Marker>()
 
-    var ki by lazyVar {
+    var ki: KotlinScriptEngine by lazyVar {
         makeKI(this)
     }
     var ke: BoxExecution = KotlinExecution()
@@ -659,13 +659,13 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 """
 
-fun makeKI(box: Box): KotlinInterface {
+fun makeKI(box: Box): KotlinScriptEngine {
 
     // force resync of actions per box
     box.actions
 
     logTime("ki_standardlib") {
-        val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
         ki.associatedBox = box  // Set the box reference for @exported support
         val si = thisSessionInfo.get()
         inMain {
@@ -700,8 +700,8 @@ fun makeKI(box: Box): KotlinInterface {
     }
 }
 
-suspend fun makeKIHere(box: Box): KotlinInterface {
-    val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+suspend fun makeKIHere(box: Box): KotlinScriptEngine {
+    val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
     if (box.properties["_tombstone"].isTrue()) return box.ki

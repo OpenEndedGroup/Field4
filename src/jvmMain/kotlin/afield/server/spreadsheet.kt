@@ -1121,7 +1121,7 @@ private fun bindSpreadsheetBox(runtime: SpreadsheetRuntime, target: Box): Spread
 
 private class SpreadsheetEvaluator(private val cachePrefix: String) {
     private val lock = Any()
-    private val compiled = ConcurrentHashMap<String, KotlinInterface.CompiledSnippet>()
+    private val compiled = ConcurrentHashMap<String, PreparedSnippet>()
     private val compiler = KotlinInterface(filePrefix = cachePrefix)
 
     fun evaluate(expression: String, runtime: SpreadsheetRuntime): EvalResult {

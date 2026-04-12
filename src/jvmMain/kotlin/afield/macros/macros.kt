@@ -9,7 +9,7 @@ import kotlin.script.experimental.api.ScriptDiagnostic
 
 
 suspend fun standardExecutionPractice(
-    ki: KotlinInterface,
+    ki: KotlinScriptEngine,
     s: String,
     onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onCompileError default handler $it") },
     onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onEvalError default handler $it") },
@@ -40,9 +40,21 @@ suspend fun standardExecutionPractice(
         }.joinToString("\n")
 
         if (runSetupBlocks) {
-            checkPreambleAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
-            checkIntroductionAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
-            checkAtticAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+            // Use isolated error handlers for setup blocks (preamble/introduction/attic)
+            // so that setup errors don't suppress the main code's return value display.
+            // Setup errors are logged but don't propagate to the caller's hasError flag.
+            val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
+            }
+            val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
+            }
+            val setupEvalException: (Throwable) -> Unit = { throwable ->
+                lprintln("error,macros", "setup exception: ${throwable.message}")
+            }
+            checkPreambleAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
+            checkIntroductionAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
+            checkAtticAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
         }
         val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
         at = it

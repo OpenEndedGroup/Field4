@@ -168,7 +168,7 @@ internal object KotlinCompletionSupport {
         val info = resolveConstructorInfo(box, allCode, calleeName) ?: return null
         if (info.parameters.isEmpty()) return null
 
-        val bounds = KotlinInterface.getTokenBounds(allCode, position)
+        val bounds = getTokenBounds(allCode, position)
         val metadata = info.parameters
             .filterNot { callContext.namedArguments.contains(it.name) }
             .map { parameter ->
@@ -601,9 +601,11 @@ internal object KotlinCompletionSupport {
             .trim()
     }
 
-    private fun findCallContext(ki: KotlinInterface, code: String, position: Int): CallContext? {
+    private fun findCallContext(ki: KotlinScriptEngine, code: String, position: Int): CallContext? {
         if (code.isBlank()) return null
-        val project = ki.compiler.state.getCompilationState(ki.compilerConfig).environment.project
+        // PSI-based call context analysis requires the K1 compiler state
+        val k1 = ki as? KotlinInterface ?: return null
+        val project = k1.compiler.state.getCompilationState(k1.compilerConfig).environment.project
         val language = Language.findLanguageByID("kotlin") ?: return null
         val file = PsiFileFactory.getInstance(project).createFileFromText(language, code)
         val offsets = buildList {

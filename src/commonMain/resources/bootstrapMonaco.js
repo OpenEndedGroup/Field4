@@ -376,6 +376,7 @@ const initMonaco = () => {
         }, '');
 
         var completionProvider = {
+                triggerCharacters: ['.'],
                 provideCompletionItems: (model, position, context, cancellationToken) => {
                         var word = model.getWordUntilPosition(position);
                         var languageId = model.getLanguageId()
@@ -457,6 +458,7 @@ const initMonaco = () => {
                                         return {
                                                 label: m.displayText,
                                                 insertText: m.text,
+                                                filterText: m.text,
                                                 range: rangeObj,
                                                 kind: kindForIcon(m.icon),
                                                 detail: m.tail,

@@ -159,6 +159,7 @@ package afield.four.synth
 
 import afield.Box
 import afield.KotlinInterface
+import afield.PreparedSnippet
 import afield.RawDecoration
 import afield.decorationState
 import afield.locationForTextStringOnStack
@@ -1280,7 +1281,7 @@ private inline fun <T> withPatExprFrame(cycle: Long, t: Double, block: () -> T):
  */
 private object PatExprEvaluator {
     private val lock = Any()
-    private val compiled = ConcurrentHashMap<String, KotlinInterface.CompiledSnippet>()
+    private val compiled = ConcurrentHashMap<String, PreparedSnippet>()
     private val compiler = KotlinInterface(filePrefix = "PAT_EXPR_")
 
     fun evaluate(body: String, cycle: Long, t: Double): String? {
