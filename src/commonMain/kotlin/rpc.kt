@@ -130,6 +130,9 @@ data class LocalEval(val uid: String, val prompt: String, val kind: String)
 data class Stop_box(val uid: String)
 
 @Serializable
+data class Expected_box_count(val count: Int)
+
+@Serializable
 data class IsRunning(
     val uid: String,
     val isRunning: Boolean,
@@ -203,6 +206,35 @@ data class SymbolContextResponse(
     val symbol: String = "",
     val html: String = "",
     val isLiveValue: Boolean = false
+)
+
+@Serializable
+data class DebugProbeRequest(
+    val requestId: String,
+    val uid: String,
+    val line: Int,
+    val position: Int,
+    val symbol: String,
+    val allCode: String,
+    val property: String = "code",
+    val threadName: String? = null,
+    val maxHits: Int = 16,
+    val timeoutMs: Long = 5_000L
+)
+
+@Serializable
+data class DebugProbeEvent(
+    val requestId: String,
+    val uid: String,
+    val phase: String,
+    val symbol: String,
+    val line: Int,
+    val html: String,
+    val channel: String = "debug probe",
+    val annotation: String = "",
+    val inspectorUrl: String = "",
+    val done: Boolean = false,
+    val sequence: Int = 0
 )
 
 @Serializable

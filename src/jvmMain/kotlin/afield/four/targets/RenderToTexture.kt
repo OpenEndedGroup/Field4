@@ -613,6 +613,7 @@ open class RenderToTexture(
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
             command.inRenderPassInstance = false
+            command.flushDeferredGraphicsHostReadBarriers()
 
             // --- Automatic color mipmap recompute (if requested & supported) ---
             colorImageHandles.forEachIndexed { idx, img ->

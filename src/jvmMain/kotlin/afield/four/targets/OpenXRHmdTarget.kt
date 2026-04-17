@@ -2129,6 +2129,7 @@ class OpenXRHmdTarget(
 
                     KHRDynamicRendering.vkCmdEndRenderingKHR(cmd.vkCommandBuffer)
                     cmd.inRenderPassInstance = false
+                    cmd.flushDeferredGraphicsHostReadBarriers()
 
                     // End per-eye GPU timing
                     ps?.let { p ->

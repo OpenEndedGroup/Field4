@@ -180,6 +180,7 @@ class KotlinInterface(
 
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>> {
         val code = SourceCodeImpl(id++, s)
+        val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
         var r: ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>? = null
 
         lprintln("info,kotlin,perf", "\t\t compile code $s")
@@ -195,6 +196,9 @@ class KotlinInterface(
             }
         }
         lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
+        if (r is ResultWithDiagnostics.Failure) {
+            context.debugScripts.discard(snapshot)
+        }
 
         return r!!
     }
@@ -216,6 +220,10 @@ class KotlinInterface(
 
 
                 r = evaluator.eval(e, evalConfig)
+                if (r is ResultWithDiagnostics.Success) {
+                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
+                }
                 if (updateContext) contextUpdater.update()
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
@@ -239,6 +247,10 @@ class KotlinInterface(
                 }
 
                 r = evaluator.eval(e, evalConfig)
+                if (r is ResultWithDiagnostics.Success) {
+                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
+                }
                 if (updateContext) contextUpdater.update()
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")

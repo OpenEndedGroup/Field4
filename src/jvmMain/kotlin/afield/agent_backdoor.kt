@@ -139,6 +139,7 @@ internal fun attachDocumentSession(
     val found = documents[target.sessionKey]
     if (found != null) {
         registerDocumentSession(session, found)
+        sendExpectedBoxCount(session, found)
         found.boxes.values.forEach { it.resyncAll() }
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
@@ -159,6 +160,7 @@ internal fun attachDocumentSession(
             }
 
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
+            sendExpectedBoxCount(session, info)
             info.root.children.forEach { it.ki }
             info.topologyGeneration++
             info.fileWatchManager
@@ -169,6 +171,11 @@ internal fun attachDocumentSession(
     }
 
     return info
+}
+
+private fun sendExpectedBoxCount(session: WebSocketSession, info: SessionInformation) {
+    val count = info.boxes.values.count { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+    _send(session, Message("expected-box-count").payload(Expected_box_count(count)))
 }
 
 private fun activeRunningStrands(box: Box): Map<String, Int> {

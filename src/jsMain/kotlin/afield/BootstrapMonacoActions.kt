@@ -913,9 +913,10 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
     editor.onMouseDown(fun(e: dynamic) {
         // Check if Alt key is pressed and it's a double click
         val altKey = e.event.altKey as? Boolean ?: false
+        val shiftKey = e.event.shiftKey as? Boolean ?: false
         val detail = e.event.detail as? Int ?: 0
 
-        if (altKey && detail == 2) {
+        if (altKey && !shiftKey && detail == 2) {
             val position = e.target.position
             if (position != null) {
                 val model = editor.getModel()

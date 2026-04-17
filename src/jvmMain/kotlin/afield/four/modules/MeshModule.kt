@@ -8,6 +8,7 @@ import afield.four.buffers.buffer
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
@@ -145,22 +146,21 @@ class MeshModule(val parameters: Parameters) : Renderable {
             // Collect sets -> bindings (may contain dups from multiple stages)
             val setsNeededRaw = mutableMapOf<Int, MutableList<Int>>()
 
-            // Build required sets for set >= 1 only (set=0 is global)
-            ti.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.ubos.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.ubos.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ubos.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.ssbo.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.ssbo.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ssbo.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.textures.forEach { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.textures.forEach { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.textures.forEach { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.images.forEach   { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.images.forEach   { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.images.forEach   { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
             // (2) Dedup + sort per-set binding lists so DescriptorSetLayout is deterministic & gap-free
             val setsNeeded = setsNeededRaw.mapValues { (_, v) -> v.distinct().sorted().toMutableList() }
@@ -178,7 +178,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 
-            // Build layouts for sets >= 1
+            // Build layouts for all sets used by the shader
             setsNeeded.entries.forEach { (set, bindingList) ->
                 var where = 0
                 val kinds = mutableListOf<Int>()
@@ -514,7 +514,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                         .size(pushConstantSize)
                 }
 
-                // ---- Pipeline layout includes global set=0 at index 0
+                // ---- Pipeline layout includes every shader-declared set, starting at 0
                 val highestSet = layouts.keys.maxOrNull() ?: -1
 
                 val ppLayout = if (highestSet >= 0) stack.callocLong(highestSet + 1) else null
@@ -624,6 +624,10 @@ class MeshModule(val parameters: Parameters) : Renderable {
             command.beginLabel(parameters.name, labelColor)
 
             val cmd = command.vkCommandBuffer
+            val frameIndex = parameters.renderer.currentImage
+            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+
+            fieldProbe?.beforeShaderUse(parameters.renderer, frameIndex)
 
             VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
 
@@ -663,6 +667,11 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             after.forEach { (_, target) ->
                 target.render(command, parameters.renderer.currentImage)
+            }
+
+            fieldProbe?.let {
+                graphicsHostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
+                it.afterShaderUse(parameters.renderer, frameIndex)
             }
 
             command.endLabel()

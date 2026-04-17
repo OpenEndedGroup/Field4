@@ -250,6 +250,43 @@ fun hostReadBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
     }
 }
 
+/** GRAPHICS write -> HOST read. */
+fun graphicsHostReadBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
+    if (buffer != null && cmd.inRenderPassInstance) {
+        cmd.deferGraphicsHostReadBarrier(buffer)
+        return
+    }
+    MemoryStack.stackPush().use { stack ->
+        val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+        if (buffer != null) {
+            val b = VkBufferMemoryBarrier2.calloc(1, stack)
+            b[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_HOST_BIT)
+                .dstAccessMask(VK_ACCESS_2_HOST_READ_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer.buffer)
+                .offset(0L)
+                .size(buffer.requestedSize)
+
+            dep.pBufferMemoryBarriers(b)
+        } else {
+            val m = VkMemoryBarrier2.calloc(1, stack)
+            m[0]
+                .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_HOST_BIT)
+                .dstAccessMask(VK_ACCESS_2_HOST_READ_BIT)
+            dep.pMemoryBarriers(m)
+        }
+        vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+    }
+}
+
 // this has to agree with the vertexbufferstructure that was used for this pipeline (right now)
 class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
 

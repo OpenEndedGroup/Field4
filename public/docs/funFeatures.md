@@ -313,7 +313,7 @@ onMessage<Vec3> {
 We can start sending messages around. Messages propagate upwards until they find a box that has an `onMessage<T>` of the correct type.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
-	<source src="../assets/messagePassing.mov" type="video/mp4">
+	<source src="../assets/messagePassing.mp4" type="video/mp4">
 </video>
 
 

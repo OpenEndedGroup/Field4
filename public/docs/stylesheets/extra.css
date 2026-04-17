@@ -22,12 +22,17 @@
     --md-default-bg-color: var(--mono-bg);
 }
 
+html {
+    background: radial-gradient(circle at center, #0e0e0e 40%, #000 100%);
+    background-attachment: fixed;
+}
+
 /* ── base typography ─────────────────────────────────────────── */
 body, .md-nav, .md-typeset {
     font-family: var(--md-text-font);
 }
 body {
-    background: var(--mono-bg);
+    background: transparent !important;
     color: var(--mono-text);
     font-size: 11px;
     line-height: 1.4;
@@ -160,7 +165,11 @@ h3 {
 
 /* ── header / footer / nav — flatten ─────────────────────────── */
 .md-header          { background: var(--mono-bg) !important; }
-.md-header--shadow  { box-shadow: none !important; }
+.md-header--shadow  { box-shadow: none !important; 
+    position: fixed;
+    backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.3) !important;
+}
 .md-footer          { display: none; }
 .md-logo            { display: none; }
 
@@ -283,6 +292,13 @@ body.field-docs-image-lightbox-open {
     overflow: hidden;
 }
 
+/* ── dot-grid graph-paper background (behind all content) ──────── */
+.field-dot-grid {
+    /* JS sets position/inset/pointer-events/background/opacity.
+       This rule just ensures it stays behind everything. */
+    z-index: -1 !important;
+}
+
 /* ── homepage: full-bleed video behind normal page layout ──── */
 .field-homepage-video {
     position: fixed;
@@ -295,7 +311,7 @@ body.field-docs-image-lightbox-open {
 }
 
 .field-homepage-video video {
-    width: 100%;
+    width: 110%;
     height: 100%;
     object-fit: cover;
     object-position: center center;
@@ -305,7 +321,7 @@ body.field-docs-image-lightbox-open {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 32%, transparent 100%),
+        radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1.0) 22%, transparent 100%),
         linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.7) 100%);
 }
 
@@ -725,21 +741,22 @@ button.md-search__icon[aria-label="Clear"] {
     position: absolute;
     left: calc(var(--field-rail-line-x) - 0.9rem);
     top: 0;
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0.3rem;
+    height: 0.3rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.62);
     background: var(--mono-bg);
     transform: translateX(-50%);
-    box-shadow: 0 0 0 0.4rem #0e0e0e;
+    box-shadow: 0 0 0 0.2rem #0e0e0e;
 }
 
 .field-reading-rail__dot--title {
-    width: 0.64rem;
-    height: 0.64rem;
+    width: 0.4rem;
+    height: 0.4rem;
     border-radius: 2px;
     border-color: rgba(255, 255, 255, 0.85);
-    box-shadow: 0 0 0 0.4rem #0e0e0e;
+    background-color: white;
+    box-shadow: 0 0 0 0.2rem #0e0e0e;
 }
 
 .field-reading-rail__link {

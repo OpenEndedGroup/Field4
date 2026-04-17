@@ -3,6 +3,7 @@ package afield
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
+import java.util.*
 import kotlin.reflect.*
 import kotlin.script.experimental.api.*
 
@@ -151,8 +152,72 @@ data class CompletionTokenBounds(val start: Int, val end: Int)
 class KotlinContext(
     val vars: HashMap<String, KotlinVariableInfo> = HashMap(),
     val functions: HashMap<String, KotlinFunctionInfo> = HashMap(),
-    var generation: Int = 0
+    var generation: Int = 0,
+    val debugScripts: KotlinDebugScriptTracker = KotlinDebugScriptTracker()
 )
+
+data class KotlinDebugScriptSnapshot(
+    val sourceName: String,
+    val sourceText: String,
+    val normalizedSourceText: String = normalizeDebugSourceText(sourceText),
+    val sourceHash: Int = normalizedSourceText.hashCode(),
+    var className: String? = null,
+    var updatedAtMs: Long = System.currentTimeMillis()
+)
+
+class KotlinDebugScriptTracker(private val maxEntries: Int = 64) {
+    private val snapshots = ArrayDeque<KotlinDebugScriptSnapshot>()
+
+    @Synchronized
+    fun recordCompile(sourceName: String, sourceText: String): KotlinDebugScriptSnapshot {
+        val snapshot = KotlinDebugScriptSnapshot(
+            sourceName = sourceName,
+            sourceText = sourceText
+        )
+        snapshots.addLast(snapshot)
+        trim()
+        return snapshot
+    }
+
+    @Synchronized
+    fun discard(snapshot: KotlinDebugScriptSnapshot) {
+        snapshots.remove(snapshot)
+    }
+
+    @Synchronized
+    fun attachLatestRuntimeClass(className: String?) {
+        if (className.isNullOrBlank()) return
+        snapshots.lastOrNull()?.let {
+            it.className = className
+            it.updatedAtMs = System.currentTimeMillis()
+        }
+    }
+
+    @Synchronized
+    fun latestMatchingSource(sourceText: String): KotlinDebugScriptSnapshot? {
+        val normalized = normalizeDebugSourceText(sourceText)
+        val hash = normalized.hashCode()
+        return snapshots.lastOrNull { it.sourceHash == hash && it.normalizedSourceText == normalized }
+    }
+
+    @Synchronized
+    fun latest(): KotlinDebugScriptSnapshot? = snapshots.lastOrNull()
+
+    @Synchronized
+    fun all(): List<KotlinDebugScriptSnapshot> = snapshots.toList()
+
+    private fun trim() {
+        while (snapshots.size > maxEntries) {
+            snapshots.removeFirst()
+        }
+    }
+}
+
+private fun normalizeDebugSourceText(sourceText: String): String =
+    sourceText
+        .replace("\r\n", "\n")
+        .replace('\r', '\n')
+        .trimEnd()
 
 
 class KotlinFunctionInfo(val function: KFunction<*>, val line: Any) : Comparable<KotlinFunctionInfo>, ToHTML {

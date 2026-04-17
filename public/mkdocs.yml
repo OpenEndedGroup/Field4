@@ -81,6 +81,7 @@ extra_css:
   - assets/code-diff-player/code-diff-player.css
 
 extra_javascript:
+  - assets/dot-grid.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
   - assets/code-diff-player/fence-upgrade.js

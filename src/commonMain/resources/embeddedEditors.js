@@ -225,6 +225,9 @@ function createEmbeddedEditor(container, uid, property, language, initialValue) 
 	if (typeof window.installSymbolContextMonitor === "function") {
 		window.installSymbolContextMonitor(editor, () => ({ uid, property }));
 	}
+	if (typeof window.installDebugProbeDoubleClick === "function") {
+		window.installDebugProbeDoubleClick(editor, () => ({ uid, property }));
+	}
 
 	entry.disposeContentListener = contentListener;
 	registry.set(editorId, entry);

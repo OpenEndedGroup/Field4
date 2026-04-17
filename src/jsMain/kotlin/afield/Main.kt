@@ -80,24 +80,40 @@ external object Provisional {
  * no boxes at all.
  */
 object LoadingTracker {
-    private var totalBoxes = 0
+    private var expectedBoxes = -1   // -1 = server hasn't told us yet
+    private var arrivedBoxes = 0
     private var onlineBoxes = 0
     private var timeoutHandle: Int? = null
     private var finished = false
 
     /**
-     * Kick off the idle timeout so empty documents (no boxes) still
-     * eventually show the "finished loading" notification.
+     * The server tells us how many non-tombstoned boxes to expect.
+     * If count is 0, finish immediately (empty document).
+     */
+    fun setExpectedCount(count: Int) {
+        if (finished) return
+        expectedBoxes = count
+        if (count == 0) {
+            finish()
+        } else {
+            updateNotification()
+            resetTimeout()
+        }
+    }
+
+    /**
+     * Kick off the idle timeout so documents that never receive an
+     * expected-box-count (e.g. scratch) still finish eventually.
      */
     fun start() {
         if (finished) return
         resetTimeout()
     }
 
-    /** A new box was added to the document. */
+    /** A new box arrived from the server (set-rect). */
     fun boxAdded() {
         if (finished) return
-        totalBoxes++
+        arrivedBoxes++
         updateNotification()
         resetTimeout()
     }
@@ -108,18 +124,19 @@ object LoadingTracker {
         onlineBoxes++
         updateNotification()
         resetTimeout()
-        if (onlineBoxes >= totalBoxes && totalBoxes > 0) {
+        if (expectedBoxes > 0 && onlineBoxes >= expectedBoxes) {
             finish()
         }
     }
 
     private fun updateNotification() {
-        notify("waiting for boxes \u2014 $onlineBoxes/$totalBoxes online <<spinner>>", "setup")
+        val total = if (expectedBoxes > 0) expectedBoxes else arrivedBoxes
+        notify("waiting for boxes \u2014 $onlineBoxes/$total online <<spinner>>", "setup")
     }
 
     private fun resetTimeout() {
         timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
-        timeoutHandle = kotlinx.browser.window.setTimeout({ finish() }, 2000)
+        timeoutHandle = kotlinx.browser.window.setTimeout({ finish() }, 4000)
     }
 
     private fun finish() {
@@ -3152,6 +3169,12 @@ suspend fun main() {
             applyBoxVisibilityImmediate(box)
         }
         return true
+    }
+
+    handlers.put("expected-box-count") { message, _ ->
+        val ebc = Json.decodeFromJsonElement<Expected_box_count>(message.payload!!)
+        LoadingTracker.setExpectedCount(ebc.count)
+        Handled.yes
     }
 
     handlers.put("set-rect") { message, _ ->

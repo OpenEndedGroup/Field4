@@ -202,6 +202,136 @@ const findIdentifierBounds = (text, offset) => {
         }
 }
 
+const escapeProbeHtml = (value) => String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+
+const newDebugProbeRequestId = () => {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+                return window.crypto.randomUUID()
+        }
+        return `debug-probe-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const buildDebugProbeRequest = (editor, resolveContext, positionOverride = null) => {
+        const model = editor && editor.getModel && editor.getModel()
+        if (!model || model.getLanguageId() !== "kotlin") return null
+
+        const context = resolveContext ? resolveContext(editor) : null
+        if (!context || !context.uid || !context.property) return null
+
+        const position = positionOverride || (editor.getPosition && editor.getPosition())
+        if (!position) return null
+
+        const allCode = model.getValue()
+        const offset = model.getOffsetAt(position)
+        const bounds = findIdentifierBounds(allCode, offset)
+        if (!bounds || !bounds.text) return null
+
+        return {
+                editor,
+                payload: {
+                        requestId: newDebugProbeRequestId(),
+                        uid: context.uid,
+                        property: context.property,
+                        allCode,
+                        line: position.lineNumber,
+                        position: offset,
+                        symbol: bounds.text,
+                        maxHits: 24,
+                        timeoutMs: 8000,
+                },
+        }
+}
+
+const findDebugProbeBox = (uid) => {
+        if (!uid || !document || !document.body) return null
+        const boxes = Array.from(document.body.getElementsByClassName("box"))
+        return boxes.find((box) => box && box.uid === uid) || null
+}
+
+const ensureDebugProbeOutputRoot = (uid, channel) => {
+        const box = findDebugProbeBox(uid)
+        if (!box) return null
+        const outputArea = box.querySelector && box.querySelector(".outputArea")
+        if (!outputArea) return null
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+        const contain = outputArea.querySelector(".disclosure-group")
+        if (!contain || typeof window.disclosureInterface !== "function") return null
+        const inter = window.disclosureInterface(contain)
+        if (!inter || typeof inter.upsertDisclosure !== "function") return null
+        const channelId = channel || "debug probe"
+        const contentRoot = inter.upsertDisclosure(channelId, "Debug Probe", "")
+        if (typeof inter.open === "function") inter.open(channelId)
+        return contentRoot || null
+}
+
+const renderDebugProbeEvent = (editor, payload) => {
+        if (!payload) return
+        const html = typeof payload.html === "string" ? payload.html : ""
+        if (html.trim().length === 0) return
+        const root = ensureDebugProbeOutputRoot(payload.uid, payload.channel)
+        if (root && "innerHTML" in root) {
+                root.innerHTML = html
+                return
+        }
+        if (!editor || typeof window.addOutput !== "function") return
+        const line = Number(payload.line || 1)
+        const annotation = payload.annotation || ""
+        const sequence = Number(payload.sequence || Date.now())
+        window.addOutput(editor, html, line, "normal", annotation, sequence, -1, -1, -1)
+}
+
+const installDebugProbeDoubleClick = (editor, resolveContext) => {
+        if (!editor || editor._afieldDebugProbeInstalled) return
+        editor._afieldDebugProbeInstalled = true
+
+        editor.onMouseDown((e) => {
+                const altKey = !!(e && e.event && e.event.altKey)
+                const shiftKey = !!(e && e.event && e.event.shiftKey)
+                const detail = Number((e && e.event && e.event.detail) || 0)
+                if (!(altKey && shiftKey && detail === 2)) return
+
+                const position = e && e.target && e.target.position
+                const request = buildDebugProbeRequest(editor, resolveContext, position)
+                if (!request) return
+
+                const requestId = request.payload.requestId
+                const placeholder = {
+                        requestId,
+                        uid: request.payload.uid,
+                        channel: "debug probe",
+                        line: request.payload.line,
+                        annotation: `<i>debug ${escapeProbeHtml(request.payload.symbol)}</i>`,
+                        html: `<div style='min-width:320px; color:#ddd; font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;'><div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap;'><div style='font-size:13px; color:#9ad;'><strong>debug probe</strong> <code>${escapeProbeHtml(request.payload.symbol)}</code></div><span style='display:inline-block; padding:2px 8px; border-radius:999px; background:rgba(56,92,152,0.32); color:#d8e7ff;'>waiting</span></div><div style='margin-top:8px; color:#c9ddff;'>Attaching to the JVM helper…</div></div>`,
+                        sequence: 0,
+                }
+                renderDebugProbeEvent(editor, placeholder)
+
+                window.afieldActiveDebugProbe = {
+                        requestId,
+                        editor,
+                        uid: request.payload.uid,
+                }
+
+                sendWithReply("debug-probe", request.payload, "debug-probe-event", (message, payload) => {
+                        const active = window.afieldActiveDebugProbe
+                        if (!active || !payload || payload.requestId !== active.requestId) return true
+                        renderDebugProbeEvent(active.editor, payload)
+                        if (payload.done) {
+                                window.afieldActiveDebugProbe = null
+                        }
+                        return true
+                })
+        })
+}
+
+window.installDebugProbeDoubleClick = installDebugProbeDoubleClick
+
 const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         const allowUnfocused = !!options.allowUnfocused
         if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
@@ -625,6 +755,14 @@ const initMonaco = () => {
         })
 
         installSymbolContextMonitor(ed, () => {
+                const selected = window.currentSelectedCode || []
+                if (!selected[0] || !selected[0].uid) return null
+                return {
+                        uid: selected[0].uid,
+                        property: window.currentSelectedProperty || "code",
+                }
+        })
+        installDebugProbeDoubleClick(ed, () => {
                 const selected = window.currentSelectedCode || []
                 if (!selected[0] || !selected[0].uid) return null
                 return {

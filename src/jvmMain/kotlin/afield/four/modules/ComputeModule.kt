@@ -10,6 +10,7 @@ import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Module.*
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
@@ -113,9 +114,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     val ci = parameters.computeIntrospection
         ?: Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
 
-    var csm: Long = createShaderModule(ci.code.bytecode()!!).also {
-        parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")
-    }
+    var csm: Long = 0L
 
     val pushConstantSize = ci.pushConstants.maxOfOrNull { it.size } ?: 0
 
@@ -129,6 +128,10 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     init {
         try {
             if (!ci.valid) throw IllegalStateException("Can't make a module without valid programs")
+
+            csm = createShaderModule(ci.code.bytecode()!!).also {
+                parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")
+            }
 
             // Build per-module sets for all shader-declared sets (including set 0)
             val setsNeeded = mutableMapOf<Int, MutableList<Int>>()
@@ -361,6 +364,10 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             command.beginLabel(parameters.name, labelColor)
 
             val cmd = command.vkCommandBuffer
+            val frameIndex = parameters.renderer.currentImage
+            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+
+            fieldProbe?.beforeShaderUse(parameters.renderer, frameIndex)
 
             before.values.forEach { target ->
                 target.render(command, parameters.renderer.currentImage)
@@ -397,6 +404,11 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
             after.values.forEach { target ->
                 target.render(command, parameters.renderer.currentImage)
+            }
+
+            fieldProbe?.let {
+                hostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
+                it.afterShaderUse(parameters.renderer, frameIndex)
             }
             command.endLabel()
         }

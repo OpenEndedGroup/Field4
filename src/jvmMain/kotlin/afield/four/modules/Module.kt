@@ -15,7 +15,9 @@ import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.Options
+import afield.four.util.ShaderFieldProbe
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.Vec4
@@ -80,7 +82,8 @@ data class Parameters(
     var viewport: Rect? = null,
     var fillMode: Int = VK_POLYGON_MODE_FILL,
     var imageFormat: Int = renderer.swapChain.surfaceFormat.imageFormat,
-    val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f)
+    val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f),
+    var fieldProbe: ShaderFieldProbe? = null
 
 ) {
     val triangles = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
@@ -815,6 +818,9 @@ class Module(val parameters: Parameters) : Renderable {
             val renderer = parameters.renderer
             val frameIndex = renderer.currentImage
             val profiler = renderer.getProfiler()
+            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+
+            fieldProbe?.beforeShaderUse(renderer, frameIndex)
 
             // Begin label for the whole module render (if EXT_debug_utils is available)
             val labelColor = stack.floats(
@@ -872,6 +878,11 @@ class Module(val parameters: Parameters) : Renderable {
 
                 after.forEach { (_, target) ->
                     target.render(command, renderer.currentImage)
+                }
+
+                fieldProbe?.let {
+                    graphicsHostReadBarrier(command, it.bufferForImage(renderer, frameIndex))
+                    it.afterShaderUse(renderer, frameIndex)
                 }
 
                 if (profiler != null) {

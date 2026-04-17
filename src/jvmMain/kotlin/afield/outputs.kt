@@ -21,7 +21,7 @@ interface HasOutput {
     fun print(message: Any?)
     fun println(message: Any?)
     fun display(message: Any?)
-        fun display(channel: String, message: Any?)
+    fun display(channel: String, message: Any?)
 
     // an error of null,,-1 means 'clear errors'
     fun error(message: Any?, property: String = "code", line: Int = -1)
@@ -261,7 +261,7 @@ fun Box.streamProcess(
 }
 
 
-private fun printedPayload(arguments: Array<out Any>): Any? {
+private fun printedPayload(arguments: Array<out Any?>): Any? {
     return when (arguments.size) {
         0 -> ""
         1 -> arguments[0]
@@ -269,7 +269,7 @@ private fun printedPayload(arguments: Array<out Any>): Any? {
     }
 }
 
-fun Box._printHere(line: Int, vararg a: Any) {
+fun Box._printHere(line: Int, vararg a: Any?) {
     output.proxy(printedPayload(a), false, line)
 }
 

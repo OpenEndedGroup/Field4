@@ -76,6 +76,20 @@ fun requiredRunJvmArgs(): List<String> {
     }
 }
 
+fun configuredJdwpArg(): String? {
+    val rawPort = System.getProperty("afield.jdwp.port")
+        ?: System.getenv("AFIELD_JDWP_PORT")
+        ?: return null
+    val port = rawPort.trim().takeIf { it.isNotEmpty() } ?: return null
+    val host = (System.getProperty("afield.jdwp.host")
+        ?: System.getenv("AFIELD_JDWP_HOST")
+        ?: "127.0.0.1").trim()
+    val suspendFlag = (System.getProperty("afield.jdwp.suspend")
+        ?: System.getenv("AFIELD_JDWP_SUSPEND")
+        ?: "false").trim().lowercase() in setOf("1", "true", "yes", "on")
+    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=$host:$port"
+}
+
 plugins {
     kotlin("multiplatform") version "2.3.20"
     kotlin("plugin.serialization") version "2.3.0"
@@ -452,6 +466,11 @@ tasks.named<JavaExec>("runJvm").configure {
         val merged = (jvmArgs ?: emptyList<Any>()).map { it.toString() }.toMutableList()
         requiredJvmArgs.forEach { arg ->
             if (!merged.contains(arg)) merged += arg
+        }
+        configuredJdwpArg()?.let { jdwpArg ->
+            if (merged.none { it.startsWith("-agentlib:jdwp=") }) {
+                merged += jdwpArg
+            }
         }
         setJvmArgs(merged)
     }

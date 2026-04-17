@@ -1,45 +1,18 @@
 # Installation
 
-The current version of _Field·4_ is **beta032**.
+The current version of _Field·4_ is **beta033**.
 
-You can download the distribution [here](assets/field_beta1.zip). Alternatively you can press `f1` inside a running Field·4, "Check for Updates" and restart Field.
-
-## Windows & Mac
-
-0. Download and decompress that zip file — you can do this by double clicking the downloaded file. 
+Field is distributed via source — you can download it from [our repository](https://github.com/OpenEndedGroup/Field4). 
 
 ### Quick Start (Double-Click)
 
-You can now launch Field·4 by simply double-clicking the appropriate file in the decompressed directory:
+You can now launch Field·4 by simply double-clicking the appropriate file in the repository:
 
 - **Mac**: Double-click `field.command` in Finder
 - **Windows**: Double-click `field.bat` in File Explorer
 - **Linux**: Double-click `field.sh` in your file manager (it will open a terminal automatically)
 
-This will open a terminal window, download necessary dependencies, and start Field·4.
-
-### Alternative (Command Line)
-
-Alternatively, you can launch from the command line:
-
-1. Open a _Terminal_ (Mac, or Windows if installed) or a _command prompt_ (Windows). 
-2. Change the working directory of the terminal using the `cd` command to the directory to the decompressed archive (pro-tip: you can drag folders from explorer/finder into the terminal/command prompt to figure out what their path is). For me on a mac this looks like:
-
-    ```diffstatic {data-lang=bash}
-    cd /Users/marc/Downloads/field4/
-    ```
-
-    and on Windows 
-
-    ```diffstatic {data-lang=powershell}
-    cd c:\Users\marc\Downloads\field4\
-    ```
-
-3. Inside that directory type `.\field.bat` (for Windows) or `./field.sh` (Mac/Linux).
-
-### First Launch
-
-The first time you run Field·4, it will work _very hard_ for a while, downloading around 1Gb of other people's wonderful open source code needed to build your own copy of _Field·4_. But it won't do this every time.
+This will open a terminal window, download necessary dependencies (which, first time through will take a very long time), and start Field·4.
 
 Eventually you'll be greeted with the boot-screen:
 

@@ -467,6 +467,14 @@ private fun buildSymbolContextHtml(
 
 private data class SymbolBounds(val start: Int, val end: Int, val text: String)
 
+data class DebugProbeSegment(
+    val rawText: String,
+    val expandedText: String,
+    val localLine: Int,
+    val startLine: Int,
+    val endLine: Int
+)
+
 private fun findSymbolBoundsAt(code: String, position: Int): SymbolBounds? {
     if (code.isEmpty()) return null
     val safePosition = position.coerceIn(0, code.length)
@@ -1374,6 +1382,47 @@ class KotlinExecution : BoxExecution {
             KotlinSymbolContextCache.put(cacheKey, response)
         }
         return response
+    }
+
+    fun resolveDebugProbeSegment(box: Box, allCode: String, line: Int): DebugProbeSegment? {
+        val lines = allCode.lines()
+        if (line !in 1..lines.size) return null
+
+        val breaks = lines.mapIndexedNotNull { index, rawLine ->
+            val trimmed = rawLine.trim()
+            if (trimmed.startsWith("//%-") || trimmed.startsWith("/*%-*/")) index else null
+        } + lines.size
+
+        var at = 0
+        for (breakIndex in breaks) {
+            val startLine = at + 1
+            val endLine = breakIndex.coerceAtLeast(startLine)
+            if (line in startLine..endLine) {
+                val rawText = lines.subList(at, breakIndex).joinToString("\n")
+                val expanded = runCatching {
+                    box.ki.applyMacros(box, rawText, previewOnly = true)
+                }.getOrElse { rawText }
+
+                var globalLine = startLine - 1
+                val expandedText = expanded
+                    .split("\n")
+                    .map { current ->
+                        globalLine++
+                        current.replace("__line__", "${globalLine - 1}")
+                    }
+                    .joinToString("\n")
+
+                return DebugProbeSegment(
+                    rawText = rawText,
+                    expandedText = expandedText,
+                    localLine = (line - startLine + 1).coerceAtLeast(1),
+                    startLine = startLine,
+                    endLine = endLine
+                )
+            }
+            at = breakIndex
+        }
+        return null
     }
 
     override fun complete(box: Box, exec: CompletionRequest, reply: (Message) -> Unit) {

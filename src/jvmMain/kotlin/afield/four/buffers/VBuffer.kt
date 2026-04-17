@@ -143,10 +143,42 @@ class VertexBuffer(
         }
     }
 
+    private fun recordInputToTransferBarrier(cmd: CommandBuffer) {
+        var srcAccessMask = 0L
+        if ((usage and VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0) {
+            srcAccessMask = srcAccessMask or VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT
+        }
+        if ((usage and VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0) {
+            srcAccessMask = srcAccessMask or VK_ACCESS_2_INDEX_READ_BIT
+        }
+        if (srcAccessMask == 0L || neededSize <= 0) return
+
+        MemoryStack.stackPush().use { stack ->
+            val barriers = VkBufferMemoryBarrier2.calloc(1, stack)
+            barriers[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT)
+                .srcAccessMask(srcAccessMask)
+                .dstStageMask(VK_PIPELINE_STAGE_2_COPY_BIT)
+                .dstAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(dest.buffer)
+                .offset(0L)
+                .size(neededSize)
+
+            val dep = VkDependencyInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+                .pBufferMemoryBarriers(barriers)
+            vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+        }
+    }
+
     fun transfer(cmd: CommandBuffer, immediate: Boolean = false) {
 
         if (transferWatermark != watermark) {
             if (neededSize > 0) {
+                recordInputToTransferBarrier(cmd)
                 MemoryStack.stackPush().use { stack ->
                     val copyRegion = VkBufferCopy.calloc(1, stack).srcOffset(0).dstOffset(0).size(neededSize)
                     VK10.vkCmdCopyBuffer(

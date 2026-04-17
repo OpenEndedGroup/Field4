@@ -4,6 +4,7 @@ package afield
 
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.completion.Ai4KotlinAutocomplete
+import afield.debug.RuntimeDebugProbeService
 import afield.four.util.Options
 import afield.graphics.getFLineEditSession
 import afield.logger.lblock
@@ -757,6 +758,37 @@ class Server {
                         ?.describeSymbolContext(box, exec)
                         ?: SymbolContextResponse()
                     reply(Message("symbol-context").payload(result))
+                }
+
+                Handled.yes
+            })
+
+            handlers["debug-probe"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<DebugProbeRequest>(message.payload!!)
+                val box = box(request.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    val execution = box.ke as? KotlinExecution
+                    if (execution == null) {
+                        reply(
+                            Message("debug-probe-event").payload(
+                                DebugProbeEvent(
+                                    requestId = request.requestId,
+                                    uid = request.uid,
+                                    phase = "error",
+                                    symbol = request.symbol,
+                                    line = request.line,
+                                    html = "Debug probes are only available for Kotlin boxes.",
+                                    channel = "debug probe",
+                                    annotation = "<i>debug</i>",
+                                    done = true
+                                )
+                            )
+                        )
+                        return@launch
+                    }
+
+                    RuntimeDebugProbeService.startProbe(box, request, execution, reply)
                 }
 
                 Handled.yes

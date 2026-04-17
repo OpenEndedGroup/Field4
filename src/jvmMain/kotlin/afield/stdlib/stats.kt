@@ -3,16 +3,10 @@
 package afield.stdlib
 
 import java.lang.Math.ulp
-import kotlin.math.abs
+import java.util.Locale
+import kotlin.collections.ArrayDeque
+import kotlin.math.*
 import kotlin.math.atan2
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.log2
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 data class HistogramBin(val start: Double, val end: Double, val count: Int)
 
@@ -89,6 +83,83 @@ data class SummaryStatsBox(
     val droppedNonFinite: Long,
     val droppedByCapacity: Long
 )
+
+private const val STATS_ORANGE_COLOR = "#ff8a00"
+private const val STATS_UP_COLOR = "#55ff88"
+private const val STATS_DOWN_COLOR = "#ff4d6d"
+private const val STATS_SMALL_CHANGE_PIVOT = 0.08
+
+private fun mixChannel(a: Int, b: Int, t: Double): Int =
+    (a + ((b - a) * t.coerceIn(0.0, 1.0))).roundToInt().coerceIn(0, 255)
+
+private fun parseHexColor(color: String): Triple<Int, Int, Int>? {
+    if (!color.startsWith("#") || color.length != 7) return null
+    return try {
+        Triple(
+            color.substring(1, 3).toInt(16),
+            color.substring(3, 5).toInt(16),
+            color.substring(5, 7).toInt(16)
+        )
+    } catch (_: NumberFormatException) {
+        null
+    }
+}
+
+private fun colorRamp(from: String, to: String, t: Double): String {
+    val a = parseHexColor(from) ?: return from
+    val b = parseHexColor(to) ?: return to
+    val u = t.coerceIn(0.0, 1.0)
+    return "#%02x%02x%02x".format(
+        Locale.US,
+        mixChannel(a.first, b.first, u),
+        mixChannel(a.second, b.second, u),
+        mixChannel(a.third, b.third, u)
+    )
+}
+
+private fun relativeChangeMagnitude(current: Double, previous: Double?): Double {
+    if (previous == null || !current.isFinite() || !previous.isFinite()) return 0.0
+    val denom = abs(current) + abs(previous)
+    if (denom <= 0.0) return 0.0
+    return (abs(current - previous) / denom).coerceIn(0.0, 1.0)
+}
+
+private fun signedDeltaColor(current: Double, previous: Double?, fallback: String): String {
+    if (previous == null || !current.isFinite() || !previous.isFinite()) return fallback
+    if (current == previous) return fallback
+    val amount = relativeChangeMagnitude(current, previous)
+    if (amount <= 0.0) return fallback
+    val target = if (current > previous) STATS_UP_COLOR else STATS_DOWN_COLOR
+    return if (amount <= STATS_SMALL_CHANGE_PIVOT) {
+        colorRamp(fallback, STATS_ORANGE_COLOR, amount / STATS_SMALL_CHANGE_PIVOT)
+    } else {
+        colorRamp(
+            STATS_ORANGE_COLOR,
+            target,
+            (amount - STATS_SMALL_CHANGE_PIVOT) / (1.0 - STATS_SMALL_CHANGE_PIVOT)
+        )
+    }
+}
+
+private fun deltaStyle(current: Double, previous: Double?, fallback: String = "#0af"): String {
+    val color = signedDeltaColor(current, previous, fallback)
+    if (color == fallback) return ""
+    return "color:$color;"
+}
+
+private fun deltaStyle(current: Long, previous: Long?, fallback: String = "#0af"): String =
+    deltaStyle(current.toDouble(), previous?.toDouble(), fallback)
+
+private fun deltaColor(current: Double, previous: Double?, fallback: String): String {
+    return signedDeltaColor(current, previous, fallback)
+}
+
+private fun statMetric(key: String, value: String, style: String = "", keyTextOpacity: Double = 0.5): String = """
+    <div style="display:flex;gap:4px;white-space:nowrap;">
+      <span style="opacity:${keyTextOpacity};">$key</span>
+      <span style="$style">$value</span>
+    </div>
+""".trimIndent()
 
 data class Vec2SummaryStats(
     val x: SummaryStats,
@@ -969,13 +1040,14 @@ fun buildHistogram(
  */
 fun histogramToSvg(
     hist: Histogram,
+    previousStats: SummaryStats? = null,
     widthPx: Int = 480,
     heightPx: Int = 240,
     padLeft: Int = 14,
     padRight: Int = 14,
     padTop: Int = 10,
     padBottom: Int = 22,
-    fontFamily: String = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    fontFamily: String = "Iosevka, monospace",
     title: String? = null,
     showCountsOnHover: Boolean = true,
     decimals: Int = 3,
@@ -1038,8 +1110,8 @@ fun histogramToSvg(
         }
     }
 
-    fun vTick(x: Double) =
-        """<line x1="${x.toFloat()}" y1="${(y0 - 3).toFloat()}" x2="${x.toFloat()}" y2="${(y0 + innerH + 3).toFloat()}" stroke="$tickColor" stroke-width="1" stroke-dasharray="2,2" opacity="0.9"/>"""
+    fun vTick(x: Double, color: String) =
+        """<line x1="${x.toFloat()}" y1="${(y0 - 3).toFloat()}" x2="${x.toFloat()}" y2="${(y0 + innerH + 3).toFloat()}" stroke="$color" stroke-width="1" stroke-dasharray="2,2" opacity="0.9"/>"""
 
     val xMin = xForVal(hist.min)
     val xQ1 = xForVal(hist.q1)
@@ -1052,30 +1124,37 @@ fun histogramToSvg(
 
     val topY = (y0 - 6).toFloat()
     val botY = (y0 + innerH + 14).toFloat()
+    val botYAlt = (y0 + innerH + 30).toFloat()
 
     val edgeInset = 2.0
     val minLabelX = max(x0 + edgeInset, xMin)
     val maxLabelX = min(x0 + innerW - edgeInset, xMax)
 
-    fun dimmedLabel(x: Double, y: Double, anchor: String, key: String, value: Double): String = """
+    fun dimmedLabel(x: Double, y: Double, anchor: String, key: String, value: Double, color: String): String = """
         <text x="${x.toFloat()}" y="${y.toFloat()}" text-anchor="$anchor"
-              font-family="$fontFamily" font-size="10" fill="$textColor">
+              font-family="$fontFamily" font-size="10" fill="$color">
           <tspan fill-opacity="$keyTextOpacity">$key </tspan><tspan>${fmt(value)}</tspan>
         </text>
     """.trimIndent()
 
+    val minColor = deltaColor(hist.min, previousStats?.min, tickColor)
+    val q1Color = deltaColor(hist.q1, previousStats?.q1, tickColor)
+    val medianColor = deltaColor(hist.median, previousStats?.median, tickColor)
+    val q3Color = deltaColor(hist.q3, previousStats?.q3, tickColor)
+    val maxColor = deltaColor(hist.max, previousStats?.max, tickColor)
+
     val labelsTop = buildString {
-        append(dimmedLabel(minLabelX, topY.toDouble(), "start", "min", hist.min))
+        append(dimmedLabel(minLabelX, topY.toDouble(), "start", "min", hist.min, minColor))
         append('\n')
-        append(dimmedLabel(xMed, topY.toDouble(), "middle", "median", hist.median))
+        append(dimmedLabel(xMed, topY.toDouble(), "middle", "median", hist.median, medianColor))
         append('\n')
-        append(dimmedLabel(maxLabelX, topY.toDouble(), "end", "max", hist.max))
+        append(dimmedLabel(maxLabelX, topY.toDouble(), "end", "max", hist.max, maxColor))
     }
 
     val labelsBottom = buildString {
-        append(dimmedLabel(xQ1, botY.toDouble(), "middle", "Q1", hist.q1))
+        append(dimmedLabel(xQ1, botY.toDouble(), "middle", "Q1", hist.q1, q1Color))
         append('\n')
-        append(dimmedLabel(xQ3, botY.toDouble(), "middle", "Q3", hist.q3))
+        append(dimmedLabel(xQ3, botYAlt.toDouble()-10, "middle", "Q3", hist.q3, q3Color))
     }
 
     val topTitle = title?.let {
@@ -1088,11 +1167,11 @@ fun histogramToSvg(
           $topTitle
           $axisBaseline
           $bars
-          ${vTick(xMin)}
-          ${vTick(xQ1)}
-          ${vTick(xMed)}
-          ${vTick(xQ3)}
-          ${vTick(xMax)}
+          ${vTick(xMin, minColor)}
+          ${vTick(xQ1, q1Color)}
+          ${vTick(xMed, medianColor)}
+          ${vTick(xQ3, q3Color)}
+          ${vTick(xMax, maxColor)}
           $labelsTop
           $labelsBottom
         </svg>
@@ -1107,13 +1186,14 @@ fun histogramToSvg(
  */
 fun seriesPlotToSvg(
     rawValues: Iterable<Double>,
+    previousStats: SummaryStats? = null,
     widthPx: Int = 480,
     heightPx: Int = 240,
     padLeft: Int = 40,
     padRight: Int = 64,
     padTop: Int = 10,
     padBottom: Int = 22,
-    fontFamily: String = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    fontFamily: String = "Iosevka, monospace",
     title: String? = null,
     decimals: Int = 3,
     background: String = "#000000",
@@ -1128,15 +1208,7 @@ fun seriesPlotToSvg(
     minLabelSeparationPx: Double = 12.0
 ): String {
     val source = rawValues.toList()
-    val values = mutableListOf<Double>()
-    val indices = mutableListOf<Int>()
-    for (i in source.indices) {
-        val v = source[i]
-        if (v.isFinite()) {
-            indices += i
-            values += v
-        }
-    }
+    val values = source.filter { it.isFinite() }.sorted()
     if (values.isEmpty()) {
         return """
             <svg xmlns="http://www.w3.org/2000/svg" width="$widthPx" height="$heightPx" viewBox="0 0 $widthPx $heightPx">
@@ -1154,7 +1226,7 @@ fun seriesPlotToSvg(
     val x0 = padLeft.toDouble()
     val y0 = padTop.toDouble()
 
-    val sorted = values.toDoubleArray().also { it.sort() }
+    val sorted = values.toDoubleArray()
     val yMin0 = sorted.first()
     val yMax0 = sorted.last()
     val (yMin, yMax) = if (yMax0 == yMin0) {
@@ -1166,12 +1238,10 @@ fun seriesPlotToSvg(
     val med = quantileSorted(sorted, 0.5)
     val q3 = quantileSorted(sorted, 0.75)
 
-    val xMinIndex = indices.first().toDouble()
-    val xMaxIndex = indices.last().toDouble()
+    val xMaxIndex = (values.lastIndex).coerceAtLeast(1).toDouble()
 
     fun xForIndex(i: Double): Double {
-        val span = (xMaxIndex - xMinIndex).takeIf { it != 0.0 } ?: 1.0
-        return x0 + ((i - xMinIndex) / span) * innerW
+        return x0 + (i / xMaxIndex) * innerW
     }
 
     fun yForVal(v: Double): Double {
@@ -1181,14 +1251,16 @@ fun seriesPlotToSvg(
 
     fun fmt(d: Double) = formatNumber(d, decimals)
 
-    val path = buildString {
-        values.forEachIndexed { j, v ->
-            val xi = indices[j].toDouble()
-            val x = xForIndex(xi)
-            val y = yForVal(v)
-            if (j == 0) append("M ${x.toFloat()} ${y.toFloat()}") else append(" L ${x.toFloat()} ${y.toFloat()}")
-        }
+    data class PlotPoint(val x: Double, val y: Double)
+    val points = values.mapIndexed { j, v ->
+        PlotPoint(xForIndex(j.toDouble()), yForVal(v))
     }
+    val seriesPath = if (points.isNotEmpty()) {
+        buildString {
+            append("M ${points.first().x.toFloat()} ${points.first().y.toFloat()}")
+            points.drop(1).forEach { p -> append(" L ${p.x.toFloat()} ${p.y.toFloat()}") }
+        }
+    } else ""
 
     val yMaxY = yForVal(yMax0)
     val yQ3 = yForVal(q3)
@@ -1201,27 +1273,33 @@ fun seriesPlotToSvg(
     val axisBaseline =
         """<line x1="${x0.toFloat()}" y1="${(y0 + innerH).toFloat()}" x2="${(x0 + innerW).toFloat()}" y2="${(y0 + innerH).toFloat()}" stroke="$axisColor" stroke-width="1" opacity="0.6"/>"""
 
-    fun hRef(y: Double, opacity: Double = 0.9, dash: String = refDash) =
-        """<line x1="${x0.toFloat()}" y1="${y.toFloat()}" x2="${(x0 + innerW).toFloat()}" y2="${y.toFloat()}" stroke="$tickColor" stroke-width="1" stroke-dasharray="$dash" opacity="$opacity"/>"""
+    fun hRef(y: Double, color: String, opacity: Double = 0.9, dash: String = refDash) =
+        """<line x1="${x0.toFloat()}" y1="${y.toFloat()}" x2="${(x0 + innerW).toFloat()}" y2="${y.toFloat()}" stroke="$color" stroke-width="1" stroke-dasharray="$dash" opacity="$opacity"/>"""
 
-    fun rightLabel(y: Double, key: String, value: Double?): String = """
-        <text x="${(x0 + innerW + 4).toFloat()}" y="${(y + 3).toFloat()}" text-anchor="start"
-              font-family="$fontFamily" font-size="10" fill="$textColor">
+    fun rightLabel(y: Double, key: String, value: Double?, color: String): String = """
+        <text x="${(w - 6.0).toFloat()}" y="${(y + 3).toFloat()}" text-anchor="end"
+              font-family="$fontFamily" font-size="10" fill="$color">
           <tspan fill-opacity="$keyTextOpacity">$key </tspan>""" + (if (value != null) """<tspan>${fmt(value)}</tspan>""" else "") + "</text>"
 
-    fun leftLabel(y: Double, key: String?, value: Double?): String {
+    fun leftLabel(y: Double, key: String?, value: Double?, color: String): String {
         val labelText = if (key == null) {
             if (value != null) "<tspan>${fmt(value)}</tspan>" else ""
         } else {
             """<tspan fill-opacity="$keyTextOpacity">$key </tspan>""" + (if (value != null) """<tspan>${fmt(value)}</tspan>""" else "")
         }
         return """
-        <text x="${(x0 - 4).toFloat()}" y="${(y + 3).toFloat()}" text-anchor="end"
-              font-family="$fontFamily" font-size="10" fill="$textColor">
+        <text x="6" y="${(y + 3).toFloat()}" text-anchor="start"
+              font-family="$fontFamily" font-size="10" fill="$color">
           $labelText
         </text>
         """.trimIndent()
     }
+
+    val minColor = deltaColor(yMin0, previousStats?.min, tickColor)
+    val q1Color = deltaColor(q1, previousStats?.q1, tickColor)
+    val medianColor = deltaColor(med, previousStats?.median, tickColor)
+    val q3Color = deltaColor(q3, previousStats?.q3, tickColor)
+    val maxColor = deltaColor(yMax0, previousStats?.max, tickColor)
 
     data class L(val y: Double, val key: String?, val value: Double?)
 
@@ -1249,7 +1327,7 @@ fun seriesPlotToSvg(
     val rightLabels = layoutLabels(
         listOf(
             L(yMinY, "min", yMin0), L(yMed, "median", med), L(yMaxY, "max", yMax0)
-        ), minLabelSeparationPx, y0, y0 + innerH
+        ), minLabelSeparationPx + 2.0, y0, y0 + innerH
     )
 
     val titleEl = title?.let {
@@ -1262,49 +1340,75 @@ fun seriesPlotToSvg(
           $titleEl
           $axisBaseline
 
-          ${hRef(yMaxY, opacity = 0.9)} 
-          ${hRef(yQ3, opacity = 0.85)} 
-          ${hRef(yMed, opacity = 0.95)} 
-          ${hRef(yQ1, opacity = 0.85)} 
-          ${hRef(yMinY, opacity = 0.9)} 
-          ${if (hasZeroLine) hRef(yZero, opacity = 0.7, dash = "1,2") else ""}
+          ${hRef(yMaxY, maxColor, opacity = 0.9)} 
+          ${hRef(yQ3, q3Color, opacity = 0.85)} 
+          ${hRef(yMed, medianColor, opacity = 0.95)} 
+          ${hRef(yQ1, q1Color, opacity = 0.85)} 
+          ${hRef(yMinY, minColor, opacity = 0.9)} 
+          ${if (hasZeroLine) hRef(yZero, tickColor, opacity = 0.7, dash = "1,2") else ""}
 
-          <path d="$path"
-                fill="none"
-                stroke="$seriesColor"
-                stroke-opacity="$seriesOpacity"
-                stroke-width="$seriesStrokeWidth"
+          <path d="$seriesPath" fill="none" stroke="$seriesColor" stroke-opacity="$seriesOpacity"
+                stroke-width="$seriesStrokeWidth" stroke-linecap="round" stroke-linejoin="round"
                 vector-effect="non-scaling-stroke"/>
 
-          ${leftLabels.joinToString("\n") { leftLabel(it.y, it.key, it.value) }}
-          ${rightLabels.joinToString("\n") { rightLabel(it.y, it.key!!, it.value) }}
+          ${leftLabels.joinToString("\n") {
+            val color = when (it.key) {
+                "Q1" -> q1Color
+                "Q3" -> q3Color
+                else -> tickColor
+            }
+            leftLabel(it.y, it.key, it.value, color)
+          }}
+          ${rightLabels.joinToString("\n") {
+            val color = when (it.key) {
+                "min" -> minColor
+                "median" -> medianColor
+                "max" -> maxColor
+                else -> tickColor
+            }
+            rightLabel(it.y, it.key!!, it.value, color)
+          }}
         </svg>
     """.trimIndent()
 }
 
 fun summaryStatsBoxToHtml(
     summary: SummaryStatsBox,
+    previousSummary: SummaryStatsBox? = null,
     widthPx: Int = 480,
     chartHeightPx: Int = 120,
     decimals: Int = 3,
-    fontFamily: String = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    fontFamily: String = "Iosevka, monospace",
     background: String = "#000000",
     textColor: String = "#0af",
     axisColor: String = "#0af",
-    keyTextOpacity: Double = 0.5
+    keyTextOpacity: Double = 0.5,
+    showFrame: Boolean = true,
+    showHeader: Boolean = true,
+    histogramTitle: String? = "Histogram",
+    seriesTitle: String? = "Series",
+    chartPadLeft: Int = 28,
+    chartPadRight: Int = 28,
+    chartPadTop: Int = 22,
+    chartPadBottom: Int = 26
 ): String {
     val s = summary.stats
+    val p = previousSummary?.stats
     val w = widthPx.coerceAtLeast(220)
     val chartH = chartHeightPx.coerceAtLeast(64)
 
     val histogramSvg = histogramToSvg(
         hist = summary.histogram,
+        previousStats = p,
         widthPx = w,
         heightPx = chartH,
-        padTop = 20,
-        padBottom = 16,
+        padLeft = chartPadLeft,
+        padRight = chartPadRight,
+        padTop = chartPadTop,
+        padBottom = chartPadBottom,
         decimals = decimals,
-        title = "Histogram",
+        title = histogramTitle,
+        fontFamily = fontFamily,
         background = background,
         textColor = textColor,
         tickColor = textColor,
@@ -1316,12 +1420,16 @@ fun summaryStatsBoxToHtml(
 
     val seriesSvg = seriesPlotToSvg(
         rawValues = summary.values,
+        previousStats = p,
         widthPx = w,
         heightPx = chartH,
-        padTop = 20,
-        padBottom = 16,
+        padLeft = chartPadLeft,
+        padRight = chartPadRight,
+        padTop = chartPadTop,
+        padBottom = chartPadBottom,
         decimals = decimals,
-        title = "Series",
+        title = seriesTitle,
+        fontFamily = fontFamily,
         background = background,
         textColor = textColor,
         tickColor = textColor,
@@ -1331,55 +1439,69 @@ fun summaryStatsBoxToHtml(
     )
 
     val kv = listOf(
-        "n" to s.count.toString(),
-        "seen" to summary.samplesSeen.toString(),
-        "dropped(non-finite)" to summary.droppedNonFinite.toString(),
-        "window-evicted" to summary.droppedByCapacity.toString(),
-        "min" to formatNumber(s.min, decimals),
-        "Q1" to formatNumber(s.q1, decimals),
-        "median" to formatNumber(s.median, decimals),
-        "Q3" to formatNumber(s.q3, decimals),
-        "max" to formatNumber(s.max, decimals),
-        "range" to formatNumber(s.range, decimals),
-        "mean" to formatNumber(s.mean, decimals),
-        "stddev" to formatNumber(s.sampleStdDev, decimals),
-        "variance" to formatNumber(s.sampleVariance, decimals),
-        "IQR" to formatNumber(s.iqr, decimals),
-        "MAD" to formatNumber(s.mad, decimals),
-        "skew" to formatNumber(s.skewness, decimals),
-        "kurtosis(ex)" to formatNumber(s.kurtosisExcess, decimals),
-        "cv" to formatNumber(s.coeffOfVariation, decimals)
+        statMetric("n", s.count.toString(), deltaStyle(s.count.toLong(), p?.count?.toLong()), keyTextOpacity),
+        statMetric("seen", summary.samplesSeen.toString(), deltaStyle(summary.samplesSeen, previousSummary?.samplesSeen), keyTextOpacity),
+        statMetric(
+            "dropped(non-finite)",
+            summary.droppedNonFinite.toString(),
+            deltaStyle(summary.droppedNonFinite, previousSummary?.droppedNonFinite),
+            keyTextOpacity
+        ),
+        statMetric(
+            "window-evicted",
+            summary.droppedByCapacity.toString(),
+            deltaStyle(summary.droppedByCapacity, previousSummary?.droppedByCapacity),
+            keyTextOpacity
+        ),
+        statMetric("range", formatNumber(s.range, decimals), deltaStyle(s.range, p?.range), keyTextOpacity),
+        statMetric("mean", formatNumber(s.mean, decimals), deltaStyle(s.mean, p?.mean), keyTextOpacity),
+        statMetric("stddev", formatNumber(s.sampleStdDev, decimals), deltaStyle(s.sampleStdDev, p?.sampleStdDev), keyTextOpacity),
+        statMetric("variance", formatNumber(s.sampleVariance, decimals), deltaStyle(s.sampleVariance, p?.sampleVariance), keyTextOpacity),
+        statMetric("IQR", formatNumber(s.iqr, decimals), deltaStyle(s.iqr, p?.iqr), keyTextOpacity),
+        statMetric("MAD", formatNumber(s.mad, decimals), deltaStyle(s.mad, p?.mad), keyTextOpacity),
+        statMetric("skew", formatNumber(s.skewness, decimals), deltaStyle(s.skewness, p?.skewness), keyTextOpacity),
+        statMetric(
+            "kurtosis(ex)",
+            formatNumber(s.kurtosisExcess, decimals),
+            deltaStyle(s.kurtosisExcess, p?.kurtosisExcess),
+            keyTextOpacity
+        ),
+        statMetric(
+            "cv",
+            formatNumber(s.coeffOfVariation, decimals),
+            deltaStyle(s.coeffOfVariation, p?.coeffOfVariation),
+            keyTextOpacity
+        )
     )
+    val metricsHtml = kv.joinToString("")
 
-    val metricsHtml = kv.joinToString("") { (k, v) ->
+    val borderStyle = if (showFrame) "border:1px solid ${axisColor};" else ""
+    val headerHtml = if (showHeader) {
         """
-            <div style="display:flex;gap:4px;white-space:nowrap;">
-              <span style="opacity:${keyTextOpacity};">$k</span>
-              <span>$v</span>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+              <span style="font-size:12px;">Summary stats</span>
+              <span style="opacity:${keyTextOpacity};">window=${summary.windowSize}</span>
             </div>
         """.trimIndent()
-    }
+    } else ""
 
     return """
         <div style="
             width:${w}px;
             box-sizing:border-box;
-            border:1px solid ${axisColor};
-            padding:8px;
+            ${borderStyle}
+            padding:0;
             background:${background};
             color:${textColor};
             font-family:${fontFamily};
             font-size:11px;
             line-height:1.25;
         ">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-              <span style="font-size:12px;">Summary stats</span>
-              <span style="opacity:${keyTextOpacity};">window=${summary.windowSize}</span>
-            </div>
+            $headerHtml
             <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px;">
               $metricsHtml
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
               $histogramSvg
               $seriesSvg
             </div>

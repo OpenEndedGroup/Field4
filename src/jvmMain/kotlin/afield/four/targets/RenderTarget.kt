@@ -252,6 +252,7 @@ class RenderTarget(
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
             command.inRenderPassInstance = false
+            command.flushDeferredGraphicsHostReadBarriers()
 
             // Transition swapchain image to PRESENT for presentation engine.
             // With sync2 you can use NONE for dst stage/access.

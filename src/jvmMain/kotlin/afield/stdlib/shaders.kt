@@ -6,6 +6,9 @@ import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
 import afield.four.texture.*
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
+import afield.four.util.FIELD_PROBE_INCLUDE_NAME
+import afield.four.util.ShaderFieldProbe
 import afield.four.util.IncludeResolver
 import afield.four.util.getShaderTemplateResolverForBox
 import afield.four.util.runTemplate
@@ -49,9 +52,30 @@ var Box._computeShader by Delegation<ComputeModulePointer?>()
 
 var Box.meshShader by Inheritance<MeshModulePointer?>()
 var Box._meshShader by Delegation<MeshModulePointer?>()
+var Box._fieldProbe by Delegation<ShaderFieldProbe?>()
 
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
     defaultValue = { HashMap<String, Any>() })
+
+fun Box.fieldProbeHere(
+    samples: Int = afield.four.util.FIELD_PROBE_DEFAULT_SAMPLES,
+    binding: Int = afield.four.util.FIELD_PROBE_DEFAULT_BINDING,
+    descriptorSet: Int = afield.four.util.FIELD_PROBE_DEFAULT_SET,
+    enabled: Boolean = true,
+    ordinalRange: UIntRange? = null
+): ShaderFieldProbe {
+    val probe = ensureFieldProbe()
+    probe.resetLiveCodingRegistrations()
+    probe.configure(
+        samples = samples,
+        binding = binding,
+        descriptorSet = descriptorSet,
+        enabled = enabled
+    )
+    if (ordinalRange != null) probe.ordinalRange(ordinalRange)
+    else probe.ordinalRange()
+    return probe
+}
 
 // ------------------------------
 // Public macro placeholders (expanded by MacroRegistry)
@@ -216,6 +240,33 @@ private fun getIncludePropertyValue(box: Box, property: String): String? {
     }
 }
 
+private fun Box.ensureFieldProbe(): ShaderFieldProbe {
+    val existing = _fieldProbe
+    if (existing != null) return existing
+    return ShaderFieldProbe(this).also { _fieldProbe = it }
+}
+
+private fun builtInShaderInclude(inside: Box, includePath: String): String? {
+    return when (includePath.trim()) {
+        FIELD_PROBE_INCLUDE_NAME -> inside.ensureFieldProbe().includeSource()
+        else -> null
+    }
+}
+
+private fun attachFieldProbe(box: Box, parameters: Parameters) {
+    val probe = box._fieldProbe ?: return
+    parameters.fieldProbe = probe
+
+    val previousResolver = parameters.ssboResolver
+    parameters.ssboResolver = { requested ->
+        if (requested.name == FIELD_PROBE_BUFFER_NAME) {
+            probe.bufferParameters(parameters.renderer)
+        } else {
+            previousResolver(requested)
+        }
+    }
+}
+
 private fun preprocess(
     inside: Box,
     source: String,
@@ -224,6 +275,14 @@ private fun preprocess(
     includeStack: List<String> = emptyList()
 ): String {
     val includeResolver = IncludeResolver { includePath, line, _ ->
+        builtInShaderInclude(inside, includePath)?.let { builtIn ->
+            return@IncludeResolver buildString {
+                append(builtIn)
+                if (!builtIn.endsWith('\n')) append('\n')
+                append("#line ${line + 2}\n")
+            }
+        }
+
         val includeRef = parseShaderIncludeRef(includePath, defaultProperty)
         val includeKey = includeRef.key
         if (includeStack.contains(includeKey)) {
@@ -632,6 +691,7 @@ fun reloadShader(box: Box): Boolean {
         vertexIntrospection = vi
         fragmentIntrospection = fi
     }
+    attachFieldProbe(box, p)
 
     // todo: patch error handler if you need finer-grained feedback
     box._shader!!.reload(p, forceReresolve = true)
@@ -724,6 +784,7 @@ fun reloadComputeShader(box: Box): Boolean {
         compute = box._compute!!
         computeIntrospection = ci
     }
+    attachFieldProbe(box, p)
     // todo: patch error handler if you need finer-grained feedback
     box._computeShader!!.reload(p)
     clearShaderErrorsForBaseProperties(box, "compute")
@@ -822,6 +883,7 @@ fun reloadMeshShader(box: Box): Boolean {
         meshIntrospection = mi
         fragmentIntrospection = fi
     }
+    attachFieldProbe(box, p)
     // todo: patch error handler if you need finer-grained feedback
     box._meshShader!!.reload(p)
     clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
@@ -1224,6 +1286,7 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
         throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
+    attachFieldProbe(this, p)
     this._shader = Module(p).pointer()
     return this._shader!!
 }
@@ -1404,6 +1467,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
 
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
+    attachFieldProbe(this, p)
     val pp = ComputeModule(p).pointer()
     this._computeShader = pp
     return pp
@@ -1544,6 +1608,7 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
 
     if (p.name == "unnamed module") p.name = "mesh module in box '${name}' (${id})"
 
+    attachFieldProbe(this, p)
     val pp = MeshModule(p).pointer()
     this._meshShader = pp
     return pp
