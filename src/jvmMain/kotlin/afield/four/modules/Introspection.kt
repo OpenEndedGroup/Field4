@@ -567,6 +567,8 @@ class Introspection private constructor(
     val source: String,
     val kind: ShaderKind,
     val errorHandler: (String, Throwable) -> Unit = { _, throwable -> throw throwable },
+    val sourceName: String = kind.toString() + ".glsl",
+    val includeResolver: ShaderIncludeResolver? = null,
     private val precompiledSpirv: ShaderSPIRVUtils.SPIRV? = null,
     private val slangReflectionJson: String? = null
 ) : Introspected() {
@@ -574,14 +576,23 @@ class Introspection private constructor(
     constructor(
         source: String,
         kind: ShaderKind,
-        errorHandler: (String, Throwable) -> Unit = { _, throwable -> throw throwable }
-    ) : this(source, kind, errorHandler, null, null)
+        errorHandler: (String, Throwable) -> Unit = { _, throwable -> throw throwable },
+        sourceName: String = kind.toString() + ".glsl",
+        includeResolver: ShaderIncludeResolver? = null
+    ) : this(source, kind, errorHandler, sourceName, includeResolver, null, null)
 
     var valid = false
 
     init {
         try {
-            val spirv = precompiledSpirv ?: ShaderSPIRVUtils.compileShader(kind.toString() + ".glsl", source, kind)
+            val spirv = precompiledSpirv ?: ShaderSPIRVUtils.compileShader(
+                ShaderCompileSource(
+                    sourceName = sourceName,
+                    sourceText = source,
+                    includeResolver = includeResolver
+                ),
+                kind
+            )
             val data = spirv.bytecode()!!
             code = spirv
             if (slangReflectionJson != null) {
@@ -910,8 +921,10 @@ class Introspection private constructor(
             kind: ShaderKind,
             spirv: ShaderSPIRVUtils.SPIRV,
             reflectionJson: String,
+            sourceName: String = kind.toString() + ".glsl",
+            includeResolver: ShaderIncludeResolver? = null,
             errorHandler: (String, Throwable) -> Unit = { _, throwable -> throw throwable }
-        ): Introspection = Introspection(source, kind, errorHandler, spirv, reflectionJson)
+        ): Introspection = Introspection(source, kind, errorHandler, sourceName, includeResolver, spirv, reflectionJson)
 
         @JvmStatic
         fun main(args: Array<String>) {

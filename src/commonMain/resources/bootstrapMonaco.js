@@ -272,8 +272,10 @@ const ensureDebugProbeOutputRoot = (uid, channel) => {
 
 const renderDebugProbeEvent = (editor, payload) => {
         if (!payload) return
-        const html = typeof payload.html === "string" ? payload.html : ""
+        let html = typeof payload.html === "string" ? payload.html : ""
         if (html.trim().length === 0) return
+        // Wrap debug probe output in a container that reduces font size by 30%, except for .h2 visualizer
+        html = `<div class='afield-debug-probe-root'>${html}</div>`
         const root = ensureDebugProbeOutputRoot(payload.uid, payload.channel)
         if (root && "innerHTML" in root) {
                 root.innerHTML = html
@@ -307,7 +309,7 @@ const installDebugProbeDoubleClick = (editor, resolveContext) => {
                         channel: "debug probe",
                         line: request.payload.line,
                         annotation: `<i>debug ${escapeProbeHtml(request.payload.symbol)}</i>`,
-                        html: `<div style='min-width:320px; color:#ddd; font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;'><div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap;'><div style='font-size:13px; color:#9ad;'><strong>debug probe</strong> <code>${escapeProbeHtml(request.payload.symbol)}</code></div><span style='display:inline-block; padding:2px 8px; border-radius:999px; background:rgba(56,92,152,0.32); color:#d8e7ff;'>waiting</span></div><div style='margin-top:8px; color:#c9ddff;'>Attaching to the JVM helper…</div></div>`,
+                        html: `<div style='min-width:320px; color:#ddd; font:10px/1.45 iosevka;'><div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap;'><div style='font-size:13px; color:#9ad;'><strong>debug probe</strong> <code>${escapeProbeHtml(request.payload.symbol)}</code></div><span style='display:inline-block; padding:2px 8px; border-radius:999px; background:rgba(56,92,152,0.32); color:#d8e7ff;'>waiting</span></div><div style='margin-top:8px; color:#c9ddff;'>Attaching to the JVM helper…</div></div>`,
                         sequence: 0,
                 }
                 renderDebugProbeEvent(editor, placeholder)
@@ -1086,6 +1088,15 @@ window.showMonaco = showMonaco
 window.launchAll = monacoLaunchAll
 window.continueAll = monacoContinueAll
 
+// Style for debug probe font size reduction, except for .h2 visualizer
+if (typeof document !== "undefined") {
+        const style = document.createElement("style");
+        style.innerHTML = `
+                .afield-debug-probe-root { font-size: 70% !important; }
+                .afield-debug-probe-root .h2, .afield-debug-probe-root.h2 { font-size: revert !important; }
+        `;
+        document.head.appendChild(style);
+}
 // Documentation iframe support
 let docsIframeAnimationGeneration = 0
 

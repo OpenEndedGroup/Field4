@@ -40,10 +40,10 @@ fun Box.lines(
         return widget.viewState
     } else if (hasInteractive) {
         val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, buildInteractiveSVG(pairs, w, h))
+        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
     } else {
         val scaled = lines.map { it.applyFit(fit) }
-        display(channel, drawToSVG(scaled, w, h))
+        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
     }
     return null
 }
@@ -78,10 +78,10 @@ fun Box.lines(
         return widget.viewState
     } else if (hasInteractive) {
         val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, buildInteractiveSVG(pairs, w, h))
+        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
     } else {
         val scaled = lines.map { it.applyFit(fit) }
-        display(channel, drawToSVG(scaled, w, h))
+        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
     }
     return null
 }
@@ -122,10 +122,10 @@ fun Box.lines(
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, buildInteractiveSVG(pairs, w, h))
+                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
             } else {
                 val scaled = lines.map { it.applyFit(fit) }
-                display(channelName, drawToSVG(scaled, w, h))
+                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h)))
             }
         }
     } else {
@@ -137,10 +137,10 @@ fun Box.lines(
             states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, buildInteractiveSVG(pairs, w, h))
+            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
         } else {
             val scaled = allLines.map { it.applyFit(fit) }
-            display(channel, drawToSVG(scaled, w, h))
+            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
         }
     }
     return states
@@ -174,6 +174,10 @@ private fun emptySvg(w: Double, h: Double): String {
     val width = if (w > 0.0) w else 1.0
     val height = if (h > 0.0) h else 1.0
     return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
+}
+
+private fun wrapLinesOutput(svg: String): String {
+    return """<div class="afield-lines-output" data-afield-lines-output="true">$svg</div>"""
 }
 
 /**

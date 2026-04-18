@@ -291,6 +291,7 @@ object MacroRegistry {
 
     init {
 
+        registerLygiaIncludeRoot()
         callRewrite["moduleHere"] = { box, id, args ->
             box.macro_moduleHere(args)
         }

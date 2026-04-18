@@ -112,11 +112,29 @@ class MeshModule(val parameters: Parameters) : Renderable {
     var after = linkedMapOf<String, Target>()
 
     val ti = parameters.taskIntrospection
-        ?: Introspection(parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler)
+        ?: Introspection(
+            parameters.task,
+            ShaderKind.TASK_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.taskSourceName,
+            includeResolver = parameters.taskIncludeResolver
+        )
     val mi = parameters.meshIntrospection
-        ?: Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
+        ?: Introspection(
+            parameters.mesh,
+            ShaderKind.MESH_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.meshSourceName,
+            includeResolver = parameters.meshIncludeResolver
+        )
     val fi = parameters.fragmentIntrospection
-        ?: Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
+        ?: Introspection(
+            parameters.fragment,
+            ShaderKind.FRAGMENT_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.fragmentSourceName,
+            includeResolver = parameters.fragmentIncludeResolver
+        )
 
     val pushConstantSize = (ti.pushConstants + mi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 

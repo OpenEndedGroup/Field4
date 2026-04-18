@@ -18,8 +18,6 @@ object Options {
         else throw IllegalStateException("Unsupported OS: $it")
     }
 
-    val spirv_cross_path = "./bin/spirv-cross-$target" + (if (isWindows) ".exe"  else "")
-
     var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.335.1/macOS/lib/libvulkan.1.dylib"
     val useVulkanSDK = true
     val robustness = false

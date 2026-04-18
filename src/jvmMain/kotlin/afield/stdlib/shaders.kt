@@ -6,12 +6,7 @@ import afield.four.device.Instance.Companion.globalAsyncDebugHandler
 import afield.four.modules.*
 import afield.four.targets.RenderToTexture
 import afield.four.texture.*
-import afield.four.util.FIELD_PROBE_BUFFER_NAME
-import afield.four.util.FIELD_PROBE_INCLUDE_NAME
-import afield.four.util.ShaderFieldProbe
-import afield.four.util.IncludeResolver
-import afield.four.util.getShaderTemplateResolverForBox
-import afield.four.util.runTemplate
+import afield.four.util.*
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
@@ -24,7 +19,14 @@ import org.joml.Vector4f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
+import java.net.HttpURLConnection
+import java.net.URI
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.time.LocalDateTime
+import java.util.concurrent.ConcurrentHashMap
 
 // ------------------------------
 // Box properties
@@ -56,6 +58,187 @@ var Box._fieldProbe by Delegation<ShaderFieldProbe?>()
 
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
     defaultValue = { HashMap<String, Any>() })
+
+data class ShaderIncludeRootRequest(
+    val root: String,
+    val includePath: String,
+    val requestedPath: String,
+    val requestingSourcePath: String?,
+    val includeType: ShaderIncludeType,
+    val includeDepth: Long
+)
+
+fun interface ShaderIncludeRootResolver {
+    fun resolve(request: ShaderIncludeRootRequest): ShaderIncludeResolution?
+}
+
+private val shaderIncludeRoots = ConcurrentHashMap<String, ShaderIncludeRootResolver>()
+
+fun registerShaderIncludeRoot(root: String, resolver: ShaderIncludeRootResolver) {
+    shaderIncludeRoots[normalizeShaderIncludeRootName(root)] = resolver
+}
+
+fun unregisterShaderIncludeRoot(root: String): ShaderIncludeRootResolver? =
+    shaderIncludeRoots.remove(normalizeShaderIncludeRootName(root))
+
+fun listShaderIncludeRoots(): Set<String> = shaderIncludeRoots.keys.toSortedSet()
+
+data class ShaderRemoteIncludeCacheOptions(
+    val cacheDirectory: Path,
+    val connectTimeoutMillis: Int = 5_000,
+    val readTimeoutMillis: Int = 5_000
+)
+
+private const val LYGIA_SHADER_ROOT = "lygia"
+private const val LYGIA_REMOTE_BASE_URL = "https://lygia.xyz"
+
+private fun defaultShaderIncludeCacheDirectory(): Path =
+    Paths.get(System.getProperty("user.home"), ".field4", "shader-include-cache")
+
+private fun cachePathForShaderInclude(cacheDirectory: Path, includePath: String): Path {
+    val normalizedCacheDirectory = cacheDirectory.toAbsolutePath().normalize()
+    val normalizedIncludePath = normalizeShaderIncludePath(includePath)
+    val target = normalizedCacheDirectory.resolve(normalizedIncludePath).normalize()
+    require(target.startsWith(normalizedCacheDirectory)) {
+        "Shader include path '$includePath' escapes cache directory '$normalizedCacheDirectory'."
+    }
+    return target
+}
+
+private fun fetchRemoteShaderInclude(url: String, options: ShaderRemoteIncludeCacheOptions): String {
+    val connection = URI(url).toURL().openConnection() as HttpURLConnection
+    connection.requestMethod = "GET"
+    connection.instanceFollowRedirects = true
+    connection.connectTimeout = options.connectTimeoutMillis
+    connection.readTimeout = options.readTimeoutMillis
+    connection.setRequestProperty("Accept", "text/plain, text/x-glsl, */*")
+    connection.setRequestProperty("User-Agent", "Field4 Shader Include Resolver")
+
+    notify("Fetching remote shader include for ${url}", "remoteShader")
+
+    return try {
+        val code = connection.responseCode
+        if (code != HttpURLConnection.HTTP_OK) {
+
+            val details = connection.errorStream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+            val message = buildString {
+                append("HTTP ")
+                append(code)
+                append(" while fetching '")
+                append(url)
+                append("'")
+                if (details != null) {
+                    append(": ")
+                    append(details)
+                }
+            }
+            notify("error ${code} fetching remote shader include for ${url} ${details}", "remoteShader")
+
+            throw IllegalArgumentException(message)
+        }
+
+        notify("fetched remote shader include for ${url}", "remoteShader")
+        connection.inputStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+    } finally {
+        connection.disconnect()
+    }
+}
+
+fun shaderCachedUrlIncludeRootResolver(
+    root: String,
+    baseUrl: String,
+    cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(
+        cacheDirectory = defaultShaderIncludeCacheDirectory().resolve(normalizeShaderIncludeRootName(root))
+    )
+): ShaderIncludeRootResolver {
+    val normalizedRoot = normalizeShaderIncludeRootName(root)
+    val normalizedBaseUrl = baseUrl.trimEnd('/')
+    val normalizedCacheDirectory = cacheOptions.cacheDirectory.toAbsolutePath().normalize()
+
+    return ShaderIncludeRootResolver { request ->
+        val includePath = normalizeShaderIncludePath(request.includePath)
+        val cacheFile = cachePathForShaderInclude(normalizedCacheDirectory, includePath)
+
+        if (Files.isRegularFile(cacheFile)) {
+            notify("remote shader is cached at ${cacheFile.toAbsolutePath()}", "remoteShader")
+            return@ShaderIncludeRootResolver ShaderIncludeResolution(
+                resolvedPath = canonicalShaderRootPath(normalizedRoot, includePath),
+                source = Files.readString(cacheFile)
+            )
+        }
+
+        val remoteUrl = "$normalizedBaseUrl/$includePath"
+        val source = fetchRemoteShaderInclude(remoteUrl, cacheOptions)
+        cacheFile.parent?.let { Files.createDirectories(it) }
+        Files.writeString(cacheFile, source, StandardCharsets.UTF_8)
+
+        ShaderIncludeResolution(
+            resolvedPath = canonicalShaderRootPath(normalizedRoot, includePath),
+            source = source
+        )
+    }
+}
+
+fun shaderLygiaIncludeRootResolver(
+    cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(
+        cacheDirectory = defaultShaderIncludeCacheDirectory().resolve("lygia.xyz")
+    )
+): ShaderIncludeRootResolver = shaderCachedUrlIncludeRootResolver(
+    root = LYGIA_SHADER_ROOT,
+    baseUrl = LYGIA_REMOTE_BASE_URL,
+    cacheOptions = cacheOptions
+)
+
+fun shaderLygiaIncludeRootResolver(cacheDirectory: Path): ShaderIncludeRootResolver =
+    shaderLygiaIncludeRootResolver(ShaderRemoteIncludeCacheOptions(cacheDirectory = cacheDirectory))
+
+fun shaderLygiaIncludeRootResolver(cacheDirectory: String): ShaderIncludeRootResolver =
+    shaderLygiaIncludeRootResolver(Paths.get(cacheDirectory))
+
+fun registerLygiaIncludeRoot(
+    cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(
+        cacheDirectory = defaultShaderIncludeCacheDirectory().resolve("lygia.xyz")
+    )
+) {
+    registerShaderIncludeRoot(LYGIA_SHADER_ROOT, shaderLygiaIncludeRootResolver(cacheOptions))
+}
+
+fun registerLygiaIncludeRoot(cacheDirectory: Path) {
+    registerShaderIncludeRoot(LYGIA_SHADER_ROOT, shaderLygiaIncludeRootResolver(cacheDirectory))
+}
+
+fun registerLygiaIncludeRoot(cacheDirectory: String) {
+    registerLygiaIncludeRoot(Paths.get(cacheDirectory))
+}
+
+fun shaderFilesystemIncludeRootResolver(directory: Path): ShaderIncludeRootResolver {
+    val rootDirectory = directory.toAbsolutePath().normalize()
+    return ShaderIncludeRootResolver { request ->
+        val target = rootDirectory.resolve(request.includePath).normalize()
+        require(target.startsWith(rootDirectory)) {
+            "Include '${request.requestedPath}' escapes filesystem shader root '$rootDirectory'."
+        }
+        if (!Files.isRegularFile(target)) return@ShaderIncludeRootResolver null
+        ShaderIncludeResolution(
+            resolvedPath = canonicalShaderRootPath(request.root, request.includePath),
+            source = Files.readString(target)
+        )
+    }
+}
+
+fun shaderFilesystemIncludeRootResolver(directory: String): ShaderIncludeRootResolver =
+    shaderFilesystemIncludeRootResolver(Paths.get(directory))
+
+fun registerShaderFilesystemIncludeRoot(root: String, directory: Path) {
+    val normalizedRoot = normalizeShaderIncludeRootName(root)
+    registerShaderIncludeRoot(normalizedRoot, shaderFilesystemIncludeRootResolver(directory))
+}
+
+fun registerShaderFilesystemIncludeRoot(root: String, directory: String) {
+    registerShaderFilesystemIncludeRoot(root, Paths.get(directory))
+}
 
 fun Box.fieldProbeHere(
     samples: Int = afield.four.util.FIELD_PROBE_DEFAULT_SAMPLES,
@@ -182,6 +365,103 @@ private fun shaderKindForProperty(property: String, fallback: ShaderKind): Shade
     else -> fallback
 }
 
+private fun normalizeShaderIncludeRootName(root: String): String {
+    val normalized = root.trim().trim('/').trim('\\')
+    require(normalized.isNotEmpty()) { "Shader include root name cannot be empty." }
+    require('/' !in normalized && '\\' !in normalized) {
+        "Shader include root '$normalized' must be a single path segment."
+    }
+    return normalized
+}
+
+private fun normalizeShaderIncludePath(path: String): String {
+    val normalized = path.replace('\\', '/').trim()
+    require(normalized.isNotEmpty()) { "Shader include path cannot be empty." }
+
+    val parts = mutableListOf<String>()
+    normalized.split('/').forEach { part ->
+        when (part) {
+            "", "." -> Unit
+            ".." -> {
+                require(parts.isNotEmpty()) { "Shader include path '$path' escapes its root." }
+                parts.removeLast()
+            }
+            else -> parts += part
+        }
+    }
+
+    return parts.joinToString("/")
+}
+
+private fun canonicalShaderRootPath(root: String, includePath: String): String =
+    buildString {
+        append(normalizeShaderIncludeRootName(root))
+        if (includePath.isNotBlank()) {
+            append('/')
+            append(normalizeShaderIncludePath(includePath))
+        }
+    }
+
+private fun boxShaderSourceName(box: Box, property: String): String {
+    val boxLabel = box.name.trim().ifBlank { "box" }
+        .replace(Regex("[^A-Za-z0-9._-]+"), "_")
+    val propertyLabel = property.trim().ifBlank { "shader" }
+        .replace(Regex("[^A-Za-z0-9._-]+"), "_")
+    return "field/$boxLabel-${box.id}/$propertyLabel.glsl"
+}
+
+private fun resolveShaderIncludeRoot(request: ShaderIncludeRequest): ShaderIncludeResolution? {
+    val requestedPath = request.requestedPath.trim()
+    val requestingSource = request.requestingSource?.trim()?.takeIf { it.isNotEmpty() }
+
+    val directRoot = requestedPath.substringBefore('/', missingDelimiterValue = "")
+    if (directRoot.isNotEmpty() && shaderIncludeRoots.containsKey(directRoot)) {
+        val includePath = normalizeShaderIncludePath(requestedPath.substringAfter('/'))
+        val resolution = shaderIncludeRoots.getValue(directRoot).resolve(
+            ShaderIncludeRootRequest(
+                root = directRoot,
+                includePath = includePath,
+                requestedPath = requestedPath,
+                requestingSourcePath = requestingSource,
+                includeType = request.includeType,
+                includeDepth = request.includeDepth
+            )
+        )
+        requireNotNull(resolution) {
+            "Unable to resolve include '$requestedPath' from '${requestingSource ?: "<root>"}' in shader root '$directRoot'."
+        }
+        return resolution
+    }
+
+    if (request.includeType == ShaderIncludeType.RELATIVE && requestingSource != null) {
+        val requestingRoot = requestingSource.substringBefore('/', missingDelimiterValue = "")
+        if (shaderIncludeRoots.containsKey(requestingRoot)) {
+            val basePath = requestingSource.removePrefix("$requestingRoot/")
+            val baseDirectory = basePath.substringBeforeLast('/', "")
+            val resolvedRelativePath = normalizeShaderIncludePath(
+                listOfNotNull(baseDirectory.takeIf { it.isNotBlank() }, requestedPath)
+                    .joinToString("/")
+            )
+            val resolution = shaderIncludeRoots.getValue(requestingRoot).resolve(
+                ShaderIncludeRootRequest(
+                    root = requestingRoot,
+                    includePath = resolvedRelativePath,
+                    requestedPath = requestedPath,
+                    requestingSourcePath = requestingSource,
+                    includeType = request.includeType,
+                    includeDepth = request.includeDepth
+                )
+            )
+            requireNotNull(resolution) {
+                "Unable to resolve include '$requestedPath' from '$requestingSource' in shader root '$requestingRoot'."
+            }
+            return resolution
+        }
+    }
+
+    return null
+}
+
 private fun parseShaderIncludeRef(path: String, defaultProperty: String): ShaderIncludeRef {
     val trimmed = path.trim()
     require(trimmed.isNotEmpty()) { "Empty shader include path." }
@@ -251,6 +531,40 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         FIELD_PROBE_INCLUDE_NAME -> inside.ensureFieldProbe().includeSource()
         else -> null
     }
+}
+
+private fun shaderIncludeResolverFor(inside: Box, defaultProperty: String): ShaderIncludeResolver = ShaderIncludeResolver { request ->
+    val includePath = request.requestedPath.trim()
+
+    builtInShaderInclude(inside, includePath)?.let { builtIn ->
+        return@ShaderIncludeResolver ShaderIncludeResolution(
+            resolvedPath = "field/include/$includePath.glsl",
+            source = builtIn
+        )
+    }
+
+    resolveShaderIncludeRoot(request)?.let { return@ShaderIncludeResolver it }
+
+    if (includePath.contains('/')) {
+        val source = request.requestingSource?.takeIf { it.isNotBlank() } ?: boxShaderSourceName(inside, defaultProperty)
+        throw IllegalArgumentException(
+            "Unable to resolve include '$includePath' from '$source': no registered include root named '${includePath.substringBefore('/')}'."
+        )
+    }
+
+    val includeRef = parseShaderIncludeRef(includePath, defaultProperty)
+    val targetBox = findBoxByNameForInclude(inside, includeRef.boxName)
+        ?: throw IllegalArgumentException("Unable to resolve include '$includePath': no box named '${includeRef.boxName}'.")
+    val includeBody = getIncludePropertyValue(targetBox, includeRef.property)
+        ?.takeIf { it.isNotBlank() }
+        ?: throw IllegalArgumentException(
+            "Unable to resolve include '$includePath': '${includeRef.property}' on box '${targetBox.name}' is empty."
+        )
+
+    ShaderIncludeResolution(
+        resolvedPath = boxShaderSourceName(targetBox, includeRef.property),
+        source = includeBody
+    )
 }
 
 private fun attachFieldProbe(box: Box, parameters: Parameters) {
@@ -335,6 +649,7 @@ private data class PreparedShaderStage(
     val kind: ShaderKind,
     val baseProperty: String,
     val sourceProperty: String,
+    val sourceName: String,
     val source: String,
     val preprocessedSource: String,
     val glslSource: String,
@@ -472,6 +787,7 @@ private fun prepareShaderStage(box: Box, kind: ShaderKind, baseProperty: String)
         kind = kind,
         baseProperty = baseProperty,
         sourceProperty = sourceProperty,
+        sourceName = boxShaderSourceName(box, sourceProperty),
         source = source,
         preprocessedSource = preprocessedSource,
         glslSource = glslSource,
@@ -486,6 +802,7 @@ private fun compileStage(
     stage: PreparedShaderStage
 ): CompileResult {
     var hadError = false
+    val includeResolver = shaderIncludeResolverFor(box, stage.sourceProperty)
     val handler = { message: String, throwable: Throwable ->
         val throwableMsg = throwable.message?.let { " $it" } ?: ""
         lprintln("error,graphics", "error during ${stage.logLabel} compilation $message$throwableMsg")
@@ -499,10 +816,18 @@ private fun compileStage(
             kind = stage.kind,
             spirv = stage.spirv,
             reflectionJson = stage.reflectionJson,
+            sourceName = stage.sourceName,
+            includeResolver = includeResolver,
             errorHandler = handler
         )
     } else {
-        Introspection(stage.glslSource, stage.kind, errorHandler = handler)
+        Introspection(
+            stage.glslSource,
+            stage.kind,
+            errorHandler = handler,
+            sourceName = stage.sourceName,
+            includeResolver = includeResolver
+        )
     }
     return CompileResult(if (hadError) null else i, hadError)
 }
@@ -1246,6 +1571,8 @@ fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
 }
 
 fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
+    val vertexSourceProperty = sourcePropertyForStage(this, "vertex")
+    val fragmentSourceProperty = sourcePropertyForStage(this, "fragment")
     if (!shaderPropertyValue(this, sharedVertexFragmentProperty).isNullOrBlank()) {
         clearShaderErrorsForBaseProperties(this, "vertex", "fragment")
         val vertexStage = prepareShaderStage(this, ShaderKind.VERTEX_SHADER, "vertex")
@@ -1271,6 +1598,11 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
         p.vertex = this._vertex!!
         p.fragment = this._fragment!!
     }
+
+    p.vertexSourceName = boxShaderSourceName(this, vertexSourceProperty)
+    p.fragmentSourceName = boxShaderSourceName(this, fragmentSourceProperty)
+    p.vertexIncludeResolver = shaderIncludeResolverFor(this, vertexSourceProperty)
+    p.fragmentIncludeResolver = shaderIncludeResolverFor(this, fragmentSourceProperty)
 
     if (p.name == "unnamed module") p.name = "module in box '${name}' (${id})"
 
@@ -1457,6 +1789,9 @@ fun Box._computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer {
 
 fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
     p.compute = this._compute!!
+    val computeSourceProperty = sourcePropertyForStage(this, "compute")
+    p.computeSourceName = boxShaderSourceName(this, computeSourceProperty)
+    p.computeIncludeResolver = shaderIncludeResolverFor(this, computeSourceProperty)
 
     p.textureResolver = textureResolverFor(p.textureResolver)
 
@@ -1600,6 +1935,15 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
     p.mesh = this._mesh!!
     p.task = this._task!!
     p.fragment = this._fragment!!
+    val taskSourceProperty = sourcePropertyForStage(this, "task")
+    val meshSourceProperty = sourcePropertyForStage(this, "mesh")
+    val fragmentSourceProperty = sourcePropertyForStage(this, "fragment")
+    p.taskSourceName = boxShaderSourceName(this, taskSourceProperty)
+    p.meshSourceName = boxShaderSourceName(this, meshSourceProperty)
+    p.fragmentSourceName = boxShaderSourceName(this, fragmentSourceProperty)
+    p.taskIncludeResolver = shaderIncludeResolverFor(this, taskSourceProperty)
+    p.meshIncludeResolver = shaderIncludeResolverFor(this, meshSourceProperty)
+    p.fragmentIncludeResolver = shaderIncludeResolverFor(this, fragmentSourceProperty)
 
     p.errorHandler = { message, throwable ->
         this.error(message, "code", numberFromErrorMessage(message) ?: 0)

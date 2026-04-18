@@ -112,7 +112,13 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     val after = linkedMapOf<String, Target>()
 
     val ci = parameters.computeIntrospection
-        ?: Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
+        ?: Introspection(
+            parameters.compute,
+            ShaderKind.COMPUTE_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.computeSourceName,
+            includeResolver = parameters.computeIncludeResolver
+        )
 
     var csm: Long = 0L
 

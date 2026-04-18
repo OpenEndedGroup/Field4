@@ -7,9 +7,11 @@ import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.Cursor
 import kotlinx.serialization.Serializable
 import org.joml.Vector3d
+import org.joml.Vector3f
 import org.joml.minus
 import org.joml.plus
 import org.joml.times
+import java.lang.Math
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -25,6 +27,13 @@ operator fun List<FLine>.plus(offset: Vec3) = this.map { it + offset }
  * Scale all lines in the list component-wise by [scale].
  */
 operator fun List<FLine>.times(scale: Vec3) = this.map { it * scale }
+
+operator fun List<FLine>.plus(offset: Vec2) = this.map { it + offset }
+
+/**
+ * Scale all lines in the list component-wise by [scale].
+ */
+operator fun List<FLine>.times(scale: Vec2) = this.map { it * scale }
 
 /**
  * Rotate all lines in the list by [rotation].
@@ -69,7 +78,8 @@ operator fun FLineMap.times(scale: Number) = this.entries.associate { it.key to 
 /**
  * Rotate all lines in each map entry by [rotation].
  */
-operator fun Map<String, List<FLine>>.times(rotation: Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+operator fun Map<String, List<FLine>>.times(rotation: Quat) =
+    this.entries.associate { it.key to it.value.times(rotation) }
 
 /**
  * Rotate all lines in an [FLineMap] by [rotation].
@@ -505,6 +515,18 @@ class FLine : HasProperties {
      */
     fun copy() = this.transform { Vec3(it) }
 
+    fun center(): Vector3f {
+        val (min, max) = this.fast3DBounds()
+        return min.lerp(max, 0.5f)
+    }
+
+    fun midPoint(): Vector3f {
+        val c = cursor()
+        return c.setD(c.lengthD() / 2).position()
+    }
+
+    fun closeMidPoint() = cursor(nodes.mapNotNull { it.storage.getOrNull(0) }.center()).position()
+
     /**
      * Copy this line and apply a mutating block to the clone.
      */
@@ -584,7 +606,13 @@ class FLine : HasProperties {
             "FLine",
             "nodes" to nodes.size,
             "pieces" to pieces().size,
-            "bounds" to bbox?.let { "[${prettyNumber(it.x)} , ${prettyNumber(it.y)} , ${prettyNumber(it.w)} x ${prettyNumber(it.h)}]" },
+            "bounds" to bbox?.let {
+                "[${prettyNumber(it.x)} , ${prettyNumber(it.y)} , ${prettyNumber(it.w)} x ${
+                    prettyNumber(
+                        it.h
+                    )
+                }]"
+            },
             "properties" to properties.keys.take(4)
         )
     }
@@ -625,6 +653,21 @@ class FLine : HasProperties {
             }
         }
         return r!!
+    }
+
+    fun fast3DBounds(): Pair<Vec3, Vec3> {
+        var q = Vec3(
+            Float.POSITIVE_INFINITY,
+            Float.POSITIVE_INFINITY,
+            Float.NEGATIVE_INFINITY
+        ) to Vec3(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+        nodes.forEach {
+            it.storage.forEach { X ->
+                q.first.min(X)
+                q.second.max(X)
+            }
+        }
+        return q
     }
 
     /**
@@ -763,12 +806,12 @@ class FLine : HasProperties {
     }
 
     @JvmName("invoke_1")
-    fun invoke(f : FLine.() -> FLine) : FLine {
+    fun invoke(f: FLine.() -> FLine): FLine {
         return f.invoke(this)
     }
 
     @JvmName("invoke_2")
-    fun invoke(f : FLine.() -> Unit) : FLine{
+    fun invoke(f: FLine.() -> Unit): FLine {
         f.invoke(this)
         return this;
     }
@@ -935,6 +978,12 @@ class FLine : HasProperties {
             if (c.isNotEmpty()) {
                 meshAcceptor(da, c)
             }
+        }
+    }
+
+    operator fun plusAssign(other: FLine) {
+        other.nodes.forEach {
+            this.copyTo(it)
         }
     }
 
@@ -1146,6 +1195,7 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
                 val a = take()
                 f.lineTo(a)          // uses your Vec3 overload
             }
+
             's' -> {
                 ensure(1, "smoothTo")
                 val a = take()

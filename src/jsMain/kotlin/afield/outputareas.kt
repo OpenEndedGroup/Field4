@@ -1,7 +1,10 @@
 
 import afield.*
 import kotlinx.browser.document
+import kotlinx.browser.window
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlin.math.max
+import kotlin.math.min
 import org.w3c.dom.*
 
 external fun disclosureInterface(container: Element): dynamic
@@ -39,6 +42,286 @@ fun insertHTMLWithScripts(container: Element, htmlString: String, isModule : Boo
 
     // Insert the fragment into the container at the desired location
     container.appendChild(fragment)
+}
+
+private data class LinesBounds(
+    val x: Double,
+    val y: Double,
+    val width: Double,
+    val height: Double
+)
+
+private fun parsePositiveDouble(raw: String?): Double? {
+    val candidate = raw?.trim()?.removeSuffix("px")?.takeIf { it.isNotEmpty() } ?: return null
+    return candidate.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
+}
+
+private fun parseSvgViewBox(raw: String?): LinesBounds? {
+    val parts = raw
+        ?.trim()
+        ?.split(Regex("[\\s,]+"))
+        ?.mapNotNull { it.toDoubleOrNull() }
+        ?: return null
+    if (parts.size < 4) return null
+    val width = parts[2]
+    val height = parts[3]
+    if (!width.isFinite() || !height.isFinite() || width <= 0.0 || height <= 0.0) return null
+    return LinesBounds(parts[0], parts[1], width, height)
+}
+
+private fun parseLinesWrapper(htmlString: String): HTMLElement? {
+    val range = document.createRange()
+    val fragment = range.createContextualFragment(htmlString)
+    return fragment.querySelector(".afield-lines-output") as? HTMLElement
+}
+
+private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
+    val existing = contentRoot.asDynamic().__afieldLinesView
+    if (existing != null) {
+        val root = existing.root as? HTMLElement
+        if (root != null && root.parentNode == null) contentRoot.appendChild(root)
+        return existing
+    }
+
+    val root = document.createElement("div") as HTMLElement
+    root.className = "afield-lines-output-shell"
+    root.style.apply {
+        position = "relative"
+        width = "100%"
+        height = "100%"
+        minWidth = "0"
+        minHeight = "0"
+    }
+
+    val viewport = document.createElement("div") as HTMLElement
+    viewport.className = "afield-lines-output-viewport"
+    viewport.style.apply {
+        position = "relative"
+        setProperty("overflow", "hidden")
+        width = "100%"
+        height = "100%"
+        minWidth = "0"
+        minHeight = "0"
+        border = "1px solid rgba(255,255,255,0.07)"
+        background = "rgba(0,0,0,0.16)"
+        boxSizing = "border-box"
+        setProperty("touch-action", "none")
+        cursor = "grab"
+    }
+
+    val stage = document.createElementNS("http://www.w3.org/2000/svg", "svg") as Element
+    stage.setAttribute("width", "100%")
+    stage.setAttribute("height", "100%")
+    stage.setAttribute("preserveAspectRatio", "none")
+    stage.setAttribute("style", "display:block;overflow:hidden;background:transparent;")
+
+    val stageGroup = document.createElementNS("http://www.w3.org/2000/svg", "g") as Element
+    stage.appendChild(stageGroup)
+    viewport.appendChild(stage)
+    root.appendChild(viewport)
+    contentRoot.appendChild(root)
+    contentRoot.asDynamic().dataset.afieldAutoSizeMode = "fixed"
+    contentRoot.style.padding = "0px"
+
+    val view = js("({})")
+    view.root = root
+    view.viewport = viewport
+    view.stage = stage
+    view.stageGroup = stageGroup
+    view.scale = 1.0
+    view.tx = 0.0
+    view.ty = 0.0
+    view.manual = false
+    view.contentBounds = null
+    view.viewportWidth = 1.0
+    view.viewportHeight = 1.0
+    view.panPointerId = null
+    view.panLastX = 0.0
+    view.panLastY = 0.0
+    view.sourceWidth = 1.0
+    view.sourceHeight = 1.0
+    view.lastMeasuredWidth = -1.0
+    view.lastMeasuredHeight = -1.0
+
+    fun updateTransform() {
+        val scale = (view.scale as Double)
+        val tx = (view.tx as Double)
+        val ty = (view.ty as Double)
+        stageGroup.setAttribute("transform", "matrix($scale 0 0 $scale $tx $ty)")
+    }
+
+    fun updateViewportMetrics() {
+        val measuredWidth = viewport.clientWidth.toDouble()
+        val measuredHeight = viewport.clientHeight.toDouble()
+        val fallbackWidth = view.sourceWidth as Double
+        val fallbackHeight = view.sourceHeight as Double
+        view.viewportWidth = max(1.0, if (measuredWidth > 0.0) measuredWidth else fallbackWidth)
+        view.viewportHeight = max(1.0, if (measuredHeight > 0.0) measuredHeight else fallbackHeight)
+        stage.setAttribute("viewBox", "0 0 ${view.viewportWidth} ${view.viewportHeight}")
+    }
+
+    fun fitToContent() {
+        val bounds = view.contentBounds as? LinesBounds ?: return
+        updateViewportMetrics()
+        val viewportWidth = max(1.0, view.viewportWidth as Double)
+        val viewportHeight = max(1.0, view.viewportHeight as Double)
+        val pad = max(12.0, min(viewportWidth, viewportHeight) * 0.06)
+        val scale = min(
+            (viewportWidth - pad * 2.0) / max(bounds.width, 1e-6),
+            (viewportHeight - pad * 2.0) / max(bounds.height, 1e-6)
+        ).coerceAtLeast(1e-6)
+        view.scale = scale
+        view.tx = (viewportWidth - bounds.width * scale) * 0.5 - bounds.x * scale
+        view.ty = (viewportHeight - bounds.height * scale) * 0.5 - bounds.y * scale
+        updateTransform()
+    }
+
+    fun endPan() {
+        view.panPointerId = null
+        viewport.style.cursor = "grab"
+    }
+
+    viewport.onwheel = { event ->
+        event.preventDefault()
+        val rect = viewport.getBoundingClientRect()
+        val px = event.clientX - rect.left
+        val py = event.clientY - rect.top
+        val currentScale = view.scale as Double
+        val factor = if (event.deltaY < 0) 1.12 else 1.0 / 1.12
+        val nextScale = (currentScale * factor).coerceIn(1e-4, 1e4)
+        if (nextScale != currentScale) {
+            val tx = view.tx as Double
+            val ty = view.ty as Double
+            val worldX = (px - tx) / currentScale
+            val worldY = (py - ty) / currentScale
+            view.scale = nextScale
+            view.tx = px - worldX * nextScale
+            view.ty = py - worldY * nextScale
+            view.manual = true
+            updateTransform()
+        }
+        null
+    }
+
+    viewport.onpointerdown = { event ->
+        if (event.button.toInt() != 0 && event.button.toInt() != 1) {
+            null
+        } else {
+        view.panPointerId = event.pointerId
+        view.panLastX = event.clientX
+        view.panLastY = event.clientY
+        view.manual = true
+        viewport.style.cursor = "grabbing"
+        viewport.setPointerCapture(event.pointerId)
+        event.preventDefault()
+        null
+        }
+    }
+
+    viewport.onpointermove = { event ->
+        if ((view.panPointerId as? Number)?.toInt() != event.pointerId.toInt()) {
+            null
+        } else {
+            val dx = event.clientX - (view.panLastX as Double)
+            val dy = event.clientY - (view.panLastY as Double)
+            view.panLastX = event.clientX
+            view.panLastY = event.clientY
+            view.tx = (view.tx as Double) + dx
+            view.ty = (view.ty as Double) + dy
+            updateTransform()
+            null
+        }
+    }
+
+    viewport.onpointerup = { event ->
+        if ((view.panPointerId as? Number)?.toInt() == event.pointerId.toInt()) endPan()
+        null
+    }
+
+    viewport.onpointercancel = {
+        endPan()
+        null
+    }
+
+    viewport.ondblclick = {
+        view.manual = false
+        fitToContent()
+        null
+    }
+
+    fun watchViewportSize() {
+        if (root.parentNode == null) return
+        val width = viewport.clientWidth.toDouble()
+        val height = viewport.clientHeight.toDouble()
+        if (width != (view.lastMeasuredWidth as Double) || height != (view.lastMeasuredHeight as Double)) {
+            view.lastMeasuredWidth = width
+            view.lastMeasuredHeight = height
+            updateViewportMetrics()
+            if (!(view.manual as Boolean)) {
+                fitToContent()
+            } else {
+                updateTransform()
+            }
+        }
+        window.requestAnimationFrame {
+            watchViewportSize()
+        }
+    }
+    watchViewportSize()
+
+    view.updateViewportMetrics = { updateViewportMetrics() }
+    view.updateTransform = { updateTransform() }
+    view.fitToContent = { fitToContent() }
+    contentRoot.asDynamic().__afieldLinesView = view
+    return view
+}
+
+private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: String): Boolean {
+    val wrapper = parseLinesWrapper(htmlString) ?: return false
+    val sourceSvg = wrapper.querySelector("svg") as? Element ?: return false
+    val view = ensureLinesOutputView(contentRoot)
+    val stageGroup = view.stageGroup as Element
+
+    while (stageGroup.firstChild != null) {
+        stageGroup.removeChild(stageGroup.firstChild!!)
+    }
+    val sourceChildren = sourceSvg.childNodes
+    for (index in 0 until sourceChildren.length) {
+        val child = sourceChildren.item(index) ?: continue
+        stageGroup.appendChild(child.cloneNode(true))
+    }
+
+    val sourceViewBox = parseSvgViewBox(sourceSvg.getAttribute("viewBox"))
+    val groupBox = runCatching {
+        val box = stageGroup.asDynamic().getBBox()
+        if (box != null) LinesBounds(
+            x = (box.x as Number).toDouble(),
+            y = (box.y as Number).toDouble(),
+            width = (box.width as Number).toDouble(),
+            height = (box.height as Number).toDouble()
+        ) else null
+    }.getOrNull()
+    val fallbackWidth = parsePositiveDouble(sourceSvg.getAttribute("width")) ?: sourceViewBox?.width ?: groupBox?.width ?: 1.0
+    val fallbackHeight = parsePositiveDouble(sourceSvg.getAttribute("height")) ?: sourceViewBox?.height ?: groupBox?.height ?: 1.0
+    val contentBounds = sourceViewBox
+        ?: groupBox?.takeIf { it.width > 0.0 && it.height > 0.0 }
+        ?: LinesBounds(0.0, 0.0, fallbackWidth, fallbackHeight)
+
+    val sourceWidth = max(1.0, parsePositiveDouble(sourceSvg.getAttribute("width")) ?: contentBounds.width)
+    val sourceHeight = max(1.0, parsePositiveDouble(sourceSvg.getAttribute("height")) ?: contentBounds.height)
+
+    view.sourceWidth = sourceWidth
+    view.sourceHeight = sourceHeight
+    view.contentBounds = contentBounds
+    view.updateViewportMetrics()
+
+    if (!(view.manual as Boolean)) {
+        view.fitToContent()
+    } else {
+        view.updateTransform()
+    }
+
+    return true
 }
 
 fun renderLayersPalette(contentRoot: HTMLElement) {
@@ -275,6 +558,8 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else if (isLayersChannel) {
         renderLayersPalette(contentRoot as HTMLElement)
+        (inter.open as (String) -> Unit).invoke(channelId)
+    } else if (updatePersistentLinesOutput(contentRoot as HTMLElement, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else {
         insertHTMLWithScripts(contentRoot, set.value)

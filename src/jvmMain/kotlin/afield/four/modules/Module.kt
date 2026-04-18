@@ -42,6 +42,16 @@ data class Parameters(
     var computeIntrospection: Introspection? = null,
     var meshIntrospection: Introspection? = null,
     var taskIntrospection: Introspection? = null,
+    var vertexSourceName: String = "vertex.glsl",
+    var fragmentSourceName: String = "fragment.glsl",
+    var computeSourceName: String = "compute.glsl",
+    var meshSourceName: String = "mesh.glsl",
+    var taskSourceName: String = "task.glsl",
+    var vertexIncludeResolver: ShaderIncludeResolver? = null,
+    var fragmentIncludeResolver: ShaderIncludeResolver? = null,
+    var computeIncludeResolver: ShaderIncludeResolver? = null,
+    var meshIncludeResolver: ShaderIncludeResolver? = null,
+    var taskIncludeResolver: ShaderIncludeResolver? = null,
     var color: Int = 1,
     var colorFormats: List<Int> = emptyList(),
     var depth: Int = 1,
@@ -261,9 +271,21 @@ class Module(val parameters: Parameters) : Renderable {
     var after = linkedMapOf<String, Target>()
 
     val vi = parameters.vertexIntrospection
-        ?: Introspection(parameters.vertex, ShaderKind.VERTEX_SHADER, errorHandler = parameters.errorHandler)
+        ?: Introspection(
+            parameters.vertex,
+            ShaderKind.VERTEX_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.vertexSourceName,
+            includeResolver = parameters.vertexIncludeResolver
+        )
     val fi = parameters.fragmentIntrospection
-        ?: Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
+        ?: Introspection(
+            parameters.fragment,
+            ShaderKind.FRAGMENT_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.fragmentSourceName,
+            includeResolver = parameters.fragmentIncludeResolver
+        )
 
     val namedInputs = vi.inputs.associateBy { it.name }
     val pushConstantSize = (vi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
