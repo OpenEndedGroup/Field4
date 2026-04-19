@@ -1632,6 +1632,10 @@ class Renderer(
     @JvmName("plusAssign_computeModulePointer")
     operator fun plusAssign(a: Pair<String, ComputeModulePointer>) { computeList += a }
 
+
+    @JvmName("plusAssign_computeModulePointerNamed")
+    operator fun plusAssign(a: Named<ComputeModulePointer>) { computeList += a }
+
     fun getProfiler(): GpuProfiler? = defaultContext.profilerState?.profiler
 
     private fun resolveProfilingForImage(context: WindowContext, imageIndex: Int) {

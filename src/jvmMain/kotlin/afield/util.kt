@@ -338,6 +338,7 @@ fun <T> lazyVar(
 data class Named<T>(val name: String, val value: T)
 
 infix fun <T> T.named(name: String) = Named(name, this)
+fun <T> T.namedHere(name: String = "${this!!.javaClass.name}", prefix : String = "${Box.context.get()}") = Named(prefix+"_"+name, this)
 
 /**
  * Dump an object's class hierarchy (superclasses + interfaces) and print:

@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.Named
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
@@ -17,6 +18,11 @@ class ComputeTarget(val renderer: Renderer) : Target {
     @JvmName("plusAssign")
     operator fun plusAssign(m: Pair<String, ComputeModulePointer>) {
         modules[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_n")
+    operator fun plusAssign(m: Named<ComputeModulePointer>) {
+        modules[m.name] = m.value
     }
 
     @JvmName("plusAssign_module")

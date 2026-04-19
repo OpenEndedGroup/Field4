@@ -27,6 +27,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
+import java.util.Locale
 
 // ------------------------------
 // Box properties
@@ -55,6 +56,7 @@ var Box._computeShader by Delegation<ComputeModulePointer?>()
 var Box.meshShader by Inheritance<MeshModulePointer?>()
 var Box._meshShader by Delegation<MeshModulePointer?>()
 var Box._fieldProbe by Delegation<ShaderFieldProbe?>()
+var Box._fieldProbeAutoController by Delegation<ShaderFieldAutoController?>()
 
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
     defaultValue = { HashMap<String, Any>() })
@@ -258,6 +260,181 @@ fun Box.fieldProbeHere(
     if (ordinalRange != null) probe.ordinalRange(ordinalRange)
     else probe.ordinalRange()
     return probe
+}
+
+data class ShaderProbeAutoControlConfig(
+    val minSamples: Int = 128,
+    val clipLower: Double? = 0.0,
+    val clipUpper: Double? = 1.0,
+    val clipEpsilon: Double = 1.0e-6,
+    val useNominalParams: Boolean = false,
+    val displayChannel: String? = "auto",
+    val closeDisplayOnStop: Boolean = false,
+    val clearDisplayOnStop: Boolean = false,
+    val runloopKeySuffix: String = "shaderFieldAuto"
+)
+
+class ShaderFieldAutoController(
+    val box: Box,
+    val probe: ShaderFieldProbe,
+    val controller: AdaptiveDistributionController,
+    val config: ShaderProbeAutoControlConfig,
+    private val apply: (params: DoubleArray, output: ControlOutput, batch: FieldProbeScalarBatch) -> Unit
+) {
+    private val hookKey = "${config.runloopKeySuffix}:${box.id}"
+    private var installed = false
+    private var lastSnapshot: FieldProbeSnapshot? = null
+
+    var tickCount: Int = 0
+        private set
+
+    var lastBatch: FieldProbeScalarBatch? = null
+        private set
+
+    var lastOutput: ControlOutput? = null
+        private set
+
+    fun tick(): ControlOutput? {
+        val batch = probe.readLatestScalarBatch(
+            minSamples = config.minSamples,
+            clipLower = config.clipLower,
+            clipUpper = config.clipUpper,
+            clipEpsilon = config.clipEpsilon
+        ) ?: return null
+
+        if (batch.snapshot === lastSnapshot) return null
+
+        val output = controller.pushSamples(batch.batch.samples, batch.batch.clipRate)
+        val params = output.params(useNominalParams = config.useNominalParams)
+
+        apply(params, output, batch)
+
+        lastSnapshot = batch.snapshot
+        lastBatch = batch
+        lastOutput = output
+        tickCount += 1
+
+        config.displayChannel?.let { channel ->
+            box.display(
+                channel,
+                shaderFieldAutoSummaryHtml(
+                    batch = batch,
+                    output = output,
+                    parameterNames = controller.parameterNames,
+                    useNominalParams = config.useNominalParams
+                )
+            )
+        }
+
+        return output
+    }
+
+    fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldAutoController {
+        if (installed) return this
+        runloop.preRun[hookKey] = sequence {
+            while (true) {
+                tick()
+                yield(Unit)
+            }
+        }
+        installed = true
+        return this
+    }
+
+    fun stop(
+        runloop: Runloop = Runloop.runLoop,
+        closeDisplay: Boolean = config.closeDisplayOnStop,
+        clearDisplay: Boolean = config.clearDisplayOnStop
+    ): ShaderFieldAutoController {
+        runloop.preRun.remove(hookKey)
+        installed = false
+
+        config.displayChannel?.let { channel ->
+            if (clearDisplay) box.displayClear(channel)
+            if (closeDisplay) box.displayClose(channel)
+        }
+
+        if (box._fieldProbeAutoController === this) {
+            box.properties.remove("_fieldProbeAutoController")
+        }
+        return this
+    }
+}
+
+fun Box.fieldProbeAutoControl(
+    probe: ShaderFieldProbe = ensureFieldProbe(),
+    controller: AdaptiveDistributionController = AdaptiveDistributionController(
+        ControllerConfig(),
+        UniformQuantileFeatureExtractor()
+    ),
+    config: ShaderProbeAutoControlConfig = ShaderProbeAutoControlConfig(),
+    install: Boolean = true,
+    runloop: Runloop = Runloop.runLoop,
+    apply: (params: DoubleArray, output: ControlOutput, batch: FieldProbeScalarBatch) -> Unit
+): ShaderFieldAutoController {
+    _fieldProbeAutoController?.stop(runloop = runloop)
+
+    return ShaderFieldAutoController(
+        box = this,
+        probe = probe,
+        controller = controller,
+        config = config,
+        apply = apply
+    ).also { runtime ->
+        _fieldProbeAutoController = runtime
+        if (install) runtime.install(runloop)
+    }
+}
+
+private fun shaderFieldAutoSummaryHtml(
+    batch: FieldProbeScalarBatch,
+    output: ControlOutput,
+    parameterNames: List<String>,
+    useNominalParams: Boolean
+): String {
+    fun format(value: Double): String = String.format(Locale.US, "%.4f", value)
+
+    val activeParams = output.params(useNominalParams)
+    val parameterRows = parameterNames.indices.joinToString("") { index ->
+        val name = parameterNames[index]
+        """
+        <tr>
+            <td style="padding:2px 12px 2px 0;opacity:0.72;">$name</td>
+            <td style="padding:2px 12px 2px 0;">${format(output.nominalParams[index])}</td>
+            <td style="padding:2px 0 2px 0;">${format(output.appliedParams[index])}</td>
+        </tr>
+        """.trimIndent()
+    }
+
+    val featureError = output.diagnostics.filteredFeatureError.joinToString(", ") { format(it) }
+    val p10 = batch.snapshot.percentile(0.10)
+    val p50 = batch.snapshot.percentile(0.50)
+    val p90 = batch.snapshot.percentile(0.90)
+
+    return """
+        <div style="padding:12px;background:#081019;color:#9fd9ff;font-family:Iosevka, monospace;font-size:11px;line-height:1.35;">
+            <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px;">
+                <span><span style="opacity:0.65;">updates</span> ${output.diagnostics.pushIndex}</span>
+                <span><span style="opacity:0.65;">objective</span> ${format(output.diagnostics.objective)}</span>
+                <span><span style="opacity:0.65;">confidence</span> ${format(output.diagnostics.confidence)}</span>
+                <span><span style="opacity:0.65;">clip</span> ${format(batch.batch.clipRate)}</span>
+                <span><span style="opacity:0.65;">samples</span> ${batch.batch.samples.size}</span>
+                <span><span style="opacity:0.65;">p10/p50/p90</span> ${format(p10)} / ${format(p50)} / ${format(p90)}</span>
+            </div>
+            <div style="margin-bottom:8px;opacity:0.72;">filtered feature error = [$featureError]</div>
+            <div style="margin-bottom:6px;opacity:0.72;">active params = [${activeParams.joinToString(", ") { format(it) }}]</div>
+            <table style="border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:0 12px 4px 0;opacity:0.6;">parameter</th>
+                        <th style="text-align:left;padding:0 12px 4px 0;opacity:0.6;">nominal</th>
+                        <th style="text-align:left;padding:0 0 4px 0;opacity:0.6;">applied</th>
+                    </tr>
+                </thead>
+                <tbody>$parameterRows</tbody>
+            </table>
+        </div>
+    """.trimIndent()
 }
 
 // ------------------------------
@@ -529,6 +706,7 @@ private fun Box.ensureFieldProbe(): ShaderFieldProbe {
 private fun builtInShaderInclude(inside: Box, includePath: String): String? {
     return when (includePath.trim()) {
         FIELD_PROBE_INCLUDE_NAME -> inside.ensureFieldProbe().includeSource()
+        FIELD_QUANTILE_WARP_INCLUDE_NAME -> fieldQuantileWarpIncludeSource()
         else -> null
     }
 }
@@ -586,8 +764,16 @@ private fun preprocess(
     source: String,
     kind: ShaderKind,
     defaultProperty: String = defaultShaderProperty(kind),
-    includeStack: List<String> = emptyList()
+    includeStack: List<String> = emptyList(),
+    priorStages: Map<ShaderKind, PreparedShaderStage> = emptyMap()
 ): String {
+    val sourceWithCopiedPushConstants = expandCopyPushConstantTags(
+        source = source,
+        kind = kind,
+        currentProperty = defaultProperty,
+        priorStages = priorStages
+    )
+
     val includeResolver = IncludeResolver { includePath, line, _ ->
         builtInShaderInclude(inside, includePath)?.let { builtIn ->
             return@IncludeResolver buildString {
@@ -621,7 +807,8 @@ private fun preprocess(
             includeBody,
             nestedKind,
             defaultProperty = includeRef.property,
-            includeStack = includeStack + includeKey
+            includeStack = includeStack + includeKey,
+            priorStages = priorStages
         )
         buildString {
             append(expandedInclude)
@@ -630,12 +817,174 @@ private fun preprocess(
         }
     }
 
-    return runTemplate(source, getShaderTemplateResolverForBox(inside), includeResolver)
+    return runTemplate(sourceWithCopiedPushConstants, getShaderTemplateResolverForBox(inside), includeResolver)
 }
 
 fun preprocess(inside: Box, code: String, kind: ShaderKind): String {
     return preprocess(inside, code, kind, defaultShaderProperty(kind), emptyList())
 }
+
+private val copyPushConstantTagRegex = Regex("""\{%\s*copyPC\s*%}""")
+private val layoutKeywordRegex = Regex("""\blayout\b""")
+private val pushConstantLayoutRegex = Regex("""\bpush_constant\b""")
+
+private fun expandCopyPushConstantTags(
+    source: String,
+    kind: ShaderKind,
+    currentProperty: String,
+    priorStages: Map<ShaderKind, PreparedShaderStage>
+): String {
+    if (!copyPushConstantTagRegex.containsMatchIn(source)) return source
+
+    val previousStage = previousStageForCopyPushConstants(kind, priorStages)
+        ?: throw IllegalArgumentException(
+            "'{% copyPC %}' in '$currentProperty' requires a previous prepared shader stage. " +
+                "Supported flows are vertex -> fragment and task -> mesh -> fragment."
+        )
+
+    val declaration = extractPushConstantLayoutDeclaration(previousStage.glslSource, previousStage.sourceName)
+    return copyPushConstantTagRegex.replace(source, declaration)
+}
+
+private fun previousStageForCopyPushConstants(
+    kind: ShaderKind,
+    priorStages: Map<ShaderKind, PreparedShaderStage>
+): PreparedShaderStage? = when (kind) {
+    ShaderKind.MESH_SHADER -> priorStages[ShaderKind.TASK_SHADER]
+    ShaderKind.FRAGMENT_SHADER -> priorStages[ShaderKind.MESH_SHADER] ?: priorStages[ShaderKind.VERTEX_SHADER]
+    else -> null
+}
+
+private fun extractPushConstantLayoutDeclaration(source: String, sourceName: String): String {
+    val matches = mutableListOf<String>()
+    var searchFrom = 0
+
+    while (true) {
+        val layoutMatch = layoutKeywordRegex.find(source, searchFrom) ?: break
+        val layoutStart = layoutMatch.range.first
+        var cursor = skipShaderTrivia(source, layoutMatch.range.last + 1)
+        if (cursor >= source.length || source[cursor] != '(') {
+            searchFrom = layoutStart + 1
+            continue
+        }
+
+        val layoutEnd = findMatchingDelimiter(source, cursor, '(', ')')
+            ?: throw IllegalArgumentException("Unclosed layout(...) declaration while scanning '$sourceName'.")
+        val layoutArgs = source.substring(cursor + 1, layoutEnd)
+        if (!pushConstantLayoutRegex.containsMatchIn(layoutArgs)) {
+            searchFrom = layoutEnd + 1
+            continue
+        }
+
+        cursor = skipShaderTrivia(source, layoutEnd + 1)
+        if (!startsWithShaderKeyword(source, cursor, "uniform")) {
+            throw IllegalArgumentException(
+                "Found layout(... push_constant ...) in '$sourceName' but could not parse the following uniform block."
+            )
+        }
+        cursor = skipShaderTrivia(source, cursor + "uniform".length)
+
+        val blockStart = findNextShaderChar(source, cursor, '{')
+            ?: throw IllegalArgumentException(
+                "Push constant layout in '$sourceName' is missing the '{' that starts its uniform block."
+            )
+        val blockEnd = findMatchingDelimiter(source, blockStart, '{', '}')
+            ?: throw IllegalArgumentException("Unclosed push constant uniform block while scanning '$sourceName'.")
+        val declarationEnd = findNextShaderChar(source, blockEnd + 1, ';')
+            ?: throw IllegalArgumentException("Push constant uniform block in '$sourceName' is missing its trailing ';'.")
+
+        matches += source.substring(layoutStart, declarationEnd + 1).trimEnd()
+        searchFrom = declarationEnd + 1
+    }
+
+    return when (matches.size) {
+        0 -> throw IllegalArgumentException("'{% copyPC %}' could not find a push constant layout declaration in '$sourceName'.")
+        1 -> matches.single()
+        else -> throw IllegalArgumentException(
+            "'{% copyPC %}' expected exactly one push constant layout declaration in '$sourceName', found ${matches.size}."
+        )
+    }
+}
+
+private fun skipShaderTrivia(source: String, start: Int): Int {
+    var index = start
+    while (index < source.length) {
+        when {
+            source[index].isWhitespace() -> index += 1
+            source.startsWith("//", index) -> {
+                val newline = source.indexOf('\n', index + 2)
+                index = if (newline == -1) source.length else newline + 1
+            }
+            source.startsWith("/*", index) -> {
+                val end = source.indexOf("*/", index + 2)
+                if (end == -1) return source.length
+                index = end + 2
+            }
+            else -> return index
+        }
+    }
+    return index
+}
+
+private fun findMatchingDelimiter(source: String, openIndex: Int, openChar: Char, closeChar: Char): Int? {
+    var depth = 0
+    var index = openIndex
+    while (index < source.length) {
+        when {
+            source.startsWith("//", index) -> {
+                val newline = source.indexOf('\n', index + 2)
+                index = if (newline == -1) source.length else newline + 1
+                continue
+            }
+            source.startsWith("/*", index) -> {
+                val end = source.indexOf("*/", index + 2)
+                if (end == -1) return null
+                index = end + 2
+                continue
+            }
+            source[index] == openChar -> depth += 1
+            source[index] == closeChar -> {
+                depth -= 1
+                if (depth == 0) return index
+            }
+        }
+        index += 1
+    }
+    return null
+}
+
+private fun startsWithShaderKeyword(source: String, index: Int, keyword: String): Boolean {
+    if (index < 0 || index + keyword.length > source.length) return false
+    if (!source.regionMatches(index, keyword, 0, keyword.length)) return false
+    val before = source.getOrNull(index - 1)
+    val after = source.getOrNull(index + keyword.length)
+    return !before.isShaderIdentifierPart() && !after.isShaderIdentifierPart()
+}
+
+private fun findNextShaderChar(source: String, start: Int, target: Char): Int? {
+    var index = start
+    while (index < source.length) {
+        when {
+            source.startsWith("//", index) -> {
+                val newline = source.indexOf('\n', index + 2)
+                index = if (newline == -1) source.length else newline + 1
+                continue
+            }
+            source.startsWith("/*", index) -> {
+                val end = source.indexOf("*/", index + 2)
+                if (end == -1) return null
+                index = end + 2
+                continue
+            }
+            source[index] == target -> return index
+            else -> index += 1
+        }
+    }
+    return null
+}
+
+private fun Char?.isShaderIdentifierPart(): Boolean =
+    this != null && (this == '_' || this.isLetterOrDigit())
 
 /**
  * Unified compile/introspect helper that:
@@ -722,7 +1071,12 @@ private fun reportShaderStageError(
     box.error(trimmed, propertyForUI, numberFromErrorMessage(trimmed) ?: 0)
 }
 
-private fun prepareShaderStage(box: Box, kind: ShaderKind, baseProperty: String): PreparedShaderStage? {
+private fun prepareShaderStage(
+    box: Box,
+    kind: ShaderKind,
+    baseProperty: String,
+    priorStages: Map<ShaderKind, PreparedShaderStage> = emptyMap()
+): PreparedShaderStage? {
     val sourceProperty = sourcePropertyForStage(box, baseProperty)
     val source = shaderPropertyValue(box, sourceProperty)?.takeIf { it.isNotBlank() } ?: run {
         reportShaderStageError(
@@ -735,7 +1089,7 @@ private fun prepareShaderStage(box: Box, kind: ShaderKind, baseProperty: String)
     }
 
     val preprocessedSource = try {
-        preprocess(box, source, kind, defaultProperty = sourceProperty)
+        preprocess(box, source, kind, defaultProperty = sourceProperty, priorStages = priorStages)
     } catch (t: Throwable) {
         reportShaderStageError(
             box,
@@ -993,7 +1347,12 @@ private fun runShaderReloadAction(
 fun reloadShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
     val vertexStage = prepareShaderStage(box, ShaderKind.VERTEX_SHADER, "vertex") ?: return false
-    val fragmentStage = prepareShaderStage(box, ShaderKind.FRAGMENT_SHADER, "fragment") ?: return false
+    val fragmentStage = prepareShaderStage(
+        box,
+        ShaderKind.FRAGMENT_SHADER,
+        "fragment",
+        priorStages = mapOf(ShaderKind.VERTEX_SHADER to vertexStage)
+    ) ?: return false
 
     assignPreparedShaderStage(box, vertexStage)
     assignPreparedShaderStage(box, fragmentStage)
@@ -1180,8 +1539,21 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
 fun reloadMeshShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
     val taskStage = prepareShaderStage(box, ShaderKind.TASK_SHADER, "task") ?: return false
-    val meshStage = prepareShaderStage(box, ShaderKind.MESH_SHADER, "mesh") ?: return false
-    val fragmentStage = prepareShaderStage(box, ShaderKind.FRAGMENT_SHADER, "fragment") ?: return false
+    val meshStage = prepareShaderStage(
+        box,
+        ShaderKind.MESH_SHADER,
+        "mesh",
+        priorStages = mapOf(ShaderKind.TASK_SHADER to taskStage)
+    ) ?: return false
+    val fragmentStage = prepareShaderStage(
+        box,
+        ShaderKind.FRAGMENT_SHADER,
+        "fragment",
+        priorStages = mapOf(
+            ShaderKind.TASK_SHADER to taskStage,
+            ShaderKind.MESH_SHADER to meshStage
+        )
+    ) ?: return false
 
     assignPreparedShaderStage(box, taskStage)
     assignPreparedShaderStage(box, meshStage)
@@ -1458,7 +1830,14 @@ fun Box.macro_moduleHereWithDefaultShaders(
     // Prepare code & introspect
     clearShaderErrorsForBaseProperties(this, "vertex", "fragment")
     val vertexStage = prepareShaderStage(this, ShaderKind.VERTEX_SHADER, "vertex")
-    val fragmentStage = prepareShaderStage(this, ShaderKind.FRAGMENT_SHADER, "fragment")
+    val fragmentStage = vertexStage?.let {
+        prepareShaderStage(
+            this,
+            ShaderKind.FRAGMENT_SHADER,
+            "fragment",
+            priorStages = mapOf(ShaderKind.VERTEX_SHADER to it)
+        )
+    }
     val vi = vertexStage?.let {
         assignPreparedShaderStage(this, it)
         compileStage(this, it).introspection
@@ -1577,7 +1956,12 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
         clearShaderErrorsForBaseProperties(this, "vertex", "fragment")
         val vertexStage = prepareShaderStage(this, ShaderKind.VERTEX_SHADER, "vertex")
             ?: throw IllegalStateException("Unable to prepare shared vertex shader")
-        val fragmentStage = prepareShaderStage(this, ShaderKind.FRAGMENT_SHADER, "fragment")
+        val fragmentStage = prepareShaderStage(
+            this,
+            ShaderKind.FRAGMENT_SHADER,
+            "fragment",
+            priorStages = mapOf(ShaderKind.VERTEX_SHADER to vertexStage)
+        )
             ?: throw IllegalStateException("Unable to prepare shared fragment shader")
 
         assignPreparedShaderStage(this, vertexStage)
@@ -1897,8 +2281,27 @@ void main()
 
     clearShaderErrorsForBaseProperties(this, "task", "mesh", "fragment")
     val taskStage = prepareShaderStage(this, ShaderKind.TASK_SHADER, "task")
-    val meshStage = prepareShaderStage(this, ShaderKind.MESH_SHADER, "mesh")
-    val fragmentStage = prepareShaderStage(this, ShaderKind.FRAGMENT_SHADER, "fragment")
+    val meshStage = taskStage?.let {
+        prepareShaderStage(
+            this,
+            ShaderKind.MESH_SHADER,
+            "mesh",
+            priorStages = mapOf(ShaderKind.TASK_SHADER to it)
+        )
+    }
+    val fragmentStage = if (taskStage != null && meshStage != null) {
+        prepareShaderStage(
+            this,
+            ShaderKind.FRAGMENT_SHADER,
+            "fragment",
+            priorStages = mapOf(
+                ShaderKind.TASK_SHADER to taskStage,
+                ShaderKind.MESH_SHADER to meshStage
+            )
+        )
+    } else {
+        null
+    }
 
     val ti = taskStage?.let {
         assignPreparedShaderStage(this, it)

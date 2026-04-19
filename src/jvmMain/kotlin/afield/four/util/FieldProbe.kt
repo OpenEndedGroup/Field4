@@ -10,6 +10,7 @@ import afield.four.buffers.BufferParameters
 import afield.four.buffers.VulkanBuffer
 import afield.four.buffers.buffer
 import afield.logger.lprintln
+import afield.stdlib.ScalarSampleBatch
 import afield.stdlib.SummaryStats
 import afield.stdlib.SummaryStatsBox
 import afield.stdlib.Vec2
@@ -435,6 +436,40 @@ data class FieldProbeSnapshot(
     }
 }
 
+data class FieldProbeScalarBatch(
+    val snapshot: FieldProbeSnapshot,
+    val batch: ScalarSampleBatch
+)
+
+fun FieldProbeSnapshot.scalarBatch(
+    minSamples: Int = 1,
+    clipLower: Double? = null,
+    clipUpper: Double? = null,
+    clipEpsilon: Double = 1.0e-6
+): FieldProbeScalarBatch? {
+    val scalarValues = scalarValues() ?: return null
+    if (scalarValues.size < minSamples) return null
+
+    val clipRate = if (clipLower == null && clipUpper == null) {
+        0.0
+    } else {
+        val clips = scalarValues.count { value ->
+            val clippedLow = clipLower?.let { value <= it + clipEpsilon } ?: false
+            val clippedHigh = clipUpper?.let { value >= it - clipEpsilon } ?: false
+            clippedLow || clippedHigh
+        }
+        clips.toDouble() / scalarValues.size.toDouble()
+    }
+
+    return FieldProbeScalarBatch(
+        snapshot = this,
+        batch = ScalarSampleBatch(
+            samples = scalarValues.toDoubleArray(),
+            clipRate = clipRate
+        )
+    )
+}
+
 class ShaderFieldProbe(
     val box: Box
 ) {
@@ -749,6 +784,19 @@ class ShaderFieldProbe(
     }
 
     fun readLatest(): FieldProbeSnapshot? = latestSnapshot
+
+    fun readLatestScalarBatch(
+        minSamples: Int = 1,
+        clipLower: Double? = null,
+        clipUpper: Double? = null,
+        clipEpsilon: Double = 1.0e-6
+    ): FieldProbeScalarBatch? =
+        latestSnapshot?.scalarBatch(
+            minSamples = minSamples,
+            clipLower = clipLower,
+            clipUpper = clipUpper,
+            clipEpsilon = clipEpsilon
+        )
 
     fun readSnapshot(renderer: Renderer, imageIndex: Int): FieldProbeSnapshot {
         ensureRenderer(renderer)

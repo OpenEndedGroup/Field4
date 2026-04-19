@@ -15,7 +15,7 @@ import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.net.ssl.*
 
-val lwjglVersion = "3.4.0-SNAPSHOT"
+val lwjglVersion = "3.4.0"
 val jomlVersion = "1.10.7"
 val `joml-primitivesVersion` = "1.10.0"
 
