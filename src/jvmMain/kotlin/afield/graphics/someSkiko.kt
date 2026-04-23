@@ -7,6 +7,7 @@ import afield.stdlib.*
 import org.jetbrains.skia.*
 import org.jetbrains.skia.svg.SVGCanvas
 import java.io.ByteArrayOutputStream
+import java.util.Locale
 import java.util.UUID
 import kotlin.math.min
 
@@ -40,7 +41,7 @@ fun Box.lines(
         return widget.viewState
     } else if (hasInteractive) {
         val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
+        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
     } else {
         val scaled = lines.map { it.applyFit(fit) }
         display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
@@ -78,7 +79,7 @@ fun Box.lines(
         return widget.viewState
     } else if (hasInteractive) {
         val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
+        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
     } else {
         val scaled = lines.map { it.applyFit(fit) }
         display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
@@ -122,7 +123,7 @@ fun Box.lines(
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
+                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
             } else {
                 val scaled = lines.map { it.applyFit(fit) }
                 display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h)))
@@ -137,7 +138,7 @@ fun Box.lines(
             states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h)))
+            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
         } else {
             val scaled = allLines.map { it.applyFit(fit) }
             display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
@@ -381,13 +382,13 @@ fun outputTo(f: FLine, s: Canvas) {
  *
  * For each original FLine that has [FLine.onClick] set, a unique callback ID is
  * registered via [registerFLineClickCallback] and the corresponding `<g>` element
- * gets an `onclick` attribute that calls `window.sendFLineClick(id)`.
+ * gets an `onclick` attribute that calls `window.sendFLineClick(id, hit)`.
  *
  * For each original FLine that has [FLine.hoverColor] set, the `<g>` element gets
  * `onmouseover` / `onmouseout` attributes that call `window.__flineHoverIn` /
  * `window.__flineHoverOut` to swap the geometry colour on pointer entry/exit.
  */
-internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double): String {
+internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double, fit: FitTransform? = null): String {
     val renderablePairs = pairs.filter { (_, scaled) -> scaled.safeFast2DBoundsOrNull() != null }
     if (renderablePairs.isEmpty()) return emptySvg(w, h)
 
@@ -421,7 +422,11 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
             sb.append("<g")
             if (callbackId != null) {
                 sb.append(""" data-fline-callback-id="$callbackId"""")
-                sb.append(""" onclick="window.sendFLineClick&&window.sendFLineClick('$callbackId')" style="cursor:pointer"""")
+                sb.append(""" data-fline-vertices='${flineVertexData(original)}'""")
+                if (fit != null) {
+                    sb.append(""" data-fit-scale="${jsonN(fit.scale)}" data-fit-offset-x="${jsonN(fit.offsetX)}" data-fit-offset-y="${jsonN(fit.offsetY)}"""")
+                }
+                sb.append(""" onclick="window.sendFLineClick&&window.sendFLineClick('$callbackId',window.__flineIntersectionFromSvg&&window.__flineIntersectionFromSvg(event,this))" style="cursor:pointer"""")
             }
             if (hoverColor != null) {
                 val hc = vec4ToSvgColor(hoverColor)
@@ -439,6 +444,26 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
 
     sb.append("</svg>")
     return sb.toString()
+}
+
+/** Build compact endpoint metadata for SVG click picking: [x, y, z, originalNodeIndex]. */
+private fun flineVertexData(f: FLine): String {
+    val vertices = f.nodes.mapIndexedNotNull { nodeIndex, node ->
+        val p = when (node) {
+            is FLine.MoveTo -> node.to
+            is FLine.LineTo -> node.to
+            is FLine.CubicTo -> node.to
+            is FLine.Close -> null
+        } ?: return@mapIndexedNotNull null
+        "[${jsonN(p.x)},${jsonN(p.y)},${jsonN(p.z)},$nodeIndex]"
+    }
+    return vertices.joinToString(prefix = "[", postfix = "]")
+}
+
+private fun jsonN(v: Number): String {
+    val d = v.toDouble()
+    if (!d.isFinite()) return "0"
+    return String.format(Locale.US, "%.6f", d).trimEnd('0').trimEnd('.').ifEmpty { "0" }
 }
 
 /** Convert a [Vec4] RGBA colour (components in [0,1]) to an SVG `rgba(...)` string. */

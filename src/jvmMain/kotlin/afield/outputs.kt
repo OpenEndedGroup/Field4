@@ -4,6 +4,7 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
+import afield.stdlib.FLineIntersection
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.joml.Vector2f
@@ -419,13 +420,13 @@ internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
 }
 
 // Global registry for FLine click callbacks
-private val flineClickCallbacks = java.util.concurrent.ConcurrentHashMap<String, () -> Unit>()
+private val flineClickCallbacks = java.util.concurrent.ConcurrentHashMap<String, (FLineIntersection) -> Unit>()
 
-internal fun registerFLineClickCallback(callbackId: String, callback: () -> Unit) {
+internal fun registerFLineClickCallback(callbackId: String, callback: (FLineIntersection) -> Unit) {
     flineClickCallbacks[callbackId] = callback
 }
 
-internal fun getFLineClickCallback(callbackId: String): (() -> Unit)? {
+internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> Unit)? {
     return flineClickCallbacks[callbackId]
 }
 

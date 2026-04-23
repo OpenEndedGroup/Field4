@@ -240,11 +240,13 @@ class AudioDecoder(private val audioPath: String) {
                 }
 
                 // Resample
+                val outputPointers = PointerPointer<BytePointer>(1).put(0, resampleBuffer)
+                val inputPointers = frame!!.data()
                 val outSamples = swr_convert(
                     swrContext,
-                    PointerPointer<BytePointer>(resampleBuffer),
+                    outputPointers,
                     maxOutputSamples,
-                    PointerPointer<BytePointer>(frame!!.data()),
+                    inputPointers,
                     inputSamples
                 )
 

@@ -113,6 +113,8 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     stage.setAttribute("width", "100%")
     stage.setAttribute("height", "100%")
     stage.setAttribute("preserveAspectRatio", "none")
+    stage.setAttribute("shape-rendering", "geometricPrecision")
+    stage.setAttribute("text-rendering", "geometricPrecision")
     stage.setAttribute("style", "display:block;overflow:hidden;background:transparent;")
 
     val stageGroup = document.createElementNS("http://www.w3.org/2000/svg", "g") as Element

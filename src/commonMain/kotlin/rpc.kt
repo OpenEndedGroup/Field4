@@ -652,7 +652,13 @@ data class SlideAnnotation(
     val dashed: Boolean = false
 )
 @Serializable
-data class FLineClick(val callbackId: String)
+data class FLineClick(
+    val callbackId: String,
+    val closestVertexIndex: Int = -1,
+    val x: Double = 0.0,
+    val y: Double = 0.0,
+    val z: Double = 0.0
+)
 
 @Serializable
 enum class FLineHandleKind {

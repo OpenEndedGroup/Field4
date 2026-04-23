@@ -83,7 +83,7 @@ object FLineSerializationSmokeTest {
             pointSize = 6.0
             filled = true
             stroked = false
-            onClick = {}
+            onClick = { _ -> }
             set2DPlane(vec(10f, 20f, 30f), vec(1f, 0f, 0f), vec(0f, 1f, 0f))
         }
 

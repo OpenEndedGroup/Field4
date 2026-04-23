@@ -238,10 +238,18 @@ fun installThreeJsHandler() {
             "fline-click" -> {
                 val callbackId = payload["callbackId"]?.jsonPrimitive?.contentOrNull
                     ?: return@add Handled.no
+                val closestVertexIndex = payload["closestVertexIndex"]?.jsonPrimitive?.content?.toIntOrNull() ?: -1
+                val x = payload["x"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+                val y = payload["y"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+                val z = payload["z"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
                 val callback = getFLineClickCallback(callbackId)
                 if (callback != null) {
+                    val intersection = FLineIntersection(
+                        closestVertexIndex = closestVertexIndex,
+                        position = vec(x, y, z)
+                    )
                     GlobalScope.launch {
-                        runCatching { callback() }
+                        runCatching { callback(intersection) }
                     }
                 }
             }

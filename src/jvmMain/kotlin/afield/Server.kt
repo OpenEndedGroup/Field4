@@ -10,6 +10,7 @@ import afield.graphics.getFLineEditSession
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
+import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.*
@@ -38,6 +39,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
+import org.joml.Vector3f
 import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
@@ -1094,9 +1096,13 @@ class Server {
 
                 val callback = getFLineClickCallback(click.callbackId)
                 if (callback != null) {
+                    val intersection = FLineIntersection(
+                        closestVertexIndex = click.closestVertexIndex,
+                        position = Vector3f(click.x.toFloat(), click.y.toFloat(), click.z.toFloat())
+                    )
                     GlobalScope.launch {
                         try {
-                            callback()
+                            callback(intersection)
                         } catch (e: Exception) {
                             lprintln("error,fline", "Error in FLine click callback: ${e.message}")
                             e.printStackTrace()

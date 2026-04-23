@@ -552,7 +552,7 @@ const initMonaco = () => {
 					property: completionProperty
                         }
 
-                        const rangeForPayload = (payload) => {
+                        const rangeForPayload = (payload, activeModel) => {
                                 if (payload.useLineColumns) {
                                         return {
                                                 startLineNumber: payload.lineStart,
@@ -561,8 +561,9 @@ const initMonaco = () => {
                                                 endColumn: payload.columnsStart + 1,
                                         }
                                 }
-                                var start = ed.getModel().getPositionAt(payload.boundsStart)
-                                var end = ed.getModel().getPositionAt(payload.boundsEnd)
+                                var completionModel = activeModel || model
+                                var start = completionModel.getPositionAt(payload.boundsStart)
+                                var end = completionModel.getPositionAt(payload.boundsEnd)
                                 return {
                                         startLineNumber: start.lineNumber,
                                         endLineNumber: end.lineNumber,
@@ -573,7 +574,7 @@ const initMonaco = () => {
 
                         const buildSuggestions = (payload, opts = {}) => {
                                 let idx = opts.offset || 0
-                                const rangeObj = rangeForPayload(payload)
+                                const rangeObj = rangeForPayload(payload, opts.model || model)
                                 return payload.metadata.map(m => {
                                         let command = null
                                         if (m.prefix) {
@@ -629,7 +630,7 @@ const initMonaco = () => {
                                 sendWithReply("complete-kotlin-ai", basePayload, "complete-kotlin-ai", (message, payload) => {
                                         if (window.currentEditorGeneration !== currentGen) return true
                                         if (!window.kotlinAiCompletion || window.kotlinAiCompletion.key !== sessionKey) return true
-                                        const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true})
+                                        const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true, model})
                                         window.kotlinAiCompletion.ai = aiSuggestions
                                         const baseExisting = window.kotlinAiCompletion.base || []
                                         const hasBase = baseExisting.length > 0
@@ -638,11 +639,12 @@ const initMonaco = () => {
                                                 window.kotlinAiCompletion.useCacheOnce = true
                                                 if (isSuggestWidgetVisible()) {
                                                         try {
-                                                                if (globalEditor && globalEditor.trigger) {
+                                                                const activeEditor = embEntry ? embEntry.editor : globalEditor
+                                                                if (activeEditor && activeEditor.trigger) {
                                                                         // Close then re-open to refresh items only if user still has the picker open.
-                                                                        globalEditor.trigger("afield-ai", "hideSuggestWidget", {})
+                                                                        activeEditor.trigger("afield-ai", "hideSuggestWidget", {})
                                                                         setTimeout(() => {
-                                                                                globalEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
+                                                                                activeEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
                                                                         }, 0)
                                                                 }
                                                         } catch (_) {
@@ -658,7 +660,7 @@ const initMonaco = () => {
 
                                         if (window.currentEditorGeneration !== currentGen) return true
 
-                                        const baseSuggestions = buildSuggestions(payload, {offset: 0})
+                                        const baseSuggestions = buildSuggestions(payload, {offset: 0, model})
                                         window.kotlinAiCompletion.base = baseSuggestions
                                         const aiExisting = window.kotlinAiCompletion.ai || []
                                         window.kotlinAiCompletion.merged = baseSuggestions.length > 0 ? baseSuggestions : aiExisting

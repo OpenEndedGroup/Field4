@@ -23,8 +23,14 @@ var FLine.pointSize by Delegation<Double> { 1.0 }
 
 var FLine.Node.pointSize by Delegation<Double?>(null)
 
-/** Callback invoked when this FLine is clicked in an interactive SVG output. */
-var FLine.onClick by Delegation<(() -> Unit)?>()
+/** Hit information passed to [FLine.onClick] from the interactive line renderers. */
+data class FLineIntersection(
+    val closestVertexIndex: Int,
+    val position: Vec3
+)
+
+/** Callback invoked when this FLine is clicked in an interactive output. */
+var FLine.onClick by Delegation<((FLineIntersection) -> Unit)?>()
 
 /**
  * Color to show when the pointer hovers over this FLine in an interactive SVG output.

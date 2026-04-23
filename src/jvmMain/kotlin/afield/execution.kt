@@ -161,6 +161,15 @@ private fun buildCompletionDocumentation(
     return sections.joinToString("\n\n").trim()
 }
 
+private fun renderCompletionFallbackSignature(displayText: String, tail: String): String {
+    val display = displayText.trimEnd()
+    val suffix = tail.trim()
+    if (suffix.isBlank()) return display
+    if (display.isBlank()) return suffix
+    val separator = if (suffix.firstOrNull() in setOf(':', ')', ',', '.', '[', '<')) "" else " "
+    return display + separator + suffix
+}
+
 private fun escapeNotifyHtml(text: String): String {
     return text
         .replace("&", "&amp;")
@@ -1597,8 +1606,7 @@ class KotlinExecution : BoxExecution {
                     // Build signature-based documentation for all K2 items
                     buildString {
                         append("```kotlin\n")
-                        append(it.displayText)
-                        if (it.tail.isNotBlank()) append(it.tail)
+                        append(renderCompletionFallbackSignature(it.displayText, it.tail))
                         append("\n```")
                         if (extraDoc.isNotBlank()) {
                             append("\n\n")

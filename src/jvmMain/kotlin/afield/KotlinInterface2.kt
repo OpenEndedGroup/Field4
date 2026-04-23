@@ -326,24 +326,48 @@ class KotlinInterface2(
 
 
     /**
-     * K2-based code completion using the Analysis API.
-     *
-     * This creates a standalone analysis session, parses the snippet as a KtFile,
-     * and uses the scope context at the cursor position to enumerate visible symbols.
+     * Completion intentionally delegates to the K1 IDE-services path.
+     * K2 remains the execution backend, but autocomplete needs compiler-grade
+     * language semantics rather than partial handwritten Analysis API coverage.
      */
     override suspend fun complete(s: String, cursor: Int): CompletionResult {
-        return try {
-            val completionVariants = computeK2Completion(s, cursor)
-            if (completionVariants.isEmpty()) {
-                CompletionResult.Empty(s, cursor)
-            } else {
-                getResult(s, cursor, completionVariants)
-            }
-        } catch (e: Exception) {
-            val sw = StringWriter()
-            e.printStackTrace(PrintWriter(sw))
-            CompletionResult.Error(e.javaClass.simpleName, e.message ?: "", sw.toString())
+        return k1CompletionDelegate().complete(s, cursor)
+    }
+
+    private var k1CompletionDelegate: KotlinInterface? = null
+    private var k1CompletionDelegateBootstrapped = false
+
+    private suspend fun k1CompletionDelegate(): KotlinInterface {
+        val existing = k1CompletionDelegate
+        if (existing != null) {
+            existing.associatedBox = associatedBox
+            return existing
         }
+
+        val created = KotlinInterface(
+            propertyClasses = propertyClasses,
+            properties = properties,
+            implicitReceivers = implicitReceivers,
+            classLoader = classLoader,
+            filePrefix = "${filePrefix}_completion"
+        )
+        created.associatedBox = associatedBox
+        k1CompletionDelegate = created
+
+        if (!k1CompletionDelegateBootstrapped) {
+            val box = resolveBoxContext()
+            val implicits = if (box != null) listOf(box) else emptyList()
+            if (box != null) {
+                Box.withBoxContext(box) {
+                    created.exec(intro, implicits = implicits)
+                }
+            } else {
+                created.exec(intro)
+            }
+            k1CompletionDelegateBootstrapped = true
+        }
+
+        return created
     }
 
     /**

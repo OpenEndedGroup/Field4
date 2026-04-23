@@ -275,7 +275,7 @@ let cameraIsDragging = false;
 
 const raycaster = new THREE.Raycaster();
 raycaster.params.Line = { threshold: 0.06 };
-raycaster.params.Points = { threshold: 0.12 };
+raycaster.params.Points = { threshold: 1.5 };
 
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
@@ -873,8 +873,50 @@ function addInteractiveObject(obj) {
         }
     }
     if (meshes.length) {
-        interactiveObjects.push({ callbackId: obj.callbackId || '', hoverColor, meshes, hovering: false });
+        interactiveObjects.push({ callbackId: obj.callbackId || '', hoverColor, meshes, hovering: false, vertices: obj.vertices || [] });
     }
+}
+
+function verticesForLine(line) {
+    return line.nodes
+        .filter((node) => node.kind !== 'close' && node.to)
+        .map((node) => ({
+            index: node.nodeIndex,
+            position: node.to
+        }));
+}
+
+function makeInteractiveEntry(line, meshes) {
+    return {
+        callbackId: line.callbackId || '',
+        hoverColor: line.hoverColor || null,
+        meshes,
+        hovering: false,
+        vertices: verticesForLine(line)
+    };
+}
+
+function intersectionForHit(entry, hit) {
+    const p = hit && hit.point ? hit.point : new THREE.Vector3();
+    let closestVertexIndex = -1;
+    let bestDistance = Infinity;
+    (entry.vertices || []).forEach((vertex) => {
+        const position = vertex.position || [0, 0, 0];
+        const dx = p.x - position[0];
+        const dy = p.y - position[1];
+        const dz = p.z - position[2];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < bestDistance) {
+            bestDistance = d2;
+            closestVertexIndex = vertex.index;
+        }
+    });
+    return {
+        closestVertexIndex,
+        x: p.x,
+        y: p.y,
+        z: p.z
+    };
 }
 
 function setInteractiveHover(entry, hovered) {
@@ -1065,12 +1107,7 @@ function renderEditableBaseGeometry() {
                 const mesh = new THREE.LineSegments(geometry, material);
                 if (interactive) {
                     mesh.userData.interactiveMat = material;
-                    interactiveObjects.push({
-                        callbackId: line.callbackId || '',
-                        hoverColor: line.hoverColor || null,
-                        meshes: [mesh],
-                        hovering: false
-                    });
+                    interactiveObjects.push(makeInteractiveEntry(line, [mesh]));
                 }
                 baseGeometryRoot.add(mesh);
             }
@@ -1085,12 +1122,7 @@ function renderEditableBaseGeometry() {
                 const mesh = new THREE.Points(geometry, material);
                 if (interactive) {
                     mesh.userData.interactiveMat = material;
-                    interactiveObjects.push({
-                        callbackId: line.callbackId || '',
-                        hoverColor: line.hoverColor || null,
-                        meshes: [mesh],
-                        hovering: false
-                    });
+                    interactiveObjects.push(makeInteractiveEntry(line, [mesh]));
                 }
                 baseGeometryRoot.add(mesh);
             }
@@ -1118,12 +1150,7 @@ function renderEditableBaseGeometry() {
         const mesh = new THREE.Mesh(geometry, material);
         if (interactive) {
             mesh.userData.interactiveMat = material;
-            interactiveObjects.push({
-                callbackId: line.callbackId || '',
-                hoverColor: line.hoverColor || null,
-                meshes: [mesh],
-                hovering: false
-            });
+            interactiveObjects.push(makeInteractiveEntry(line, [mesh]));
         }
         baseGeometryRoot.add(mesh);
     });
@@ -1678,7 +1705,7 @@ renderer.domElement.addEventListener('click', (event) => {
     const hitObject = hits[0].object;
     for (const entry of interactiveObjects) {
         if (entry.meshes.includes(hitObject) && entry.callbackId) {
-            sendMessage({ type: 'fline-click', callbackId: entry.callbackId });
+            sendMessage({ type: 'fline-click', callbackId: entry.callbackId, ...intersectionForHit(entry, hits[0]) });
             break;
         }
     }

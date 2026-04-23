@@ -21,6 +21,323 @@ import kotlin.math.*
  * - `byOffsetting()` instead of `offset()`
  */
 
+// ==================== LIVE LIST VECTOR OPS ====================
+
+private inline fun <A, B, C> zipSame(a: List<A>, b: List<B>, op: (A, B) -> C): List<C> {
+    require(a.size == b.size) { "List sizes must match: ${a.size} != ${b.size}" }
+    return List(a.size) { i -> op(a[i], b[i]) }
+}
+
+private fun Vec2.mulEach(b: Vec2) = Vec2(x * b.x, y * b.y)
+private fun Vec3.mulEach(b: Vec3) = Vec3(x * b.x, y * b.y, z * b.z)
+private fun Vec2.divEach(b: Vec2) = Vec2(x / b.x, y / b.y)
+private fun Vec3.divEach(b: Vec3) = Vec3(x / b.x, y / b.y, z / b.z)
+private fun Vec2.plusScalar(s: Float) = Vec2(x + s, y + s)
+private fun Vec3.plusScalar(s: Float) = Vec3(x + s, y + s, z + s)
+private fun Vec2.minusScalar(s: Float) = Vec2(x - s, y - s)
+private fun Vec3.minusScalar(s: Float) = Vec3(x - s, y - s, z - s)
+private fun Vec2.scalarMinus(s: Float) = Vec2(s - x, s - y)
+private fun Vec3.scalarMinus(s: Float) = Vec3(s - x, s - y, s - z)
+private fun Vec2.scalarDiv(s: Float) = Vec2(s / x, s / y)
+private fun Vec3.scalarDiv(s: Float) = Vec3(s / x, s / y, s / z)
+private fun Vec3.plus(v: Vec2) = Vec3(x + v.x, y + v.y, z)
+private fun Vec3.minus(v: Vec2) = Vec3(x - v.x, y - v.y, z)
+private fun Vec3.mul(v: Vec2) = Vec3(x * v.x, y * v.y, z)
+private fun Vec3.div(v: Vec2) = Vec3(x / v.x, y / v.y, z)
+private fun Vec2.plus(v: Vec3) = Vec3(x + v.x, y + v.y, v.z)
+private fun Vec2.minus(v: Vec3) = Vec3(x - v.x, y - v.y, -v.z)
+private fun Vec2.mul(v: Vec3) = Vec3(x * v.x, y * v.y, 0f)
+private fun Vec2.div(v: Vec3) = Vec3(x / v.x, y / v.y, 0f)
+
+typealias Vec2Anchor = (List<Vec2>) -> Vec2
+typealias Vec3Anchor = (List<Vec3>) -> Vec3
+
+enum class ListAnchor { Start, End, Midpoint, Center }
+data class FractionAlongAnchor(val t: Number)
+
+object Anchors2 {
+    val start: Vec2Anchor = { it.firstOrNull()?.let(::Vec2) ?: Vec2() }
+    val end: Vec2Anchor = { it.lastOrNull()?.let(::Vec2) ?: Vec2() }
+    val midpoint: Vec2Anchor = { if (it.isEmpty()) Vec2() else Vec2(it.first()).add(it.last()).mul(0.5f) }
+    val center: Vec2Anchor = { it.center() }
+    fun fractionAlong(t: Number): Vec2Anchor = { points ->
+        if (points.isEmpty()) Vec2()
+        else if (points.size == 1) Vec2(points[0])
+        else {
+            val f = t.toFloat().coerceIn(0f, 1f) * (points.size - 1)
+            val a = floor(f).toInt()
+            val b = ceil(f).toInt()
+            Vec2(points[a]).lerp(points[b], f - a)
+        }
+    }
+}
+
+object Anchors3 {
+    val start: Vec3Anchor = { it.firstOrNull()?.let(::Vec3) ?: Vec3() }
+    val end: Vec3Anchor = { it.lastOrNull()?.let(::Vec3) ?: Vec3() }
+    val midpoint: Vec3Anchor = { if (it.isEmpty()) Vec3() else Vec3(it.first()).add(it.last()).mul(0.5f) }
+    val center: Vec3Anchor = { it.center() }
+    fun fractionAlong(t: Number): Vec3Anchor = { points ->
+        if (points.isEmpty()) Vec3()
+        else if (points.size == 1) Vec3(points[0])
+        else {
+            val f = t.toFloat().coerceIn(0f, 1f) * (points.size - 1)
+            val a = floor(f).toInt()
+            val b = ceil(f).toInt()
+            Vec3(points[a]).lerp(points[b], f - a)
+        }
+    }
+}
+
+val start = ListAnchor.Start
+val end = ListAnchor.End
+val midpoint = ListAnchor.Midpoint
+val center = ListAnchor.Center
+fun fractionAlong(t: Number) = FractionAlongAnchor(t)
+
+private fun List<Vec2>.anchor(a: ListAnchor): Vec2 = when (a) {
+    ListAnchor.Start -> Anchors2.start(this)
+    ListAnchor.End -> Anchors2.end(this)
+    ListAnchor.Midpoint -> Anchors2.midpoint(this)
+    ListAnchor.Center -> Anchors2.center(this)
+}
+
+private fun List<Vec3>.anchor(a: ListAnchor): Vec3 = when (a) {
+    ListAnchor.Start -> Anchors3.start(this)
+    ListAnchor.End -> Anchors3.end(this)
+    ListAnchor.Midpoint -> Anchors3.midpoint(this)
+    ListAnchor.Center -> Anchors3.center(this)
+}
+
+private fun List<Vec2>.anchor(a: FractionAlongAnchor): Vec2 = Anchors2.fractionAlong(a.t)(this)
+private fun List<Vec3>.anchor(a: FractionAlongAnchor): Vec3 = Anchors3.fractionAlong(a.t)(this)
+
+@JvmName("plusVec2ListScalar")
+operator fun List<Vec2>.plus(s: Number): List<Vec2> = map { it.plusScalar(s.toFloat()) }
+@JvmName("minusVec2ListScalar")
+operator fun List<Vec2>.minus(s: Number): List<Vec2> = map { it.minusScalar(s.toFloat()) }
+@JvmName("timesVec2ListScalar")
+operator fun List<Vec2>.times(s: Number): List<Vec2> = map { Vec2(it).mul(s.toFloat()) }
+@JvmName("divVec2ListScalar")
+operator fun List<Vec2>.div(s: Number): List<Vec2> = map { Vec2(it).div(s.toFloat()) }
+@JvmName("plusVec2ListVec2")
+operator fun List<Vec2>.plus(v: Vec2): List<Vec2> = map { Vec2(it).add(v) }
+@JvmName("minusVec2ListVec2")
+operator fun List<Vec2>.minus(v: Vec2): List<Vec2> = map { Vec2(it).sub(v) }
+@JvmName("timesVec2ListVec2")
+operator fun List<Vec2>.times(v: Vec2): List<Vec2> = map { it.mulEach(v) }
+@JvmName("divVec2ListVec2")
+operator fun List<Vec2>.div(v: Vec2): List<Vec2> = map { it.divEach(v) }
+@JvmName("plusVec2ListVec3")
+operator fun List<Vec2>.plus(v: Vec3): List<Vec3> = map { it.plus(v) }
+@JvmName("minusVec2ListVec3")
+operator fun List<Vec2>.minus(v: Vec3): List<Vec3> = map { it.minus(v) }
+@JvmName("timesVec2ListVec3")
+operator fun List<Vec2>.times(v: Vec3): List<Vec3> = map { it.mul(v) }
+@JvmName("divVec2ListVec3")
+operator fun List<Vec2>.div(v: Vec3): List<Vec3> = map { it.div(v) }
+@JvmName("plusVec2ListVec2List")
+operator fun List<Vec2>.plus(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> Vec2(a).add(b) }
+@JvmName("minusVec2ListVec2List")
+operator fun List<Vec2>.minus(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> Vec2(a).sub(b) }
+@JvmName("timesVec2ListVec2List")
+operator fun List<Vec2>.times(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> a.mulEach(b) }
+@JvmName("divVec2ListVec2List")
+operator fun List<Vec2>.div(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> a.divEach(b) }
+@JvmName("plusVec2ListVec3List")
+operator fun List<Vec2>.plus(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.plus(b) }
+@JvmName("minusVec2ListVec3List")
+operator fun List<Vec2>.minus(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.minus(b) }
+@JvmName("timesVec2ListVec3List")
+operator fun List<Vec2>.times(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.mul(b) }
+@JvmName("divVec2ListVec3List")
+operator fun List<Vec2>.div(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.div(b) }
+@JvmName("plusVec2ListFloatList")
+operator fun List<Vec2>.plus(v: List<Float>): List<Vec2> = zipSame(this, v) { a, b -> a.plusScalar(b) }
+@JvmName("minusVec2ListFloatList")
+operator fun List<Vec2>.minus(v: List<Float>): List<Vec2> = zipSame(this, v) { a, b -> a.minusScalar(b) }
+@JvmName("timesVec2ListFloatList")
+operator fun List<Vec2>.times(v: List<Float>): List<Vec2> = zipSame(this, v) { a, b -> Vec2(a).mul(b) }
+@JvmName("divVec2ListFloatList")
+operator fun List<Vec2>.div(v: List<Float>): List<Vec2> = zipSame(this, v) { a, b -> Vec2(a).div(b) }
+@JvmName("scalarPlusVec2List")
+operator fun Number.plus(v: List<Vec2>): List<Vec2> = v + this
+@JvmName("scalarMinusVec2List")
+operator fun Number.minus(v: List<Vec2>): List<Vec2> = v.map { it.scalarMinus(toFloat()) }
+@JvmName("scalarTimesVec2List")
+operator fun Number.times(v: List<Vec2>): List<Vec2> = v * this
+@JvmName("scalarDivVec2List")
+operator fun Number.div(v: List<Vec2>): List<Vec2> = v.map { it.scalarDiv(toFloat()) }
+
+@JvmName("plusVec3ListScalar")
+operator fun List<Vec3>.plus(s: Number): List<Vec3> = map { it.plusScalar(s.toFloat()) }
+@JvmName("minusVec3ListScalar")
+operator fun List<Vec3>.minus(s: Number): List<Vec3> = map { it.minusScalar(s.toFloat()) }
+@JvmName("timesVec3ListScalar")
+operator fun List<Vec3>.times(s: Number): List<Vec3> = map { Vec3(it).mul(s.toFloat()) }
+@JvmName("divVec3ListScalar")
+operator fun List<Vec3>.div(s: Number): List<Vec3> = map { Vec3(it).div(s.toFloat()) }
+@JvmName("plusVec3ListVec3")
+operator fun List<Vec3>.plus(v: Vec3): List<Vec3> = map { Vec3(it).add(v) }
+@JvmName("minusVec3ListVec3")
+operator fun List<Vec3>.minus(v: Vec3): List<Vec3> = map { Vec3(it).sub(v) }
+@JvmName("timesVec3ListVec3")
+operator fun List<Vec3>.times(v: Vec3): List<Vec3> = map { it.mulEach(v) }
+@JvmName("divVec3ListVec3")
+operator fun List<Vec3>.div(v: Vec3): List<Vec3> = map { it.divEach(v) }
+@JvmName("plusVec3ListVec2")
+operator fun List<Vec3>.plus(v: Vec2): List<Vec3> = map { it.plus(v) }
+@JvmName("minusVec3ListVec2")
+operator fun List<Vec3>.minus(v: Vec2): List<Vec3> = map { it.minus(v) }
+@JvmName("timesVec3ListVec2")
+operator fun List<Vec3>.times(v: Vec2): List<Vec3> = map { it.mul(v) }
+@JvmName("divVec3ListVec2")
+operator fun List<Vec3>.div(v: Vec2): List<Vec3> = map { it.div(v) }
+@JvmName("plusVec3ListVec3List")
+operator fun List<Vec3>.plus(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).add(b) }
+@JvmName("minusVec3ListVec3List")
+operator fun List<Vec3>.minus(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).sub(b) }
+@JvmName("timesVec3ListVec3List")
+operator fun List<Vec3>.times(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.mulEach(b) }
+@JvmName("divVec3ListVec3List")
+operator fun List<Vec3>.div(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.divEach(b) }
+@JvmName("plusVec3ListVec2List")
+operator fun List<Vec3>.plus(v: List<Vec2>): List<Vec3> = zipSame(this, v) { a, b -> a.plus(b) }
+@JvmName("minusVec3ListVec2List")
+operator fun List<Vec3>.minus(v: List<Vec2>): List<Vec3> = zipSame(this, v) { a, b -> a.minus(b) }
+@JvmName("timesVec3ListVec2List")
+operator fun List<Vec3>.times(v: List<Vec2>): List<Vec3> = zipSame(this, v) { a, b -> a.mul(b) }
+@JvmName("divVec3ListVec2List")
+operator fun List<Vec3>.div(v: List<Vec2>): List<Vec3> = zipSame(this, v) { a, b -> a.div(b) }
+@JvmName("plusVec3ListFloatList")
+operator fun List<Vec3>.plus(v: List<Float>): List<Vec3> = zipSame(this, v) { a, b -> a.plusScalar(b) }
+@JvmName("minusVec3ListFloatList")
+operator fun List<Vec3>.minus(v: List<Float>): List<Vec3> = zipSame(this, v) { a, b -> a.minusScalar(b) }
+@JvmName("timesVec3ListFloatList")
+operator fun List<Vec3>.times(v: List<Float>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).mul(b) }
+@JvmName("divVec3ListFloatList")
+operator fun List<Vec3>.div(v: List<Float>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).div(b) }
+@JvmName("scalarPlusVec3List")
+operator fun Number.plus(v: List<Vec3>): List<Vec3> = v + this
+@JvmName("scalarMinusVec3List")
+operator fun Number.minus(v: List<Vec3>): List<Vec3> = v.map { it.scalarMinus(toFloat()) }
+@JvmName("scalarTimesVec3List")
+operator fun Number.times(v: List<Vec3>): List<Vec3> = v * this
+@JvmName("scalarDivVec3List")
+operator fun Number.div(v: List<Vec3>): List<Vec3> = v.map { it.scalarDiv(toFloat()) }
+
+@JvmName("dotVec2ListVec2")
+infix fun List<Vec2>.dot(v: Vec2): List<Float> = map { it.dot(v) }
+@JvmName("dotVec2ListVec2List")
+infix fun List<Vec2>.dot(v: List<Vec2>): List<Float> = zipSame(this, v) { a, b -> a.dot(b) }
+@JvmName("dotVec3ListVec3")
+infix fun List<Vec3>.dot(v: Vec3): List<Float> = map { it.dot(v) }
+@JvmName("dotVec3ListVec3List")
+infix fun List<Vec3>.dot(v: List<Vec3>): List<Float> = zipSame(this, v) { a, b -> a.dot(b) }
+
+@JvmName("crossVec2ListVec2")
+infix fun List<Vec2>.cross(v: Vec2): List<Float> = map { it.x * v.y - it.y * v.x }
+@JvmName("crossVec2ListVec2List")
+infix fun List<Vec2>.cross(v: List<Vec2>): List<Float> = zipSame(this, v) { a, b -> a.x * b.y - a.y * b.x }
+@JvmName("crossVec3ListVec3")
+infix fun List<Vec3>.cross(v: Vec3): List<Vec3> = map { Vec3(it).cross(v) }
+@JvmName("crossVec3ListVec3List")
+infix fun List<Vec3>.cross(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).cross(b) }
+
+@JvmName("perpendicularVec2List")
+fun List<Vec2>.perpendicular(): List<Vec2> = map { Vec2(-it.y, it.x) }
+@JvmName("perpVec2List")
+fun List<Vec2>.perp(): List<Vec2> = perpendicular()
+@JvmName("perpendicularVec3List")
+fun List<Vec3>.perpendicular(): List<Vec3> = map { Vec3(-it.y, it.x, it.z) }
+@JvmName("perpVec3List")
+fun List<Vec3>.perp(): List<Vec3> = perpendicular()
+
+@JvmName("rotateVec2ListShort")
+fun List<Vec2>.rot(angle: Number, center: Vec2Anchor = Anchors2.center): List<Vec2> {
+    val about = center(this)
+    val c = cos(angle.toFloat())
+    val s = sin(angle.toFloat())
+    return map {
+        val x = it.x - about.x
+        val y = it.y - about.y
+        Vec2(about.x + x * c - y * s, about.y + x * s + y * c)
+    }
+}
+@JvmName("rotateVec2ListShortAboutPoint")
+fun List<Vec2>.rot(angle: Number, about: Vec2): List<Vec2> = rot(angle) { Vec2(about) }
+@JvmName("rotateVec2ListShortAboutAnchor")
+fun List<Vec2>.rot(angle: Number, about: ListAnchor): List<Vec2> = rot(angle, anchor(about))
+@JvmName("rotateVec2ListShortAboutFraction")
+fun List<Vec2>.rot(angle: Number, about: FractionAlongAnchor): List<Vec2> = rot(angle, anchor(about))
+
+@JvmName("rotateVec3ListShort")
+fun List<Vec3>.rot(angle: Number, axis: Vec3 = vec(0f, 0f, 1f), center: Vec3Anchor = Anchors3.center): List<Vec3> {
+    val about = center(this)
+    val q = Quaternionf().setAngleAxis(angle.toFloat(), axis.x, axis.y, axis.z)
+    return map { q.transform(Vec3(it).sub(about)).add(about) }
+}
+@JvmName("rotateVec3ListShortAnchorDefaultAxis")
+fun List<Vec3>.rot(angle: Number, center: Vec3Anchor): List<Vec3> = rot(angle, vec(0f, 0f, 1f), center)
+@JvmName("rotateVec3ListShortAboutPoint")
+fun List<Vec3>.rot(angle: Number, axis: Vec3 = vec(0f, 0f, 1f), about: Vec3): List<Vec3> = rot(angle, axis) { Vec3(about) }
+@JvmName("rotateVec3ListShortAboutAnchor")
+fun List<Vec3>.rot(angle: Number, about: ListAnchor): List<Vec3> = rot(angle, anchor(about))
+@JvmName("rotateVec3ListShortAboutFraction")
+fun List<Vec3>.rot(angle: Number, about: FractionAlongAnchor): List<Vec3> = rot(angle, anchor(about))
+@JvmName("rotateVec3ListShortAxisAboutAnchor")
+fun List<Vec3>.rot(angle: Number, axis: Vec3, about: ListAnchor): List<Vec3> = rot(angle, axis, anchor(about))
+@JvmName("rotateVec3ListShortAxisAboutFraction")
+fun List<Vec3>.rot(angle: Number, axis: Vec3, about: FractionAlongAnchor): List<Vec3> = rot(angle, axis, anchor(about))
+
+@JvmName("scaleVec2ListScalarShort")
+fun List<Vec2>.scale(scale: Number, center: Vec2Anchor = Anchors2.center): List<Vec2> {
+    val about = center(this)
+    return map { Vec2(about).add(Vec2(it).sub(about).mul(scale.toFloat())) }
+}
+@JvmName("scaleVec2ListScalarShortAboutPoint")
+fun List<Vec2>.scale(scale: Number, about: Vec2): List<Vec2> = scale(scale) { Vec2(about) }
+@JvmName("scaleVec2ListScalarShortAboutAnchor")
+fun List<Vec2>.scale(scale: Number, about: ListAnchor): List<Vec2> = scale(scale, anchor(about))
+@JvmName("scaleVec2ListScalarShortAboutFraction")
+fun List<Vec2>.scale(scale: Number, about: FractionAlongAnchor): List<Vec2> = scale(scale, anchor(about))
+@JvmName("scaleVec2ListVec2Short")
+fun List<Vec2>.scale(scale: Vec2, center: Vec2Anchor = Anchors2.center): List<Vec2> {
+    val about = center(this)
+    return map { Vec2(about.x + (it.x - about.x) * scale.x, about.y + (it.y - about.y) * scale.y) }
+}
+@JvmName("scaleVec2ListVec2ShortAboutPoint")
+fun List<Vec2>.scale(scale: Vec2, about: Vec2): List<Vec2> = scale(scale) { Vec2(about) }
+@JvmName("scaleVec2ListVec2ShortAboutAnchor")
+fun List<Vec2>.scale(scale: Vec2, about: ListAnchor): List<Vec2> = scale(scale, anchor(about))
+@JvmName("scaleVec2ListVec2ShortAboutFraction")
+fun List<Vec2>.scale(scale: Vec2, about: FractionAlongAnchor): List<Vec2> = scale(scale, anchor(about))
+
+@JvmName("scaleVec3ListScalarShort")
+fun List<Vec3>.scale(scale: Number, center: Vec3Anchor = Anchors3.center): List<Vec3> {
+    val about = center(this)
+    return map { Vec3(about).add(Vec3(it).sub(about).mul(scale.toFloat())) }
+}
+@JvmName("scaleVec3ListScalarShortAboutPoint")
+fun List<Vec3>.scale(scale: Number, about: Vec3): List<Vec3> = scale(scale) { Vec3(about) }
+@JvmName("scaleVec3ListScalarShortAboutAnchor")
+fun List<Vec3>.scale(scale: Number, about: ListAnchor): List<Vec3> = scale(scale, anchor(about))
+@JvmName("scaleVec3ListScalarShortAboutFraction")
+fun List<Vec3>.scale(scale: Number, about: FractionAlongAnchor): List<Vec3> = scale(scale, anchor(about))
+@JvmName("scaleVec3ListVec3Short")
+fun List<Vec3>.scale(scale: Vec3, center: Vec3Anchor = Anchors3.center): List<Vec3> {
+    val about = center(this)
+    return map {
+        Vec3(about.x + (it.x - about.x) * scale.x, about.y + (it.y - about.y) * scale.y, about.z + (it.z - about.z) * scale.z)
+    }
+}
+@JvmName("scaleVec3ListVec3ShortAboutPoint")
+fun List<Vec3>.scale(scale: Vec3, about: Vec3): List<Vec3> = scale(scale) { Vec3(about) }
+@JvmName("scaleVec3ListVec3ShortAboutAnchor")
+fun List<Vec3>.scale(scale: Vec3, about: ListAnchor): List<Vec3> = scale(scale, anchor(about))
+@JvmName("scaleVec3ListVec3ShortAboutFraction")
+fun List<Vec3>.scale(scale: Vec3, about: FractionAlongAnchor): List<Vec3> = scale(scale, anchor(about))
+
 // ==================== 2D TRANSFORMATIONS ====================
 
 /**
@@ -1026,24 +1343,24 @@ fun FLine.fitCircle(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
  */
 fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Vec2, Vec2, Float> {
     val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
-    
+
     if (points.size < 2) {
         // Degenerate case
         val p = points.firstOrNull() ?: vec(0f, 0f)
         return Triple(p, p, 0f)
     }
-    
+
     // Calculate centroid
     val n = points.size.toFloat()
     val cx = points.sumOf { it.x.toDouble() }.toFloat() / n
     val cy = points.sumOf { it.y.toDouble() }.toFloat() / n
     val centroid = vec(cx, cy)
-    
+
     // Calculate covariance matrix elements
     var sxx = 0f
     var sxy = 0f
     var syy = 0f
-    
+
     points.forEach { p ->
         val dx = p.x - cx
         val dy = p.y - cy
@@ -1051,13 +1368,13 @@ fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
         sxy += dx * dy
         syy += dy * dy
     }
-    
+
     // Find principal direction using eigenvalue decomposition
     // For 2x2 symmetric matrix, we can solve analytically
     val trace = sxx + syy
     val det = sxx * syy - sxy * sxy
     val lambda1 = trace / 2 + sqrt((trace * trace / 4 - det).coerceAtLeast(0f))
-    
+
     // Eigenvector for largest eigenvalue gives line direction
     val dirX: Float
     val dirY: Float
@@ -1071,26 +1388,26 @@ fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
         dirX = 0f
         dirY = 1f
     }
-    
+
     // Normalize direction
     val dirLen = sqrt(dirX * dirX + dirY * dirY)
     val dx = dirX / dirLen
     val dy = dirY / dirLen
-    
+
     // Project all points onto the line and find extent
     var minT = Float.POSITIVE_INFINITY
     var maxT = Float.NEGATIVE_INFINITY
-    
+
     points.forEach { p ->
         val t = (p.x - cx) * dx + (p.y - cy) * dy
         minT = min(minT, t)
         maxT = max(maxT, t)
     }
-    
+
     // Compute line endpoints
     val start = vec(cx + minT * dx, cy + minT * dy)
     val end = vec(cx + maxT * dx, cy + maxT * dy)
-    
+
     // Calculate RMS error (perpendicular distance to line)
     val error = sqrt(points.sumOf { p ->
         val t = (p.x - cx) * dx + (p.y - cy) * dy
@@ -1099,7 +1416,7 @@ fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
         val distSq = (p.x - projX) * (p.x - projX) + (p.y - projY) * (p.y - projY)
         distSq.toDouble()
     }.toFloat() / n)
-    
+
     return Triple(start, end, error)
 }
 
@@ -1113,19 +1430,19 @@ fun FLine.fitLine2D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
  */
 fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Vec3, Vec3, Float> {
     val points = this.samplePoints(samples, sampler = sampler)
-    
+
     if (points.size < 2) {
         val p = points.firstOrNull() ?: vec(0f, 0f, 0f)
         return Triple(p, vec(1f, 0f, 0f), 0f)
     }
-    
+
     // Calculate centroid
     val n = points.size.toFloat()
     val cx = points.sumOf { it.x.toDouble() }.toFloat() / n
     val cy = points.sumOf { it.y.toDouble() }.toFloat() / n
     val cz = points.sumOf { it.z.toDouble() }.toFloat() / n
     val centroid = vec(cx, cy, cz)
-    
+
     // Build covariance matrix
     var sxx = 0f
     var sxy = 0f
@@ -1133,7 +1450,7 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
     var syy = 0f
     var syz = 0f
     var szz = 0f
-    
+
     points.forEach { p ->
         val dx = p.x - cx
         val dy = p.y - cy
@@ -1145,7 +1462,7 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
         syz += dy * dz
         szz += dz * dz
     }
-    
+
     // Simple power iteration to find principal eigenvector
     var vx = 1f; var vy = 1f; var vz = 1f
     repeat(20) {
@@ -1159,9 +1476,9 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
             vz = newZ / len
         }
     }
-    
+
     val direction = vec(vx, vy, vz)
-    
+
     // Calculate RMS error
     val error = sqrt(points.sumOf { p ->
         val v = Vec3(p).sub(centroid)
@@ -1169,7 +1486,7 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
         val perpDistSq = Vec3(v).sub(Vec3(direction).mul(proj)).lengthSquared()
         perpDistSq.toDouble()
     }.toFloat() / n)
-    
+
     return Triple(centroid, direction, error)
 }
 
@@ -1183,15 +1500,15 @@ fun FLine.fitLine3D(samples: Int = 20, sampler: FLineSampler? = null): Triple<Ve
  */
 fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? = null): Pair<FloatArray, Float> {
     require(degree >= 1) { "Polynomial degree must be at least 1" }
-    
+
     val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
     val n = points.size
-    
+
     if (n < degree + 1) {
         // Not enough points for the degree
         return Pair(FloatArray(degree + 1) { 0f }, Float.POSITIVE_INFINITY)
     }
-    
+
     return try {
         val predictorNames = Array(degree) { i -> "x${i + 1}" }
         val columnNames = predictorNames + "y"
@@ -1217,7 +1534,7 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
         for (i in 1..degree) {
             coeffs[i] = learned.get(i - 1).toFloat()
         }
-        
+
         // Calculate RMS error
         val error = sqrt(points.sumOf { p ->
             var yPred = 0f
@@ -1229,7 +1546,7 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
             val residual = p.y - yPred
             (residual * residual).toDouble()
         }.toFloat() / n)
-        
+
         Pair(coeffs, error)
     } catch (e: Exception) {
         // Fallback to zero coefficients if Smile fitting fails
@@ -1245,10 +1562,10 @@ fun FLine.fitPolynomial(degree: Int, samples: Int = 50, sampler: FLineSampler? =
  * Fit an ellipse to points on the curve using moment-based approximation.
  * Note: This uses a simplified moment-based method rather than full algebraic distance
  * minimization. It provides good approximations for well-behaved elliptical data.
- * 
- * Returns ellipse parameters: center, semi-major axis length, semi-minor axis length, 
+ *
+ * Returns ellipse parameters: center, semi-major axis length, semi-minor axis length,
  * rotation angle, and fitting error.
- * 
+ *
  * @param samples number of points to sample
  * @return data class containing ellipse parameters and error (note: error is approximate)
  */
@@ -1262,19 +1579,19 @@ data class EllipseFit(
 
 fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseFit {
     val points = this.samplePoints(samples, sampler = sampler).map { Vec2(it.x, it.y) }
-    
+
     if (points.size < 5) {
         // Need at least 5 points for an ellipse
         val center = points.firstOrNull() ?: vec(0f, 0f)
         return EllipseFit(center, 0f, 0f, 0f, Float.POSITIVE_INFINITY)
     }
-    
+
     val n = points.size
-    
+
     // Direct least squares fitting of ellipse
     // Fit: a*x^2 + b*x*y + c*y^2 + d*x + e*y + f = 0
     // with constraint: b^2 - 4*a*c < 0 (ellipse constraint)
-    
+
     // Build design matrix for quadratic curve
     val d = Array(n) { FloatArray(6) }
     points.forEachIndexed { i, p ->
@@ -1287,7 +1604,7 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
         d[i][4] = y
         d[i][5] = 1f
     }
-    
+
     // Build scatter matrix: D^T * D
     val s = Array(6) { FloatArray(6) { 0f } }
     for (i in 0 until 6) {
@@ -1297,17 +1614,17 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
             }
         }
     }
-    
+
     // Use simplified algebraic fit (assuming b^2-4ac constraint)
     // This is a simplified version - full implementation would use eigenvalue method
     // For robustness, we normalize and solve approximately
-    
+
     // Normalize points
     val meanX = points.sumOf { it.x.toDouble() }.toFloat() / n
     val meanY = points.sumOf { it.y.toDouble() }.toFloat() / n
     val stdX = sqrt(points.sumOf { ((it.x - meanX) * (it.x - meanX)).toDouble() }.toFloat() / n)
     val stdY = sqrt(points.sumOf { ((it.y - meanY) * (it.y - meanY)).toDouble() }.toFloat() / n)
-    
+
     // Use a simple moment-based approximation for ellipse
     var m20 = 0f; var m02 = 0f; var m11 = 0f
     points.forEach { p ->
@@ -1318,16 +1635,16 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
         m11 += dx * dy
     }
     m20 /= n; m02 /= n; m11 /= n
-    
+
     // Eigenvalues of moment matrix
     val trace = m20 + m02
     val det = m20 * m02 - m11 * m11
     val lambda1 = trace / 2 + sqrt((trace * trace / 4 - det).coerceAtLeast(0f))
     val lambda2 = trace / 2 - sqrt((trace * trace / 4 - det).coerceAtLeast(0f))
-    
+
     val semiMajor = 2 * sqrt(lambda1.coerceAtLeast(0f))
     val semiMinor = 2 * sqrt(lambda2.coerceAtLeast(0f))
-    
+
     // Rotation angle from eigenvector
     val angle = if (abs(m11) > 1e-6f) {
         atan2(lambda1 - m02, m11)
@@ -1336,7 +1653,7 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
     } else {
         (PI / 2).toFloat()
     }
-    
+
     // Calculate error as average approximate distance from ellipse
     // Note: This uses a simplified distance metric for performance
     val error = points.sumOf { p ->
@@ -1346,7 +1663,7 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
         val dist = sqrt(dx * dx + dy * dy)
         abs(dist - (semiMajor + semiMinor) / 2).toDouble()
     }.toFloat() / n
-    
+
     return EllipseFit(vec(meanX, meanY), semiMajor, semiMinor, angle, error)
 }
 
@@ -1359,17 +1676,17 @@ fun FLine.fitEllipse(samples: Int = 30, sampler: FLineSampler? = null): EllipseF
  */
 fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair<Array<Vec3>, Float> {
     val points = this.samplePoints(samples, sampler = sampler)
-    
+
     if (points.size < 2) {
         // Not enough points
         val p = points.firstOrNull() ?: vec(0f, 0f, 0f)
         return Pair(arrayOf(p, p, p, p), Float.POSITIVE_INFINITY)
     }
-    
+
     // Fix endpoints to first and last sampled points
     val p0 = points.first()
     val p3 = points.last()
-    
+
     // Parameterize points by chord length
     val params = FloatArray(points.size)
     params[0] = 0f
@@ -1384,7 +1701,7 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
             params[i] /= totalLength
         }
     }
-    
+
     return try {
         // For each point: points[i] - ((1-t)^3 p0 + t^3 p3) = b1(t)*p1 + b2(t)*p2
         // where b1 = 3(1-t)^2 t and b2 = 3(1-t)t^2.
@@ -1438,7 +1755,7 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
             yCoeffs[1].toFloat(),
             zCoeffs[1].toFloat()
         )
-        
+
         // Calculate error
         val error = points.withIndex().sumOf { (i, p) ->
             val t = params[i]
@@ -1447,17 +1764,17 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
             val mt = 1 - t
             val mt2 = mt * mt
             val mt3 = mt2 * mt
-            
+
             val bezierPt = Vec3(p0).mul(mt3)
                 .add(Vec3(p1).mul(3 * mt2 * t))
                 .add(Vec3(p2).mul(3 * mt * t2))
                 .add(Vec3(p3).mul(t3))
-            
+
             Vec3(p).sub(bezierPt).lengthSquared().toDouble()
         }.toFloat() / points.size
-        
+
         Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
-        
+
     } catch (e: Exception) {
         // Fallback: use simple interpolation for control points
         // Log for debugging but don't fail the operation
@@ -1466,7 +1783,7 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
         }
         val p1 = Vec3(p0).lerp(p3, 0.33f)
         val p2 = Vec3(p0).lerp(p3, 0.67f)
-        
+
         // Calculate error with fallback curve
         val error = points.withIndex().sumOf { (i, p) ->
             val t = params[i]
@@ -1475,15 +1792,15 @@ fun FLine.fitBezierCubic(samples: Int = 20, sampler: FLineSampler? = null): Pair
             val mt = 1 - t
             val mt2 = mt * mt
             val mt3 = mt2 * mt
-            
+
             val bezierPt = Vec3(p0).mul(mt3)
                 .add(Vec3(p1).mul(3 * mt2 * t))
                 .add(Vec3(p2).mul(3 * mt * t2))
                 .add(Vec3(p3).mul(t3))
-            
+
             Vec3(p).sub(bezierPt).lengthSquared().toDouble()
         }.toFloat() / points.size
-        
+
         Pair(arrayOf(p0, p1, p2, p3), sqrt(error))
     }
 }
@@ -1503,18 +1820,18 @@ fun FLine.fitPiecewiseLinear(
 ): List<FLine> {
     val points = this.samplePoints(samples, sampler = sampler)
     if (points.size < 2) return emptyList()
-    
+
     // Analyze curvature to find break points
     val curvatures = this.curvatureAnalysis(samples = samples)
     val breakIndices = mutableListOf(0)
-    
+
     // Find high curvature points
     curvatures.forEachIndexed { i, (_, k) ->
         if (abs(k) > curvatureThreshold && i > breakIndices.last() + samples / maxSegments) {
             breakIndices.add(i)
         }
     }
-    
+
     // Ensure we don't exceed maxSegments
     while (breakIndices.size > maxSegments) {
         // Remove breaks at lowest curvature
@@ -1524,15 +1841,15 @@ fun FLine.fitPiecewiseLinear(
         if (toRemove != null) breakIndices.remove(toRemove)
         else break
     }
-    
+
     breakIndices.add(points.size - 1)
-    
+
     // Create line segments
     val segments = mutableListOf<FLine>()
     for (i in 0 until breakIndices.size - 1) {
         val start = breakIndices[i]
         val end = breakIndices[i + 1]
-        
+
         if (start < points.size && end < points.size) {
             val line = FLine()
             line.moveTo(points[start])
@@ -1540,7 +1857,7 @@ fun FLine.fitPiecewiseLinear(
             segments.add(line)
         }
     }
-    
+
     return segments
 }
 
@@ -1553,16 +1870,16 @@ fun FLine.fitPiecewiseLinear(
 fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
     if (points.isEmpty()) return FLine()
     if (points.size == 1) return FLine().also { it.moveTo(points[0]) }
-    
+
     val line = FLine()
-    
+
     when (strategy.lowercase()) {
         "linear" -> {
             // Simple linear interpolation
             line.moveTo(points[0])
             points.drop(1).forEach { line.lineTo(it) }
         }
-        
+
         "quadratic", "cubic" -> {
             // Polynomial fit
             val tempLine = FLine().also { fl ->
@@ -1571,7 +1888,7 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
             }
             val degree = if (strategy == "quadratic") 2 else 3
             val (coeffs, _) = tempLine.fitPolynomial(degree, samples = points.size)
-            
+
             // Create smooth curve from polynomial
             line.moveTo(points.first())
             val xMin = points.minOf { it.x }
@@ -1588,22 +1905,22 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
                 line.lineTo(x, y, points.first().z)
             }
         }
-        
+
         "bezier" -> {
             // Fit cubic Bezier segments
             line.moveTo(points[0])
-            
+
             // Process points in groups of 4 (or less for the last segment)
             var i = 0
             while (i < points.size - 1) {
                 val segmentEnd = min(i + 4, points.size)
                 val segmentPoints = points.subList(i, segmentEnd)
-                
+
                 val tempLine = FLine().also { fl ->
                     fl.moveTo(segmentPoints[0])
                     segmentPoints.drop(1).forEach { fl.lineTo(it) }
                 }
-                
+
                 if (segmentPoints.size >= 4) {
                     val (bezier, _) = tempLine.fitBezierCubic(samples = segmentPoints.size)
                     line.cubicTo(bezier[1], bezier[2], bezier[3])
@@ -1611,28 +1928,28 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
                     // Not enough points, just draw lines
                     segmentPoints.drop(1).forEach { line.lineTo(it) }
                 }
-                
+
                 i += 3 // Move forward 3 points (from 4-point group) to maintain 1-point overlap
             }
         }
-        
+
         "adaptive" -> {
             // Adaptive fitting based on point spacing
             // Strategy: Use Bezier curves for areas with consistent point spacing (likely from smooth curves),
             // and straight lines for areas with irregular spacing (likely from corners or complex features)
             line.moveTo(points[0])
-            
+
             // Calculate average distance between consecutive points
             val distances = points.zipWithNext().map { (a, b) -> Vec3(a).sub(b).length() }
             val avgDist = distances.average().toFloat()
             val stdDist = sqrt(distances.sumOf { (it - avgDist) * (it - avgDist).toDouble() }.toFloat() / distances.size)
-            
+
             // Process points in groups
             var i = 0
             while (i < points.size - 1) {
                 val segmentStart = i
                 var segmentEnd = min(i + 4, points.size - 1)
-                
+
                 // Check if next few points have consistent spacing (suggesting a smooth curve section)
                 // Note: This is about point distribution, not the curve parameterization.
                 // Cubic splines/Bezier can fit any points, but consistent spacing indicates
@@ -1643,7 +1960,7 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
                     }
                     localDists.all { abs(it - avgDist) < stdDist * 2 }
                 } else false
-                
+
                 if (hasConsistentSpacing && segmentEnd - segmentStart >= 3) {
                     // Use Bezier curve - can fit any number of points >= 2
                     val segmentPoints = points.subList(segmentStart, segmentEnd + 1)
@@ -1661,14 +1978,14 @@ fun pointsToFLine(points: List<Vec3>, strategy: String = "adaptive"): FLine {
                 }
             }
         }
-        
+
         else -> {
             // Default to linear
             line.moveTo(points[0])
             points.drop(1).forEach { line.lineTo(it) }
         }
     }
-    
+
     return line
 }
 

@@ -13,8 +13,10 @@ import org.joml.plus
 import org.joml.times
 import java.lang.Math
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 var _flineSequenceNumber = 0L
 
@@ -449,6 +451,104 @@ class FLine : HasProperties {
         r.properties.putAll(properties)
         return r
     }
+
+    private fun anchor3(a: ListAnchor): Vec3 = when (a) {
+        ListAnchor.Start -> nodes.firstOrNull()?.to?.let(::Vec3) ?: Vec3()
+        ListAnchor.End -> nodes.lastOrNull()?.to?.let(::Vec3) ?: Vec3()
+        ListAnchor.Midpoint -> midPoint()
+        ListAnchor.Center -> center()
+    }
+
+    private fun anchor3(a: FractionAlongAnchor): Vec3 {
+        if (nodes.isEmpty()) return Vec3()
+        val c = cursor()
+        return c.setD(c.lengthD() * a.t.toFloat().coerceIn(0f, 1f)).position()
+    }
+
+    private fun anchor2(a: ListAnchor): Vec2 {
+        val p = anchor3(a)
+        return Vec2(p.x, p.y)
+    }
+
+    private fun anchor2(a: FractionAlongAnchor): Vec2 {
+        val p = anchor3(a)
+        return Vec2(p.x, p.y)
+    }
+
+    /**
+     * Rotate in the XY plane around [center], preserving Z.
+     */
+    fun rot(angle: Number, center: Vec2): FLine {
+        val c = cos(angle.toFloat())
+        val s = sin(angle.toFloat())
+        return transform {
+            val x = it.x - center.x
+            val y = it.y - center.y
+            Vec3(center.x + x * c - y * s, center.y + x * s + y * c, it.z)
+        }
+    }
+
+    /**
+     * Rotate around the Z axis and the line center by default.
+     */
+    fun rot(angle: Number): FLine = rot(angle, vec(0f, 0f, 1f), center())
+
+    fun rot(angle: Number, center: Vec3): FLine = rot(angle, vec(0f, 0f, 1f), center)
+    fun rot(angle: Number, center: ListAnchor): FLine = rot(angle, anchor3(center))
+    fun rot(angle: Number, center: FractionAlongAnchor): FLine = rot(angle, anchor3(center))
+
+    /**
+     * Rotate in 3D around [axis] and [center].
+     */
+    fun rot(angle: Number, axis: Vec3, center: Vec3 = center()): FLine {
+        val q = quat(angle, axis)
+        return transform { q.transform(Vec3(it).sub(center)).add(center) }
+    }
+
+    fun rot(angle: Number, axis: Vec3, center: ListAnchor): FLine = rot(angle, axis, anchor3(center))
+    fun rot(angle: Number, axis: Vec3, center: FractionAlongAnchor): FLine = rot(angle, axis, anchor3(center))
+
+    /**
+     * Uniform scale around the line center by default.
+     */
+    fun scale(scale: Number): FLine = scale(scale, center())
+
+    fun scale(scale: Number, center: Vec2): FLine = scale(Vec2(scale.toFloat(), scale.toFloat()), center)
+    fun scale(scale: Number, center: Vec3): FLine = transform { Vec3(center).add(Vec3(it).sub(center).mul(scale.toFloat())) }
+    fun scale(scale: Number, center: ListAnchor): FLine = scale(scale, anchor3(center))
+    fun scale(scale: Number, center: FractionAlongAnchor): FLine = scale(scale, anchor3(center))
+
+    /**
+     * XY component scale around [center], preserving Z.
+     */
+    fun scale(scale: Vec2, center: Vec2 = anchor2(ListAnchor.Center)): FLine {
+        return transform {
+            Vec3(
+                center.x + (it.x - center.x) * scale.x,
+                center.y + (it.y - center.y) * scale.y,
+                it.z
+            )
+        }
+    }
+
+    fun scale(scale: Vec2, center: ListAnchor): FLine = scale(scale, anchor2(center))
+    fun scale(scale: Vec2, center: FractionAlongAnchor): FLine = scale(scale, anchor2(center))
+
+    /**
+     * XYZ component scale around [center].
+     */
+    fun scale(scale: Vec3, center: Vec3 = center()): FLine {
+        return transform {
+            Vec3(
+                center.x + (it.x - center.x) * scale.x,
+                center.y + (it.y - center.y) * scale.y,
+                center.z + (it.z - center.z) * scale.z
+            )
+        }
+    }
+
+    fun scale(scale: Vec3, center: ListAnchor): FLine = scale(scale, anchor3(center))
+    fun scale(scale: Vec3, center: FractionAlongAnchor): FLine = scale(scale, anchor3(center))
 
     /**
      * Translate this line by [n].

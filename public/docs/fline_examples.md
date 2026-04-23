@@ -228,11 +228,12 @@ The two viewers are deliberately close in spirit. If you learn one, the other sh
 
 ```diffstatic {data-lang=kotlin}
 :::static
-var FLine.onClick: (() -> Unit)?
+data class FLineIntersection(val closestVertexIndex: Int, val position: Vec3)
+var FLine.onClick: ((FLineIntersection) -> Unit)?
 var FLine.hoverColor: Vec4?
 ```
 
-This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer. The usual pattern is simple: draw something, assign `onClick`, and update another output area when it gets picked.
+This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer. The callback receives the closest FLine vertex index and the clicked 3D position. The usual pattern is simple: draw something, assign `onClick`, and update another output area when it gets picked.
 
 #### 2D callbacks
 
@@ -258,7 +259,7 @@ val triangle = fline {
     thickness = 2.5
     color = vec(1.0, 0.63, 0.24, 0.30)
     hoverColor = vec(1.0, 0.82, 0.42, 0.92)
-    onClick = { status("triangle") }
+    onClick = { hit -> status("triangle @ ${hit.closestVertexIndex}") }
 }
 
 val blob = fline {
@@ -271,7 +272,7 @@ val blob = fline {
     thickness = 2.5
     color = vec(0.34, 0.88, 1.0, 0.24)
     hoverColor = vec(0.48, 1.0, 1.0, 0.92)
-    onClick = { status("blob") }
+    onClick = { hit -> status("blob @ ${hit.closestVertexIndex}") }
 }
 
 lines(listOf(triangle, blob), channel = "callbacks2d", w = 760.0, h = 340.0, fitToSize = true)
@@ -304,7 +305,7 @@ fun ring(radius: Double, z: Double, color: Vec4, hover: Vec4, name: String): FLi
     thickness = 3.0
     this.color = color
     hoverColor = hover
-    onClick = { status(name) }
+    onClick = { hit -> status("$name @ ${hit.closestVertexIndex}") }
 }
 
 val stack = listOf(
