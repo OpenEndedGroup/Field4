@@ -13,6 +13,7 @@ import kotlin.reflect.full.primaryConstructor
 
 internal object KotlinCompletionSupport {
     private val constructorInfoCache = HashMap<String, ConstructorInfo?>()
+    private val callableInfoCache = HashMap<String, CallableInfo?>()
 
     data class ReplacementBounds(val start: Int, val end: Int)
 
@@ -117,6 +118,90 @@ internal object KotlinCompletionSupport {
         }
     }
 
+    private data class CallableInfo(
+        val name: String,
+        val ownerName: String? = null,
+        val parameters: List<ConstructorParameterInfo> = emptyList(),
+        val returnType: String? = null,
+        val documentation: String? = null,
+        val sourceFile: String? = null
+    ) {
+        private fun typedSignature(includeDefaults: Boolean = true): String {
+            val renderedParams = parameters.joinToString(", ") { it.signature(includeDefault = includeDefaults) }
+            val suffix = returnType?.takeIf { it.isNotBlank() }?.let { ": ${shortenType(it)}" }.orEmpty()
+            return "fun $name($renderedParams)$suffix"
+        }
+
+        private fun multilineSignature(): String {
+            if (parameters.isEmpty()) return typedSignature()
+            val singleLine = typedSignature()
+            if (parameters.size <= 2 && singleLine.length <= 110) return singleLine
+            return buildString {
+                append("fun ").append(name).append("(\n")
+                parameters.forEachIndexed { index, parameter ->
+                    append("    ").append(parameter.signature())
+                    if (index != parameters.lastIndex) append(',')
+                    append('\n')
+                }
+                append(')')
+                returnType?.takeIf { it.isNotBlank() }?.let {
+                    append(": ").append(shortenType(it))
+                }
+            }
+        }
+
+        fun label(maxChars: Int = 92): String {
+            val typed = typedSignature(includeDefaults = false)
+            if (typed.length <= maxChars) return typed
+
+            val namesOnly = parameters.joinToString(", ") { parameter ->
+                buildString {
+                    if (parameter.vararg) append("vararg ")
+                    append(parameter.name)
+                }
+            }
+            val compact = "fun $name($namesOnly)"
+            if (compact.length <= maxChars) return compact
+
+            val shortened = parameters.take(3).joinToString(", ") { it.name } + if (parameters.size > 3) ", ..." else ""
+            return "fun $name($shortened)"
+        }
+
+        fun documentationMarkdown(existingDocumentation: String = ""): String {
+            val sections = mutableListOf<String>()
+
+            sections += buildString {
+                append("```kotlin\n")
+                append(multilineSignature())
+                append("\n```")
+            }
+
+            documentation?.trim()?.takeIf { it.isNotEmpty() }?.let { sections += it }
+
+            if (parameters.isNotEmpty()) {
+                sections += buildString {
+                    append("**Parameters**\n")
+                    parameters.forEach { parameter ->
+                        append(parameter.parameterSummary()).append('\n')
+                    }
+                }.trimEnd()
+            }
+
+            returnType?.takeIf { it.isNotBlank() }?.let {
+                sections += "**Returns** `${shortenType(it)}`"
+            }
+
+            buildList {
+                ownerName?.takeIf { it.isNotBlank() }?.let { add("**Defined In** `$it`") }
+                sourceFile?.takeIf { it.isNotBlank() }?.let { add("**Source** `$it`") }
+            }.takeIf { it.isNotEmpty() }?.let { sections += it.joinToString("  \n") }
+
+            existingDocumentation.trim().takeIf { it.isNotEmpty() }?.let { sections += it }
+
+            return sections.joinToString("\n\n")
+        }
+    }
+
     private data class ReflectionConstructorInfo(
         val fqName: String?,
         val parameters: List<ConstructorParameterInfo>
@@ -128,6 +213,14 @@ internal object KotlinCompletionSupport {
         val parameters: List<ConstructorParameterInfo> = emptyList()
     )
 
+    private data class SourceCallableInfo(
+        val ownerName: String? = null,
+        val sourceFile: String,
+        val documentation: String? = null,
+        val parameters: List<ConstructorParameterInfo> = emptyList(),
+        val returnType: String? = null
+    )
+
     private data class CallContext(
         val calleeText: String,
         val namedArguments: Set<String>
@@ -137,7 +230,9 @@ internal object KotlinCompletionSupport {
         box: Box,
         allCode: String,
         metadata: Metadata,
-        symbolName: String?
+        symbolName: String?,
+        position: Int,
+        receiverTypeHint: String? = null
     ): Metadata {
         val name = symbolName
             ?.substringBefore('<')
@@ -146,13 +241,31 @@ internal object KotlinCompletionSupport {
             ?.trim()
             ?: metadata.text.substringBefore('<').substringBefore('(').trim()
 
-        if (name.isBlank() || name.firstOrNull()?.isUpperCase() != true) return metadata
+        if (name.isBlank()) return metadata
 
-        val info = resolveConstructorInfo(box, allCode, name) ?: return metadata
-        val documentation = info.documentationMarkdown(metadata.documentation)
+        if (name.firstOrNull()?.isUpperCase() == true) {
+            val info = resolveConstructorInfo(box, allCode, name) ?: return metadata
+            val documentation = info.documentationMarkdown(metadata.documentation)
+            return metadata.copy(
+                displayText = info.label(),
+                documentation = documentation
+            )
+        }
+
+        val callableInfo = resolveCallableInfo(
+            box = box,
+            allCode = allCode,
+            simpleName = name,
+            position = position,
+            displayText = metadata.displayText,
+            tail = metadata.tail,
+            receiverTypeHint = receiverTypeHint
+        ) ?: return metadata
+
         return metadata.copy(
-            displayText = info.label(),
-            documentation = documentation
+            displayText = callableInfo.label(),
+            tail = callableInfo.returnType?.takeIf { it.isNotBlank() }?.let { ": ${shortenType(it)}" } ?: metadata.tail,
+            documentation = callableInfo.documentationMarkdown(metadata.documentation)
         )
     }
 
@@ -250,9 +363,55 @@ internal object KotlinCompletionSupport {
         return resolved
     }
 
+    @Synchronized
+    private fun resolveCallableInfo(
+        box: Box,
+        allCode: String,
+        simpleName: String,
+        position: Int,
+        displayText: String,
+        tail: String,
+        receiverTypeHint: String?
+    ): CallableInfo? {
+        val receiverOwnerHint = inferReceiverOwnerName(box, allCode, position, receiverTypeHint)
+        val cacheKey = buildCallableCacheKey(allCode, simpleName, receiverOwnerHint, displayText, tail)
+        if (callableInfoCache.containsKey(cacheKey)) return callableInfoCache[cacheKey]
+
+        val resolved = resolveSourceCallableInfo(
+            allCode = allCode,
+            simpleName = simpleName,
+            receiverOwnerHint = receiverOwnerHint,
+            displayText = displayText,
+            tail = tail
+        )?.let {
+            CallableInfo(
+                name = simpleName,
+                ownerName = it.ownerName,
+                parameters = it.parameters,
+                returnType = it.returnType,
+                documentation = it.documentation,
+                sourceFile = it.sourceFile
+            )
+        }
+
+        callableInfoCache[cacheKey] = resolved
+        return resolved
+    }
+
     private fun buildCacheKey(allCode: String, simpleName: String): String {
         val imports = importCandidates(allCode, simpleName).sorted().joinToString("|")
         return "$simpleName::$imports"
+    }
+
+    private fun buildCallableCacheKey(
+        allCode: String,
+        simpleName: String,
+        receiverOwnerHint: String?,
+        displayText: String,
+        tail: String
+    ): String {
+        val imports = importCandidates(allCode, simpleName).sorted().joinToString("|")
+        return listOf(simpleName, receiverOwnerHint.orEmpty(), displayText, tail.trim(), imports).joinToString("::")
     }
 
     private fun resolveClassCandidates(allCode: String, simpleName: String): List<String> {
@@ -314,6 +473,270 @@ internal object KotlinCompletionSupport {
             if (parsed != null) return parsed
         }
         return null
+    }
+
+    private fun resolveSourceCallableInfo(
+        allCode: String,
+        simpleName: String,
+        receiverOwnerHint: String?,
+        displayText: String,
+        tail: String
+    ): SourceCallableInfo? {
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val expectedParamCount = parameterCountHint(displayText)
+        val expectedReturnType = tail.removePrefix(":").trim().ifBlank { null }
+
+        val candidates = index.definitions
+            .asSequence()
+            .filter { it.kind == "fun" && it.name.substringAfterLast('.') == simpleName }
+            .mapNotNull { definition ->
+                parseSourceCallableInfo(definition, root, simpleName)?.let { definition to it }
+            }
+            .toList()
+
+        if (candidates.isEmpty()) return null
+
+        val scored = candidates.map { (definition, info) ->
+            scoreCallableCandidate(
+                definitionName = definition.name,
+                info = info,
+                receiverOwnerHint = receiverOwnerHint,
+                expectedParamCount = expectedParamCount,
+                expectedReturnType = expectedReturnType,
+                displayText = displayText,
+                allCode = allCode
+            ) to info
+        }.sortedByDescending { it.first }
+
+        val best = scored.firstOrNull() ?: return null
+        if (best.first <= 0) return null
+        return best.second
+    }
+
+    private fun parseSourceCallableInfo(
+        definition: afield.ai.KotlinDefinitionRecord,
+        root: Path,
+        simpleName: String
+    ): SourceCallableInfo? {
+        val path = root.resolve(definition.filePath).normalize()
+        if (!Files.exists(path)) return null
+        val rawText = runCatching { Files.readString(path) }.getOrNull() ?: return null
+        val lineOffsets = lineStartOffsets(rawText)
+        val lineStart = lineOffsets.getOrNull((definition.line - 1).coerceAtLeast(0)) ?: return null
+        val funIndex = rawText.indexOf("fun", lineStart).takeIf { it >= 0 } ?: return null
+        val parenOpen = rawText.indexOf('(', funIndex).takeIf { it > funIndex } ?: return null
+        val close = matchingDelimiter(rawText, parenOpen, '(', ')')
+        if (close <= parenOpen) return null
+
+        val header = rawText.substring(funIndex, close)
+        val headerName = header.substringAfter("fun").trim()
+        val parsedName = headerName.substringBefore('(').substringAfterLast('.').substringAfterLast(' ').trim()
+        if (parsedName != simpleName) return null
+
+        val parameters = splitTopLevelConstructorParameters(rawText.substring(parenOpen + 1, close))
+            .mapNotNull { parseParameter(it) }
+
+        var cursor = skipWhitespace(rawText, close + 1)
+        var returnType: String? = null
+        if (cursor < rawText.length && rawText[cursor] == ':') {
+            cursor++
+            val end = findFunctionHeaderEnd(rawText, cursor)
+            returnType = rawText.substring(cursor, end).trim().ifBlank { null }
+        }
+
+        val relativePath = runCatching { root.relativize(path).toString().replace("\\", "/") }
+            .getOrDefault(path.toString())
+
+        return SourceCallableInfo(
+            ownerName = definition.name.substringBeforeLast('.', "").ifBlank { null },
+            sourceFile = relativePath,
+            documentation = definition.kdoc,
+            parameters = parameters,
+            returnType = returnType
+        )
+    }
+
+    private fun scoreCallableCandidate(
+        definitionName: String,
+        info: SourceCallableInfo,
+        receiverOwnerHint: String?,
+        expectedParamCount: Int?,
+        expectedReturnType: String?,
+        displayText: String,
+        allCode: String
+    ): Int {
+        var score = 0
+
+        val ownerSimpleName = info.ownerName?.substringAfterLast('.')
+        if (!receiverOwnerHint.isNullOrBlank()) {
+            score += when {
+                info.ownerName == receiverOwnerHint -> 120
+                ownerSimpleName == receiverOwnerHint.substringAfterLast('.') -> 90
+                else -> -40
+            }
+        }
+
+        expectedParamCount?.let {
+            score += if (info.parameters.size == it) 40 else -20 * kotlin.math.abs(info.parameters.size - it)
+        }
+
+        expectedReturnType?.let {
+            val actualReturn = info.returnType?.let(::shortenType)
+            score += if (actualReturn == shortenType(it)) 30 else -10
+        }
+
+        if (displayText.contains("fun ")) score += 5
+        if (definitionName in allCode) score += 10
+        return score
+    }
+
+    private fun inferReceiverOwnerName(
+        box: Box,
+        allCode: String,
+        position: Int,
+        receiverTypeHint: String?
+    ): String? {
+        receiverTypeHint?.takeIf { it.isNotBlank() }?.let { return it.substringAfterLast('.') }
+
+        val receiverExpression = extractReceiverExpressionAtCompletion(allCode, position) ?: return null
+        val identifier = receiverExpression.trim()
+        if (!identifier.matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))) return null
+
+        box.ki.context.vars[identifier]?.value?.let { value ->
+            value::class.simpleName?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+
+        val explicitType = explicitTypeForLocal(allCode, identifier)
+        if (!explicitType.isNullOrBlank()) return explicitType.substringAfterLast('.')
+
+        return null
+    }
+
+    private fun extractReceiverExpressionAtCompletion(allCode: String, position: Int): String? {
+        if (position <= 0 || position > allCode.length) return null
+        val bounds = getTokenBounds(allCode, position)
+        val beforePrefix = bounds.start
+        if (beforePrefix <= 0) return null
+
+        val isSafeDot = beforePrefix >= 2 &&
+            allCode[beforePrefix - 1] == '.' &&
+            allCode[beforePrefix - 2] == '?'
+        val isDot = !isSafeDot && allCode[beforePrefix - 1] == '.'
+        if (!isDot && !isSafeDot) return null
+
+        val dotPos = if (isSafeDot) beforePrefix - 2 else beforePrefix - 1
+        return extractReceiverExpression(allCode, dotPos)
+    }
+
+    private fun extractReceiverExpression(text: String, endPos: Int): String {
+        var pos = endPos - 1
+        var parenDepth = 0
+        var bracketDepth = 0
+
+        while (pos >= 0) {
+            val ch = text[pos]
+            when {
+                ch == ')' -> {
+                    parenDepth++
+                    pos--
+                }
+                ch == '(' && parenDepth > 0 -> {
+                    parenDepth--
+                    pos--
+                }
+                ch == ']' -> {
+                    bracketDepth++
+                    pos--
+                }
+                ch == '[' && bracketDepth > 0 -> {
+                    bracketDepth--
+                    pos--
+                }
+                parenDepth > 0 || bracketDepth > 0 -> pos--
+                ch.isLetterOrDigit() || ch == '_' || ch == '.' || ch == '?' -> pos--
+                else -> break
+            }
+        }
+
+        return text.substring(pos + 1, endPos).trim()
+    }
+
+    private fun explicitTypeForLocal(allCode: String, identifier: String): String? {
+        val regex = Regex("\\b(?:val|var)\\s+${Regex.escape(identifier)}\\s*:\\s*([A-Za-z0-9_.<>?]+)")
+        val match = regex.find(allCode) ?: return null
+        return match.groupValues[1]
+            .substringBefore('<')
+            .substringBefore('?')
+            .trim()
+            .takeIf { it.isNotBlank() }
+    }
+
+    private fun parameterCountHint(displayText: String): Int? {
+        val open = displayText.indexOf('(')
+        val close = displayText.lastIndexOf(')')
+        if (open == -1 || close <= open) return null
+        val inside = displayText.substring(open + 1, close).trim()
+        if (inside.isEmpty()) return 0
+        return splitTopLevelConstructorParameters(inside).size
+    }
+
+    private fun findFunctionHeaderEnd(text: String, start: Int): Int {
+        var parenDepth = 0
+        var angleDepth = 0
+        var braceDepth = 0
+        var bracketDepth = 0
+        var inString = false
+        var stringChar = '"'
+        var i = start
+        while (i < text.length) {
+            val ch = text[i]
+            if (inString) {
+                if (ch == '\\' && i + 1 < text.length) {
+                    i += 2
+                    continue
+                }
+                if (ch == stringChar) inString = false
+                i++
+                continue
+            }
+            if (ch == '"' || ch == '\'') {
+                inString = true
+                stringChar = ch
+                i++
+                continue
+            }
+            when (ch) {
+                '(' -> parenDepth++
+                ')' -> if (parenDepth > 0) parenDepth--
+                '<' -> angleDepth++
+                '>' -> if (angleDepth > 0) angleDepth--
+                '{' -> if (braceDepth == 0 && parenDepth == 0 && angleDepth == 0 && bracketDepth == 0) return i
+                '=' -> if (braceDepth == 0 && parenDepth == 0 && angleDepth == 0 && bracketDepth == 0) return i
+                '[' -> bracketDepth++
+                ']' -> if (bracketDepth > 0) bracketDepth--
+                '\n' -> if (parenDepth == 0 && angleDepth == 0 && bracketDepth == 0) {
+                    val next = text.indexOfFirstNonWhitespace(i + 1)
+                    if (next == -1 || text.getOrNull(next) in listOf('{', '=')) return i
+                }
+            }
+            i++
+        }
+        return text.length
+    }
+
+    private fun lineStartOffsets(text: String): List<Int> {
+        val offsets = mutableListOf(0)
+        text.forEachIndexed { index, ch ->
+            if (ch == '\n' && index + 1 < text.length) offsets += index + 1
+        }
+        return offsets
+    }
+
+    private fun String.indexOfFirstNonWhitespace(start: Int): Int {
+        var cursor = start
+        while (cursor < length && this[cursor].isWhitespace()) cursor++
+        return if (cursor < length) cursor else -1
     }
 
     private fun sourceFileCandidates(root: Path, simpleName: String, fqName: String?): List<Path> {

@@ -39,6 +39,30 @@ PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
 MAX_EVENTS = 4000
 LOG_STRING_PREVIEW = 512
 LOG_COLLECTION_PREVIEW = 32
+GRAPHICS_CONTEXT_WAIT_SEC = 0.5
+GRAPHICS_CONTEXT_BOX_NAME = "renderer"
+GRAPHICS_CONTEXT_PREAMBLE = """
+import afield.four.Renderer
+import afield.four.util.Window
+
+var Box.window by Inheritance<Window>() /**/
+val Once.window by Onceing<Window>() /**/
+var Box.renderer by Inheritance<Renderer>() /**/
+val Once.renderer by Onceing<Renderer>() /**/
+""".strip()
+GRAPHICS_CONTEXT_CODE = """
+import afield.four.Renderer
+import afield.four.util.Window
+
+var Box.window by Inheritance<Window>() /**/
+val Once.window by Onceing<Window>() /**/
+var Box.renderer by Inheritance<Renderer>() /**/
+val Once.renderer by Onceing<Renderer>() /**/
+
+window = Window("Field")
+renderer = Renderer(window)
+start(renderer::run)
+""".strip()
 
 
 class BackdoorError(RuntimeError):
@@ -191,6 +215,8 @@ class FieldBackdoor:
         self.closed_reason: str | None = None
         self.reused_existing_server = False
         self.stdin_cache: str | None = None
+        self.graphics_context_enabled = False
+        self.graphics_context_uid: str | None = None
         self.logger.log(
             "client_initialized",
             sessionId=self.session_id,
@@ -293,6 +319,11 @@ class FieldBackdoor:
             websocketOpen=self.websocket is not None,
             managedServer=self.managed_process is not None,
         )
+        if self.websocket is not None and self.graphics_context_uid and self.graphics_context_uid in self.boxes:
+            try:
+                await self.stop_box(self.graphics_context_uid, timeout=min(self.default_timeout, 5.0))
+            except Exception as exc:
+                self.logger.exception("graphics_context_stop_error", exc, uid=self.graphics_context_uid)
         if self.websocket is not None:
             self.logger.log("websocket_close_start")
             await self.websocket.close()
@@ -499,6 +530,8 @@ class FieldBackdoor:
             for alias, uid in self.box_aliases.items()
             if uid in self.boxes
         }
+        if self.graphics_context_uid not in self.boxes:
+            self.graphics_context_uid = None
         self.logger.log(
             "snapshot_replaced",
             documentName=self.document_name,
@@ -903,7 +936,17 @@ class FieldBackdoor:
         self.logger.log("refresh_snapshot_complete", boxCount=len(self.boxes))
         return payload
 
-    async def create_box(self, *, name: str, x: float, y: float, w: float, h: float, timeout: float) -> dict[str, Any]:
+    async def create_box(
+        self,
+        *,
+        name: str,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        timeout: float,
+        auto_graphics_parent: bool = True,
+    ) -> dict[str, Any]:
         self.logger.log("create_box_start", name=name, frame={"x": x, "y": y, "w": w, "h": h}, timeout=timeout)
         event = await self.call_for_single_reply(
             "agent-create-box",
@@ -921,7 +964,82 @@ class FieldBackdoor:
         if isinstance(box, dict):
             self._upsert_box_from_snapshot(box)
             self.last_box_uid = box.get("uid")
+            created_uid = box.get("uid")
+        else:
+            created_uid = None
+        if (
+            auto_graphics_parent
+            and self.graphics_context_enabled
+            and self.graphics_context_uid
+            and isinstance(created_uid, str)
+            and created_uid
+            and created_uid != self.graphics_context_uid
+        ):
+            _, _, timed_out = await self.change_connections(
+                action="connect",
+                parent_uid=self.graphics_context_uid,
+                child_uids=[created_uid],
+                timeout=timeout,
+            )
+            if timed_out:
+                raise BackdoorError(f"Timed out connecting {created_uid} to graphics context {self.graphics_context_uid}")
         self.logger.log("create_box_complete", box=box, lastBoxUid=self.last_box_uid)
+        return payload
+
+    async def ensure_graphics_context(self, *, timeout: float) -> dict[str, Any]:
+        if not self.graphics_context_enabled:
+            raise BackdoorError("Graphics context mode is not enabled")
+        if self.graphics_context_uid and self.graphics_context_uid in self.boxes:
+            box = self.boxes[self.graphics_context_uid]
+            payload = {
+                "ok": True,
+                "uid": self.graphics_context_uid,
+                "name": box.get("name") or GRAPHICS_CONTEXT_BOX_NAME,
+                "reused": True,
+                "documentName": self.document_name,
+                "scratch": self.scratch,
+                "sessionKey": self.session_key,
+            }
+            self.logger.log("graphics_context_reused", payload=payload)
+            return payload
+
+        created = await self.create_box(
+            name=GRAPHICS_CONTEXT_BOX_NAME,
+            x=0.0,
+            y=0.0,
+            w=120.0,
+            h=80.0,
+            timeout=timeout,
+            auto_graphics_parent=False,
+        )
+        box = created.get("box")
+        uid = box.get("uid") if isinstance(box, dict) else None
+        if not isinstance(uid, str) or not uid:
+            raise BackdoorError("Graphics context setup did not return a box uid")
+        self.graphics_context_uid = uid
+        await self.set_string(uid, "code", GRAPHICS_CONTEXT_CODE)
+        _, events, timed_out = await self.run_box(uid, property_name="code", value=None, timeout=timeout)
+        if timed_out:
+            self.graphics_context_uid = None
+            raise BackdoorError("Graphics context setup timed out while starting the renderer box")
+        errors = self.execution_errors(events)
+        if errors:
+            self.graphics_context_uid = None
+            raise BackdoorError(f"Graphics context setup failed: {errors[0]}")
+        await self.set_string(uid, "preamble", GRAPHICS_CONTEXT_PREAMBLE)
+        if GRAPHICS_CONTEXT_WAIT_SEC > 0:
+            await asyncio.sleep(GRAPHICS_CONTEXT_WAIT_SEC)
+        payload = {
+            "ok": True,
+            "uid": uid,
+            "name": GRAPHICS_CONTEXT_BOX_NAME,
+            "reused": False,
+            "documentName": self.document_name,
+            "scratch": self.scratch,
+            "sessionKey": self.session_key,
+            "waitSec": GRAPHICS_CONTEXT_WAIT_SEC,
+        }
+        self.logger.log("graphics_context_ready", payload=payload)
         return payload
 
     def assign_box_alias(self, alias: str, uid: str) -> None:
@@ -1276,6 +1394,25 @@ class FieldBackdoor:
         self.logger.log("collect_output", uid=resolved, channel=channel, kind=kind, count=len(collected))
         return collected
 
+    def execution_errors(self, events: list[dict[str, Any]]) -> list[str]:
+        problems: list[str] = []
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            name = event.get("name") or event.get("messageName")
+            payload = event.get("payload")
+            if not isinstance(payload, dict):
+                continue
+            if name in {"output", "peer-output"} and payload.get("kind") in {"error", "err"}:
+                html = str(payload.get("html", "")).replace("\n", " ").strip()
+                if html:
+                    problems.append(html)
+            elif name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
+                text = str(payload.get("text", "")).replace("\n", " ").strip()
+                if text:
+                    problems.append(text)
+        return list(dict.fromkeys(problems))
+
     async def raw_send(self, name: str, payload: Any, *, reply_name: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
         start_seq = self.event_seq
         self.logger.log("raw_send_start", name=name, replyName=reply_name, timeout=timeout, payload=payload)
@@ -1529,6 +1666,9 @@ async def dispatch_command(
     client.logger.log("command_dispatch_start", commandLine=command_line, command=args.command)
     if args.command == "open":
         data = await client.open_document(args.document, scratch=args.scratch or not args.document, timeout=client.default_timeout)
+        if client.graphics_context_enabled:
+            data = dict(data)
+            data["graphicsContext"] = await client.ensure_graphics_context(timeout=client.default_timeout)
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
@@ -1550,6 +1690,9 @@ async def dispatch_command(
             "lastBoxUid": client.last_box_uid,
             "aliases": dict(client.box_aliases),
             "playwright": client.playwright_state,
+            "graphicsContextEnabled": client.graphics_context_enabled,
+            "graphicsContextBoxUid": client.graphics_context_uid,
+            "graphicsContextBoxName": GRAPHICS_CONTEXT_BOX_NAME if client.graphics_context_enabled else None,
         }
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -1999,6 +2142,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--document")
     parser.add_argument("--scratch", action="store_true")
+    parser.add_argument("--graphics-context", action="store_true")
     parser.add_argument("--with-playwright", action="store_true")
     parser.add_argument("--command", action="append")
     parser.add_argument("--workspace")
@@ -2011,6 +2155,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         json=args.json,
         document=args.document,
         scratch=args.scratch,
+        graphicsContext=args.graphics_context,
         withPlaywright=args.with_playwright,
         commandCount=len(args.command or []),
         workspace=args.workspace,
@@ -2020,6 +2165,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
     )
 
     client = FieldBackdoor(port=args.port, workspace=args.workspace, default_timeout=args.timeout, logger=logger)
+    client.graphics_context_enabled = bool(args.graphics_context)
     try:
         await client.ensure_server()
         await client.connect()
@@ -2039,6 +2185,8 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
 
         if should_auto_open:
             await client.open_document(args.document, scratch=args.scratch or not args.document, timeout=args.timeout)
+            if client.graphics_context_enabled:
+                await client.ensure_graphics_context(timeout=args.timeout)
 
         if command_lines:
             for line in command_lines:

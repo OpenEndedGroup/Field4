@@ -1631,7 +1631,10 @@ class KotlinExecution : BoxExecution {
                         box = box,
                         allCode = allCode,
                         symbolName = symbolName,
-                        metadata = rawMetadata
+                        metadata = rawMetadata,
+                        position = position,
+                        receiverTypeHint = it.extraInfo?.get("receiverQualifiedName") as? String
+                            ?: it.extraInfo?.get("receiverType") as? String
                     )
                 } else {
                     rawMetadata

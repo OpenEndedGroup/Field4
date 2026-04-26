@@ -452,6 +452,7 @@ tasks {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_24)
             languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2)
+            javaParameters.set(true)
             freeCompilerArgs.add("-Xannotations-in-metadata")
         }
     }

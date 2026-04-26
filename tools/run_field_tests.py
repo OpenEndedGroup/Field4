@@ -27,22 +27,6 @@ CAPTURES_ROOT = REPO_ROOT / "build" / "field-tests" / "captures"
 BACKDOOR_PATH = TOOLS_ROOT / "field_backdoor.py"
 
 PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
-GRAPHICS_CONTEXT_WAIT_SEC = 0.5
-GRAPHICS_CONTEXT_ALIAS = "graphics-window"
-GRAPHICS_CONTEXT_WINDOW_CODE = """
-import afield.four.Renderer
-import afield.four.util.Window
-
-prop<Window>(window)
-prop<Renderer>(renderer)
-
-once.renderer {
-    window = Window("Field")
-    Renderer(window)
-}
-
-start(renderer::run)
-""".strip()
 
 
 class RunnerError(RuntimeError):
@@ -290,6 +274,9 @@ def build_backdoor_command(
         elif bool(test.get("scratch")):
             cmd.append("--scratch")
 
+        if graphics_context is not None:
+            cmd.append("--graphics-context")
+
         if bool(test.get("withPlaywright")) or screenshot is not None:
             cmd.append("--with-playwright")
 
@@ -305,59 +292,6 @@ def build_backdoor_command(
         wait_seconds = float(test.get("waitSec") or test.get("wait") or 0.0)
 
         commands: list[str] = []
-        if graphics_context is not None:
-            window_code = str(graphics_context.get("snippet") or GRAPHICS_CONTEXT_WINDOW_CODE)
-            window_name = str(graphics_context.get("boxName") or "window").replace('"', "'")
-            window_alias = str(graphics_context.get("alias") or GRAPHICS_CONTEXT_ALIAS)
-            window_property = str(graphics_context.get("property") or "code")
-            window_wait = float(
-                graphics_context.get("waitSec")
-                or graphics_context.get("wait")
-                or GRAPHICS_CONTEXT_WAIT_SEC
-            )
-            window_path = write_generated_artifact(
-                f"{sanitize_test_id(str(test.get('id')))}-graphics-context.kt",
-                window_code,
-            )
-            artifacts["graphicsContextSnippetPath"] = str(window_path)
-            commands.extend(
-                [
-                    shlex.join(
-                        [
-                            "new-box",
-                            "--name",
-                            window_name,
-                            "--alias",
-                            window_alias,
-                            "--x",
-                            str(float(graphics_context.get("x") or 0.0)),
-                            "--y",
-                            str(float(graphics_context.get("y") or 0.0)),
-                            "--w",
-                            str(float(graphics_context.get("w") or 100.0)),
-                            "--h",
-                            str(float(graphics_context.get("h") or 100.0)),
-                            "--timeout",
-                            str(timeout),
-                        ]
-                    ),
-                    shlex.join(
-                        [
-                            "launch",
-                            f"@{window_alias}",
-                            "--property",
-                            window_property,
-                            "--file",
-                            str(window_path),
-                            "--timeout",
-                            str(timeout),
-                        ]
-                    ),
-                ]
-            )
-            if window_wait > 0:
-                commands.append(shlex.join(["sleep", str(window_wait)]))
-
         commands.append(
             shlex.join(
                 [
@@ -377,19 +311,6 @@ def build_backdoor_command(
                 ]
             )
         )
-        if graphics_context is not None:
-            window_alias = str(graphics_context.get("alias") or GRAPHICS_CONTEXT_ALIAS)
-            commands.append(
-                shlex.join(
-                    [
-                        "connect",
-                        f"@{window_alias}",
-                        "@last",
-                        "--timeout",
-                        str(timeout),
-                    ]
-                )
-            )
         editor_capture = screenshot is not None and str(screenshot.get("kind") or "box") == "editor"
         if editor_capture:
             commands.append(
@@ -454,19 +375,6 @@ def build_backdoor_command(
                     [
                         "stop",
                         "@last",
-                        "--timeout",
-                        str(timeout),
-                    ]
-                )
-            )
-        if graphics_context is not None:
-            window_alias = str(graphics_context.get("alias") or GRAPHICS_CONTEXT_ALIAS)
-            commands.append(
-                shlex.join(
-                    [
-                        "stop",
-                        f"@{window_alias}",
-                        "--best-effort",
                         "--timeout",
                         str(timeout),
                     ]

@@ -6,6 +6,7 @@ Use it when you need to:
 - run a snippet and capture stdout
 - capture compile errors or runtime exceptions
 - create a temporary box and iterate on its code
+- create a temporary `renderer` parent so child test boxes get a valid inherited `renderer` context for `afield.four`
 - attach to a real document and mutate boxes over the websocket protocol
 - open the real browser DOM for the current scratch or named session through Field's Playwright instance
 - keep Playwright attached before a run when later screenshots or DOM checks depend on output areas created by that run
@@ -147,6 +148,26 @@ python3 tools/field_backdoor.py --json \
 ```
 
 This avoids shell-escaping problems.
+
+## Graphics Context Mode
+
+Use `--graphics-context` when the snippet needs a live `afield.four.Renderer` inherited from a parent box:
+
+```bash
+python3 tools/field_backdoor.py --json --graphics-context --port 9477 \
+  --command 'new-box --name GraphicsSmoke' \
+  --command 'run @last --value "println(renderer)"'
+```
+
+This mode:
+- opens the target scratch or named document as usual
+- creates and launches a box called `renderer`
+- runs setup code that creates a `Window`, creates a `Renderer`, and stores both on inherited box properties
+- writes an inherited `preamble` onto the parent box so child boxes can compile `renderer` and `window` references
+- waits briefly for the render loop to start
+- automatically connects later `new-box` boxes in that backdoor session as children of `renderer`
+
+That makes inherited context variables such as `renderer` and `window` valid in child test snippets, which is the preferred setup for testing `afield.four` from the backdoor or from `graphicsContext: true` smoke/docs runners. Prefer scratch when you want that setup to stay disposable.
 
 ## Scratch vs Named Documents
 

@@ -1341,6 +1341,63 @@ private fun runShaderReloadAction(
     notify(summary, "shader")
 }
 
+@OptIn(DelicateCoroutinesApi::class)
+private fun Box.installGraphicsShaderReloadAction() {
+    this.actions += "moduleHere_reload" to Action("Reload Shader|alt r", "Reloads the graphics shader in this box") {
+        runBlocking {
+            GlobalScope.launch(Runloop.runLoop.main) {
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadShader(selected)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun Box.installComputeShaderReloadAction() {
+    this.actions += "computeModuleHere_reload" to Action(
+        "Reload Compute Shader|alt r",
+        "reloads the compute shader in this box"
+    ) {
+        runBlocking {
+            GlobalScope.launch(Runloop.runLoop.main) {
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadComputeShader(selected)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun Box.installMeshShaderReloadAction() {
+    this.actions += "meshModuleHere_reload" to Action(
+        "Reload Mesh Shader|alt r",
+        "reloads the mesh shader in this box"
+    ) {
+        runBlocking {
+            GlobalScope.launch(Runloop.runLoop.main) {
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadMeshShader(selected)
+                }
+            }
+        }
+    }
+}
+
 // ------------------------------
 // Graphics (vertex/fragment) reload path
 // ------------------------------
@@ -1381,6 +1438,24 @@ fun reloadShader(box: Box): Boolean {
     box._shader!!.reload(p, forceReresolve = true)
     clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
     return true
+}
+
+fun Box.attachShader(module: ModulePointer, overwriteProperties: Boolean = false): ModulePointer {
+    installGraphicsShaderReloadAction()
+
+    val parameters = module.current.parameters
+    require(parameters.vertex.isNotBlank()) { "Attached graphics module must have a vertex shader source." }
+    require(parameters.fragment.isNotBlank()) { "Attached graphics module must have a fragment shader source." }
+
+    if (overwriteProperties || !hasShaderSource(this, "vertex")) setPropertyRaw("vertex", parameters.vertex)
+    if (overwriteProperties || !hasShaderSource(this, "fragment")) setPropertyRaw("fragment", parameters.fragment)
+
+    _vertex = parameters.vertex
+    _fragment = parameters.fragment
+    _shader = module
+
+    reloadShader(this)
+    return module
 }
 
 // ------------------------------
@@ -1473,6 +1548,21 @@ fun reloadComputeShader(box: Box): Boolean {
     box._computeShader!!.reload(p)
     clearShaderErrorsForBaseProperties(box, "compute")
     return true
+}
+
+fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean = false): ComputeModulePointer {
+    installComputeShaderReloadAction()
+
+    val parameters = module.current.parameters
+    require(parameters.compute.isNotBlank()) { "Attached compute module must have a compute shader source." }
+
+    if (overwriteProperties || !hasShaderSource(this, "compute")) setPropertyRaw("compute", parameters.compute)
+
+    _compute = parameters.compute
+    _computeShader = module
+
+    reloadComputeShader(this)
+    return module
 }
 
 // ------------------------------
@@ -1585,6 +1675,27 @@ fun reloadMeshShader(box: Box): Boolean {
     box._meshShader!!.reload(p)
     clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
     return true
+}
+
+fun Box.attachShader(module: MeshModulePointer, overwriteProperties: Boolean = false): MeshModulePointer {
+    installMeshShaderReloadAction()
+
+    val parameters = module.current.parameters
+    require(parameters.task.isNotBlank()) { "Attached mesh module must have a task shader source." }
+    require(parameters.mesh.isNotBlank()) { "Attached mesh module must have a mesh shader source." }
+    require(parameters.fragment.isNotBlank()) { "Attached mesh module must have a fragment shader source." }
+
+    if (overwriteProperties || !hasShaderSource(this, "task")) setPropertyRaw("task", parameters.task)
+    if (overwriteProperties || !hasShaderSource(this, "mesh")) setPropertyRaw("mesh", parameters.mesh)
+    if (overwriteProperties || !hasShaderSource(this, "fragment")) setPropertyRaw("fragment", parameters.fragment)
+
+    _task = parameters.task
+    _mesh = parameters.mesh
+    _fragment = parameters.fragment
+    _meshShader = module
+
+    reloadMeshShader(this)
+    return module
 }
 
 // ------------------------------
@@ -1802,19 +1913,7 @@ fun Box.macro_moduleHereWithDefaultShaders(
     fragment: String = defaultFragmentShader,
     resolvesToCall: String = "_moduleHere"
 ): Insert? {
-    this.actions += "moduleHere_reload" to Action("Reload Shader|alt r", "Reloads the graphics shader in this box") {
-        runBlocking {
-            GlobalScope.launch(Runloop.runLoop.main) {
-                runShaderReloadAction(
-                    boxes = it,
-                    reloadingMessage = "Reloading shader…",
-                    reloadedMessage = "Reloaded shader"
-                ) { selected ->
-                    reloadShader(selected)
-                }
-            }
-        }
-    }
+    installGraphicsShaderReloadAction()
 
     if (!hasShaderSource(this, "fragment") || !hasShaderSource(this, "vertex")) {
         this.setPropertyRaw(
@@ -2106,23 +2205,7 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
 // ------------------------------
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_computeModuleHere(args: List<String>): Insert {
-
-    this.actions += "computeModuleHere_reload" to Action(
-        "Reload Compute Shader|alt r",
-        "reloads the compute shader in this box"
-    ) {
-        runBlocking {
-            GlobalScope.launch(Runloop.runLoop.main) {
-                runShaderReloadAction(
-                    boxes = it,
-                    reloadingMessage = "Reloading shader…",
-                    reloadedMessage = "Reloaded shader"
-                ) { selected ->
-                    reloadComputeShader(selected)
-                }
-            }
-        }
-    }
+    installComputeShaderReloadAction()
 
     if (!hasShaderSource(this, "compute")) {
         this.setPropertyRaw(
@@ -2197,23 +2280,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
 // ------------------------------
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_meshModuleHere(args: List<String>): Insert {
-
-    this.actions += "meshModuleHere_reload" to Action(
-        "Reload Mesh Shader|alt r",
-        "reloads the mesh shader in this box"
-    ) {
-        runBlocking {
-            GlobalScope.launch(Runloop.runLoop.main) {
-                runShaderReloadAction(
-                    boxes = it,
-                    reloadingMessage = "Reloading shader…",
-                    reloadedMessage = "Reloaded shader"
-                ) { selected ->
-                    reloadMeshShader(selected)
-                }
-            }
-        }
-    }
+    installMeshShaderReloadAction()
 
     if (!hasShaderSource(this, "task")) {
         this.setPropertyRaw(

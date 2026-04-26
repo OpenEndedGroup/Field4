@@ -29,6 +29,7 @@ Use this workflow for:
 - example code smoke tests
 - shader or code-property mutation over websocket
 - deterministic output/error capture
+- temporary `renderer` parent setup for `afield.four` snippets via `--graphics-context`
 - opening the real browser DOM for the current scratch session with `--with-playwright` or `playwright-open`
 
 Phase-1 smoke suite:
@@ -59,6 +60,14 @@ Prefer the global flag when screenshots or output-area DOM are part of the same 
 ```text
 --with-playwright
 ```
+
+Prefer this flag when child test boxes need inherited graphics context from a launched `Renderer`:
+
+```text
+--graphics-context
+```
+
+That makes the backdoor create and launch a parent box called `renderer`, wait briefly, and auto-connect later `new-box` boxes beneath it so `renderer` is valid in your snippet code. Prefer scratch when you want that setup to stay disposable.
 
 That opens or reuses Playwright immediately after the backdoor attaches to its current session, and again after any later `open ...` command. Use `playwright-open` when you intentionally want to defer browser startup.
 That Playwright browser is headless by default so it should not steal focus during tests. Set `AFIELD_PLAYWRIGHT_VISIBLE=true` only when you want to watch it.

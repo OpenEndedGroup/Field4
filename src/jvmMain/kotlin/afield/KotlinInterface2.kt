@@ -1575,7 +1575,11 @@ class KotlinInterface2(
         val receiverName = klass.simpleName ?: "Unknown"
 
         fun tagExtra(variant: SourceCodeCompletionVariant, sortGroup: Int): SourceCodeCompletionVariant {
-            variant.extraInfo = mapOf("sortGroup" to sortGroup, "receiverType" to receiverName)
+            variant.extraInfo = mapOf(
+                "sortGroup" to sortGroup,
+                "receiverType" to receiverName,
+                "receiverQualifiedName" to (klass.qualifiedName ?: receiverName)
+            )
             return variant
         }
 
@@ -1678,7 +1682,11 @@ class KotlinInterface2(
                 val display = if (icon == "val" || icon == "var") "$icon $name" else "fun $name$params"
                 val tail = ": $returnType"
                 val variant = SourceCodeCompletionVariant(text = name, displayText = display, tail = tail, icon = icon)
-                variant.extraInfo = mapOf("sortGroup" to sortGroup, "receiverType" to receiverName)
+                variant.extraInfo = mapOf(
+                    "sortGroup" to sortGroup,
+                    "receiverType" to receiverName,
+                    "receiverQualifiedName" to (klass.qualifiedName ?: receiverName)
+                )
                 results.add(variant)
             }
         }

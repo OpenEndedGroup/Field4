@@ -277,7 +277,7 @@ When a `backdoor-box` snippet needs a live `Renderer`/`Window` context from a pa
 graphicsContext: true
 ```
 
-The runner will create and launch a transient parent box called `window`, wait briefly for the render loop to start, and connect the transient test box underneath it before executing the snippet.
+The runner passes `--graphics-context` to `tools/field_backdoor.py`. That mode creates and launches a transient parent box called `renderer`, waits briefly for the render loop to start, and automatically connects later transient test boxes underneath it before executing the snippet. Use this when the snippet needs inherited graphics context such as a valid `renderer` variable for testing `afield.four`.
 
 ### Phase 3: Docs fences
 

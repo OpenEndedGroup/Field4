@@ -53,22 +53,6 @@ RUNNER_MODE_ALIASES = {
     "skip": "never",
     "off": "never",
 }
-GRAPHICS_CONTEXT_WAIT_SEC = 0.5
-GRAPHICS_CONTEXT_ALIAS = "graphics-window"
-GRAPHICS_CONTEXT_WINDOW_CODE = """
-import afield.four.Renderer
-import afield.four.util.Window
-
-prop<Window>(window)
-prop<Renderer>(renderer)
-
-once.renderer {
-    window = Window("Field")
-    Renderer(window)
-}
-
-start(renderer::run)
-""".strip()
 FENCE_OPEN_RE = re.compile(
     rf"^(?P<indent>[ ]{{0,3}})(?P<fence>`{{3,}})(?P<runner>{'|'.join(re.escape(name) for name in FENCE_NAMES)})"
     r"(?P<rest>.*?)(?P<newline>\r?\n)?$"
@@ -1455,30 +1439,9 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
     ]
     if options.document:
         command.extend(["--document", options.document])
-    backdoor_commands: list[str] = []
     if options.graphics_context:
-        window_path = repo_root / "build" / "field-docs-runner" / f"{options.box_name}-graphics-context.kt"
-        window_path.parent.mkdir(parents=True, exist_ok=True)
-        window_path.write_text(GRAPHICS_CONTEXT_WINDOW_CODE + "\n", encoding="utf-8")
-        backdoor_commands.append(shlex.join([
-            "new-box",
-            "--name", "window",
-            "--alias", GRAPHICS_CONTEXT_ALIAS,
-            "--x", "0",
-            "--y", "0",
-            "--w", "100",
-            "--h", "100",
-            "--timeout", str(options.timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "launch",
-            f"@{GRAPHICS_CONTEXT_ALIAS}",
-            "--property", "code",
-            "--file", str(window_path),
-            "--timeout", str(options.timeout),
-        ]))
-        if GRAPHICS_CONTEXT_WAIT_SEC > 0:
-            backdoor_commands.append(shlex.join(["sleep", str(GRAPHICS_CONTEXT_WAIT_SEC)]))
+        command.append("--graphics-context")
+    backdoor_commands: list[str] = []
     backdoor_commands.append(shlex.join([
         "new-box",
         "--name", options.box_name,
@@ -1488,13 +1451,6 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
         "--h", str(options.box_h),
         "--timeout", str(options.timeout),
     ]))
-    if options.graphics_context:
-        backdoor_commands.append(shlex.join([
-            "connect",
-            f"@{GRAPHICS_CONTEXT_ALIAS}",
-            "@last",
-            "--timeout", str(options.timeout),
-        ]))
     if capture_mode == "editor":
         backdoor_commands.append(shlex.join([
             "set",
@@ -1610,13 +1566,6 @@ def build_backdoor_command(*, repo_root: Path, screenshot_path: Path, options: R
         backdoor_commands.append(shlex.join([
             "stop",
             "@last",
-            "--timeout", str(options.timeout),
-        ]))
-    if options.graphics_context:
-        backdoor_commands.append(shlex.join([
-            "stop",
-            f"@{GRAPHICS_CONTEXT_ALIAS}",
-            "--best-effort",
             "--timeout", str(options.timeout),
         ]))
     for command_line in backdoor_commands:

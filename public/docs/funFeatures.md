@@ -17,7 +17,7 @@ You can run code in Field the following ways (from the commonplace to the rare)
 
  * `alt-0` — runs everything in a box (but doesn't launch it)
 
-That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. A few more, for completeness.
+That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Since running code is very important, we actually have a few more ways of doing this. For completeness, we'll list them here:
 
  * `alt-shift-up arrow` — immediately launches the box without recompiling if it that's possible.
  * `Command/ctrl-alt-k` and `Command/ctrl-alt-j` increments and decrements the number under the cursor and then acts like you pressed alt-enter.
@@ -32,7 +32,7 @@ Some of these effects are language dependent. For example, if you are editing a 
 
 ## Printing things
 
-Often your code does something — draws a line, loads a model, makes a sound. But when you are puzzled as to what is running, and where, and when you are confused as to how your variables are varying, nothing beats a good old print statement. Field has a few different ways of doing this.
+Often your code does something — draws a line, loads a model, makes a sound. But when you are puzzled as to actually *what* is running, and where, and when you are confused as to how your variables are varying, nothing beats a good old `print` statement. Like its facilities for running code, Field has a few different ways of doing this.
 
 ### `print(...)` — obviously:
 
@@ -46,7 +46,7 @@ That just prints things at the end of the code you executed, taking up a single 
 Or, if it doesn't fit on a single line, a little block:
 ![](assets/screenshot_28.png)
 
-You can close blocks with the 'x' symbol in the margin, or by `double-tap Esc`, which you'll likely be pressing a lot. `triple-tap Esc` will get rid of all the outputs inside the current editor.
+You can close blocks with the 'x' symbol in the margin, or by `double-tap Esc`, which you'll likely be pressing a lot. `triple-tap Esc` will get rid of all the outputs inside the current editor. You'll be doing that a lot.
 
 ### `_print(...)` — 'print here':
 
@@ -82,11 +82,11 @@ So, if you don't know what that variable is, drop in a `_print()` and find out.
 
 ## Printing complex things
 
-Appending `.h` or even `.h2` will cause Field to work much harder to make the thing that you are printing pretty.
+Appending `.h` or even `.h2` to the thing that you are printing will cause Field to work much harder to make the thing that you are printing a pretty piece of `h`tml.
 
 ![](assets/screenshot_31.png)
 
-`.h2` is particularly suited to lists and maps with _lots_ of data in them, — Field, intelligently pages in and out just the parts of the data that you are actually looking at.
+`.h2` is particularly suited to lists and maps with _lots_ of data in them, — Field, intelligently pages in and out just the parts of the data that you are actually looking at, so you can explore gigantic FloatBuffers for example.
 
 ![](assets/screenshot_32.png)
 
@@ -94,7 +94,7 @@ The highlighted colors are showing you the 'unusually' low and high values at a 
 
 ## `display`ing things
 
-We can also 'print' to the canvas. For example:
+We can also 'print' to the canvas using `display`. For example:
 
 ```diffstatic {data-lang=kotlin}
 var l = listOf(1,2,3,4, 8, 7.2)
@@ -149,7 +149,7 @@ Some systems, like the Vulkan graphics system, expose interface that make them p
 
 ## 'printing' (editable) geometry
 
-Field has extensive support for adding 2d and 3d geometry to the canvas, essentially by `display`ing bundles of `FLine` objects. You can see [fline_examples](fline_examples.md) for a lot more information. But here's a taste:
+Field has _extensive_ support for generating 2d and 3d geometry and adding this to the canvas, essentially by `display`ing bundles of `FLine` objects. You can see [fline_examples](fline_examples.md) for a lot more information. But here's a taste:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_editable2.png" embed=true}
 :::static
@@ -175,9 +175,9 @@ val stem = fline {
 lines(listOf(petal, stem), w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
-It's important to note that you're not just editing a copy of the FLine. It mutates the actual `FLine` object that you passed in — so this is a way of interacting with code, not just witnessing its effects.
+It's important to note that you're not just editing a *copy* of the FLine. This editor mutates the actual `FLine` object that you passed in — so this is a way of interacting with code, not just witnessing its effects.
 
-3d (and indeed 3d editing) work as well:
+3d (and indeed 3d *editing*) work as well:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/3dlines.mp4" type="video/mp4">
