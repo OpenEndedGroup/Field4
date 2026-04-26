@@ -799,14 +799,15 @@ class KotlinExecution : BoxExecution {
 
             execute(box, normalizedCode, reply, originSession, exec.line) { returnValue ->
                 val launchMode = "launch"
-                box.currentLaunchModes[strand] = launchMode
 
                 cacheLaunchReturnValue(box, strand, normalizedCode, returnValue)
                 configureOutputProxies(box, reply, originSession)
 
                 launchReturnValue(box, returnValue, strand = strand, { isRunning, strand, watermark ->
-                    if (!isRunning && box.runGeneration[strand] == watermark) {
-                        box.currentLaunchModes.remove(strand)
+                    if (isRunning) {
+                        box.currentRunningStates[strand] = RunningState(watermark, launchMode)
+                    } else if (box.currentRunningStates[strand]?.watermark == watermark) {
+                        box.currentRunningStates.remove(strand)
                     }
                     send(
                         Message("is-running").payload(
@@ -830,13 +831,14 @@ class KotlinExecution : BoxExecution {
 
         val originSession = thisSession.get()
         val launchMode = "continue"
-        box.currentLaunchModes[strand] = launchMode
         lprintln("debug,execution", "continuing cached return value for ${box.id} on strand $strand")
         inMain {
             configureOutputProxies(box, reply, originSession)
             launchReturnValue(box, cached.returnValue, strand = strand) { isRunning, notifiedStrand, watermark ->
-                if (!isRunning && box.runGeneration[notifiedStrand] == watermark) {
-                    box.currentLaunchModes.remove(notifiedStrand)
+                if (isRunning) {
+                    box.currentRunningStates[notifiedStrand] = RunningState(watermark, launchMode)
+                } else if (box.currentRunningStates[notifiedStrand]?.watermark == watermark) {
+                    box.currentRunningStates.remove(notifiedStrand)
                 }
                 send(
                     Message("is-running").payload(
@@ -1137,10 +1139,9 @@ class KotlinExecution : BoxExecution {
 
     override fun stop(box: Box) {
         box.runGeneration.incrementAndGet("default")
-        box.jobs.removeAll {
-            it.cancel()
-            true
-        }
+        val jobsToCancel = box.jobs.toList()
+        box.jobs.clear()
+        jobsToCancel.forEach { it.cancel() }
     }
 
     private fun completeYamlMetadata(box: Box, allCode: String, position: Int, line: Int, column: Int): Completion {

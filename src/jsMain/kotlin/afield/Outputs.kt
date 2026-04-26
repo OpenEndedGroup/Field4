@@ -44,7 +44,11 @@ private var outputScrollTailExistingPx = 40.0
 private var outputScrollTailNewPx = 46.0
 
 private fun executionMarkerStateClass(mode: String): String {
-    return if (mode == "continue") "running-continued" else "running"
+    return when (mode) {
+        "continue" -> "running-continued"
+        "ending" -> "running-ending"
+        else -> "running"
+    }
 }
 
 private fun debounceTimeout(key: String, delay: Int, fn: () -> Unit) {

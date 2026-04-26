@@ -780,12 +780,14 @@ const initMonaco = () => {
 }
 
 const syncBoxRunningClass = (box) => {
-        box.classList.remove("running", "running-continued")
+        box.classList.remove("running", "running-continued", "running-ending")
         const runningEntries = box.runningEntries ?? new Map()
         if (runningEntries.size === 0) return
 
-        const hasFreshLaunch = [...runningEntries.values()].some((mode) => mode !== "continue")
-        box.classList.add(hasFreshLaunch ? "running" : "running-continued")
+        const modes = [...runningEntries.values()]
+        const hasFreshLaunch = modes.some((mode) => mode !== "continue" && mode !== "ending")
+        const hasEndingOnly = !hasFreshLaunch && modes.some((mode) => mode === "ending")
+        box.classList.add(hasFreshLaunch ? "running" : hasEndingOnly ? "running-ending" : "running-continued")
 }
 
 const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {

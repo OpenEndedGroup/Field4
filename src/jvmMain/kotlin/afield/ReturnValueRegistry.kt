@@ -182,7 +182,19 @@ fun registerFramesReturnValue() {
         val original = returnValue.atEnd
         returnValue.atEnd = {
             original()
-            notify(false, strand, generation)
+        }
+        returnValue.onAtEndStart = { endJob ->
+            val endingGeneration = inside.runGeneration[strand] ?: (generation + 1)
+            returnValue.shouldCancelAtEnd = {
+                inside.runGeneration[strand] != endingGeneration
+            }
+            inside.jobs += endJob
+            inside.currentRunningStates[strand] = RunningState(generation, "ending")
+            send(Message("is-running").payload(IsRunning(inside.id, true, generation, strand, "ending")))
+        }
+        returnValue.onAtEndFinish = { endJob ->
+            returnValue.shouldCancelAtEnd = { false }
+            inside.jobs.remove(endJob)
         }
         inMain {
             Box.withBoxContext(inside) {
@@ -208,6 +220,9 @@ fun registerFramesReturnValue() {
                 val message = t.message?.takeIf { it.isNotBlank() } ?: t.javaClass.name
                 inside.error(message, line = firstLine)
             } finally {
+                if (inside.currentRunningStates[strand]?.watermark == generation) {
+                    inside.currentRunningStates.remove(strand)
+                }
                 notify(false, strand, generation)
             }
             }

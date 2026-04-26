@@ -6,8 +6,8 @@ Field aims to be full of unexpectedly fun features that help you interact with c
 
 You can run code in Field the following ways (from the commonplace to the rare)
 
- * `alt-enter` — runs the line/block that the cursor is in.
- * `alt-enter` — runs the currently selected lines
+ * `alt-enter` — runs the line/block that the cursor is on/in.
+ * Or, `alt-enter` — runs the currently selected code
  * `alt-up arrow` — launches the currently edited box. `alt-down arrow` stops.
  * `alt-click` — launches the clicked-on box while the mouse is down. Swipe up to let go and keep launched; `alt-click / swipe down` stops. e.g.:
 
@@ -16,10 +16,14 @@ You can run code in Field the following ways (from the commonplace to the rare)
 </video>
 
  * `alt-0` — runs everything in a box (but doesn't launch it)
+
+That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. A few more, for completeness.
+
+ * `alt-shift-up arrow` — immediately launches the box without recompiling if it that's possible.
  * `Command/ctrl-alt-k` and `Command/ctrl-alt-j` increments and decrements the number under the cursor and then acts like you pressed alt-enter.
- * `alt-double-clicking` `true` or `false` in the editor flips it to the opposite and then `alt-enter`s
+ * `alt-double-clicking` `true` or `false` or `disable`(`d`) or `enable`(`d`) in the editor flips it to the opposite and then `alt-enter`s
  *  `alt-double-clicking` the name of a function in scope that has signature `foo()` just runs the function.
- *  `alt-1` — launches the current block that the cursor is in.
+ *  `alt-1` — launches just the current block that the cursor is in.
  *  Writing code that launches other boxes. For example `root.named("progress").begin()` launches a box called "progress". 
 
 What's the difference between 'running' and 'launching'? Boxes have the opportunity to end with an object that could 'keep on going by itself'. These objects, on launching, get threaded into the animation loop. Every launched box gets one 'go' at computing per animation cycle in a consistent order.  

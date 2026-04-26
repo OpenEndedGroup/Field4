@@ -39,6 +39,11 @@ data class CachedLaunchReturn(
     val returnValue: Any
 )
 
+data class RunningState(
+    val watermark: Int,
+    val mode: String
+)
+
 open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : HasOutput by output, HasProperties,
     HasHierarchy {
 
@@ -67,7 +72,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var fragmentGeneration: Int = -1
     var jobs = mutableListOf<Job>()
     val cachedLaunchReturns = mutableMapOf<String, CachedLaunchReturn>()
-    val currentLaunchModes = mutableMapOf<String, String>()
+    val currentRunningStates = mutableMapOf<String, RunningState>()
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
@@ -576,15 +581,16 @@ fun syncExecutionStatus() {
             val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
 
             if (hasActiveJobs) {
-                val activeModes = box.currentLaunchModes.toMap()
-                val strandsToSync = if (activeModes.isNotEmpty()) {
-                    activeModes.keys
+                val activeStates = box.currentRunningStates.toMap()
+                val strandsToSync = if (activeStates.isNotEmpty()) {
+                    activeStates.keys
                 } else {
                     box.runGeneration.keys
                 }
 
                 strandsToSync.forEach { strand ->
-                    val generation = box.runGeneration[strand] ?: return@forEach
+                    val state = activeStates[strand]
+                    val generation = state?.watermark ?: box.runGeneration[strand] ?: return@forEach
                     if (generation < 0) return@forEach
 
                     val message = Message("is-running").payload(
@@ -593,7 +599,7 @@ fun syncExecutionStatus() {
                             true,
                             generation,
                             strand,
-                            activeModes[strand] ?: "launch"
+                            state?.mode ?: "launch"
                         )
                     )
                     sessionInfo.sessions.forEach { _send(it, message) }
