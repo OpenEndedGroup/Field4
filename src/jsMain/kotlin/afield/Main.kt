@@ -71,20 +71,23 @@ external object Provisional {
 }
 
 /**
- * Tracks box loading progress so the "finished loading" notification
- * is shown only after all visible boxes have transitioned from offline,
- * or after a 2-second idle timeout (whichever comes first).
+ * Tracks initial document loading progress. Backend load-status messages
+ * keep the UI in a loading state while metadata and box initialization are
+ * still being queued, and expected box counts keep the client from declaring
+ * success before the first box frame has arrived.
  *
- * Tracking begins automatically on the first [boxAdded] call — no explicit
- * start is needed. [start] kicks off the idle timeout for documents with
- * no boxes at all.
+ * Tracking begins automatically on backend status, expected counts, or the
+ * first [boxAdded] call. [start] only provides a watchdog for unusual cases.
  */
 object LoadingTracker {
     private var expectedBoxes = -1   // -1 = server hasn't told us yet
-    private var arrivedBoxes = 0
-    private var onlineBoxes = 0
+    private val arrivedBoxIds = mutableSetOf<String>()
+    private val onlineBoxIds = mutableSetOf<String>()
     private var timeoutHandle: Int? = null
     private var finished = false
+    private var backendLoading = false
+    private var sawBackendStatus = false
+    private var statusText = "loading document"
 
     /**
      * The server tells us how many non-tombstoned boxes to expect.
@@ -102,41 +105,82 @@ object LoadingTracker {
     }
 
     /**
-     * Kick off the idle timeout so documents that never receive an
-     * expected-box-count (e.g. scratch) still finish eventually.
+     * Kick off the watchdog. The watchdog refreshes the loading notice while
+     * the backend is still active or while expected box frames are missing.
      */
     fun start() {
         if (finished) return
         resetTimeout()
     }
 
-    /** A new box arrived from the server (set-rect). */
-    fun boxAdded() {
+    fun documentLoadStatus(status: DocumentLoadStatus) {
         if (finished) return
-        arrivedBoxes++
+        sawBackendStatus = true
+        backendLoading = !status.terminal
+        if (status.count >= 0) expectedBoxes = status.count
+        statusText = when {
+            status.message.isNotBlank() -> status.message
+            status.phase.isNotBlank() -> status.phase.replace("-", " ")
+            else -> "loading document"
+        }
+        if (expectedBoxes == 0 && status.terminal) {
+            finish()
+        } else {
+            updateNotification()
+            resetTimeout()
+        }
+    }
+
+    /** A new box arrived from the server (set-rect). */
+    fun boxAdded(uid: String) {
+        if (finished) return
+        arrivedBoxIds.add(uid)
         updateNotification()
         resetTimeout()
     }
 
     /** A box transitioned from offline to online. */
-    fun boxOnline() {
+    fun boxOnline(uid: String) {
         if (finished) return
-        onlineBoxes++
+        onlineBoxIds.add(uid)
         updateNotification()
         resetTimeout()
-        if (expectedBoxes > 0 && onlineBoxes >= expectedBoxes) {
+        if (expectedBoxes > 0 && onlineBoxIds.size >= expectedBoxes) {
             finish()
         }
     }
 
     private fun updateNotification() {
-        val total = if (expectedBoxes > 0) expectedBoxes else arrivedBoxes
-        notify("waiting for boxes \u2014 $onlineBoxes/$total online <<spinner>>", "setup")
+        val total = if (expectedBoxes > 0) expectedBoxes else arrivedBoxIds.size
+        val received = arrivedBoxIds.size
+        val online = onlineBoxIds.size
+        val detail = if (total > 0) "$statusText; $received/$total received, $online/$total online" else statusText
+        notify("loading document \u2014 $detail <<spinner>>", "setup")
     }
 
     private fun resetTimeout() {
         timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
-        timeoutHandle = kotlinx.browser.window.setTimeout({ finish() }, 4000)
+        timeoutHandle = kotlinx.browser.window.setTimeout({ handleIdleTimeout() }, 4000)
+    }
+
+    private fun handleIdleTimeout() {
+        if (finished) return
+        if (backendLoading) {
+            updateNotification()
+            resetTimeout()
+            return
+        }
+        if (expectedBoxes > 0 && arrivedBoxIds.size < expectedBoxes) {
+            updateNotification()
+            resetTimeout()
+            return
+        }
+        if (!sawBackendStatus && expectedBoxes < 0 && arrivedBoxIds.isEmpty()) {
+            updateNotification()
+            resetTimeout()
+            return
+        }
+        finish()
     }
 
     private fun finish() {
@@ -3164,7 +3208,7 @@ suspend fun main() {
             mainCanvas.append {
                 createBox("", frame = set.value, uid = u, sendInitialSync = false)
             }
-            LoadingTracker.boxAdded()
+            LoadingTracker.boxAdded(u)
         } else {
             val box = found as HTMLElement
             applyFrameToBox(box, set.value)
@@ -3176,6 +3220,12 @@ suspend fun main() {
     handlers.put("expected-box-count") { message, _ ->
         val ebc = Json.decodeFromJsonElement<Expected_box_count>(message.payload!!)
         LoadingTracker.setExpectedCount(ebc.count)
+        Handled.yes
+    }
+
+    handlers.put("document-load-status") { message, _ ->
+        val status = Json.decodeFromJsonElement<DocumentLoadStatus>(message.payload!!)
+        LoadingTracker.documentLoadStatus(status)
         Handled.yes
     }
 
@@ -3340,7 +3390,7 @@ suspend fun main() {
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
                         canvasGestures.rebuildConnectionGroup()
-                        LoadingTracker.boxOnline()
+                        LoadingTracker.boxOnline(u)
                     }
                 }
             }

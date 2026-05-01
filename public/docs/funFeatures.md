@@ -256,7 +256,7 @@ box.setName("property access from boxes")
 box.setPropertyRaw("foo", 10, False)
 ```
 
-Works as you'd expect. We remain ever-so-slightly sketched out by Python's threading model, and its obvious incompatibilities with Kotlin's coroutines - so there may still be bugs here.
+Works as you'd expect. We remain ever-so-slightly sketched out by Python's threading model's interaction with ours, in particular its obvious incompatibilities with Kotlin's coroutines - so there may still be bugs here.
 
 ## Clojure
 
@@ -264,11 +264,11 @@ Clojure is another wonderful JVM language that we have a lot of respect for:
 
 ![](assets/screenshot_54.png)
 
-We have rainbow parens?
+What can we say: we have rainbow parens?
 
 ## some-Forth
 
-Primarily for teaching purposes, a bizarrely useful and full featured dialect of Forth, with full JVM interop:
+Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth: stack words, dictionary inspection, recursion, return-stack tricks, helpful diagnostics, Field-native visualization, and full JVM interop:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/someForth.mp4" type="video/mp4">
@@ -345,7 +345,7 @@ Press that cyan arrow to get back to the text editor.
 
 A few keyboard shortcuts for getting around Field.
 
-`f1` — pressing `f1` when you are in the editor brings up the command palette for that box; pressing it _again_ brings up the command palette for Field as a whole:
+`f1` — pressing `f1` when you are in the editor brings up the command palette for that box; pressing it _again_ (`f1-f1`) brings up the command palette for Field as a whole:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-4.03.42.mp4" type="video/mp4">
@@ -447,7 +447,7 @@ val dv : Double = k.evaluateDerivativeAt(0.5)
 
 Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new.
 
-## Time sliders
+## Time sliders & Custom UI
 
 Inserting a `field.timeSlider` template from the `f1` menu gets you a box that a) draws itself as a vertical line and b) launches and stops boxes it passes over:
 
@@ -516,6 +516,23 @@ name = "t"
 
 autorun = true
 ```
+
+## Custom Marking Menus
+
+There are lots of other ways of customizing Field's front end from within Field. One, higher level, is to introduce a custom Marking Menu:
+
+```diffstatic {data-lang=kotlin}
+customMarking["N" to "bob"] = { _print("North!") }
+customMarking["SE" to "something"] = { _print("se!") }
+customMarking["W2" to "the end"] = { _print("W!")}  // outer ring
+```
+
+You can open and swipe around these callbacks with `alt-shift-click`:
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
+	<source src="../assets/customMarking.mp4" type="video/mp4">
+</video>
+
 
 ## Snapping
 

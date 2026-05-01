@@ -139,8 +139,29 @@ internal fun attachDocumentSession(
     val found = documents[target.sessionKey]
     if (found != null) {
         registerDocumentSession(session, found)
+        sendDocumentLoadStatus(
+            session,
+            phase = "attached",
+            message = "attached to live document",
+            count = countLoadableBoxes(found)
+        )
         sendExpectedBoxCount(session, found)
+        sendDocumentLoadStatus(
+            session,
+            phase = "resync-started",
+            message = "queuing document state",
+            count = countLoadableBoxes(found),
+            completed = 0
+        )
         found.boxes.values.forEach { it.resyncAll() }
+        sendDocumentLoadStatus(
+            session,
+            phase = "resync-queued",
+            message = "document state queued",
+            count = countLoadableBoxes(found),
+            completed = countLoadableBoxes(found),
+            terminal = true
+        )
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
         return found
@@ -152,6 +173,11 @@ internal fun attachDocumentSession(
 
     if (!target.scratch) {
         try {
+            sendDocumentLoadStatus(
+                session,
+                phase = "metadata-loading",
+                message = "reading metadata"
+            )
             val boxes = SavingContext().load(target.sessionKey)
             lprintln("info,agent_backdoor", "loaded boxes from ${target.sessionKey} for ${username}")
             boxes.forEach {
@@ -160,22 +186,116 @@ internal fun attachDocumentSession(
             }
 
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
+            val count = countLoadableBoxes(info)
+            sendDocumentLoadStatus(
+                session,
+                phase = "metadata-loaded",
+                message = "metadata loaded",
+                count = count,
+                completed = count
+            )
             sendExpectedBoxCount(session, info)
-            info.root.children.forEach { it.ki }
+            sendDocumentLoadStatus(
+                session,
+                phase = "stdlib-started",
+                message = "initializing boxes",
+                count = count,
+                completed = 0
+            )
+            var initialized = 0
+            info.root.children.forEach {
+                it.ki
+                initialized++
+                if (initialized == count || initialized % 25 == 0) {
+                    sendDocumentLoadStatus(
+                        session,
+                        phase = "stdlib-queued",
+                        message = "queued box initialization",
+                        count = count,
+                        completed = initialized,
+                        terminal = initialized == count
+                    )
+                }
+            }
+            if (count > 0 && initialized != count) {
+                sendDocumentLoadStatus(
+                    session,
+                    phase = "stdlib-queued",
+                    message = "queued box initialization",
+                    count = count,
+                    completed = initialized,
+                    terminal = true
+                )
+            }
+            if (count == 0) {
+                sendDocumentLoadStatus(
+                    session,
+                    phase = "empty",
+                    message = "empty document",
+                    count = 0,
+                    completed = 0,
+                    terminal = true
+                )
+            }
             info.topologyGeneration++
             info.fileWatchManager
             info.scheduleAutorunBoxes()
         } catch (fnf: FileNotFoundException) {
             lprintln("warning,agent_backdoor", "file '${target.sessionKey}' not found; will be created on first save")
+            sendExpectedBoxCount(session, info)
+            sendDocumentLoadStatus(
+                session,
+                phase = "empty",
+                message = "new document",
+                count = 0,
+                completed = 0,
+                terminal = true
+            )
         }
+    } else {
+        sendExpectedBoxCount(session, info)
+        sendDocumentLoadStatus(
+            session,
+            phase = "empty",
+            message = "scratch document",
+            count = 0,
+            completed = 0,
+            terminal = true
+        )
     }
 
     return info
 }
 
+private fun countLoadableBoxes(info: SessionInformation): Int {
+    return info.boxes.values.count { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+}
+
 private fun sendExpectedBoxCount(session: WebSocketSession, info: SessionInformation) {
-    val count = info.boxes.values.count { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+    val count = countLoadableBoxes(info)
     _send(session, Message("expected-box-count").payload(Expected_box_count(count)))
+}
+
+private fun sendDocumentLoadStatus(
+    session: WebSocketSession,
+    phase: String,
+    message: String = "",
+    count: Int = -1,
+    completed: Int = -1,
+    terminal: Boolean = false
+) {
+    _send(
+        session,
+        Message("document-load-status").payload(
+            DocumentLoadStatus(
+                phase = phase,
+                message = message,
+                count = count,
+                completed = completed,
+                terminal = terminal
+            )
+        )
+    )
 }
 
 private fun activeRunningStrands(box: Box): Map<String, Int> {

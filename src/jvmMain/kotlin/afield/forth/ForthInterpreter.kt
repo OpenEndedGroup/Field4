@@ -260,14 +260,64 @@ import kotlin.math.*
  * - math/logic/control flow (`if/else/then`, `begin/until`, `do/loop`, ...)
  * - variables/constants (`variable`, `!`, `@`, `constant`)
  * - strings/output (`."..."`, `s"..."`, `.`, `println`, ...)
+ * - dictionary tools (`words`, `see`, `forget`, `recurse`)
+ * - return-stack transfer (`>r`, `r>`, `r@`)
  * - vectors (`vec2`, `vec3`, `vec4` + arithmetic helpers)
  * - [FLine] primitives (`fline`, `moveto`, `lineto`, `cubicto`, styling words)
+ * - small visualization words (`html`, `watch`, `stack-display`, `bar`, `plot-stack`)
  * - frame/yield primitive (`frame`) for cooperative launch-mode animations
  * - host reflection hooks (`@?`, `@?!`, `class-for`, `class-matches`, `class-help`)
+ *
+ * Dictionary / debugging examples:
+ * ```forth
+ * : sqr dup * ;
+ * words              \ print all currently known words
+ * see sqr            \ print ": sqr dup * ;"
+ * forget sqr         \ remove the user-defined word
+ * ```
+ *
+ * Recursion example:
+ * ```forth
+ * : countdown ( n -- )
+ *   dup 0> if
+ *     dup println
+ *     1- recurse
+ *   else
+ *     drop
+ *   then ;
+ * 5 countdown
+ * ```
+ *
+ * Infinite loop example. Use `again` mainly in launched words where `frame`
+ * yields back to Field each tick:
+ * ```forth
+ * variable tick
+ * : ticker begin tick @ println 1 tick +! frame again ;
+ * ticker
+ * ```
+ *
+ * Return-stack examples. `>r` moves a temporary value away from the data stack,
+ * `r@` copies it back, and `r>` restores/removes it:
+ * ```forth
+ * : add-twice ( a b -- a+b+b )
+ *   >r        \ return stack: b ; data stack: a
+ *   r@ +      \ data stack: a+b, b is still saved
+ *   r> + ;    \ data stack: a+b+b
+ * ```
+ *
+ * Visualization examples:
+ * ```forth
+ * s"<b>Hello from Forth</b>" html
+ * 0.72 1.0 s"progress" bar
+ * 42 s"answer" watch
+ * stack-display
+ * 1 4 9 16 plot-stack
+ * ```
  */
 class ForthInterpreter {
 
     data class Token(val text: String, val line: Int)
+    data class CallFrame(val word: String, val line: Int)
 
     var currentLine: Int = -1
         private set
@@ -279,6 +329,10 @@ class ForthInterpreter {
 
     // Return stack (for do/loop)
     val returnStack = ArrayDeque<Any>()
+
+    // Word call stack, used for diagnostics and `recurse`.
+    val callStack = ArrayDeque<CallFrame>()
+    private var lastErrorCallStack: List<CallFrame> = emptyList()
 
     // Dictionary: word name (lowercase) -> compiled word
     val dictionary = LinkedHashMap<String, ForthWord>()
@@ -330,6 +384,32 @@ class ForthInterpreter {
         else -> true
     }
 
+    private fun stackPreview(values: Iterable<Any>, limit: Int = 8): String {
+        val list = values.toList()
+        val shown = list.takeLast(limit).joinToString(" ") { shortValue(it) }
+        val prefix = if (list.size > limit) "... " else ""
+        return "<${list.size}> $prefix$shown"
+    }
+
+    private fun returnStackPreview(): String {
+        return stackPreview(returnStack.map {
+            when (it) {
+                is LoopState -> "loop(i=${it.index},limit=${it.limit})"
+                else -> it
+            }
+        })
+    }
+
+    private fun shortValue(v: Any?): String = when (v) {
+        null -> "null"
+        is String -> "\"" + v.take(48) + (if (v.length > 48) "..." else "") + "\""
+        is Class<*> -> "Class(${v.simpleName})"
+        else -> {
+            val raw = v.toString()
+            if (raw.length > 64) raw.take(61) + "..." else raw
+        }
+    }
+
     private fun forthEq(a: Any, b: Any): Boolean {
         if (a is Number && b is Number) return a.toDouble() == b.toDouble()
         return a == b
@@ -347,19 +427,48 @@ class ForthInterpreter {
         val diagnostics = mutableListOf<ForthDiagnostic>()
         currentLine = -1
         currentToken = ""
+        lastErrorCallStack = emptyList()
         try {
             val tokens = tokenize(source)
             execTokens(tokens, 0, tokens.size)
         } catch (_: ForthFrameYield) {
             // Cooperative yield from `frame` inside launch/strand execution.
         } catch (e: ForthError) {
-            diagnostics += ForthDiagnostic(e.message ?: "Unknown error", e.line)
+            diagnostics += diagnosticFor(e)
         } catch (e: Throwable) {
             val line = if (currentLine >= 0) currentLine else -1
             val summary = e.message ?: e.javaClass.simpleName
-            diagnostics += ForthDiagnostic("${e.javaClass.simpleName}: $summary", line)
+            diagnostics += ForthDiagnostic(
+                formatDiagnosticMessage("${e.javaClass.simpleName}: $summary"),
+                line
+            )
         }
         return diagnostics
+    }
+
+    fun diagnosticFor(e: ForthError): ForthDiagnostic {
+        val line = when {
+            e.line >= 0 -> e.line
+            currentLine >= 0 -> currentLine
+            else -> -1
+        }
+        return ForthDiagnostic(formatDiagnosticMessage(e.message ?: "Unknown error"), line)
+    }
+
+    private fun formatDiagnosticMessage(message: String): String {
+        val pieces = mutableListOf(message)
+        if (currentToken.isNotBlank()) pieces += "while reading '$currentToken'"
+        if (stack.isNotEmpty()) pieces += "data stack: ${stackPreview(stack)}"
+        if (returnStack.isNotEmpty()) pieces += "return stack: ${returnStackPreview()}"
+        val diagnosticStack = if (callStack.isNotEmpty()) callStack.toList() else lastErrorCallStack
+        if (diagnosticStack.isNotEmpty()) {
+            pieces += "call stack: " + diagnosticStack
+                .asReversed()
+                .joinToString(" -> ") { frame ->
+                    if (frame.line >= 0) "${frame.word}@${frame.line}" else frame.word
+                }
+        }
+        return pieces.joinToString("\n")
     }
 
     // -------------------------------------------------------------------------
@@ -453,7 +562,7 @@ class ForthInterpreter {
                         j++
                     }
                     if (j >= tokens.size) throw ForthError("Missing ';' for '$name'", line)
-                    dictionary[name] = ForthWord.Compiled(name, body.toList())
+                    dictionary[name] = ForthWord.Compiled(name, body.toList(), line)
                     j + 1
                 }
 
@@ -511,6 +620,28 @@ class ForthInterpreter {
                     i + 2
                 }
 
+                // -------- dictionary tools --------
+                lw == "see" -> {
+                    if (i + 1 >= end) throw ForthError("see expects a word name after it", tok.line)
+                    onOutput(describeWord(tokens[i + 1].text.lowercase()) + "\n")
+                    i + 2
+                }
+
+                lw == "forget" -> {
+                    if (i + 1 >= end) throw ForthError("forget expects a word name after it", tok.line)
+                    forgetWord(tokens[i + 1].text.lowercase(), tok.line)
+                    i + 2
+                }
+
+                lw == "recurse" -> {
+                    val frame = callStack.lastOrNull()
+                        ?: throw ForthError("'recurse' outside a word definition", tok.line)
+                    val fw = dictionary[frame.word]
+                        ?: throw ForthError("'recurse' cannot find current word '${frame.word}'", tok.line)
+                    execWord(fw)
+                    i + 1
+                }
+
                 // -------- loop index words (only valid inside do/loop) --------
                 lw == "i" -> {
                     val ls = returnStack.lastOrNull() as? LoopState
@@ -552,7 +683,19 @@ class ForthInterpreter {
         when (fw) {
             is ForthWord.Builtin -> fw.impl(this)
             is ForthWord.Lambda -> fw.impl(this)
-            is ForthWord.Compiled -> execTokens(fw.body, 0, fw.body.size)
+            is ForthWord.Compiled -> {
+                callStack.addLast(CallFrame(fw.name, fw.sourceLine))
+                try {
+                    execTokens(fw.body, 0, fw.body.size)
+                } catch (t: Throwable) {
+                    if (t !is ForthFrameYield && callStack.size >= lastErrorCallStack.size) {
+                        lastErrorCallStack = callStack.toList()
+                    }
+                    throw t
+                } finally {
+                    callStack.removeLastOrNull()
+                }
+            }
             is ForthWord.Variable -> push(fw.name)
             is ForthWord.Constant -> push(fw.value)
         }
@@ -590,6 +733,7 @@ class ForthInterpreter {
         var untilAt = -1
         var whileAt = -1
         var repeatAt = -1
+        var againAt = -1
         var j = start
         while (j < end) {
             when (tokens[j].text.lowercase()) {
@@ -597,26 +741,49 @@ class ForthInterpreter {
                 "until" -> if (depth == 0) { untilAt = j; break } else depth--
                 "while" -> if (depth == 0) whileAt = j
                 "repeat" -> if (depth == 0) { repeatAt = j; break } else depth--
+                "again" -> if (depth == 0) { againAt = j; break } else depth--
             }
             j++
         }
         return when {
             untilAt != -1 -> {
                 while (true) {
-                    execTokens(tokens, start, untilAt)
+                    try {
+                        execTokens(tokens, start, untilAt)
+                    } catch (_: LeaveException) {
+                        break
+                    }
                     if (anyToBool(pop())) break
                 }
                 untilAt + 1
             }
             whileAt != -1 && repeatAt != -1 -> {
                 while (true) {
-                    execTokens(tokens, start, whileAt)
+                    try {
+                        execTokens(tokens, start, whileAt)
+                    } catch (_: LeaveException) {
+                        break
+                    }
                     if (!anyToBool(pop())) break
-                    execTokens(tokens, whileAt + 1, repeatAt)
+                    try {
+                        execTokens(tokens, whileAt + 1, repeatAt)
+                    } catch (_: LeaveException) {
+                        break
+                    }
                 }
                 repeatAt + 1
             }
-            else -> throw ForthError("'begin' without 'until' or 'while/repeat'")
+            againAt != -1 -> {
+                while (true) {
+                    try {
+                        execTokens(tokens, start, againAt)
+                    } catch (_: LeaveException) {
+                        break
+                    }
+                }
+                againAt + 1
+            }
+            else -> throw ForthError("'begin' without 'until', 'again', or 'while/repeat'")
         }
     }
 
@@ -775,6 +942,28 @@ class ForthInterpreter {
                 )
             }
             .sortedBy { it.word }
+    }
+
+    fun describeWord(name: String): String {
+        val key = name.lowercase()
+        val fw = dictionary[key] ?: throw ForthError("see: unknown word '$name'")
+        return when (fw) {
+            is ForthWord.Builtin -> "${fw.name} ${fw.doc}".trim()
+            is ForthWord.Compiled -> ": ${fw.name} ${fw.body.joinToString(" ") { it.text }} ;"
+            is ForthWord.Variable -> "variable ${fw.name} = ${variables[fw.name]}"
+            is ForthWord.Constant -> "constant ${fw.name} = ${fw.value}"
+            is ForthWord.Lambda -> "${fw.name} ${fw.doc}".trim()
+        }
+    }
+
+    fun forgetWord(name: String, line: Int = -1) {
+        val key = name.lowercase()
+        val fw = dictionary[key] ?: throw ForthError("forget: unknown word '$name'", line)
+        if (fw is ForthWord.Builtin || fw is ForthWord.Lambda) {
+            throw ForthError("forget: '$name' is host-defined and cannot be forgotten", line)
+        }
+        dictionary.remove(key)
+        if (fw is ForthWord.Variable) variables.remove(fw.name)
     }
 
     // -------------------------------------------------------------------------
@@ -971,6 +1160,46 @@ class ForthInterpreter {
         else -> value
     }
 
+    private fun escapeHtml(raw: String): String = raw
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+
+    private fun stackHtml(): String {
+        val rows = stack.toList().mapIndexed { index, value ->
+            val depth = stack.size - index - 1
+            "<tr><td style='padding:2px 8px;color:#777;text-align:right'>$depth</td>" +
+                "<td style='padding:2px 8px'><code>${escapeHtml(shortValue(value))}</code></td>" +
+                "<td style='padding:2px 8px;color:#777'>${escapeHtml(value::class.simpleName ?: "value")}</td></tr>"
+        }.asReversed().joinToString("")
+        return "<table style='border-collapse:collapse;font:12px/1.35 monospace'>" +
+            "<thead><tr><th style='text-align:right;padding:2px 8px'>depth</th><th style='text-align:left;padding:2px 8px'>value</th><th style='text-align:left;padding:2px 8px'>type</th></tr></thead>" +
+            "<tbody>$rows</tbody></table>"
+    }
+
+    private fun barHtml(value: Double, max: Double): String {
+        val denom = if (max == 0.0) 1.0 else max
+        val pct = (value / denom).coerceIn(0.0, 1.0)
+        val label = "${round(pct * 1000.0) / 10.0}%"
+        return "<div style='min-width:220px;padding:6px 0;font:12px/1.3 sans-serif'>" +
+            "<div style='height:10px;background:#222;border-radius:2px;overflow:hidden'>" +
+            "<div style='height:100%;width:${pct * 100.0}%;background:#4da3ff'></div></div>" +
+            "<div style='margin-top:4px;color:#777'>${escapeHtml(label)} (${escapeHtml(value.toString())}/${escapeHtml(max.toString())})</div></div>"
+    }
+
+    private fun plotStackHtml(): String {
+        val nums = stack.toList().mapNotNull { (it as? Number)?.toDouble() }
+        if (nums.isEmpty()) return "<div style='font:12px sans-serif;color:#777'>plot-stack: no numeric values on stack</div>"
+        val maxAbs = nums.maxOf { abs(it) }.takeIf { it > 0.0 } ?: 1.0
+        val bars = nums.takeLast(64).joinToString("") { n ->
+            val h = (abs(n) / maxAbs * 80.0).coerceIn(1.0, 80.0)
+            val color = if (n >= 0.0) "#4da3ff" else "#ff6b6b"
+            "<div title='${escapeHtml(n.toString())}' style='width:8px;height:${h}px;background:$color'></div>"
+        }
+        return "<div style='display:flex;align-items:flex-end;gap:2px;height:88px;padding:4px 0'>$bars</div>"
+    }
 
     private fun builtin(name: String, doc: String = "", impl: ForthInterpreter.() -> Unit) {
         dictionary[name.lowercase()] = ForthWord.Builtin(name, doc, impl)
@@ -1008,6 +1237,22 @@ class ForthInterpreter {
             push(item)
         }
 
+        // --- Return stack ---
+        builtin(">r", "( x -- ) Move x from data stack to return stack") { returnStack.addLast(pop()) }
+        builtin("r>", "( -- x ) Move x from return stack to data stack") {
+            val v = returnStack.removeLastOrNull() ?: throw ForthError("Return stack underflow")
+            if (v is LoopState) {
+                returnStack.addLast(v)
+                throw ForthError("r>: top of return stack is loop state; this would corrupt do/loop")
+            }
+            push(v)
+        }
+        builtin("r@", "( -- x ) Copy top of return stack to data stack") {
+            val v = returnStack.lastOrNull() ?: throw ForthError("Return stack underflow")
+            if (v is LoopState) throw ForthError("r@: top of return stack is loop state")
+            push(v)
+        }
+
         // --- Arithmetic ---
         builtin("+",      "( a b -- a+b )") { val b = popNum(); push(popNum() + b) }
         builtin("-",      "( a b -- a-b )") { val b = popNum(); push(popNum() - b) }
@@ -1041,7 +1286,7 @@ class ForthInterpreter {
         builtin("log",   "( n -- log10 )") { push(log10(popNum())) }
         builtin("floor", "( n -- floor )") { push(floor(popNum())) }
         builtin("ceil",  "( n -- ceil )") { push(ceil(popNum())) }
-        builtin("round", "( n -- round )") { push(round(popNum()).toDouble()) }
+        builtin("round", "( n -- round )") { push(round(popNum())) }
         builtin("pi",    "( -- pi )") { push(PI) }
         builtin("e",     "( -- e )") { push(E) }
 
@@ -1096,8 +1341,57 @@ class ForthInterpreter {
             onDisplay(channel, value.h)
         }
 
+        // --- Dictionary / introspection ---
+        builtin("words", "( -- ) Print all known dictionary words") {
+            onOutput(dictionary.keys.sorted().joinToString(" ") + "\n")
+        }
+        builtin("word-list", "( -- words ) Push all known dictionary words as a list") {
+            push(dictionary.keys.sorted())
+        }
+        builtin("see-word", "( name -- source ) Push a printable definition for name") {
+            push(describeWord(pop().toString()))
+        }
+        builtin("forget-word", "( name -- ) Remove a user-defined word, variable, or constant") {
+            forgetWord(pop().toString(), currentLine)
+        }
+        builtin("see", "( -- ) Immediate-style: `see name` prints a word definition") {
+            throw ForthError("see must be followed by a word name")
+        }
+        builtin("forget", "( -- ) Immediate-style: `forget name` removes a user-defined word") {
+            throw ForthError("forget must be followed by a word name")
+        }
+        builtin("recurse", "( ... -- ... ) Re-run the current word") {
+            throw ForthError("'recurse' is only valid while a word is executing")
+        }
+
+        // --- Small Field-native visualization layer ---
+        builtin("html", "( html -- ) Display raw HTML in channel 'output'") {
+            onDisplay("output", pop().toString())
+        }
+        builtin("html-channel", "( html channel -- ) Display raw HTML in channel") {
+            val channel = pop().toString()
+            onDisplay(channel, pop().toString())
+        }
+        builtin("watch", "( value name -- ) Display a named value in its own channel") {
+            val name = pop().toString()
+            val value = pop()
+            onDisplay(name, "<div style='font:12px/1.4 monospace'><b>${escapeHtml(name)}</b> = ${escapeHtml(shortValue(value))}</div>")
+        }
+        builtin("stack-display", "( -- ) Display the current data stack as an HTML table") {
+            onDisplay("stack", stackHtml())
+        }
+        builtin("bar", "( value max channel -- ) Display value/max as a progress bar") {
+            val channel = pop().toString()
+            val max = popNum()
+            val value = popNum()
+            onDisplay(channel, barHtml(value, max))
+        }
+        builtin("plot-stack", "( n1 n2 ... -- ) Display numeric stack values as simple bars") {
+            onDisplay("plot", plotStackHtml())
+        }
+
         // --- Control flow placeholders (only valid inside word bodies) ---
-        for (cfWord in listOf("if", "else", "then", "begin", "until", "while", "repeat", "do", "loop", "+loop", "leave")) {
+        for (cfWord in listOf("if", "else", "then", "begin", "until", "while", "repeat", "again", "do", "loop", "+loop", "leave")) {
             val captured = cfWord
             dictionary[captured] = ForthWord.Builtin(captured, "control flow") {
                 throw ForthError("'$captured' is only valid inside a word definition")
@@ -1256,7 +1550,7 @@ class ForthInterpreter {
 
 sealed class ForthWord {
     data class Builtin(val name: String, val doc: String, val impl: ForthInterpreter.() -> Unit) : ForthWord()
-    data class Compiled(val name: String, val body: List<ForthInterpreter.Token>) : ForthWord()
+    data class Compiled(val name: String, val body: List<ForthInterpreter.Token>, val sourceLine: Int = -1) : ForthWord()
     data class Variable(val name: String) : ForthWord()
     data class Constant(val name: String, val value: Any) : ForthWord()
     data class Lambda(val name: String, val doc: String, val impl: ForthInterpreter.() -> Unit) : ForthWord()

@@ -125,6 +125,10 @@ class DocsSearchBridge(
             vectorStoreIds.add(vsId)
             info("Using vector store: $vsId")
         }
+        GlslIncludeLibraryIndex.currentVectorStoreIdsForQuery(query).forEach { vsId ->
+            vectorStoreIds.add(vsId)
+            info("Using GLSL include vector store: $vsId")
+        }
         if (vectorStoreIds.isEmpty()) {
             warn("No vector store available; docs search is running ungrounded")
         }
@@ -133,6 +137,7 @@ class DocsSearchBridge(
             if (vectorStoreIds.isNotEmpty()) {
                 buildString {
                     appendLine("Use file_search against the indexed Field4 codebase for this request.")
+                    appendLine("If the question is about GLSL include libraries, use file_search against indexed GLSL include libraries too.")
                     appendLine("If retrieval does not support a claim, state that clearly.")
                     appendLine()
                     append(query)

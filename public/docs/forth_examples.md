@@ -183,13 +183,106 @@ For styling, numeric and vector values are a good fit for reflected `properties.
 
 The class helpers are useful on their own:
 
-```forth
+```diffstatic {data-lang=forth}
 s"FLine" class-for @? getName println
 s"Vec3" class-for @? getName println
 s"Fli" class-matches println
 ```
 
 That is not just introspection for its own sake. It is how you make host APIs discoverable enough to stay live-codable.
+
+## Dictionary tools, recursion, and temporary stack storage
+
+These words are the first ones to reach for when Forth starts feeling opaque. `words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
+
+```diffstatic {data-lang=forth}
+: sqr dup * ;
+words
+see sqr
+forget sqr
+```
+
+`recurse` means “run the word I am currently inside.” Here it makes a small factorial. The base case leaves `1`; the recursive case keeps a copy of `n`, computes `(n-1)!`, then multiplies.
+
+```diffstatic {data-lang=forth}
+: fact ( n -- n! )
+  dup 1 <= if
+    drop 1
+  else
+    dup 1- recurse *
+  then ;
+
+5 fact println
+```
+
+The return stack is a second, temporary stack. Use it sparingly, mostly to park a value while the data stack is doing something else. `>r` moves to the return stack, `r@` copies back, and `r>` moves back.
+
+```diffstatic {data-lang=forth}
+: add-twice ( a b -- a+b+b )
+  >r        \ save b away from the data stack
+  r@ +      \ add a copy of b
+  r> + ;    \ restore b and add it again
+
+10 3 add-twice println
+```
+
+## `again`, diagnostics, and display helpers
+
+`begin ... again` is an endless loop. In normal one-shot execution that is dangerous; in launch-mode animation it is useful when the loop contains `frame`, because `frame` yields back to Field for the next tick. In a one-shot example, pair it with `leave`.
+
+```diffstatic {data-lang=forth}
+variable n
+0 n !
+
+: count3
+  begin
+    1 n +!
+    n @ 3 >= if leave then
+  again ;
+
+count3
+n @ println
+```
+
+When something fails, Forth errors now include the current token, a stack snapshot, and the word call stack. For example:
+
+```diffstatic {data-lang=forth}
+: inner nope ;
+: outer 10 inner ;
+outer
+```
+
+Reports the unknown word, shows that `10` was still on the data stack, and shows the path through `outer` into `inner`.
+
+The small display vocabulary gives Forth direct access to Field output areas without going through Kotlin:
+
+<!--
+FIELD_TEST
+id: docs.forth.visualization-helpers
+runner: backdoor-box
+tags: [docs, forth, output, visualization]
+timeoutSec: 45
+waitSec: 1.0
+expect:
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" wait="1.0" capture="box" embed=true name="forth-visualization-helpers"}
+:::static
+s"<b>Hello from raw Forth HTML.</b>" html
+
+0.72 1.0 s"progress" bar
+42 s"answer" watch
+
+1 4 9 16
+stack-display
+plot-stack
+```
+
+`html` and `html-channel` send raw HTML. `watch` gives a named value its own output channel. `stack-display` shows the current stack as a table, and `plot-stack` turns numeric stack values into a quick bar chart.
 
 ## Extending the dictionary from Kotlin
 
@@ -220,7 +313,7 @@ forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
 
 Once the host has pushed a real buffer object onto the Forth stack, the call site stays tiny:
 
-```forth
+```diffstatic {data-lang=forth}
 0.0 1.0 0.0 1.0 append-vec4
 1.0 0.0 0.0 1.0 append-vec4
 0.0 0.0 1.0 1.0 append-vec4
@@ -232,7 +325,7 @@ That is the pattern to keep in mind when Forth should orchestrate something but 
 
 The interpreter also has a cooperative `frame` primitive for launch-mode animation. This example is lifted almost directly from the interpreter docs and is meant to run in a real Forth box inside Field, not inside the docs build.
 
-```forth
+```diffstatic {data-lang=forth}
 variable tick
 variable line
 0 tick !

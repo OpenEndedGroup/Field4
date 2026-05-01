@@ -172,7 +172,8 @@ class ForthExecution(val inside: Box) : BoxExecution {
                             } catch (_: ForthFrameYield) {
                                 // Cooperative per-tick yield requested by `frame`.
                             } catch (e: ForthError) {
-                                inside.error(e.message ?: "FORTH error", line = e.line, property = "code")
+                                val diag = forth.diagnosticFor(e)
+                                inside.error(diag.message, line = diag.line, property = "code")
                                 break
                             } catch (e: Throwable) {
                                 lprintln("error,forth", e.stackTraceToString())

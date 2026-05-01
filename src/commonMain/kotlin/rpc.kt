@@ -133,6 +133,15 @@ data class Stop_box(val uid: String)
 data class Expected_box_count(val count: Int)
 
 @Serializable
+data class DocumentLoadStatus(
+    val phase: String,
+    val message: String = "",
+    val count: Int = -1,
+    val completed: Int = -1,
+    val terminal: Boolean = false
+)
+
+@Serializable
 data class IsRunning(
     val uid: String,
     val isRunning: Boolean,

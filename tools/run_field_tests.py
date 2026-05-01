@@ -79,6 +79,8 @@ def extension_for_test(test: dict[str, Any]) -> str:
     language = str(test.get("snippetLanguage") or "").lower()
     if property_name in {"fragment", "vertex", "compute", "task", "mesh"}:
         return "glsl"
+    if language == "forth":
+        return "kt"
     return {
         "kotlin": "kt",
         "kt": "kt",
@@ -90,6 +92,20 @@ def extension_for_test(test: dict[str, Any]) -> str:
         "yaml": "yaml",
         "text": "txt",
     }.get(language, "txt")
+
+
+def wrap_snippet_for_backdoor(test: dict[str, Any], snippet: str) -> str:
+    language = str(test.get("snippetLanguage") or "").lower()
+    if language == "forth":
+        source_literal = json.dumps(snippet)
+        return f"""
+// FIELD_DOCS_EXPECT_OUTPUT_AREA: true
+import afield.docs.renderForthDocsSnippet
+
+val __forthSource = {source_literal}
+renderForthDocsSnippet(__forthSource)
+""".strip()
+    return snippet
 
 
 def playwright_timeout(seconds: float) -> float:
@@ -142,7 +158,7 @@ def ensure_snippet_artifact(test: dict[str, Any]) -> Path:
         raise RunnerError(f"{test.get('id')}: backdoor-box tests require a non-empty snippet")
     return write_generated_artifact(
         f"{sanitize_test_id(str(test.get('id')))}.{extension_for_test(test)}",
-        snippet,
+        wrap_snippet_for_backdoor(test, snippet),
     )
 
 

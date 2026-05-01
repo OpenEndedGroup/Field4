@@ -89,6 +89,14 @@ fun buildDynamicInstructions(
         toolAds += "  Results include filePath, fileId, line, definitionLine, definitionBody (for fun), and may suggest relatedGuides / relatedExamples."
     }
 
+    val hasGlslIncludeManifest = ctx.attachments.any { it.fileName == "afield://glsl-includes/manifest" }
+    val includeGuidance = if (hasGlslIncludeManifest || lang.name.startsWith("GLSL", ignoreCase = true)) {
+        """
+- When GLSL include libraries are available, prefer `#include "prefix/path/file.glsl"` over copying library code.
+- If recommending an include library function, give the exact include path and use AttachmentRequest for exact implementation details when needed.
+        """.trimIndent()
+    } else ""
+
     val guidance = if (mode == InstructionMode.Chat) {
         """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
@@ -97,12 +105,14 @@ fun buildDynamicInstructions(
 - If an exact match fails, try softer queries (short name, receiver+name, suffix, drop generics).
 - Do not keep reformulating the same WorkspaceSymbolSearch indefinitely. After one or two misses, switch to ListContents, AttachmentRequest, or answer with the grounded context you already have.
 - If you call a tool, wait for its output before continuing.
+$includeGuidance
         """.trimIndent()
     } else {
         """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
 - Keep code output clean; put explanations in Commentary tool calls.
 - If you call a tool, wait for its output before continuing.
+$includeGuidance
         """.trimIndent()
     }
 

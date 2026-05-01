@@ -42,7 +42,6 @@ ${contextBlock.trim()}
 """.trimIndent()
 
 private fun shaderContextBlock(context: Map<String, String>): String {
-    if (context.isEmpty()) return ""
     val entries = context.filterValues { it.isNotBlank() }
     if (entries.isEmpty()) return ""
     return buildString {
@@ -160,7 +159,13 @@ object Ai4GlslAutocomplete {
         val safePos = position.coerceIn(0, code.length)
         val codeWithCursor = code.substring(0, safePos) + "<cursor>" + code.substring(safePos)
         val wrapped = lang.wrap(codeWithCursor)
-        val contextBlock = shaderContextBlock(context)
+        val includeManifest = GlslIncludeLibraryIndex.manifestFor("$property\n$code", limit = 16)
+        val contextWithIncludes = if (includeManifest.isBlank()) {
+            context
+        } else {
+            context + ("GLSL include libraries" to includeManifest)
+        }
+        val contextBlock = shaderContextBlock(contextWithIncludes)
 
         val state = threadByKey[fileKey] ?: bridge.startThread(
             fileKey,

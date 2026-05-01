@@ -316,6 +316,10 @@ fun installAi4() {
                     }
                 }
             }
+
+            if (hasGraphicsProperties || glslSpecForProperty(exec.property) != null || exec.extraPrompt.contains("include", ignoreCase = true)) {
+                GlslIncludeLibraryIndex.contextAttachmentFor(exec.extraPrompt.ifBlank { exec.prompt })?.let { add(it) }
+            }
         }
 
         val resolveAttachment: (String) -> AttachmentResponse? = attachmentResolver@{ raw ->
@@ -342,6 +346,8 @@ fun installAi4() {
                     content = content
                 )
             }
+
+            GlslIncludeLibraryIndex.resolveAttachment(requested)?.let { return@attachmentResolver it }
 
             val candidatePaths = linkedSetOf<Path>()
             val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
@@ -396,7 +402,10 @@ fun installAi4() {
             )
         }
 
-        val vectorStoreIds = KotlinSourceIndex.currentVectorStoreId()?.let { listOf(it) } ?: emptyList()
+        val vectorStoreIds = buildList {
+            KotlinSourceIndex.currentVectorStoreId()?.let { add(it) }
+            addAll(GlslIncludeLibraryIndex.currentVectorStoreIdsFor(exec.property, exec.extraPrompt + "\n" + exec.prompt))
+        }.distinct()
 
         if (exec.kind == "chat" || exec.kind == "cursor" || exec.kind == "rewrite" || exec.kind == "error") {
             clearProvisional(docPath)
@@ -435,6 +444,7 @@ fun installAi4() {
                             lang = lang,
                             lineNumber = exec.startLine,
                             userPrompt = exec.extraPrompt,
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
@@ -518,7 +528,8 @@ fun installAi4() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds
                         )
                     }
 
@@ -534,7 +545,8 @@ fun installAi4() {
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds
                         )
                     }
 

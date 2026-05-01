@@ -618,6 +618,9 @@ class OpenAiKnowledgeStore(
     private data class CreatedVectorStore(val vectorStoreId: String)
     private data class CreatedBatch(val batchId: String)
 
+    private fun endpoint(path: String): URI =
+        URI.create(apiBase.toString().trimEnd('/') + "/" + path.trimStart('/'))
+
     private fun uploadFile(apiKey: String, fileName: String, content: ByteArray, purpose: String): FileCreateResponse {
         val boundary = "----afield-${UUID.randomUUID()}"
         val body = buildMultipart(
@@ -628,7 +631,7 @@ class OpenAiKnowledgeStore(
             )
         )
 
-        val req = HttpRequest.newBuilder(apiBase.resolve("/files")).header("Authorization", "Bearer $apiKey")
+        val req = HttpRequest.newBuilder(endpoint("files")).header("Authorization", "Bearer $apiKey")
             .header("Content-Type", "multipart/form-data; boundary=$boundary")
             .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build()
 
@@ -643,7 +646,7 @@ class OpenAiKnowledgeStore(
         val payload = mapOf(
             "name" to name, "metadata" to metadata
         )
-        val req = HttpRequest.newBuilder(apiBase.resolve("/vector_stores")).header("Authorization", "Bearer $apiKey")
+        val req = HttpRequest.newBuilder(endpoint("vector_stores")).header("Authorization", "Bearer $apiKey")
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload))).build()
 
@@ -656,7 +659,7 @@ class OpenAiKnowledgeStore(
     }
 
     private fun listVectorStoreFileIds(apiKey: String, vectorStoreId: String, limit: Int = 100): List<String> {
-        val uri = apiBase.resolve("/vector_stores/$vectorStoreId/files?limit=$limit")
+        val uri = endpoint("vector_stores/$vectorStoreId/files?limit=$limit")
         val req = HttpRequest.newBuilder(uri).header("Authorization", "Bearer $apiKey").GET().build()
 
         val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
@@ -669,7 +672,7 @@ class OpenAiKnowledgeStore(
 
     private fun createVectorStoreFileBatch(apiKey: String, vectorStoreId: String, fileIds: List<String>): CreatedBatch {
         val payload = mapOf("file_ids" to fileIds)
-        val req = HttpRequest.newBuilder(apiBase.resolve("/vector_stores/$vectorStoreId/file_batches"))
+        val req = HttpRequest.newBuilder(endpoint("vector_stores/$vectorStoreId/file_batches"))
             .header("Authorization", "Bearer $apiKey").header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload))).build()
 
@@ -688,7 +691,7 @@ class OpenAiKnowledgeStore(
         var sleepMs = 250L
 
         while (System.currentTimeMillis() < deadline) {
-            val uri = apiBase.resolve("/vector_stores/$vectorStoreId/file_batches/$batchId")
+            val uri = endpoint("vector_stores/$vectorStoreId/file_batches/$batchId")
             val req = HttpRequest.newBuilder(uri).header("Authorization", "Bearer $apiKey").GET().build()
 
             val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
