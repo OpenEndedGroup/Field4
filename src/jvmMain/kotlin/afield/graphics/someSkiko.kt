@@ -405,7 +405,7 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
     }
 
     val sb = StringBuilder()
-    sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$we" height="$he" style="overflow:visible">""")
+    sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$we" height="$he" style="overflow:visible"><g vector-effect="non-scaling-stroke">""")
 
     renderablePairs.forEach { (original, scaled) ->
         val onClick = original.onClick
@@ -442,7 +442,7 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
         if (hasInteraction) sb.append("</g>")
     }
 
-    sb.append("</svg>")
+    sb.append("</g></svg>")
     return sb.toString()
 }
 
@@ -524,10 +524,10 @@ private fun renderFLineToSVG(f: FLine, sb: StringBuilder) {
     if (pathData.isNotEmpty()) {
         when {
             f.stroked && f.filled -> {
-                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="$colorStr"/>""")
+                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="$colorStr" vector-effect="non-scaling-stroke"/>""")
             }
             f.stroked -> {
-                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="none"/>""")
+                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="none" vector-effect="non-scaling-stroke"/>""")
             }
             f.filled -> {
                 sb.append("""<path d="$pathData" stroke="none" fill="$colorStr"/>""")
@@ -544,7 +544,7 @@ private fun renderFLineToSVG(f: FLine, sb: StringBuilder) {
                 is FLine.Close -> null
             } ?: return@forEach
             val r = svgN(((node.pointSize ?: f.pointSize) * 3.0).toFloat())
-            sb.append("""<circle cx="${svgN(to.x)}" cy="${svgN(to.y)}" r="$r" fill="$colorStr"/>""")
+            sb.append("""<circle cx="${svgN(to.x)}" cy="${svgN(to.y)}" r="$r" fill="$colorStr" vector-effect="non-scaling-stroke"/>""")
         }
     }
 }

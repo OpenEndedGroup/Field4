@@ -118,6 +118,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     stage.setAttribute("style", "display:block;overflow:hidden;background:transparent;")
 
     val stageGroup = document.createElementNS("http://www.w3.org/2000/svg", "g") as Element
+    stageGroup.setAttribute("vector-effect", "non-scaling-stroke")
     stage.appendChild(stageGroup)
     viewport.appendChild(stage)
     root.appendChild(viewport)
@@ -144,12 +145,18 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     view.sourceHeight = 1.0
     view.lastMeasuredWidth = -1.0
     view.lastMeasuredHeight = -1.0
+    view.lastStrokeFadeScale = null
 
     fun updateTransform() {
         val scale = (view.scale as Double)
         val tx = (view.tx as Double)
         val ty = (view.ty as Double)
         stageGroup.setAttribute("transform", "matrix($scale 0 0 $scale $tx $ty)")
+        val previousStrokeFadeScale = (view.lastStrokeFadeScale as? Number)?.toDouble()
+        if (previousStrokeFadeScale != scale) {
+            applySubpixelStrokeFade(stageGroup, scale)
+            view.lastStrokeFadeScale = scale
+        }
     }
 
     fun updateViewportMetrics() {
@@ -278,6 +285,60 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     return view
 }
 
+private fun applyNonScalingStroke(root: Element) {
+    root.setAttribute("vector-effect", "non-scaling-stroke")
+    forEachStrokeFadeElement(root) { element ->
+        element.setAttribute("vector-effect", "non-scaling-stroke")
+        element.setAttribute("data-afield-base-stroke-width", parsePositiveDouble(element.getAttribute("stroke-width"))?.toString() ?: "1")
+        element.getAttribute("stroke-opacity")?.let {
+            element.setAttribute("data-afield-base-stroke-opacity", it)
+        }
+    }
+}
+
+private fun forEachStrokeFadeElement(root: Element, block: (Element) -> Unit) {
+    if (root.isStrokeFadeElement()) block(root)
+    val strokedElements = root.querySelectorAll("path,circle,line,polyline,polygon,rect,ellipse")
+    for (index in 0 until strokedElements.length) {
+        (strokedElements.item(index) as? Element)?.let(block)
+    }
+}
+
+private fun Element.isStrokeFadeElement(): Boolean {
+    val tag = tagName.lowercase()
+    return tag == "path" ||
+        tag == "circle" ||
+        tag == "line" ||
+        tag == "polyline" ||
+        tag == "polygon" ||
+        tag == "rect" ||
+        tag == "ellipse"
+}
+
+private fun strokeOpacityValue(raw: String?): Double {
+    return raw?.toDoubleOrNull()?.takeIf { it.isFinite() }?.coerceIn(0.0, 1.0) ?: 1.0
+}
+
+private fun applySubpixelStrokeFade(root: Element, scale: Double) {
+    if (!scale.isFinite()) return
+    forEachStrokeFadeElement(root) { element ->
+        val stroke = element.getAttribute("stroke")?.trim()
+        if (stroke == null || stroke == "none") return@forEachStrokeFadeElement
+
+        val baseWidth = parsePositiveDouble(element.getAttribute("data-afield-base-stroke-width")) ?: 1.0
+        val baseOpacityRaw = element.getAttribute("data-afield-base-stroke-opacity")
+        val baseOpacity = strokeOpacityValue(baseOpacityRaw)
+        val effectiveWidth = baseWidth * scale
+        if (effectiveWidth < 1.0) {
+            element.setAttribute("stroke-opacity", (baseOpacity * effectiveWidth.coerceIn(0.0, 1.0)).toString())
+        } else if (baseOpacityRaw != null) {
+            element.setAttribute("stroke-opacity", baseOpacityRaw)
+        } else {
+            element.removeAttribute("stroke-opacity")
+        }
+    }
+}
+
 private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: String): Boolean {
     val wrapper = parseLinesWrapper(htmlString) ?: return false
     val sourceSvg = wrapper.querySelector("svg") as? Element ?: return false
@@ -290,7 +351,9 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     val sourceChildren = sourceSvg.childNodes
     for (index in 0 until sourceChildren.length) {
         val child = sourceChildren.item(index) ?: continue
-        stageGroup.appendChild(child.cloneNode(true))
+        val cloned = child.cloneNode(true)
+        (cloned as? Element)?.let { applyNonScalingStroke(it) }
+        stageGroup.appendChild(cloned)
     }
 
     val sourceViewBox = parseSvgViewBox(sourceSvg.getAttribute("viewBox"))
