@@ -50,8 +50,28 @@ var Box.compute by Inheritance<String?>()
 var Box.compute_s by Inheritance<String?>()
 var Box._compute by Delegation<String?>()
 
+var Box.raygen by Inheritance<String?>()
+var Box.miss by Inheritance<String?>()
+var Box.closesthit by Inheritance<String?>()
+var Box.anyhit by Inheritance<String?>()
+var Box.intersection by Inheritance<String?>()
+var Box.callable by Inheritance<String?>()
+var Box.raygen_s by Inheritance<String?>()
+var Box.miss_s by Inheritance<String?>()
+var Box.closesthit_s by Inheritance<String?>()
+var Box.anyhit_s by Inheritance<String?>()
+var Box.intersection_s by Inheritance<String?>()
+var Box.callable_s by Inheritance<String?>()
+var Box._raygen by Delegation<String?>()
+var Box._miss by Delegation<String?>()
+var Box._closesthit by Delegation<String?>()
+var Box._anyhit by Delegation<String?>()
+var Box._intersection by Delegation<String?>()
+var Box._callable by Delegation<String?>()
+
 var Box._shader by Delegation<ModulePointer?>()
 var Box._computeShader by Delegation<ComputeModulePointer?>()
+var Box._rayTracingShader by Delegation<RayTracingModulePointer?>()
 
 var Box.meshShader by Inheritance<MeshModulePointer?>()
 var Box._meshShader by Delegation<MeshModulePointer?>()
@@ -452,6 +472,10 @@ fun Box.meshModuleHere(p: Parameters): MeshModulePointer {
     throw MacroRegistry.MacroNotExpandedException("meshModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+fun Box.rayTracingModuleHere(p: Parameters): RayTracingModulePointer {
+    throw MacroRegistry.MacroNotExpandedException("rayTracingModuleHere should not be callable directly, but should be expanded as a macro")
+}
+
 fun Box.moduleHere(p: Parameters.() -> Unit): ModulePointer {
     throw MacroRegistry.MacroNotExpandedException("moduleHere should not be callable directly, but should be expanded as a macro")
 }
@@ -462,6 +486,10 @@ fun Box.computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer {
 
 fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
     throw MacroRegistry.MacroNotExpandedException("meshModuleHere should not be callable directly, but should be expanded as a macro")
+}
+
+fun Box.rayTracingModuleHere(p: Parameters.() -> Unit): RayTracingModulePointer {
+    throw MacroRegistry.MacroNotExpandedException("rayTracingModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
 fun Box.shadertoyHere(p: Parameters): ModulePointer {
@@ -487,7 +515,13 @@ private val slangShaderPropertyByBase = mapOf(
     "fragment" to "fragment_s",
     "compute" to "compute_s",
     "task" to "task_s",
-    "mesh" to "mesh_s"
+    "mesh" to "mesh_s",
+    "raygen" to "raygen_s",
+    "miss" to "miss_s",
+    "closesthit" to "closesthit_s",
+    "anyhit" to "anyhit_s",
+    "intersection" to "intersection_s",
+    "callable" to "callable_s"
 )
 private const val sharedVertexFragmentProperty = "vertex_fragment"
 
@@ -521,6 +555,12 @@ private fun baseShaderProperty(property: String): String = when (property.lowerc
     "compute", "compute_s" -> "compute"
     "task", "task_s" -> "task"
     "mesh", "mesh_s" -> "mesh"
+    "raygen", "raygen_s" -> "raygen"
+    "miss", "miss_s" -> "miss"
+    "closesthit", "closesthit_s" -> "closesthit"
+    "anyhit", "anyhit_s" -> "anyhit"
+    "intersection", "intersection_s" -> "intersection"
+    "callable", "callable_s" -> "callable"
     else -> property.lowercase()
 }
 
@@ -530,6 +570,12 @@ private fun defaultShaderProperty(kind: ShaderKind): String = when (kind) {
     ShaderKind.COMPUTE_SHADER -> "compute"
     ShaderKind.TASK_SHADER -> "task"
     ShaderKind.MESH_SHADER -> "mesh"
+    ShaderKind.RAYGEN_SHADER -> "raygen"
+    ShaderKind.MISS_SHADER -> "miss"
+    ShaderKind.CLOSEST_HIT_SHADER -> "closesthit"
+    ShaderKind.ANY_HIT_SHADER -> "anyhit"
+    ShaderKind.INTERSECTION_SHADER -> "intersection"
+    ShaderKind.CALLABLE_SHADER -> "callable"
     else -> "fragment"
 }
 
@@ -539,6 +585,12 @@ private fun shaderKindForProperty(property: String, fallback: ShaderKind): Shade
     "compute", "compute_s" -> ShaderKind.COMPUTE_SHADER
     "task", "task_s" -> ShaderKind.TASK_SHADER
     "mesh", "mesh_s" -> ShaderKind.MESH_SHADER
+    "raygen", "raygen_s" -> ShaderKind.RAYGEN_SHADER
+    "miss", "miss_s" -> ShaderKind.MISS_SHADER
+    "closesthit", "closesthit_s" -> ShaderKind.CLOSEST_HIT_SHADER
+    "anyhit", "anyhit_s" -> ShaderKind.ANY_HIT_SHADER
+    "intersection", "intersection_s" -> ShaderKind.INTERSECTION_SHADER
+    "callable", "callable_s" -> ShaderKind.CALLABLE_SHADER
     else -> fallback
 }
 
@@ -693,6 +745,18 @@ private fun getIncludePropertyValue(box: Box, property: String): String? {
         "task_s" -> box.task_s
         "mesh" -> box.mesh
         "mesh_s" -> box.mesh_s
+        "raygen" -> box.raygen
+        "raygen_s" -> box.raygen_s
+        "miss" -> box.miss
+        "miss_s" -> box.miss_s
+        "closesthit" -> box.closesthit
+        "closesthit_s" -> box.closesthit_s
+        "anyhit" -> box.anyhit
+        "anyhit_s" -> box.anyhit_s
+        "intersection" -> box.intersection
+        "intersection_s" -> box.intersection_s
+        "callable" -> box.callable
+        "callable_s" -> box.callable_s
         else -> box.getPropertyRaw(normalized) as? String
     }
 }
@@ -852,6 +916,11 @@ private fun previousStageForCopyPushConstants(
 ): PreparedShaderStage? = when (kind) {
     ShaderKind.MESH_SHADER -> priorStages[ShaderKind.TASK_SHADER]
     ShaderKind.FRAGMENT_SHADER -> priorStages[ShaderKind.MESH_SHADER] ?: priorStages[ShaderKind.VERTEX_SHADER]
+    ShaderKind.MISS_SHADER,
+    ShaderKind.CLOSEST_HIT_SHADER,
+    ShaderKind.ANY_HIT_SHADER,
+    ShaderKind.INTERSECTION_SHADER,
+    ShaderKind.CALLABLE_SHADER -> priorStages[ShaderKind.RAYGEN_SHADER]
     else -> null
 }
 
@@ -1022,6 +1091,18 @@ private fun shaderPropertyValue(box: Box, property: String): String? = when (pro
     "task_s" -> box.task_s
     "mesh" -> box.mesh
     "mesh_s" -> box.mesh_s
+    "raygen" -> box.raygen
+    "raygen_s" -> box.raygen_s
+    "miss" -> box.miss
+    "miss_s" -> box.miss_s
+    "closesthit" -> box.closesthit
+    "closesthit_s" -> box.closesthit_s
+    "anyhit" -> box.anyhit
+    "anyhit_s" -> box.anyhit_s
+    "intersection" -> box.intersection
+    "intersection_s" -> box.intersection_s
+    "callable" -> box.callable
+    "callable_s" -> box.callable_s
     else -> box.getPropertyRaw(property) as? String
 }
 
@@ -1047,6 +1128,12 @@ private fun assignPreparedShaderStage(box: Box, stage: PreparedShaderStage) {
         "compute" -> box._compute = stage.glslSource
         "task" -> box._task = stage.glslSource
         "mesh" -> box._mesh = stage.glslSource
+        "raygen" -> box._raygen = stage.glslSource
+        "miss" -> box._miss = stage.glslSource
+        "closesthit" -> box._closesthit = stage.glslSource
+        "anyhit" -> box._anyhit = stage.glslSource
+        "intersection" -> box._intersection = stage.glslSource
+        "callable" -> box._callable = stage.glslSource
     }
 }
 
@@ -1398,6 +1485,26 @@ private fun Box.installMeshShaderReloadAction() {
     }
 }
 
+@OptIn(DelicateCoroutinesApi::class)
+private fun Box.installRayTracingShaderReloadAction() {
+    this.actions += "rayTracingModuleHere_reload" to Action(
+        "Reload Ray Tracing Shader|alt r",
+        "reloads the ray tracing shader pipeline in this box"
+    ) {
+        runBlocking {
+            GlobalScope.launch(Runloop.runLoop.main) {
+                runShaderReloadAction(
+                    boxes = it,
+                    reloadingMessage = "Reloading shader…",
+                    reloadedMessage = "Reloaded shader"
+                ) { selected ->
+                    reloadRayTracingShader(selected)
+                }
+            }
+        }
+    }
+}
+
 // ------------------------------
 // Graphics (vertex/fragment) reload path
 // ------------------------------
@@ -1695,6 +1802,157 @@ fun Box.attachShader(module: MeshModulePointer, overwriteProperties: Boolean = f
     _meshShader = module
 
     reloadMeshShader(this)
+    return module
+}
+
+// ------------------------------
+// Ray tracing helpers
+// ------------------------------
+private data class RayTracingStageSpec(
+    val baseProperty: String,
+    val kind: ShaderKind,
+    val required: Boolean = false
+)
+
+private val rayTracingStageSpecs = listOf(
+    RayTracingStageSpec("raygen", ShaderKind.RAYGEN_SHADER, required = true),
+    RayTracingStageSpec("miss", ShaderKind.MISS_SHADER),
+    RayTracingStageSpec("closesthit", ShaderKind.CLOSEST_HIT_SHADER),
+    RayTracingStageSpec("anyhit", ShaderKind.ANY_HIT_SHADER),
+    RayTracingStageSpec("intersection", ShaderKind.INTERSECTION_SHADER),
+    RayTracingStageSpec("callable", ShaderKind.CALLABLE_SHADER)
+)
+
+private fun prepareRayTracingStages(box: Box): List<PreparedShaderStage>? {
+    val prepared = mutableListOf<PreparedShaderStage>()
+    val prior = mutableMapOf<ShaderKind, PreparedShaderStage>()
+    for (spec in rayTracingStageSpecs) {
+        if (!hasShaderSource(box, spec.baseProperty)) {
+            if (spec.required) {
+                reportShaderStageError(
+                    box,
+                    sourcePropertyForStage(box, spec.baseProperty),
+                    "${spec.baseProperty} shader setup",
+                    "No shader source found for property '${spec.baseProperty}'."
+                )
+                return null
+            }
+            continue
+        }
+        val stage = prepareShaderStage(box, spec.kind, spec.baseProperty, priorStages = prior) ?: return null
+        prepared += stage
+        prior[spec.kind] = stage
+    }
+    return prepared
+}
+
+private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
+    var postImport = ""
+
+    introspections.flatMap { it.pushConstants }.forEach { pc ->
+        pc.members.forEach { member ->
+            postImport += prefixed(
+                "ray-pc-structure:${member.name}",
+                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+            ) + "\n"
+            val ty = kotlinBindingTypeName(member)
+            postImport += prefixed(
+                "ray-pc-binding:${member.name}",
+                "var RayTracingDispatch.${member.name} by RayTracingDispatch.BoundFromStructure<$ty>()"
+            ) + "\n"
+        }
+    }
+
+    introspections.flatMap { it.ubos }.forEach { ubo ->
+        postImport += prefixed(
+            "ray-ubo:${ubo.name}",
+            "val RayTracingModulePointer.${ubo.name} by RayTracingFromUniform()"
+        ) + "\n"
+        ubo.members.forEach { member ->
+            val ty = kotlinBindingTypeName(member)
+            postImport += prefixed(
+                "ray-ubo-member:${ubo.name}:${member.name}",
+                "var Structure.${member.name} by Structure.FromStructure<$ty>()"
+            ) + "\n"
+        }
+    }
+
+    introspections.flatMap { it.ssbo }.forEach { ssbo ->
+        postImport += prefixed(
+            "ray-ssbo:${ssbo.name}",
+            "val RayTracingModulePointer.${ssbo.name} by RayTracingFromUniform()"
+        ) + "\n"
+    }
+
+    return Insert(
+        preamble = """
+            import afield.four.buffers.*
+            import afield.four.modules.*
+        """.trimIndent(),
+        preambleAfterImports = postImport
+    )
+}
+
+fun reloadRayTracingShader(box: Box): Boolean {
+    clearShaderErrorsForBaseProperties(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
+    val stages = prepareRayTracingStages(box) ?: return false
+    stages.forEach { assignPreparedShaderStage(box, it) }
+
+    val compiled = stages.map { stage -> stage to compileStage(box, stage) }
+    if (compiled.any { it.second.hadError || it.second.introspection == null }) {
+        lprintln("error,graphics", "ray tracing pipeline compilation failed; skipping ray tracing module reload.")
+        return false
+    }
+
+    val introspections = compiled.map { it.second.introspection!! }
+    applyInsertToPreamble(box, buildRayTracingInsert(introspections))
+
+    val p = box._rayTracingShader!!.current.parameters.copy().apply {
+        raygen = box._raygen ?: ""
+        miss = box._miss ?: ""
+        closesthit = box._closesthit ?: ""
+        anyhit = box._anyhit ?: ""
+        intersection = box._intersection ?: ""
+        callable = box._callable ?: ""
+        raygenIntrospection = compiled.introspectionFor(ShaderKind.RAYGEN_SHADER)
+        missIntrospection = compiled.introspectionFor(ShaderKind.MISS_SHADER)
+        closesthitIntrospection = compiled.introspectionFor(ShaderKind.CLOSEST_HIT_SHADER)
+        anyhitIntrospection = compiled.introspectionFor(ShaderKind.ANY_HIT_SHADER)
+        intersectionIntrospection = compiled.introspectionFor(ShaderKind.INTERSECTION_SHADER)
+        callableIntrospection = compiled.introspectionFor(ShaderKind.CALLABLE_SHADER)
+        rayTracingGroups = null
+    }
+    attachFieldProbe(box, p)
+    box._rayTracingShader!!.reload(p)
+    clearShaderErrorsForBaseProperties(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
+    return true
+}
+
+private fun List<Pair<PreparedShaderStage, CompileResult>>.introspectionFor(kind: ShaderKind): Introspection? =
+    firstOrNull { it.first.kind == kind }?.second?.introspection
+
+fun Box.attachShader(module: RayTracingModulePointer, overwriteProperties: Boolean = false): RayTracingModulePointer {
+    installRayTracingShaderReloadAction()
+
+    val parameters = module.current.parameters
+    require(parameters.raygen.isNotBlank()) { "Attached ray tracing module must have a raygen shader source." }
+
+    if (overwriteProperties || !hasShaderSource(this, "raygen")) setPropertyRaw("raygen", parameters.raygen)
+    if (overwriteProperties || !hasShaderSource(this, "miss")) parameters.miss.takeIf { it.isNotBlank() }?.let { setPropertyRaw("miss", it) }
+    if (overwriteProperties || !hasShaderSource(this, "closesthit")) parameters.closesthit.takeIf { it.isNotBlank() }?.let { setPropertyRaw("closesthit", it) }
+    if (overwriteProperties || !hasShaderSource(this, "anyhit")) parameters.anyhit.takeIf { it.isNotBlank() }?.let { setPropertyRaw("anyhit", it) }
+    if (overwriteProperties || !hasShaderSource(this, "intersection")) parameters.intersection.takeIf { it.isNotBlank() }?.let { setPropertyRaw("intersection", it) }
+    if (overwriteProperties || !hasShaderSource(this, "callable")) parameters.callable.takeIf { it.isNotBlank() }?.let { setPropertyRaw("callable", it) }
+
+    _raygen = parameters.raygen
+    _miss = parameters.miss.takeIf { it.isNotBlank() }
+    _closesthit = parameters.closesthit.takeIf { it.isNotBlank() }
+    _anyhit = parameters.anyhit.takeIf { it.isNotBlank() }
+    _intersection = parameters.intersection.takeIf { it.isNotBlank() }
+    _callable = parameters.callable.takeIf { it.isNotBlank() }
+    _rayTracingShader = module
+
+    reloadRayTracingShader(this)
     return module
 }
 
@@ -2425,5 +2683,108 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
     attachFieldProbe(this, p)
     val pp = MeshModule(p).pointer()
     this._meshShader = pp
+    return pp
+}
+
+// ------------------------------
+// Ray tracing macro + module creation
+// ------------------------------
+val defaultRaygenShader = """
+#version 460
+#extension GL_EXT_ray_tracing : require
+
+layout(location = 0) rayPayloadEXT vec4 payload;
+
+void main()
+{
+    vec2 uv = (vec2(gl_LaunchIDEXT.xy) + vec2(0.5)) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
+    payload = vec4(uv, 0.0, 1.0);
+}
+""".trimIndent()
+
+@OptIn(DelicateCoroutinesApi::class)
+fun Box.macro_rayTracingModuleHere(args: List<String>): Insert {
+    installRayTracingShaderReloadAction()
+
+    if (!hasShaderSource(this, "raygen")) {
+        setPropertyRaw("raygen", defaultRaygenShader)
+    }
+
+    clearShaderErrorsForBaseProperties(this, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
+    val stages = prepareRayTracingStages(this)
+    val introspections = stages?.mapNotNull {
+        assignPreparedShaderStage(this, it)
+        compileStage(this, it).introspection
+    }
+
+    val here = run {
+        var h = "_rayTracingModuleHere${args[0]}"
+        if (args.size == 2) h += args[1]
+        h
+    }
+
+    if (stages == null || introspections == null || introspections.size != stages.size) {
+        return Insert(here = here)
+    }
+
+    clearShaderErrorsForBaseProperties(this, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
+    return buildRayTracingInsert(introspections).copy(here = here)
+}
+
+fun Box._rayTracingModuleHere(p: Parameters.() -> Unit): RayTracingModulePointer {
+    return _rayTracingModuleHere(parameters(renderer = fromContext(), p))
+}
+
+fun Box._rayTracingModuleHere(p: Parameters = parameters {}): RayTracingModulePointer {
+    p.raygen = this._raygen!!
+    p.miss = this._miss ?: ""
+    p.closesthit = this._closesthit ?: ""
+    p.anyhit = this._anyhit ?: ""
+    p.intersection = this._intersection ?: ""
+    p.callable = this._callable ?: ""
+
+    val raygenSourceProperty = sourcePropertyForStage(this, "raygen")
+    p.raygenSourceName = boxShaderSourceName(this, raygenSourceProperty)
+    p.raygenIncludeResolver = shaderIncludeResolverFor(this, raygenSourceProperty)
+
+    fun configureOptional(base: String, assign: (String, ShaderIncludeResolver?) -> Unit) {
+        if (!hasShaderSource(this, base)) return
+        val sourceProperty = sourcePropertyForStage(this, base)
+        assign(boxShaderSourceName(this, sourceProperty), shaderIncludeResolverFor(this, sourceProperty))
+    }
+
+    configureOptional("miss") { sourceName, resolver ->
+        p.missSourceName = sourceName
+        p.missIncludeResolver = resolver
+    }
+    configureOptional("closesthit") { sourceName, resolver ->
+        p.closesthitSourceName = sourceName
+        p.closesthitIncludeResolver = resolver
+    }
+    configureOptional("anyhit") { sourceName, resolver ->
+        p.anyhitSourceName = sourceName
+        p.anyhitIncludeResolver = resolver
+    }
+    configureOptional("intersection") { sourceName, resolver ->
+        p.intersectionSourceName = sourceName
+        p.intersectionIncludeResolver = resolver
+    }
+    configureOptional("callable") { sourceName, resolver ->
+        p.callableSourceName = sourceName
+        p.callableIncludeResolver = resolver
+    }
+
+    p.textureResolver = textureResolverFor(p.textureResolver)
+
+    p.errorHandler = { message, throwable ->
+        this.error(message, "code", numberFromErrorMessage(message) ?: 0)
+        throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
+    }
+
+    if (p.name == "unnamed module") p.name = "ray tracing module in box '${name}' (${id})"
+
+    attachFieldProbe(this, p)
+    val pp = RayTracingModule(p).pointer()
+    this._rayTracingShader = pp
     return pp
 }

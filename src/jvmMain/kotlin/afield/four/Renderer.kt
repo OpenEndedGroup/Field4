@@ -13,6 +13,7 @@ import afield.four.texture.image_layout_transition
 import afield.four.modules.ComputeModulePointer
 import afield.four.modules.MeshModulePointer
 import afield.four.modules.ModulePointer
+import afield.four.modules.RayTracingModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
 import afield.four.util.AutoDisposer
@@ -1632,9 +1633,15 @@ class Renderer(
     @JvmName("plusAssign_computeModulePointer")
     operator fun plusAssign(a: Pair<String, ComputeModulePointer>) { computeList += a }
 
+    @JvmName("plusAssign_rayTracingModulePointer")
+    operator fun plusAssign(a: Pair<String, RayTracingModulePointer>) { computeList += a }
+
 
     @JvmName("plusAssign_computeModulePointerNamed")
     operator fun plusAssign(a: Named<ComputeModulePointer>) { computeList += a }
+
+    @JvmName("plusAssign_rayTracingModulePointerNamed")
+    operator fun plusAssign(a: Named<RayTracingModulePointer>) { computeList += a.name to a.value }
 
     fun getProfiler(): GpuProfiler? = defaultContext.profilerState?.profiler
 

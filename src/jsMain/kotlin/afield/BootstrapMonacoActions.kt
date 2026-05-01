@@ -591,6 +591,8 @@ private fun shaderReloadActionForProperty(property: String): String? = when (pro
     "vertex", "fragment", "vertex_fragment", "vertex_s", "fragment_s" -> "moduleHere_reload"
     "compute", "compute_s" -> "computeModuleHere_reload"
     "mesh", "task", "mesh_s", "task_s" -> "meshModuleHere_reload"
+    "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
+    "raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s" -> "rayTracingModuleHere_reload"
     else -> null
 }
 

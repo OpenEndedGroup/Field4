@@ -15,11 +15,23 @@ private val launchSnapshotProperties = listOf(
     "task",
     "mesh",
     "compute",
+    "raygen",
+    "miss",
+    "closesthit",
+    "anyhit",
+    "intersection",
+    "callable",
     "vertex_s",
     "fragment_s",
     "task_s",
     "mesh_s",
-    "compute_s"
+    "compute_s",
+    "raygen_s",
+    "miss_s",
+    "closesthit_s",
+    "anyhit_s",
+    "intersection_s",
+    "callable_s"
 )
 private val launchedPropertyChangeProperties = setOf(
     "vertex",
@@ -28,11 +40,23 @@ private val launchedPropertyChangeProperties = setOf(
     "task",
     "mesh",
     "compute",
+    "raygen",
+    "miss",
+    "closesthit",
+    "anyhit",
+    "intersection",
+    "callable",
     "vertex_s",
     "fragment_s",
     "task_s",
     "mesh_s",
-    "compute_s"
+    "compute_s",
+    "raygen_s",
+    "miss_s",
+    "closesthit_s",
+    "anyhit_s",
+    "intersection_s",
+    "callable_s"
 )
 
 object FlightRecorder {
@@ -446,6 +470,8 @@ object FlightRecorder {
         return when (type) {
             "code", "vertex", "fragment", "task", "mesh", "compute",
             "vertex_s", "fragment_s", "vertex_fragment", "task_s", "mesh_s", "compute_s",
+            "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
+            "raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s",
             "preamble", "introduction" -> type
             else -> null
         }

@@ -109,6 +109,12 @@ object SlangCompiler {
         ShaderKind.COMPUTE_SHADER -> SlangTargetOptions(stage = "compute", glslProfile = "glsl_450")
         ShaderKind.MESH_SHADER -> SlangTargetOptions(stage = "mesh", glslProfile = "glsl_460")
         ShaderKind.TASK_SHADER -> SlangTargetOptions(stage = "task", glslProfile = "glsl_460")
+        ShaderKind.RAYGEN_SHADER -> SlangTargetOptions(stage = "raygeneration", glslProfile = "glsl_460")
+        ShaderKind.MISS_SHADER -> SlangTargetOptions(stage = "miss", glslProfile = "glsl_460")
+        ShaderKind.CLOSEST_HIT_SHADER -> SlangTargetOptions(stage = "closesthit", glslProfile = "glsl_460")
+        ShaderKind.ANY_HIT_SHADER -> SlangTargetOptions(stage = "anyhit", glslProfile = "glsl_460")
+        ShaderKind.INTERSECTION_SHADER -> SlangTargetOptions(stage = "intersection", glslProfile = "glsl_460")
+        ShaderKind.CALLABLE_SHADER -> SlangTargetOptions(stage = "callable", glslProfile = "glsl_460")
         else -> throw IllegalArgumentException("Slang is not supported for shader kind $kind")
     }
 

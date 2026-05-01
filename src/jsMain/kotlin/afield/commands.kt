@@ -548,6 +548,91 @@ fun showAllLayers() {
     notify("Showing all ${layers.size} layer${if (layers.size == 1) "" else "s"}", "command")
 }
 
+private fun layerNamesInNavigationOrder(): List<String> =
+    getAllLayers().filter { it.isNotBlank() }.distinct().sorted().ifEmpty { listOf("default") }
+
+private fun currentLayerForNavigation(layers: List<String>): String {
+    val active = activeLayer?.takeIf { layers.contains(it) }
+    if (active != null) return active
+
+    val soloVisible = visibleLayers.singleOrNull()?.takeIf { layers.contains(it) }
+    if (soloVisible != null) return soloVisible
+
+    return layers.first()
+}
+
+private fun soloLayerTarget(offset: Int): String {
+    val layers = layerNamesInNavigationOrder()
+    val current = currentLayerForNavigation(layers)
+    val currentIndex = layers.indexOf(current).takeIf { it >= 0 } ?: 0
+    val nextIndex = (currentIndex + offset + layers.size) % layers.size
+    return layers[nextIndex]
+}
+
+private fun soloLayer(offset: Int) {
+    val target = soloLayerTarget(offset)
+    setVisibleLayers(setOf(target), animated = true, duration = 450.0)
+    setActiveLayer(target, animated = true, duration = 450.0)
+    notify("Solo layer \"$target\"", "command")
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun soloNextLayer() {
+    soloLayer(1)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun soloPreviousLayer() {
+    soloLayer(-1)
+}
+
+private fun jsCommandStringLiteral(value: String): String = JSON.stringify(value)
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun refreshLayerShortcutActions() {
+    val next = soloLayerTarget(1)
+    val previous = soloLayerTarget(-1)
+    val nextLabel = jsCommandStringLiteral("Solo Next Layer: $next")
+    val previousLabel = jsCommandStringLiteral("Solo Previous Layer: $previous")
+    val nextDetail = jsCommandStringLiteral("Hide every other layer and make \"$next\" active. Shortcut: Alt+]")
+    val previousDetail = jsCommandStringLiteral("Hide every other layer and make \"$previous\" active. Shortcut: Alt+[")
+
+    allActions.layerNavigation = eval(
+        """
+        [{
+            id:'solo-next-layer',
+            label:$nextLabel,
+            detail:$nextDetail,
+            keybindings:(typeof monaco !== 'undefined') ? [(() => {
+                const key = monaco.KeyCode.BracketRight || monaco.KeyCode.US_CLOSE_SQUARE_BRACKET || monaco.KeyCode.CloseBracket || 0;
+                return key ? (monaco.KeyMod.Alt | key) : 0;
+            })()].filter(Boolean) : [],
+            canvasKeybinding: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key === ']' || event.code === 'BracketRight'),
+            run: () => {
+                window.soloNextLayer()
+                if (typeof updateActions === 'function') updateActions()
+            }
+        },{
+            id:'solo-previous-layer',
+            label:$previousLabel,
+            detail:$previousDetail,
+            keybindings:(typeof monaco !== 'undefined') ? [(() => {
+                const key = monaco.KeyCode.BracketLeft || monaco.KeyCode.US_OPEN_SQUARE_BRACKET || monaco.KeyCode.OpenBracket || 0;
+                return key ? (monaco.KeyMod.Alt | key) : 0;
+            })()].filter(Boolean) : [],
+            canvasKeybinding: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key === '[' || event.code === 'BracketLeft'),
+            run: () => {
+                window.soloPreviousLayer()
+                if (typeof updateActions === 'function') updateActions()
+            }
+        }]
+    """.trimIndent()
+    )
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport()
 fun insertFromWorkspace() {
@@ -1038,6 +1123,9 @@ fun registerBuiltinCommands() {
     w.recordSelectedBoxMp4 = ::recordSelectedBoxMp4
     w.recordSelectedBoxEditorMp4 = ::recordSelectedBoxEditorMp4
     w.recordWindowMp4 = ::recordWindowMp4
+    w.soloNextLayer = ::soloNextLayer
+    w.soloPreviousLayer = ::soloPreviousLayer
+    w.refreshLayerShortcutActions = ::refreshLayerShortcutActions
 
     allActions.builtin = eval(
         """
@@ -1217,6 +1305,18 @@ fun registerBuiltinCommands() {
                     {label:'task_s',    description:'Task Shader (Slang)'},
                     {label:'mesh',      description:'Mesh Shader (GLSL)'},
                     {label:'mesh_s',    description:'Mesh Shader (Slang)'},
+                    {label:'raygen',    description:'Ray Generation Shader (GLSL)'},
+                    {label:'raygen_s',  description:'Ray Generation Shader (Slang)'},
+                    {label:'miss',      description:'Miss Shader (GLSL)'},
+                    {label:'miss_s',    description:'Miss Shader (Slang)'},
+                    {label:'closesthit', description:'Closest Hit Shader (GLSL)'},
+                    {label:'closesthit_s', description:'Closest Hit Shader (Slang)'},
+                    {label:'anyhit',    description:'Any Hit Shader (GLSL)'},
+                    {label:'anyhit_s',  description:'Any Hit Shader (Slang)'},
+                    {label:'intersection', description:'Intersection Shader (GLSL)'},
+                    {label:'intersection_s', description:'Intersection Shader (Slang)'},
+                    {label:'callable',  description:'Callable Shader (GLSL)'},
+                    {label:'callable_s', description:'Callable Shader (Slang)'},
                     {label:'preamble',  description:'Kotlin (preamble)'},
                     {label:'introduction', description:'Kotlin (introduction)'},
                     {label:'attic',     description:'Kotlin (attic)'},

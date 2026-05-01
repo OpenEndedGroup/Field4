@@ -414,8 +414,8 @@ class SavingContext {
         return boxes
     }
 
-    fun resolveStoredValue(value: Any?, directory: String): Any? {
-        return resolveValue(value, directory, { it }, createBoxes = false)
+    fun resolveStoredValue(value: Any?, directory: String, preferInlineFiles: Boolean = false): Any? {
+        return resolveValue(value, directory, { it }, createBoxes = false, preferInlineFiles = preferInlineFiles)
     }
 
     fun resolveStoredValueWithBoxes(
@@ -423,7 +423,8 @@ class SavingContext {
         directory: String,
         filterId: (String) -> String = { it },
         allowedRefIds: Set<String>? = null,
-        root: SessionInformation? = null
+        root: SessionInformation? = null,
+        preferInlineFiles: Boolean = false
     ): Any? {
         return resolveValue(
             value,
@@ -431,7 +432,8 @@ class SavingContext {
             filterId,
             createBoxes = true,
             allowedRefIds = allowedRefIds,
-            root = root
+            root = root,
+            preferInlineFiles = preferInlineFiles
         )
     }
 
@@ -590,13 +592,14 @@ class SavingContext {
         filterId: (String) -> String,
         createBoxes: Boolean,
         allowedRefIds: Set<String>? = null,
-        root: SessionInformation? = null
+        root: SessionInformation? = null,
+        preferInlineFiles: Boolean = false
     ): Any? = when (value) {
         null -> null
         is FileRef -> File(directory, value.path).readText()
         is FileInline -> {
             val file = File(directory, value.path)
-            if (file.exists()) file.readText() else value.inline
+            if (!preferInlineFiles && file.exists()) file.readText() else value.inline
         }
         is BoxRef -> {
             if (allowedRefIds != null && value.id !in allowedRefIds) {
@@ -625,7 +628,7 @@ class SavingContext {
         is List<*> -> {
             val resolved = mutableListOf<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root)
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -635,7 +638,7 @@ class SavingContext {
         is Set<*> -> {
             val resolved = LinkedHashSet<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root)
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -645,9 +648,9 @@ class SavingContext {
         is Map<*, *> -> {
             val mapped = LinkedHashMap<Any?, Any?>()
             for ((k, v) in value) {
-                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root)
+                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (keyResolved === SkipRef) continue
-                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root)
+                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (valueResolved === SkipRef) continue
                 mapped[keyResolved] = valueResolved
             }
@@ -670,9 +673,10 @@ class SavingContext {
         root: String,
         filterId: (String) -> String,
         createBoxes: Boolean,
-        allowedRefIds: Set<String>? = null
+        allowedRefIds: Set<String>? = null,
+        preferInlineFiles: Boolean = false
     ): Set<Box> {
-        return transfers.map { transfer ->
+        val boxes = transfers.map { transfer ->
             val id = filterId(transfer.id)
             val b = box(id, createIfMissing = createBoxes)
             transfer.properties.forEach { (name, value) ->
@@ -681,7 +685,8 @@ class SavingContext {
                     root,
                     filterId,
                     createBoxes = createBoxes,
-                    allowedRefIds = allowedRefIds
+                    allowedRefIds = allowedRefIds,
+                    preferInlineFiles = preferInlineFiles
                 )
                 if (v != null) {
                     b.setPropertyRaw(name, v)
@@ -692,13 +697,57 @@ class SavingContext {
             }
             b
         }.toSet()
+
+        reconcileLoadedTopology(boxes)
+        return boxes
+    }
+
+    private fun reconcileLoadedTopology(boxes: Set<Box>) {
+        // Loading through setPropertyRaw restores the forward refs but skips the normal mutation helpers
+        // that would repair inverse topology on boxes outside the loaded payload.
+        fun ensureConnection(parent: Box, child: Box) {
+            if (!parent.children.contains(child)) {
+                parent.setPropertyRaw("children", parent.children.toMutableSet().apply { add(child) })
+            }
+            if (!child.parents.contains(parent)) {
+                child.setPropertyRaw("parents", child.parents.toMutableSet().apply { add(parent) })
+            }
+        }
+
+        boxes.forEach { box ->
+            box.parents
+                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+                .forEach { parent -> ensureConnection(parent, box) }
+
+            box.children
+                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+                .forEach { child -> ensureConnection(box, child) }
+
+            box.nested
+                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+                .forEach { child ->
+                    if (child.nestedIn != box) {
+                        child.setPropertyRaw("nestedIn", box)
+                    }
+                    ensureConnection(box, child)
+                }
+
+            val nestedParent = box.nestedIn
+            if (nestedParent != null && !nestedParent.getPropertyRaw("_tombstone").isTrue()) {
+                if (!nestedParent.nested.contains(box)) {
+                    nestedParent.setPropertyRaw("nested", nestedParent.nested.toMutableSet().apply { add(box) })
+                }
+                ensureConnection(nestedParent, box)
+            }
+        }
     }
 
     fun loadFromEdnText(
         ednText: String,
         directory: String,
         filterId: (String) -> String = { it },
-        allowedRefIds: Set<String>? = null
+        allowedRefIds: Set<String>? = null,
+        preferInlineFiles: Boolean = false
     ): Set<Box> {
         val transfers = readEdnTransfersFromString(ednText)
         return instantiateTransfers(
@@ -706,7 +755,8 @@ class SavingContext {
             directory,
             filterId,
             createBoxes = true,
-            allowedRefIds = allowedRefIds
+            allowedRefIds = allowedRefIds,
+            preferInlineFiles = preferInlineFiles
         )
     }
 

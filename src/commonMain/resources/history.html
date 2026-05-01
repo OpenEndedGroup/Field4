@@ -198,6 +198,38 @@
             font-weight: 400;
         }
 
+        .info-section {
+            margin: 10px 0 4px 0;
+            font-size: 10px;
+        }
+
+        .info-section-title {
+            color: var(--fg-dim);
+            margin-bottom: 5px;
+        }
+
+        .changed-code-list {
+            color: var(--fg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px;
+            max-height: 120px;
+            overflow: auto;
+            list-style: none;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .changed-code-list li {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+        }
+
+        .changed-code-list.empty {
+            color: var(--fg-dim);
+        }
+
         button {
             background: var(--accent);
             color: #000;
@@ -303,6 +335,12 @@
             <span class="info-label">Name:</span>
             <input id="info-name-input" type="text" value="" placeholder="(unnamed)"
                    style="background: transparent; color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; width: 170px; font-family: inherit; font-size: 10px;">
+        </div>
+        <div class="info-section">
+            <div class="info-section-title">Boxes with edited code:</div>
+            <ul class="changed-code-list empty" id="info-changed-code">
+                <li>—</li>
+            </ul>
         </div>
         <button id="restore-btn">Restore This Version</button>
     </div>
@@ -537,7 +575,10 @@
         }
 
         function renderTimeline() {
-            let visibleVersions = versions.filter(v => !isZeroDiff(v.diffStats));
+            const currentVersionIndex = versions.length - 1;
+            let visibleVersions = versions.filter((v, index) =>
+                index === 0 || index === currentVersionIndex || !isZeroDiff(v.diffStats)
+            );
             if (visibleVersions.length === 0) {
                 visibleVersions = versions;
             }
@@ -565,7 +606,6 @@
             timelineSvg.innerHTML = '';
             timelineSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
-            const currentVersionIndex = versions.length - 1;
             const visibleIndexMap = new Map();
             visibleVersions.forEach((v, idx) => visibleIndexMap.set(v.index ?? idx, idx));
             const visibleCurrentIndex = visibleIndexMap.get(currentVersionIndex) ?? (visibleVersions.length - 1);
@@ -716,6 +756,7 @@
             document.getElementById('info-boxes').textContent = selectedVersion.boxCount;
             document.getElementById('info-filename').textContent = selectedVersion.filename;
             nameInput.value = selectedVersion.message || '';
+            renderChangedCodeBoxes(selectedVersion.diffStats?.changedCodeBoxes || []);
 
             // Show/hide restore button
             const restoreBtn = document.getElementById('restore-btn');
@@ -736,6 +777,27 @@
                 } else {
                     circle.setAttribute('stroke-width', '2');
                 }
+            });
+        }
+
+        function renderChangedCodeBoxes(boxNames) {
+            const list = document.getElementById('info-changed-code');
+            list.innerHTML = '';
+
+            if (!boxNames || boxNames.length === 0) {
+                list.classList.add('empty');
+                const item = document.createElement('li');
+                item.textContent = '—';
+                list.appendChild(item);
+                return;
+            }
+
+            list.classList.remove('empty');
+            boxNames.forEach(name => {
+                const item = document.createElement('li');
+                item.textContent = name;
+                item.title = name;
+                list.appendChild(item);
             });
         }
 

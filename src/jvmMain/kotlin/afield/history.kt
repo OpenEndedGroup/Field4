@@ -33,11 +33,23 @@ object HistoryManager {
         "compute",
         "task",
         "mesh",
+        "raygen",
+        "miss",
+        "closesthit",
+        "anyhit",
+        "intersection",
+        "callable",
         "fragment_s",
         "vertex_s",
         "compute_s",
         "task_s",
         "mesh_s",
+        "raygen_s",
+        "miss_s",
+        "closesthit_s",
+        "anyhit_s",
+        "intersection_s",
+        "callable_s",
         "preamble",
         "customization",
         "metadata",
@@ -78,6 +90,12 @@ object HistoryManager {
     data class VersionsData(
         val transitions: MutableList<Transition> = mutableListOf(),
         val names: MutableMap<Int, String> = mutableMapOf()
+    )
+
+    private data class VersionSnapshot(
+        val transfers: List<BoxTransferEdn>,
+        val directory: String,
+        val preferInlineFiles: Boolean
     )
 
     /**
@@ -249,41 +267,42 @@ object HistoryManager {
         lprintln("info,history", "Restoring version $targetVersionIndex (${targetVersion.boxCount} boxes)")
 
         try {
-            // Load the target version's metadata
-            val targetBoxes = if (targetVersion.file.name == "metadata.edn") {
-                // It's the current file
-                SavingContext().load(documentPath, upgradeOnLoad = false)
-            } else {
-                // It's a backup file - load from the backup
-                loadFromBackupFile(targetVersion.file)
-            }
-
-            val targetBoxIds = targetBoxes.map { it.id }.toSet()
-            val currentBoxIds = sessionInfo.boxes.keys
+            val savingContext = SavingContext()
+            val targetSnapshot = loadVersionSnapshot(targetVersion, documentPath, savingContext)
+            val activeTargetBoxIds = targetSnapshot.transfers
+                .filterNot { it.id == "root" || isTombstoned(it, targetSnapshot.directory, savingContext) }
+                .map { it.id }
+                .toSet()
+            val currentBoxIds = sessionInfo.boxes.keys.toSet()
 
             // Process boxes:
-            // 1. Restore properties for boxes in target version
-            targetBoxes.forEach { targetBox ->
-                val existingBox = sessionInfo.boxes[targetBox.id] ?: sessionInfo.root.takeIf { it.id == targetBox.id }
-                if (existingBox != null) {
-                    // Box exists - restore its properties and un-tombstone
-                    copyProperties(targetBox, existingBox)
-                    existingBox.setPropertyRaw("_tombstone", false)  // Explicitly un-tombstone
-                    existingBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
+            // 1. Restore the persistent properties for every box represented by the target version.
+            targetSnapshot.transfers.forEach { transfer ->
+                val targetBox = if (transfer.id == "root") {
+                    sessionInfo.root
                 } else {
-                    // Box doesn't exist - create a new box in the current session
-                    val newBox = Box(targetBox.id)
-                    newBox.inside = sessionInfo
-                    newBox.name = targetBox.name
-                    copyProperties(targetBox, newBox)
-                    sessionInfo.boxes[newBox.id] = newBox
-                    newBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
+                    box(transfer.id, createIfMissing = true, initIfCreated = false, root = sessionInfo)
+                }
+
+                restorePersistentProperties(
+                    transfer,
+                    targetBox,
+                    savingContext,
+                    targetSnapshot.directory,
+                    sessionInfo,
+                    targetSnapshot.preferInlineFiles
+                )
+
+                if (targetBox.id != "root") {
+                    val tombstonedInTarget = isTombstoned(transfer, targetSnapshot.directory, savingContext)
+                    targetBox.setPropertyRaw("_tombstone", tombstonedInTarget)
+                    targetBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
                 }
             }
 
-            // 2. Tombstone boxes not in target version (but don't delete them)
+            // 2. Tombstone boxes not active in the target version (but don't delete them)
             currentBoxIds.forEach { boxId ->
-                if (boxId !in targetBoxIds && boxId != "root") {
+                if (boxId !in activeTargetBoxIds && boxId != "root") {
                     val box = sessionInfo.boxes[boxId]
                     if (box != null) {
                         box.setPropertyRaw("_tombstone", true)
@@ -296,7 +315,6 @@ object HistoryManager {
             recordTransition(documentPath, currentVersion.index, targetVersionIndex)
 
             // 4. Save the current state
-            val savingContext = SavingContext()
             val allBoxes = sessionInfo.boxes.values.toMutableSet()
             allBoxes.add(sessionInfo.root)
             savingContext.save(
@@ -324,28 +342,64 @@ object HistoryManager {
         }
     }
 
-    /**
-     * Load boxes from a backup file
-     */
-    private fun loadFromBackupFile(backupFile: File): Set<Box> {
-        val parentDir = backupFile.parentFile.parentFile // Go up from backups/ to document dir
-        return SavingContext().loadFromEdnText(
-            backupFile.readText(),
-            parentDir.absolutePath,
-            filterId = { it }
+    private fun loadVersionSnapshot(
+        version: VersionInfo,
+        documentPath: String,
+        savingContext: SavingContext
+    ): VersionSnapshot {
+        val versionDir = if (version.file.name == "metadata.edn") {
+            documentPath
+        } else {
+            version.file.parentFile?.parentFile?.absolutePath ?: documentPath
+        }
+        val transfers = if (version.file.name == "metadata.edn") {
+            savingContext.readEdnTransfers(versionDir)
+        } else {
+            savingContext.readEdnTransfersFromString(version.file.readText())
+        }
+        return VersionSnapshot(
+            transfers = transfers,
+            directory = versionDir,
+            preferInlineFiles = version.file.name != "metadata.edn"
         )
     }
 
     /**
-     * Copy properties from one box to another
+     * Replace a live box's persistent properties with the properties from a saved transfer.
      */
-    private fun copyProperties(source: Box, target: Box) {
-        // Get all persistent properties from source
+    private fun restorePersistentProperties(
+        source: BoxTransferEdn,
+        target: Box,
+        savingContext: SavingContext,
+        documentPath: String,
+        sessionInfo: SessionInformation,
+        preferInlineFiles: Boolean
+    ) {
         val patterns = Box.ioPersistentProperties.map { it.toRegex() }
-        source.properties.forEach { (name, value) ->
-            if (patterns.any { name.matches(it) }) {
-                if (value != null)
-                    target.setPropertyRaw(name, value)
+        fun isPersistent(name: String) = patterns.any { name.matches(it) }
+
+        val sourcePersistentNames = source.properties.keys.filter(::isPersistent).toSet()
+        val removedNames = target.properties.keys
+            .filter { isPersistent(it) && it !in sourcePersistentNames }
+            .toList()
+        removedNames.forEach { name ->
+            val removed = target.properties.remove(name)
+            if (removed != null && Box.uiResyncProperties.any { it.matches(name) }) {
+                needsResync.add(target to name)
+            }
+        }
+
+        source.properties.forEach { (name, rawValue) ->
+            if (!isPersistent(name)) return@forEach
+            val value = savingContext.resolveStoredValueWithBoxes(
+                rawValue,
+                documentPath,
+                filterId = { it },
+                root = sessionInfo,
+                preferInlineFiles = preferInlineFiles
+            )
+            if (value != null) {
+                target.setPropertyRaw(name, value)
             }
         }
     }
@@ -507,15 +561,22 @@ object HistoryManager {
         val addedIds = currIds - prevIds
         val deletedIds = prevIds - currIds
         val sharedIds = prevIds intersect currIds
+        val changedCodeBoxes = mutableListOf<String>()
 
         var linesAddedFromNew = 0
         addedIds.forEach { id ->
             linesAddedFromNew += sumLines(currProps[id])
+            if (!currProps[id]?.get("code").isNullOrEmpty()) {
+                changedCodeBoxes += displayNameForChangedBox(id, currProps[id], prevProps[id])
+            }
         }
 
         var linesRemovedFromDeleted = 0
         deletedIds.forEach { id ->
             linesRemovedFromDeleted += sumLines(prevProps[id])
+            if (!prevProps[id]?.get("code").isNullOrEmpty()) {
+                changedCodeBoxes += displayNameForChangedBox(id, currProps[id], prevProps[id])
+            }
         }
 
         var linesAddedFromChanges = 0
@@ -523,6 +584,9 @@ object HistoryManager {
         sharedIds.forEach { id ->
             val oldProps = prevProps[id].orEmpty()
             val newProps = currProps[id].orEmpty()
+            if ((oldProps["code"] ?: "") != (newProps["code"] ?: "")) {
+                changedCodeBoxes += displayNameForChangedBox(id, newProps, oldProps)
+            }
             val propNames = (oldProps.keys + newProps.keys).toSet().filter { it in diffTextProperties }
             propNames.forEach { name ->
                 val oldText = oldProps[name] ?: ""
@@ -544,8 +608,21 @@ object HistoryManager {
             linesAddedFromChanges = linesAddedFromChanges,
             linesRemovedFromChanges = linesRemovedFromChanges,
             totalLinesAdded = totalAdded,
-            totalLinesRemoved = totalRemoved
+            totalLinesRemoved = totalRemoved,
+            changedCodeBoxes = changedCodeBoxes.distinct()
         )
+    }
+
+    private fun displayNameForChangedBox(
+        id: String,
+        currentProps: Map<String, String>?,
+        previousProps: Map<String, String>?
+    ): String {
+        val name = currentProps?.get("name")
+            ?.takeIf { it.isNotBlank() }
+            ?: previousProps?.get("name")?.takeIf { it.isNotBlank() }
+
+        return name ?: id.take(8)
     }
 
     private fun loadTextualBoxProps(version: VersionInfo, documentPath: String): Map<String, Map<String, String>> {
@@ -554,6 +631,7 @@ object HistoryManager {
         } else {
             version.file.parentFile?.parentFile?.absolutePath ?: documentPath
         }
+        val preferInlineFiles = version.file.name != "metadata.edn"
 
         val savingContext = SavingContext()
         val transfers = if (version.file.name == "metadata.edn") {
@@ -562,19 +640,24 @@ object HistoryManager {
             savingContext.readEdnTransfersFromString(version.file.readText())
         }.filterNot { isTombstoned(it, versionDir, savingContext) }
 
-        return extractTextProperties(transfers, versionDir, savingContext)
+        return extractTextProperties(transfers, versionDir, savingContext, preferInlineFiles)
     }
 
     private fun extractTextProperties(
         transfers: List<BoxTransferEdn>,
         documentPath: String,
-        savingContext: SavingContext
+        savingContext: SavingContext,
+        preferInlineFiles: Boolean
     ): Map<String, Map<String, String>> {
         return transfers.associate { transfer ->
             val props = mutableMapOf<String, String>()
             transfer.properties.forEach { (name, rawValue) ->
                 if (name !in diffTextProperties) return@forEach
-                val resolved = savingContext.resolveStoredValue(rawValue, documentPath)
+                val resolved = savingContext.resolveStoredValue(
+                    rawValue,
+                    documentPath,
+                    preferInlineFiles = preferInlineFiles
+                )
                 val text = when (resolved) {
                     null -> ""
                     is String -> resolved

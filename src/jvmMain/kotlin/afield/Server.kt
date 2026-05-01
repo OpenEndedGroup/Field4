@@ -959,12 +959,18 @@ class Server {
                 val info = thisSessionInfo.get()
                 val usedIds = info.boxes.keys
                 val ctx = SavingContext()
-                val allowedRefIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet() + "root"
+                val transferIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet()
+                // Keep refs to boxes that already exist in this document, but only remap ids that belong to
+                // the pasted payload itself.
+                val allowedRefIds = transferIds + usedIds + "root"
                 val idMap = mutableMapOf<String, String>()
                 val filter: (String) -> String = { source ->
-                    idMap.getOrPut(source) {
-                        if (source == "root") return@getOrPut "root"
-                        if (usedIds.contains(source)) UUID.randomUUID().toString() else source
+                    when {
+                        source == "root" -> "root"
+                        source !in transferIds -> source
+                        else -> idMap.getOrPut(source) {
+                            if (usedIds.contains(source)) UUID.randomUUID().toString() else source
+                        }
                     }
                 }
 
@@ -1949,11 +1955,23 @@ fun languageNameForProperty(box: Box, property: String): String {
         "compute" -> "GLSL (compute)"
         "mesh" -> "GLSL (mesh)"
         "task" -> "GLSL (task)"
+        "raygen" -> "GLSL (ray generation)"
+        "miss" -> "GLSL (miss)"
+        "closesthit" -> "GLSL (closest hit)"
+        "anyhit" -> "GLSL (any hit)"
+        "intersection" -> "GLSL (intersection)"
+        "callable" -> "GLSL (callable)"
         "vertex_s" -> "Slang (vertex)"
         "fragment_s" -> "Slang (fragment)"
         "compute_s" -> "Slang (compute)"
         "mesh_s" -> "Slang (mesh)"
         "task_s" -> "Slang (task)"
+        "raygen_s" -> "Slang (ray generation)"
+        "miss_s" -> "Slang (miss)"
+        "closesthit_s" -> "Slang (closest hit)"
+        "anyhit_s" -> "Slang (any hit)"
+        "intersection_s" -> "Slang (intersection)"
+        "callable_s" -> "Slang (callable)"
         else -> "Kotlin"
     }
 }

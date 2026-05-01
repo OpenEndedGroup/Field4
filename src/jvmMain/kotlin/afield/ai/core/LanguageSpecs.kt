@@ -151,6 +151,46 @@ val GLSL_COMPUTE: LanguageSpec = LanguageSpec(
     unwrap = ::normalizeGlslPreamble
 )
 
+private fun normalizeRayTracingGlslPreamble(code: String): String {
+    val lines = code.trimEnd().split("\n")
+    val extensions = linkedSetOf("#extension GL_EXT_ray_tracing : require")
+    val body = mutableListOf<String>()
+
+    for (line in lines) {
+        val trimmed = line.trim()
+        when {
+            trimmed.startsWith("#version") -> continue
+            trimmed.startsWith("#extension") -> {
+                extensions += trimmed
+                continue
+            }
+            else -> body += line
+        }
+    }
+
+    return buildString {
+        append("#version 460")
+        append("\n")
+        append(extensions.joinToString("\n"))
+        if (body.isNotEmpty()) {
+            append("\n\n")
+            append(body.joinToString("\n"))
+        }
+    }
+}
+
+val GLSL_RAY_TRACING: LanguageSpec = LanguageSpec(
+    name = "GLSL (ray generation)",
+    wrap = ::normalizeRayTracingGlslPreamble,
+    unwrap = ::normalizeRayTracingGlslPreamble
+)
+
+val GLSL_MISS: LanguageSpec = GLSL_RAY_TRACING.copy(name = "GLSL (miss)")
+val GLSL_CLOSEST_HIT: LanguageSpec = GLSL_RAY_TRACING.copy(name = "GLSL (closest hit)")
+val GLSL_ANY_HIT: LanguageSpec = GLSL_RAY_TRACING.copy(name = "GLSL (any hit)")
+val GLSL_INTERSECTION: LanguageSpec = GLSL_RAY_TRACING.copy(name = "GLSL (intersection)")
+val GLSL_CALLABLE: LanguageSpec = GLSL_RAY_TRACING.copy(name = "GLSL (callable)")
+
 val SLANG_VERTEX: LanguageSpec = LanguageSpec(
     name = "Slang (vertex)",
     wrap = ::normalizeSlangSource,
@@ -187,12 +227,30 @@ val SLANG_VERTEX_FRAGMENT: LanguageSpec = LanguageSpec(
     unwrap = ::normalizeSlangSource
 )
 
+val SLANG_RAY_TRACING: LanguageSpec = LanguageSpec(
+    name = "Slang (ray generation)",
+    wrap = ::normalizeSlangSource,
+    unwrap = ::normalizeSlangSource
+)
+
+val SLANG_MISS: LanguageSpec = SLANG_RAY_TRACING.copy(name = "Slang (miss)")
+val SLANG_CLOSEST_HIT: LanguageSpec = SLANG_RAY_TRACING.copy(name = "Slang (closest hit)")
+val SLANG_ANY_HIT: LanguageSpec = SLANG_RAY_TRACING.copy(name = "Slang (any hit)")
+val SLANG_INTERSECTION: LanguageSpec = SLANG_RAY_TRACING.copy(name = "Slang (intersection)")
+val SLANG_CALLABLE: LanguageSpec = SLANG_RAY_TRACING.copy(name = "Slang (callable)")
+
 private val GLSL_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
     "vertex" to GLSL_VERTEX,
     "fragment" to GLSL_FRAGMENT,
     "mesh" to GLSL_MESH,
     "task" to GLSL_TASK,
-    "compute" to GLSL_COMPUTE
+    "compute" to GLSL_COMPUTE,
+    "raygen" to GLSL_RAY_TRACING,
+    "miss" to GLSL_MISS,
+    "closesthit" to GLSL_CLOSEST_HIT,
+    "anyhit" to GLSL_ANY_HIT,
+    "intersection" to GLSL_INTERSECTION,
+    "callable" to GLSL_CALLABLE
 )
 
 private val SLANG_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
@@ -201,7 +259,13 @@ private val SLANG_PROPERTY_SPECS: Map<String, LanguageSpec> = mapOf(
     "vertex_fragment" to SLANG_VERTEX_FRAGMENT,
     "mesh_s" to SLANG_MESH,
     "task_s" to SLANG_TASK,
-    "compute_s" to SLANG_COMPUTE
+    "compute_s" to SLANG_COMPUTE,
+    "raygen_s" to SLANG_RAY_TRACING,
+    "miss_s" to SLANG_MISS,
+    "closesthit_s" to SLANG_CLOSEST_HIT,
+    "anyhit_s" to SLANG_ANY_HIT,
+    "intersection_s" to SLANG_INTERSECTION,
+    "callable_s" to SLANG_CALLABLE
 )
 
 private val SHADER_PROPERTY_SPECS: Map<String, LanguageSpec> =

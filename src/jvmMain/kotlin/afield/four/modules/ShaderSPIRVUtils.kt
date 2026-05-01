@@ -8,6 +8,7 @@ import org.lwjgl.util.shaderc.Shaderc
 import org.lwjgl.util.shaderc.ShadercIncludeResolve
 import org.lwjgl.util.shaderc.ShadercIncludeResult
 import org.lwjgl.util.shaderc.ShadercIncludeResultRelease
+import org.lwjgl.vulkan.KHRRayTracingPipeline
 import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
 import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.VK10
@@ -28,7 +29,14 @@ enum class ShaderKind(internal val kind: Int) {
     COMPUTE_SHADER(Shaderc.shaderc_glsl_compute_shader),
 
     MESH_SHADER(Shaderc.shaderc_glsl_mesh_shader),
-    TASK_SHADER(Shaderc.shaderc_glsl_task_shader);
+    TASK_SHADER(Shaderc.shaderc_glsl_task_shader),
+
+    RAYGEN_SHADER(Shaderc.shaderc_glsl_raygen_shader),
+    ANY_HIT_SHADER(Shaderc.shaderc_glsl_anyhit_shader),
+    CLOSEST_HIT_SHADER(Shaderc.shaderc_glsl_closesthit_shader),
+    MISS_SHADER(Shaderc.shaderc_glsl_miss_shader),
+    INTERSECTION_SHADER(Shaderc.shaderc_glsl_intersection_shader),
+    CALLABLE_SHADER(Shaderc.shaderc_glsl_callable_shader);
 
     fun toVulkan(): Int {
         return when(kind) {
@@ -38,6 +46,12 @@ enum class ShaderKind(internal val kind: Int) {
             Shaderc.shaderc_glsl_compute_shader -> VK10.VK_SHADER_STAGE_COMPUTE_BIT
             Shaderc.shaderc_glsl_mesh_shader -> VK_SHADER_STAGE_MESH_BIT_EXT
             Shaderc.shaderc_glsl_task_shader ->VK_SHADER_STAGE_TASK_BIT_EXT
+            Shaderc.shaderc_glsl_raygen_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_RAYGEN_BIT_KHR
+            Shaderc.shaderc_glsl_anyhit_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_ANY_HIT_BIT_KHR
+            Shaderc.shaderc_glsl_closesthit_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
+            Shaderc.shaderc_glsl_miss_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_MISS_BIT_KHR
+            Shaderc.shaderc_glsl_intersection_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_INTERSECTION_BIT_KHR
+            Shaderc.shaderc_glsl_callable_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_CALLABLE_BIT_KHR
             else -> throw RuntimeException(" unknown shader type $kind")
         }
     }

@@ -42,11 +42,23 @@ const PROPERTY_LANGUAGES = {
 	compute:      "glsl",
 	task:         "glsl",
 	mesh:         "glsl",
+	raygen:       "glsl",
+	miss:         "glsl",
+	closesthit:  "glsl",
+	anyhit:      "glsl",
+	intersection:"glsl",
+	callable:     "glsl",
 	vertex_s:     "slang",
 	fragment_s:   "slang",
 	compute_s:    "slang",
 	task_s:       "slang",
 	mesh_s:       "slang",
+	raygen_s:     "slang",
+	miss_s:       "slang",
+	closesthit_s: "slang",
+	anyhit_s:     "slang",
+	intersection_s:"slang",
+	callable_s:   "slang",
 	preamble:     "kotlin",
 	introduction: "kotlin",
 	metadata:     "yaml",
@@ -69,11 +81,23 @@ const GLSL_PROPERTIES = new Set([
 	"compute",
 	"task",
 	"mesh",
+	"raygen",
+	"miss",
+	"closesthit",
+	"anyhit",
+	"intersection",
+	"callable",
 	"fragment_s",
 	"vertex_s",
 	"compute_s",
 	"task_s",
 	"mesh_s",
+	"raygen_s",
+	"miss_s",
+	"closesthit_s",
+	"anyhit_s",
+	"intersection_s",
+	"callable_s",
 ]);
 
 const EMBEDDED_EDITOR_OPTIONS = {
@@ -257,6 +281,19 @@ function shaderReloadAction(property) {
 		case "mesh_s":
 		case "task_s":
 			return "meshModuleHere_reload";
+		case "raygen":
+		case "miss":
+		case "closesthit":
+		case "anyhit":
+		case "intersection":
+		case "callable":
+		case "raygen_s":
+		case "miss_s":
+		case "closesthit_s":
+		case "anyhit_s":
+		case "intersection_s":
+		case "callable_s":
+			return "rayTracingModuleHere_reload";
 		default:
 			return null;
 	}

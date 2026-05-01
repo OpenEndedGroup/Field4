@@ -279,6 +279,18 @@ data class AgentBoxSnapshot(
     val mesh_s: String? = null,
     val task: String? = null,
     val task_s: String? = null,
+    val raygen: String? = null,
+    val raygen_s: String? = null,
+    val miss: String? = null,
+    val miss_s: String? = null,
+    val closesthit: String? = null,
+    val closesthit_s: String? = null,
+    val anyhit: String? = null,
+    val anyhit_s: String? = null,
+    val intersection: String? = null,
+    val intersection_s: String? = null,
+    val callable: String? = null,
+    val callable_s: String? = null,
     val customization: String? = null,
     val metadata: String? = null,
     val code_language: String? = null,
@@ -863,7 +875,9 @@ data class HistoryDiffStats(
     @EncodeDefault
     val totalLinesAdded: Int = 0,
     @EncodeDefault
-    val totalLinesRemoved: Int = 0
+    val totalLinesRemoved: Int = 0,
+    @EncodeDefault
+    val changedCodeBoxes: List<String> = emptyList()
 )
 
 @Serializable

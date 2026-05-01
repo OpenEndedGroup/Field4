@@ -170,6 +170,8 @@ private const val dotAlphaSmallActive = 0.16
 private const val dotAlphaLargeActive = 0.24
 private const val axisAlphaIdle = 0.0
 private const val axisAlphaActive = 0.12
+private const val monacoMinWidthPx = 420.0
+private const val monacoViewportGutterPx = 10.0
 
 private var dotAlphaSmall = dotAlphaSmallIdle
 private var dotAlphaLarge = dotAlphaLargeIdle
@@ -3711,6 +3713,66 @@ suspend fun main() {
                     notifyEmbeddedEditorOfRemoteUpdate(u, "mesh_s", set.value)
                 }
 
+                "raygen" -> {
+                    found.unsafeCast<dynamic>().raygen = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "raygen", set.value)
+                }
+
+                "raygen_s" -> {
+                    found.unsafeCast<dynamic>().raygen_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "raygen_s", set.value)
+                }
+
+                "miss" -> {
+                    found.unsafeCast<dynamic>().miss = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "miss", set.value)
+                }
+
+                "miss_s" -> {
+                    found.unsafeCast<dynamic>().miss_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "miss_s", set.value)
+                }
+
+                "closesthit" -> {
+                    found.unsafeCast<dynamic>().closesthit = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "closesthit", set.value)
+                }
+
+                "closesthit_s" -> {
+                    found.unsafeCast<dynamic>().closesthit_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "closesthit_s", set.value)
+                }
+
+                "anyhit" -> {
+                    found.unsafeCast<dynamic>().anyhit = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "anyhit", set.value)
+                }
+
+                "anyhit_s" -> {
+                    found.unsafeCast<dynamic>().anyhit_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "anyhit_s", set.value)
+                }
+
+                "intersection" -> {
+                    found.unsafeCast<dynamic>().intersection = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "intersection", set.value)
+                }
+
+                "intersection_s" -> {
+                    found.unsafeCast<dynamic>().intersection_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "intersection_s", set.value)
+                }
+
+                "callable" -> {
+                    found.unsafeCast<dynamic>().callable = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "callable", set.value)
+                }
+
+                "callable_s" -> {
+                    found.unsafeCast<dynamic>().callable_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "callable_s", set.value)
+                }
+
                 "metadata" -> {
                     found.unsafeCast<dynamic>().metadata = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "metadata", set.value)
@@ -4165,17 +4227,78 @@ suspend fun main() {
         dyn.data_y = top
         dyn.data_w = rect.width
         dyn.data_h = rect.height
+        dyn.data_right_margin = max(0.0, window.innerWidth.toDouble() - rect.right)
         dyn.data_initialized = true
+    }
+
+    fun updateRightMarginData(el: HTMLElement) {
+        val rect = el.getBoundingClientRect()
+        el.asDynamic().data_right_margin = max(0.0, window.innerWidth.toDouble() - rect.right)
+    }
+
+    fun mirrorOverlayGeometry(source: HTMLElement, target: HTMLElement) {
+        ensureAbsolutePosition(target)
+        val sourceDyn = source.asDynamic()
+        val targetDyn = target.asDynamic()
+        target.style.transform = "translate(0px, 0px)"
+        target.style.left = source.style.left
+        target.style.top = source.style.top
+        target.style.width = source.style.width
+        target.style.height = source.style.height
+        target.style.right = "auto"
+        target.style.bottom = "auto"
+        targetDyn.data_x = sourceDyn.data_x
+        targetDyn.data_y = sourceDyn.data_y
+        targetDyn.data_w = sourceDyn.data_w
+        targetDyn.data_h = sourceDyn.data_h
+        targetDyn.data_right_margin = sourceDyn.data_right_margin
+    }
+
+    fun anchorOverlayToRightEdge(el: HTMLElement) {
+        ensureAbsolutePosition(el)
+        val dyn = el.asDynamic()
+        val rect = el.getBoundingClientRect()
+        val rightMargin = (dyn.data_right_margin as? Number)?.toDouble()
+            ?: max(0.0, window.innerWidth.toDouble() - rect.right)
+        val currentWidth = (dyn.data_w as? Number)?.toDouble() ?: rect.width
+        val maxWidth = max(monacoMinWidthPx, window.innerWidth.toDouble() - rightMargin - monacoViewportGutterPx)
+        val width = min(max(currentWidth, monacoMinWidthPx), maxWidth)
+        val left = window.scrollX.toDouble() + window.innerWidth.toDouble() - rightMargin - width
+
+        el.style.transform = "translate(0px, 0px)"
+        el.style.left = "${left}px"
+        el.style.right = "auto"
+        el.style.width = "${width}px"
+        dyn.data_x = left
+        dyn.data_w = width
+        dyn.data_right_margin = rightMargin
+    }
+
+    fun anchorEditorOverlaysToRightEdge() {
+        val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
+        val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
+
+        if (monacoContainer != null) {
+            anchorOverlayToRightEdge(monacoContainer)
+            if (docsContainer != null) {
+                mirrorOverlayGeometry(monacoContainer, docsContainer)
+            }
+        } else if (docsContainer != null) {
+            anchorOverlayToRightEdge(docsContainer)
+        }
+
+        layoutGlobalEditor()
     }
 
     monacoResizeHandler = { event: dynamic ->
 
         val target: dynamic = event.target
-        ensureAbsolutePosition(target as HTMLElement)
+        val targetElement = target as HTMLElement
+        ensureAbsolutePosition(targetElement)
         val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
         val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
 
-        (target as HTMLElement).style.transform = "translate(0px, 0px)"
+        targetElement.style.transform = "translate(0px, 0px)"
         target.style.left = "${x}px"
         target.style.top = "${y}px"
         target.style.width = event.rect.width + "px"
@@ -4185,20 +4308,12 @@ suspend fun main() {
         target.data_y = y
         target.data_w = event.rect.width
         target.data_h = event.rect.height
+        updateRightMarginData(targetElement)
 
         // Keep docs container in sync when Monaco is resized
         val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
         if (docsContainer != null) {
-            ensureAbsolutePosition(docsContainer)
-            docsContainer.style.transform = "translate(0px, 0px)"
-            docsContainer.style.left = target.style.left
-            docsContainer.style.top = target.style.top
-            docsContainer.style.width = target.style.width
-            docsContainer.style.height = target.style.height
-            docsContainer.asDynamic().data_x = target.data_x
-            docsContainer.asDynamic().data_y = target.data_y
-            docsContainer.asDynamic().data_w = target.data_w
-            docsContainer.asDynamic().data_h = target.data_h
+            mirrorOverlayGeometry(targetElement, docsContainer)
         }
     }
 
@@ -4214,7 +4329,8 @@ suspend fun main() {
         json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
     ).on("resizemove") { event: dynamic ->
         val target: dynamic = event.target
-        ensureAbsolutePosition(target as HTMLElement)
+        val targetElement = target as HTMLElement
+        ensureAbsolutePosition(targetElement)
         val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
         val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
 
@@ -4228,20 +4344,12 @@ suspend fun main() {
         target.data_y = y
         target.data_w = event.rect.width
         target.data_h = event.rect.height
+        updateRightMarginData(targetElement)
 
         // Mirror size back to Monaco container
         val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
         if (monacoContainer != null) {
-            ensureAbsolutePosition(monacoContainer)
-            monacoContainer.style.transform = "translate(0px, 0px)"
-            monacoContainer.style.left = target.style.left
-            monacoContainer.style.top = target.style.top
-            monacoContainer.style.width = target.style.width
-            monacoContainer.style.height = target.style.height
-            monacoContainer.asDynamic().data_x = target.data_x
-            monacoContainer.asDynamic().data_y = target.data_y
-            monacoContainer.asDynamic().data_w = target.data_w
-            monacoContainer.asDynamic().data_h = target.data_h
+            mirrorOverlayGeometry(targetElement, monacoContainer)
         }
 
         // Notify Monaco editor about size change
@@ -4636,6 +4744,7 @@ suspend fun main() {
     registerMouseBug()
 
     window.addEventListener("resize", {
+        anchorEditorOverlaysToRightEdge()
         canvasGestures.rebuildConnectionGroup()
         repositionSlideNoteOverlayIfVisible()
         if (spatialNavActive) {

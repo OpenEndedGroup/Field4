@@ -345,7 +345,7 @@ function showEditorForBox(box) {
     const container = document.getElementById('editor-container');
     const props = box.properties || {};
 
-    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_fragment', 'vertex_s', 'fragment', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s'];
+    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_fragment', 'vertex_s', 'fragment', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s', 'raygen', 'raygen_s', 'miss', 'miss_s', 'closesthit', 'closesthit_s', 'anyhit', 'anyhit_s', 'intersection', 'intersection_s', 'callable', 'callable_s'];
 
     // Get list of properties that contain code
     const codeProperties = editablePropsOrder.filter(key => typeof props[key] === 'string');
@@ -436,7 +436,19 @@ function getLanguageForProperty(property) {
         'mesh': 'cpp',
         'mesh_s': 'cpp',
         'compute': 'cpp',
-        'compute_s': 'cpp'
+        'compute_s': 'cpp',
+        'raygen': 'cpp',
+        'raygen_s': 'cpp',
+        'miss': 'cpp',
+        'miss_s': 'cpp',
+        'closesthit': 'cpp',
+        'closesthit_s': 'cpp',
+        'anyhit': 'cpp',
+        'anyhit_s': 'cpp',
+        'intersection': 'cpp',
+        'intersection_s': 'cpp',
+        'callable': 'cpp',
+        'callable_s': 'cpp'
     };
     return languageMap[property] || 'kotlin';
 }

@@ -947,6 +947,10 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
     }
 }
 
+fun Box.showLayers() {
+    display("layers", "") // magic
+}
+
 fun <T> Box.tqdm(items: SizedIterable<T>, name: String = "progress"): Iterable<T> {
     val totalCount = items.size
     val startedAt = System.nanoTime()
@@ -1015,3 +1019,4 @@ fun <T> Box.tqdm(items: Iterable<T>, name: String = "progress"): Iterable<T> {
         else -> tqdm(items.toList(), name)
     }
 }
+

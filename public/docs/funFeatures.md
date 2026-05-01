@@ -324,7 +324,7 @@ We can start sending messages around. Messages propagate upwards until they find
 ## Document History
 
 Field keeps document backups as you work. The history view lets you inspect those saved versions and restore an earlier state.
-![](assets/screenshot_39.png)
+![](assets/screenshot_58.png)
 
 You can open history in two ways:
 
@@ -369,6 +369,20 @@ A few keyboard shortcuts for getting around Field.
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="../assets/Screen-Recording-2026-03-21-at-14.16.23.mp4" type="video/mp4">
 </video>
+
+### Layers 
+
+Field boxes exist in layers, and boxes visibilities and positions are _per layer_. `showLayers()` in a box gives you some UI:
+
+![](assets/screenshot_57.png)
+
+Inside individual boxes, you can assign layers with `layers`:
+
+```diffstatic {data-lang=kotlin}
+layers = "default,secondLayer"
+```
+
+The layers palette shows any layer that's mentioned by any box; the currently selected 'active' layer determines which set of frames you are currently manipulating. If you hide the box that's got the layers panel in it, f1-`show all layers` will get you back. `alt-]` solos the next layer, and `alt-[` solos the previous layer; the command palette labels include the target layer names.
 
 ## The Welcome page
 

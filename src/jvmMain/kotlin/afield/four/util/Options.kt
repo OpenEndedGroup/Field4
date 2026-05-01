@@ -35,6 +35,7 @@ object Options {
 
     var validate = true
     var preferredDevice: String? = null
+    var enableRayTracing: Boolean = !isMac
     var requestedImages = 3
     var vsync = true
     val fov: Double = 30.0
@@ -63,4 +64,3 @@ object Options {
     // target runtimes.
     var openXRWaitForGpuBeforeRelease: Boolean = false
 }
-

@@ -253,6 +253,7 @@ open class Introspected {
     ) : Bindable(name, set, binding)
 
     class Image(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
+    class AccelerationStructure(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
 
     data class Sampler(val name: String, val type: String, val set: Int, val location: Int)
     data class PushConstant(val name: String, val size: Int, val members: List<Member>)
@@ -263,12 +264,13 @@ open class Introspected {
     val ssbo = mutableListOf<UBO>()
     val textures = mutableListOf<Texture>()
     val images = mutableListOf<Image>()
+    val accelerationStructures = mutableListOf<AccelerationStructure>()
     val samplers = mutableListOf<Sampler>()
     val pushConstants = mutableListOf<PushConstant>()
 
     lateinit var code: ShaderSPIRVUtils.SPIRV
     override fun toString(): String {
-        return "Introspected(\n\tinputs=$inputs, \n\toutputs=$outputs, \n\tubos=$ubos, \n\tssbo=$ssbo, \n\ttextures=$textures, \n\timages=$images, \n" + "\tsamplers=$samplers, \n" + "\tpushConstants=$pushConstants)"
+        return "Introspected(\n\tinputs=$inputs, \n\toutputs=$outputs, \n\tubos=$ubos, \n\tssbo=$ssbo, \n\ttextures=$textures, \n\timages=$images, \n\taccelerationStructures=$accelerationStructures, \n" + "\tsamplers=$samplers, \n" + "\tpushConstants=$pushConstants)"
     }
 }
 
@@ -289,6 +291,12 @@ private fun slangStageFor(kind: ShaderKind): String = when (kind) {
     ShaderKind.COMPUTE_SHADER -> "compute"
     ShaderKind.MESH_SHADER -> "mesh"
     ShaderKind.TASK_SHADER -> "task"
+    ShaderKind.RAYGEN_SHADER -> "raygeneration"
+    ShaderKind.ANY_HIT_SHADER -> "anyhit"
+    ShaderKind.CLOSEST_HIT_SHADER -> "closesthit"
+    ShaderKind.MISS_SHADER -> "miss"
+    ShaderKind.INTERSECTION_SHADER -> "intersection"
+    ShaderKind.CALLABLE_SHADER -> "callable"
     else -> kind.name.lowercase()
 }
 
@@ -752,6 +760,21 @@ class Introspection private constructor(
             }
         }
 
+        if (j.has("acceleration_structures")) {
+            val ui = j.getJSONArray("acceleration_structures")
+            for (i in 0 until ui.length()) {
+                val uo = ui.getJSONObject(i)
+                accelerationStructures.add(
+                    AccelerationStructure(
+                        uo.getString("name"),
+                        uo.optString("type", "accelerationStructureEXT"),
+                        uo.getInt("set"),
+                        uo.getInt("binding")
+                    )
+                )
+            }
+        }
+
         if (j.has("separate_samplers")) {
             val ui = j.getJSONArray("separate_samplers")
             for (i in 0 until ui.length()) {
@@ -817,6 +840,10 @@ class Introspection private constructor(
 
                         baseShape.startsWith("texture", ignoreCase = true) -> {
                             textures.add(Texture(name, baseShape, set, slot))
+                        }
+
+                        baseShape.contains("accelerationStructure", ignoreCase = true) -> {
+                            accelerationStructures.add(AccelerationStructure(name, baseShape, set, slot))
                         }
                     }
                 }
@@ -905,6 +932,7 @@ class Introspection private constructor(
         sets += ssbo.map { it.set }
         sets += textures.map { it.set }
         sets += images.map { it.set }
+        sets += accelerationStructures.map { it.set }
         sets += samplers.map { it.set }
         if (sets.isNotEmpty()) {
             val minSet = sets.minOrNull()!!

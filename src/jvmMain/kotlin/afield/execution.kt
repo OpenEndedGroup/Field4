@@ -787,6 +787,14 @@ class KotlinExecution : BoxExecution {
         box.properties.remove("_attic") //?
 
         val normalizedCode = normalizedLaunchCode(exec)
+        val launchMode = "launch"
+        val pendingWatermark = box.runGeneration.incrementAndGet(strand)
+        box.currentRunningStates[strand] = RunningState(pendingWatermark, launchMode)
+        send(
+            Message("is-running").payload(
+                IsRunning(exec.uid, true, pendingWatermark, strand, launchMode)
+            )
+        )
 
         inMain {
 
@@ -797,13 +805,27 @@ class KotlinExecution : BoxExecution {
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}
             // this is just the field2 design
 
-            execute(box, normalizedCode, reply, originSession, exec.line) { returnValue ->
-                val launchMode = "launch"
-
+            execute(
+                box,
+                normalizedCode,
+                reply,
+                originSession,
+                exec.line,
+                finishedHandler = {
+                    if (box.currentRunningStates[strand]?.watermark == pendingWatermark) {
+                        box.currentRunningStates.remove(strand)
+                    }
+                    send(
+                        Message("is-running").payload(
+                            IsRunning(exec.uid, false, pendingWatermark, strand, launchMode)
+                        )
+                    )
+                }
+            ) { returnValue ->
                 cacheLaunchReturnValue(box, strand, normalizedCode, returnValue)
                 configureOutputProxies(box, reply, originSession)
 
-                launchReturnValue(box, returnValue, strand = strand, { isRunning, strand, watermark ->
+                launchReturnValue(box, returnValue, strand = strand) { isRunning, strand, watermark ->
                     if (isRunning) {
                         box.currentRunningStates[strand] = RunningState(watermark, launchMode)
                     } else if (box.currentRunningStates[strand]?.watermark == watermark) {
@@ -814,7 +836,7 @@ class KotlinExecution : BoxExecution {
                             IsRunning(exec.uid, isRunning, watermark, strand, launchMode)
                         )
                     )
-                })
+                }
             }
         }
     }
@@ -1472,11 +1494,23 @@ class KotlinExecution : BoxExecution {
                     "mesh" to box.mesh,
                     "task" to box.task,
                     "compute" to box.compute,
+                    "raygen" to box.raygen,
+                    "miss" to box.miss,
+                    "closesthit" to box.closesthit,
+                    "anyhit" to box.anyhit,
+                    "intersection" to box.intersection,
+                    "callable" to box.callable,
                     "vertex_s" to box.getPropertyRaw("vertex_s") as? String,
                     "fragment_s" to box.getPropertyRaw("fragment_s") as? String,
                     "mesh_s" to box.getPropertyRaw("mesh_s") as? String,
                     "task_s" to box.getPropertyRaw("task_s") as? String,
-                    "compute_s" to box.getPropertyRaw("compute_s") as? String
+                    "compute_s" to box.getPropertyRaw("compute_s") as? String,
+                    "raygen_s" to box.getPropertyRaw("raygen_s") as? String,
+                    "miss_s" to box.getPropertyRaw("miss_s") as? String,
+                    "closesthit_s" to box.getPropertyRaw("closesthit_s") as? String,
+                    "anyhit_s" to box.getPropertyRaw("anyhit_s") as? String,
+                    "intersection_s" to box.getPropertyRaw("intersection_s") as? String,
+                    "callable_s" to box.getPropertyRaw("callable_s") as? String
                 )
                 shaderProps.forEach { (name, value) ->
                     if (name != property && !value.isNullOrBlank()) {

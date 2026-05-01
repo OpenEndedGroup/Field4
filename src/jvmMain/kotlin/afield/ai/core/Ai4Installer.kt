@@ -43,6 +43,18 @@ fun installAi4() {
         name.equals(SLANG_MESH.name, ignoreCase = true) -> SLANG_MESH
         name.equals(SLANG_TASK.name, ignoreCase = true) -> SLANG_TASK
         name.equals(SLANG_COMPUTE.name, ignoreCase = true) -> SLANG_COMPUTE
+        name.startsWith("GLSL (ray", ignoreCase = true) -> GLSL_RAY_TRACING
+        name.equals(GLSL_MISS.name, ignoreCase = true) -> GLSL_MISS
+        name.equals(GLSL_CLOSEST_HIT.name, ignoreCase = true) -> GLSL_CLOSEST_HIT
+        name.equals(GLSL_ANY_HIT.name, ignoreCase = true) -> GLSL_ANY_HIT
+        name.equals(GLSL_INTERSECTION.name, ignoreCase = true) -> GLSL_INTERSECTION
+        name.equals(GLSL_CALLABLE.name, ignoreCase = true) -> GLSL_CALLABLE
+        name.startsWith("Slang (ray", ignoreCase = true) -> SLANG_RAY_TRACING
+        name.equals(SLANG_MISS.name, ignoreCase = true) -> SLANG_MISS
+        name.equals(SLANG_CLOSEST_HIT.name, ignoreCase = true) -> SLANG_CLOSEST_HIT
+        name.equals(SLANG_ANY_HIT.name, ignoreCase = true) -> SLANG_ANY_HIT
+        name.equals(SLANG_INTERSECTION.name, ignoreCase = true) -> SLANG_INTERSECTION
+        name.equals(SLANG_CALLABLE.name, ignoreCase = true) -> SLANG_CALLABLE
         name.equals("nano", ignoreCase = true) -> NANO_ASM
         else -> LanguageSpec(
             name = name,
@@ -116,11 +128,23 @@ fun installAi4() {
             "mesh",
             "task",
             "compute",
+            "raygen",
+            "miss",
+            "closesthit",
+            "anyhit",
+            "intersection",
+            "callable",
             "vertex_s",
             "fragment_s",
             "mesh_s",
             "task_s",
-            "compute_s"
+            "compute_s",
+            "raygen_s",
+            "miss_s",
+            "closesthit_s",
+            "anyhit_s",
+            "intersection_s",
+            "callable_s"
         ).apply {
             if (exec.property.isNotBlank()) add(exec.property)
         }
@@ -133,11 +157,23 @@ fun installAi4() {
             "compute" -> "GLSL (compute)"
             "mesh" -> "GLSL (mesh)"
             "task" -> "GLSL (task)"
+            "raygen" -> "GLSL (ray generation)"
+            "miss" -> "GLSL (miss)"
+            "closesthit" -> "GLSL (closest hit)"
+            "anyhit" -> "GLSL (any hit)"
+            "intersection" -> "GLSL (intersection)"
+            "callable" -> "GLSL (callable)"
             "vertex_s" -> "Slang (vertex)"
             "fragment_s" -> "Slang (fragment)"
             "compute_s" -> "Slang (compute)"
             "mesh_s" -> "Slang (mesh)"
             "task_s" -> "Slang (task)"
+            "raygen_s" -> "Slang (ray generation)"
+            "miss_s" -> "Slang (miss)"
+            "closesthit_s" -> "Slang (closest hit)"
+            "anyhit_s" -> "Slang (any hit)"
+            "intersection_s" -> "Slang (intersection)"
+            "callable_s" -> "Slang (callable)"
             "customization", "remote_js" -> "JavaScript"
             "metadata" -> "YAML"
             else -> languageNameForProperty(target, property)
@@ -154,7 +190,9 @@ fun installAi4() {
             return when {
                 lower.endsWith(".kt") || lower.endsWith(".kts") -> "Kotlin"
                 lower.endsWith(".glsl") || lower.endsWith(".vert") || lower.endsWith(".frag")
-                    || lower.endsWith(".comp") || lower.endsWith(".mesh") || lower.endsWith(".task") -> "GLSL"
+                    || lower.endsWith(".comp") || lower.endsWith(".mesh") || lower.endsWith(".task")
+                    || lower.endsWith(".rgen") || lower.endsWith(".rmiss") || lower.endsWith(".rchit")
+                    || lower.endsWith(".rahit") || lower.endsWith(".rint") || lower.endsWith(".rcall") -> "GLSL"
                 lower.endsWith(".slang") -> "Slang"
                 lower.endsWith(".js") || lower.endsWith(".mjs") || lower.endsWith(".cjs") -> "JavaScript"
                 lower.endsWith(".ts") || lower.endsWith(".tsx") -> "TypeScript"
@@ -243,12 +281,24 @@ fun installAi4() {
                 "mesh",
                 "task",
                 "compute",
-            "vertex_s",
-            "fragment_s",
-            "vertex_fragment",
-            "mesh_s",
+                "raygen",
+                "miss",
+                "closesthit",
+                "anyhit",
+                "intersection",
+                "callable",
+                "vertex_s",
+                "fragment_s",
+                "vertex_fragment",
+                "mesh_s",
                 "task_s",
-                "compute_s"
+                "compute_s",
+                "raygen_s",
+                "miss_s",
+                "closesthit_s",
+                "anyhit_s",
+                "intersection_s",
+                "callable_s"
             )
                 .any { property -> textPropertyContents(box, property) != null }
             if (hasGraphicsProperties || exec.prompt.contains("moduleHere") || exec.prompt.contains("renderer")) {
