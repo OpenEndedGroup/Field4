@@ -1,10 +1,10 @@
-# Interaction Nets Examples
+# Interaction Nets examples
 
-This page uses the same four scenarios the interaction-net smoke suite cares about. The point is not just to prove the rules reduce; it is to show what those reductions look like when they go through the native FLine renderer and land in ordinary output disclosures.
+These are the four scenarios covered by the interaction-net smoke suite. The examples show reducer steps as ordinary Field output: before geometry, rewrite summary, and after geometry.
 
 ## Beta bridge with swapped pair orientation
 
-The first check is the subtle one: `APP ⟂ LAM` should still reduce correctly even when the active pair was connected in the opposite insertion order. The left frame is the net before the step, the center card describes the rewrite that fired, and the right frame is the relaxed net after that single reduction.
+The first check is the subtle one: `APP ⟂ LAM` should reduce correctly even when the active pair was connected in the opposite insertion order. The left frame is the net before the step, the center card describes the rewrite, and the right frame is the relaxed net after that single reduction.
 
 <!--
 FIELD_TEST
@@ -83,7 +83,7 @@ println("interaction beta bridge ready")
 
 ## Energy-biased scheduling
 
-The reducer now has a real pair selector, so evaluation order can be part of the behavior instead of a hidden detail. The left frame shows the two candidate pairs before selection; the center card identifies the hotter pair that fired; the right frame shows the net after one reduction, with the colder pair still present.
+The reducer has a pair selector, so evaluation order can be visible behavior. The left frame shows two candidate pairs; the center card identifies the hotter pair that fired; the right frame shows the net after one reduction, with the colder pair still present.
 
 <!--
 FIELD_TEST
@@ -167,7 +167,7 @@ println("interaction scheduler ready")
 
 ## DUP splits state into two descendants
 
-The duplication rule is no longer just a topological trick. The left frame shows the pre-step net, the middle card records the duplication event, and the right frame shows the two descendants after the state split and relaxation.
+The duplication rule also carries state. The left frame shows the pre-step net, the middle card records the duplication event, and the right frame shows the two descendants after state split and relaxation.
 
 <!--
 FIELD_TEST
@@ -233,7 +233,7 @@ println("interaction duplication ready")
 
 ## ERASE starts a visible decay cascade
 
-`ERASE` is more interesting as a slow sink than as an invisible delete key. The left frame is the net before the prune step, the middle card explains the interaction that fired, and the right frame shows the first visible decay cascade after the step.
+`ERASE` works better here as a slow sink than as an invisible delete key. The left frame is the net before the prune step, the middle card explains the interaction, and the right frame shows the first visible decay cascade after the step.
 
 <!--
 FIELD_TEST

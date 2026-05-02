@@ -240,7 +240,7 @@ This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_2d.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true name="fline-callbacks-2d"}
 :::static
 
-fun status(message: String) {
+val status: (String) -> Unit = { message ->
     display(
         "callback-log",
         "<div style='padding:10px;font-family:monospace'>2D callback: $message</div>"
@@ -285,7 +285,7 @@ In practice this is useful for picking diagram elements, selecting generated for
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="fline-callbacks-3d"}
 :::static
 
-fun status(message: String) {
+val status: (String) -> Unit = { message ->
     display(
         "callback-log-3d",
         "<div style='padding:10px;font-family:monospace'>3D callback: $message</div>"
@@ -2046,7 +2046,7 @@ Left is the default midpoint. Right pre-aligns the shapes before correspondence 
 
 #### Spicy 2: extra motion at evaluation time
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_motion_spins.png" source-image="generated/flineinterpolator_motion_spins_source.png" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_motion_spins.png" embed=true}
 :::static
 import afield.graphics.*
 

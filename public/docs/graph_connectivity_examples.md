@@ -1,10 +1,10 @@
 # Graph connectivity to FLine examples
 
-Graphs are one of those topics that become much less mysterious the moment you draw them. In data science they organize structure in a cloud of points; in creative coding they become scaffolds for growth, routing, and composition; in musical systems they can describe proximity, voice-leading, or navigation through a space of states. These examples keep the algorithms attached to pictures.
+Graphs become much clearer once they are drawn. In data work they organize point clouds. In creative coding they become scaffolds for growth, routing, and composition. In musical systems they can describe proximity, voice-leading, or navigation through a space of states. These examples keep the algorithms attached to pictures.
 
 ## Geometric graph families on one point cloud
 
-Suppose you have one point cloud and several plausible ways to connect it. Which graph gives you a generous scaffold? Which one trims aggressively? Which one keeps only the bare minimum needed to stay connected? Those are not academic questions if the graph is about to drive routing, clustering, or a generative drawing.
+One point cloud can support several plausible graphs. Some are generous scaffolds. Some trim aggressively. Some keep only the minimum needed to stay connected. That choice matters when the graph drives routing, clustering, or a generative drawing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
@@ -61,15 +61,15 @@ lines(
 )
 ```
 
-So the scene stays fixed while the graph family changes. A single `graphLine(...)` helper draws Delaunay, Gabriel, Urquhart, relative-neighborhood, and minimum-spanning structures with different visual weights, making the structural differences carry the comparison.
+The scene stays fixed while the graph family changes. A single `graphLine(...)` helper draws Delaunay, Gabriel, Urquhart, relative-neighborhood, and minimum-spanning structures with different visual weights.
 
 ![](assets/graph_connectivity_examples/geometric_families.png)
 
-The picture gives you a quick vocabulary for the families. Delaunay is generous, Gabriel is choosier, Urquhart trims the triangulation toward a transport-like backbone, RNG is choosier still, and the spanning tree is the austerity program. Once you can *see* that progression, choosing the right scaffold for a pathing or clustering problem becomes much easier. For local queries on similar point sets, see [Smile neighbors examples](smile_neighbors_examples.md).
+The picture gives the families a quick vocabulary. Delaunay is generous. Gabriel is choosier. Urquhart trims the triangulation toward a transport-like backbone. RNG is choosier still. The spanning tree is the austerity program. Once that progression is visible, choosing the right scaffold for a pathing or clustering problem is easier. For local queries on similar point sets, see [Smile neighbors examples](smile_neighbors_examples.md).
 
 ## 3D graph families with `threeLines(...)`
 
-Projected drawings are fine until the point cloud really wants depth. Once points coil, stack, or drift behind one another, the right move is to put the graph into the Three.js viewer and orbit around it.
+Projected drawings are fine until the point cloud wants depth. Once points coil, stack, or drift behind one another, put the graph into the Three.js viewer and orbit around it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/three_graph_families.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -125,15 +125,15 @@ threeLines(
 )
 ```
 
-That view is less about exact planarity-style relationships and more about spatial scaffolding. The faint 4-NN graph gives you the permissive local neighborhood, Gabriel shows the cleaner mid-density structure, and the spanning tree leaves only the bare backbone.
+This view is less about exact planar relationships and more about spatial scaffolding. The faint 4-NN graph gives the permissive local neighborhood, Gabriel shows the cleaner mid-density structure, and the spanning tree leaves only the bare backbone.
 
 ![](assets/graph_connectivity_examples/three_graph_families.png)
 
-This is also where `threeLines(...)` earns its keep: instead of guessing from a flattened projection, you can actually orbit the graph and inspect crossings, depth layering, and long bridges. For now, `vec3UrquhartGraph(...)` still uses the same MST-based approximation as the 3D spanning tree, so a separate 3D Urquhart picture would currently land in the same place.
+`threeLines(...)` earns its keep here. A flattened projection leaves you guessing; the 3D viewer lets you orbit the graph and inspect crossings, depth layering, and long bridges. For now, `vec3UrquhartGraph(...)` still uses the same MST-based approximation as the 3D spanning tree, so a separate 3D Urquhart picture would currently land in the same place.
 
 ## Pathing: anchored cover + A* overlay
 
-A graph is only interesting once you ask it to do something. Can it help you cover a space from a given anchor? Can it produce a route from here to there? Can one sparse base structure support both a global reading and a local path?
+A graph becomes more useful once you ask it to do something: cover a space from an anchor, produce a route, or support both a global reading and a local path.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box"}
 :::static
@@ -194,8 +194,8 @@ out += dots
 lines(out, channel = "graph-pathing", w = 1180.0, h = 760.0, fitToSize = true)
 ```
 
-That is the experiment here. We build a modest k-nearest-neighbor graph, then ask it for two quite different answers: a cover that spreads outward from one anchor, and an A* path to a chosen goal. The faded base graph stays in the background so those answers cannot pretend they appeared from nowhere.
+This example builds a modest k-nearest-neighbor graph, then asks for two different answers: a cover that spreads outward from one anchor, and an A* path to a chosen goal. The faded base graph stays in the background.
 
 ![](assets/graph_connectivity_examples/path_cover_astar.png)
 
-The result is a graph doing double duty. The colored cover paths tell you how the structure fans out from the anchor; the bright A* overlay tells you how to get somewhere specific. That combination is useful in navigation, decomposition, interactive layouts, and any system that needs both "show me the territory" and "show me the route". For statistics and dependence measures on related datasets, continue with [Correlations examples](correlations_examples.md) and [Stats examples](stats_examples.md).
+The graph does double duty. The colored cover paths show how the structure fans out from the anchor; the bright A* overlay shows how to get somewhere specific. That combination is useful in navigation, decomposition, interactive layouts, and systems that need both territory and route. For statistics and dependence measures on related datasets, continue with [Correlations examples](correlations_examples.md) and [Stats examples](stats_examples.md).

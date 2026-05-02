@@ -1,14 +1,12 @@
 # Fabricate Renderer
 
-`StandardRenderer` is supposed to feel like a basic out-of-the-box Three.js setup:
-you should get a lit scene immediately, metalness should change the material response,
-shadows should be visible, and ambient occlusion should add contact darkening rather than garbage.
+`StandardRenderer` is the quick path into the fabricated renderer. A new scene should be lit already. Metalness should visibly change the material. Shadows should land where objects touch the ground. Ambient occlusion should add contact darkening, not mystery noise.
 
-This page is not just illustrative. Each example below is also a `FIELD_TEST` smoke test.
+These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small renderer checklist.
 
 ## Default Scene
 
-This is the baseline fabricated scene: three colored torii, lit and presented with the default setup.
+The default scene is deliberately plain: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
 
 <!--
 FIELD_TEST
@@ -32,7 +30,7 @@ expect:
         lighter: [0.28, 0.28, 0.44, 0.34]
         marginGt: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-default-scene.png" source-image="/tmp/docs-fabricate-default-native.png" wait="15.0" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-default-scene"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-default-scene.png" source-image="/tmp/docs-fabricate-default-native.png" wait="15.0" timeout="120" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-default-scene"}
 :::static
 import afield.four.fabricated.StandardRendererDocsHarness
 
@@ -46,7 +44,7 @@ start(captureScene)
 
 ## Metalness
 
-Left is a dielectric torus, right is a metallic torus, using the same base color and roughness.
+The two torii use the same base color and roughness. The left one is dielectric; the right one is metallic. Keeping the geometry fixed makes the material response visible.
 
 <!--
 FIELD_TEST
@@ -70,7 +68,7 @@ expect:
         b: [0.60, 0.22, 0.24, 0.46]
         meanAbsDiffGt: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-metalness.png" source-image="/tmp/docs-fabricate-metalness-native.png" wait="15.0" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-metalness"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-metalness.png" source-image="/tmp/docs-fabricate-metalness-native.png" wait="15.0" timeout="120" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-metalness"}
 :::static
 import afield.four.fabricated.StandardRendererDocsHarness
 
@@ -84,7 +82,7 @@ start(captureScene)
 
 ## Shadows
 
-Left disables shadowing. Right is the default shadowed scene.
+The left side disables shadowing. The right side uses the default shadowed scene. Look for the contact shadow under the object, not for a dramatic lighting change.
 
 <!--
 FIELD_TEST
@@ -108,7 +106,7 @@ expect:
         lighter: [0.75, 0.63, 0.12, 0.10]
         marginGt: 18
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shadows"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shadows"}
 :::static
 import afield.four.fabricated.StandardRendererDocsHarness
 
@@ -122,7 +120,7 @@ start(captureScene)
 
 ## Ambient Occlusion
 
-Left disables AO. Right is the default AO setup.
+The left side disables ambient occlusion. The right side uses the default AO setup. The useful difference is the small darkening where nearby surfaces crowd each other.
 
 <!--
 FIELD_TEST
@@ -146,7 +144,7 @@ expect:
         lighter: [0.16, 0.53, 0.08, 0.08]
         marginGt: 6
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-ao"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-ao"}
 :::static
 import afield.four.fabricated.StandardRendererDocsHarness
 

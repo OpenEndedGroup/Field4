@@ -1,25 +1,25 @@
 # Interactive Guides
 
-Field's guide system turns a box into a guide. Use guides to:
+Field's guide system lets a box walk someone through a document. A guide can:
 
 - show a note next to a box,
 - move the editor to a property and line,
 - branch through callbacks,
 - render live values into Markdown templates,
 - attach a discussion thread,
-- and draw callout lines to boxes or exact code locations.
+- draw callout lines to boxes or exact code locations.
 
 The core API lives in `slideShow { ... }`. Each `step("...")` defines one stage of the guide, and `markdownNote(...)` or `note(...)` renders the overlay.
 
 ## Start with a single-step guide
 
-The smallest useful guide needs:
+The smallest useful guide has five parts:
 
 - a host box,
 - a `slideShow { ... }` block,
 - at least one `step("...")`,
 - a note body,
-- and a coroutine that starts the guide.
+- a coroutine that starts the guide.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -52,14 +52,14 @@ runBlocking {
 }
 ```
 
-This produces a working guide. The step can change selection, open the editor, and point to the relevant code.
+That is already a working guide. It opens a note, selects a box, and leaves the reader looking at the code the note is talking about.
 
 ## Focus the reader on the right box and property
 
-Most steps do two things together:
+Most useful steps do two things together:
 
 - explain the current stage with a note,
-- and call `selectBox(...)` or `selectBoxByName(...)` to move the UI to the relevant place.
+- call `selectBox(...)` or `selectBoxByName(...)` to move the UI to the relevant place.
 
 Use `selectBox(box, property = "code")` when you already have the target box in scope. Use `selectBoxByName(...)` when the guide is driving another named box in the document.
 
@@ -98,17 +98,17 @@ runBlocking {
 }
 ```
 
-Pair each note with an explicit view change so the reader sees the code the note refers to.
+Pair notes with view changes. A note that talks about code should leave that code visible.
 
 ## Add callbacks and live template values
 
-Guides become interactive when you combine three features:
+Three pieces make a guide interactive:
 
 - `#custom:name` links in the note body,
 - `linkCallback("name") { ... }` handlers in the step,
-- and `{{propertyName}}` template expansion for live values.
+- `{{propertyName}}` template expansion for live values.
 
-Use this pattern when a guide needs choices, branching, or live note updates.
+Use this pattern for choices, branching, and notes that update while the guide stays on the same step.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" open-outputs="false" embed=true name="callbacks-and-templates" w="560" h="140" padding="28"}
 :::static
@@ -175,13 +175,13 @@ Template values can come from:
 
 - values you store in `this.properties[...]`,
 - Kotlin variables that are still in scope,
-- and shared template helpers that the slideshow runtime exposes.
+- shared template helpers that the slideshow runtime exposes.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
 ## Per-slide chat
 
-Chat is optional and local to a step.
+Chat is optional. It belongs to the step that asks for it.
 
 - `withChat()` creates a thread for that slide.
 - `withChat(id = "shared-id")` shares one thread across repeated guide instances.
@@ -221,20 +221,20 @@ runBlocking {
 }
 ```
 
-Use per-slide chat when comments should stay attached to a specific step.
+Use per-slide chat when comments should stay attached to a specific step instead of floating beside the whole guide.
 
-If the guide chat server is not running, the slideshow still renders normally; the discussion pane just will not be able to post or load messages.
+If the guide chat server is not running, the slideshow still renders. The discussion pane cannot load or post messages.
 
 The chat server setup and storage details live in [guide_chat.md](guide_chat.md).
 
 ## Annotations and code callouts
 
-Annotations let a note point to exact targets.
+Annotations let a note point at an exact target.
 
 - `annotate(...)` points from the note to a box.
 - `annotateToLine(...)` points to an exact property and line inside the editor.
 
-Use them when the guide text refers to a specific box or line.
+Use them when a sentence is about one box, one property, or one line.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="1.5" capture="box" open-outputs="false" embed=true name="guide-annotations" w="560" h="140" padding="32"}
 :::static
@@ -284,11 +284,11 @@ runBlocking {
 }
 ```
 
-Combine `selectBox(...)`, `line = ...`, `highlight = ...`, and `annotateToLine(...)` when the explanation is tied to one line or one decision point in the code.
+For line-level teaching, combine `selectBox(...)`, `line = ...`, `highlight = ...`, and `annotateToLine(...)`. The reader gets the note, the selected editor, the highlighted line, and the line drawn between them.
 
 ## How the features fit together
 
-A full guide usually combines the sections above in this order:
+A full guide usually grows in this order:
 
 1. Start with `slideShow { ... }` and one or more `step(...)` blocks.
 2. Use `markdownNote(...)` or `note(...)` to explain the current stage.
@@ -298,7 +298,7 @@ A full guide usually combines the sections above in this order:
 6. Add `withChat()` when the step needs discussion.
 7. Add `annotate(...)` or `annotateToLine(...)` when the text should point to exact visual targets.
 
-Use that sequence as the default structure for a multi-step guide.
+That sequence is a good default for multi-step guides. Add branching, chat, or annotation only when the step earns it.
 
 ## Example source map
 
@@ -311,7 +311,7 @@ For complete examples, read `src/jvmMain/kotlin/afield/examples/slideshow_exampl
 
 ## API summary
 
-The core calls you will use most often are:
+The calls you will use most often:
 
 - `slideShow { ... }` to define the guide.
 - `step("Title") { ... }` to define each stage.
@@ -322,4 +322,4 @@ The core calls you will use most often are:
 - `slideshowId("...")` when the slideshow needs a stable identity across sessions.
 - `annotate(...)` and `annotateToLine(...)` for visual callouts.
 
-Use these calls to define steps, move the UI, render the note, respond to reader input, and point at the relevant target.
+Together these calls define the guide, move Field to the right place, render the note, respond to reader input, and point at the target.

@@ -1,10 +1,10 @@
 # Smile neighbors to FLine examples
 
-Nearest-neighbor search sounds simple until it starts driving an actual system. Which points are "near" enough for a gesture? How dense is the region around this event? Can an approximate index keep up without quietly changing the answer too much? These examples draw the neighborhoods so the behavior of the search is not hidden behind an API.
+Nearest-neighbor search sounds simple until it starts driving an actual system. A gesture may need the closest points, a density estimate, or an approximate answer that is fast enough for interaction. These examples draw the neighborhoods so the behavior of the search stays visible.
 
 ## Query neighborhood with exact and approximate search
 
-There is more than one kind of "nearby". Sometimes you want the closest `k` things, sometimes you want everything inside a radius, and sometimes you want an approximate answer because you care more about speed than perfection. Those choices come up in clustering, picking, live interaction, and spatial music systems all the time.
+There is more than one kind of "nearby". Sometimes you want the closest `k` things. Sometimes you want everything inside a radius. Sometimes you want an approximate answer because speed matters more than perfection. Those choices come up in clustering, picking, live interaction, and spatial music systems.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/query_edges.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
@@ -63,15 +63,15 @@ lines(
 )
 ```
 
-So we ask all three questions of the same cloud and from the same query point. Nothing else changes: same geometry, same source set, same drawing. If the answers differ, they should differ for a reason you can see.
+All three questions use the same cloud and the same query point. Nothing else changes: same geometry, same source set, same drawing.
 
 ![](assets/smile_neighbors_examples/query_edges.png)
 
-The picture makes those meanings distinct. The exact set is the reference answer, the approximate set is the compromise you might accept in real-time work, and the radius query tells a different story entirely: not rank, but local density. That distinction matters in picking, local clustering, and proximity-sensitive drawing. For graph structures built on similar point sets, continue with [Graph connectivity examples](graph_connectivity_examples.md).
+The picture keeps the meanings distinct. The exact set is the reference answer. The approximate set is the real-time compromise. The radius query tells a different story: local density rather than rank. That distinction matters in picking, local clustering, and proximity-sensitive drawing. For graph structures built on similar point sets, continue with [Graph connectivity examples](graph_connectivity_examples.md).
 
 ## Diff: tune LSH build options
 
-Approximate search only becomes real once you start tuning it. How wide should the buckets be? How many projections do you spend? When does "fast enough" turn into "wrong in a way that matters"?
+Approximate search becomes real when you tune it. Bucket width, projection count, and hash size all change which relationships later code will believe.
 
 ```diff_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/lsh_tuning.png" wait="1.0" capture="box"}
 :::before
@@ -112,8 +112,8 @@ val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; poi
 lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 ```
 
-The diff keeps the query, the point cloud, and the drawing identical, and changes only the LSH build options. That makes the tuning itself visible instead of hiding it inside a bigger rewrite.
+The diff keeps the query, point cloud, and drawing identical. Only the LSH build options change.
 
 ![](assets/smile_neighbors_examples/lsh_tuning.png)
 
-And that is the useful lesson: tuning is not bookkeeping. It changes which geometric relationships your later code will believe in. If a neighborhood feels unstable, fix the index before you build a clustering, pathing, or interaction layer on top of it. For point-cloud structures that persist beyond a single query, move on to [Graph connectivity examples](graph_connectivity_examples.md) and [Correlations examples](correlations_examples.md).
+Tuning is not bookkeeping. It changes which geometric relationships the next layer receives. If a neighborhood feels unstable, fix the index before building clustering, pathing, or interaction code on top of it. For point-cloud structures that persist beyond a single query, move on to [Graph connectivity examples](graph_connectivity_examples.md) and [Correlations examples](correlations_examples.md).

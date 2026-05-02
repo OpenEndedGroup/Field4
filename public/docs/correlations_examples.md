@@ -1,10 +1,10 @@
 # Correlations to FLine examples
 
-Correlation is seductive because it compresses a relationship into one number. It is also dangerous for exactly the same reason. In data science that can hide a nonlinear dependency; in creative coding it can hide whether two gestures are genuinely coupled; in music it can flatten timing and phrasing into a statistic that sounds more certain than it is. These examples keep the numbers tied to pictures.
+Correlation compresses a relationship into one number. That is useful, and it is also the problem. It can hide a nonlinear dependency, blur the coupling between gestures, or flatten timing and phrasing into a statistic that sounds more certain than it is. These examples keep the numbers tied to pictures.
 
 ## Rolling distance correlation and xi
 
-What if two signals obviously belong to one another, but not in the polite straight-line way Pearson would prefer? That is a common situation: bowed shapes, gestural curves, timbral motion, any relationship that is structured but not linear. A rolling metric is useful here because the relationship itself may drift over time.
+Two signals can clearly belong together without forming a straight-line relationship. Bowed shapes, gestural curves, timbral motion, and many sensor relationships behave that way. A rolling metric is useful when that relationship drifts over time.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
@@ -53,15 +53,15 @@ lines(
 )
 ```
 
-So we feed the same nonlinear stream into `RollingDistanceCorrelation` and `RollingXiCorrelation`, keep the window size fixed, and draw both resulting traces on the same baseline. The whole point is to make the two metrics answer the same question in public.
+The same nonlinear stream goes into `RollingDistanceCorrelation` and `RollingXiCorrelation`. The window size stays fixed, and both traces share a baseline.
 
 ![](assets/correlations_examples/rolling_dependence.png)
 
-Now the disagreement, and the agreement, are visible. The two traces do not coincide, but both are clearly tracking the same evolving dependency. That is the sort of sanity check you want before trusting a rolling metric on sensor streams, musical features, or exploratory data analysis. If you want to see similar rolling summaries on raw signals, continue with [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+The agreement and disagreement are visible. The two traces do not coincide; both track the same evolving dependency. Use this kind of sanity check before trusting a rolling metric on sensor streams, musical features, or exploratory data analysis. For similar rolling summaries on raw signals, continue with [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
 
 ## StatsDependence metric profile on one dataset
 
-Sometimes you do not need the story over time; you need a fast comparison of several metrics on one dataset. Which metric notices the shape? Which one punishes you for asking a linear question of a nonlinear cloud?
+Sometimes you need a fast comparison of several metrics on one dataset. Which metric notices the shape? Which one punishes you for asking a linear question of a nonlinear cloud?
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
@@ -102,8 +102,8 @@ val bars = metrics.mapIndexed { i, (_, v) ->
 lines(bars, channel = "correlations-bars", w = 1080.0, h = 640.0, fitToSize = true)
 ```
 
-That is all this example is doing. One fixed dataset goes in; a handful of `StatsDependence` measures come out; the answers are drawn as bars because eyes are much better at comparing bars than decimals.
+One fixed dataset goes in; a handful of `StatsDependence` measures come out; the answers are drawn as bars because bars are easier to compare than decimals.
 
 ![](assets/correlations_examples/metric_profile.png)
 
-The payoff is immediate: the metrics are no longer abstract names in a list, they are visibly disagreeing about the same sample. That is exactly the mismatch you want to notice before choosing a statistic for a real experiment, a gesture dataset, or a musical feature extractor. For neighborhood-based structure, see [Smile neighbors examples](smile_neighbors_examples.md); for graph-based structure, see [Graph connectivity examples](graph_connectivity_examples.md).
+The metrics are no longer abstract names in a list. They visibly disagree about the same sample. That mismatch is worth seeing before choosing a statistic for an experiment, a gesture dataset, or a musical feature extractor. For neighborhood-based structure, see [Smile neighbors examples](smile_neighbors_examples.md); for graph-based structure, see [Graph connectivity examples](graph_connectivity_examples.md).

@@ -1,15 +1,21 @@
 package afield.four.fabricated
 
-import afield.raiseAndScreenshot
+import afield.Box
+import afield.four.TexturePreviewCache
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.util.Window
+import afield.logger.lprintln
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.joml.Vector4f
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Files
+import java.util.ArrayDeque
 import java.util.Base64
 import javax.imageio.ImageIO
 import kotlin.math.PI
@@ -23,12 +29,13 @@ import kotlin.math.max
 object StandardRendererDocsHarness {
 
     private const val WAIT_FRAMES = 90
-    private const val CAPTURE_TIMEOUT_MS = 60_000L
+    private const val CAPTURE_MAX_DIM = 2048
+    private val DATA_IMAGE_RE = Regex("base64,([^']+)")
 
     suspend fun renderDefaultScene(
         outputPath: String,
-        renderer: Renderer = fromContext(),
-        window: Window = fromContext()
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
     ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
         val left = bundle.registerTestTorus(name = "left", slices = 48, stacks = 48, renderer = activeRenderer)
         left.setModel(Matrix4f().translate(-0.95f, 0f, 0f))
@@ -46,8 +53,8 @@ object StandardRendererDocsHarness {
 
     suspend fun renderMetalnessComparison(
         outputPath: String,
-        renderer: Renderer = fromContext(),
-        window: Window = fromContext()
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
     ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
         bundle.scene.camera.at.set(0f, 0.2f, -4.1f)
         bundle.scene.camera.target.set(0f, 0f, 0f)
@@ -75,8 +82,8 @@ object StandardRendererDocsHarness {
 
     suspend fun renderShadowComparison(
         outputPath: String,
-        renderer: Renderer = fromContext(),
-        window: Window = fromContext()
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
     ): File {
         val bundle = StandardRenderer.build(renderer)
         bundle.attachTo(renderer)
@@ -86,10 +93,10 @@ object StandardRendererDocsHarness {
         bundle.scene.lightIntensity = 1.35f
         bundle.present(renderer = renderer)
 
-        val shadowOff = captureScene(tempPng("fabricate-shadow-off"), window) {
+        val shadowOff = captureScene(tempPng("fabricate-shadow-off"), bundle, renderer) {
             bundle.scene.shadowStrength = 0f
         }
-        val shadowOn = captureScene(tempPng("fabricate-shadow-on"), window) {
+        val shadowOn = captureScene(tempPng("fabricate-shadow-on"), bundle, renderer) {
             bundle.scene.shadowStrength = 1f
         }
         return try {
@@ -102,8 +109,8 @@ object StandardRendererDocsHarness {
 
     suspend fun renderAoComparison(
         outputPath: String,
-        renderer: Renderer = fromContext(),
-        window: Window = fromContext()
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
     ): File {
         val bundle = StandardRenderer.build(renderer)
         bundle.attachTo(renderer)
@@ -111,10 +118,10 @@ object StandardRendererDocsHarness {
         bundle.present(renderer = renderer)
         val originalAoStrength = bundle.scene.aoStrength
 
-        val aoOff = captureScene(tempPng("fabricate-ao-off"), window) {
+        val aoOff = captureScene(tempPng("fabricate-ao-off"), bundle, renderer) {
             bundle.scene.aoStrength = 0f
         }
-        val aoOn = captureScene(tempPng("fabricate-ao-on"), window) {
+        val aoOn = captureScene(tempPng("fabricate-ao-on"), bundle, renderer) {
             bundle.scene.aoStrength = originalAoStrength
         }
         return try {
@@ -158,18 +165,64 @@ object StandardRendererDocsHarness {
         bundle.attachTo(renderer)
         buildScene(bundle, renderer)
 
-        window.raiseAndScreenshot(WAIT_FRAMES, targetFile.absolutePath, captureTimeoutMs = CAPTURE_TIMEOUT_MS)
-        return targetFile
+        return captureFinalImage(bundle, targetFile, renderer)
     }
 
-    private suspend fun captureScene(targetFile: File, window: Window, beforeCapture: () -> Unit): File {
+    private suspend fun captureScene(
+        targetFile: File,
+        bundle: StandardRenderer.Bundle,
+        renderer: Renderer,
+        beforeCapture: () -> Unit
+    ): File {
         targetFile.parentFile?.mkdirs()
         if (targetFile.exists()) {
             targetFile.delete()
         }
         beforeCapture()
-        window.raiseAndScreenshot(WAIT_FRAMES, targetFile.absolutePath, captureTimeoutMs = CAPTURE_TIMEOUT_MS)
+        return captureFinalImage(bundle, targetFile, renderer)
+    }
+
+    private suspend fun captureFinalImage(
+        bundle: StandardRenderer.Bundle,
+        targetFile: File,
+        renderer: Renderer
+    ): File {
+        waitForRendererFrames(renderer)
+        val html = TexturePreviewCache.capture(
+            renderer = renderer,
+            vkImage = bundle.antiAlias.colorImageHandles[0],
+            format = bundle.antiAlias.colorFormats[0],
+            srcWidth = bundle.antiAlias.width,
+            srcHeight = bundle.antiAlias.height,
+            currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            maxDim = CAPTURE_MAX_DIM
+        ) ?: error("could not read back StandardRenderer final image")
+        val encoded = DATA_IMAGE_RE.find(html)?.groupValues?.get(1)
+            ?: error("could not parse StandardRenderer final image data")
+        targetFile.writeBytes(Base64.getDecoder().decode(encoded))
+        require(targetFile.length() > 0L) { "StandardRenderer final image readback wrote an empty PNG" }
         return targetFile
+    }
+
+    private suspend fun waitForRendererFrames(renderer: Renderer) {
+        val startFrame = renderer.frameCounter
+        val targetFrame = startFrame + WAIT_FRAMES
+        val deadline = System.nanoTime() + 15_000_000_000L
+        var lastLoggedFrame = Long.MIN_VALUE
+        while (renderer.frameCounter < targetFrame) {
+            if (renderer.frameCounter != lastLoggedFrame) {
+                lastLoggedFrame = renderer.frameCounter
+                lprintln(
+                    "info,doc",
+                    " -- waiting for renderer texture capture frame ${renderer.frameCounter}/$targetFrame --"
+                )
+            }
+            if (System.nanoTime() > deadline) {
+                error("timed out waiting for renderer frames: start=$startFrame current=${renderer.frameCounter} target=$targetFrame")
+            }
+            delay(16)
+            yield()
+        }
     }
 
     private fun configureGroundedTorusScene(bundle: StandardRenderer.Bundle, renderer: Renderer) {
@@ -234,6 +287,27 @@ object StandardRendererDocsHarness {
         output.parentFile?.mkdirs()
         ImageIO.write(combined, "png", output)
         return output
+    }
+
+    private fun rendererFromContextOrDocument(): Renderer {
+        try {
+            return fromContext()
+        } catch (_: IllegalArgumentException) {
+        }
+
+        val start = Box.context.get()
+        val root = start.root
+        val seen = mutableSetOf<Box>()
+        val queue = ArrayDeque<Box>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val box = queue.removeFirst()
+            if (!seen.add(box)) continue
+            box.properties.values.firstOrNull { it is Renderer }?.let { return it as Renderer }
+            box.ki.context.vars.values.firstOrNull { it.value is Renderer }?.let { return it.value as Renderer }
+            box.children.forEach { queue.add(it) }
+        }
+        throw IllegalArgumentException("must pass in a value for context parameter ${Renderer::class.java.name}")
     }
 
     private fun tempPng(prefix: String): File = Files.createTempFile(prefix, ".png").toFile()

@@ -91,6 +91,10 @@ open class RenderToTexture(
     // Track current layouts across frames (base color level and depth).
     protected var colorLayout: IntArray = intArrayOf()   // tracks mip level 0 per attachment
     private var depthLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
+    protected val sampledReadStageMask: Long =
+        VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT or
+                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
 
     // Track whether mips (levels 1..N-1) have ever been initialized (affects oldLayout for barriers)
     protected var colorMipsInitialized: BooleanArray = booleanArrayOf()
@@ -419,9 +423,9 @@ open class RenderToTexture(
                 val (srcStage, srcAccess) = when (layout) {
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
                         // Include CA/depth test stages to chain with broad read barriers on strict validators (MoltenVK/macOS).
-                        (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
+                        (sampledReadStageMask or
                                 VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT or
-                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) to VK_ACCESS_2_SHADER_READ_BIT
+                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ->
@@ -473,7 +477,7 @@ open class RenderToTexture(
 
                 val (srcStage, srcAccess) = when (depthLayout) {
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                        sampledReadStageMask to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
                         (VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT or VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT) to
                                 VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
@@ -652,9 +656,9 @@ open class RenderToTexture(
                             command.vkCommandBuffer,
                             imgRef,
                             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevelsRange
@@ -664,9 +668,9 @@ open class RenderToTexture(
                             command.vkCommandBuffer,
                             img,
                             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevelsRange
@@ -685,9 +689,9 @@ open class RenderToTexture(
                     command.vkCommandBuffer,
                     depthImage!!,
                     VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    sampledReadStageMask,
                     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
                     depthRange
@@ -793,8 +797,8 @@ open class RenderToTexture(
                     val (srcStage, srcAccess, oldLayout) =
                         if (mipsWereInitialized)
                             Triple(
-                                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                                VK_ACCESS_2_SHADER_READ_BIT,
+                                sampledReadStageMask,
+                                VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                             )
                         else
@@ -911,9 +915,9 @@ open class RenderToTexture(
                             commandBuffer,
                             imageRef,
                             VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevels
@@ -923,9 +927,9 @@ open class RenderToTexture(
                             commandBuffer,
                             image,
                             VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevels

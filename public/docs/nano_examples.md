@@ -1,10 +1,10 @@
 # Nano examples
 
-Nano is deliberately tiny: 4 registers (`r0`–`r3`), 32 bytes of RAM, a handful of arithmetic and branch instructions, and no room to hide. That is exactly why it is interesting. You can usually *see* the whole machine at once.
+Nano is deliberately tiny: 4 registers (`r0`-`r3`), 32 bytes of RAM, a handful of arithmetic and branch instructions, and no room to hide. That is why it is interesting. You can usually *see* the whole machine at once.
 
-The screenshots below keep that machine state visible. Blue RAM cells are the initial program bytes that Nano loaded into memory; amber cells are bytes that changed during execution; the green ring is the final program counter. So the examples do not just say "trust me, something happened" — they show where the state landed.
+The screenshots keep that machine state visible. Blue RAM cells are the initial program bytes; amber cells are bytes that changed during execution; the green ring is the final program counter.
 
-If you want to run these examples, this embedded viewer’s "Open in Field4" button will open a prepared Nano document with a Nano root already set up.
+The embedded viewer's "Open in Field4" button opens a prepared Nano document with a Nano root already set up.
 
 <iframe
     src="/offline.html?file=/field.nano_examples.edn"
@@ -18,7 +18,7 @@ In a fresh document, Nano boxes live under a parent box whose `isNanoRoot` prope
 
 ## Registers, output, and the first RAM write
 
-The smallest useful Nano sketch is not just "load a number and halt". A better first step is to do a tiny piece of arithmetic, emit it with `out`, and also park it in RAM so you can see the machine mutate.
+The smallest useful Nano sketch does a piece of arithmetic, emits it with `out`, and parks it in RAM so you can see the machine mutate.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/registers_output_first_write.png" wait="1.0" capture="box" embed=true name="nano-registers-output-first-write"}
 :::static
@@ -30,7 +30,7 @@ out r0
 hlt
 ```
 
-`r0` starts as `7`, `r1` starts as `9`, and `add r0, r1` leaves `16` in `r0`. The important visual detail is not the output chip alone; it is the amber cell at address `0x18`. That is the first moment where the program leaves a footprint in RAM beyond its own code bytes.
+`r0` starts as `7`, `r1` starts as `9`, and `add r0, r1` leaves `16` in `r0`. The important visual detail is the amber cell at address `0x18`: the first place this program leaves a footprint in RAM beyond its own code bytes.
 
 ## A loop that paints a strip of RAM
 
@@ -53,11 +53,11 @@ out r1
 hlt
 ```
 
-This is the Nano version of a for-loop writing into an array. There is no array abstraction, just an address register walking forward. The amber run from `0x14` onward makes that painfully concrete, which is exactly what you want when you are learning or debugging a tiny VM.
+This is the Nano version of a for-loop writing into an array. There is no array abstraction, only an address register walking forward. The amber run from `0x14` onward makes the write pattern concrete.
 
 ## Summation by counting down to zero
 
-`dec` is useful not because subtraction is exciting, but because it sets the zero flag and therefore gives you a natural loop terminator. That makes countdowns one of Nano’s cleanest idioms.
+`dec` is useful because it sets the zero flag. That gives countdown loops a natural terminator and makes them one of Nano's cleanest idioms.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/summation_with_loop.png" wait="1.0" capture="box" embed=true name="nano-summation-with-loop"}
 :::static
@@ -78,7 +78,7 @@ This sums `10 + 9 + ... + 1` into `r1`, leaving `55` in both the output stream a
 
 ## `.data` turns the tail of the program into a lookup table
 
-Nano has no separate ROM section. If you want a table of bytes, you put those bytes in the program stream and load them relative to the current instruction pointer. That sounds low-level because it is low-level.
+Nano has no separate ROM section. If you want a table of bytes, you put those bytes in the program stream and load them relative to the current instruction pointer.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/data_lookup_table.png" wait="1.0" capture="box" embed=true name="nano-data-lookup-table"}
 :::static
@@ -94,11 +94,11 @@ hlt
 .data 5 8 13
 ```
 
-Those three `ldrr` offsets are ugly on purpose: they force you to remember that Nano is loading bytes relative to the current program counter, not from a named symbol table. Once the machine state is rendered, though, the ugliness becomes legible. You can see the code bytes, the table bytes, and the final sum all in one place.
+Those three `ldrr` offsets force you to remember that Nano is loading bytes relative to the current program counter, not from a named symbol table. Once the machine state is rendered, the offsets become legible: code bytes, table bytes, and final sum all sit in one view.
 
 ## `call` and `ret` let you factor repeated work
 
-Even on a machine this small, repetition wants a name. `call` and `ret` give you just enough structure to package a tiny operation and reuse it.
+Even on a machine this small, repetition wants a name. `call` and `ret` give you enough structure to package a tiny operation and reuse it.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/call_and_ret.png" wait="1.0" capture="box" embed=true name="nano-call-and-ret"}
 :::static
@@ -114,10 +114,10 @@ dbl:
     ret
 ```
 
-Starting from `6`, one call to `dbl` gives `12`, and the second gives `24`. That is not a dramatic algorithm, but it is the right scale for seeing subroutines work without losing the plot. The disassembly and final RAM write make the control flow feel concrete rather than ceremonial.
+Starting from `6`, one call to `dbl` gives `12`, and the second gives `24`. The example is small enough that the subroutine call, return, output, and final RAM write stay visible at once.
 
 ## What to pay attention to
 
-The point of these examples is not that Nano can add numbers or fill a few bytes. The point is that its computations stay small enough to inspect. When a Nano sketch is behaving strangely, the RAM view, register cards, and disassembly together are often enough to explain *why*.
+Nano is useful here because its computations stay small enough to inspect. When a sketch behaves strangely, the RAM view, register cards, and disassembly are often enough to explain why.
 
-That makes Nano a good medium for artificial-life toys, tiny interpreters, and systems where local state really matters. The machine is not hidden under abstraction; it is the thing you are composing with.
+That makes Nano a good medium for artificial-life sketches, tiny interpreters, and systems where local state matters. The machine is not hidden under abstraction. It is the thing you are composing with.

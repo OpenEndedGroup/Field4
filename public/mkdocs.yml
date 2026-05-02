@@ -14,24 +14,30 @@ nav:
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Staging area:
-      - Fabricate Renderer: fabricate_renderer.md
-      - Interactive Guides: interactive_guides.md
-      - Guide Chat: guide_chat.md
-      - Some VR: vr_sketch2.md
-      - Forth Examples: forth_examples.md
-      - Nano Examples: nano_examples.md
-      - Functions Examples: functions_examples.md
-      - Timeseries Examples: timeseries_examples.md
-      - Stats Examples: stats_examples.md
-      - Smile Neighbors Examples: smile_neighbors_examples.md
-      - Interpolants Examples: interpolants_examples.md
-      - Colors Examples: colors_examples.md
-      - Correlations Examples: correlations_examples.md
-      - Graph Connectivity Examples: graph_connectivity_examples.md
-      - Sorting Networks Examples: sorting_networks_examples.md
-      - Interaction Nets Examples: interaction_nets_examples.md
-      - Boolean Networks Examples: boolean_networks_examples.md
-      - Boolean Network Music Examples: boolean_network_music_examples.md
+      - Staging Overview: staging.md
+      - Field Systems:
+        - Fabricate Renderer: fabricate_renderer.md
+        - afield.four Graphics: afield_four_graphics.md
+        - Interactive Guides: interactive_guides.md
+        - Guide Chat: guide_chat.md
+        - VR Drawing Sketch: vr_sketch2.md
+      - Small Languages:
+        - Forth Examples: forth_examples.md
+        - Nano Examples: nano_examples.md
+      - Drawing From Data:
+        - Functions Examples: functions_examples.md
+        - Interpolants Examples: interpolants_examples.md
+        - Timeseries Examples: timeseries_examples.md
+        - Stats Examples: stats_examples.md
+        - Colors Examples: colors_examples.md
+        - Correlations Examples: correlations_examples.md
+        - Smile Neighbors Examples: smile_neighbors_examples.md
+        - Graph Connectivity Examples: graph_connectivity_examples.md
+      - Networks and Dynamics:
+        - Sorting Networks Examples: sorting_networks_examples.md
+        - Interaction Nets Examples: interaction_nets_examples.md
+        - Boolean Networks Examples: boolean_networks_examples.md
+        - Boolean Network Music Examples: boolean_network_music_examples.md
 
 markdown_extensions:
   - pymdownx.superfences:         # required extension

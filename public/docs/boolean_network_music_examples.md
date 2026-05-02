@@ -1,6 +1,6 @@
 # Boolean network music examples
 
-Boolean networks become musically useful the moment their states acquire time. Once each network step is given a duration, the state stream can be read as notes, labels, triggers, and sample hits. The point of this page is to make that bridge explicit inside `afield.four.synth`, not just as an ad hoc trick in a box.
+Boolean networks become musically useful once their states acquire time. Give each network step a duration and the state stream can be read as notes, labels, triggers, and sample hits. The bridge lives inside `afield.four.synth`.
 
 The bridge now lives in four pieces:
 
@@ -12,7 +12,7 @@ The bridge now lives in four pieces:
 
 ## From attractor cycle to `NoteProcess`
 
-The first useful test is the simplest one: take a small attractor, map rising edges to pitches, and render the result as a piano roll. That confirms that the network is no longer only a graph; it is a timed note source.
+The first useful test is simple: take a small attractor, map rising edges to pitches, and render the result as a piano roll. The network becomes a timed note source, not only a graph.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/noteprocess_roll.png" wait="1.0" capture="box"}
 :::static
@@ -66,13 +66,13 @@ display(
 )
 ```
 
-That picture is already a useful bridge. The network is still the source of structure, but the resulting object is now a standard `NoteProcess`, which means it can be visualized, sliced, cached, and combined with the rest of the synth tooling.
+The network is still the source of structure, but the resulting object is a standard `NoteProcess`. It can be visualized, sliced, cached, and combined with the rest of the synth tooling.
 
 ![](assets/boolean_network_music_examples/noteprocess_roll.png)
 
 ## Previewing Dirt tokens before playback
 
-Pitched notes are only one interpretation. The same timing layer can just as easily carry Dirt sample labels instead of note names. That lets you inspect the Boolean rhythm as a sample rack before you commit to actual playback.
+Pitched notes are only one interpretation. The same timing layer can carry Dirt sample labels instead of note names. That lets you inspect the Boolean rhythm as a sample rack before playback.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/dirt_token_roll.png" wait="1.0" capture="box"}
 :::static
@@ -115,13 +115,13 @@ display(
 )
 ```
 
-That preview does two jobs. It shows the timing behavior, and it shows the exact sample symbols that a live Dirt player would receive. You can decide whether the network is musically interesting before it ever touches the audio engine.
+The preview shows timing behavior and the exact sample symbols a live Dirt player would receive. You can decide whether the network is musically interesting before it touches the audio engine.
 
 ![](assets/boolean_network_music_examples/dirt_token_roll.png)
 
 ## Braiding several Boolean rhythms together
 
-Once the network can produce timed notes, the next step is layering. The example below braids three different Boolean attractors at different temporal resolutions: a kick-like layer on eighths, a change-trigger layer on dotted eighths, and a high-density active-state shimmer on sixteenths.
+Once the network can produce timed notes, the next step is layering. This example braids three Boolean attractors at different temporal resolutions: a kick-like layer on eighths, a change-trigger layer on dotted eighths, and a high-density active-state shimmer on sixteenths.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/braided_rhythm.png" wait="1.0" capture="box"}
 :::static
@@ -216,13 +216,13 @@ display(
 )
 ```
 
-This is where the Boolean approach starts to feel compositional rather than merely algorithmic. Each layer is still just a state machine, but the combined piano roll behaves more like a small rhythmic ensemble.
+Each layer is still a state machine, but the combined piano roll behaves like a small rhythmic ensemble.
 
 ![](assets/boolean_network_music_examples/braided_rhythm.png)
 
 ## Driving the network with an oscillatory input
 
-Not every useful rhythm has to come from a free-running attractor. Sometimes the interesting case is a Boolean network that is being pushed by an external clock lane. The new driven scheduling helpers make that explicit: an oscillator forces one node each step, while the rest of the network reacts to it.
+Not every useful rhythm has to come from a free-running attractor. Sometimes the interesting case is a Boolean network pushed by an external clock lane. The driven scheduling helpers make that explicit: an oscillator forces one node each step, while the rest of the network reacts.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/oscillator_driven.png" wait="1.0" capture="box"}
 :::static
@@ -304,7 +304,7 @@ display(
 )
 ```
 
-The upper grid shows the raw Boolean state evolution. The piano roll underneath shows the same run interpreted as musical events. This is the important bridge: external periodic structure can push a Boolean network, and the network can still be read back out through the standard synth objects.
+The upper grid shows raw Boolean state evolution. The piano roll underneath shows the same run interpreted as musical events. External periodic structure can push a Boolean network, and the network can still be read back out through standard synth objects.
 
 ![](assets/boolean_network_music_examples/oscillator_driven.png)
 
@@ -341,6 +341,6 @@ audio { kit } +
     }.onBeat(every = 1.0, clock = clock)
 ```
 
-That is the full bridge in one place: network state becomes timed steps, timed steps become rising-edge decisions, and those decisions become Dirt sample triggers. The Boolean network stays responsible for structure, while the synth layer stays responsible for sound.
+The bridge is direct: network state becomes timed steps, timed steps become rising-edge decisions, and those decisions become Dirt sample triggers. The Boolean network owns structure; the synth layer owns sound.
 
 For the underlying state-space pictures, continue with [Boolean networks examples](boolean_networks_examples.md). For piano-roll and synth display tooling, see [Visualizers & Controls](visualizers.md).

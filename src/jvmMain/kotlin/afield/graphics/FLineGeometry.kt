@@ -621,7 +621,10 @@ private fun rdpSimplify(points: List<Vec3>, epsilon: Float): List<Vec3> {
     return if (maxDist > epsilon) {
         val left = rdpSimplify(points.subList(0, maxIndex + 1), epsilon)
         val right = rdpSimplify(points.subList(maxIndex, points.size), epsilon)
-        left.dropLast(1) + right
+        buildList(left.size + right.size - 1) {
+            addAll(left.dropLast(1))
+            addAll(right)
+        }
     } else {
         listOf(points.first(), points.last())
     }

@@ -151,11 +151,15 @@ object LoadingTracker {
     }
 
     private fun updateNotification() {
-        val total = if (expectedBoxes > 0) expectedBoxes else arrivedBoxIds.size
+        val total = maxOf(if (expectedBoxes > 0) expectedBoxes else 0, arrivedBoxIds.size, onlineBoxIds.size)
         val received = arrivedBoxIds.size
         val online = onlineBoxIds.size
         val detail = if (total > 0) "$statusText; $received/$total received, $online/$total online" else statusText
-        notify("loading document \u2014 $detail <<spinner>>", "setup")
+        if (detail == "loading document") {
+            notify("loading document <<spinner>>", "setup")
+        } else {
+            notify("loading document \u2014 $detail <<spinner>>", "setup")
+        }
     }
 
     private fun resetTimeout() {

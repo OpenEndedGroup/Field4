@@ -1,7 +1,10 @@
 package afield
 
+import afield.four.Renderer
 import afield.four.synth.musicClock
 import afield.four.synth.patClock
+import afield.four.util.Window
+import afield.four.util.lastWindowToOpen
 import afield.logger.lprintln
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +46,8 @@ private data class CapturedProcessResult(
 )
 
 private val agentBackdoorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+private const val AGENT_GRAPHICS_CONTEXT_NAME = "renderer"
 
 private fun String.isHttpUrl(): Boolean =
     startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
@@ -268,7 +273,26 @@ internal fun attachDocumentSession(
 }
 
 private fun countLoadableBoxes(info: SessionInformation): Int {
-    return info.boxes.values.count { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+    val seen = linkedSetOf<Box>()
+    val visited = linkedSetOf<Box>()
+
+    fun include(box: Box) {
+        if (box.id == "root") return
+        if (box.getPropertyRaw("_tombstone").isTrue()) return
+        seen.add(box)
+    }
+
+    fun visit(box: Box) {
+        if (!visited.add(box)) return
+        (box.children + box.nested).forEach { child ->
+            include(child)
+            visit(child)
+        }
+    }
+
+    visit(info.root)
+    info.boxes.values.forEach(::include)
+    return seen.size
 }
 
 private fun sendExpectedBoxCount(session: WebSocketSession, info: SessionInformation) {
@@ -386,6 +410,52 @@ private fun applyAgentProperty(box: Box, property: String, value: JsonElement) {
             value.contentOrNull == null -> {}
         }
     }
+}
+
+private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Boolean> {
+    val existing = info.root.children.firstOrNull {
+        it.name == AGENT_GRAPHICS_CONTEXT_NAME && it.getPropertyRaw("renderer") is Renderer
+    }
+    val graphicsBox = existing ?: box(UUID.randomUUID().toString(), createIfMissing = true, initIfCreated = true, root = info).also {
+        it.name = AGENT_GRAPHICS_CONTEXT_NAME
+        it.frame = Rect(0.0, 0.0, 120.0, 80.0)
+    }
+
+    val renderer = graphicsBox.getPropertyRaw("renderer") as? Renderer ?: Renderer(Window("Field")).also {
+        graphicsBox.setPropertyRaw("window", it.window, doResync = true)
+        graphicsBox.setPropertyRaw("renderer", it, doResync = true)
+    }
+
+    val hasActiveRendererJob = graphicsBox.jobs.any { it.isActive && !it.isCancelled }
+    if (!hasActiveRendererJob) {
+        val strand = "default"
+        val generation = (graphicsBox.runGeneration[strand] ?: -1) + 1
+        graphicsBox.runGeneration[strand] = generation
+        graphicsBox.currentRunningStates[strand] = RunningState(generation, "graphics-context")
+        send(Message("is-running").payload(IsRunning(graphicsBox.id, true, generation, strand, "graphics-context")))
+        val job = inMain {
+            try {
+                renderer.run()
+            } catch (t: Throwable) {
+                lprintln("error,agent_backdoor", "graphics context renderer failed: ${t.stackTraceToString()}")
+            } finally {
+                if (graphicsBox.currentRunningStates[strand]?.watermark == generation) {
+                    graphicsBox.currentRunningStates.remove(strand)
+                }
+                send(Message("is-running").payload(IsRunning(graphicsBox.id, false, generation, strand, "graphics-context")))
+            }
+        }
+        graphicsBox.jobs += job
+    }
+
+    needsResync.add(info.root to "children")
+    needsResync.add(graphicsBox to "parents")
+    needsResync.add(graphicsBox to "actions")
+    graphicsBox.resyncAll()
+    info.topologyGeneration++
+    doResync()
+
+    return graphicsBox to (existing != null)
 }
 
 private fun currentJavaExecutable(): String {
@@ -567,6 +637,35 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    handlers["agent-ensure-graphics-context"] = mutableSetOf({ _, reply ->
+        val info = thisSessionInfo.get()
+        inMain {
+            val response = runCatching {
+                val (graphicsBox, reused) = ensureAgentGraphicsContext(info)
+                AgentGraphicsContextResponse(
+                    ok = true,
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    box = snapshotFor(graphicsBox),
+                    reused = reused
+                )
+            }.getOrElse { throwable ->
+                lprintln("warning,agent_backdoor", "graphics context setup failed: ${throwable.message}")
+                val fallback = info.root
+                AgentGraphicsContextResponse(
+                    ok = false,
+                    error = throwable.message ?: throwable::class.simpleName ?: "Unknown graphics context error",
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    box = snapshotFor(fallback),
+                    reused = false
+                )
+            }
+            reply(Message("agent-ensure-graphics-context").payload(response))
+        }
+        Handled.yes
+    })
+
     handlers["agent-open-playwright"] = mutableSetOf({ _, reply ->
         val info = thisSessionInfo.get()
         playwrightScope.launch {
@@ -711,6 +810,42 @@ fun installAgentBackdoorHandlers() {
                 )
             }
             reply(Message("agent-box-screenshot").payload(response))
+        }
+        Handled.yes
+    })
+
+    handlers["agent-native-window-screenshot"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val request = Json.decodeFromJsonElement<AgentNativeWindowScreenshot>(message.payload!!)
+        agentBackdoorScope.launch {
+            val response = runCatching {
+                val window = lastWindowToOpen ?: error("No afield.four Window has been opened in this session")
+                File(request.path).parentFile?.mkdirs()
+                window.raiseAndScreenshot(request.waitFrames, request.path)
+                AgentScreenshotResponse(
+                    ok = true,
+                    kind = "native-window",
+                    path = request.path,
+                    uid = null,
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    sessionKey = info.filename,
+                    message = ""
+                )
+            }.getOrElse { throwable ->
+                lprintln("warning,agent_backdoor", "native window screenshot failed for ${request.path}: ${throwable.message}")
+                AgentScreenshotResponse(
+                    ok = false,
+                    kind = "native-window",
+                    path = request.path,
+                    uid = null,
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    sessionKey = info.filename,
+                    message = throwable.message ?: throwable::class.simpleName ?: "Unknown native window screenshot error"
+                )
+            }
+            reply(Message("agent-native-window-screenshot").payload(response))
         }
         Handled.yes
     })

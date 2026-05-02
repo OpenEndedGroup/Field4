@@ -1,14 +1,14 @@
 # Guide Chat
 
-Guide chat is the service behind `withChat()` in a slideshow step.
+Guide chat is the optional service behind `withChat()` in a slideshow step.
 
 ## What it does
 
-Guide chat adds a discussion thread to a slideshow step.
+Guide chat adds a discussion thread to a step:
 
 - `withChat()` creates a slide-specific thread.
 - `withChat(id = "templateId")` creates a shared thread across template instances.
-- messages are persisted on the server and reloaded for later viewers.
+- messages are persisted on the server and reloaded for later viewers,
 - updates are pushed live to connected clients.
 
 ## Architecture
@@ -81,7 +81,7 @@ slideShow {
 }
 ```
 
-Only steps that call `withChat()` render the discussion disclosure.
+Only steps that call `withChat()` render a discussion disclosure.
 
 ## Username handling
 
@@ -91,7 +91,7 @@ The frontend reads `username` from the URL query string:
 https://localhost:9092/?file=myguide&username=student1
 ```
 
-If no username is present, messages are posted as `anonymous`.
+Without that parameter, messages are posted as `anonymous`.
 
 ## Storage layout
 
@@ -124,7 +124,7 @@ If the chat server is down:
 - `withChat()` still produces the UI shell,
 - but message load and post requests fail.
 
-Treat chat as an optional service. The rest of the slideshow system does not depend on it.
+Chat is deliberately optional. The slideshow system does not depend on it.
 
 ## Related docs
 

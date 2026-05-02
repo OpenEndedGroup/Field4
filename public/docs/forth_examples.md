@@ -1,14 +1,14 @@
 # Forth examples
 
-Field's Forth support is intentionally small: one data stack, a mutable dictionary, a few control-flow words, some vector helpers, a reflection bridge into JVM objects, and enough `FLine` vocabulary to sketch geometry quickly.
+Field's Forth support is intentionally small: one data stack, a mutable dictionary, a few control-flow words, vector helpers, a reflection bridge into JVM objects, and enough `FLine` vocabulary to sketch geometry quickly.
 
-The original examples live in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt`. This page pulls those examples into the docs site, expands them a little, and keeps them runnable.
+The original examples live in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt`. The docs version expands a few and keeps the runnable ones under test.
 
 In a live Field document, Forth boxes usually sit under a parent box whose `isForthRoot` property is `true`. The examples below are still authored as raw Forth, but the docs runner executes them through the same `ForthInterpreter` class so the code blocks can stay readable.
 
-## A tiny stack language, not a toy syntax
+## A tiny stack language
 
-The first thing to internalize is that every word transforms the stack. If you read the stack comments left-to-right, the code becomes much easier to reason about.
+Every word transforms the stack. Read stack comments from left to right and the code becomes much easier to follow.
 
 <!--
 FIELD_TEST
@@ -34,11 +34,11 @@ s"hypot^2 = " 3 4 hypot2 str str+ println
 
 `: sqr ... ;` defines a new word. `dup` copies the top stack item, `*` multiplies the top two numbers, and `swap` flips the top pair so `hypot2` can reuse `sqr` on both inputs.
 
-There is very little ceremony here. That is the point. The language is meant to stay close to the movement of data.
+There is very little ceremony here. The language is meant to stay close to the movement of data.
 
 ## Variables, strings, and output channels
 
-Forth variables are just named storage cells, but they are enough for counters, state machines, and launch-time animation state.
+Forth variables are named storage cells. They are enough for counters, state machines, and launch-time animation state.
 
 <!--
 FIELD_TEST
@@ -67,7 +67,7 @@ s"<b>Forth can emit HTML into Field output areas.</b>" display
 s"count = " count @ str str+ s"debug" display-channel
 ```
 
-`display` writes to the default output channel. `display-channel` lets you name the disclosure panel explicitly. That makes it easy to separate pretty output from debug output without inventing a heavier UI model.
+`display` writes to the default output channel. `display-channel` names the disclosure panel explicitly, which is enough to keep pretty output and debug output apart.
 
 ## Building an FLine directly
 
@@ -107,7 +107,7 @@ This example is close to SVG path construction. `moveto`, `lineto`, and `cubicto
 
 ## Vec2 helpers make path code less repetitive
 
-The vector helpers are useful when your geometry is already arriving as points rather than loose coordinates.
+The vector helpers are useful when geometry is already arriving as points rather than loose coordinates.
 
 <!--
 FIELD_TEST
@@ -141,11 +141,11 @@ expect:
 zig
 ```
 
-`fline-node-color` styles the current node rather than the whole line. That makes it a good debugging affordance when you want to mark a control point, an endpoint, or the place where a computation last landed.
+`fline-node-color` styles the current node rather than the whole line. It is a good debugging affordance for marking a control point, an endpoint, or the last place a computation landed.
 
 ## Reflection can build geometry too
 
-The `fline` helper is convenient, but the reflection bridge is what makes the language genuinely porous. You can resolve a class by name, construct it, and call methods without leaving Forth.
+The `fline` helper is convenient. The reflection bridge is what makes the language porous: resolve a class by name, construct it, and call methods without leaving Forth.
 
 <!--
 FIELD_TEST
@@ -189,7 +189,7 @@ s"Vec3" class-for @? getName println
 s"Fli" class-matches println
 ```
 
-That is not just introspection for its own sake. It is how you make host APIs discoverable enough to stay live-codable.
+That is how host APIs stay discoverable enough to live-code against.
 
 ## Dictionary tools, recursion, and temporary stack storage
 
@@ -202,7 +202,7 @@ see sqr
 forget sqr
 ```
 
-`recurse` means “run the word I am currently inside.” Here it makes a small factorial. The base case leaves `1`; the recursive case keeps a copy of `n`, computes `(n-1)!`, then multiplies.
+`recurse` means "run the word I am currently inside." Here it makes a small factorial. The base case leaves `1`; the recursive case keeps a copy of `n`, computes `(n-1)!`, then multiplies.
 
 ```diffstatic {data-lang=forth}
 : fact ( n -- n! )
@@ -244,7 +244,7 @@ count3
 n @ println
 ```
 
-When something fails, Forth errors now include the current token, a stack snapshot, and the word call stack. For example:
+When something fails, Forth errors include the current token, a stack snapshot, and the word call stack. For example:
 
 ```diffstatic {data-lang=forth}
 : inner nope ;
@@ -286,7 +286,7 @@ plot-stack
 
 ## Extending the dictionary from Kotlin
 
-The host bridge goes the other direction too. You can inject new words from Kotlin when you want Forth to drive a renderer, a buffer, or some other subsystem that should stay on the JVM side.
+The host bridge goes the other direction too. Kotlin can inject new words when Forth should drive a renderer, a buffer, or some other JVM-side subsystem.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -319,7 +319,7 @@ Once the host has pushed a real buffer object onto the Forth stack, the call sit
 0.0 0.0 1.0 1.0 append-vec4
 ```
 
-That is the pattern to keep in mind when Forth should orchestrate something but not own the underlying resource.
+That is the useful split: Forth orchestrates, the host owns the resource.
 
 ## Launch mode and `frame`
 
@@ -353,10 +353,10 @@ variable line
 spinner
 ```
 
-The important constraint is that `frame` yields immediately and the word starts again on the next tick, so persistent state needs to live in variables rather than in transient stack structure.
+`frame` yields immediately and the word starts again on the next tick, so persistent state belongs in variables rather than transient stack structure.
 
 ## What to pay attention to
 
-Forth in Field is most useful when you treat it as a sketchpad for live objects rather than as an isolated language. The stack words are small. The geometry words are small. The bridge into JVM objects is small. The composition of those pieces is where it gets interesting.
+Forth in Field works best as a sketchpad for live objects. The stack words are small. The geometry words are small. The bridge into JVM objects is small. The composition of those pieces is where it gets interesting.
 
 That makes it a good fit for procedural drawing, little control systems, and situations where you want to stay very close to the data flow instead of hiding it behind layers of structure.

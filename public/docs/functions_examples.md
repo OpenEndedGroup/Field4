@@ -1,12 +1,12 @@
 # Functions to FLine examples (Field graphics)
 
-This page shows practical ways to turn Functions stacks into drawable FLines, both as classic one-dimensional graphs and as two-dimensional parametric curves.
+The examples here turn `Functions` stacks into drawable FLines: ordinary one-dimensional graphs first, then two-dimensional parametric curves.
 
-Why bother? Because a function stack is often much easier to design by eye than by algebra alone. In creative coding it gives you a quick route from signal to ornament; in data work it gives you a concrete picture of transforms and envelopes; in music it turns oscillation, modulation, and shaping into something you can literally draw.
+A function stack is often easier to design by eye than by algebra alone. In creative coding it gives you a quick route from signal to ornament. In data work it makes transforms and envelopes visible. In music it turns oscillation, modulation, and shaping into something you can draw.
 
 ## 1D stack: harmonic blend to graph FLine
 
-Start with the most ordinary case: one signal, one graph. Why? Because once you can see how a stack becomes a curve, all of the more elaborate uses feel much less magical. This is the sort of thing you need for envelopes, modulation shapes, control signals, and any "what does this waveform actually look like?" moment.
+Start with the ordinary case: one signal, one graph. Once a stack can become a curve, the more elaborate uses are easier to read. This pattern is useful for envelopes, modulation shapes, control signals, and any moment where you need to see a waveform rather than imagine it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/harmonic_stack_box.png" wait="1.0" capture="box" w="1200"}
 :::static
@@ -75,15 +75,15 @@ with(Functions) {
 }
 ```
 
-So the ingredients stay humble: one base sinusoid, one overtone, a little value noise, then a window and a soft clip to stop the whole thing from becoming ugly. The important move is the final one: `toFLine(...)` samples the stack into drawing space instead of leaving it as a purely conceptual function.
+The ingredients are humble: one base sinusoid, one overtone, a little value noise, then a window and a soft clip to keep the range under control. The important move is the final one: `toFLine(...)` samples the stack into drawing space.
 
 ![](assets/functions_examples/harmonic_stack_box.png)
 
-The result still reads as one waveform, but now you can see exactly what each ingredient contributed. That is a solid starting point for envelopes, gesture traces, and "design me a shape" problems of all kinds. For more direct geometry operations after the conversion step, continue with [FLine examples](fline_examples.md).
+The result still reads as one waveform, but the contribution of each ingredient is visible. This is a useful starting point for envelopes, gesture traces, and "design me a shape" problems. For direct geometry operations after conversion, continue with [FLine examples](fline_examples.md).
 
 ## 1D stack: pulse design, smoothing, and hold
 
-Smooth oscillation is only one side of the story. Often you want edges, gates, bursts, latches, and sample-and-hold behavior: things that feel more like rhythm, switching, or digital control than like a pure tone. That is where pulse-oriented stacks start becoming interesting.
+Smooth oscillation is only one side of the system. Edges, gates, bursts, latches, and sample-and-hold behavior matter too. These are the parts that feel like rhythm, switching, or digital control rather than pure tone.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/pulse_stack_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -152,15 +152,15 @@ with(Functions) {
 }
 ```
 
-Here the pulse train is the raw material. A slower sine bends it, a blur softens it, and `sampleHold(...)` turns the result into something more stepped and clocked. Putting the three curves on the same axes makes the transformation feel causal rather than mysterious.
+Here the pulse train is the raw material. A slower sine bends it, a blur softens it, and `sampleHold(...)` turns the result into something more stepped and clocked. Putting the three curves on the same axes makes the transformation easy to compare.
 
 ![](assets/functions_examples/pulse_stack_window.png)
 
-And now the personalities separate cleanly: one jagged, one softened, one quantized into holds. That is exactly the sort of side-by-side picture that helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
 
 ## 2D stack: separate x(t) and y(t) Functions
 
-Once you stop assuming that a function stack must be "height over x", a much larger door opens. What if one stack controls horizontal position and another controls vertical position? Suddenly you are no longer graphing a signal, you are steering a path through space.
+Once a function stack is no longer limited to "height over x", it can steer a path. One stack controls horizontal position; another controls vertical position.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_lissajous_box.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -226,15 +226,15 @@ with(Functions) {
 }
 ```
 
-That is the only real trick here: keep `xFn` and `yFn` independent until the moment of sampling, then evaluate them together inside `parametric(...)`. The path emerges from their relationship, not from either stack on its own.
+The trick is to keep `xFn` and `yFn` independent until the moment of sampling, then evaluate them together inside `parametric(...)`. The path emerges from their relationship, not from either stack on its own.
 
 ![](assets/functions_examples/parametric_lissajous_box.png)
 
-The payoff is a curve with different tempos on its two axes, which is why it immediately starts to feel like an orbit, a trajectory, or a piece of ornament rather than a plain graph. That pattern is a workhorse for parametric drawing. For lower-level path editing once you have the curve, see [FLine examples](fline_examples.md).
+The curve has different tempos on its two axes, so it reads as an orbit, a trajectory, or ornament rather than a graph. This is a workhorse pattern for parametric drawing. For lower-level path editing once you have the curve, see [FLine examples](fline_examples.md).
 
 ## 2D stack: noisy rosette with windowed arc energy
 
-Sometimes the right question is not "what are x and y doing?" but "how far from the center am I, and at what angle?" That shift is useful for rosettes, emblems, radial plots, circular choreography, and any drawing that wants to grow outwards rather than march left-to-right.
+Sometimes the useful coordinates are radius and angle, not x and y. That shift suits rosettes, emblems, radial plots, circular choreography, and drawings that grow outward rather than march left to right.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_rosette_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -300,15 +300,15 @@ with(Functions) {
 }
 ```
 
-So the code builds the motion in polar terms first: radius from `pulseTrain(...)` and `valueNoise(...)`, angle from a ramp. Only afterwards do we cash that out into cartesian coordinates. The explicit sampling loop keeps that conversion plain.
+The code builds the motion in polar terms first: radius from `pulseTrain(...)` and `valueNoise(...)`, angle from a ramp. Only after that does it convert to cartesian coordinates. The explicit sampling loop keeps the conversion visible.
 
 ![](assets/functions_examples/parametric_rosette_window.png)
 
-That is why the image feels more designed than merely oscillatory. The radius creates petals and breaths; the angle decides how those breaths are laid around the circle. It is a strong pattern for radial ornaments, animated emblems, and circular plotting systems. For color strategies that pair well with this kind of geometry, see [Colors examples](colors_examples.md).
+The radius creates petals and breaths; the angle decides how they are laid around the circle. This is a strong pattern for radial ornaments, animated emblems, and circular plotting systems. For color strategies that pair well with this kind of geometry, see [Colors examples](colors_examples.md).
 
 ## Diff runner: edit a stack and capture the new look
 
-One of the pleasures of working with Functions is that a tiny edit can materially change the drawing. That is useful when you are iterating on a look, a gesture model, or a piece of generative structure and want to understand what each new ingredient bought you.
+With `Functions`, a small edit can materially change the drawing. That makes diff examples useful: you can see what a new ingredient actually changed.
 
 ```diff_runner {data-lang=kotlin screenshot="assets/functions_examples/diff_runner_after.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::before
@@ -386,11 +386,11 @@ with(Functions) {
 }
 ```
 
-The diff keeps the frame and scale fixed and spends all its energy on the stack itself: a more shaped pulse, a little `fbm(...)` detail, and a firmer soft clip. That way the edit reads as an edit, not as a new scene.
+The diff keeps the frame and scale fixed and changes only the stack: a more shaped pulse, a little `fbm(...)` detail, and a firmer soft clip. The edit reads as an edit, not as a new scene.
 
 ![](assets/functions_examples/diff_runner_after.png)
 
-The broad contour survives, but the surface becomes more interesting and more intentional. That is exactly the kind of change you want when iterating: continuity of idea, improvement of character. The expanded reference below is the place to keep browsing the API once these examples have made the main patterns familiar.
+The broad contour survives, while the surface gains character. The expanded reference below is the place to browse the API once the main patterns are familiar.
 
 ## Expanded reference: simple + creative patterns
 
@@ -506,7 +506,7 @@ with(Functions) {
 
 ### Complete API addendum: utility classes and methods
 
-The tables above cover the primary signal-shaping API. This addendum closes the remaining symbol gaps with simple and creative variants.
+The tables above cover the primary signal-shaping API. This addendum closes the remaining symbol gaps with plain examples and more developed variants.
 
 #### Domain methods
 

@@ -1,10 +1,10 @@
 # Stats to FLine examples
 
-A mean without a distribution is often little more than a rumor. The same is true of quartiles, standard deviations, and vector summaries: useful, certainly, but far more trustworthy when they stay attached to the thing they summarize. These examples make the statistics answer to the picture.
+A mean is much more useful when the distribution stays visible. The same is true of quartiles, standard deviations, and vector summaries. These examples keep the statistic attached to the thing it summarizes.
 
 ## Windowed histogram as bars + quartile markers
 
-Why draw a histogram if the buffer can already tell you the median and quartiles? Because those numbers mean much more once you can see the shape they came from. In data science this is basic honesty; in creative coding it is how you stop "interesting noise" from becoming numerology; in music it is how you decide whether a gesture stream is truly varied or merely twitchy.
+The buffer can already report median and quartiles. The histogram shows the shape those numbers came from. That matters for data analysis, creative coding, gesture streams, and any situation where "interesting noise" might be doing too much work.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/histogram_fline.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
@@ -60,15 +60,15 @@ val marks = listOf(
 lines(bars + marks, channel = "stats-hist-fline", w = 1100.0, h = 620.0, fitToSize = true)
 ```
 
-So the example forces the stats buffer to show its work. We feed it a noisy scalar signal, ask for both a histogram and a snapshot, and then draw the bars and quartile markers in the same space. The markers are not the story; they are annotations on the story.
+The stats buffer shows its work here. A noisy scalar signal goes in; a histogram and snapshot come out; the bars and quartile markers are drawn in the same space. The markers are annotations on the distribution, not replacements for it.
 
 ![](assets/stats_examples/histogram_fline.png)
 
-That is why the image reads so much better than a printed table. First you see the distribution, then you see where the summary lands inside it. A median that sits in the thick of the mass feels different from a median perched beside a lopsided tail, and the eye catches that instantly. For statistics that evolve frame by frame, continue with [Timeseries examples](timeseries_examples.md) and [Visualizers](visualizers.md).
+First you see the distribution, then you see where the summary lands inside it. A median in the thick of the mass reads differently from a median near a lopsided tail. For statistics that evolve frame by frame, continue with [Timeseries examples](timeseries_examples.md) and [Visualizers](visualizers.md).
 
 ## Vec2 cloud trajectory + length envelope
 
-A scalar distribution is only half the story. Plenty of live systems produce points, trajectories, and clouds: cursor motion, body tracking, controller input, particle studies. How do you summarize *that* without losing the motion itself?
+Many live systems produce points, trajectories, and clouds: cursor motion, body tracking, controller input, particle studies. The summary should not erase the motion.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/vec2_stats_fline.png" wait="1.0" capture="box"}
 :::static
@@ -122,8 +122,8 @@ display("stats", lenText)
 lines(listOf(trail, dots, lenBand), channel = "stats-vec2", w = 1100.0, h = 620.0, fitToSize = true)
 ```
 
-Here the geometry stays on stage. We collect a rolling stream of 2D points, draw the orbit it traces, and only then add a short textual summary of path length. The text is not trying to replace the drawing; it is there to sharpen what the drawing already suggests.
+Here the geometry stays on stage. A rolling stream of 2D points traces an orbit; a short textual summary reports path length. The text sharpens the drawing instead of replacing it.
 
 ![](assets/stats_examples/vec2_stats_fline.png)
 
-The result is the combination you usually want in practice: geometric intuition and a compact numeric report in the same place. You can see the orbit, and you can also say something precise about how far it tends to wander. For neighborhood and connectivity structure on similar point clouds, see [Smile neighbors examples](smile_neighbors_examples.md) and [Graph connectivity examples](graph_connectivity_examples.md).
+This is the combination you usually want: geometric intuition and a compact numeric report in the same place. You can see the orbit and say something precise about how far it tends to wander. For neighborhood and connectivity structure on similar point clouds, see [Smile neighbors examples](smile_neighbors_examples.md) and [Graph Connectivity examples](graph_connectivity_examples.md).

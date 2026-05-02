@@ -1,10 +1,10 @@
 # Sorting networks to FLine examples
 
-Sorting networks are nice because they make an algorithm hold still. The compare-and-swap plan is fixed ahead of time; the data is what moves. That makes them perfect for pictures. You can see structure, then you can watch disorder collapse, then you can watch search improve the structure itself.
+Sorting networks make an algorithm hold still. The compare-and-swap plan is fixed ahead of time; the data is what moves. That makes them good material for pictures: topology first, then disorder collapse, then search over the topology itself.
 
 ## Topology: bubble drag versus odd-even-merge economy
 
-The first thing to draw is just the fabric of the network. Same wire count, different cost profile: bubble spends comparators and depth generously; odd-even merge is much more disciplined.
+Start with the fabric of the network. Same wire count, different cost profile: bubble spends comparators and depth generously; odd-even merge is much more disciplined.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/topology_compare.png" wait="1.0" capture="box"}
 :::static
@@ -44,13 +44,13 @@ lines(
 )
 ```
 
-That is the first useful contrast. Bubble is not wrong, it is just extravagant: more columns, more waiting, more opportunities for values to keep shuffling around. Odd-even merge feels more architectural. You can read the reduction in cost before you run a single input through it.
+Bubble is not wrong; it is extravagant. It spends more columns, more waiting, and more opportunities for values to shuffle. Odd-even merge is more architectural. You can read the reduction in cost before running a single input through it.
 
 ![](assets/sorting_networks_examples/topology_compare.png)
 
 ## Disorder collapse across layers
 
-Structure is only half the story. The more interesting question is behavioral: how quickly does a fixed network destroy inversions once a random permutation enters it? That is where `layerTrace(...)` becomes useful, because it lets the docs plot real intermediate states rather than pretending the network is only input and output.
+Structure is only half the story. The behavioral question is how quickly a fixed network destroys inversions once a random permutation enters it. `layerTrace(...)` makes that visible by exposing the intermediate states.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/disorder_decay.png" wait="1.0" capture="box"}
 :::static
@@ -161,13 +161,13 @@ lines(
 )
 ```
 
-The plot makes the static picture answer a dynamic question at two scales. The faint lines are individual random permutations; the brighter lines are the means. Both networks converge, obviously, but not with the same rhythm. Bubble has more depth to spend, so the descent stretches out. Odd-even merge does more decisive work per layer and reaches zero with fewer synchronized rounds. That is exactly the kind of behavioral difference that a comparator count alone hides.
+The plot answers the dynamic question at two scales. The faint lines are individual random permutations; the brighter lines are means. Both networks converge, but not with the same rhythm. Bubble has more depth to spend, so the descent stretches out. Odd-even merge does more decisive work per layer and reaches zero with fewer synchronized rounds. Comparator count alone hides that difference.
 
 ![](assets/sorting_networks_examples/disorder_decay.png)
 
 ## Annealing search leaves a visible trail
 
-The final picture is about synthesis rather than execution. `SortingNetwork.anneal(...)` is not just a black box that returns a smaller network; it emits a trajectory of improving candidates. So the docs should draw that trajectory too.
+This picture is about synthesis rather than execution. `SortingNetwork.anneal(...)` emits a trajectory of improving candidates, not only a final network.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_search.png" wait="1.0" capture="box" timeout="70"}
 :::static
@@ -245,13 +245,13 @@ lines(
 )
 ```
 
-That is the satisfying part: the search is no longer abstract. You can see the network that the run started from, the network it ended on, and the staircase of best-so-far improvements in between. The docs stop pretending optimization is a miracle and instead show it as a path with plateaus, drops, and eventual structure.
+The search is no longer abstract. You can see the starting network, the final network, and the staircase of best-so-far improvements between them. Optimization becomes a path with plateaus, drops, and eventual structure.
 
 ![](assets/sorting_networks_examples/anneal_search.png)
 
 ## Annealing as a family of regimes
 
-One annealing run is anecdote. A more convincing picture comes from broadening the configuration space: different seed topologies, different starting temperatures, different random seeds. Once you do that, the search stops looking like one lucky staircase and starts looking like a whole landscape of possible descents.
+One annealing run is anecdote. A more useful picture broadens the configuration space: different seed topologies, starting temperatures, and random seeds. The search becomes a landscape of possible descents rather than one lucky staircase.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_regimes.png" wait="1.0" capture="box" timeout="90"}
 :::static
@@ -415,8 +415,8 @@ lines(
 )
 ```
 
-Now the quantity of traces matters. Bubble-seeded runs and merge-seeded runs do not just end in different places; they descend with different personalities. Some cool quickly and freeze, some stay mobile longer, some find better depth without improving comparator count, and some just stall. The bottom scatter is the compact summary: all those histories collapse to a little cloud of trade-offs between size and depth.
+Here the quantity of traces matters. Bubble-seeded runs and merge-seeded runs end in different places and descend differently. Some cool quickly and freeze, some stay mobile longer, some improve depth without improving comparator count, and some stall. The bottom scatter collapses those histories into a small cloud of trade-offs between size and depth.
 
 ![](assets/sorting_networks_examples/anneal_regimes.png)
 
-Sorting networks are one of the rare algorithmic objects whose static form and dynamic behavior are equally drawable. That makes them unusually teachable in Field. For adjacent topics where fixed structure meets plotted behavior, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).
+Sorting networks are one of the rare algorithmic objects whose static form and dynamic behavior are equally drawable. For adjacent topics where fixed structure meets plotted behavior, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).

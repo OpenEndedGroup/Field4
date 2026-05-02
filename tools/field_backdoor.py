@@ -41,28 +41,6 @@ LOG_STRING_PREVIEW = 512
 LOG_COLLECTION_PREVIEW = 32
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
-GRAPHICS_CONTEXT_PREAMBLE = """
-import afield.four.Renderer
-import afield.four.util.Window
-
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
-""".strip()
-GRAPHICS_CONTEXT_CODE = """
-import afield.four.Renderer
-import afield.four.util.Window
-
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
-
-window = Window("Field")
-renderer = Renderer(window)
-start(renderer::run)
-""".strip()
 
 
 class BackdoorError(RuntimeError):
@@ -719,6 +697,33 @@ class FieldBackdoor:
         self.logger.log("screenshot_box_complete", payload=payload)
         return payload
 
+    async def native_window_screenshot(
+        self,
+        *,
+        path: str,
+        wait_frames: int,
+        timeout: float,
+    ) -> dict[str, Any]:
+        self.logger.log(
+            "native_window_screenshot_start",
+            path=path,
+            waitFrames=wait_frames,
+            timeout=timeout,
+        )
+        event = await self.call_for_single_reply(
+            "agent-native-window-screenshot",
+            {
+                "path": path,
+                "waitFrames": wait_frames,
+            },
+            timeout=timeout,
+        )
+        payload = event["payload"]
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-native-window-screenshot returned an invalid payload")
+        self.logger.log("native_window_screenshot_complete", payload=payload)
+        return payload
+
     async def record_window(
         self,
         *,
@@ -1003,44 +1008,36 @@ class FieldBackdoor:
             self.logger.log("graphics_context_reused", payload=payload)
             return payload
 
-        created = await self.create_box(
-            name=GRAPHICS_CONTEXT_BOX_NAME,
-            x=0.0,
-            y=0.0,
-            w=120.0,
-            h=80.0,
+        event = await self.call_for_single_reply(
+            "agent-ensure-graphics-context",
+            {},
             timeout=timeout,
-            auto_graphics_parent=False,
         )
-        box = created.get("box")
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-ensure-graphics-context returned an invalid payload")
+        if not payload.get("ok", False):
+            raise BackdoorError(str(payload.get("error") or "Graphics context setup failed"))
+        box = payload.get("box")
         uid = box.get("uid") if isinstance(box, dict) else None
         if not isinstance(uid, str) or not uid:
             raise BackdoorError("Graphics context setup did not return a box uid")
+        self._upsert_box_from_snapshot(box)
         self.graphics_context_uid = uid
-        await self.set_string(uid, "code", GRAPHICS_CONTEXT_CODE)
-        _, events, timed_out = await self.run_box(uid, property_name="code", value=None, timeout=timeout)
-        if timed_out:
-            self.graphics_context_uid = None
-            raise BackdoorError("Graphics context setup timed out while starting the renderer box")
-        errors = self.execution_errors(events)
-        if errors:
-            self.graphics_context_uid = None
-            raise BackdoorError(f"Graphics context setup failed: {errors[0]}")
-        await self.set_string(uid, "preamble", GRAPHICS_CONTEXT_PREAMBLE)
         if GRAPHICS_CONTEXT_WAIT_SEC > 0:
             await asyncio.sleep(GRAPHICS_CONTEXT_WAIT_SEC)
-        payload = {
+        result = {
             "ok": True,
             "uid": uid,
-            "name": GRAPHICS_CONTEXT_BOX_NAME,
-            "reused": False,
-            "documentName": self.document_name,
-            "scratch": self.scratch,
+            "name": box.get("name") or GRAPHICS_CONTEXT_BOX_NAME,
+            "reused": bool(payload.get("reused", False)),
+            "documentName": payload.get("documentName", self.document_name),
+            "scratch": bool(payload.get("scratch", self.scratch)),
             "sessionKey": self.session_key,
             "waitSec": GRAPHICS_CONTEXT_WAIT_SEC,
         }
-        self.logger.log("graphics_context_ready", payload=payload)
-        return payload
+        self.logger.log("graphics_context_ready", payload=result)
+        return result
 
     def assign_box_alias(self, alias: str, uid: str) -> None:
         cleaned = alias.strip()
@@ -1514,6 +1511,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("--no-pan", action="store_true")
     screenshot_box.add_argument("--timeout", type=float)
 
+    native_screenshot = subparsers.add_parser("native-screenshot", add_help=False)
+    native_screenshot.add_argument("path")
+    native_screenshot.add_argument("--wait-frames", type=int, default=30)
+    native_screenshot.add_argument("--timeout", type=float)
+
     record_window = subparsers.add_parser("record-window", add_help=False)
     record_window.add_argument("path")
     record_window.add_argument("--uid")
@@ -1607,6 +1609,12 @@ def build_command_parser() -> argparse.ArgumentParser:
     stop_parser.add_argument("uid")
     stop_parser.add_argument("--timeout", type=float)
     stop_parser.add_argument("--best-effort", action="store_true")
+
+    wait_file = subparsers.add_parser("wait-file", add_help=False)
+    wait_file.add_argument("path")
+    wait_file.add_argument("--timeout", type=float)
+    wait_file.add_argument("--stable-reads", type=int, default=2)
+    wait_file.add_argument("--newer-than", type=float)
 
     output_parser = subparsers.add_parser("output", add_help=False)
     output_parser.add_argument("uid")
@@ -1811,6 +1819,18 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
+    if args.command == "native-screenshot":
+        timeout = command_timeout(args.timeout, client.default_timeout)
+        data = await client.native_window_screenshot(
+            path=args.path,
+            wait_frames=args.wait_frames,
+            timeout=timeout,
+        )
+        ok = bool(data.get("ok"))
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
     if args.command == "record-window":
         if auto_playwright:
             await ensure_playwright_attached(
@@ -1967,6 +1987,42 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
         return result
 
+    if args.command == "wait-file":
+        timeout = args.timeout or client.default_timeout
+        path = Path(args.path)
+        deadline = time.monotonic() + timeout
+        stable_reads = max(1, int(args.stable_reads))
+        observed_stable_reads = 0
+        last_size = -1
+        while time.monotonic() < deadline:
+            if path.exists():
+                stat = path.stat()
+                size = stat.st_size
+                if size > 0:
+                    if args.newer_than is not None and stat.st_mtime < args.newer_than:
+                        await asyncio.sleep(0.1)
+                        continue
+                    if size == last_size:
+                        observed_stable_reads += 1
+                    else:
+                        observed_stable_reads = 0
+                    last_size = size
+                    if observed_stable_reads >= stable_reads:
+                        data = {
+                            "path": str(path),
+                            "size": size,
+                            "mtime": stat.st_mtime,
+                            "stableReads": observed_stable_reads,
+                        }
+                        result = command_result(command_line, True, data=data, events=[])
+                        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], size=size)
+                        return result
+            await asyncio.sleep(0.1)
+        data = {"path": str(path), "error": f"timed out waiting for file after {timeout:.1f}s"}
+        result = command_result(command_line, False, data=data, events=[], timed_out=True)
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=True)
+        return result
+
     if args.command == "output":
         events = client.collect_output(args.uid, channel=args.channel, kind=args.kind)
         data = {"uid": client.resolve_uid(args.uid), "kind": args.kind, "channel": args.channel, "count": len(events)}
@@ -2113,7 +2169,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, screenshot-window, screenshot-editor, screenshot-box, record-window, record-editor, record-box, new-box, connect, disconnect, set, run, launch, continue, stop, output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, run, launch, continue, stop, wait-file, output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

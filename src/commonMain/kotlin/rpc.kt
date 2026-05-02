@@ -328,6 +328,16 @@ data class AgentCreateBoxResponse(
 )
 
 @Serializable
+data class AgentGraphicsContextResponse(
+    val ok: Boolean,
+    val error: String? = null,
+    val documentName: String,
+    val scratch: Boolean,
+    val box: AgentBoxSnapshot,
+    val reused: Boolean = false
+)
+
+@Serializable
 data class AgentOpenPlaywrightResponse(
     val ok: Boolean,
     val error: String? = null,
@@ -557,6 +567,12 @@ data class AgentBoxScreenshot(
     val padding: Double = 12.0,
     val panIntoView: Boolean = true,
     val openOutputs: Boolean = true
+)
+
+@Serializable
+data class AgentNativeWindowScreenshot(
+    val path: String,
+    val waitFrames: Int = 30
 )
 
 @Serializable

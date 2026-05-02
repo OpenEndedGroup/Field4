@@ -539,6 +539,7 @@ object StandardRenderer {
 					colorAttachments = 1
 				format = config.hdrFormat
 				colorSampled = true
+				colorTransferSrc = true
 				useDepth = false
 				clearColor = vec(0f, 0f, 0f, 1f)
 			}

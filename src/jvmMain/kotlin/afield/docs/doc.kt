@@ -621,8 +621,13 @@ fun activateThisProcessMac(processName: String) {
 }
 
 // helper for docs, not for rendering things for real
-suspend fun Window.raiseAndScreenshot(waitFrames: Int, outPath: String, captureTimeoutMs: Long = 15_000L) {
-    associatedRenderer?.takeIf { it.supportsDirectWindowCapture(this) }?.let { renderer ->
+suspend fun Window.raiseAndScreenshot(
+    waitFrames: Int,
+    outPath: String,
+    captureTimeoutMs: Long = 15_000L,
+    preferDirectCapture: Boolean = true
+) {
+    associatedRenderer?.takeIf { preferDirectCapture && it.supportsDirectWindowCapture(this) }?.let { renderer ->
         waitFrames {
             lprintln("info,doc", " -- waiting for renderer frame capture --")
             yield()

@@ -195,6 +195,17 @@ def image_expectation(test: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def image_expectation_path(test: dict[str, Any]) -> Path | None:
+    image = image_expectation(test)
+    if not image:
+        return None
+    raw_path = image.get("path")
+    if not raw_path:
+        return None
+    path = Path(str(raw_path))
+    return path if path.is_absolute() else (REPO_ROOT / path)
+
+
 def build_screenshot_command(test: dict[str, Any], capture_path: Path, *, timeout: float) -> str:
     screenshot = screenshot_expectation(test) or {}
     kind = str(screenshot.get("kind") or "box")
@@ -383,6 +394,18 @@ def build_backdoor_command(
             )
         if wait_seconds > 0:
             commands.append(shlex.join(["sleep", str(wait_seconds)]))
+        image_path = image_expectation_path(test)
+        if image_path is not None:
+            commands.append(
+                shlex.join(
+                    [
+                        "wait-file",
+                        str(image_path),
+                        "--timeout",
+                        str(timeout),
+                    ]
+                )
+            )
         if capture_path is not None:
             commands.append(build_screenshot_command(test, capture_path, timeout=timeout))
         if execution == "launch":
@@ -738,6 +761,12 @@ def evaluate_image_expectation(
 def run_one_test(test: dict[str, Any], *, port: int, workspace: str | None) -> dict[str, Any]:
     test_id = str(test.get("id"))
     command, artifacts = build_backdoor_command(test, port=port, workspace=workspace)
+    image_path = image_expectation_path(test)
+    if image_path is not None:
+        try:
+            image_path.unlink()
+        except FileNotFoundError:
+            pass
     started = time.monotonic()
     process = subprocess.run(
         command,

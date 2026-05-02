@@ -237,8 +237,7 @@ object TexturePreviewCache {
             renderer = renderer,
             requestedSize = stagingSize,
             usage = VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            reqMask = VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            cpuOnly = true
+            reqMask = VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
         )
         val fence = Fence(renderer.device, signaled = false)
 

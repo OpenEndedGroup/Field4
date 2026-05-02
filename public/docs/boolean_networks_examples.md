@@ -1,10 +1,10 @@
 # Boolean networks to FLine examples
 
-Boolean networks are one of the cleanest ways to draw dynamics. The state space is finite, the update rule is explicit, and attractors are not metaphors, they are actual loops or fixed points you can enumerate. That makes them ideal for pictures that mix mechanism and behavior.
+Boolean networks are clean material for drawing dynamics. The state space is finite, the update rule is explicit, and attractors are actual loops or fixed points you can enumerate. That makes them good for pictures that mix mechanism and behavior.
 
 ## Wiring and state-space, side by side
 
-Start with the smallest interesting network. `toggleNetwork()` only has two nodes, but it already separates two useful views: the causal wiring graph and the induced state-transition graph.
+Start with the smallest interesting network. `toggleNetwork()` has only two nodes, but it already separates two useful views: the causal wiring graph and the induced state-transition graph.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/toggle_state_space.png" wait="1.0" capture="box"}
 :::static
@@ -42,13 +42,13 @@ lines(
 )
 ```
 
-That pairing matters. The left image tells you what depends on what; the right image tells you what that dependency actually does to every possible state. In this tiny case the answer is unusually clean: the whole state space is one period-4 loop. No hidden basin, no dead branch, just one circulating attractor that visits every binary configuration.
+The left image tells you what depends on what; the right image tells you what that dependency does to every possible state. In this tiny case the whole state space is one period-4 loop. There is no hidden basin, no dead branch, only one circulating attractor that visits every binary configuration.
 
 ![](assets/boolean_networks_examples/toggle_state_space.png)
 
 ## Segment-polarity basins and a real transient
 
-Small synthetic networks are good for intuition, but the more interesting pictures happen once you have multiple attractors. The simplified segment-polarity example has enough structure for basin sketches to become worth drawing.
+Small synthetic networks are good for intuition. Multiple attractors make the pictures richer. The simplified segment-polarity example has enough structure for basin sketches to be worth drawing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/segment_basins.png" wait="1.0" capture="box"}
 :::static
@@ -93,13 +93,13 @@ lines(
 )
 ```
 
-Now the dynamics become legible in a richer way. The left panel is one concrete transient, the middle panel is the whole 16-state transition graph, and the right panel samples the two largest basins as miniature spacetime strips. That is much closer to how Boolean models are actually used in practice: not just “what is the next state?”, but “what long-term regime does this initial condition commit me to?”
+The left panel is one concrete transient, the middle panel is the whole 16-state transition graph, and the right panel samples the two largest basins as miniature spacetime strips. In practice, Boolean models often ask about long-term regimes as much as next states.
 
 ![](assets/boolean_networks_examples/segment_basins.png)
 
 ## Random Kauffman regimes as a plotted sweep
 
-The final experiment steps away from one hand-made network and asks a population question instead. As you increase in-degree `k` in random `N-K` Kauffman systems, how do the typical attractor counts and periods move? Field should not answer that only with a table; it should plot the trend.
+This experiment steps away from one hand-made network and asks a population question. As in-degree `k` increases in random `N-K` Kauffman systems, the typical attractor counts and periods move. The trend belongs in a plot, not only a table.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/kauffman_sweep.png" wait="1.0" capture="box"}
 :::static
@@ -193,13 +193,13 @@ lines(
 )
 ```
 
-That picture is not trying to prove a grand theorem. It is doing something more practical: showing how the ensemble mood changes as connectivity rises. Some regimes favor many short-term destinations, some produce longer cycles, some keep a healthy fixed-point population around. Once the sweep is visible, the phrase “ordered versus chaotic” stops being hand-wavy and starts being something you can inspect.
+This picture shows how the ensemble changes as connectivity rises. Some regimes favor many short-term destinations, some produce longer cycles, some keep a healthy fixed-point population around. Once the sweep is visible, "ordered versus chaotic" becomes something you can inspect.
 
 ![](assets/boolean_networks_examples/kauffman_sweep.png)
 
 ## Boolean attractors as drum grids
 
-Once you have a limit cycle, you already have a rhythm. The remaining question is how literal you want to be. You can treat each node as a lane directly, or you can gate the cycle with a simple beat phase such as `step % 4` and turn the same binary motion into kick / snare / hat style sample triggers.
+Once you have a limit cycle, you have a rhythm. You can treat each node as a lane directly, or gate the cycle with a beat phase such as `step % 4` and turn the same binary motion into kick / snare / hat style triggers.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/rhythm_cycles.png" wait="1.0" capture="box"}
 :::static
@@ -268,8 +268,8 @@ lines(
 )
 ```
 
-That is the moment where Boolean networks stop looking like abstract regulatory toys and start looking like sequencers. The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into something much closer to kick / snare / hat / clap / percussion lanes, which means those five rows could be sent straight to a Drift-style sample rack. The network is not “playing audio” by itself, but it is producing a stable, inspectable rhythmic grammar.
+The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into something closer to kick / snare / hat / clap / percussion lanes, which means those five rows could be sent straight to a Drift-style sample rack. The network is not "playing audio" by itself; it is producing a stable, inspectable rhythmic grammar.
 
 ![](assets/boolean_networks_examples/rhythm_cycles.png)
 
-Boolean networks are especially rewarding in Field because they sit at the point where code, graphs, dynamics, and now even rhythm all fit on one page. For the next step, where those rhythms become `NoteProcess` objects and live Dirt triggers, continue with [Boolean network music examples](boolean_network_music_examples.md). For related work where static structure and measured behavior are plotted together, continue with [Stats examples](stats_examples.md), [Correlations examples](correlations_examples.md), and [Sorting networks examples](sorting_networks_examples.md).
+Boolean networks sit at a useful point in Field: code, graphs, dynamics, and rhythm can all fit on one page. For the next step, where those rhythms become `NoteProcess` objects and live Dirt triggers, continue with [Boolean network music examples](boolean_network_music_examples.md). For related work where static structure and measured behavior are plotted together, continue with [Stats examples](stats_examples.md), [Correlations examples](correlations_examples.md), and [Sorting networks examples](sorting_networks_examples.md).
