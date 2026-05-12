@@ -28,14 +28,14 @@ Guide chat has four parts:
 
 Install the Python dependencies:
 
-```bash
+```diffstatic {data-lang=bash}
 cd server
 pip install -r requirements.txt
 ```
 
 Start the chat server:
 
-```bash
+```diffstatic {data-lang=bash}
 cd server
 python3 guide_chat_server.py
 ```
@@ -48,7 +48,7 @@ Optional environment variables:
 
 Then run Field normally:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew runJvm
 ```
 
@@ -87,7 +87,7 @@ Only steps that call `withChat()` render a discussion disclosure.
 
 The frontend reads `username` from the URL query string:
 
-```text
+```diffstatic {data-lang=text}
 https://localhost:9092/?file=myguide&username=student1
 ```
 
@@ -97,7 +97,7 @@ Without that parameter, messages are posted as `anonymous`.
 
 Messages are stored under `chat_data/` in per-slideshow JSON files:
 
-```text
+```diffstatic {data-lang=text}
 chat_data/
   slideshow_box123_1704182400000/
     slide_0.json
@@ -106,7 +106,7 @@ chat_data/
 
 Each file contains an array of message records:
 
-```json
+```diffstatic {data-lang=json}
 [
   {
     "username": "student1",

@@ -312,7 +312,7 @@ The upper grid shows raw Boolean state evolution. The piano roll underneath show
 
 The live bridge is the launchable responder. `respondAhead(...)` clocks the Boolean network in real time and calls back with `BooleanNetworkStep` values. That is enough to drive a `DirtSamplePlayer` directly.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.four.synth.*
 import afield.stdlib.*
 

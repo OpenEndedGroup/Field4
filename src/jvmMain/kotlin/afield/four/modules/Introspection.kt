@@ -121,6 +121,62 @@ private fun normalizePushConstantMembers(blockName: String, members: List<Intros
     return nestedMembers.map { it.withOffsetAndDemangledName(wrapper.offset) }
 }
 
+private enum class GlslDeclaredStructureKind {
+    STRUCT,
+    BUFFER_REFERENCE
+}
+
+private data class GlslDeclaredStructure(
+    val name: String,
+    val kind: GlslDeclaredStructureKind,
+    val memberNames: List<String>
+)
+
+private val glslBlockCommentRegex = Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
+private val glslLineCommentRegex = Regex("""//.*?$""", setOf(RegexOption.MULTILINE))
+private val glslStructDeclarationRegex = Regex(
+    """\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{(.*?)\}\s*;""",
+    setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE)
+)
+private val glslBufferReferenceDeclarationRegex = Regex(
+    """layout\s*\([^)]*\bbuffer_reference\b[^)]*\)\s*(?:(?:readonly|writeonly|coherent|volatile|restrict)\s+)*buffer\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{(.*?)\}\s*;""",
+    setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE)
+)
+private val glslFieldRegex = Regex(
+    """(?:layout\s*\([^)]*\)\s*)?(?:readonly|writeonly|coherent|volatile|restrict|const|in|out|inout|highp|mediump|lowp\s+)*[A-Za-z_][A-Za-z0-9_]*(?:\s*<[^;>]+>)?(?:\s*\*)?\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\[[^]]*])?\s*$"""
+)
+
+private fun stripGlslComments(source: String): String =
+    source.replace(glslBlockCommentRegex, "").replace(glslLineCommentRegex, "")
+
+private fun parseGlslDeclaredStructures(source: String): List<GlslDeclaredStructure> {
+    val clean = stripGlslComments(source)
+
+    fun fields(body: String): List<String> =
+        body.split(";")
+            .mapNotNull { raw ->
+                val line = raw.trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                glslFieldRegex.matchEntire(line)?.groupValues?.getOrNull(1)
+            }
+
+    val out = mutableListOf<GlslDeclaredStructure>()
+    glslStructDeclarationRegex.findAll(clean).forEach { match ->
+        out += GlslDeclaredStructure(
+            match.groupValues[1],
+            GlslDeclaredStructureKind.STRUCT,
+            fields(match.groupValues[2])
+        )
+    }
+    glslBufferReferenceDeclarationRegex.findAll(clean).forEach { match ->
+        out += GlslDeclaredStructure(
+            match.groupValues[1],
+            GlslDeclaredStructureKind.BUFFER_REFERENCE,
+            fields(match.groupValues[2])
+        )
+    }
+    return out.filter { it.memberNames.isNotEmpty() }
+}
+
 enum class ImageType(val vulkan_format: Int) {
     rgba16f(VK10.VK_FORMAT_R16G16B16A16_SFLOAT)
 }
@@ -257,6 +313,7 @@ open class Introspected {
 
     data class Sampler(val name: String, val type: String, val set: Int, val location: Int)
     data class PushConstant(val name: String, val size: Int, val members: List<Member>)
+    data class StructureType(val name: String, val members: List<Member>, val size: Int, val bufferReference: Boolean = false)
 
     val inputs = mutableListOf<Input>()
     val outputs = mutableListOf<Input>()
@@ -267,6 +324,7 @@ open class Introspected {
     val accelerationStructures = mutableListOf<AccelerationStructure>()
     val samplers = mutableListOf<Sampler>()
     val pushConstants = mutableListOf<PushConstant>()
+    val structureTypes = mutableListOf<StructureType>()
 
     lateinit var code: ShaderSPIRVUtils.SPIRV
     override fun toString(): String {
@@ -506,6 +564,15 @@ private fun slangTypeSizeInBytes(type: Either<PrimitiveType, List<Introspected.M
         }
     })
 
+private fun introspectedMemberLayoutSize(member: Introspected.Member): Int =
+    if (member.physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt()
+    else slangTypeSizeInBytes(member.type)
+
+private fun introspectedMembersLayoutSize(members: List<Introspected.Member>): Int {
+    if (members.isEmpty()) return 0
+    return members.maxOf { it.offset + introspectedMemberLayoutSize(it) }
+}
+
 private fun slangPushConstantSize(parameter: JSONObject, members: List<Introspected.Member>): Int {
     val binding = parameter.optJSONObject("binding")
     val rawSize = binding?.optInt("size", 0) ?: 0
@@ -652,6 +719,21 @@ class Introspection private constructor(
                         ?: throw IllegalArgumentException("Unknown member type '$typeKey' for '$n2'")
                     Member(n2, offset, memberType, 0, physicalPointer)
                 })
+            }
+        }
+
+        val declaredStructures = parseGlslDeclaredStructures(source)
+        declaredStructures.forEach { declaration ->
+            val reflectedMembers = types.values.firstOrNull { members ->
+                members.map { it.name } == declaration.memberNames
+            }
+            if (reflectedMembers != null && structureTypes.none { it.name == declaration.name }) {
+                structureTypes += StructureType(
+                    name = declaration.name,
+                    members = reflectedMembers,
+                    size = introspectedMembersLayoutSize(reflectedMembers),
+                    bufferReference = declaration.kind == GlslDeclaredStructureKind.BUFFER_REFERENCE
+                )
             }
         }
 

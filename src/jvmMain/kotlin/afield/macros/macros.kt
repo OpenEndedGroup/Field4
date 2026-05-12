@@ -125,12 +125,12 @@ suspend fun checkPreambleAndExecute(
     onEvalError: (List<ScriptDiagnostic>) -> Unit,
     onEvalException: (Throwable) -> Unit
 ) {
-    val _was = inside.getPropertyRaw("_preamble", null) as String?
+    val _was = (inside.getPropertyRaw("_preamble", null) as String?)?.let(::normalizePreambleText)
     val was: Map<String, String> =
         if (_was == null) emptyMap<String, String>() else _was.preambleSegments()
             .prefixAwareMap()
 
-    var now = gatherPreambleUpwards(inside)
+    var now = normalizePreambleText(gatherPreambleUpwards(inside))
 
 
     inside.setPropertyRaw("_preamble", now)
@@ -157,8 +157,8 @@ suspend fun checkPreambleAndExecute(
 
     // remove duplicate lines in the order that they arrive
 
-    val raw = inside.getPropertyRaw("preamble", "") as String
-    val next = (extra + raw.preambleSegments().prefixAwareMap()).values.joinToString(separator = "\n")
+    val raw = normalizePreambleText(inside.getPropertyRaw("preamble", "") as String)
+    val next = normalizePreambleText((extra + raw.preambleSegments().prefixAwareMap()).values.joinToString(separator = "\n"))
     inside.setPropertyRaw("_preamble", next)
     inside.setPropertyRaw("preamble", next)
 }

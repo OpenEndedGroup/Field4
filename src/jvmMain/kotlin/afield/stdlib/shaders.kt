@@ -1356,19 +1356,264 @@ private fun isImportSegment(segment: PreambleSegment): Boolean {
     return isImportLine(firstMeaningfulLine)
 }
 
-private fun prefixed(prefix: String, code: String): String = "/*$prefix*/ $code"
+private fun generatedPreambleGroup(key: String): String? {
+    val prefix = key.substringBefore(":", key)
+    return when {
+        prefix.startsWith("graphics-") -> "graphics"
+        prefix.startsWith("compute-") -> "compute"
+        prefix.startsWith("mesh-") -> "mesh"
+        prefix.startsWith("ray-") -> "ray"
+        else -> null
+    }
+}
 
-private fun mergePreambleSegments(existing: List<String>, incoming: List<String>): List<PreambleSegment> {
+fun normalizePreambleText(preamble: String): String {
     val merged = LinkedHashMap<String, PreambleSegment>()
-
-    splitPreambleSegments(existing).forEach { segment ->
+    splitPreambleSegments(preamble.lines()).forEach { segment ->
         val key = preambleSegmentKey(segment)
         if (key.isNotEmpty() && !merged.containsKey(key)) {
             merged[key] = segment
         }
     }
+    val imports = merged.values.filter(::isImportSegment)
+    val nonImports = merged.values.filterNot(::isImportSegment)
+    return (imports + nonImports).flatMap { it.lines }.joinToString(separator = "\n")
+}
 
-    splitPreambleSegments(incoming).forEach { segment ->
+private fun prefixed(prefix: String, code: String): String = "/*$prefix*/ $code"
+
+private fun prefixedBlock(prefix: String, code: String): String =
+    "$preambleBlockStartMarker\n/*$prefix*/\n${code.trim()}\n$preambleBlockEndMarker"
+
+private val kotlinIdentifierRegex = Regex("[A-Za-z_][A-Za-z0-9_]*")
+private val kotlinHardKeywords = setOf(
+    "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if", "in", "interface",
+    "is", "null", "object", "package", "return", "super", "this", "throw", "true", "try", "typealias",
+    "typeof", "val", "var", "when", "while"
+)
+
+private fun kotlinMemberName(name: String): String =
+    if (kotlinIdentifierRegex.matches(name) && name !in kotlinHardKeywords) name else "`$name`"
+
+private data class GeneratedShaderStructure(
+    val glslName: String,
+    val className: String,
+    val members: List<Introspected.Member>,
+    val byteSize: Int,
+    val signature: String,
+    val bufferReference: Boolean
+)
+
+private fun shaderMemberLayoutSize(member: Introspected.Member): Int =
+    if (member.physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt()
+    else member.type.fold(
+        { it.sizeInBytes.toInt() },
+        { nested -> shaderMembersLayoutSize(nested) }
+    )
+
+private fun shaderMembersLayoutSize(members: List<Introspected.Member>): Int =
+    if (members.isEmpty()) 0 else members.maxOf { it.offset + shaderMemberLayoutSize(it) }
+
+private fun shaderMemberSignature(member: Introspected.Member): String =
+    buildString {
+        append(member.name)
+        append("@")
+        append(member.offset)
+        append(":")
+        append(member.arrayStride)
+        append(":")
+        append(member.physicalPointer)
+        append(":")
+        append(member.type.fold({ it.name }, { nested -> nested.joinToString(prefix = "{", postfix = "}", separator = ",", transform = ::shaderMemberSignature) }))
+    }
+
+private fun shaderMembersSignature(members: List<Introspected.Member>): String =
+    members.joinToString(separator = ";", transform = ::shaderMemberSignature)
+
+private fun sanitizeKotlinTypeName(name: String): String {
+    val parts = name.split(Regex("[^A-Za-z0-9_]+")).filter { it.isNotBlank() }
+    val joined = parts.joinToString("") { it.replaceFirstChar { c -> c.uppercase() } }.ifBlank { "ShaderStructure" }
+    val prefixed = if (joined.first().isDigit()) "Shader$joined" else joined
+    return prefixed
+}
+
+private fun sanitizeKotlinFunctionSuffix(name: String): String =
+    sanitizeKotlinTypeName(name)
+
+private fun collectGeneratedShaderStructures(introspections: List<Introspection>): List<GeneratedShaderStructure> {
+    data class Candidate(
+        val name: String,
+        val members: List<Introspected.Member>,
+        val size: Int,
+        val bufferReference: Boolean
+    )
+
+    val candidates = mutableListOf<Candidate>()
+    introspections.forEach { i ->
+        i.structureTypes.forEach { s ->
+            candidates += Candidate(s.name, s.members, s.size, s.bufferReference)
+        }
+        i.ubos.forEach { ubo ->
+            candidates += Candidate(ubo.name, ubo.members, ubo.size, bufferReference = false)
+        }
+        i.ssbo.forEach { ssbo ->
+            candidates += Candidate(ssbo.name, ssbo.members, ssbo.size, bufferReference = false)
+        }
+    }
+
+    val out = mutableListOf<GeneratedShaderStructure>()
+    val signatureByClassName = mutableMapOf<String, String>()
+    val seenByNameAndSignature = mutableSetOf<Pair<String, String>>()
+
+    candidates.forEach { candidate ->
+        val signature = shaderMembersSignature(candidate.members)
+        if (!seenByNameAndSignature.add(candidate.name to signature)) return@forEach
+
+        val baseClassName = sanitizeKotlinTypeName(candidate.name)
+        var className = baseClassName
+        var suffix = 2
+        while (signatureByClassName[className] != null && signatureByClassName[className] != signature) {
+            className = "$baseClassName$suffix"
+            suffix += 1
+        }
+        signatureByClassName[className] = signature
+
+        out += GeneratedShaderStructure(
+            glslName = candidate.name,
+            className = className,
+            members = candidate.members,
+            byteSize = maxOf(candidate.size, shaderMembersLayoutSize(candidate.members)),
+            signature = signature,
+            bufferReference = candidate.bufferReference
+        )
+    }
+
+    return out
+}
+
+private fun buildShaderStructurePreamble(prefix: String, introspections: List<Introspection>): String {
+    val structures = collectGeneratedShaderStructures(introspections)
+    if (structures.isEmpty()) return ""
+
+    val bySignature = structures.associateBy { it.signature }
+    val emitted = mutableSetOf<String>()
+    val chunks = mutableListOf<String>()
+
+    fun nestedLayoutFor(member: Introspected.Member): GeneratedShaderStructure? {
+        if (member.physicalPointer) return null
+        val nested = member.type.fold({ null }, { it }) ?: return null
+        return bySignature[shaderMembersSignature(nested)]
+    }
+
+    lateinit var memberListExpression: (List<Introspected.Member>, String) -> String
+
+    fun memberTypeExpression(member: Introspected.Member): String {
+        if (member.physicalPointer) {
+            return "PrimitiveType.deviceptr.left()"
+        }
+        return member.type.fold(
+            { "PrimitiveType.${it.name}.left()" },
+            { nested ->
+                val nestedLayout = bySignature[shaderMembersSignature(nested)]
+                if (nestedLayout != null) "${nestedLayout.className}LayoutMembers().right()"
+                else memberListExpression(nested, "                    ").trim().removeSuffix(",").let { "$it.right()" }
+            }
+        )
+    }
+
+    memberListExpression = fun(members: List<Introspected.Member>, indent: String): String {
+        if (members.isEmpty()) return "emptyList()"
+        val nextIndent = "$indent    "
+        return buildString {
+            appendLine("listOf(")
+            members.forEach { member ->
+                append(nextIndent)
+                append("Introspected.Member(")
+                append("\"${member.name}\", ")
+                append("${member.offset}, ")
+                append(memberTypeExpression(member))
+                append(", ")
+                append(member.arrayStride)
+                append(", ")
+                append(member.physicalPointer)
+                appendLine("),")
+            }
+            append("$indent)")
+        }
+    }
+
+    fun emit(structure: GeneratedShaderStructure) {
+        if (!emitted.add(structure.className)) return
+
+        structure.members.mapNotNull(::nestedLayoutFor).forEach(::emit)
+
+        val nestedProperties = structure.members.mapNotNull { member ->
+            nestedLayoutFor(member)?.let { nested ->
+                val memberName = kotlinMemberName(member.name)
+                """    val $memberName: ${nested.className}
+        get() = childStructure("${member.name}") { members, baseOffset, pathPrefix, root ->
+            ${nested.className}(members, baseOffset, pathPrefix, root)
+        }"""
+            }
+        }
+
+        val primitiveProperties = structure.members.filter { nestedLayoutFor(it) == null }.map { member ->
+            val ty = kotlinBindingTypeName(member)
+            "    var ${kotlinMemberName(member.name)} by Structure.FromStructure<$ty>()"
+        }
+
+        val helperSuffix = sanitizeKotlinFunctionSuffix(structure.className)
+        val layoutFunctionName = "${structure.className}LayoutMembers"
+        val byteSizeFunctionName = "${structure.className}ByteSize"
+        val body = buildString {
+            appendLine("class ${structure.className}(")
+            appendLine("    members: List<Introspected.Member> = $layoutFunctionName(),")
+            appendLine("    baseOffset: Int = 0,")
+            appendLine("    pathPrefix: String = \"\",")
+            appendLine("    root: Structure? = null")
+            appendLine(") : Structure(members, baseOffset, pathPrefix, root) {")
+            appendLine("    init { setMembers(members) }")
+            (nestedProperties + primitiveProperties).forEach {
+                appendLine(it)
+            }
+            appendLine()
+            appendLine("}")
+            appendLine()
+            appendLine("fun $byteSizeFunctionName(): Long = ${structure.byteSize}L")
+            appendLine()
+            appendLine("fun $layoutFunctionName(): List<Introspected.Member> =")
+            appendLine("    ${memberListExpression(structure.members, "    ")}")
+            appendLine()
+            appendLine("fun HasBuffer.as$helperSuffix(): ${structure.className} =")
+            appendLine("    asStructure(${structure.className}(), $layoutFunctionName())")
+            appendLine()
+            appendLine("fun BufferParameters.as$helperSuffix(): ${structure.className} =")
+            appendLine("    buffer.as$helperSuffix()")
+        }
+
+        chunks += prefixedBlock("$prefix-structure-type:${structure.glslName}:${structure.className}", body)
+    }
+
+    structures.forEach(::emit)
+    return chunks.joinToString(separator = "\n") + "\n"
+}
+
+private fun mergePreambleSegments(existing: List<String>, incoming: List<String>): List<PreambleSegment> {
+    val merged = LinkedHashMap<String, PreambleSegment>()
+    val incomingSegments = splitPreambleSegments(incoming)
+    val replacementGroups = incomingSegments
+        .mapNotNull { generatedPreambleGroup(preambleSegmentKey(it)) }
+        .toSet()
+
+    splitPreambleSegments(existing).forEach { segment ->
+        val key = preambleSegmentKey(segment)
+        if (generatedPreambleGroup(key) in replacementGroups) return@forEach
+        if (key.isNotEmpty() && !merged.containsKey(key)) {
+            merged[key] = segment
+        }
+    }
+
+    incomingSegments.forEach { segment ->
         val key = preambleSegmentKey(segment)
         if (key.isNotEmpty()) {
             // New insertions should win so reloads replace generated bindings in-place.
@@ -1392,7 +1637,7 @@ fun applyInsertToPreamble(box: Box, e: Insert) {
     val merged = mergePreambleSegments(existingLines, incomingLines)
     val imports = merged.filter(::isImportSegment)
     val nonImports = merged.filterNot(::isImportSegment)
-    b.preamble = (imports + nonImports).flatMap { it.lines }.joinToString(separator = "\n")
+    b.preamble = normalizePreambleText((imports + nonImports).flatMap { it.lines }.joinToString(separator = "\n"))
 
 }
 
@@ -1574,10 +1819,10 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
 
 private fun buildComputeInsert(ci: Introspection): Insert {
     var postImport = ""
+    postImport += buildShaderStructurePreamble("compute", listOf(ci))
 
     // Push constants
-    ci.pushConstants.forEach { pc ->
-        pc.members.forEach { member ->
+    ci.pushConstants.flatMap { it.members }.distinctBy { it.name }.forEach { member ->
             postImport += prefixed(
                 "compute-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
@@ -1591,11 +1836,10 @@ private fun buildComputeInsert(ci: Introspection): Insert {
                 "compute-pc-binding-group:${member.name}",
                 "var ComputeMeshGroup.${member.name} by ComputeMeshGroup.BoundFromStructure<$ty>()"
             ) + "\n"
-        }
     }
 
     // UBOs
-    ci.ubos.forEach { ubo ->
+    ci.ubos.distinctBy { it.name }.forEach { ubo ->
         postImport += prefixed(
             "compute-ubo:${ubo.name}",
             "val ModulePointer.${ubo.name} by FromUniform()"
@@ -1614,7 +1858,7 @@ private fun buildComputeInsert(ci: Introspection): Insert {
     }
 
     // SSBOs
-    ci.ssbo.forEach { ssbo ->
+    ci.ssbo.distinctBy { it.name }.forEach { ssbo ->
         postImport += prefixed(
             "compute-ssbo:${ssbo.name}",
             "val ComputeModulePointer.${ssbo.name} by ComputeMesh.FromUniform()"
@@ -1626,6 +1870,8 @@ private fun buildComputeInsert(ci: Introspection): Insert {
         preamble = """
             import afield.four.buffers.*
             import afield.four.modules.*
+            import arrow.core.left
+            import arrow.core.right
         """.trimIndent(),
         preambleAfterImports = postImport
     )
@@ -1677,10 +1923,10 @@ fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean 
 // ------------------------------
 private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspection): Insert {
     var postImport = ""
+    postImport += buildShaderStructurePreamble("mesh", listOf(ti, mi, fi))
 
     // Push constants across task+mesh+fragment
-    (ti.pushConstants + mi.pushConstants + fi.pushConstants).forEach { pc ->
-        pc.members.forEach { member ->
+    (ti.pushConstants + mi.pushConstants + fi.pushConstants).flatMap { it.members }.distinctBy { it.name }.forEach { member ->
             postImport += prefixed(
                 "mesh-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
@@ -1694,11 +1940,10 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
                 "mesh-pc-binding-group:${member.name}",
                 "var MeshMeshGroup.${member.name} by MeshMeshGroup.BoundFromStructure<$ty>()"
             ) + "\n"
-        }
     }
 
     // UBOs across task+mesh+fragment
-    (ti.ubos + mi.ubos + fi.ubos).forEach { ubo ->
+    (ti.ubos + mi.ubos + fi.ubos).distinctBy { it.name }.forEach { ubo ->
         postImport += prefixed(
             "mesh-ubo:${ubo.name}",
             "val MeshModulePointer.${ubo.name} by FromUniform()"
@@ -1717,7 +1962,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
     }
 
     // SSBOs across task+mesh+fragment
-    (ti.ssbo + mi.ssbo + fi.ssbo).forEach { ssbo ->
+    (ti.ssbo + mi.ssbo + fi.ssbo).distinctBy { it.name }.forEach { ssbo ->
         postImport += prefixed(
             "mesh-ssbo:${ssbo.name}",
             "val MeshModulePointer.${ssbo.name} by MeshMesh.FromUniform()"
@@ -1728,6 +1973,8 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
         preamble = """
             import afield.four.buffers.*
             import afield.four.modules.*
+            import arrow.core.left
+            import arrow.core.right
         """.trimIndent(),
         preambleAfterImports = postImport
     )
@@ -1848,9 +2095,9 @@ private fun prepareRayTracingStages(box: Box): List<PreparedShaderStage>? {
 
 private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
     var postImport = ""
+    postImport += buildShaderStructurePreamble("ray", introspections)
 
-    introspections.flatMap { it.pushConstants }.forEach { pc ->
-        pc.members.forEach { member ->
+    introspections.flatMap { it.pushConstants }.flatMap { it.members }.distinctBy { it.name }.forEach { member ->
             postImport += prefixed(
                 "ray-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
@@ -1860,10 +2107,9 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
                 "ray-pc-binding:${member.name}",
                 "var RayTracingDispatch.${member.name} by RayTracingDispatch.BoundFromStructure<$ty>()"
             ) + "\n"
-        }
     }
 
-    introspections.flatMap { it.ubos }.forEach { ubo ->
+    introspections.flatMap { it.ubos }.distinctBy { it.name }.forEach { ubo ->
         postImport += prefixed(
             "ray-ubo:${ubo.name}",
             "val RayTracingModulePointer.${ubo.name} by RayTracingFromUniform()"
@@ -1877,7 +2123,7 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
         }
     }
 
-    introspections.flatMap { it.ssbo }.forEach { ssbo ->
+    introspections.flatMap { it.ssbo }.distinctBy { it.name }.forEach { ssbo ->
         postImport += prefixed(
             "ray-ssbo:${ssbo.name}",
             "val RayTracingModulePointer.${ssbo.name} by RayTracingFromUniform()"
@@ -1888,6 +2134,8 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
         preamble = """
             import afield.four.buffers.*
             import afield.four.modules.*
+            import arrow.core.left
+            import arrow.core.right
         """.trimIndent(),
         preambleAfterImports = postImport
     )
@@ -2243,9 +2491,9 @@ fun insertForShader(
     }
 
     postImport += writeSuperMap(vi.inputs) + "\n"
+    postImport += buildShaderStructurePreamble("graphics", listOf(vi, fi))
 
-    (vi.pushConstants + fi.pushConstants).forEach {
-        it.members.forEach { member ->
+    (vi.pushConstants + fi.pushConstants).flatMap { it.members }.distinctBy { it.name }.forEach { member ->
             postImport += prefixed(
                 "graphics-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()"
@@ -2260,10 +2508,9 @@ fun insertForShader(
                 "graphics-pc-binding-group:${member.name}",
                 "var MeshGroup.${member.name} by MeshGroup.BoundFromStructure<$ty>()"
             ) + "\n"
-        }
     }
 
-    (fi.ubos + vi.ubos).forEach {
+    (fi.ubos + vi.ubos).distinctBy { it.name }.forEach {
         postImport += prefixed(
             "graphics-ubo:${it.name}",
             "val ModulePointer.${it.name} by FromUniform()"
@@ -2277,7 +2524,7 @@ fun insertForShader(
         }
     }
 
-    (fi.ssbo + vi.ssbo).forEach {
+    (fi.ssbo + vi.ssbo).distinctBy { it.name }.forEach {
         postImport += prefixed(
             "graphics-ssbo:${it.name}",
             "val ModulePointer.${it.name} by FromUniform()"
@@ -2292,6 +2539,8 @@ fun insertForShader(
         preamble = """
             import afield.four.buffers.*
             import afield.four.modules.*
+            import arrow.core.left
+            import arrow.core.right
             import java.nio.*
         """.trimIndent(),
         preambleAfterImports = postImport,

@@ -27,7 +27,7 @@ interface KotlinScriptEngine {
     /**
      * Dispatcher for CPU-bound compilation and macro-expansion work.
      * K1 returns its single [KotlinInterface.compilationThread] (K1 is not thread-safe).
-     * K2 returns [Dispatchers.Default] (K2 supports concurrent compilation).
+     * K2 returns [Dispatchers.Default], with each K2 REPL state serializing its own compiles.
      */
     val compilationDispatcher: CoroutineDispatcher
         get() = Dispatchers.Default
@@ -475,7 +475,7 @@ object KotlinEngineConfig {
      * When true (default), compilation runs on a background dispatcher so the Runloop
      * frame loop is not blocked while the Kotlin compiler works.
      *
-     * K2 dispatches to [kotlinx.coroutines.Dispatchers.Default] (multi-threaded).
+     * K2 dispatches to [kotlinx.coroutines.Dispatchers.Default], but serializes compiles per REPL state.
      * K1 dispatches to its single [KotlinInterface.compilationThread] (K1 is not thread-safe).
      *
      * Set to false to force compilation on the calling dispatcher (legacy behaviour).

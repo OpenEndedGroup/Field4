@@ -396,7 +396,7 @@ The broad contour survives, while the surface gains character. The expanded refe
 
 All snippets below assume:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.stdlib.Functions
 with(Functions) {
     val d = Functions.Domain.of(0.0, 1.0)

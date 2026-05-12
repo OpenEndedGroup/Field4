@@ -9,6 +9,8 @@ import afield.stdlib.applyInsertToPreamble
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.kotlin.backend.common.pop
@@ -107,6 +109,10 @@ class KotlinInterface2(
         val env = envField.get(ctx) as KotlinCoreEnvironment
         env.project
     }
+
+    // K2 can compile different REPL states concurrently, but a single
+    // K2ReplCompilationState is not safe to enter from overlapping snippets.
+    private val compileMutex = Mutex()
 
     private val resolver = CompoundDependenciesResolver(FileSystemDependenciesResolver(), MavenDependenciesResolver())
 
@@ -215,31 +221,33 @@ class KotlinInterface2(
     }
 
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
-        val code = SourceCodeImpl(id++, s)
-        val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
+        return compileMutex.withLock {
+            val code = SourceCodeImpl(id++, s)
+            val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
 
-        lprintln("info,kotlin,perf", "\t\t compile code $s")
+            lprintln("info,kotlin,perf", "\t\t compile code $s")
 
-        // Clear diagnostics from previous snippet
-        messageCollector.clear()
+            // Clear diagnostics from previous snippet. The collector is shared by this K2 REPL state.
+            messageCollector.clear()
 
-        var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
-        val ns = measureNanoTime {
-            if (KotlinEngineConfig.offloadCompilation) {
-                // K2 is thread-safe — use the default pool so the Runloop keeps running frames
-                r = withContext(compilationDispatcher) {
-                    compiler.compile(code, compilerConfig)
+            var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
+            val ns = measureNanoTime {
+                if (KotlinEngineConfig.offloadCompilation) {
+                    // Offload the expensive compiler work, but keep this REPL state single-entered.
+                    r = withContext(compilationDispatcher) {
+                        compiler.compile(code, compilerConfig)
+                    }
+                } else {
+                    r = compiler.compile(code, compilerConfig)
                 }
-            } else {
-                r = compiler.compile(code, compilerConfig)
             }
-        }
-        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
-        if (r is ResultWithDiagnostics.Failure) {
-            context.debugScripts.discard(snapshot)
-        }
+            lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
+            if (r is ResultWithDiagnostics.Failure) {
+                context.debugScripts.discard(snapshot)
+            }
 
-        return r!!
+            r!!
+        }
     }
 
 
