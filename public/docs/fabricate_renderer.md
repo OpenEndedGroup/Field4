@@ -42,6 +42,82 @@ val captureScene: suspend () -> Unit = {
 start(captureScene)
 ```
 
+## Shiny Torii on Checkerboard Planes
+
+A compact “hero” scene: reflective torii over a checkerboard floor. This is a quick visual sanity check for specular highlights, floor contacts, and stable shading under denser geometry.
+
+<!--
+FIELD_TEST
+id: docs.fabricate.shiny-torii-checkerboard
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, checkerboard, torus]
+timeoutSec: 180
+withPlaywright: true
+execution: launch
+waitSec: 20.0
+expect:
+  allowMissingOutput: true
+  screenshot:
+    kind: box
+    padding: 16
+  image:
+    path: /tmp/docs-fabricate-shiny-checkerboard-native.png
+    lumaComparisons:
+      - darker: [0.02, 0.72, 0.12, 0.10]
+        lighter: [0.50, 0.30, 0.16, 0.16]
+        marginGt: 8
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shiny-checkerboard.png" source-image="/tmp/docs-fabricate-shiny-checkerboard-native.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shiny-torii-checkerboard"}
+:::static
+import afield.four.fabricated.StandardRendererDocsHarness
+
+val captureScene: suspend () -> Unit = {
+    val image = StandardRendererDocsHarness.renderShinyToriCheckerboard("/tmp/docs-fabricate-shiny-checkerboard-native.png")
+    display("render", StandardRendererDocsHarness.htmlForImage(image, "Shiny torii over checkerboard planes"))
+    println("fabricate shiny checkerboard scene ready")
+}
+start(captureScene)
+```
+
+## Checkerboard Camera Depth Study
+
+This scene keeps geometry fixed and compares two camera framings over the same checkerboard setup to make near-versus-far depth layering obvious in a single capture.
+
+<!--
+FIELD_TEST
+id: docs.fabricate.camera-depth-study
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, camera, depth]
+timeoutSec: 180
+withPlaywright: true
+execution: launch
+waitSec: 25.0
+expect:
+  allowMissingOutput: true
+  screenshot:
+    kind: box
+    padding: 16
+  image:
+    path: /tmp/docs-fabricate-camera-depth-study-native.png
+    regionsDifferent:
+      - a: [0.20, 0.28, 0.24, 0.40]
+        b: [0.70, 0.28, 0.24, 0.40]
+        meanAbsDiffGt: 8
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-camera-depth-study.png" source-image="/tmp/docs-fabricate-camera-depth-study-native.png" wait="25.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-camera-depth-study"}
+:::static
+import afield.four.fabricated.StandardRendererDocsHarness
+
+val captureScene: suspend () -> Unit = {
+    val image = StandardRendererDocsHarness.renderCheckerboardCameraDepthStudy("/tmp/docs-fabricate-camera-depth-study-native.png")
+    display("render", StandardRendererDocsHarness.htmlForImage(image, "Left: near framing, right: far framing"))
+    println("fabricate camera depth study ready")
+}
+start(captureScene)
+```
+
 ## Metalness
 
 The two torii use the same base color and roughness. The left one is dielectric; the right one is metallic. Keeping the geometry fixed makes the material response visible.

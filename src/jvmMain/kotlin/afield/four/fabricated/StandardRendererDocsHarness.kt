@@ -132,6 +132,89 @@ object StandardRendererDocsHarness {
         }
     }
 
+    suspend fun renderShinyToriCheckerboard(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
+    ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
+        bundle.scene.camera.at.set(0f, 0.9f, -5.3f)
+        bundle.scene.camera.target.set(0f, -0.25f, 0f)
+        bundle.scene.lightDirection.set(Vector3f(-0.55f, -1.0f, -0.20f).normalize())
+        bundle.scene.lightIntensity = 1.55f
+        bundle.scene.shadowStrength = 1f
+        bundle.scene.aoStrength = 1f
+        bundle.scene.shadowExtent = 8.5f
+        bundle.scene.shadowBias = 0.0022f
+
+        addCheckerboardFloor(
+            bundle = bundle,
+            renderer = activeRenderer,
+            tilesPerSide = 10,
+            tileSize = 0.52f,
+            y = -1.0f
+        )
+
+        val torusA = bundle.registerTestTorus(name = "torus-a", slices = 72, stacks = 72, renderer = activeRenderer)
+        torusA.setModel(Matrix4f().translate(-1.25f, -0.25f, 0.6f).rotateY(0.35f))
+        tint(torusA, color = Vector4f(0.92f, 0.35f, 0.33f, 1f), metallic = 1.0f, roughness = 0.08f)
+
+        val torusB = bundle.registerTestTorus(name = "torus-b", slices = 72, stacks = 72, renderer = activeRenderer)
+        torusB.setModel(Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.24f).rotateY(-0.25f))
+        tint(torusB, color = Vector4f(0.28f, 0.86f, 0.96f, 1f), metallic = 1.0f, roughness = 0.07f)
+
+        val torusC = bundle.registerTestTorus(name = "torus-c", slices = 72, stacks = 72, renderer = activeRenderer)
+        torusC.setModel(Matrix4f().translate(1.25f, -0.25f, -0.65f).rotateY(-0.45f))
+        tint(torusC, color = Vector4f(0.95f, 0.78f, 0.29f, 1f), metallic = 1.0f, roughness = 0.09f)
+
+        bundle.present(renderer = activeRenderer)
+    }
+
+    suspend fun renderCheckerboardCameraDepthStudy(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
+    ): File {
+        val bundle = StandardRenderer.build(renderer)
+        bundle.attachTo(renderer)
+        bundle.scene.lightDirection.set(Vector3f(-0.48f, -1.0f, -0.26f).normalize())
+        bundle.scene.lightIntensity = 1.45f
+        bundle.scene.shadowStrength = 1f
+        bundle.scene.aoStrength = 1f
+        bundle.scene.shadowExtent = 9.0f
+        bundle.scene.shadowBias = 0.0024f
+        addCheckerboardFloor(bundle, renderer, tilesPerSide = 12, tileSize = 0.48f, y = -1.05f)
+
+        val near = bundle.registerTestTorus(name = "near-torus", slices = 72, stacks = 72, renderer = renderer)
+        near.setModel(Matrix4f().translate(-1.0f, -0.15f, 1.0f).rotateY(0.35f))
+        tint(near, color = Vector4f(0.89f, 0.44f, 0.30f, 1f), metallic = 1f, roughness = 0.12f)
+
+        val middle = bundle.registerTestTorus(name = "mid-torus", slices = 72, stacks = 72, renderer = renderer)
+        middle.setModel(Matrix4f().translate(0f, -0.12f, -0.1f).rotateY(-0.20f))
+        tint(middle, color = Vector4f(0.34f, 0.82f, 0.95f, 1f), metallic = 1f, roughness = 0.10f)
+
+        val far = bundle.registerTestTorus(name = "far-torus", slices = 72, stacks = 72, renderer = renderer)
+        far.setModel(Matrix4f().translate(1.0f, -0.08f, -1.35f).rotateY(0.45f))
+        tint(far, color = Vector4f(0.96f, 0.85f, 0.34f, 1f), metallic = 1f, roughness = 0.10f)
+
+        bundle.present(renderer = renderer)
+
+        val nearCamera = captureScene(tempPng("fabricate-depth-camera-near"), bundle, renderer) {
+            bundle.scene.camera.at.set(-1.8f, 0.8f, -2.2f)
+            bundle.scene.camera.target.set(-0.95f, -0.2f, 0.95f)
+        }
+        val farCamera = captureScene(tempPng("fabricate-depth-camera-far"), bundle, renderer) {
+            bundle.scene.camera.at.set(1.8f, 0.9f, -4.8f)
+            bundle.scene.camera.target.set(0.95f, -0.15f, -1.35f)
+        }
+
+        return try {
+            composeHorizontal(nearCamera, farCamera, File(outputPath))
+        } finally {
+            nearCamera.delete()
+            farCamera.delete()
+        }
+    }
+
     fun htmlForImage(imageFile: File, caption: String? = null): String {
         val encoded = Base64.getEncoder().encodeToString(imageFile.readBytes())
         val captionHtml = caption?.takeIf { it.isNotBlank() }?.let {
@@ -258,6 +341,35 @@ object StandardRendererDocsHarness {
             metallic = 0.18f,
             roughness = 0.36f
         )
+    }
+
+    private fun addCheckerboardFloor(
+        bundle: StandardRenderer.Bundle,
+        renderer: Renderer,
+        tilesPerSide: Int,
+        tileSize: Float,
+        y: Float
+    ) {
+        val half = tilesPerSide / 2
+        for (z in 0 until tilesPerSide) {
+            for (x in 0 until tilesPerSide) {
+                val mesh = bundle.registerCube(
+                    name = "tile-$x-$z",
+                    size = 1f,
+                    renderer = renderer
+                )
+                val px = (x - half + 0.5f) * tileSize
+                val pz = (z - half + 0.5f) * tileSize
+                mesh.setModel(Matrix4f().translate(px, y, pz).scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f))
+                val bright = ((x + z) and 1) == 0
+                tint(
+                    mesh,
+                    color = if (bright) Vector4f(0.76f, 0.76f, 0.80f, 1f) else Vector4f(0.18f, 0.18f, 0.22f, 1f),
+                    metallic = if (bright) 0.05f else 0.02f,
+                    roughness = if (bright) 0.84f else 0.92f
+                )
+            }
+        }
     }
 
     private fun tint(
