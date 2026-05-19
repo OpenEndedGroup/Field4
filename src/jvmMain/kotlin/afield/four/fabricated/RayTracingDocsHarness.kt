@@ -625,7 +625,7 @@ object RayTracingDocsHarness {
         void main() {
             vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
             float tileScale = 3.6;
-            float checker = mod(floor(worldHit.x * tileScale) + floor(worldHit.z * tileScale), 2.0);
+            float checker = mod(abs(floor(worldHit.x * tileScale)) + abs(floor(worldHit.z * tileScale)), 2.0);
 
             vec3 lightTile = vec3(0.78, 0.78, 0.82);
             vec3 darkTile = vec3(0.22, 0.22, 0.26);
