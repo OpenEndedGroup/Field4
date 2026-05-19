@@ -351,8 +351,10 @@ object StandardRendererDocsHarness {
         tileSize: Float,
         y: Float
     ) {
+        val verticesPerCube = 36
+        val tileGridStep = 2f
         val tileCount = tilesPerSide * tilesPerSide
-        val maxVerticesPerParity = ((tileCount + 1) / 2) * 36
+        val maxVerticesPerParity = ((tileCount + 1) / 2) * verticesPerCube
         val edgeOffset = (tilesPerSide - 1).toFloat()
         val model = Matrix4f()
             .translate(0f, y, 0f)
@@ -369,7 +371,11 @@ object StandardRendererDocsHarness {
                         positions = mesh.gBuffer.position,
                         normals = mesh.gBuffer.normal,
                         size = 1f,
-                        center = Vec3(-edgeOffset + col * 2f, 0f, -edgeOffset + row * 2f),
+                        center = Vec3(
+                            -edgeOffset + col * tileGridStep,
+                            0f,
+                            -edgeOffset + row * tileGridStep
+                        ),
                         config = StandardShapes.WriteConfig(append = !first)
                     )
                     first = false
