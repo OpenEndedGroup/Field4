@@ -352,17 +352,24 @@ object StandardRendererDocsHarness {
         y: Float
     ) {
         val verticesPerCube = 36
-        val tileGridStep = 2f // unit cubes are centered two units apart before model scaling
+        val tileGridStep = 2f // unit cubes have side length 1, so center-to-center spacing is 2 in pre-scale space
         val tileCount = tilesPerSide * tilesPerSide
-        // Checkerboard parity split; one parity gets the extra tile when tileCount is odd.
-        val maxVerticesPerParity = ((tileCount + 1) / 2) * verticesPerCube
         val gridHalfSpan = (tilesPerSide - 1).toFloat()
         val model = Matrix4f()
             .translate(0f, y, 0f)
             .scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f)
 
         fun appendTiles(name: String, parity: Int): StandardRenderer.Bundle.PullingMeshPair {
-            val mesh = bundle.registerPullingMesh(name = name, maxVertices = maxVerticesPerParity, renderer = renderer)
+            val tilesInParity = (0 until tileCount).count { index ->
+                val row = index / tilesPerSide
+                val col = index % tilesPerSide
+                (row + col) % 2 == parity
+            }
+            val mesh = bundle.registerPullingMesh(
+                name = name,
+                maxVertices = tilesInParity * verticesPerCube,
+                renderer = renderer
+            )
             var vertexCount = 0
             for (row in 0 until tilesPerSide) {
                 for (col in 0 until tilesPerSide) {
