@@ -170,6 +170,50 @@ object StandardRendererDocsHarness {
         bundle.present(renderer = activeRenderer)
     }
 
+    suspend fun renderShaderGeneratedCheckerboard(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
+    ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
+        bundle.scene.camera.at.set(0f, 0.95f, -5.0f)
+        bundle.scene.camera.target.set(0f, -0.2f, 0f)
+        bundle.scene.lightDirection.set(Vector3f(-0.52f, -1.0f, -0.22f).normalize())
+        bundle.scene.lightIntensity = 1.5f
+        bundle.scene.shadowStrength = 1f
+        bundle.scene.aoStrength = 1f
+        bundle.scene.shadowExtent = 8.0f
+        bundle.scene.shadowBias = 0.0022f
+
+        val floor = bundle.registerCube(name = "shader-floor", size = 1f, renderer = activeRenderer)
+        floor.setModel(
+            Matrix4f()
+                .translate(0f, -1.0f, 0f)
+                .scale(3.2f, 0.02f, 3.2f)
+        )
+        tint(
+            floor,
+            color = Vector4f(0.58f, 0.58f, 0.62f, 1f),
+            metallic = 0.03f,
+            roughness = 0.9f
+        )
+        checker(
+            floor,
+            scale = 3.0f,
+            color = Vector4f(0.20f, 0.20f, 0.22f, 1f),
+            mix = 1f
+        )
+
+        val torusLeft = bundle.registerTestTorus(name = "shader-torus-left", slices = 72, stacks = 72, renderer = activeRenderer)
+        torusLeft.setModel(Matrix4f().translate(-0.95f, -0.22f, 0.48f).rotateY(0.32f))
+        tint(torusLeft, color = Vector4f(0.90f, 0.39f, 0.33f, 1f), metallic = 1f, roughness = 0.1f)
+
+        val torusRight = bundle.registerTestTorus(name = "shader-torus-right", slices = 72, stacks = 72, renderer = activeRenderer)
+        torusRight.setModel(Matrix4f().translate(0.95f, -0.22f, -0.52f).rotateY(-0.35f))
+        tint(torusRight, color = Vector4f(0.30f, 0.84f, 0.95f, 1f), metallic = 1f, roughness = 0.08f)
+
+        bundle.present(renderer = activeRenderer)
+    }
+
     suspend fun renderCheckerboardCameraDepthStudy(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),
@@ -418,6 +462,17 @@ object StandardRendererDocsHarness {
         mesh.gBuffer.mesh.push["baseColor"] = Vector4f(color)
         metallic?.let { mesh.gBuffer.mesh.push["metallic"] = it }
         roughness?.let { mesh.gBuffer.mesh.push["roughness"] = it }
+    }
+
+    private fun checker(
+        mesh: StandardRenderer.Bundle.PullingMeshPair,
+        scale: Float,
+        color: Vector4f,
+        mix: Float = 1f
+    ) {
+        mesh.gBuffer.mesh.push["checkerScale"] = scale
+        mesh.gBuffer.mesh.push["checkerColor"] = Vector4f(color)
+        mesh.gBuffer.mesh.push["checkerMix"] = mix
     }
 
     private fun composeHorizontal(left: File, right: File, output: File): File {

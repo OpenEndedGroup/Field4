@@ -118,6 +118,44 @@ val captureScene: suspend () -> Unit = {
 start(captureScene)
 ```
 
+## Shader-Generated Checkerboard
+
+This variant keeps floor geometry to a single scaled cube and generates the checker tiles procedurally in the g-buffer fragment shader. It is a quick sanity check that shader-side tiling can replace mesh-side tile splits.
+
+<!--
+FIELD_TEST
+id: docs.fabricate.shader-generated-checkerboard
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, checkerboard, shader]
+timeoutSec: 180
+withPlaywright: true
+execution: launch
+waitSec: 20.0
+expect:
+  allowMissingOutput: true
+  screenshot:
+    kind: box
+    padding: 16
+  image:
+    path: /tmp/docs-fabricate-shader-checkerboard-native.png
+    lumaComparisons:
+      - darker: [0.08, 0.70, 0.10, 0.10]
+        lighter: [0.20, 0.70, 0.10, 0.10]
+        marginGt: 6
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard"}
+:::static
+import afield.four.fabricated.StandardRendererDocsHarness
+
+val captureScene: suspend () -> Unit = {
+    val image = StandardRendererDocsHarness.renderShaderGeneratedCheckerboard("/tmp/docs-fabricate-shader-checkerboard-native.png")
+    display("render", StandardRendererDocsHarness.htmlForImage(image, "Checkerboard generated in shader on one floor mesh"))
+    println("fabricate shader checkerboard scene ready")
+}
+start(captureScene)
+```
+
 ## Metalness
 
 The two torii use the same base color and roughness. The left one is dielectric; the right one is metallic. Keeping the geometry fixed makes the material response visible.
