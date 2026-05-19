@@ -916,6 +916,9 @@ object StandardRenderer {
 		push.seedDefault("metallic") { DEFAULT_METALLIC }
 		push.seedDefault("roughness") { DEFAULT_ROUGHNESS }
 		push.seedDefault("ao") { DEFAULT_MESH_AO }
+		push.seedDefault("checkerScale") { DEFAULT_CHECKER_SCALE }
+		push.seedDefault("checkerColor") { defaultCheckerColor() }
+		push.seedDefault("checkerMix") { DEFAULT_CHECKER_MIX }
 		return this
 	}
 
@@ -989,6 +992,8 @@ object StandardRenderer {
 	private const val DEFAULT_METALLIC = 0.08f
 	private const val DEFAULT_ROUGHNESS = 0.42f
 	private const val DEFAULT_MESH_AO = 1f
+	private const val DEFAULT_CHECKER_SCALE = 1f
+	private const val DEFAULT_CHECKER_MIX = 0f
 	private const val DEFAULT_LIGHT_DISTANCE = 8f
 	private const val DEFAULT_LIGHT_INTENSITY = 4f
 	private const val DEFAULT_SHADOW_BIAS = 0.0015f
@@ -1008,6 +1013,8 @@ object StandardRenderer {
 	private const val DEFAULT_FXAA_EDGE_THRESHOLD = 0.125f
 	private const val DEFAULT_FXAA_EDGE_THRESHOLD_MIN = 0.0312f
 	private const val DEFAULT_FXAA_SPAN_MAX = 8f
+
+	private fun defaultCheckerColor(): Vector4f = Vector4f(0f, 0f, 0f, 1f)
 
 
 	// --- Shader text ---
@@ -1043,6 +1050,9 @@ object StandardRenderer {
 				float metallic;
 				float roughness;
 				float ao;
+				float checkerScale;
+				vec4 checkerColor;
+				float checkerMix;
 			} push;
 
 			layout(location = 0) out vec3 vWorldPos;
@@ -1086,6 +1096,9 @@ object StandardRenderer {
 				layout(offset = 160) float metallic;
 				layout(offset = 164) float roughness;
 				layout(offset = 168) float ao;
+				layout(offset = 172) float checkerScale;
+				layout(offset = 176) vec4 checkerColor;
+				layout(offset = 192) float checkerMix;
 			} push;
 
 			void main() {
@@ -1095,7 +1108,13 @@ object StandardRenderer {
 				vec2 currentUv = (vCurrentClip.xy / currentW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 previousUv = (vPreviousClip.xy / previousW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 motion = currentUv - previousUv;
-				outAlbedoRoughness = vec4(push.baseColor.rgb, clamp(push.roughness, 0.04, 1.0));
+				vec3 albedo = push.baseColor.rgb;
+				if (push.checkerMix > 0.0) {
+					float checkerMask = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
+					vec3 proceduralChecker = mix(push.baseColor.rgb, push.checkerColor.rgb, checkerMask);
+					albedo = mix(push.baseColor.rgb, proceduralChecker, clamp(push.checkerMix, 0.0, 1.0));
+				}
+				outAlbedoRoughness = vec4(albedo, clamp(push.roughness, 0.04, 1.0));
 				outNormalMetallic = vec4(n, clamp(push.metallic, 0.0, 1.0));
 				outPositionDepth = vec4(vWorldPos, gl_FragCoord.z);
 				outMotionVectors = vec4(motion, 0.0, 1.0);
