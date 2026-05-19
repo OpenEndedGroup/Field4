@@ -352,14 +352,14 @@ object StandardRendererDocsHarness {
         y: Float
     ) {
         val verticesPerCube = 36
-        val tileGridStep = 2f // unit cubes have side length 1, so center-to-center spacing is 2 in pre-scale space
+        val tileGridStep = 2f // pre-scale spacing; model scale (tileSize * 0.5f) maps this to tileSize world spacing
         val tileCount = tilesPerSide * tilesPerSide
         val gridHalfSpan = (tilesPerSide - 1).toFloat()
         val model = Matrix4f()
             .translate(0f, y, 0f)
             .scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f)
 
-        fun appendTiles(name: String, parity: Int): StandardRenderer.Bundle.PullingMeshPair {
+        fun createParityMesh(name: String, parity: Int): StandardRenderer.Bundle.PullingMeshPair {
             val tilesInParity = (0 until tileCount).count { index ->
                 val row = index / tilesPerSide
                 val col = index % tilesPerSide
@@ -370,6 +370,7 @@ object StandardRendererDocsHarness {
                 maxVertices = tilesInParity * verticesPerCube,
                 renderer = renderer
             )
+            var append = false
             var vertexCount = 0
             for (row in 0 until tilesPerSide) {
                 for (col in 0 until tilesPerSide) {
@@ -383,8 +384,9 @@ object StandardRendererDocsHarness {
                             0f,
                             -gridHalfSpan + row * tileGridStep
                         ),
-                        config = StandardShapes.WriteConfig(append = vertexCount > 0)
+                        config = StandardShapes.WriteConfig(append = append)
                     )
+                    append = true
                     vertexCount += write.writtenVertices
                 }
             }
@@ -394,13 +396,13 @@ object StandardRendererDocsHarness {
         }
 
         tint(
-            appendTiles(name = "checkerboard-light", parity = 0),
+            createParityMesh(name = "checkerboard-light", parity = 0),
             color = Vector4f(0.57f, 0.57f, 0.61f, 1f),
             metallic = 0.035f,
             roughness = 0.88f
         )
         tint(
-            appendTiles(name = "checkerboard-dark", parity = 1),
+            createParityMesh(name = "checkerboard-dark", parity = 1),
             color = Vector4f(0.22f, 0.22f, 0.24f, 1f),
             metallic = 0.035f,
             roughness = 0.92f
