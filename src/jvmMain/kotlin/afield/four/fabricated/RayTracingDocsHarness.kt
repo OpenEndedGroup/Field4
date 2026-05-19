@@ -117,7 +117,7 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup()
             imageView.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (shader error)")
+            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (${summarizeShaderErrors(errors)})")
         }
 
         val pointer = rtModule.pointer()
@@ -200,7 +200,7 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (shader error)")
+            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (${summarizeShaderErrors(errors)})")
         }
 
         val pointer = rtModule.pointer()
@@ -280,7 +280,7 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (shader error)")
+            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (${summarizeShaderErrors(errors)})")
         }
 
         val pointer = rtModule.pointer()
@@ -448,6 +448,13 @@ object RayTracingDocsHarness {
             delay(16)
             yield()
         }
+    }
+
+    private fun summarizeShaderErrors(errors: List<String>): String {
+        if (errors.isEmpty()) return "shader error"
+        return errors.joinToString(separator = " | ")
+            .replace('\n', ' ')
+            .take(120)
     }
 
     private fun writeNotSupportedPlaceholder(outputPath: String, label: String): File {
