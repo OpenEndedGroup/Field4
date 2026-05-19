@@ -471,7 +471,7 @@ object StandardRendererDocsHarness {
         mix: Float = 1f
     ) {
         mesh.gBuffer.mesh.push["checkerScale"] = scale
-        mesh.gBuffer.mesh.push["checkerColor"] = Vector4f(color)
+        mesh.gBuffer.mesh.push["checkerColor"] = color
         mesh.gBuffer.mesh.push["checkerMix"] = mix
     }
 

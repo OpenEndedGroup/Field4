@@ -917,7 +917,7 @@ object StandardRenderer {
 		push.seedDefault("roughness") { DEFAULT_ROUGHNESS }
 		push.seedDefault("ao") { DEFAULT_MESH_AO }
 		push.seedDefault("checkerScale") { DEFAULT_CHECKER_SCALE }
-		push.seedDefault("checkerColor") { Vector4f(DEFAULT_CHECKER_COLOR) }
+		push.seedDefault("checkerColor") { defaultCheckerColor() }
 		push.seedDefault("checkerMix") { DEFAULT_CHECKER_MIX }
 		return this
 	}
@@ -993,7 +993,6 @@ object StandardRenderer {
 	private const val DEFAULT_ROUGHNESS = 0.42f
 	private const val DEFAULT_MESH_AO = 1f
 	private const val DEFAULT_CHECKER_SCALE = 1f
-	private val DEFAULT_CHECKER_COLOR = Vector4f(0f, 0f, 0f, 1f)
 	private const val DEFAULT_CHECKER_MIX = 0f
 	private const val DEFAULT_LIGHT_DISTANCE = 8f
 	private const val DEFAULT_LIGHT_INTENSITY = 4f
@@ -1014,6 +1013,8 @@ object StandardRenderer {
 	private const val DEFAULT_FXAA_EDGE_THRESHOLD = 0.125f
 	private const val DEFAULT_FXAA_EDGE_THRESHOLD_MIN = 0.0312f
 	private const val DEFAULT_FXAA_SPAN_MAX = 8f
+
+	private fun defaultCheckerColor(): Vector4f = Vector4f(0f, 0f, 0f, 1f)
 
 
 	// --- Shader text ---
@@ -1107,8 +1108,8 @@ object StandardRenderer {
 				vec2 currentUv = (vCurrentClip.xy / currentW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 previousUv = (vPreviousClip.xy / previousW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 motion = currentUv - previousUv;
-				float checkerCell = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
-				vec3 proceduralChecker = mix(push.baseColor.rgb, push.checkerColor.rgb, checkerCell);
+				float checkerToggle = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
+				vec3 proceduralChecker = mix(push.baseColor.rgb, push.checkerColor.rgb, checkerToggle);
 				vec3 albedo = mix(push.baseColor.rgb, proceduralChecker, clamp(push.checkerMix, 0.0, 1.0));
 				outAlbedoRoughness = vec4(albedo, clamp(push.roughness, 0.04, 1.0));
 				outNormalMetallic = vec4(n, clamp(push.metallic, 0.0, 1.0));
