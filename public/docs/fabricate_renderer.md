@@ -122,6 +122,12 @@ start(captureScene)
 
 This variant keeps floor geometry to a single scaled cube and generates the checker tiles procedurally in the g-buffer fragment shader. It demonstrates a production-ready path where shader-side tiling replaces mesh-side tile splits.
 Use shader-generated tiles when you want lower mesh/buffer overhead; use mesh-split tiles when you need per-tile transforms or per-tile material control.
+The checker pattern is evaluated in world space, so model scaling directly affects tile density.
+
+Limitations:
+- No per-tile transforms or per-tile material edits (all tiles share one mesh/material state)
+- World-space scale dependency for checker density
+- Shader-only pattern can alias at grazing angles compared with textured/filtered approaches
 
 <!--
 FIELD_TEST
