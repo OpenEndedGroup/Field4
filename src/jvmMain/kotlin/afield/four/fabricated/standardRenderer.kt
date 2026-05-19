@@ -1108,9 +1108,12 @@ object StandardRenderer {
 				vec2 currentUv = (vCurrentClip.xy / currentW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 previousUv = (vPreviousClip.xy / previousW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 motion = currentUv - previousUv;
-				float checkerMask = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
-				vec3 proceduralChecker = mix(push.baseColor.rgb, push.checkerColor.rgb, checkerMask);
-				vec3 albedo = mix(push.baseColor.rgb, proceduralChecker, clamp(push.checkerMix, 0.0, 1.0));
+				vec3 albedo = push.baseColor.rgb;
+				if (push.checkerMix > 0.0) {
+					float checkerMask = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
+					vec3 proceduralChecker = mix(push.baseColor.rgb, push.checkerColor.rgb, checkerMask);
+					albedo = mix(push.baseColor.rgb, proceduralChecker, clamp(push.checkerMix, 0.0, 1.0));
+				}
 				outAlbedoRoughness = vec4(albedo, clamp(push.roughness, 0.04, 1.0));
 				outNormalMetallic = vec4(n, clamp(push.metallic, 0.0, 1.0));
 				outPositionDepth = vec4(vWorldPos, gl_FragCoord.z);
