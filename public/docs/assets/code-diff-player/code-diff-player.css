@@ -182,6 +182,7 @@
   box-shadow: none;
   white-space: normal;
   font-family: "Iosevka Web", "Iosevka", "IBM Plex Mono", "SFMono-Regular", "JetBrains Mono", "Menlo", "Consolas", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
   isolation: isolate;
 }
 
@@ -189,10 +190,14 @@
 .code-diff-pre.flash-delete { box-shadow: 0 0 0 2px rgba(255, 90, 95, 0.35); }
 
 /* mkdocs-like syntax colours */
-.code-diff-pre .hljs { color: #d7dce2; }
+.code-diff-pre .hljs,
+.code-diff-pre .hljs * {
+  color: #d7dce2;
+  font-weight: 300 !important;
+}
 .code-diff-pre .hljs-keyword,
 .code-diff-pre .hljs-built_in,
-.code-diff-pre .hljs-selector-tag { color: #7aa2f7; font-weight: 600; }
+.code-diff-pre .hljs-selector-tag { color: #7aa2f7; }
 .code-diff-pre .hljs-string,
 .code-diff-pre .hljs-attr { color: #8ccf7e; }
 .code-diff-pre .hljs-number,

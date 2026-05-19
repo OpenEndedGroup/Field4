@@ -355,6 +355,13 @@ private fun renderVariableValueDisclosure(value: Any?): String {
     return "<div class='afield-symbol-context-disclosure-body' style='margin-top:4px; overflow:auto;'>$rendered</div>"
 }
 
+private fun renderDisplayContent(content: Any?): String {
+    return when (content) {
+        is String -> content
+        else -> content.h
+    }
+}
+
 private fun renderVariableLocationSection(
     label: String,
     container: ContainerSummary?,
@@ -699,7 +706,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
     }
 
     box.output.displayProxy = { channel, content ->
-        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, content.toString())))
+        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
     }
 }
 
@@ -925,7 +932,7 @@ class KotlinExecution : BoxExecution {
                     )
                 }
                 box.output.displayProxy = { channel, content ->
-                    send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, content.toString())))
+                    send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
                 }
 
             val returnValues: List<ResultValue?> = standardExecutionPractice(box.ki, code, { compileError ->

@@ -227,6 +227,13 @@ private val playwrightExecutor = Executors.newSingleThreadExecutor { runnable ->
     }
 }
 internal val playwrightScope = CoroutineScope(SupervisorJob() + playwrightExecutor.asCoroutineDispatcher())
+private val workspaceSearchDispatcher = Executors.newFixedThreadPool(
+    (System.getenv("AFIELD_WORKSPACE_SEARCH_THREADS")?.trim()?.toIntOrNull() ?: 2).coerceIn(1, 4)
+) { runnable ->
+    Thread(runnable, "afield-workspace-search").apply {
+        isDaemon = true
+    }
+}.asCoroutineDispatcher()
 
 private data class PlaywrightPageHandle(
     val page: Page,
@@ -1509,15 +1516,23 @@ class Server {
                         val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
                         val maxMatchesPerDocument =
                             call.request.queryParameters["maxMatchesPerDocument"]?.toIntOrNull() ?: 5
+                        val maxScanMillis =
+                            call.request.queryParameters["maxScanMillis"]?.toLongOrNull() ?: 3_000L
 
-                        call.respond(
+                        val response = withContext(workspaceSearchDispatcher) {
+                            val requestJob = coroutineContext.job
                             searchWorkspace(
                                 base = home,
                                 rawQuery = query,
                                 maxDocuments = maxDocuments,
-                                maxMatchesPerDocument = maxMatchesPerDocument
+                                maxMatchesPerDocument = maxMatchesPerDocument,
+                                maxScanMillis = maxScanMillis,
+                                cancellationCheck = {
+                                    if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
+                                }
                             )
-                        )
+                        }
+                        call.respond(response)
                     }
 
                     route("/welcome") {

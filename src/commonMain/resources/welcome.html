@@ -551,6 +551,14 @@
     }
 
     function openDocument(name) {
+        if (searchController) {
+            searchController.abort();
+            searchController = null;
+        }
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = null;
+        }
         const target = encodeURIComponent(name);
         window.location.href = `/index.html?file=${target}`;
     }
@@ -746,7 +754,8 @@
             const params = new URLSearchParams({
                 q: query,
                 maxDocuments: "50",
-                maxMatchesPerDocument: "5"
+                maxMatchesPerDocument: "5",
+                maxScanMillis: "3000"
             });
             const response = await fetch(`/api/workspace-search?${params.toString()}`, {
                 cache: "no-store",

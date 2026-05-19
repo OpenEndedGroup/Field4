@@ -2,6 +2,7 @@ package afield
 
 import afield.graphics.FLine
 import org.joml.*
+import space.kscience.plotly.Plot
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -204,6 +205,7 @@ object ValueVisualizer {
         is DoubleArray -> formatDoubleArray(value)
         is FLine -> formatFLine(value)
         is Box -> formatBox(value)
+        is Plot -> value.toHtml()
 
         // Data classes
         else -> if (value::class.isData) {

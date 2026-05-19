@@ -280,6 +280,33 @@ function disclosureInterface(container) {
                 return { width, height };
         }
 
+        function plotlyRootFor(node) {
+                if (!(node instanceof Element) || typeof node.closest !== "function") return null;
+                return node.closest(".js-plotly-plot, .plotly-graph-div");
+        }
+
+        function plotlyIntrinsicSize(root) {
+                if (!(root instanceof Element)) return { width: 0, height: 0 };
+
+                const fullLayout = root._fullLayout || {};
+                let width = Number(fullLayout.width) || 0;
+                let height = Number(fullLayout.height) || 0;
+
+                const mainSvg = root.querySelector("svg.main-svg");
+                if (mainSvg instanceof SVGElement) {
+                        width = Math.max(width, parsePixels(mainSvg.getAttribute("width") || ""));
+                        height = Math.max(height, parsePixels(mainSvg.getAttribute("height") || ""));
+                }
+
+                if (width <= 0 || height <= 0) {
+                        const rect = root.getBoundingClientRect();
+                        width = Math.max(width, Math.ceil(rect.width || 0));
+                        height = Math.max(height, Math.ceil(rect.height || 0));
+                }
+
+                return { width, height };
+        }
+
         function contentSizeForDisclosure(d) {
                 if (!d || d.inline) {
                         return { width: 0, height: 0 };
@@ -312,6 +339,15 @@ function disclosureInterface(container) {
 
                 Array.from(d.cw.querySelectorAll("*")).forEach((node) => {
                         if (!(node instanceof Element) || !isElementVisible(node)) return;
+
+                        const plotlyRoot = plotlyRootFor(node);
+                        if (plotlyRoot) {
+                                if (plotlyRoot !== node) return;
+                                const plotlySize = plotlyIntrinsicSize(plotlyRoot);
+                                width = Math.max(width, plotlySize.width);
+                                height = Math.max(height, plotlySize.height);
+                                return;
+                        }
 
                         if (node instanceof HTMLIFrameElement) {
                                 const iframeSize = iframeIntrinsicSize(node);

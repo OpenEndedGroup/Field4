@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -233,8 +234,11 @@ fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
 
 private data class SearchOptions(
     val maxDocuments: Int = 50,
-    val maxMatchesPerDocument: Int = 5
+    val maxMatchesPerDocument: Int = 5,
+    val maxScanMillis: Long = 3_000L
 )
+
+private class WorkspaceSearchBudgetExceeded : RuntimeException()
 
 private val workspaceSearchProperties = linkedSetOf(
     "name",
@@ -271,7 +275,9 @@ fun searchWorkspace(
     base: String,
     rawQuery: String,
     maxDocuments: Int = 50,
-    maxMatchesPerDocument: Int = 5
+    maxMatchesPerDocument: Int = 5,
+    maxScanMillis: Long = 3_000L,
+    cancellationCheck: () -> Unit = {}
 ): WorkspaceSearchResponse {
     val query = rawQuery.trim()
     if (query.isBlank()) {
@@ -297,24 +303,37 @@ fun searchWorkspace(
 
     val options = SearchOptions(
         maxDocuments = maxDocuments.coerceIn(1, 200),
-        maxMatchesPerDocument = maxMatchesPerDocument.coerceIn(1, 20)
+        maxMatchesPerDocument = maxMatchesPerDocument.coerceIn(1, 20),
+        maxScanMillis = maxScanMillis.coerceIn(250L, 15_000L)
     )
     val now = System.currentTimeMillis()
+    val startedAt = System.nanoTime()
     val searchTerm = query.lowercase()
     val savingContext = SavingContext()
     val results = mutableListOf<WorkspaceSearchResult>()
     var totalMatches = 0
     var truncated = false
 
-    baseDir.listFiles()?.filter { it.isDirectory }?.sortedByDescending {
+    fun checkSearchActive() {
+        cancellationCheck()
+        val elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L
+        if (elapsedMillis > options.maxScanMillis) {
+            throw WorkspaceSearchBudgetExceeded()
+        }
+    }
+
+    val directories = baseDir.listFiles()?.filter { it.isDirectory }?.sortedByDescending {
         max(
             File(it, SavingContext.METADATA_EDN).lastModified(),
             File(it, SavingContext.METADATA_JSON).lastModified()
         )
-    }?.forEach { dir ->
+    }.orEmpty()
+
+    for (dir in directories) {
+        checkSearchActive()
         if (results.size >= options.maxDocuments) {
             truncated = true
-            return@forEach
+            break
         }
 
         val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
@@ -323,25 +342,28 @@ fun searchWorkspace(
             metadataEdnFile.exists() -> metadataEdnFile
             metadataJsonFile.exists() -> metadataJsonFile
             else -> null
-        } ?: return@forEach
+        }
+        if (metadataFile == null) continue
 
         try {
             val matches = if (metadataFile.name == SavingContext.METADATA_EDN) {
-                searchEdnDocument(savingContext, dir.absolutePath, searchTerm, options)
+                searchEdnDocument(savingContext, dir.absolutePath, searchTerm, options, ::checkSearchActive)
             } else {
-                searchJsonDocument(savingContext, metadataJsonFile, dir.absolutePath, searchTerm, options)
+                searchJsonDocument(savingContext, metadataJsonFile, dir.absolutePath, searchTerm, options, ::checkSearchActive)
             }
+            checkSearchActive()
 
             val filenameMatches = buildMatchesForText(
                 boxName = dir.name,
                 property = "document",
                 text = dir.name,
                 query = searchTerm,
-                maxMatches = options.maxMatchesPerDocument
+                maxMatches = options.maxMatchesPerDocument,
+                checkSearchActive = ::checkSearchActive
             )
 
             val combined = (filenameMatches + matches).take(options.maxMatchesPerDocument)
-            if (combined.isEmpty()) return@forEach
+            if (combined.isEmpty()) continue
 
             totalMatches += combined.size
             val modifiedAt = metadataFile.lastModified()
@@ -352,6 +374,11 @@ fun searchWorkspace(
                 lastModifiedAgoMs = now - modifiedAt,
                 matches = combined
             )
+        } catch (e: WorkspaceSearchBudgetExceeded) {
+            truncated = true
+            break
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             lprintln("warning,workspace-search", "Skipping ${dir.name}: ${e.message}")
         }
@@ -380,21 +407,26 @@ private fun searchEdnDocument(
     savingContext: SavingContext,
     directory: String,
     query: String,
-    options: SearchOptions
+    options: SearchOptions,
+    checkSearchActive: () -> Unit
 ): List<WorkspaceSearchMatch> {
     val matches = mutableListOf<WorkspaceSearchMatch>()
+    checkSearchActive()
     savingContext.readEdnTransfers(directory)
         .filter { !it.properties["_tombstone"].isTrue() }
         .forEach { transfer ->
+            checkSearchActive()
             val boxName = savingContext.resolveStoredValue(transfer.properties["name"], directory)?.toString().orEmpty()
             collectPropertyMatches(
                 propertyProvider = { property ->
+                    checkSearchActive()
                     savingContext.resolveStoredValue(transfer.properties[property], directory)?.toString()
                 },
                 boxName = boxName,
                 query = query,
                 matches = matches,
-                maxMatches = options.maxMatchesPerDocument
+                maxMatches = options.maxMatchesPerDocument,
+                checkSearchActive = checkSearchActive
             )
             if (matches.size >= options.maxMatchesPerDocument) return matches
         }
@@ -406,13 +438,16 @@ private fun searchJsonDocument(
     metadataJsonFile: File,
     directory: String,
     query: String,
-    options: SearchOptions
+    options: SearchOptions,
+    checkSearchActive: () -> Unit
 ): List<WorkspaceSearchMatch> {
     val matches = mutableListOf<WorkspaceSearchMatch>()
+    checkSearchActive()
     val metadataContent = metadataJsonFile.readText()
     SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
         .filter { !it.properties["_tombstone"].isTrue() }
         .forEach { transfer ->
+            checkSearchActive()
             val boxName = try {
                 savingContext.fromTypedPair(transfer.properties["name"]!!, directory)?.toString().orEmpty()
             } catch (_: Exception) {
@@ -420,6 +455,7 @@ private fun searchJsonDocument(
             }
             collectPropertyMatches(
                 propertyProvider = { property ->
+                    checkSearchActive()
                     transfer.properties[property]?.let {
                         savingContext.fromTypedPair(it, directory, createBoxes = false)?.toString()
                     }
@@ -427,7 +463,8 @@ private fun searchJsonDocument(
                 boxName = boxName,
                 query = query,
                 matches = matches,
-                maxMatches = options.maxMatchesPerDocument
+                maxMatches = options.maxMatchesPerDocument,
+                checkSearchActive = checkSearchActive
             )
             if (matches.size >= options.maxMatchesPerDocument) return matches
         }
@@ -439,13 +476,15 @@ private fun collectPropertyMatches(
     boxName: String,
     query: String,
     matches: MutableList<WorkspaceSearchMatch>,
-    maxMatches: Int
+    maxMatches: Int,
+    checkSearchActive: () -> Unit
 ) {
     workspaceSearchProperties.forEach { property ->
+        checkSearchActive()
         if (matches.size >= maxMatches) return
         val text = propertyProvider(property) ?: return@forEach
         val remaining = maxMatches - matches.size
-        matches += buildMatchesForText(boxName, property, text, query, remaining)
+        matches += buildMatchesForText(boxName, property, text, query, remaining, checkSearchActive)
     }
 }
 
@@ -454,7 +493,8 @@ private fun buildMatchesForText(
     property: String,
     text: String,
     query: String,
-    maxMatches: Int
+    maxMatches: Int,
+    checkSearchActive: () -> Unit = {}
 ): List<WorkspaceSearchMatch> {
     if (text.isBlank() || maxMatches <= 0) return emptyList()
 
@@ -462,6 +502,7 @@ private fun buildMatchesForText(
     val results = mutableListOf<WorkspaceSearchMatch>()
 
     lines.forEachIndexed { index, rawLine ->
+        if (index % 64 == 0) checkSearchActive()
         if (results.size >= maxMatches) return@forEachIndexed
         val line = rawLine.trim()
         if (!line.lowercase().contains(query)) return@forEachIndexed
