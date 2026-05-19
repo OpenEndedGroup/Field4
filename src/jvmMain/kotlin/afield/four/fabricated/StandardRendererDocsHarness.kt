@@ -350,26 +350,23 @@ object StandardRendererDocsHarness {
         tileSize: Float,
         y: Float
     ) {
-        val half = tilesPerSide / 2
-        for (z in 0 until tilesPerSide) {
-            for (x in 0 until tilesPerSide) {
-                val mesh = bundle.registerCube(
-                    name = "tile-$x-$z",
-                    size = 1f,
-                    renderer = renderer
-                )
-                val px = (x - half + 0.5f) * tileSize
-                val pz = (z - half + 0.5f) * tileSize
-                mesh.setModel(Matrix4f().translate(px, y, pz).scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f))
-                val bright = ((x + z) and 1) == 0
-                tint(
-                    mesh,
-                    color = if (bright) Vector4f(0.76f, 0.76f, 0.80f, 1f) else Vector4f(0.18f, 0.18f, 0.22f, 1f),
-                    metallic = if (bright) 0.05f else 0.02f,
-                    roughness = if (bright) 0.84f else 0.92f
-                )
-            }
-        }
+        val floorSize = tilesPerSide * tileSize
+        val mesh = bundle.registerCube(
+            name = "checkerboard-floor",
+            size = 1f,
+            renderer = renderer
+        )
+        mesh.setModel(
+            Matrix4f()
+                .translate(0f, y, 0f)
+                .scale(floorSize * 0.5f, 0.02f, floorSize * 0.5f)
+        )
+        tint(
+            mesh,
+            color = Vector4f(0.47f, 0.47f, 0.51f, 1f),
+            metallic = 0.035f,
+            roughness = 0.88f
+        )
     }
 
     private fun tint(
