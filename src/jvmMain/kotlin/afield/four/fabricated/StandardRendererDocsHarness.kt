@@ -6,6 +6,7 @@ import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.util.Window
 import afield.logger.lprintln
+import afield.stdlib.Vec3
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.joml.Matrix4f
@@ -350,22 +351,47 @@ object StandardRendererDocsHarness {
         tileSize: Float,
         y: Float
     ) {
-        val floorSize = tilesPerSide * tileSize
-        val mesh = bundle.registerCube(
-            name = "checkerboard-floor",
-            size = 1f,
-            renderer = renderer
-        )
-        mesh.setModel(
-            Matrix4f()
-                .translate(0f, y, 0f)
-                .scale(floorSize * 0.5f, 0.02f, floorSize * 0.5f)
-        )
+        val tileCount = tilesPerSide * tilesPerSide
+        val maxVerticesPerParity = ((tileCount + 1) / 2) * 36
+        val edgeOffset = (tilesPerSide - 1).toFloat()
+        val model = Matrix4f()
+            .translate(0f, y, 0f)
+            .scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f)
+
+        fun appendTiles(name: String, parity: Int): StandardRenderer.Bundle.PullingMeshPair {
+            val mesh = bundle.registerPullingMesh(name = name, maxVertices = maxVerticesPerParity, renderer = renderer)
+            var first = true
+            var vertexCount = 0
+            for (row in 0 until tilesPerSide) {
+                for (col in 0 until tilesPerSide) {
+                    if ((row + col) % 2 != parity) continue
+                    val write = StandardShapes.cube(
+                        positions = mesh.gBuffer.position,
+                        normals = mesh.gBuffer.normal,
+                        size = 1f,
+                        center = Vec3(-edgeOffset + col * 2f, 0f, -edgeOffset + row * 2f),
+                        config = StandardShapes.WriteConfig(append = !first)
+                    )
+                    first = false
+                    vertexCount += write.writtenVertices
+                }
+            }
+            mesh.setVertexCount(vertexCount)
+            mesh.setModel(model)
+            return mesh
+        }
+
         tint(
-            mesh,
-            color = Vector4f(0.47f, 0.47f, 0.51f, 1f),
+            appendTiles(name = "checkerboard-light", parity = 0),
+            color = Vector4f(0.57f, 0.57f, 0.61f, 1f),
             metallic = 0.035f,
             roughness = 0.88f
+        )
+        tint(
+            appendTiles(name = "checkerboard-dark", parity = 1),
+            color = Vector4f(0.22f, 0.22f, 0.24f, 1f),
+            metallic = 0.035f,
+            roughness = 0.92f
         )
     }
 
