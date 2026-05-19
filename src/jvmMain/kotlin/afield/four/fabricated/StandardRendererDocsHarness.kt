@@ -354,8 +354,9 @@ object StandardRendererDocsHarness {
         val verticesPerCube = 36
         val tileGridStep = 2f
         val tileCount = tilesPerSide * tilesPerSide
+        // Checkerboard parity split; one parity gets the extra tile when tileCount is odd.
         val maxVerticesPerParity = ((tileCount + 1) / 2) * verticesPerCube
-        val edgeOffset = (tilesPerSide - 1).toFloat()
+        val gridCenterOffset = (tilesPerSide - 1).toFloat()
         val model = Matrix4f()
             .translate(0f, y, 0f)
             .scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f)
@@ -372,9 +373,9 @@ object StandardRendererDocsHarness {
                         normals = mesh.gBuffer.normal,
                         size = 1f,
                         center = Vec3(
-                            -edgeOffset + col * tileGridStep,
+                            -gridCenterOffset + col * tileGridStep,
                             0f,
-                            -edgeOffset + row * tileGridStep
+                            -gridCenterOffset + row * tileGridStep
                         ),
                         config = StandardShapes.WriteConfig(append = !first)
                     )
