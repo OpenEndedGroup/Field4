@@ -219,6 +219,86 @@ object RayTracingDocsHarness {
         }
     }
 
+    /**
+     * Renders a simple plane where checker tiles are computed in shaders.
+     *
+     * Geometry is just two triangles (one quad). The closest-hit shader computes
+     * tile color from world hit position, so no tile mesh splitting is required.
+     *
+     * Returns a placeholder PNG when ray tracing is not supported.
+     */
+    suspend fun renderShaderTileScene(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        if (!renderer.device.supportsRayTracing) {
+            lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
+            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (RT not available)")
+        }
+
+        val (image, imageView) = createRtOutputImage(renderer)
+        transitionImageToGeneral(renderer, image)
+
+        val vertexBuffer = buildQuadVertexBuffer(renderer)
+        val blas = AccelerationStructure(renderer, "rt-docs-shader-tiles-blas")
+            .buildBottomLevelNow(
+                triangles = listOf(
+                    AccelerationStructureTriangles(
+                        vertexBuffer = vertexBuffer,
+                        maxVertex = 5,
+                        primitiveCount = 2
+                    )
+                )
+            )
+        val tlas = AccelerationStructure(renderer, "rt-docs-shader-tiles-tlas")
+            .buildTopLevelNow(instances = listOf(RayTracingInstance(blas)))
+
+        val rtName = "rt-docs-shader-tiles-${System.nanoTime()}"
+        val errors = mutableListOf<String>()
+
+        val p = Parameters(
+            renderer = renderer,
+            raygen = SHADER_TILES_RAYGEN,
+            miss = SHADER_TILES_MISS,
+            closesthit = SHADER_TILES_CLOSESTHIT,
+            name = rtName,
+            imageResolver = { imageView },
+            accelerationStructureResolver = { tlas },
+            errorHandler = { msg, _ -> errors += msg }
+        )
+
+        val rtModule = try {
+            afield.four.modules.RayTracingModule(p)
+        } catch (e: Exception) {
+            lprintln("error,doc", "ray tracing module build failed: ${e.message}")
+            image.cleanup(); imageView.cleanup()
+            vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
+            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (build failed: ${e.message?.take(60)})")
+        }
+
+        if (!rtModule.valid || errors.isNotEmpty()) {
+            lprintln("error,doc", "ray tracing module invalid: $errors")
+            image.cleanup(); imageView.cleanup()
+            vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
+            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (shader error)")
+        }
+
+        val pointer = rtModule.pointer()
+        val dispatch = RayTracingDispatch(pointer, OUTPUT_WIDTH, OUTPUT_HEIGHT)
+        pointer += "dispatch" to dispatch
+
+        renderer += rtName to pointer
+        try {
+            waitForRendererFrames(renderer)
+            return captureRtImage(renderer, image, outputPath)
+        } finally {
+            pointer.disable()
+            renderer.computeList.rayTracingModules.remove(rtName)
+            image.cleanup(); imageView.cleanup()
+            vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
+        }
+    }
+
     /** Wraps a captured PNG as an HTML block suitable for display(...). */
     fun htmlForImage(imageFile: File, caption: String? = null): String {
         val encoded = Base64.getEncoder().encodeToString(imageFile.readBytes())
@@ -290,6 +370,32 @@ object RayTracingDocsHarness {
             -0.5f, -0.5f, 0.0f,   // bottom-left
              0.5f, -0.5f, 0.0f,   // bottom-right
              0.0f,  0.5f, 0.0f    // top-center
+        )
+        val buffer = VulkanBuffer(
+            renderer = renderer,
+            requestedSize = floats.size * 4L,
+            usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR or
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            reqMask = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            needsDeviceAddress = true
+        )
+        buffer.mapAndWrite_bytes { asFloatBuffer().put(floats) }
+        return buffer
+    }
+
+    private fun buildQuadVertexBuffer(renderer: Renderer): VulkanBuffer {
+        val half = 1.25f
+        val y = -0.2f
+        val zNear = 0.0f
+        val zFar = 2.3f
+        val floats = floatArrayOf(
+            -half, y, zNear,
+             half, y, zNear,
+             half, y, zFar,
+
+            -half, y, zNear,
+             half, y, zFar,
+            -half, y, zFar
         )
         val buffer = VulkanBuffer(
             renderer = renderer,
@@ -465,6 +571,68 @@ object RayTracingDocsHarness {
         void main() {
             float w = 1.0 - baryCoord.x - baryCoord.y;
             payload  = vec3(w, baryCoord.x, baryCoord.y);
+        }
+    """.trimIndent()
+
+    /** Raygen for shader-tile scene: traces one ray per pixel toward a floor quad. */
+    val SHADER_TILES_RAYGEN = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        layout(location = 0) rayPayloadEXT vec3 payload;
+        layout(set = 0, binding = 0, rgba8)  uniform image2D              outputImage;
+        layout(set = 0, binding = 1)          uniform accelerationStructureEXT topLevelAS;
+
+        void main() {
+            ivec2 px  = ivec2(gl_LaunchIDEXT.xy);
+            vec2  uv  = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
+
+            vec3 origin = vec3(0.0, 0.45, -2.6);
+            vec3 dir    = normalize(vec3((uv * 2.0 - 1.0) * vec2(1.05, -0.72), 1.0));
+
+            payload = vec3(0.03, 0.04, 0.08);
+            traceRayEXT(topLevelAS,
+                        gl_RayFlagsOpaqueEXT,
+                        0xFF,
+                        0, 0, 0,
+                        origin, 0.001, dir, 100.0,
+                        0);
+
+            imageStore(outputImage, px, vec4(payload, 1.0));
+        }
+    """.trimIndent()
+
+    /** Miss shader for shader-tile scene. */
+    val SHADER_TILES_MISS = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        layout(location = 0) rayPayloadInEXT vec3 payload;
+
+        void main() {
+            payload = vec3(0.03, 0.04, 0.08);
+        }
+    """.trimIndent()
+
+    /** Closest-hit shader that computes checker tiles procedurally from world hit position. */
+    val SHADER_TILES_CLOSESTHIT = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        layout(location = 0) rayPayloadInEXT vec3 payload;
+        hitAttributeEXT vec2 baryCoord;
+
+        void main() {
+            vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
+            float tileScale = 3.6;
+            float checker = mod(floor(worldHit.x * tileScale) + floor(worldHit.z * tileScale), 2.0);
+
+            vec3 lightTile = vec3(0.78, 0.78, 0.82);
+            vec3 darkTile = vec3(0.22, 0.22, 0.26);
+            vec3 tileColor = mix(lightTile, darkTile, checker);
+
+            float vignette = clamp(1.0 - 0.13 * length(worldHit.xz), 0.6, 1.0);
+            payload = tileColor * vignette;
         }
     """.trimIndent()
 }

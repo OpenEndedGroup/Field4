@@ -85,3 +85,44 @@ val captureScene: suspend () -> Unit = {
 }
 start(captureScene)
 ```
+
+## Shader-Generated Tiles (full pipeline)
+
+This full pipeline example still traces against simple geometry (just one quad made from two triangles), but the tile pattern itself is generated in the closest-hit shader from world hit position. So the "tiles" come from shader logic rather than tile mesh topology.
+
+<!--
+FIELD_TEST
+id: docs.raytracing.shader-tiles
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, raytracing, graphics, shader, tiles, checker]
+timeoutSec: 180
+withPlaywright: true
+execution: launch
+waitSec: 20.0
+expect:
+  allowMissingOutput: true
+  allowExecutionErrors: true
+  outputContains:
+    - "ray tracing example ready"
+  screenshot:
+    kind: box
+    padding: 16
+  image:
+    path: /tmp/docs-rt-shader-tiles.png
+    lumaComparisons:
+      - darker: [0.12, 0.62, 0.10, 0.10]
+        lighter: [0.22, 0.62, 0.10, 0.10]
+        marginGt: 6
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-shader-tiles.png" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="rt-shader-tiles"}
+:::static
+import afield.four.fabricated.RayTracingDocsHarness
+
+val captureScene: suspend () -> Unit = {
+    val image = RayTracingDocsHarness.renderShaderTileScene("/tmp/docs-rt-shader-tiles.png")
+    display("render", RayTracingDocsHarness.htmlForImage(image, "Shader-generated checker tiles on a traced quad"))
+    println("ray tracing example ready")
+}
+start(captureScene)
+```
