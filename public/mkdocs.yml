@@ -17,6 +17,7 @@ nav:
       - Staging Overview: staging.md
       - Field Systems:
         - Fabricate Renderer: fabricate_renderer.md
+        - Ray Tracing Examples: ray_tracing_examples.md
         - afield.four Graphics: afield_four_graphics.md
         - Interactive Guides: interactive_guides.md
         - Guide Chat: guide_chat.md
