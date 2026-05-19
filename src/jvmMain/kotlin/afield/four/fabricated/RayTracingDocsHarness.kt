@@ -289,7 +289,7 @@ object RayTracingDocsHarness {
         val floats = floatArrayOf(
             -0.5f, -0.5f, 0.0f,   // bottom-left
              0.5f, -0.5f, 0.0f,   // bottom-right
-             0.0f,  0.5f, 0.0f    // top-centre
+             0.0f,  0.5f, 0.0f    // top-center
         )
         val buffer = VulkanBuffer(
             renderer = renderer,
