@@ -369,54 +369,77 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             )
             command.beginLabel(parameters.name, labelColor)
 
-            val cmd = command.vkCommandBuffer
-            val frameIndex = parameters.renderer.currentImage
-            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+            try {
+                val cmd = command.vkCommandBuffer
+                val frameIndex = parameters.renderer.currentImage
+                val profiler = parameters.renderer.getProfiler()
+                val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
 
-            fieldProbe?.beforeShaderUse(parameters.renderer, frameIndex)
+                val marks = if (profiler != null) afield.four.Renderer.ModuleMarks(parameters.name) else null
+                var psScope: GpuProfiler.PipeStatScope? = null
+                var perfScope: GpuProfiler.PerfScope? = null
 
-            before.values.forEach { target ->
-                target.render(command, parameters.renderer.currentImage)
-            }
+                if (profiler != null) {
+                    marks!!.tsBegin = profiler.writeTimestamp2(cmd, frameIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT)
+                    psScope = profiler.beginPipelineStats(cmd, frameIndex)
+                    perfScope = profiler.beginPerfCounters(cmd, frameIndex)
+                }
 
-            zeroBefore.values.forEach { buffer ->
-                buffer.get(write = true).zero(command)
-            }
+                fieldProbe?.beforeShaderUse(parameters.renderer, frameIndex)
 
-            VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline)
+                before.values.forEach { target ->
+                    target.render(command, parameters.renderer.currentImage)
+                }
 
-            val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
+                zeroBefore.values.forEach { buffer ->
+                    buffer.get(write = true).zero(command)
+                }
 
-            liveUniformStructures.forEach { (name, structure) ->
-                val target = (uniforms[name] as Uniform).buffer
-                structure.proxying = target
-                if (structure.dirty || structure.bindings.size>0) {
-                    target.get().mapAndWrite_bytes {
-                        structure.writeToBuffer(this, command) {
-                            throw MissingRefException("risk of GPU null ref `$it`")
+                VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline)
+
+                val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
+
+                liveUniformStructures.forEach { (name, structure) ->
+                    val target = (uniforms[name] as Uniform).buffer
+                    structure.proxying = target
+                    if (structure.dirty || structure.bindings.size>0) {
+                        target.get().mapAndWrite_bytes {
+                            structure.writeToBuffer(this, command) {
+                                throw MissingRefException("risk of GPU null ref `$it`")
+                            }
                         }
                     }
+                    target.get().clean(false, command)
                 }
-                target.get().clean(false, command)
-            }
 
-            uniforms.values.forEach { upd ->
-                upd.pushDescriptorSet(command, pipelineLayout, VK10.VK_PIPELINE_BIND_POINT_COMPUTE)
-            }
+                uniforms.values.forEach { upd ->
+                    upd.pushDescriptorSet(command, pipelineLayout, VK10.VK_PIPELINE_BIND_POINT_COMPUTE)
+                }
 
-            meshes.values.forEach { mesh ->
-                mesh.compute(this, command, pushConstantBuffer)
-            }
+                meshes.values.forEach { mesh ->
+                    mesh.compute(this, command, pushConstantBuffer)
+                }
 
-            after.values.forEach { target ->
-                target.render(command, parameters.renderer.currentImage)
-            }
+                after.values.forEach { target ->
+                    target.render(command, parameters.renderer.currentImage)
+                }
 
-            fieldProbe?.let {
-                hostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
-                it.afterShaderUse(parameters.renderer, frameIndex)
+                fieldProbe?.let {
+                    hostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
+                    it.afterShaderUse(parameters.renderer, frameIndex)
+                }
+
+                if (profiler != null) {
+                    profiler.endPipelineStats(cmd, psScope)
+                    profiler.endPerfCounters(cmd, frameIndex, perfScope)
+                    marks!!.tsEnd = profiler.writeTimestamp2(cmd, frameIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT)
+                    psScope?.let { marks.pipeStatsIndex = it.index }
+                    perfScope?.let { marks.perfIndex = it.index }
+                    parameters.renderer.registerModuleMarks(frameIndex, marks)
+                }
+            } finally {
+                command.endLabel()
             }
-            command.endLabel()
         }
     }
 

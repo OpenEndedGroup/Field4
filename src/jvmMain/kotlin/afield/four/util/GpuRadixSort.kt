@@ -252,14 +252,14 @@ class GpuRadixSort(
 
         val passes = buildList {
             repeat(passCount) {
-                val histogramModule = buildHistogramModule(inputKeys, histogramBinding)
+                val histogramModule = buildHistogramModule(inputKeys, histogramBinding, it)
                 val histogramMesh = ComputeMesh(renderer, histogramModule).apply {
                     this.y = 1
                     this.z = 1
                 }
                 histogramModule += "dispatch" to histogramMesh
 
-                val prefixModule = buildPrefixModule(histogramBinding, prefixBinding, bucketBaseBinding)
+                val prefixModule = buildPrefixModule(histogramBinding, prefixBinding, bucketBaseBinding, it)
                 val prefixMesh = ComputeMesh(renderer, prefixModule).apply {
                     this.x = 1
                     this.y = 1
@@ -268,7 +268,7 @@ class GpuRadixSort(
                 prefixModule += "dispatch" to prefixMesh
 
                 val scatterModule = if (values == null) {
-                    buildScatterKeysModule(inputKeys, outputKeys, prefixBinding, bucketBaseBinding)
+                    buildScatterKeysModule(inputKeys, outputKeys, prefixBinding, bucketBaseBinding, it)
                 } else {
                     buildScatterPairsModule(
                         inputKeys = inputKeys,
@@ -276,7 +276,8 @@ class GpuRadixSort(
                         inputValues = requireNotNull(inputValues),
                         outputValues = requireNotNull(outputValues),
                         prefix = prefixBinding,
-                        bucketBase = bucketBaseBinding
+                        bucketBase = bucketBaseBinding,
+                        passIndex = it
                     )
                 }
                 val scatterMesh = ComputeMesh(renderer, scatterModule).apply {
@@ -420,7 +421,8 @@ class GpuRadixSort(
 
     private fun buildHistogramModule(
         inputKeys: BufferParameters,
-        histogram: BufferParameters
+        histogram: BufferParameters,
+        passIndex: Int
     ): afield.four.modules.ComputeModulePointer {
         val shader = """
             #version 450
@@ -475,7 +477,7 @@ class GpuRadixSort(
             Parameters(
                 renderer = renderer,
                 compute = shader,
-                name = "GpuRadixSort_Histogram",
+                name = "GpuRadixSort_Histogram[$passIndex]",
                 ssboResolver = { descriptor ->
                     when (descriptor.name) {
                         "InputKeys" -> inputKeys
@@ -490,7 +492,8 @@ class GpuRadixSort(
     private fun buildPrefixModule(
         histogram: BufferParameters,
         prefix: BufferParameters,
-        bucketBaseBuffer: BufferParameters
+        bucketBaseBuffer: BufferParameters,
+        passIndex: Int
     ): afield.four.modules.ComputeModulePointer {
         val shader = """
             #version 450
@@ -536,7 +539,7 @@ class GpuRadixSort(
             Parameters(
                 renderer = renderer,
                 compute = shader,
-                name = "GpuRadixSort_Prefix",
+                name = "GpuRadixSort_Prefix[$passIndex]",
                 ssboResolver = { descriptor ->
                     when (descriptor.name) {
                         "GroupHistogram" -> histogram
@@ -553,7 +556,8 @@ class GpuRadixSort(
         inputKeys: BufferParameters,
         outputKeys: BufferParameters,
         prefix: BufferParameters,
-        bucketBaseBuffer: BufferParameters
+        bucketBaseBuffer: BufferParameters,
+        passIndex: Int
     ): afield.four.modules.ComputeModulePointer {
         val shader = """
             #version 450
@@ -624,7 +628,7 @@ class GpuRadixSort(
             Parameters(
                 renderer = renderer,
                 compute = shader,
-                name = "GpuRadixSort_ScatterKeys",
+                name = "GpuRadixSort_ScatterKeys[$passIndex]",
                 ssboResolver = { descriptor ->
                     when (descriptor.name) {
                         "InputKeys" -> inputKeys
@@ -644,7 +648,8 @@ class GpuRadixSort(
         inputValues: BufferParameters,
         outputValues: BufferParameters,
         prefix: BufferParameters,
-        bucketBase: BufferParameters
+        bucketBase: BufferParameters,
+        passIndex: Int
     ): afield.four.modules.ComputeModulePointer {
         val shader = """
             #version 450
@@ -726,7 +731,7 @@ class GpuRadixSort(
             Parameters(
                 renderer = renderer,
                 compute = shader,
-                name = "GpuRadixSort_ScatterPairs",
+                name = "GpuRadixSort_ScatterPairs[$passIndex]",
                 ssboResolver = { descriptor ->
                     when (descriptor.name) {
                         "InputKeys" -> inputKeys

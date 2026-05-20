@@ -1669,11 +1669,19 @@ class Renderer(
 
             if (m.tsFrameBegin >= 0 && m.tsFrameEnd >= 0) {
                 val ts = p.fetchTimestampNsRange(imageIndex, m.tsFrameBegin, m.tsFrameEnd)
-                if (ts.size >= 4) {
-                    val frameNs = ts[3] - ts[0]
-                    val computeNs = ts[1] - ts[0]
-                    val graphicsNs = ts[2] - ts[1]
-                    val postNs = ts[3] - ts[2]
+                fun at(marker: Int): Long? {
+                    val offset = marker - m.tsFrameBegin
+                    return ts.getOrNull(offset)
+                }
+                val frameBegin = at(m.tsFrameBegin)
+                val afterCompute = at(m.tsAfterCompute)
+                val afterGraphics = at(m.tsAfterGraphics)
+                val frameEnd = at(m.tsFrameEnd)
+                if (frameBegin != null && afterCompute != null && afterGraphics != null && frameEnd != null) {
+                    val frameNs = frameEnd - frameBegin
+                    val computeNs = afterCompute - frameBegin
+                    val graphicsNs = afterGraphics - afterCompute
+                    val postNs = frameEnd - afterGraphics
                     lprintln(
                         "info,perf",
                         "GPU frame=${frameNs/1e6} ms (compute=${computeNs/1e6} ms, graphics=${graphicsNs/1e6} ms, post=${postNs/1e6} ms)"

@@ -62,6 +62,15 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             val hasCalibrated = hasExt(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
             val hasPushDescriptor = hasExt(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
             supportsPushDescriptors = hasPushDescriptor
+            val supportedCoreFeatures = VkPhysicalDeviceFeatures2.calloc(stack).apply {
+                sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
+            }
+            VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, supportedCoreFeatures)
+            val enablePipelineStatisticsQuery =
+                profilingEnabled && supportedCoreFeatures.features().pipelineStatisticsQuery()
+            if (profilingEnabled && !enablePipelineStatisticsQuery) {
+                lprint("info,graphics", "profiling enabled without pipelineStatisticsQuery; using timestamp timing only")
+            }
             val hasExtDynamicState =
                 hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
             val hasExtDynamicState3 =
@@ -148,13 +157,13 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 features().vertexPipelineStoresAndAtomics(true)
                 features().shaderInt64(true)
                 features().robustBufferAccess(Options.robustness)
-                // Request pipeline statistics only when profiling is on; driver may ignore if unsupported
-                features().pipelineStatisticsQuery(profilingEnabled)
+                features().pipelineStatisticsQuery(enablePipelineStatisticsQuery)
             }
 
             val features11 = VkPhysicalDeviceVulkan11Features.calloc(stack).apply {
                 `sType$Default`()
                 shaderDrawParameters(true)
+                storagePushConstant16(true)
             }
 
             val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack).apply {
@@ -221,14 +230,6 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             if (supportsExtendedDynamicState3) {
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, eds3.address()); tail = eds3.address()
             }
-
-            val storage16 = VkPhysicalDevice16BitStorageFeatures.calloc(stack).apply {
-                sType(VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES)
-                storagePushConstant16(true)
-            }
-
-            memPutAddress(tail + VkBaseOutStructure.PNEXT, storage16.address()); tail = storage16.address()
-
 
             // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading && usePresentIndexing) {

@@ -13,6 +13,7 @@ import afield.four.modules.Parameters
 import afield.four.modules.RayTracingDispatch
 import afield.four.modules.RayTracingInstance
 import afield.four.modules.fromContext
+import afield.four.modules.pointer
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
@@ -23,7 +24,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRAccelerationStructure.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-import org.lwjgl.vulkan.KHRSynchronization2.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_GENERAL
@@ -34,6 +34,7 @@ import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 import org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_WRITE_BIT
+import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 import org.lwjgl.vulkan.VkImageSubresourceRange
 import java.awt.Color
 import java.awt.Font
@@ -117,7 +118,7 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup()
             imageView.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (shader error)")
+            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (${summarizeShaderErrors(errors)})")
         }
 
         val pointer = rtModule.pointer()
@@ -200,7 +201,7 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (shader error)")
+            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (${summarizeShaderErrors(errors)})")
         }
 
         val pointer = rtModule.pointer()
@@ -280,7 +281,7 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (shader error)")
+            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (${summarizeShaderErrors(errors)})")
         }
 
         val pointer = rtModule.pointer()
@@ -448,6 +449,13 @@ object RayTracingDocsHarness {
             delay(16)
             yield()
         }
+    }
+
+    private fun summarizeShaderErrors(errors: List<String>): String {
+        if (errors.isEmpty()) return "shader error"
+        return errors.joinToString(separator = " | ")
+            .replace('\n', ' ')
+            .take(120)
     }
 
     private fun writeNotSupportedPlaceholder(outputPath: String, label: String): File {

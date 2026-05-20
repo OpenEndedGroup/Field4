@@ -1,5 +1,6 @@
 package afield.four.modules
 
+import afield.four.fabricated.GaussianSplatRenderer
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -265,6 +266,76 @@ end_header
             val z2 = vd.float
             assert(x2 == 1f && y2 == 0f && z2 == 0f) { "Second vertex position incorrect: ($x2, $y2, $z2)" }
             
+            println("✓ PASS")
+        } catch (e: AssertionError) {
+            println("✗ FAIL: ${e.message}")
+            allPassed = false
+        } catch (e: Exception) {
+            println("✗ ERROR: ${e.message}")
+            e.printStackTrace()
+            allPassed = false
+        }
+
+        // Test 7: Float table + Gaussian splat CPU packing
+        print("Test 7: Float Table + Gaussian Splat Packing... ")
+        try {
+            val table = readPlyAsFloatTable(File(testDir, "test_minimal.ply").absolutePath)
+            check(table.rowCount == 3) { "Expected 3 rows" }
+            check(table.stride == 3) { "Expected x/y/z stride" }
+            check(table.floatAt(1, "x") == 1f) { "Expected second x to be 1" }
+
+            val packed = GaussianSplatRenderer.pack(
+                table,
+                GaussianSplatRenderer.Config(scaleIsLog = false, fallbackScale = 0.05f)
+            )
+            check(packed.count == 3) { "Expected 3 packed splats" }
+            check(packed.floats.size == 3 * GaussianSplatRenderer.SPLAT_FLOAT_STRIDE) { "Unexpected packed stride" }
+            check(packed.floats[3] == 1f) { "Default opacity should be 1" }
+            println("✓ PASS")
+        } catch (e: AssertionError) {
+            println("✗ FAIL: ${e.message}")
+            allPassed = false
+        } catch (e: Exception) {
+            println("✗ ERROR: ${e.message}")
+            e.printStackTrace()
+            allPassed = false
+        }
+
+        // Test 8: Gaussian splat shaders compile and reflect
+        print("Test 8: Gaussian Splat Shader Introspection... ")
+        try {
+            val compute = Introspection(
+                GaussianSplatRenderer.depthKeyComputeShader,
+                ShaderKind.COMPUTE_SHADER,
+                sourceName = "gaussian_splat_depth_keys.comp"
+            )
+            val vertex = Introspection(
+                GaussianSplatRenderer.splatVertexShader,
+                ShaderKind.VERTEX_SHADER,
+                sourceName = "gaussian_splat.vert"
+            )
+            val fragment = Introspection(
+                GaussianSplatRenderer.splatFragmentShader,
+                ShaderKind.FRAGMENT_SHADER,
+                sourceName = "gaussian_splat.frag"
+            )
+            check(compute.valid) { "Depth-key compute shader did not compile" }
+            check(vertex.valid) { "Splat vertex shader did not compile" }
+            check(fragment.valid) { "Splat fragment shader did not compile" }
+            val computePush = compute.pushConstants.flatMap { it.members }
+            val vertexPush = vertex.pushConstants.flatMap { it.members }
+            check(computePush.any { it.name == "splatData" && it.physicalPointer }) {
+                "Depth-key compute shader did not expose splatData buffer reference"
+            }
+            check(computePush.any { it.name == "depthKeys" && it.physicalPointer }) {
+                "Depth-key compute shader did not expose depthKeys buffer reference"
+            }
+            check(vertexPush.any { it.name == "splatData" && it.physicalPointer }) {
+                "Vertex shader did not expose splatData buffer reference"
+            }
+            check(vertexPush.any { it.name == "sortedIndices" && it.physicalPointer }) {
+                "Vertex shader did not expose sortedIndices buffer reference"
+            }
             println("✓ PASS")
         } catch (e: AssertionError) {
             println("✗ FAIL: ${e.message}")

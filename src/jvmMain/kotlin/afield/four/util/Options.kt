@@ -21,7 +21,10 @@ object Options {
     var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.335.1/macOS/lib/libvulkan.1.dylib"
     val useVulkanSDK = true
     val robustness = false
-    val profiling = false
+    val profiling = System.getProperty(
+        "afield.four.profiling",
+        System.getenv("AFIELD_FOUR_PROFILING") ?: "false"
+    ).toBoolean()
     var enableVR = true && !isMac
 
     fun doVulkanSDK() {
