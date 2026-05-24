@@ -233,10 +233,10 @@ class ResourceTracker {
     ): Boolean {
         if (buffer == 0L) return false
 
-        val from = lastBufferAccess[buffer]
+        val from = lastBufferAccess[buffer] ?: ResourceUsage.NONE
         lastBufferAccess[buffer] = to
 
-        if (from == null || from == ResourceUsage.NONE) return false
+        if (from == ResourceUsage.NONE) return false
         if (!needsBarrier(from, to)) return false
 
         recordBufferBarrier(cmd, buffer, size, from, to)
@@ -273,16 +273,16 @@ class ResourceTracker {
         val from = lastImageAccess[image] ?: ResourceUsage.NONE
         lastImageAccess[image] = to
 
-        // Always transition if layouts differ
-        val layoutChanged = from.imageLayout != to.imageLayout && to.imageLayout != VK_IMAGE_LAYOUT_UNDEFINED
-        if (!layoutChanged && !needsBarrier(from, to)) return false
+        if (!needsImageTransition(from, to)) return false
 
         recordImageBarrier(cmd, image, from, to, aspectMask, baseMipLevel, levelCount, baseArrayLayer, layerCount)
         return true
     }
 
     /**
-     * Transition an [Image] to a new usage.
+     * Transition an [Image] to a new usage. Updates the Image's per-command-buffer layout
+     * tracking regardless of whether a barrier was needed, so that [Image.getLayoutFor] stays
+     * consistent.
      */
     fun transitionImage(
         cmd: CommandBuffer,
@@ -295,9 +295,8 @@ class ResourceTracker {
         layerCount: Int = image.imageData.arrayLayers
     ): Boolean {
         val result = transitionImage(cmd, image.vkImage, to, aspectMask, baseMipLevel, levelCount, baseArrayLayer, layerCount)
-        if (result) {
-            image.setLayoutFor(cmd.vkCommandBuffer.address(), to.imageLayout)
-        }
+        // Always update Image's layout tracking so getLayoutFor stays consistent
+        image.setLayoutFor(cmd.vkCommandBuffer.address(), to.imageLayout)
         return result
     }
 
@@ -378,8 +377,7 @@ class ResourceTracker {
         val from = lastImageAccess[image] ?: ResourceUsage.NONE
         lastImageAccess[image] = to
 
-        val layoutChanged = from.imageLayout != to.imageLayout && to.imageLayout != VK_IMAGE_LAYOUT_UNDEFINED
-        if (!layoutChanged && !needsBarrier(from, to)) return false
+        if (!needsImageTransition(from, to)) return false
 
         pendingImageBarriers.add(PendingImageBarrier(image, from, to, aspectMask, baseMipLevel, levelCount, baseArrayLayer, layerCount))
         return true
@@ -450,21 +448,29 @@ class ResourceTracker {
     companion object {
         /**
          * A barrier is needed when:
-         * 1. The previous access wrote AND the next access reads or writes (WAR or WAW hazard)
-         * 2. The previous access reads AND the next access writes (RAW hazard)
+         * 1. The previous access wrote AND the next access reads or writes (WAW hazard)
+         * 2. The previous access wrote AND the next access reads (WAR hazard)
+         * 3. The previous access reads AND the next access writes (RAW hazard)
          *
          * Read-after-read needs no barrier (both are reads, no hazard).
          */
         fun needsBarrier(from: ResourceUsage, to: ResourceUsage): Boolean {
             if (from == ResourceUsage.NONE) return false
-            // WAW — write followed by write
-            if (from.isWrite && to.isWrite) return true
-            // WAR — write followed by read
-            if (from.isWrite && to.isRead) return true
+            // Any write in the source requires a barrier if the destination accesses the resource
+            if (from.isWrite) return true
             // RAW — read followed by write
             if (from.isRead && to.isWrite) return true
             // RAR — read followed by read: no barrier needed
             return false
+        }
+
+        /**
+         * Images also need a barrier when the layout changes, even without a data hazard.
+         */
+        fun needsImageTransition(from: ResourceUsage, to: ResourceUsage): Boolean {
+            if (needsBarrier(from, to)) return true
+            // Layout transition required even for RAR if layouts differ
+            return from.imageLayout != to.imageLayout && to.imageLayout != VK_IMAGE_LAYOUT_UNDEFINED
         }
     }
 
