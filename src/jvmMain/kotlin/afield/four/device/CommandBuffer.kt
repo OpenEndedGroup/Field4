@@ -1,5 +1,6 @@
 package afield.four.device
 
+import afield.four.ResourceTracker
 import afield.four.buffers.VulkanBuffer
 import afield.four.util.vkCheck
 import afield.logger.lblock
@@ -19,6 +20,9 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     // This is used to avoid recording transfer ops (vkCmdCopyBuffer, etc.) in illegal contexts.
     var inRenderPassInstance: Boolean = false
     private val deferredGraphicsHostReadBuffers = LinkedHashSet<VulkanBuffer>()
+
+    /** Tracks per-resource last-known usage and automatically inserts barriers on transitions. */
+    val resourceTracker = ResourceTracker()
 
     data class DynamicRenderingInheritance(
         val colorFormats: IntArray = intArrayOf(),
@@ -61,6 +65,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     fun beginRecording(inheritanceInfo: SecondaryInheritance? = null) {
         inRenderPassInstance = false
         deferredGraphicsHostReadBuffers.clear()
+        resourceTracker.reset()
         MemoryStack.stackPush().use { stack ->
             val cmdBufInfo = VkCommandBufferBeginInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
@@ -129,6 +134,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
         VK10.vkResetCommandBuffer(vkCommandBuffer, VK10.VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)
         inRenderPassInstance = false
         deferredGraphicsHostReadBuffers.clear()
+        resourceTracker.reset()
     }
 
     fun deferGraphicsHostReadBarrier(buffer: VulkanBuffer) {
