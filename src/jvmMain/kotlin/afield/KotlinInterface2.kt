@@ -12,7 +12,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.com.intellij.lang.Language
@@ -20,6 +19,7 @@ import org.jetbrains.kotlin.com.intellij.openapi.Disposable
 import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
@@ -37,6 +37,8 @@ import java.lang.reflect.Modifier
 import java.lang.reflect.Proxy
 import java.net.URL
 import java.net.URLClassLoader
+import java.util.Collections
+import java.util.IdentityHashMap
 import java.util.concurrent.Executors
 import kotlin.reflect.*
 import kotlin.reflect.full.companionObject
@@ -220,6 +222,64 @@ class KotlinInterface2(
         return Box.context.get()
     }
 
+    private fun Throwable.causeChain(): List<Throwable> {
+        val out = mutableListOf<Throwable>()
+        val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+        var current: Throwable? = this
+        while (current != null && seen.add(current)) {
+            out += current
+            current = current.cause
+        }
+        return out
+    }
+
+    private fun firstMessageLine(throwable: Throwable): String {
+        return throwable.message
+            ?.lineSequence()
+            ?.firstOrNull { it.isNotBlank() }
+            ?.trim()
+            ?: throwable::class.qualifiedName
+            ?: throwable.javaClass.name
+    }
+
+    private fun compilerExceptionDiagnostic(throwable: Throwable): ScriptDiagnostic {
+        val chain = throwable.causeChain()
+        val root = chain.lastOrNull() ?: throwable
+        val hasImplicitReceiverFailure = chain.any {
+            it.message?.contains("SCRIPT_IMPLICIT_RECEIVER") == true ||
+                it.message?.contains("\$script_receiver_") == true
+        }
+
+        val message = buildString {
+            append("Kotlin compiler exception: ")
+            append(throwable::class.qualifiedName ?: throwable.javaClass.name)
+            append(": ")
+            append(firstMessageLine(throwable))
+
+            if (root !== throwable) {
+                append("\nCaused by: ")
+                append(root::class.qualifiedName ?: root.javaClass.name)
+                append(": ")
+                append(firstMessageLine(root))
+            }
+
+            if (hasImplicitReceiverFailure) {
+                append("\n\nK2 could not codegen a named function that captures the script's implicit Box receiver. ")
+                append("Make that receiver explicit, for example `fun Box.show() { ... }`, ")
+                append("or pass the Box explicitly.")
+            }
+        }
+
+        return ScriptDiagnostic(
+            ScriptDiagnostic.unspecifiedException,
+            message,
+            ScriptDiagnostic.Severity.ERROR,
+            null,
+            null,
+            throwable
+        )
+    }
+
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
         return compileMutex.withLock {
             val code = SourceCodeImpl(id++, s)
@@ -232,13 +292,20 @@ class KotlinInterface2(
 
             var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
             val ns = measureNanoTime {
-                if (KotlinEngineConfig.offloadCompilation) {
-                    // Offload the expensive compiler work, but keep this REPL state single-entered.
-                    r = withContext(compilationDispatcher) {
-                        compiler.compile(code, compilerConfig)
+                try {
+                    if (KotlinEngineConfig.offloadCompilation) {
+                        // Offload the expensive compiler work, but keep this REPL state single-entered.
+                        r = withContext(compilationDispatcher) {
+                            compiler.compile(code, compilerConfig)
+                        }
+                    } else {
+                        r = compiler.compile(code, compilerConfig)
                     }
-                } else {
-                    r = compiler.compile(code, compilerConfig)
+                } catch (t: Throwable) {
+                    context.debugScripts.discard(snapshot)
+                    lprintln("error,kotlin", "compiler exception while compiling snippet")
+                    lprintln("error,kotlin", t.stackTraceToString())
+                    r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
                 }
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
@@ -1915,7 +1982,7 @@ class KotlinInterface2(
                                             ns = ns.nextSibling
                                         }
 
-                                        val containingFunction = expression.parentOfType<KtNamedFunction>()
+                                        val containingFunction = PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
                                         val containingFunctionName = containingFunction?.name
                                         val valueParameterList =
                                             (containingFunction?.valueParameterList as? KtParameterList)?.text

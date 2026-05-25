@@ -10,6 +10,7 @@ import afield.macros.gatherPreambleUpwards
 import afield.macros.standardExecutionPractice
 import afield.stdlib.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -891,8 +892,8 @@ class KotlinExecution : BoxExecution {
     ) {
 
         Box.withBoxContext(box) {
+            var dur = code.split("\n").count()
             try {
-                var dur = code.split("\n").count()
                 var hasError = false
                 var output = mutableListOf<String>("")
                 box.output.proxy = { content, nl, line ->
@@ -1150,6 +1151,22 @@ class KotlinExecution : BoxExecution {
             } else {
                 lprintln("error,execution", "execution finished with errors")
             }
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                lprintln("error,execution", "uncaught exception while executing fragment inside box $box")
+                lprintln("error,execution", t.stackTraceToString())
+                dispatchExecutionOutput(
+                    box,
+                    reply,
+                    Output(
+                        uid = box.id,
+                        line = ln + dur,
+                        kind = "error",
+                        html = escapeForHtml(t.message ?: t.javaClass.name),
+                        frame = Runloop.runLoop.frame.toInt()
+                    ),
+                    originSession = originSession
+                )
             } finally {
                 finishedHandler()
             }

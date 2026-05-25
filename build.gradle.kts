@@ -58,6 +58,18 @@ val javacvVersion = "1.5.10"
 val electronDir = layout.projectDirectory.dir("electron")
 val abletonLinkNative = layout.projectDirectory.file("libs/libabl_link_jvm.dylib")
 val ceresNative = layout.projectDirectory.file("lib/libken_ceres_jvm.dylib")
+val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
+    .map(String::toBoolean)
+    .orElse(true)
+val kotlinRuntimeModulesShadowedByLocalJars = listOf(
+    "kotlin-compiler-embeddable",
+    "kotlin-daemon-embeddable",
+    "kotlin-scripting-compiler-embeddable",
+    "kotlin-scripting-compiler-impl-embeddable",
+    "kotlin-scripting-jvm",
+    "kotlin-scripting-common",
+    "kotlin-script-runtime",
+)
 
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
@@ -130,6 +142,12 @@ node {
     version.set("20.12.2")
     npmVersion.set("10.5.0")
     nodeProjectDir.set(electronDir.asFile)
+}
+
+configurations.matching { it.name in setOf("jvmRuntimeClasspath", "jvmMainRuntimeClasspath") }.configureEach {
+    kotlinRuntimeModulesShadowedByLocalJars.forEach { moduleName ->
+        exclude(group = "org.jetbrains.kotlin", module = moduleName)
+    }
 }
 
 repositories {
@@ -332,32 +350,32 @@ kotlin {
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
-                val kotlinScriptingVersion = "2.4.0-Beta1"
+                val customKotlinVersion = "2.4.255-SNAPSHOT"
 
                 /*
                 gently customized versions of the kotlin scripting front-end to provide better completion and skip the history check on the repl evaluator to allow us to reused compiled fragments
                  */
-                implementation(files("libs/analysis-api-2.4.255-SNAPSHOT.jar"))
-                implementation(files("libs/analysis-api-fir-generator-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/analysis-api-$customKotlinVersion.jar"))
+                implementation(files("libs/analysis-api-fir-generator-$customKotlinVersion.jar"))
 
                 implementation(files("libs/jep-4.3.1.jar"))
 
-
-                implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinScriptingVersion")
+                implementation(files("libs/kotlin-compiler-embeddable-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-compiler-impl-embeddable-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-compiler-embeddable-$customKotlinVersion.jar"))
                 implementation("com.facebook:ktfmt:0.54")
 
-                implementation(files("libs/kotlin-scripting-ide-services-2.4.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-common-2.4.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jsr223-2.4.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-2.4.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-host-2.4.255-SNAPSHOT.jar"))
-                implementation(files("libs/names-2.4.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-ide-services-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-common-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jsr223-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-host-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-script-runtime-$customKotlinVersion.jar"))
+                implementation(files("libs/names-$customKotlinVersion.jar"))
 
-//                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven:$kotlinScriptingVersion")
+//                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$customKotlinVersion")
+                implementation(files("libs/kotlin-scripting-dependencies-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-dependencies-maven-$customKotlinVersion.jar"))
                 implementation("org.apache.maven.resolver:maven-resolver-api:2.0.7")
 
                 implementation("org.joml:joml-experimental:1.10.7")
@@ -489,6 +507,32 @@ tasks.named<JavaExec>("runJvm").configure {
             }
         }
         setJvmArgs(merged)
+
+        if (printRunJvmClasspath.get()) {
+            val entries = classpath.files.map { it.absolutePath }
+            val reportFile = layout.buildDirectory.file("reports/runJvm-classpath.txt").get().asFile
+            reportFile.parentFile.mkdirs()
+            reportFile.writeText(entries.joinToString(separator = System.lineSeparator(), postfix = System.lineSeparator()))
+
+            val shadowedKotlinEntries = entries.filter { entry ->
+                entry.contains("/.gradle/caches/modules-2/") &&
+                    kotlinRuntimeModulesShadowedByLocalJars.any { moduleName ->
+                        entry.substringAfterLast('/').startsWith("$moduleName-")
+                    }
+            }
+
+            logger.lifecycle("runJvm runtime classpath (${entries.size} entries):")
+            entries.forEachIndexed { index, entry ->
+                logger.lifecycle("  ${index + 1}: $entry")
+            }
+            logger.lifecycle("runJvm runtime classpath written to ${reportFile.absolutePath}")
+            if (shadowedKotlinEntries.isNotEmpty()) {
+                logger.warn("runJvm runtime classpath still contains Kotlin compiler/scripting modules shadowed by local jars:")
+                shadowedKotlinEntries.forEach { entry ->
+                    logger.warn("  $entry")
+                }
+            }
+        }
     }
 
     dependsOn(tasks.named("jvmJar"))

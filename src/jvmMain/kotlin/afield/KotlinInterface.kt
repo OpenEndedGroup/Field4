@@ -9,11 +9,11 @@ import afield.stdlib.applyInsertToPreamble
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.com.intellij.lang.Language
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
@@ -348,7 +348,7 @@ class KotlinInterface(
 
 
                                         // won't work for inferred return types
-                                        val containingFunction  = expression.parentOfType<KtNamedFunction>()
+                                        val containingFunction = PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
                                         val containingFunctionName = containingFunction?.name
                                         val valueParameterList = (containingFunction?.valueParameterList as? KtParameterList)?.text
                                         val returnParameterText = (containingFunction?.typeReference as? KtTypeReference)?.text
