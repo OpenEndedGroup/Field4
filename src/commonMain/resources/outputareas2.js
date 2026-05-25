@@ -16,6 +16,8 @@ const AUTO_SIZE_PASSES = [0, 1, 2, 4, 8, 14, 22];
 function disclosureInterface(container) {
         if (container.__disclosureAPI) return container.__disclosureAPI;
 
+        const PRESERVE_CONTENT = "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__";
+
         const disclosures = new Map(); // id -> { wrap, hdr, cw, arr }
         const states = new Map(); // id -> { open, width, height, scrollTop, scrollLeft }
 
@@ -908,10 +910,14 @@ function disclosureInterface(container) {
                         const { hdr, cw, inline, arr, inlineValue } = d;
                         if (inline) {
                                 arr.textContent = inlineTitle(title);
-                                inlineValue.innerHTML = content || "";
+                                if (content !== PRESERVE_CONTENT) {
+                                        inlineValue.innerHTML = content || "";
+                                }
                         } else {
                                 hdr.querySelector(".title").textContent = title;
-                                cw.innerHTML = content || "";
+                                if (content !== PRESERVE_CONTENT) {
+                                        cw.innerHTML = content || "";
+                                }
                         }
                 }
 

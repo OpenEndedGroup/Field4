@@ -56,6 +56,8 @@ val javacppVersion = "1.5.10"
 val javacvVersion = "1.5.10"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 val electronDir = layout.projectDirectory.dir("electron")
+val abletonLinkNative = layout.projectDirectory.file("libs/libabl_link_jvm.dylib")
+val ceresNative = layout.projectDirectory.file("lib/libken_ceres_jvm.dylib")
 
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
@@ -65,6 +67,9 @@ fun requiredRunJvmArgs(): List<String> {
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
+        add("--enable-native-access=ALL-UNNAMED")
+        add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
+        add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
             add("-Djoml.format=false")
@@ -157,6 +162,9 @@ kotlin {
 
                 args += "-Dorg.lwjgl.system.stackSize=257"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
+                args += "--enable-native-access=ALL-UNNAMED"
+                args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
+                args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
 
                 applicationDefaultJvmArgs.set(args)
             }
@@ -311,6 +319,7 @@ kotlin {
                 // for parse tree rewriting — still useful for remote js
 //                implementation("org.openjdk.nashorn:nashorn-core:15.6")
                 implementation(files("libs/nashorn-core-15.6.jar"))
+                implementation(files("libs/ableton-link-ffm.jar"))
                 implementation("org.ow2.asm:asm:7.3.1")
                 implementation("org.ow2.asm:asm-commons:7.3.1")
                 implementation("org.ow2.asm:asm-tree:7.3.1")
@@ -815,6 +824,51 @@ tasks.register("runDesktop") {
             throw GradleException("Electron exited with code ${electronExit}.")
         }
     }
+}
+
+fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String) {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "verification"
+    description = taskDescription
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set(entrypoint)
+    workingDir = projectDir
+    jvmArgs(requiredRunJvmArgs())
+    inputs.file(ceresNative)
+    doFirst {
+        if (!ceresNative.asFile.exists()) {
+            throw GradleException("Ceres native library not found at ${ceresNative.asFile.absolutePath}")
+        }
+    }
+}
+
+val smokeCeresGeometryPrimitives = tasks.register<JavaExec>("smokeCeresGeometryPrimitives") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresGeometryPrimitivesSmokeKt",
+        "Runs the Ceres FFM geometry primitive smoke example.",
+    )
+}
+
+val smokeCeresArchitecturalDsl = tasks.register<JavaExec>("smokeCeresArchitecturalDsl") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresArchitecturalDslSmokeKt",
+        "Runs the Ceres architectural DSL smoke example.",
+    )
+}
+
+val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteractionExamples") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresInteractionExamplesKt",
+        "Runs the Ceres interaction examples smoke suite.",
+    )
+}
+
+tasks.register("smokeCeres") {
+    group = "verification"
+    description = "Runs all Ceres FFM smoke examples."
+    dependsOn(smokeCeresGeometryPrimitives, smokeCeresArchitecturalDsl, smokeCeresInteractionExamples)
 }
 
 tasks.register<JavaExec>("runai") {

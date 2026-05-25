@@ -31,6 +31,22 @@ class SynthContext(
     var time: Float = 0f
         internal set
 
+    /** Latest Ableton Link timing snapshot captured at the beginning of this audio block. */
+    var linkTiming: LinkTimingSnapshot? = null
+        internal set
+
+    val linkBeat: Double
+        get() = linkTiming?.beat ?: 0.0
+
+    val linkPhase: Double
+        get() = linkTiming?.phase ?: 0.0
+
+    val linkTempo: Double
+        get() = linkTiming?.tempo ?: 0.0
+
+    val linkPeers: Long
+        get() = linkTiming?.peers ?: 0L
+
     internal fun advanceCycle() {
         cycleId++
         time += bufferSize * inverseSampleRate
@@ -76,7 +92,8 @@ class SynthContext(
         "sampleRate" to sampleRate,
         "bufferSize" to bufferSize,
         "cycleId" to cycleId,
-        "time" to time
+        "time" to time,
+        "linkTiming" to linkTiming
     )
 }
 
@@ -401,6 +418,21 @@ class ParamScope internal constructor() {
 
     val nyquist: Float
         get() = context.nyquist
+
+    val linkTiming: LinkTimingSnapshot?
+        get() = context.linkTiming
+
+    val linkBeat: Double
+        get() = context.linkBeat
+
+    val linkPhase: Double
+        get() = context.linkPhase
+
+    val linkTempo: Double
+        get() = context.linkTempo
+
+    val linkPeers: Long
+        get() = context.linkPeers
 
     fun acquireBuf(size: Int = bufferSize): FloatArray = context.acquireBuf(size)
 

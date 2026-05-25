@@ -20,6 +20,18 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
   - Keystore env vars: `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS`, `AFIELD_KEYSTORE_ALIAS`
   - Generate dev keystore: `./gradlew generateLocalKeystore` (writes `config/field4-local.p12`)
 
+### Gradle hygiene for agents
+
+- Do not run bare `./gradlew` from agent automation. Interrupted agent builds have previously left Gradle daemons holding `~/.gradle/caches/journal-1`, blocking the user's later builds.
+- Use an isolated Gradle user home and disable VFS watching for agent builds, for example:
+
+```bash
+GRADLE_USER_HOME=/Users/marc/.codex/gradle-homes/jvm-js-fullstack \
+  ./gradlew --no-daemon -Dorg.gradle.vfs.watch=false compileKotlinJvm
+```
+
+- If a build is interrupted, clean up only the matching Gradle wrapper/daemon process tree for this checkout; do not use broad `killall java`.
+
 ## Field Backdoor (Preferred for Agents)
 
 - When you need to verify Field behavior by actually running code, prefer `python3 tools/field_backdoor.py` over driving the browser manually.

@@ -270,8 +270,20 @@ let pointMaterial = null;
 let interactiveObjects = [];
 let editableHitObjects = [];
 let payloadState = { editable: null };
+const payloadGeometrySlots = {
+    lines: null,
+    fills: null,
+    points: null,
+    interactive: []
+};
+const editableGeometrySlots = {
+    lines: [],
+    points: [],
+    faces: []
+};
 let cameraPointerDown = null;
 let cameraIsDragging = false;
+let hasFramedInitialGeometry = false;
 
 const raycaster = new THREE.Raycaster();
 raycaster.params.Line = { threshold: 0.06 };
@@ -610,22 +622,200 @@ function clearGroup(group) {
     group.clear();
 }
 
+function typedArrayCtor(type) {
+    if (type === 'Uint8Array') return Uint8Array;
+    if (type === 'Uint16Array') return Uint16Array;
+    if (type === 'Uint32Array') return Uint32Array;
+    if (type === 'Int8Array') return Int8Array;
+    if (type === 'Int16Array') return Int16Array;
+    if (type === 'Int32Array') return Int32Array;
+    if (type === 'Float64Array') return Float64Array;
+    return Float32Array;
+}
+
+function typedArrayFromSpec(spec, fallbackType = 'Float32Array') {
+    const Ctor = typedArrayCtor(spec?.type || fallbackType);
+    return spec?.array instanceof Ctor ? spec.array : new Ctor(spec?.array || []);
+}
+
+function makeDynamicAttribute(spec, fallbackType = 'Float32Array') {
+    const attribute = new THREE.BufferAttribute(
+        typedArrayFromSpec(spec, fallbackType),
+        spec.itemSize,
+        !!spec.normalized
+    );
+    attribute.setUsage(THREE.DynamicDrawUsage);
+    return attribute;
+}
+
+function markAttributeUpdated(attribute, count) {
+    if (attribute.updateRange) {
+        attribute.updateRange.offset = 0;
+        attribute.updateRange.count = count;
+    }
+    attribute.needsUpdate = true;
+}
+
+function attributeSpec(itemSize, array, type = 'Float32Array', normalized = false) {
+    return { itemSize, array, type, normalized };
+}
+
+function cloneGeometryDataWithDefaults(data, defaults = {}) {
+    if (!data || !data.attributes || !data.attributes.position) return null;
+    const attributes = { ...data.attributes };
+    const vertexCount = Math.floor(attributes.position.array.length / attributes.position.itemSize);
+    Object.entries(defaults).forEach(([name, spec]) => {
+        if (attributes[name]) return;
+        const itemSize = spec.itemSize || 1;
+        const array = new Array(vertexCount * itemSize);
+        for (let i = 0; i < vertexCount; i += 1) {
+            for (let c = 0; c < itemSize; c += 1) {
+                const fill = Array.isArray(spec.fill) ? spec.fill[Math.min(c, spec.fill.length - 1)] : spec.fill;
+                array[i * itemSize + c] = fill;
+            }
+        }
+        attributes[name] = attributeSpec(itemSize, array, spec.type || 'Float32Array', !!spec.normalized);
+    });
+    return { ...data, attributes };
+}
+
 function buildGeometry(data) {
     if (!data || !data.attributes || !data.attributes.position) return null;
     const geometry = new THREE.BufferGeometry();
-    const pos = data.attributes.position;
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos.array, pos.itemSize));
-    const col = data.attributes.color;
-    if (col) geometry.setAttribute('color', new THREE.Float32BufferAttribute(col.array, col.itemSize));
-    const alpha = data.attributes.alpha;
-    if (alpha) geometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alpha.array, alpha.itemSize));
-    const size = data.attributes.size;
-    if (size) geometry.setAttribute('size', new THREE.Float32BufferAttribute(size.array, size.itemSize));
+    Object.entries(data.attributes).forEach(([name, spec]) => {
+        geometry.setAttribute(name, makeDynamicAttribute(spec));
+    });
     if (data.index && data.index.array && data.index.array.length) {
-        geometry.setIndex(data.index.array);
+        const index = new THREE.BufferAttribute(typedArrayFromSpec(data.index, 'Uint32Array'), 1);
+        index.setUsage(THREE.DynamicDrawUsage);
+        geometry.setIndex(index);
     }
+    const position = geometry.getAttribute('position');
+    const count = data.index?.array?.length || position.count;
+    geometry.setDrawRange(0, count);
     geometry.computeBoundingSphere();
     return geometry;
+}
+
+function canUpdateGeometryInPlace(geometry, data, allowExtraAttributes = []) {
+    if (!geometry || !data || !data.attributes || !data.attributes.position) return false;
+    const allowExtra = new Set(allowExtraAttributes);
+    const incomingNames = Object.keys(data.attributes).sort().join('|');
+    const existingNames = Object.keys(geometry.attributes).filter((name) => !allowExtra.has(name)).sort().join('|');
+    if (incomingNames !== existingNames) return false;
+
+    for (const [name, spec] of Object.entries(data.attributes)) {
+        const attribute = geometry.getAttribute(name);
+        if (!attribute) return false;
+        if (attribute.itemSize !== spec.itemSize) return false;
+        if (!!attribute.normalized !== !!spec.normalized) return false;
+        if (attribute.array.length < spec.array.length) return false;
+    }
+
+    const incomingIndex = data.index?.array || null;
+    const existingIndex = geometry.getIndex();
+    if (!!incomingIndex !== !!existingIndex) return false;
+    if (incomingIndex && existingIndex.array.length < incomingIndex.length) return false;
+    return true;
+}
+
+function updateGeometryInPlace(geometry, data, computeNormals = false) {
+    if (!canUpdateGeometryInPlace(geometry, data, computeNormals ? ['normal'] : [])) return false;
+    Object.entries(data.attributes).forEach(([name, spec]) => {
+        const attribute = geometry.getAttribute(name);
+        attribute.array.set(spec.array, 0);
+        attribute.count = Math.floor(spec.array.length / attribute.itemSize);
+        markAttributeUpdated(attribute, spec.array.length);
+    });
+
+    const index = geometry.getIndex();
+    if (data.index?.array && index) {
+        index.array.set(data.index.array, 0);
+        index.count = data.index.array.length;
+        markAttributeUpdated(index, data.index.array.length);
+    }
+
+    const drawCount = data.index?.array?.length || geometry.getAttribute('position').count;
+    geometry.setDrawRange(0, drawCount);
+    if (computeNormals) geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    return true;
+}
+
+function removeSlot(slot) {
+    if (!slot) return null;
+    if (slot.object) {
+        disposeObject(slot.object);
+        slot.object.removeFromParent();
+    }
+    return null;
+}
+
+function removeInteractiveSlot(slot) {
+    if (!slot) return null;
+    slot.lines = removeSlot(slot.lines);
+    slot.fills = removeSlot(slot.fills);
+    slot.points = removeSlot(slot.points);
+    return null;
+}
+
+function clearPayloadGeometrySlots() {
+    payloadGeometrySlots.lines = removeSlot(payloadGeometrySlots.lines);
+    payloadGeometrySlots.fills = removeSlot(payloadGeometrySlots.fills);
+    payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
+    payloadGeometrySlots.interactive.forEach((slot) => removeInteractiveSlot(slot));
+    payloadGeometrySlots.interactive.length = 0;
+}
+
+function clearEditableGeometrySlots() {
+    editableGeometrySlots.lines.forEach((slot) => removeSlot(slot));
+    editableGeometrySlots.points.forEach((slot) => removeSlot(slot));
+    editableGeometrySlots.faces.forEach((slot) => removeSlot(slot));
+    editableGeometrySlots.lines.length = 0;
+    editableGeometrySlots.points.length = 0;
+    editableGeometrySlots.faces.length = 0;
+}
+
+function upsertGeometrySlot(slot, data, options) {
+    const normalized = cloneGeometryDataWithDefaults(data, options.defaults || {});
+    if (!normalized) return removeSlot(slot);
+
+    if (slot && slot.object && slot.kind === options.kind && updateGeometryInPlace(slot.object.geometry, normalized, !!options.computeNormals)) {
+        if (options.afterUpdate) options.afterUpdate(slot);
+        return slot;
+    }
+
+    slot = removeSlot(slot);
+    const geometry = buildGeometry(normalized);
+    if (!geometry) return null;
+    if (options.computeNormals) geometry.computeVertexNormals();
+    const material = options.makeMaterial();
+    const object = new options.ObjectClass(geometry, material);
+    if (options.configureObject) options.configureObject(object, material);
+    baseGeometryRoot.add(object);
+    slot = { kind: options.kind, object, material };
+    if (options.afterUpdate) options.afterUpdate(slot);
+    return slot;
+}
+
+function geometryDataFromArrays(positions, colors = null, alphas = null, sizes = null, indices = null) {
+    if (!positions || positions.length === 0) return null;
+    const attributes = {
+        position: attributeSpec(3, positions)
+    };
+    if (colors) attributes.color = attributeSpec(3, colors);
+    if (alphas) attributes.alpha = attributeSpec(1, alphas);
+    if (sizes) attributes.size = attributeSpec(1, sizes);
+    let index = null;
+    if (indices && indices.length) {
+        let maxIndex = 0;
+        indices.forEach((value) => { if (value > maxIndex) maxIndex = value; });
+        index = {
+            type: maxIndex > 65535 ? 'Uint32Array' : 'Uint16Array',
+            array: indices
+        };
+    }
+    return { attributes, index };
 }
 
 function ensureAttribute(geometry, name, itemSize, fillValue) {
@@ -831,6 +1021,80 @@ function makeInteractiveFillMaterial(hoverColor) {
     return material;
 }
 
+function updateHoverMaterial(material, hoverColor) {
+    const color = hoverColor ? new THREE.Color(hoverColor[0], hoverColor[1], hoverColor[2]) : new THREE.Color(1, 1, 1);
+    const alpha = hoverColor ? hoverColor[3] : 1.0;
+    const targets = [];
+    if (material?.uniforms) targets.push(material.uniforms);
+    if (material?.userData?.shader?.uniforms) targets.push(material.userData.shader.uniforms);
+    targets.forEach((uniforms) => {
+        if (uniforms.uHoverColor) uniforms.uHoverColor.value.copy(color);
+        if (uniforms.uHoverAlpha) uniforms.uHoverAlpha.value = alpha;
+        if (uniforms.uHover) uniforms.uHover.value = 0.0;
+    });
+}
+
+function interactiveSlotOptions(kind, hoverColor) {
+    if (kind === 'lines') {
+        return {
+            kind: 'interactive-lines',
+            ObjectClass: THREE.LineSegments,
+            defaults: {
+                color: { itemSize: 3, fill: [1, 1, 1] },
+                alpha: { itemSize: 1, fill: 1 }
+            },
+            makeMaterial: () => makeInteractiveLineMaterial(hoverColor),
+            configureObject: (object, material) => { object.userData.interactiveMat = material; },
+            afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
+        };
+    }
+    if (kind === 'fills') {
+        return {
+            kind: 'interactive-fills',
+            ObjectClass: THREE.Mesh,
+            computeNormals: true,
+            defaults: {
+                color: { itemSize: 3, fill: [1, 1, 1] },
+                alpha: { itemSize: 1, fill: 1 }
+            },
+            makeMaterial: () => makeInteractiveFillMaterial(hoverColor),
+            configureObject: (object, material) => { object.userData.interactiveMat = material; },
+            afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
+        };
+    }
+    return {
+        kind: 'interactive-points',
+        ObjectClass: THREE.Points,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 },
+            size: { itemSize: 1, fill: 3 }
+        },
+        makeMaterial: () => makeInteractivePointMaterial(hoverColor),
+        configureObject: (object, material) => { object.userData.interactiveMat = material; },
+        afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
+    };
+}
+
+function upsertInteractiveObject(slot, obj) {
+    if (!obj) return removeInteractiveSlot(slot);
+    const hoverColor = obj.hoverColor || null;
+    const next = slot || {};
+    next.lines = upsertGeometrySlot(next.lines, obj.lines, interactiveSlotOptions('lines', hoverColor));
+    next.fills = upsertGeometrySlot(next.fills, obj.fills, interactiveSlotOptions('fills', hoverColor));
+    next.points = upsertGeometrySlot(next.points, obj.points, interactiveSlotOptions('points', hoverColor));
+    const meshes = [next.lines?.object, next.fills?.object, next.points?.object].filter(Boolean);
+    if (!meshes.length) return removeInteractiveSlot(next);
+    next.entry = {
+        callbackId: obj.callbackId || '',
+        hoverColor,
+        meshes,
+        hovering: false,
+        vertices: obj.vertices || []
+    };
+    return next;
+}
+
 function addInteractiveObject(obj) {
     const meshes = [];
     const hoverColor = obj.hoverColor || null;
@@ -950,30 +1214,42 @@ function updateInteractiveHover() {
 }
 
 function addPayloadLines(data) {
-    const geometry = buildGeometry(data);
-    if (!geometry) return;
-    ensureAttribute(geometry, 'color', 3, 1);
-    ensureAttribute(geometry, 'alpha', 1, 1);
-    baseGeometryRoot.add(new THREE.LineSegments(geometry, makeLineMaterial()));
+    payloadGeometrySlots.lines = upsertGeometrySlot(payloadGeometrySlots.lines, data, {
+        kind: 'payload-lines',
+        ObjectClass: THREE.LineSegments,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 }
+        },
+        makeMaterial: () => makeLineMaterial()
+    });
 }
 
 function addPayloadFills(data) {
-    const geometry = buildGeometry(data);
-    if (!geometry) return;
-    geometry.computeVertexNormals();
-    ensureAttribute(geometry, 'color', 3, 1);
-    ensureAttribute(geometry, 'alpha', 1, 1);
-    baseGeometryRoot.add(new THREE.Mesh(geometry, makeFillMaterial()));
+    payloadGeometrySlots.fills = upsertGeometrySlot(payloadGeometrySlots.fills, data, {
+        kind: 'payload-fills',
+        ObjectClass: THREE.Mesh,
+        computeNormals: true,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 }
+        },
+        makeMaterial: () => makeFillMaterial()
+    });
 }
 
 function addPayloadPoints(data) {
-    const geometry = buildGeometry(data);
-    if (!geometry) return;
-    ensureAttribute(geometry, 'color', 3, 1);
-    ensureAttribute(geometry, 'alpha', 1, 1);
-    ensureAttribute(geometry, 'size', 1, 3);
-    pointMaterial = makePointMaterial();
-    baseGeometryRoot.add(new THREE.Points(geometry, pointMaterial));
+    payloadGeometrySlots.points = upsertGeometrySlot(payloadGeometrySlots.points, data, {
+        kind: 'payload-points',
+        ObjectClass: THREE.Points,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 },
+            size: { itemSize: 1, fill: 3 }
+        },
+        makeMaterial: () => makePointMaterial(),
+        afterUpdate: (slot) => { pointMaterial = slot.material; }
+    });
 }
 
 function buildSegmentsGeometry(points, color, alpha) {
@@ -1045,28 +1321,39 @@ function computeHandleRadius(bounds) {
 }
 
 function renderPayloadGeometry(payload) {
-    clearGroup(baseGeometryRoot);
+    clearEditableGeometrySlots();
     clearGroup(editorOverlayRoot);
     interactiveObjects = [];
     editableHitObjects = [];
     if (payload.lines) addPayloadLines(payload.lines);
+    else payloadGeometrySlots.lines = removeSlot(payloadGeometrySlots.lines);
     if (payload.fills) addPayloadFills(payload.fills);
+    else payloadGeometrySlots.fills = removeSlot(payloadGeometrySlots.fills);
     if (payload.points) addPayloadPoints(payload.points);
-    if (payload.interactive) payload.interactive.forEach((obj) => addInteractiveObject(obj));
+    else payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
+
+    const interactivePayload = payload.interactive || [];
+    for (let i = 0; i < interactivePayload.length; i += 1) {
+        payloadGeometrySlots.interactive[i] = upsertInteractiveObject(payloadGeometrySlots.interactive[i], interactivePayload[i]);
+        const entry = payloadGeometrySlots.interactive[i]?.entry;
+        if (entry) interactiveObjects.push(entry);
+    }
+    for (let i = interactivePayload.length; i < payloadGeometrySlots.interactive.length; i += 1) {
+        removeInteractiveSlot(payloadGeometrySlots.interactive[i]);
+    }
+    payloadGeometrySlots.interactive.length = interactivePayload.length;
 }
 
 function renderEditableBaseGeometry() {
-    clearGroup(baseGeometryRoot);
+    clearPayloadGeometrySlots();
     interactiveObjects = [];
     const sceneData = editorState.scene;
     if (!sceneData) return;
 
-    const lineMaterial = makeLineMaterial();
-    const pointMat = makePointMaterial();
-    pointMaterial = pointMat;
-
     sceneData.lines.forEach((line) => {
         const color = line.color;
+        const interactive = !!(line.callbackId || line.hoverColor);
+        const lineMeshes = [];
         if (line.stroked) {
             const positions = [];
             let previous = null;
@@ -1089,71 +1376,115 @@ function renderEditableBaseGeometry() {
                 }
             });
             if (positions.length) {
-                const colors = new Float32Array((positions.length / 3) * 3);
-                const alphas = new Float32Array(positions.length / 3);
-                for (let i = 0; i < positions.length / 3; i += 1) {
+                const vertexCount = positions.length / 3;
+                const colors = new Array(vertexCount * 3);
+                const alphas = new Array(vertexCount);
+                for (let i = 0; i < vertexCount; i += 1) {
                     colors[i * 3] = color[0];
                     colors[i * 3 + 1] = color[1];
                     colors[i * 3 + 2] = color[2];
                     alphas[i] = color[3];
                 }
-                const geometry = new THREE.BufferGeometry();
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
-                geometry.computeBoundingSphere();
-                const interactive = !!(line.callbackId || line.hoverColor);
-                const material = interactive ? makeInteractiveLineMaterial(line.hoverColor || null) : lineMaterial.clone();
-                const mesh = new THREE.LineSegments(geometry, material);
-                if (interactive) {
-                    mesh.userData.interactiveMat = material;
-                    interactiveObjects.push(makeInteractiveEntry(line, [mesh]));
+                const data = geometryDataFromArrays(positions, colors, alphas);
+                editableGeometrySlots.lines[line.lineIndex] = upsertGeometrySlot(editableGeometrySlots.lines[line.lineIndex], data, {
+                    kind: 'editable-line',
+                    ObjectClass: THREE.LineSegments,
+                    makeMaterial: () => interactive ? makeInteractiveLineMaterial(line.hoverColor || null) : makeLineMaterial(),
+                    configureObject: interactive ? ((object, material) => { object.userData.interactiveMat = material; }) : null,
+                    afterUpdate: interactive ? ((slot) => updateHoverMaterial(slot.material, line.hoverColor || null)) : null
+                });
+                if (editableGeometrySlots.lines[line.lineIndex]?.object) {
+                    lineMeshes.push(editableGeometrySlots.lines[line.lineIndex].object);
                 }
-                baseGeometryRoot.add(mesh);
+            } else {
+                editableGeometrySlots.lines[line.lineIndex] = removeSlot(editableGeometrySlots.lines[line.lineIndex]);
             }
+        } else {
+            editableGeometrySlots.lines[line.lineIndex] = removeSlot(editableGeometrySlots.lines[line.lineIndex]);
         }
 
         if (line.pointed) {
             const anchors = line.nodes.filter((node) => node.kind !== 'close' && node.to).map((node) => node.to);
-            const geometry = buildPointsGeometry(anchors, color, color[3], Math.max(1.5, line.pointSize * 3.0));
-            if (geometry) {
-                const interactive = !!(line.callbackId || line.hoverColor);
-                const material = interactive ? makeInteractivePointMaterial(line.hoverColor || null) : pointMat.clone();
-                const mesh = new THREE.Points(geometry, material);
-                if (interactive) {
-                    mesh.userData.interactiveMat = material;
-                    interactiveObjects.push(makeInteractiveEntry(line, [mesh]));
+            const positions = [];
+            const colors = [];
+            const alphas = [];
+            const sizes = [];
+            anchors.forEach((point) => {
+                positions.push(point[0], point[1], point[2]);
+                colors.push(color[0], color[1], color[2]);
+                alphas.push(color[3]);
+                sizes.push(Math.max(1.5, line.pointSize * 3.0));
+            });
+            const data = geometryDataFromArrays(positions, colors, alphas, sizes);
+            editableGeometrySlots.points[line.lineIndex] = upsertGeometrySlot(editableGeometrySlots.points[line.lineIndex], data, {
+                kind: 'editable-points',
+                ObjectClass: THREE.Points,
+                makeMaterial: () => interactive ? makeInteractivePointMaterial(line.hoverColor || null) : makePointMaterial(),
+                configureObject: interactive ? ((object, material) => { object.userData.interactiveMat = material; }) : null,
+                afterUpdate: (slot) => {
+                    pointMaterial = slot.material;
+                    if (interactive) updateHoverMaterial(slot.material, line.hoverColor || null);
                 }
-                baseGeometryRoot.add(mesh);
+            });
+            if (editableGeometrySlots.points[line.lineIndex]?.object) {
+                lineMeshes.push(editableGeometrySlots.points[line.lineIndex].object);
             }
+        } else {
+            editableGeometrySlots.points[line.lineIndex] = removeSlot(editableGeometrySlots.points[line.lineIndex]);
+        }
+
+        if (interactive && lineMeshes.length) {
+            interactiveObjects.push(makeInteractiveEntry(line, lineMeshes));
         }
     });
 
-    editorState.faces.forEach((face) => {
+    editorState.faces.forEach((face, faceIndex) => {
         const line = sceneData.lines[face.lineIndex];
-        if (!line || !line.filled) return;
-        const geometry = buildFaceGeometry(face.boundary);
-        if (!geometry) return;
-        const count = geometry.getAttribute('position').count;
-        const colors = new Float32Array(count * 3);
-        const alphas = new Float32Array(count);
+        if (!line || !line.filled || !face.boundary || face.boundary.length < 3) {
+            editableGeometrySlots.faces[faceIndex] = removeSlot(editableGeometrySlots.faces[faceIndex]);
+            return;
+        }
+        const positions = [];
+        const indices = [];
+        face.boundary.forEach((point) => positions.push(point[0], point[1], point[2]));
+        for (let i = 1; i < face.boundary.length - 1; i += 1) {
+            indices.push(0, i, i + 1);
+        }
+        const count = positions.length / 3;
+        const colors = new Array(count * 3);
+        const alphas = new Array(count);
         for (let i = 0; i < count; i += 1) {
             colors[i * 3] = line.color[0];
             colors[i * 3 + 1] = line.color[1];
             colors[i * 3 + 2] = line.color[2];
             alphas[i] = line.color[3];
         }
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
         const interactive = !!(line.callbackId || line.hoverColor);
-        const material = interactive ? makeInteractiveFillMaterial(line.hoverColor || null) : makeFillMaterial();
-        const mesh = new THREE.Mesh(geometry, material);
-        if (interactive) {
-            mesh.userData.interactiveMat = material;
-            interactiveObjects.push(makeInteractiveEntry(line, [mesh]));
+        const data = geometryDataFromArrays(positions, colors, alphas, null, indices);
+        editableGeometrySlots.faces[faceIndex] = upsertGeometrySlot(editableGeometrySlots.faces[faceIndex], data, {
+            kind: 'editable-face',
+            ObjectClass: THREE.Mesh,
+            computeNormals: true,
+            makeMaterial: () => interactive ? makeInteractiveFillMaterial(line.hoverColor || null) : makeFillMaterial(),
+            configureObject: interactive ? ((object, material) => { object.userData.interactiveMat = material; }) : null,
+            afterUpdate: interactive ? ((slot) => updateHoverMaterial(slot.material, line.hoverColor || null)) : null
+        });
+        if (interactive && editableGeometrySlots.faces[faceIndex]?.object) {
+            interactiveObjects.push(makeInteractiveEntry(line, [editableGeometrySlots.faces[faceIndex].object]));
         }
-        baseGeometryRoot.add(mesh);
     });
+    for (let i = sceneData.lines.length; i < editableGeometrySlots.lines.length; i += 1) {
+        editableGeometrySlots.lines[i] = removeSlot(editableGeometrySlots.lines[i]);
+    }
+    for (let i = sceneData.lines.length; i < editableGeometrySlots.points.length; i += 1) {
+        editableGeometrySlots.points[i] = removeSlot(editableGeometrySlots.points[i]);
+    }
+    for (let i = editorState.faces.length; i < editableGeometrySlots.faces.length; i += 1) {
+        editableGeometrySlots.faces[i] = removeSlot(editableGeometrySlots.faces[i]);
+    }
+    editableGeometrySlots.lines.length = sceneData.lines.length;
+    editableGeometrySlots.points.length = sceneData.lines.length;
+    editableGeometrySlots.faces.length = editorState.faces.length;
 }
 
 function createHandleMesh(point, radius, fill, stroke, selected) {
@@ -1354,7 +1685,10 @@ function applyGeometry(payload) {
     if (editorState.scene) rebuildEditableView();
     else renderPayloadGeometry(payload);
     updateEditableHud();
-    if (payload.bounds && payload.autoFrame !== false) frameBounds(payload.bounds);
+    if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
+        frameBounds(payload.bounds);
+        hasFramedInitialGeometry = true;
+    }
 }
 
 function buildWsUrl() {

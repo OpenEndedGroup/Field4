@@ -361,27 +361,44 @@ val Number.d
     get() = this.toDouble()
 
 
+private fun escapeSyntaxHtml(input: String): String {
+    return input
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+}
+
 fun highlightSyntax(input: String): String {
     // Named groups: float, int, punct, bracket
     val pattern = Regex(
         """
-        (?<float>\d+\.\d+)
-        |(?<int>\d+)
-        |(?<punct>[.,;:?!])
+        (?<float>[+-]?\d+\.\d+)
+        |(?<int>[+-]?\d+)
+        |(?<punct>[.,;:?!+\-*/%=<>|&])
         |(?<bracket>[\[\]\{\}\(\)])
         """.trimIndent(), RegexOption.COMMENTS
     )
 
     val groupNames = listOf("float", "int", "punct", "bracket")
 
-
-    return pattern.replace(input) { m ->
-        // Find the first named group that matched and wrap it
-        groupNames.firstNotNullOfOrNull { name ->
-                m.groups[name]?.value?.let { "<span class='ss-$name'>$it</span>" }
-            } ?: m.value
-    }.replace("\t", "<span class='tab'></span>")
+    var cursor = 0
+    return buildString(input.length + 64) {
+        pattern.findAll(input).forEach { m ->
+            append(escapeSyntaxHtml(input.substring(cursor, m.range.first)).replace("\t", "<span class='tab'></span>"))
+            val replacement = groupNames.firstNotNullOfOrNull { name ->
+                m.groups[name]?.value?.let { "<span class='ss-$name'>${escapeSyntaxHtml(it)}</span>" }
+            }
+            append(replacement ?: escapeSyntaxHtml(m.value))
+            cursor = m.range.last + 1
+        }
+        append(escapeSyntaxHtml(input.substring(cursor)).replace("\t", "<span class='tab'></span>"))
+    }
 }
+
+val String.h: String
+    get() = highlightSyntax(this)
 
 val String.ss: String
     get() = highlightSyntax(this)

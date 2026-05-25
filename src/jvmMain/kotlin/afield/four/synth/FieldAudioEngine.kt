@@ -220,6 +220,7 @@ class FieldAudioEngine private constructor(
     private val mixR = FloatArray(bufferSize)
     private val pcmBuffer: ByteBuffer =
         ByteBuffer.allocateDirect(bufferSize * 2 * 2).order(ByteOrder.nativeOrder())
+    private val linkPcm = ShortArray(bufferSize * 2)
 
     private val captureState = CaptureState(bufferSize)
     private val monoInputSignal = CaptureSignal(captureState, -1)
@@ -235,6 +236,13 @@ class FieldAudioEngine private constructor(
 
     private var captureDevice: Long = 0L
     private var captureScratch: ShortBuffer? = null
+
+    @Volatile
+    private var linkOutput: LinkAudioInterface? = null
+
+    @Volatile
+    var monitorLocalOutput: Boolean = true
+        private set
 
     @Volatile
     var inputActive: Boolean = false
@@ -261,6 +269,27 @@ class FieldAudioEngine private constructor(
         return StereoSignal(leftInputSignal, rightInputSignal)
     }
 
+    fun enableLinkOutput(
+        link: LinkAudioInterface = LinkAudioInterface.shared(),
+        name: String = "Field4",
+        maxFrames: Int = bufferSize,
+        monitorLocal: Boolean = true
+    ): FieldAudioEngine {
+        link.enableAudioOutput(name = name, maxFrames = maxFrames.coerceAtLeast(bufferSize), channels = 2)
+        linkOutput = link
+        monitorLocalOutput = monitorLocal
+        applyLocalOutputGain()
+        start()
+        return this
+    }
+
+    fun disableLinkOutput(): FieldAudioEngine {
+        linkOutput = null
+        monitorLocalOutput = true
+        applyLocalOutputGain()
+        return this
+    }
+
     override fun toString(): String = synthPrettyObject(
         this,
         "sampleRate" to sampleRate,
@@ -269,7 +298,9 @@ class FieldAudioEngine private constructor(
         "inputChannels" to inputChannels,
         "patchCount" to patches.size,
         "inputActive" to inputActive,
-        "outputActive" to outputActive
+        "outputActive" to outputActive,
+        "monitorLocalOutput" to monitorLocalOutput,
+        "linkOutput" to (linkOutput?.snapshot())
     )
 
     fun register(spec: AudioPatchSpec): AudioPatchHandle {
@@ -391,7 +422,7 @@ class FieldAudioEngine private constructor(
             }
 
             freeBuffers.addAll(buffers.toList())
-            alSourcef(source, AL_GAIN, 1f)
+            applyLocalOutputGain()
             alSourcei(source, AL_LOOPING, AL_FALSE)
             outputActive = true
         } catch (t: Throwable) {
@@ -425,6 +456,12 @@ class FieldAudioEngine private constructor(
         }
     }
 
+    private fun applyLocalOutputGain() {
+        if (source != 0) {
+            alSourcef(source, AL_GAIN, if (monitorLocalOutput) 1f else 0f)
+        }
+    }
+
     private fun reclaimProcessedBuffers() {
         if (!outputActive) return
         val processed = alGetSourcei(source, AL_BUFFERS_PROCESSED)
@@ -438,6 +475,9 @@ class FieldAudioEngine private constructor(
         val bufferId = freeBuffers.removeFirst()
 
         synthContext.advanceCycle()
+        val activeLink = linkOutput ?: LinkAudioInterface.currentOrNull()
+        val linkBlock = activeLink?.beginAudioBlock()
+        synthContext.linkTiming = linkBlock?.snapshot
         pollCapture()
         Buf.clear(mixL, 0, bufferSize)
         Buf.clear(mixR, 0, bufferSize)
@@ -451,10 +491,14 @@ class FieldAudioEngine private constructor(
         for (i in 0 until bufferSize) {
             val left = (sanitizePcmSample(mixL[i]) * Short.MAX_VALUE).roundToInt().toShort()
             val right = (sanitizePcmSample(mixR[i]) * Short.MAX_VALUE).roundToInt().toShort()
+            val base = i * 2
+            linkPcm[base] = left
+            linkPcm[base + 1] = right
             pcmBuffer.putShort(left)
             pcmBuffer.putShort(right)
         }
         pcmBuffer.flip()
+        linkOutput?.commitStereo(linkBlock, linkPcm, bufferSize, sampleRate)
 
         alBufferData(bufferId, AL_FORMAT_STEREO16, pcmBuffer, sampleRate)
         alSourceQueueBuffers(source, bufferId)

@@ -10,6 +10,8 @@ import org.w3c.dom.*
 external fun disclosureInterface(container: Element): dynamic
 external fun aiChatUpdate(container: Element, uid: String, markdown: String)
 
+private const val PRESERVE_DISCLOSURE_CONTENT = "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__"
+
 fun insertHTMLWithScripts(container: Element, htmlString: String, isModule : Boolean = false) {
     // Create a document fragment from the HTML string
     val range = document.createRange()
@@ -73,6 +75,60 @@ private fun parseLinesWrapper(htmlString: String): HTMLElement? {
     val range = document.createRange()
     val fragment = range.createContextualFragment(htmlString)
     return fragment.querySelector(".afield-lines-output") as? HTMLElement
+}
+
+private data class ThreeIframeRequest(
+    val src: String,
+    val height: String?
+)
+
+private fun parseThreeIframeRequest(htmlString: String): ThreeIframeRequest? {
+    val range = document.createRange()
+    val fragment = range.createContextualFragment(htmlString)
+    val iframe = fragment.querySelector("iframe") as? HTMLIFrameElement ?: return null
+    val rawSrc = iframe.getAttribute("src")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val anchor = document.createElement("a") as HTMLAnchorElement
+    anchor.href = rawSrc
+    if (anchor.pathname != "/threejs") return null
+    val height = parsePositiveDouble(iframe.style.height)
+        ?.let { "${it}px" }
+        ?: parsePositiveDouble(iframe.getAttribute("height"))?.let { "${it}px" }
+    return ThreeIframeRequest(rawSrc, height)
+}
+
+private fun isPersistentThreeOutput(htmlString: String): Boolean =
+    parseThreeIframeRequest(htmlString) != null
+
+private fun updatePersistentThreeOutput(contentRoot: HTMLElement, htmlString: String): Boolean {
+    val request = parseThreeIframeRequest(htmlString) ?: return false
+    val existing = contentRoot.asDynamic().__afieldThreeIframe as? HTMLIFrameElement
+    val iframe = if (existing != null) {
+        if (existing.parentNode == null) contentRoot.appendChild(existing)
+        existing
+    } else {
+        val created = document.createElement("iframe") as HTMLIFrameElement
+        created.style.apply {
+            border = "none"
+            padding = "0"
+            margin = "0"
+            width = "100%"
+            display = "block"
+            background = "#000000"
+        }
+        contentRoot.innerHTML = ""
+        contentRoot.appendChild(created)
+        contentRoot.asDynamic().__afieldThreeIframe = created
+        created
+    }
+
+    if (iframe.getAttribute("src") != request.src) {
+        iframe.setAttribute("src", request.src)
+    }
+    iframe.style.height = request.height ?: iframe.style.height.takeIf { it.isNotBlank() } ?: "420px"
+    contentRoot.asDynamic().dataset.afieldAutoSizeMode = "fixed"
+    contentRoot.style.padding = "0px"
+    contentRoot.style.background = "#000000"
+    return true
 }
 
 private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
@@ -610,10 +666,12 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
 
     val channelId = set.channel
     val title = if (set.channel == "ai-chat") "AI Chat" else set.channel
+    val preserveExistingContent = isPersistentThreeOutput(set.value)
+    val initialContent = if (preserveExistingContent) PRESERVE_DISCLOSURE_CONTENT else ""
     val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(
         channelId,
         title,
-        ""
+        initialContent
     )
     val isLayersChannel = set.channel.equals("layers", ignoreCase = true)
 
@@ -623,6 +681,8 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else if (isLayersChannel) {
         renderLayersPalette(contentRoot as HTMLElement)
+        (inter.open as (String) -> Unit).invoke(channelId)
+    } else if (updatePersistentThreeOutput(contentRoot as HTMLElement, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else if (updatePersistentLinesOutput(contentRoot as HTMLElement, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)

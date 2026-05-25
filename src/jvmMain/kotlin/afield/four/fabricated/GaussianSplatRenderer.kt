@@ -14,6 +14,7 @@ import afield.four.util.GpuRadixSort
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
+import org.joml.Vector4f
 import org.joml.primitives.Rectanglef
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
@@ -119,6 +120,8 @@ object GaussianSplatRenderer {
         private var sortedModelView: Matrix4f? = null
         private var sortAge: Int = Int.MAX_VALUE
         private var currentSortModelView: Matrix4f? = null
+        private var currentDepthMin: Float = 0f
+        private var currentInvDepthRange: Float = 1f
 
         val depthKeyModule: ComputeModulePointer
         val depthKeyMesh: ComputeMesh
@@ -140,6 +143,8 @@ object GaussianSplatRenderer {
                 push.bind("splatData") { requireNotNull(splatData.result).get() }
                 push.bind("depthKeys") { requireNotNull(depthKeys.result).get() }
                 push.bind("sortedIndices") { requireNotNull(sortedIndices.result).get() }
+                push.bind("depthMin") { currentDepthMin }
+                push.bind("invDepthRange") { currentInvDepthRange }
                 count = packed.count
                 push.bind("resetIndices") {
                     if (!sortedOnce || sortMode == SortMode.ExactRadix) 1 else 0
@@ -198,6 +203,7 @@ object GaussianSplatRenderer {
                 renderModule.current.parameters.viewport = viewport
                 currentSortModelView = modelViewMatrix()
                 if (shouldSortThisFrame(requireNotNull(currentSortModelView))) {
+                    updateDepthRange(requireNotNull(currentSortModelView))
                     depthKeyModule.render(command, Rectanglef())
                     computeMemoryBarrier(command, requireNotNull(depthKeys.result).get())
                     computeMemoryBarrier(command, requireNotNull(sortedIndices.result).get())
@@ -273,6 +279,40 @@ object GaussianSplatRenderer {
             if (sortAge < Int.MAX_VALUE) {
                 sortAge += 1
             }
+        }
+
+        private fun updateDepthRange(modelView: Matrix4f) {
+            var minDepth = Float.POSITIVE_INFINITY
+            var maxDepth = Float.NEGATIVE_INFINITY
+            fun include(x: Float, y: Float, z: Float) {
+                val view = modelView.transform(Vector4f(x, y, z, 1f))
+                val depth = -view.z
+                if (depth.isFinite()) {
+                    minDepth = minOf(minDepth, depth)
+                    maxDepth = maxOf(maxDepth, depth)
+                }
+            }
+            include(packed.boundsMin.x, packed.boundsMin.y, packed.boundsMin.z)
+            include(packed.boundsMin.x, packed.boundsMin.y, packed.boundsMax.z)
+            include(packed.boundsMin.x, packed.boundsMax.y, packed.boundsMin.z)
+            include(packed.boundsMin.x, packed.boundsMax.y, packed.boundsMax.z)
+            include(packed.boundsMax.x, packed.boundsMin.y, packed.boundsMin.z)
+            include(packed.boundsMax.x, packed.boundsMin.y, packed.boundsMax.z)
+            include(packed.boundsMax.x, packed.boundsMax.y, packed.boundsMin.z)
+            include(packed.boundsMax.x, packed.boundsMax.y, packed.boundsMax.z)
+
+            if (!minDepth.isFinite() || !maxDepth.isFinite()) {
+                currentDepthMin = 0f
+                currentInvDepthRange = 1f
+                return
+            }
+
+            val range = max(maxDepth - minDepth, 1e-3f)
+            val pad = max(range * 0.02f, 1e-3f)
+            val paddedMin = minDepth - pad
+            val paddedMax = maxDepth + pad
+            currentDepthMin = paddedMin
+            currentInvDepthRange = 1f / max(paddedMax - paddedMin, 1e-3f)
         }
 
         private fun maxAbsDelta(a: Matrix4f, b: Matrix4f): Float {
@@ -774,14 +814,11 @@ layout(push_constant) uniform PushConstants {
     SplatData splatData;
     DepthKeys depthKeys;
     SortedIndices sortedIndices;
+    float depthMin;
+    float invDepthRange;
     int count;
     int resetIndices;
 } pc;
-
-uint orderedFloat(float value) {
-    uint bits = floatBitsToUint(value);
-    return ((bits & 0x80000000u) != 0u) ? ~bits : (bits ^ 0x80000000u);
-}
 
 void main() {
     uint index = gl_GlobalInvocationID.x;
@@ -790,8 +827,10 @@ void main() {
     vec3 center = pc.splatData.splats[index * 4u + 0u].xyz;
     vec4 view = pc.modelView * vec4(center, 1.0);
     float depth = max(-view.z, 0.0);
+    float normalizedDepth = clamp((depth - pc.depthMin) * pc.invDepthRange, 0.0, 1.0);
+    uint quantizedDepth = uint(normalizedDepth * 4294967040.0);
 
-    pc.depthKeys.depthKeys[index] = 0xffffffffu - orderedFloat(depth);
+    pc.depthKeys.depthKeys[index] = 0xffffffffu - quantizedDepth;
     if (pc.resetIndices != 0) {
         pc.sortedIndices.sortedIndices[index] = index;
     }

@@ -232,6 +232,21 @@
      audio(gain = 0.7f) { audioIn / MoogLadder(cutoff = 1800.p) / FreeVerb() }
 
  ---------------------------------------------------------------------------
+ Ableton Link
+ ---------------------------------------------------------------------------
+
+    val link = abletonLink()
+    println(link.snapshot())
+
+    val syncedWobble = Param { linkPhase.toFloat() }
+    audio { saw(110) * (0.05f + syncedWobble * 0.05f) }
+
+    linkAudioOut()
+    audio { saw * 0.05f }
+
+    audio(gain = 0.8f) { linkAudioInStereo() }
+
+ ---------------------------------------------------------------------------
  Granular and sampling examples
  ---------------------------------------------------------------------------
 
@@ -686,6 +701,47 @@ inline fun audio(
 fun audioInput(): Signal = audioEngine().monoInput()
 
 fun audioInputStereo(): StereoSignal = audioEngine().stereoInput()
+
+fun abletonLink(
+    tempo: Double = 120.0,
+    peerName: String = "Field4",
+    quantum: Double = 4.0
+): LinkAudioInterface = LinkAudioInterface.shared(
+    tempo = tempo,
+    peerName = peerName,
+    quantum = quantum
+)
+
+fun linkTiming(
+    tempo: Double = 120.0,
+    peerName: String = "Field4",
+    quantum: Double = 4.0
+): LinkTimingSnapshot = abletonLink(
+    tempo = tempo,
+    peerName = peerName,
+    quantum = quantum
+).snapshot(quantum)
+
+fun linkAudioOut(
+    name: String = "Field4",
+    tempo: Double = 120.0,
+    peerName: String = "Field4",
+    quantum: Double = 4.0,
+    monitorLocal: Boolean = true,
+    engine: FieldAudioEngine = audioEngine()
+): LinkAudioInterface {
+    val link = abletonLink(tempo = tempo, peerName = peerName, quantum = quantum)
+    engine.enableLinkOutput(link, name = name, monitorLocal = monitorLocal)
+    return link
+}
+
+fun linkAudioIn(channelName: String? = null): Signal = abletonLink().monoInput(channelName)
+
+fun linkAudioInStereo(channelName: String? = null): StereoSignal = abletonLink().stereoInput(channelName)
+
+fun linkAudioInput(channelName: String? = null): Signal = linkAudioIn(channelName)
+
+fun linkAudioInputStereo(channelName: String? = null): StereoSignal = linkAudioInStereo(channelName)
 
 fun Signal.pan(position: Float): Pan = Pan(this, Param(position))
 
