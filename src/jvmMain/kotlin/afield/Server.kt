@@ -1632,6 +1632,36 @@ class Server {
                         }
                     }
 
+                    post("/api/duplicate-document") {
+                        try {
+                            val request = call.receive<DuplicateDocumentRequest>()
+                            val response = withContext(workspaceSearchDispatcher) {
+                                duplicateWorkspaceDocument(home, request.sourceFilename, request.newFilename)
+                            }
+                            recordRecentDocument(response.filename)
+                            call.respond(response)
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid duplicate request")))
+                        }
+                    }
+
+                    get("/api/export-tagged-documents") {
+                        try {
+                            val tag = call.request.queryParameters["tag"].orEmpty()
+                            val archive = withContext(workspaceSearchDispatcher) {
+                                exportTaggedDocumentsZip(home, tag)
+                            }
+                            call.response.headers.append(
+                                HttpHeaders.ContentDisposition,
+                                "attachment; filename=\"${archive.filename}\""
+                            )
+                            call.response.headers.append("X-Field-Document-Count", archive.documentCount.toString())
+                            call.respondBytes(archive.bytes, ContentType.parse("application/zip"))
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid export request")))
+                        }
+                    }
+
                     get("/api/workspace-search") {
                         val query = call.request.queryParameters["q"].orEmpty()
                         val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50

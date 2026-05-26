@@ -350,6 +350,71 @@
             border-color: var(--field-cyan);
         }
 
+        #welcome-context-menu {
+            position: fixed;
+            z-index: 1200;
+            display: none;
+            min-width: 230px;
+            max-width: min(340px, calc(100vw - 20px));
+            padding: 6px;
+            background: rgba(10, 10, 10, 0.96);
+            border: 1px solid rgba(72, 201, 255, 0.28);
+            border-radius: 7px;
+            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42);
+        }
+
+        #welcome-context-menu.open {
+            display: grid;
+            gap: 5px;
+        }
+
+        .context-menu-title {
+            padding: 5px 6px 3px;
+            color: var(--field-text-soft);
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .context-menu-action {
+            width: 100%;
+            text-align: left;
+            padding: 8px 9px;
+            border-radius: 5px;
+            border-color: rgba(72, 201, 255, 0.14);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .context-menu-action:hover {
+            border-color: var(--field-border-strong);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .context-input {
+            width: 100%;
+            min-width: 0;
+            background: rgba(0, 0, 0, 0.82);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 6px;
+            padding: 8px 9px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        .context-input:focus {
+            outline: none;
+            border-color: var(--field-cyan);
+        }
+
+        .context-error {
+            min-height: 1.2em;
+            padding: 2px 6px;
+            color: var(--field-danger);
+            font-size: 10px;
+        }
+
         .search-match-list {
             display: grid;
             gap: 4px;
@@ -590,6 +655,8 @@
     </section>
 </main>
 
+<div id="welcome-context-menu" aria-live="polite"></div>
+
 <script>
     const state = {
         documents: [],
@@ -600,7 +667,10 @@
         defaultDocument: "welcome",
         allTags: [],
         editingDocument: null,
-        savingTags: null
+        savingTags: null,
+        contextMenu: null,
+        duplicatePrompt: null,
+        contextError: ""
     };
     let searchController = null;
     let searchDebounceTimer = null;
@@ -714,6 +784,131 @@
             .filter((tag, index, list) => list.findIndex((other) => other.toLowerCase() === tag.toLowerCase()) === index);
     }
 
+    function contextMenuNode() {
+        return document.getElementById("welcome-context-menu");
+    }
+
+    function clampMenuPosition(x, y) {
+        const margin = 10;
+        const menu = contextMenuNode();
+        const width = menu?.offsetWidth || 260;
+        const height = menu?.offsetHeight || 120;
+        return {
+            x: Math.max(margin, Math.min(x, window.innerWidth - width - margin)),
+            y: Math.max(margin, Math.min(y, window.innerHeight - height - margin))
+        };
+    }
+
+    function nextDuplicateName(sourceName) {
+        const existing = new Set(state.documents.map((doc) => doc.filename.toLowerCase()));
+        let candidate = `${sourceName}-copy`;
+        let index = 2;
+        while (existing.has(candidate.toLowerCase())) {
+            candidate = `${sourceName}-copy-${index}`;
+            index += 1;
+        }
+        return candidate;
+    }
+
+    function openDocumentContextMenu(event, filename) {
+        event.preventDefault();
+        state.contextMenu = { type: "document", filename, x: event.clientX, y: event.clientY };
+        state.duplicatePrompt = null;
+        state.contextError = "";
+        renderContextMenu();
+    }
+
+    function openTagContextMenu(event, tag) {
+        event.preventDefault();
+        event.stopPropagation();
+        state.contextMenu = { type: "tag", tag, x: event.clientX, y: event.clientY };
+        state.duplicatePrompt = null;
+        state.contextError = "";
+        renderContextMenu();
+    }
+
+    function closeContextMenu() {
+        state.contextMenu = null;
+        state.duplicatePrompt = null;
+        state.contextError = "";
+        const menu = contextMenuNode();
+        if (menu) {
+            menu.classList.remove("open");
+            menu.innerHTML = "";
+        }
+    }
+
+    function renderContextMenu() {
+        const menu = contextMenuNode();
+        if (!menu || !state.contextMenu) return;
+
+        const position = clampMenuPosition(state.contextMenu.x, state.contextMenu.y);
+        menu.style.left = `${position.x}px`;
+        menu.style.top = `${position.y}px`;
+        menu.classList.add("open");
+
+        if (state.duplicatePrompt) {
+            const source = state.duplicatePrompt.sourceFilename;
+            const suggested = state.duplicatePrompt.value || nextDuplicateName(source);
+            menu.innerHTML = `
+                <div class="context-menu-title">Duplicate ${escapeHtml(source)}</div>
+                <input class="context-input" value="${escapeHtml(suggested)}" autocomplete="off" placeholder="duplicate name, ⏎ / esc">
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+            requestAnimationFrame(() => {
+                const input = menu.querySelector(".context-input");
+                input?.focus({ preventScroll: true });
+                input?.select();
+                input?.addEventListener("keydown", (event) => {
+                    event.stopPropagation();
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        closeContextMenu();
+                    } else if (event.key === "Enter") {
+                        event.preventDefault();
+                        duplicateDocument(source, input.value);
+                    }
+                });
+                input?.addEventListener("click", (event) => event.stopPropagation());
+            });
+            return;
+        }
+
+        if (state.contextMenu.type === "document") {
+            const filename = state.contextMenu.filename;
+            menu.innerHTML = `
+                <div class="context-menu-title">${escapeHtml(filename)}</div>
+                <button type="button" class="context-menu-action" data-menu-action="duplicate-document">Duplicate</button>
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+        } else {
+            const tag = state.contextMenu.tag;
+            menu.innerHTML = `
+                <div class="context-menu-title">#${escapeHtml(tag)}</div>
+                <button type="button" class="context-menu-action" data-menu-action="export-tagged-documents">Export tagged documents</button>
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+        }
+
+        menu.querySelector("[data-menu-action='duplicate-document']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const source = state.contextMenu?.filename;
+            if (!source) return;
+            state.duplicatePrompt = { sourceFilename: source, value: nextDuplicateName(source) };
+            state.contextError = "";
+            renderContextMenu();
+        });
+
+        menu.querySelector("[data-menu-action='export-tagged-documents']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const tag = state.contextMenu?.tag;
+            if (!tag) return;
+            exportTaggedDocuments(tag);
+        });
+    }
+
     function validateDocumentName(name) {
         if (!name) return "Enter a document name.";
         if (/[\/\\]/.test(name)) return "Document names cannot contain path separators.";
@@ -733,6 +928,48 @@
         if (duplicate) return `Document '${name}' already exists.`;
 
         return null;
+    }
+
+    async function duplicateDocument(sourceFilename, rawName) {
+        const newFilename = String(rawName || "").trim();
+        const error = validateDocumentName(newFilename);
+        if (error) {
+            state.contextError = error;
+            state.duplicatePrompt = { sourceFilename, value: newFilename };
+            renderContextMenu();
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/duplicate-document", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ sourceFilename, newFilename })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            closeContextMenu();
+            setCreateStatus(`Duplicated ${sourceFilename} as ${payload.filename}.`);
+            await loadWelcomeDocs();
+        } catch (error) {
+            console.error("Failed to duplicate document", error);
+            state.contextError = "Could not duplicate this document.";
+            state.duplicatePrompt = { sourceFilename, value: newFilename };
+            renderContextMenu();
+        }
+    }
+
+    function exportTaggedDocuments(tag) {
+        closeContextMenu();
+        setCreateStatus(`Exporting documents tagged ${tag}...`);
+        const link = document.createElement("a");
+        link.href = `/api/export-tagged-documents?tag=${encodeURIComponent(tag)}`;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setCreateStatus(`Export requested for tag ${tag}.`);
     }
 
     function getFirstVisibleDocument() {
@@ -968,6 +1205,7 @@
         listNode.querySelectorAll(".doc-entry").forEach((entry) => {
             entry.addEventListener("click", (event) => {
                 if (event.target.closest(".tag-control")) return;
+                closeContextMenu();
                 const name = entry.getAttribute("data-doc");
                 if (name) openDocument(name);
             });
@@ -977,6 +1215,11 @@
                 event.preventDefault();
                 const name = entry.getAttribute("data-doc");
                 if (name) openDocument(name);
+            });
+            entry.addEventListener("contextmenu", (event) => {
+                if (event.target.closest("[data-tag]")) return;
+                const name = entry.getAttribute("data-doc");
+                if (name) openDocumentContextMenu(event, name);
             });
         });
 
@@ -990,6 +1233,10 @@
                 state.searchQuery = tag;
                 queueWorkspaceSearch(tag);
                 searchInput.focus({ preventScroll: true });
+            });
+            button.addEventListener("contextmenu", (event) => {
+                const tag = button.getAttribute("data-tag") || "";
+                if (tag) openTagContextMenu(event, tag);
             });
         });
 
@@ -1090,6 +1337,22 @@
                 setCreateStatus("Could not shutdown this Field instance.", true);
             }
         });
+
+        document.addEventListener("click", (event) => {
+            const menu = contextMenuNode();
+            if (menu && menu.contains(event.target)) return;
+            closeContextMenu();
+        });
+
+        window.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && state.contextMenu) {
+                event.preventDefault();
+                closeContextMenu();
+            }
+        });
+
+        window.addEventListener("resize", closeContextMenu);
+        document.getElementById("recent-list")?.addEventListener("scroll", closeContextMenu);
 
         requestAnimationFrame(() => {
             searchInput.focus({ preventScroll: true });

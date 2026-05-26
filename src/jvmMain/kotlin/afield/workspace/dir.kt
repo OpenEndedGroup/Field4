@@ -6,7 +6,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.yaml.snakeyaml.Yaml
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.math.max
 import kotlin.math.min
 
@@ -48,6 +51,26 @@ data class DocumentTagsUpdateResponse(
     val filename: String,
     val tags: List<String>,
     val changed: Boolean
+)
+
+@Serializable
+data class DuplicateDocumentRequest(
+    val sourceFilename: String,
+    val newFilename: String
+)
+
+@Serializable
+data class DuplicateDocumentResponse(
+    val filename: String,
+    val numBoxes: Int,
+    val sizeBytes: Long,
+    val tags: List<String> = emptyList()
+)
+
+data class TaggedDocumentsZip(
+    val filename: String,
+    val bytes: ByteArray,
+    val documentCount: Int
 )
 
 @Serializable
@@ -503,19 +526,36 @@ fun normalizeDocumentTags(tags: List<String>): List<String> {
     return seen.toList().sortedWith(String.CASE_INSENSITIVE_ORDER)
 }
 
-fun updateDocumentTags(base: String, filename: String, tags: List<String>): DocumentTagsUpdateResponse {
-    val cleanName = filename.trim()
-    require(cleanName.isNotBlank()) { "missing document filename" }
-    require(!cleanName.contains('/') && !cleanName.contains('\\') && !cleanName.contains('\u0000')) {
+private fun validateWorkspaceDocumentName(name: String): String {
+    val clean = name.trim()
+    require(clean.isNotBlank()) { "missing document filename" }
+    require(!clean.contains('/') && !clean.contains('\\') && !clean.contains('\u0000')) {
         "invalid document filename"
     }
-    require(!cleanName.contains("..") && !cleanName.startsWith(".")) {
+    require(!clean.contains("..") && !clean.startsWith(".") && !clean.endsWith(" ")) {
         "invalid document filename"
     }
 
+    val reservedNames = setOf(
+        "con", "prn", "aux", "nul",
+        "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+        "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+    )
+    require(clean.lowercase() !in reservedNames) { "reserved document filename" }
+    return clean
+}
+
+private fun workspaceDocumentDir(base: String, filename: String): File {
+    val cleanName = validateWorkspaceDocumentName(filename)
     val baseDir = File(base).canonicalFile
     val documentDir = File(baseDir, cleanName).canonicalFile
     require(documentDir.toPath().startsWith(baseDir.toPath())) { "document is outside workspace" }
+    return documentDir
+}
+
+fun updateDocumentTags(base: String, filename: String, tags: List<String>): DocumentTagsUpdateResponse {
+    val cleanName = validateWorkspaceDocumentName(filename)
+    val documentDir = workspaceDocumentDir(base, cleanName)
     require(documentDir.isDirectory) { "document not found" }
     require(File(documentDir, SavingContext.METADATA_EDN).isFile) {
         "tag editing is only supported for EDN-backed documents"
@@ -536,6 +576,104 @@ fun updateDocumentTags(base: String, filename: String, tags: List<String>): Docu
     val updatedMetadata = replaceTagsInMetadata(existingMetadata, normalizedTags)
     val changed = SavingContext().updateRootMetadata(documentDir.absolutePath, updatedMetadata)
     return DocumentTagsUpdateResponse(cleanName, normalizedTags, changed)
+}
+
+fun duplicateWorkspaceDocument(base: String, sourceFilename: String, newFilename: String): DuplicateDocumentResponse {
+    val cleanSource = validateWorkspaceDocumentName(sourceFilename)
+    val cleanTarget = validateWorkspaceDocumentName(newFilename)
+    val sourceDir = workspaceDocumentDir(base, cleanSource)
+    val targetDir = workspaceDocumentDir(base, cleanTarget)
+
+    require(sourceDir.isDirectory) { "source document not found" }
+    require(File(sourceDir, SavingContext.METADATA_EDN).isFile || File(sourceDir, SavingContext.METADATA_JSON).isFile) {
+        "source document has no metadata"
+    }
+    require(!targetDir.exists()) { "target document already exists" }
+    require(targetDir.mkdirs()) { "could not create duplicate document" }
+
+    try {
+        sourceDir.walkTopDown()
+            .onEnter { dir -> dir == sourceDir || (dir.name != "backups" && dir.name != ".git") }
+            .forEach { source ->
+                if (source == sourceDir) return@forEach
+                if (source.isDirectory && (source.name == "backups" || source.name == ".git")) return@forEach
+                if (source.name == "versions.edn") return@forEach
+                val relative = source.relativeTo(sourceDir)
+                val target = File(targetDir, relative.path)
+                if (source.isDirectory) {
+                    target.mkdirs()
+                } else {
+                    target.parentFile?.mkdirs()
+                    source.copyTo(target, overwrite = false)
+                }
+            }
+    } catch (e: Exception) {
+        targetDir.deleteRecursively()
+        throw e
+    }
+
+    val metadataFile = when {
+        File(targetDir, SavingContext.METADATA_EDN).isFile -> File(targetDir, SavingContext.METADATA_EDN)
+        File(targetDir, SavingContext.METADATA_JSON).isFile -> File(targetDir, SavingContext.METADATA_JSON)
+        else -> throw IllegalStateException("duplicate was created without metadata")
+    }
+    val summary = readWorkspaceDocumentSummary(SavingContext(), targetDir, metadataFile)
+    return DuplicateDocumentResponse(
+        filename = cleanTarget,
+        numBoxes = summary.numBoxes,
+        sizeBytes = metadataFile.length(),
+        tags = summary.tags
+    )
+}
+
+fun exportTaggedDocumentsZip(base: String, rawTag: String): TaggedDocumentsZip {
+    val tag = normalizeDocumentTags(listOf(rawTag)).firstOrNull()
+        ?: throw IllegalArgumentException("missing tag")
+    val baseDir = File(base).canonicalFile
+    require(baseDir.isDirectory) { "workspace not found" }
+
+    val documents = welcomeDir(base, emptyList())
+        .filter { doc -> doc.tags.any { it.equals(tag, ignoreCase = true) } }
+        .sortedBy { it.filename.lowercase() }
+
+    require(documents.isNotEmpty()) { "no documents with tag '$tag'" }
+
+    val output = ByteArrayOutputStream()
+    var count = 0
+    ZipOutputStream(output).use { zip ->
+        documents.forEach { doc ->
+            val dir = workspaceDocumentDir(base, doc.filename)
+            val metadata = File(dir, SavingContext.METADATA_EDN)
+            if (!metadata.isFile) return@forEach
+            val documentName = zipSafePathSegment(doc.filename)
+            zip.putNextEntry(ZipEntry("$documentName/${SavingContext.METADATA_EDN}"))
+            metadata.inputStream().use { input -> input.copyTo(zip) }
+            zip.closeEntry()
+            count += 1
+        }
+    }
+
+    require(count > 0) { "no EDN-backed documents with tag '$tag'" }
+
+    return TaggedDocumentsZip(
+        filename = "field4-${downloadSafeName(tag)}-documents.zip",
+        bytes = output.toByteArray(),
+        documentCount = count
+    )
+}
+
+private fun zipSafePathSegment(value: String): String {
+    return value.trim()
+        .replace(Regex("[\\\\/]+"), "_")
+        .replace(Regex("[\\r\\n\\t]+"), " ")
+        .ifBlank { "document" }
+}
+
+private fun downloadSafeName(value: String): String {
+    return value.trim()
+        .replace(Regex("[^A-Za-z0-9._-]+"), "-")
+        .trim('-', '.')
+        .ifBlank { "tagged" }
 }
 
 private fun replaceTagsInMetadata(metadata: String, tags: List<String>): String {
