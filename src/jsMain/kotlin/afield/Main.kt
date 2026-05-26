@@ -3659,6 +3659,8 @@ suspend fun main() {
                 handleOutputAreaRequest(found as HTMLElement, set)
             }
         }
+        // Acknowledge receipt so the backend can release a back pressure slot.
+        send(Message("output-ack"))
         Handled.yes
     }
 
