@@ -11,13 +11,15 @@ Field 4 is a Kotlin-based live-coding environment for new media art — https://
 
 ## Build & Run
 
-On Mac / Linux:
+See here — https://openendedgroup.com/field4/installation/. Or -
+
+- on Mac / Linux:
 
 ```bash
 ./gradlew runJvm
 ```
 
-On Windows:
+- on Windows:
 
 ```bash
 .\gradlew.bat runJvm
