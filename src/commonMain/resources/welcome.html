@@ -239,7 +239,7 @@
             background: none;
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 2px;
+            gap: 12px;
             align-items: center;
             padding: 4px;
             cursor: pointer;
@@ -280,6 +280,74 @@
         .doc-body {
             display: grid;
             gap: 6px;
+            min-width: 0;
+        }
+
+        .doc-side {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+            max-width: min(72vw, 900px);
+        }
+
+        .doc-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+            max-width: min(46vw, 620px);
+        }
+
+        .tag-chip,
+        .tag-edit {
+            font: inherit;
+            font-size: 10px;
+            line-height: 1;
+            min-height: 20px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.36);
+            border: 1px solid rgba(72, 201, 255, 0.18);
+            color: var(--field-text-soft);
+        }
+
+        .tag-chip {
+            cursor: pointer;
+        }
+
+        .tag-chip:hover,
+        .tag-edit:hover {
+            border-color: var(--field-border-strong);
+            color: white;
+        }
+
+        .tag-edit {
+            color: var(--field-cyan);
+        }
+
+        .doc-tag-editor {
+            display: block;
+        }
+
+        .doc-tag-input {
+            width: min(360px, 36vw);
+            min-width: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 6px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        .doc-tag-input:focus {
+            outline: none;
+            border-color: var(--field-cyan);
         }
 
         .search-match-list {
@@ -430,6 +498,31 @@
             #recent-search-status {
                 text-align: left;
             }
+
+            .doc-entry {
+                grid-template-columns: 1fr;
+            }
+
+            .doc-side {
+                justify-content: flex-start;
+                align-items: flex-start;
+                flex-wrap: wrap;
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .doc-tags {
+                justify-content: flex-start;
+                max-width: 100%;
+            }
+
+            .doc-tag-input {
+                width: 100%;
+            }
+
+            .doc-meta {
+                text-align: left;
+            }
         }
     </style>
 </head>
@@ -504,7 +597,10 @@
         searchResults: [],
         searchTruncated: false,
         lastOpened: "welcome",
-        defaultDocument: "welcome"
+        defaultDocument: "welcome",
+        allTags: [],
+        editingDocument: null,
+        savingTags: null
     };
     let searchController = null;
     let searchDebounceTimer = null;
@@ -581,6 +677,43 @@
         return safe.replace(regex, "<mark>$1</mark>");
     }
 
+    function tagsForDoc(doc) {
+        return Array.isArray(doc.tags) ? doc.tags : [];
+    }
+
+    function renderTags(doc, query = "") {
+        const tags = tagsForDoc(doc);
+        const chips = tags.map((tag) => `
+            <button type="button" class="tag-chip tag-control" data-tag="${escapeHtml(tag)}">
+                ${highlightQuery(tag, query)}
+            </button>
+        `).join("");
+        return `
+            <div class="doc-tags">
+                ${chips}
+                <button type="button" class="tag-edit tag-control" data-tag-edit="${escapeHtml(doc.filename)}">tags</button>
+            </div>
+        `;
+    }
+
+    function renderTagEditor(doc) {
+        const tags = tagsForDoc(doc).join(", ");
+        const saving = state.savingTags === doc.filename;
+        return `
+            <div class="doc-tag-editor tag-control" data-tag-editor="${escapeHtml(doc.filename)}">
+                <input class="doc-tag-input tag-control" value="${escapeHtml(tags)}" autocomplete="off" placeholder="comma separated tags, ⏎ / esc" ${saving ? "disabled" : ""}>
+            </div>
+        `;
+    }
+
+    function splitTags(value) {
+        return String(value || "")
+            .split(",")
+            .map((tag) => tag.trim().replace(/\s+/g, "-").replace(/^[-,;]+|[-,;]+$/g, ""))
+            .filter(Boolean)
+            .filter((tag, index, list) => list.findIndex((other) => other.toLowerCase() === tag.toLowerCase()) === index);
+    }
+
     function validateDocumentName(name) {
         if (!name) return "Enter a document name.";
         if (/[\/\\]/.test(name)) return "Document names cannot contain path separators.";
@@ -631,21 +764,19 @@
             const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
             const meta = `${boxes} · ${formatBytes(doc.sizeBytes)} · ${when}`;
             return `
-                <button type="button" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
                     <div class="doc-body">
                         <span class="doc-name">${escapeHtml(doc.filename)}</span>
                     </div>
-                    <span class="doc-meta">${escapeHtml(meta)}</span>
-                </button>
+                    <div class="doc-side">
+                        ${state.editingDocument === doc.filename ? renderTagEditor(doc) : renderTags(doc)}
+                        <span class="doc-meta">${escapeHtml(meta)}</span>
+                    </div>
+                </div>
             `;
         }).join("");
 
-        listNode.querySelectorAll(".doc-entry").forEach((button) => {
-            button.addEventListener("click", () => {
-                const name = button.getAttribute("data-doc");
-                if (name) openDocument(name);
-            });
-        });
+        installDocumentListHandlers(listNode);
     }
 
     function renderSearchResults() {
@@ -686,22 +817,20 @@
             }).join("");
 
             return `
-                <button type="button" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
                     <div class="doc-body">
                         <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
                         <div class="search-match-list">${matchHtml}</div>
                     </div>
-                    <span class="doc-meta">${escapeHtml(meta)}</span>
-                </button>
+                    <div class="doc-side">
+                        ${state.editingDocument === doc.filename ? renderTagEditor(doc) : renderTags(doc, query)}
+                        <span class="doc-meta">${escapeHtml(meta)}</span>
+                    </div>
+                </div>
             `;
         }).join("");
 
-        listNode.querySelectorAll(".doc-entry").forEach((button) => {
-            button.addEventListener("click", () => {
-                const name = button.getAttribute("data-doc");
-                if (name) openDocument(name);
-            });
-        });
+        installDocumentListHandlers(listNode);
 
         const matchCount = docs.reduce((sum, doc) => sum + ((doc.matches || []).length), 0);
         statusNode.textContent = state.searchTruncated
@@ -731,6 +860,7 @@
             state.documents = Array.isArray(payload.documents) ? payload.documents : [];
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
+            state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
             renderList();
         } catch (error) {
             console.error("Failed to load welcome docs", error);
@@ -796,6 +926,102 @@
         searchDebounceTimer = setTimeout(() => {
             runWorkspaceSearch(trimmed);
         }, 180);
+    }
+
+    function refreshDocumentTags(filename, tags) {
+        [state.documents, state.searchResults].forEach((docs) => {
+            docs.forEach((doc) => {
+                if (doc.filename === filename) doc.tags = tags;
+            });
+        });
+        state.allTags = Array.from(new Set(state.documents.flatMap(tagsForDoc))).sort((a, b) => a.localeCompare(b));
+    }
+
+    async function saveDocumentTags(filename, input) {
+        const tags = splitTags(input.value);
+        state.savingTags = filename;
+        renderList();
+
+        try {
+            const response = await fetch("/api/document-tags", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ filename, tags })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            refreshDocumentTags(filename, Array.isArray(payload.tags) ? payload.tags : tags);
+            state.editingDocument = null;
+            state.savingTags = null;
+            setCreateStatus(payload.changed ? "Tags saved." : "Tags already up to date.");
+            renderList();
+        } catch (error) {
+            console.error("Failed to update document tags", error);
+            state.savingTags = null;
+            setCreateStatus("Could not save tags for this document.", true);
+            renderList();
+        }
+    }
+
+    function installDocumentListHandlers(listNode) {
+        listNode.querySelectorAll(".doc-entry").forEach((entry) => {
+            entry.addEventListener("click", (event) => {
+                if (event.target.closest(".tag-control")) return;
+                const name = entry.getAttribute("data-doc");
+                if (name) openDocument(name);
+            });
+            entry.addEventListener("keydown", (event) => {
+                if (event.target.closest(".tag-control")) return;
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                const name = entry.getAttribute("data-doc");
+                if (name) openDocument(name);
+            });
+        });
+
+        listNode.querySelectorAll("[data-tag]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const tag = button.getAttribute("data-tag") || "";
+                const searchInput = document.getElementById("recent-search");
+                searchInput.value = tag;
+                state.searchQuery = tag;
+                queueWorkspaceSearch(tag);
+                searchInput.focus({ preventScroll: true });
+            });
+        });
+
+        listNode.querySelectorAll("[data-tag-edit]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                state.editingDocument = button.getAttribute("data-tag-edit");
+                renderList();
+                requestAnimationFrame(() => {
+                    const input = document.querySelector(`[data-tag-editor="${CSS.escape(state.editingDocument)}"] .doc-tag-input`);
+                    input?.focus({ preventScroll: true });
+                    input?.select();
+                });
+            });
+        });
+
+        listNode.querySelectorAll(".doc-tag-input").forEach((input) => {
+            input.addEventListener("keydown", (event) => {
+                event.stopPropagation();
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    state.editingDocument = null;
+                    renderList();
+                } else if (event.key === "Enter") {
+                    event.preventDefault();
+                    const filename = input.closest(".doc-tag-editor")?.getAttribute("data-tag-editor");
+                    if (filename) saveDocumentTags(filename, input);
+                }
+            });
+            input.addEventListener("click", (event) => event.stopPropagation());
+        });
     }
 
     function installHandlers() {

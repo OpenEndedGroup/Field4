@@ -418,6 +418,60 @@ class SavingContext {
         return resolveValue(value, directory, { it }, createBoxes = false, preferInlineFiles = preferInlineFiles)
     }
 
+    fun updateRootMetadata(directory: String, metadata: String): Boolean {
+        val rootFile = File(directory, METADATA_EDN)
+        if (!rootFile.isFile) {
+            throw FileNotFoundException("missing $METADATA_EDN in $directory")
+        }
+
+        val rootValue = Edn.read(rootFile.readText(), ednCustom)
+        val persistentProperties = when (rootValue) {
+            is Map<*, *> -> {
+                val savedProps = mapLookup(rootValue, "persistentProperties")
+                when (savedProps) {
+                    is Collection<*> -> savedProps.mapNotNull { it?.toString() }.ifEmpty { Box.ioPersistentProperties.toList() }
+                    else -> Box.ioPersistentProperties.toList()
+                }
+            }
+            else -> Box.ioPersistentProperties.toList()
+        }
+
+        val transfers = readEdnTransfers(directory)
+        if (transfers.isEmpty()) {
+            throw IllegalArgumentException("document has no boxes")
+        }
+
+        val targetIndex = transfers.indexOfFirst { it.id == "root" }.let { if (it >= 0) it else 0 }
+        val updatedTransfers = transfers.mapIndexed { index, transfer ->
+            if (index != targetIndex) {
+                transfer
+            } else {
+                val updatedProperties = LinkedHashMap<String, Any?>()
+                updatedProperties.putAll(transfer.properties)
+                if (metadata.isBlank()) {
+                    updatedProperties.remove("metadata")
+                } else {
+                    updatedProperties["metadata"] = metadata
+                }
+                BoxTransferEdn(transfer.id, updatedProperties)
+            }
+        }
+
+        val payloadBoxes = updatedTransfers.map { transfer ->
+            linkedMapOf<String, Any?>(
+                "id" to transfer.id,
+                "properties" to transfer.properties
+            )
+        }
+        val payload = linkedMapOf<String, Any?>(
+            "version" to 2,
+            "boxes" to payloadBoxes,
+            "persistentProperties" to persistentProperties
+        )
+
+        return checkDifference(rootFile.path, Edn.write(payload, ednCustom))
+    }
+
     fun resolveStoredValueWithBoxes(
         value: Any?,
         directory: String,

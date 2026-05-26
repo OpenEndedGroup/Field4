@@ -1616,7 +1616,20 @@ class Server {
                         val docs = welcomeDir(home, recentDocuments)
                         val fallback = lastFn ?: "welcome"
                         val defaultDocument = docs.firstOrNull()?.filename ?: fallback
-                        call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument))
+                        val allTags = docs.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
+                        call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument, allTags))
+                    }
+
+                    put("/api/document-tags") {
+                        try {
+                            val request = call.receive<DocumentTagsUpdateRequest>()
+                            val response = withContext(workspaceSearchDispatcher) {
+                                updateDocumentTags(home, request.filename, request.tags)
+                            }
+                            call.respond(response)
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid tag update")))
+                        }
                     }
 
                     get("/api/workspace-search") {
