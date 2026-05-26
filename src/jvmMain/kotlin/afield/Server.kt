@@ -147,7 +147,15 @@ var min_frame_delay = 1L
  * When pressure eases, the buffered messages are flushed after the skip notification —
  * they are never counted as skipped.
  */
-class OutputBackPressure(val maxPending: Int = 32, val bufferSize: Int = 8) {
+data class OutputBackPressureSnapshot(
+    val pending: Int,
+    val skipped: Int,
+    val buffered: Int,
+    val maxPending: Int,
+    val bufferSize: Int
+)
+
+class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
     private val pending = java.util.concurrent.atomic.AtomicInteger(0)
     private val skipped = java.util.concurrent.atomic.AtomicInteger(0)
     private val buffer = ArrayDeque<String>()   // guarded by synchronized(this)
@@ -179,21 +187,33 @@ class OutputBackPressure(val maxPending: Int = 32, val bufferSize: Int = 8) {
         }
     }
 
+    fun hasBufferedMessages(): Boolean = synchronized(this) {
+        buffer.isNotEmpty()
+    }
+
+    fun snapshot(): OutputBackPressureSnapshot = synchronized(this) {
+        OutputBackPressureSnapshot(
+            pending = pending.get(),
+            skipped = skipped.get(),
+            buffered = buffer.size,
+            maxPending = maxPending,
+            bufferSize = bufferSize
+        )
+    }
+
     /**
      * Drain the rolling buffer, acquiring a pending slot for each recoverable message.
-     * Returns messages that were successfully acquired; any that couldn't be acquired
-     * (back pressure has re-triggered) are discarded.
+     * Returns messages that were successfully acquired; messages that still cannot
+     * acquire a slot remain buffered for the next acknowledgement cycle.
      */
     fun drainBuffer(): List<String> {
-        val candidates = synchronized(this) {
-            val items = buffer.toList()
-            buffer.clear()
-            items
-        }
         val result = mutableListOf<String>()
-        for (msg in candidates) {
-            val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
-            if (prev < maxPending) result.add(msg) else break
+        synchronized(this) {
+            while (buffer.isNotEmpty()) {
+                val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
+                if (prev >= maxPending) break
+                result.add(buffer.removeFirst())
+            }
         }
         return result
     }
@@ -202,6 +222,12 @@ class OutputBackPressure(val maxPending: Int = 32, val bufferSize: Int = 8) {
     fun release() {
         // Guard against going negative if extra ACKs arrive (e.g., duplicate messages).
         pending.updateAndGet { maxOf(0, it - 1) }
+    }
+
+    fun releaseAndDrain(): Pair<Int, List<String>> {
+        release()
+        val skipCount = skipped.getAndSet(0)
+        return skipCount to drainBuffer()
     }
 }
 
@@ -215,6 +241,130 @@ val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
     ?: System.getProperty("afield.systemBrowser") ?: "true").lowercase() != "false"
 val visibleBackdoorPlaywright: Boolean = (System.getenv("AFIELD_PLAYWRIGHT_VISIBLE")
     ?: System.getProperty("afield.playwright.visible") ?: "false").lowercase() == "true"
+private val outputBackPressureLogEnabled: Boolean = (System.getenv("AFIELD_OUTPUT_BACKPRESSURE_LOG")
+    ?: System.getProperty("afield.outputBackpressureLog") ?: "true").lowercase() != "false"
+private val outputBackPressureLogTimes = ConcurrentHashMap<String, Long>()
+
+private fun isBackPressuredOutputMessage(message: Message): Boolean {
+    return message.name == "set-output" ||
+        message.name == "output" ||
+        message.name == "peer-output" ||
+        message.originalName == "output"
+}
+
+private fun outputBackPressureMessageName(message: Message): String {
+    return if (message.originalName.isNullOrBlank()) message.name else "${message.name}/${message.originalName}"
+}
+
+private fun outputBackPressureLog(
+    session: WebSocketSession,
+    event: String,
+    message: Message? = null,
+    pressure: OutputBackPressure? = sessionOutputPressure[session],
+    detail: String = "",
+    force: Boolean = false
+) {
+    if (!outputBackPressureLogEnabled) return
+    val now = System.currentTimeMillis()
+    val sessionId = Integer.toHexString(System.identityHashCode(session))
+    val key = "$sessionId:$event"
+    if (!force) {
+        val previous = outputBackPressureLogTimes[key] ?: 0L
+        if (now - previous < 500L) return
+        outputBackPressureLogTimes[key] = now
+    } else {
+        outputBackPressureLogTimes[key] = now
+    }
+    val snapshot = pressure?.snapshot()
+    val state = if (snapshot == null) {
+        "pending=<none> buffered=<none> skipped=<none>"
+    } else {
+        "pending=${snapshot.pending}/${snapshot.maxPending} buffered=${snapshot.buffered}/${snapshot.bufferSize} skipped=${snapshot.skipped}"
+    }
+    val msg = message?.let { " message=${outputBackPressureMessageName(it)}" } ?: ""
+    val suffix = detail.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
+    lprintln("debug,output-backpressure", "session=$sessionId event=$event$msg $state$suffix")
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun sendWithOutputBackPressure(session: WebSocketSession, message: Message, encoded: String = Json.encodeToString(message)) {
+    if (!isBackPressuredOutputMessage(message)) {
+        GlobalScope.launch {
+            session.send(encoded)
+        }
+        return
+    }
+
+    val bp = sessionOutputPressure.getOrPut(session) { OutputBackPressure() }
+    val skipCount = bp.tryAcquire()
+    if (skipCount < 0) {
+        bp.bufferMessage(encoded)
+        outputBackPressureLog(session, "buffer", message, bp, detail = "encodedBytes=${encoded.length}")
+        return
+    }
+
+    val buffered = if (skipCount > 0 || bp.hasBufferedMessages()) bp.drainBuffer() else emptyList()
+    if (skipCount > 0 || buffered.isNotEmpty()) {
+        outputBackPressureLog(
+            session,
+            "send-with-buffer",
+            message,
+            bp,
+            detail = "drained=${buffered.size} skippedToNotify=$skipCount encodedBytes=${encoded.length}",
+            force = true
+        )
+    }
+    GlobalScope.launch {
+        try {
+            if (skipCount > 0) {
+                session.send(
+                    Json.encodeToString(
+                        Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
+                    )
+                )
+            }
+            for (bufferedMsg in buffered) {
+                session.send(bufferedMsg)
+            }
+            session.send(encoded)
+        } catch (_: Exception) {
+            repeat(1 + buffered.size) { bp.release() }
+            outputBackPressureLog(session, "send-failed-release", message, bp, detail = "released=${1 + buffered.size}", force = true)
+        }
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
+    val bp = sessionOutputPressure[session] ?: return
+    val (skipCount, buffered) = bp.releaseAndDrain()
+    outputBackPressureLog(
+        session,
+        "ack",
+        pressure = bp,
+        detail = "drained=${buffered.size} skippedToNotify=$skipCount",
+        force = skipCount > 0 || buffered.isNotEmpty()
+    )
+    if (skipCount <= 0 && buffered.isEmpty()) return
+
+    GlobalScope.launch {
+        try {
+            if (skipCount > 0) {
+                session.send(
+                    Json.encodeToString(
+                        Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
+                    )
+                )
+            }
+            for (bufferedMsg in buffered) {
+                session.send(bufferedMsg)
+            }
+        } catch (_: Exception) {
+            repeat(buffered.size) { bp.release() }
+            outputBackPressureLog(session, "flush-failed-release", pressure = bp, detail = "released=${buffered.size}", force = true)
+        }
+    }
+}
 
 @OptIn(DelicateCoroutinesApi::class)
 actual fun _send(message: Message) {
@@ -225,44 +375,10 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     val documentRegex = document.toRegex()
-    val isOutput = message.name == "set-output"
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
         if (!info.filename.matches(documentRegex)) return@forEach
-        if (isOutput) {
-            // Apply per-session back pressure for output messages.
-            val bp = sessionOutputPressure.getOrPut(session) { OutputBackPressure() }
-            val skipCount = bp.tryAcquire()
-            if (skipCount < 0) {
-                // Back-pressured: hold in rolling buffer instead of dropping outright.
-                bp.bufferMessage(m)
-                return@forEach
-            }
-            // Drain any buffered messages now that a slot is available.
-            val buffered = if (skipCount > 0) bp.drainBuffer() else emptyList()
-            GlobalScope.launch {
-                try {
-                    if (skipCount > 0) {
-                        // Notify the client about outputs that were truly skipped (buffer overflow).
-                        session.send(Json.encodeToString(
-                            Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
-                        ))
-                        // Re-deliver buffered (not-skipped) messages after the notification.
-                        for (bufferedMsg in buffered) {
-                            session.send(bufferedMsg)
-                        }
-                    }
-                    session.send(m)
-                } catch (_: Exception) {
-                    // On send failure no ACKs will arrive; release all acquired slots.
-                    repeat(1 + buffered.size) { bp.release() }
-                }
-            }
-        } else {
-            GlobalScope.launch {
-                session.send(m)
-            }
-        }
+        sendWithOutputBackPressure(session, message, m)
     }
 }
 
@@ -281,9 +397,7 @@ fun _send(session: WebSocketSession?, message: Message) {
         return
     }
     val m = Json.encodeToString(message)
-    GlobalScope.launch {
-        session.send(m)
-    }
+    sendWithOutputBackPressure(session, message, m)
 }
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -296,9 +410,7 @@ internal fun _sendToPeerSessions(
     val encoded = Json.encodeToString(message)
     info.sessions.forEach { session ->
         if (session == current) return@forEach
-        GlobalScope.launch {
-            session.send(encoded)
-        }
+        sendWithOutputBackPressure(session, message, encoded)
     }
 }
 
@@ -1536,8 +1648,9 @@ class Server {
             })
 
             handlers["output-ack"] = mutableSetOf({ _, _ ->
-                // Release one pending output slot for this session (back pressure signal from frontend).
-                sessionOutputPressure[thisSession.get()]?.release()
+                // Release one pending output slot for this session and flush any rolling-buffer output
+                // that can now fit through the pressure gate.
+                releaseAndFlushOutputBackPressure(thisSession.get())
                 Handled.yes
             })
 
@@ -1793,9 +1906,9 @@ class Server {
                                                 val r = handle(message) { message2 ->
                                                     val message3 = message.replyTo?.let { message2.toName(it) } ?: message2
                                                     val m = Json.encodeToString(message3)
-                                                    GlobalScope.launch {
-                                                        ts.send(m) // this enables, say, _print() to appear while this code is hogging the main execution thread
-                                                    }
+                                                    // Keeps _print() responsive while user code hogs the main execution thread,
+                                                    // but still applies output back pressure when the browser falls behind.
+                                                    sendWithOutputBackPressure(ts, message3, m)
                                                 }
                                             } catch (t: Throwable) {
                                                 t.printStackTrace()

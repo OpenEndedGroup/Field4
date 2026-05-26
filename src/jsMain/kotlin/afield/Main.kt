@@ -3435,14 +3435,17 @@ suspend fun main() {
     handlers.put("output") { message, _ ->
         val output = Json.decodeFromJsonElement<Output>(message.payload!!)
         routeMonacoOutput(output)
+        acknowledgeOutputRendered("output-handler")
         Handled.yes
     }
     handlers.put("peer-output") { message, _ ->
         if (!window.location.search.contains("user=playwright")) {
+            acknowledgeOutputRendered("peer-output-ignored")
             return@put Handled.no
         }
         val output = Json.decodeFromJsonElement<Output>(message.payload!!)
         routeMonacoOutput(output)
+        acknowledgeOutputRendered("peer-output-handler")
         Handled.yes
     }
     handlers.put("describe-action") { message, _ ->

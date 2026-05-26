@@ -3,6 +3,27 @@ package afield
 import kotlinx.browser.document
 import kotlinx.browser.window
 
+private var outputAckSequence = 0
+
+private fun shouldLogOutputAck(seq: Int): Boolean {
+    val w = js("window")
+    if (w.fieldOutputBackpressureDebug == false) return false
+    return seq <= 20 || seq % 100 == 0
+}
+
+fun acknowledgeOutputRendered(source: String = "monaco") {
+    val seq = ++outputAckSequence
+    if (shouldLogOutputAck(seq)) {
+        console.info("[output-ack] schedule seq=$seq source=$source")
+    }
+    window.setTimeout({
+        if (shouldLogOutputAck(seq)) {
+            console.info("[output-ack] send seq=$seq source=$source")
+        }
+        send(Message("output-ack"))
+    }, 0)
+}
+
 private fun splitDefinedIn(candidate: String): Pair<String, String?> {
     val marker = " defined in "
     val idx = candidate.lastIndexOf(marker)
@@ -349,7 +370,7 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
     val original = message.originalName as? String ?: return true
     if (original != "output") return true
 
-    return routeMonacoOutput(
+    val handled = routeMonacoOutput(
         Output(
             uid = uid,
             line = (payload.line as? Number)?.toInt() ?: 0,
@@ -364,6 +385,8 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
         ),
         uid
     )
+    acknowledgeOutputRendered("callback-output")
+    return handled
 }
 
 @OptIn(ExperimentalJsExport::class)

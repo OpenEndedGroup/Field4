@@ -42,6 +42,10 @@ private const val outputHeightFudgePx = 5.0
 private var outputMaxHeightPx = 500.0
 private var outputScrollTailExistingPx = 40.0
 private var outputScrollTailNewPx = 46.0
+private const val maxRenderedOutputRows = 80
+private const val maxRenderedOutputChars = 40_000
+private const val maxOutputMessageBreaks = 80
+private val htmlBreakRegex = Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)
 
 private fun executionMarkerStateClass(mode: String): String {
     return when (mode) {
@@ -317,15 +321,24 @@ private fun recomputeOutputHeight(editor: dynamic, output: dynamic) {
 }
 
 private fun scheduleOutputHeightRecompute(editor: dynamic, output: dynamic) {
+    if (output.heightRecomputeQueued as? Boolean == true) return
+    output.heightRecomputeQueued = true
+    val firstTimeout = output.heightRecomputeFirstTimeout as? Int
+    val secondTimeout = output.heightRecomputeSecondTimeout as? Int
+    val thirdTimeout = output.heightRecomputeThirdTimeout as? Int
+    if (firstTimeout != null) window.clearTimeout(firstTimeout)
+    if (secondTimeout != null) window.clearTimeout(secondTimeout)
+    if (thirdTimeout != null) window.clearTimeout(thirdTimeout)
     window.requestAnimationFrame {
+        output.heightRecomputeQueued = false
         recomputeOutputHeight(editor, output)
-        window.setTimeout({
+        output.heightRecomputeFirstTimeout = window.setTimeout({
             recomputeOutputHeight(editor, output)
         }, 35)
-        window.setTimeout({
+        output.heightRecomputeSecondTimeout = window.setTimeout({
             recomputeOutputHeight(editor, output)
         }, 150)
-        window.setTimeout({
+        output.heightRecomputeThirdTimeout = window.setTimeout({
             recomputeOutputHeight(editor, output)
         }, 350)
     }
@@ -1521,7 +1534,7 @@ private fun alignSpansWithinXPixels(x: Double): Boolean {
 
 private fun appendWithBadge(div: dynamic, msg: String): Boolean {
     val container = div as? HTMLElement ?: return false
-    val message = msg
+    val message = trimLargeLogMessageStart(msg)
     val last = container.lastElementChild
     val isLastLogLine = last?.classList?.contains("log-line") == true
 
@@ -1532,6 +1545,7 @@ private fun appendWithBadge(div: dynamic, msg: String): Boolean {
         badge.dataset.asDynamic().count = next.toString()
         badge.textContent = "×$next"
         badge.classList.add("show")
+        trimOutputContainerStart(container)
         return true
     }
 
@@ -1550,6 +1564,64 @@ private fun appendWithBadge(div: dynamic, msg: String): Boolean {
     line.appendChild(text)
     line.appendChild(badge)
     container.appendChild(line)
+    trimOutputContainerStart(container)
     container.scrollTop = container.scrollHeight.toDouble()
     return false
+}
+
+private fun trimLargeLogMessageStart(message: String): String {
+    val parts = htmlBreakRegex.split(message)
+    if (parts.size <= maxOutputMessageBreaks) return message
+    val keep = parts.takeLast(maxOutputMessageBreaks)
+    val removed = parts.size - keep.size
+    return "<span class='trimmed-output'>[trimmed $removed earlier lines]</span><br>" + keep.joinToString("<br>")
+}
+
+private fun ensureTrimMarker(container: HTMLElement): HTMLElement {
+    val first = container.firstElementChild as? HTMLElement
+    if (first?.classList?.contains("output-trim-marker") == true) return first
+
+    val marker = document.createElement("div") as HTMLElement
+    marker.className = "log-line output-trim-marker"
+    val text = document.createElement("div") as HTMLElement
+    text.className = "log-msg"
+    marker.appendChild(text)
+    container.insertBefore(marker, container.firstChild)
+    return marker
+}
+
+private fun trimOutputContainerStart(container: HTMLElement) {
+    var removedRows = 0
+    while (container.children.length > maxRenderedOutputRows) {
+        val first = container.firstElementChild as? HTMLElement ?: break
+        if (first.classList.contains("output-trim-marker")) {
+            val next = first.nextElementSibling ?: break
+            container.removeChild(next)
+        } else {
+            container.removeChild(first)
+        }
+        removedRows++
+    }
+
+    var textLength = (container.textContent ?: "").length
+    while (textLength > maxRenderedOutputChars && container.children.length > 1) {
+        val first = container.firstElementChild as? HTMLElement ?: break
+        val victim = if (first.classList.contains("output-trim-marker")) {
+            first.nextElementSibling ?: break
+        } else {
+            first
+        }
+        textLength -= (victim.textContent ?: "").length
+        container.removeChild(victim)
+        removedRows++
+    }
+
+    if (removedRows > 0) {
+        val marker = ensureTrimMarker(container)
+        val previous = (marker.dataset.asDynamic().trimmedRows as? String)?.toIntOrNull() ?: 0
+        val next = previous + removedRows
+        marker.dataset.asDynamic().trimmedRows = next.toString()
+        val text = marker.querySelector(".log-msg") as? HTMLElement
+        text?.textContent = "[trimmed $next earlier output rows]"
+    }
 }

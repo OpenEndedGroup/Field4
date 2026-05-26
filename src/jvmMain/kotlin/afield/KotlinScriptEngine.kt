@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
@@ -495,7 +496,14 @@ fun createKotlinScriptEngine(
     implicitReceivers: List<KotlinType> = emptyList(),
     classLoader: ClassLoader? = null,
     filePrefix: String = "EVAL_"
-): KotlinScriptEngine = when (KotlinEngineConfig.activeBackend) {
-    KotlinEngineConfig.Backend.K1 -> KotlinInterface(propertyClasses, properties, implicitReceivers, classLoader, filePrefix)
-    KotlinEngineConfig.Backend.K2 -> KotlinInterface2(propertyClasses, properties, implicitReceivers, classLoader, filePrefix)
+): KotlinScriptEngine {
+    val backend = KotlinEngineConfig.activeBackend
+    lprintln(
+        "debug,ki,startup",
+        "create KotlinScriptEngine backend=$backend filePrefix=$filePrefix implicitReceivers=${implicitReceivers.size} properties=${properties.keys}"
+    )
+    return when (backend) {
+        KotlinEngineConfig.Backend.K1 -> KotlinInterface(propertyClasses, properties, implicitReceivers, classLoader, filePrefix)
+        KotlinEngineConfig.Backend.K2 -> KotlinInterface2(propertyClasses, properties, implicitReceivers, classLoader, filePrefix)
+    }
 }

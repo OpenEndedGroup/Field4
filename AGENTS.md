@@ -22,18 +22,15 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 
 ### Gradle hygiene for agents
 
-- Do not run bare `./gradlew` from agent automation. Interrupted agent builds have previously left Gradle daemons holding `~/.gradle/caches/journal-1`, blocking the user's later builds.
-- Use an isolated Gradle user home, an isolated project cache, and disable VFS watching for agent builds. `GRADLE_USER_HOME` alone is not enough: Gradle still locks the checkout-local `.gradle/8.9/fileHashes` cache unless `--project-cache-dir` is also moved out of the repo. Example:
+- Use the plain Gradle wrapper by default. The normal checkout-local Gradle state is intentionally warm and is much faster than an isolated agent cache. For a compile check after Kotlin source changes, prefer:
 
 ```bash
-GRADLE_USER_HOME=/Users/marc/.codex/gradle-homes/jvm-js-fullstack \
-  ./gradlew --no-daemon \
-    --project-cache-dir /Users/marc/.codex/gradle-project-caches/jvm-js-fullstack \
-    -Dorg.gradle.vfs.watch=false \
-    compileKotlinJvm
+./gradlew compileKotlinJvm
 ```
 
-- If a build is interrupted, clean up only the matching Gradle wrapper/daemon process tree for this checkout; do not use broad `killall java`.
+- For running the app manually, use the project commands directly, for example `./gradlew runJvm` or `./field.sh`.
+- If Gradle appears hung or reports a lock error, inspect the actual lock holder first (`ps`, `lsof .gradle/.../*.lock`) and clean up only the matching Gradle wrapper/daemon process tree for this checkout; do not use broad `killall java`.
+- Use an isolated `GRADLE_USER_HOME` / `--project-cache-dir` only as a fallback when there is a confirmed cache-lock conflict that cannot be cleared without disrupting the user's running work. The isolated path is expected to be much slower because it loses the warm project caches.
 
 ## Field Backdoor (Preferred for Agents)
 

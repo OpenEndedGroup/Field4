@@ -11,6 +11,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
 var needsResync = ConcurrentSet<Pair<Box, String>>()
@@ -55,7 +56,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     val markers = mutableMapOf<String, Marker>()
 
     var ki: KotlinScriptEngine by lazyVar {
-        makeKI(this)
+        makeKI(this, reason = "box.ki lazy initialization")
     }
     var ke: BoxExecution = KotlinExecution()
 
@@ -701,12 +702,44 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 """
 
-fun makeKI(box: Box): KotlinScriptEngine {
+private val kotlinStartupLogIds = AtomicLong(0)
+
+private fun Box.kotlinStartupLabel(): String {
+    val displayName = name.ifBlank { "Untitled" }
+    return "'$displayName' ($id)"
+}
+
+private fun kotlinStartupStack(maxFrames: Int = 8): String {
+    val ignoredMethods = setOf("kotlinStartupStack", "makeKI", "makeKIHere", "kotlinStartupLabel")
+    return Thread.currentThread().stackTrace
+        .asSequence()
+        .filter { it.className.startsWith("afield.") }
+        .filterNot { it.methodName in ignoredMethods }
+        .filterNot { it.className.startsWith("afield.logger.") }
+        .take(maxFrames)
+        .joinToString(" <- ") { frame ->
+            "${frame.className.substringAfterLast('.')}.${frame.methodName}:${frame.lineNumber}"
+        }
+        .ifBlank { "no afield stack frames" }
+}
+
+private fun KotlinScriptEngine.kotlinStartupEngineLabel(): String {
+    val backend = this::class.simpleName ?: this::class.java.name.substringAfterLast('.')
+    return "$backend execNumber=$execNumber"
+}
+
+fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
 
     // force resync of actions per box
     box.actions
 
     logTime("ki_standardlib") {
+        val startupId = kotlinStartupLogIds.incrementAndGet()
+        val requestedFrom = kotlinStartupStack()
+        lprintln(
+            "info,ki,startup",
+            "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
+        )
         val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
         ki.associatedBox = box  // Set the box reference for @exported support
         val si = thisSessionInfo.get()
@@ -716,14 +749,23 @@ fun makeKI(box: Box): KotlinScriptEngine {
 
             launch(Runloop.miscPool.asCoroutineDispatcher() + Box.boxContextElement(box)) {
 
-                lblock("info,ki", "executing stdlib import") {
+                lblock(
+                    "info,ki,startup",
+                    "executing stdlib import #$startupId async reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}"
+                ) {
 //                    if (box.properties["_tombstone"].isTrue()) return@launch
-                    if (box.properties["_tombstone"].isTrue()) return@launch
-                    lprintln("info,ki", "$box executing imports")
+                    if (box.properties["_tombstone"].isTrue()) {
+                        lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
+                        return@launch
+                    }
+                    lprintln(
+                        "info,ki,startup",
+                        "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
+                    )
                     ki.exec(
                         intro, implicits = listOf(box)
                     )
-                    lprintln("info,ki", "$box clearing preamble")
+                    lprintln("info,ki,startup", "clear preamble #$startupId box=${box.kotlinStartupLabel()}")
                     box.preamble = ""
 //                    try {
 //                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
@@ -732,7 +774,7 @@ fun makeKI(box: Box): KotlinScriptEngine {
 //                        t.printStackTrace()
 //                        box.preamble = ""
 //                    }
-                    lprintln("info,ki", "$box box is no longer offline")
+                    lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline")
                     box.offline = false
                     si?.topologyGeneration++
                 }
@@ -742,17 +784,43 @@ fun makeKI(box: Box): KotlinScriptEngine {
     }
 }
 
-suspend fun makeKIHere(box: Box): KotlinScriptEngine {
+suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScriptEngine {
+    val startupId = kotlinStartupLogIds.incrementAndGet()
+    val requestedFrom = kotlinStartupStack()
+    lprintln(
+        "info,ki,startup",
+        "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
+    )
     val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
-    if (box.properties["_tombstone"].isTrue()) return box.ki
+    if (box.properties["_tombstone"].isTrue()) {
+        lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
+        return box.ki
+    }
 
     Box.withBoxContext(box) {
-        ki.exec(
-            intro, implicits = listOf(box)
-        )
-        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
+        lblock(
+            "info,ki,startup",
+            "executing stdlib import #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}"
+        ) {
+            lprintln(
+                "info,ki,startup",
+                "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
+            )
+            ki.exec(
+                intro, implicits = listOf(box)
+            )
+            val preamble = box.preamble
+            if (preamble.isNotBlank()) {
+                lprintln(
+                    "info,ki,startup",
+                    "begin preamble #$startupId box=${box.kotlinStartupLabel()} preambleLength=${preamble.length}"
+                )
+            }
+            preamble.let { ki.exec(it, implicits = listOf(box)) }
+            lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()}")
+        }
     }
     si?.topologyGeneration++
     box.offline = false

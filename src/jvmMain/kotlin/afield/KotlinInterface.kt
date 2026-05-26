@@ -170,6 +170,24 @@ class KotlinInterface(
 
     var cache = mutableMapOf<String, ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>?>()
 
+    private fun compileSnippetKind(s: String): String {
+        return when {
+            s == intro -> "field-startup-imports"
+            s.isBlank() -> "blank"
+            s.trimStart().startsWith("import ") -> "imports-or-preamble"
+            else -> "user-code"
+        }
+    }
+
+    private fun compileSnippetPreview(s: String, maxLength: Int = 120): String {
+        val compact = s.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(3)
+            .joinToString(" | ")
+        return if (compact.length <= maxLength) compact else compact.take(maxLength) + "..."
+    }
+
     private fun resolveBoxContext(implicits: List<Any> = emptyList()): Box? {
         val fromImplicits = implicits.firstOrNull { it is Box } as? Box
         if (fromImplicits != null) return fromImplicits
@@ -183,6 +201,10 @@ class KotlinInterface(
         val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
         var r: ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>? = null
 
+        lprintln(
+            "info,kotlin,perf",
+            "\t\t compile request engine=KotlinInterface filePrefix=$filePrefix source=${code.name} kind=${compileSnippetKind(s)} length=${s.length} preview=${compileSnippetPreview(s)}"
+        )
         lprintln("info,kotlin,perf", "\t\t compile code $s")
 
         val ns = measureNanoTime {

@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
-import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
@@ -28,7 +27,7 @@ import kotlin.script.experimental.api.SourceCodeCompletionVariant
 fun installKEActions(root : Box) {
     root.actions["reset"] = Action("Reset Kotlin Environment for Box", detail="This drops all variables and declarations live in the current box and starts again") {
         it.forEach {
-            it.ki = makeKI(it)
+            it.ki = makeKI(it, reason = "reset action")
         }
     }
 }
@@ -536,15 +535,11 @@ private suspend fun isolatedSymbolContextComplete(
     allCode: String,
     position: Int
 ): CompletionResult {
-    val analysisKi = KotlinInterface(
-        implicitReceivers = listOf(KotlinType(Box::class)),
-        filePrefix = "${box.id}_symbol_context"
+    lprintln(
+        "debug,symbol-context",
+        "symbol-context completion via existing box.ki engine=${box.ki::class.simpleName} box='${box.name.ifBlank { "Untitled" }}' (${box.id}) position=$position"
     )
-    analysisKi.associatedBox = box
-    Box.withBoxContext(box) {
-        analysisKi.exec(intro, implicits = listOf(box))
-    }
-    return analysisKi.complete(allCode, position)
+    return box.ki.complete(allCode, position)
 }
 
 private data class SymbolContextCacheKey(

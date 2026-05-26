@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 import java.io.FileNotFoundException
+import java.security.MessageDigest
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -31,6 +32,19 @@ class SavingContext {
 
     private object SkipRef
 
+    private data class MarkdownBlockProperty(
+        val name: String,
+        val language: String,
+        val text: String,
+        val path: String?
+    )
+
+    private data class ExtractedNarrative(
+        val property: String,
+        val text: String,
+        val tags: List<String>
+    )
+
     fun exportEdnPackage(boxes: Set<Box>, directory: String): String {
         val transfers = toTransferInline(boxes, directory)
         val payloadBoxes = transfers.map { transfer ->
@@ -45,6 +59,15 @@ class SavingContext {
             "persistentProperties" to Box.ioPersistentProperties.toList()
         )
         return Edn.write(payload, ednCustom)
+    }
+
+    fun exportDocumentMarkdown(boxes: Set<Box>, directory: String): String {
+        val snapshot = SaveSnapshot(
+            transfers = toTransferInline(boxes, directory),
+            persistentProperties = Box.ioPersistentProperties.toList(),
+            fileWatchManager = null
+        )
+        return buildDocumentMarkdown(snapshot, File(directory).name)
     }
 
     fun listTemplates(dir: String): List<String> {
@@ -311,6 +334,13 @@ class SavingContext {
                 altered = altered || metadataChanged
                 if (metadataChanged) alteredFiles.add(metadataPath)
 
+                val markdownText = buildDocumentMarkdown(snapshot, File(root).name)
+                val markdownPath = File(root, DOCUMENT_MARKDOWN).path
+                touched.add(markdownPath)
+                val markdownChanged = checkDifference(markdownPath, markdownText)
+                altered = altered || markdownChanged
+                if (markdownChanged) alteredFiles.add(markdownPath)
+
                 if (metadataChanged) {
                     FlightRecorder.checkpointOnMetadataChange(fn)
                 }
@@ -366,6 +396,312 @@ class SavingContext {
         val persistentProperties: List<String>,
         val fileWatchManager: FileWatchManager?
     )
+
+    private fun buildDocumentMarkdown(snapshot: SaveSnapshot, documentName: String): String {
+        val ordered = parentFirst(snapshot.transfers)
+        val out = StringBuilder()
+
+        out.append("# Field Document")
+        if (documentName.isNotBlank()) {
+            out.append(": ").append(markdownInline(documentName))
+        }
+        out.append("\n\n")
+        out.append("This is a machine-readable narrative mirror of `metadata.edn`. ")
+        out.append("The canonical storage format is still EDN; this file is written beside it for code and AI tools.\n\n")
+        appendFence(
+            out,
+            "edn",
+            "field-document",
+            mapOf("version" to "1", "source" to METADATA_EDN),
+            Edn.write(
+                linkedMapOf<String, Any?>(
+                    "format" to "field-document-md",
+                    "version" to 1,
+                    "source" to METADATA_EDN,
+                    "boxes" to ordered.size,
+                    "persistentProperties" to snapshot.persistentProperties
+                ),
+                ednCustom
+            )
+        )
+
+        ordered.forEachIndexed { index, transfer ->
+            appendBoxMarkdown(out, transfer, index)
+        }
+
+        return out.toString()
+    }
+
+    private fun appendBoxMarkdown(out: StringBuilder, transfer: BoxTransferEdn, index: Int) {
+        val name = (transfer.properties["name"] as? String)?.ifBlank { null }
+        val blockProperties = transfer.properties.mapNotNull { (propertyName, value) ->
+            toMarkdownBlockProperty(propertyName, value, transfer.properties)
+        }
+        val blockNames = blockProperties.mapTo(mutableSetOf()) { it.name }
+        val headerProperties = LinkedHashMap<String, Any?>()
+        transfer.properties.forEach { (name, value) ->
+            if (!blockNames.contains(name)) {
+                headerProperties[name] = value
+            }
+        }
+        val blockManifest = blockProperties.map { block ->
+            linkedMapOf<String, Any?>(
+                "name" to block.name,
+                "language" to block.language,
+                "path" to block.path,
+                "lines" to lineCount(block.text),
+                "characters" to block.text.length,
+                "sha256" to sha256Hex(block.text)
+            ).filterValues { it != null }
+        }
+        val parents = boxRefIds(transfer.properties["parents"])
+        val children = boxRefIds(transfer.properties["children"])
+        val narratives = blockProperties.mapNotNull { block ->
+            extractLeadingNarrative(block.name, block.language, block.text)
+        }
+
+        out.append("## ").append(index + 1).append(". ")
+        out.append(markdownInline(name ?: transfer.id)).append("\n\n")
+        out.append("<!-- field-box id=\"").append(htmlAttribute(transfer.id)).append("\" index=\"")
+            .append(index).append("\" -->\n\n")
+
+        if (narratives.isNotEmpty()) {
+            out.append("### Narrative\n\n")
+            narratives.forEach { narrative ->
+                out.append("From `").append(markdownInline(narrative.property)).append("`")
+                if (narrative.tags.isNotEmpty()) {
+                    out.append(" tags: ")
+                    out.append(narrative.tags.joinToString(" ") { "`#$it`" })
+                }
+                out.append("\n\n")
+                out.append(narrative.text.trim()).append("\n\n")
+            }
+        }
+
+        val boxHeader = linkedMapOf<String, Any?>(
+            "id" to transfer.id,
+            "index" to index,
+            "name" to name,
+            "parents" to parents,
+            "children" to children,
+            "properties" to headerProperties,
+            "blockProperties" to blockManifest
+        ).filterValues { it != null }
+        appendFence(
+            out,
+            "edn",
+            "field-box",
+            mapOf("id" to transfer.id, "role" to "properties"),
+            Edn.write(boxHeader, ednCustom)
+        )
+
+        blockProperties.forEach { block ->
+            appendFence(
+                out,
+                block.language,
+                "field-property",
+                buildMap {
+                    put("box", transfer.id)
+                    put("name", block.name)
+                    block.path?.let { put("path", it) }
+                },
+                block.text
+            )
+        }
+    }
+
+    private fun parentFirst(transfers: List<BoxTransferEdn>): List<BoxTransferEdn> {
+        val byId = transfers.associateBy { it.id }
+        val visited = mutableSetOf<String>()
+        val visiting = mutableSetOf<String>()
+        val ordered = mutableListOf<BoxTransferEdn>()
+
+        fun visit(transfer: BoxTransferEdn) {
+            if (visited.contains(transfer.id)) return
+            if (!visiting.add(transfer.id)) return
+            boxRefIds(transfer.properties["parents"]).forEach { parentId ->
+                byId[parentId]?.let { visit(it) }
+            }
+            visiting.remove(transfer.id)
+            visited.add(transfer.id)
+            ordered += transfer
+        }
+
+        byId["root"]?.let { visit(it) }
+        transfers.forEach { visit(it) }
+        return ordered
+    }
+
+    private fun toMarkdownBlockProperty(
+        name: String,
+        value: Any?,
+        properties: Map<String, Any?>
+    ): MarkdownBlockProperty? {
+        val path: String?
+        val text: String
+        when (value) {
+            is FileInline -> {
+                path = value.path
+                text = value.inline
+            }
+            is String -> {
+                if (!shouldWriteStringAsBlock(name, value)) return null
+                path = null
+                text = value
+            }
+            else -> return null
+        }
+        return MarkdownBlockProperty(
+            name = name,
+            language = markdownLanguage(name, path, properties),
+            text = text,
+            path = path
+        )
+    }
+
+    private fun shouldWriteStringAsBlock(name: String, value: String): Boolean {
+        if (name == "name" || name == "filename" || name == "code_language") return false
+        if (Box.ioSeparateProperties.containsKey(name)) return true
+        return value.contains('\n')
+    }
+
+    private fun markdownLanguage(name: String, path: String?, properties: Map<String, Any?>): String {
+        if (name == "code") {
+            val declared = (properties["code_language"] as? String)?.trim()?.lowercase()
+            if (!declared.isNullOrBlank()) return normalizeMarkdownLanguage(declared)
+        }
+        val extension = path?.substringAfterLast('.', missingDelimiterValue = "")?.lowercase()
+            ?: Box.ioSeparateProperties[name]
+        return normalizeMarkdownLanguage(extension ?: "text")
+    }
+
+    private fun normalizeMarkdownLanguage(language: String): String = when (language.lowercase()) {
+        "kt", "kts", "kotlin" -> "kotlin"
+        "js", "javascript" -> "javascript"
+        "ts", "typescript" -> "typescript"
+        "py", "python" -> "python"
+        "clj", "clojure" -> "clojure"
+        "yml", "yaml" -> "yaml"
+        "md", "markdown" -> "markdown"
+        "glsl" -> "glsl"
+        "slang" -> "slang"
+        "edn" -> "edn"
+        else -> language.ifBlank { "text" }
+    }
+
+    private fun extractLeadingNarrative(property: String, language: String, text: String): ExtractedNarrative? {
+        val lines = text.lines()
+        val collected = mutableListOf<String>()
+        var index = 0
+        while (index < lines.size && lines[index].isBlank()) index++
+
+        if (index < lines.size && lines[index].trimStart().startsWith("/*")) {
+            var first = true
+            while (index < lines.size) {
+                val raw = lines[index]
+                val trimmed = raw.trim()
+                var body = raw.trimStart()
+                if (first) {
+                    body = body.removePrefix("/*")
+                    first = false
+                }
+                val closes = body.contains("*/")
+                body = body.substringBefore("*/")
+                collected += cleanupCommentLine(body)
+                index++
+                if (closes) break
+            }
+        }
+
+        while (index < lines.size) {
+            val raw = lines[index]
+            val trimmed = raw.trimStart()
+            val body = when {
+                trimmed.startsWith("//") -> trimmed.removePrefix("//")
+                trimmed.startsWith("#") && language in setOf("python", "yaml", "text", "markdown") -> trimmed.removePrefix("#")
+                trimmed.startsWith(";") && language == "clojure" -> trimmed.removePrefix(";")
+                collected.isNotEmpty() && raw.isBlank() -> ""
+                else -> break
+            }
+            collected += cleanupCommentLine(body)
+            index++
+        }
+
+        val narrative = collected.joinToString("\n").trim()
+        if (narrative.isBlank()) return null
+        val tags = Regex("""(?<![\w/])#([A-Za-z0-9][A-Za-z0-9_:/.-]*)""")
+            .findAll(narrative)
+            .map { it.groupValues[1] }
+            .distinct()
+            .toList()
+        return ExtractedNarrative(property, narrative, tags)
+    }
+
+    private fun cleanupCommentLine(line: String): String {
+        return line.trimStart().removePrefix("*").trimStart()
+    }
+
+    private fun appendFence(
+        out: StringBuilder,
+        language: String,
+        marker: String,
+        metadata: Map<String, String>,
+        text: String
+    ) {
+        val longestFence = Regex("`+").findAll(text).map { it.value.length }.maxOrNull() ?: 0
+        val fence = "`".repeat(maxOf(3, longestFence + 1))
+        out.append(fence).append(language.ifBlank { "text" }).append(" [").append(marker)
+        metadata.forEach { (key, value) ->
+            out.append(' ').append(key).append("=\"").append(fenceInfoValue(value)).append('"')
+        }
+        out.append("]\n")
+        out.append(text)
+        if (!text.endsWith("\n")) out.append('\n')
+        out.append(fence).append("\n\n")
+    }
+
+    private fun boxRefIds(value: Any?): List<String> = when (value) {
+        is BoxRef -> listOf(value.id)
+        is Collection<*> -> value.flatMap { boxRefIds(it) }
+        else -> emptyList()
+    }
+
+    private fun lineCount(text: String): Int {
+        if (text.isEmpty()) return 0
+        return text.count { it == '\n' } + if (text.endsWith("\n")) 0 else 1
+    }
+
+    private fun sha256Hex(text: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
+        val hex = "0123456789abcdef"
+        val out = StringBuilder(digest.size * 2)
+        digest.forEach { byte ->
+            val value = byte.toInt() and 0xff
+            out.append(hex[value ushr 4])
+            out.append(hex[value and 0x0f])
+        }
+        return out.toString()
+    }
+
+    private fun markdownInline(value: String): String {
+        return value.replace(Regex("""[\r\n]+"""), " ").trim()
+    }
+
+    private fun htmlAttribute(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("\"", "&quot;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+    }
+
+    private fun fenceInfoValue(value: String): String {
+        return value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+    }
 
     /**
      * Save boxes as a standalone template file (metadata.edn without subdirectory)
@@ -877,6 +1213,7 @@ class SavingContext {
 
         const val METADATA_EDN = "metadata.edn"
         const val METADATA_JSON = "metadata.json"
+        const val DOCUMENT_MARKDOWN = "document.md"
         const val TRANSCRIPT_EDN = "transcript.edn"
 
         private val ednCustom = Edn.CustomTypes().apply {

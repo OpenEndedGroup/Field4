@@ -102,7 +102,7 @@ fun copyBox(b: Box, offsetFrame: Boolean = true): Box {
 
     b.root.connect(newBox)
     b.inside.boxes[newBox.id] = newBox
-    newBox.ki = makeKI(newBox)
+    newBox.ki = makeKI(newBox, reason = "copyBox")
     newBox.name = newName
 
 

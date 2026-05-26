@@ -214,6 +214,24 @@ class KotlinInterface2(
 
     var cache = mutableMapOf<String, ResultWithDiagnostics<LinkedSnippet<CompiledScript>>?>()
 
+    private fun compileSnippetKind(s: String): String {
+        return when {
+            s == intro -> "field-startup-imports"
+            s.isBlank() -> "blank"
+            s.trimStart().startsWith("import ") -> "imports-or-preamble"
+            else -> "user-code"
+        }
+    }
+
+    private fun compileSnippetPreview(s: String, maxLength: Int = 120): String {
+        val compact = s.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(3)
+            .joinToString(" | ")
+        return if (compact.length <= maxLength) compact else compact.take(maxLength) + "..."
+    }
+
     private fun resolveBoxContext(implicits: List<Any> = emptyList()): Box? {
         val fromImplicits = implicits.firstOrNull { it is Box } as? Box
         if (fromImplicits != null) return fromImplicits
@@ -285,6 +303,10 @@ class KotlinInterface2(
             val code = SourceCodeImpl(id++, s)
             val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
 
+            lprintln(
+                "info,kotlin,perf",
+                "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${compileSnippetKind(s)} length=${s.length} preview=${compileSnippetPreview(s)}"
+            )
             lprintln("info,kotlin,perf", "\t\t compile code $s")
 
             // Clear diagnostics from previous snippet. The collector is shared by this K2 REPL state.
@@ -411,38 +433,51 @@ class KotlinInterface2(
 
     private var k1CompletionDelegate: KotlinInterface? = null
     private var k1CompletionDelegateBootstrapped = false
+    private val k1CompletionDelegateMutex = Mutex()
 
     private suspend fun k1CompletionDelegate(): KotlinInterface {
-        val existing = k1CompletionDelegate
-        if (existing != null) {
-            existing.associatedBox = associatedBox
-            return existing
-        }
-
-        val created = KotlinInterface(
-            propertyClasses = propertyClasses,
-            properties = properties,
-            implicitReceivers = implicitReceivers,
-            classLoader = classLoader,
-            filePrefix = "${filePrefix}_completion"
-        )
-        created.associatedBox = associatedBox
-        k1CompletionDelegate = created
-
-        if (!k1CompletionDelegateBootstrapped) {
-            val box = resolveBoxContext()
-            val implicits = if (box != null) listOf(box) else emptyList()
-            if (box != null) {
-                Box.withBoxContext(box) {
-                    created.exec(intro, implicits = implicits)
-                }
-            } else {
-                created.exec(intro)
+        return k1CompletionDelegateMutex.withLock {
+            val existing = k1CompletionDelegate
+            if (existing != null) {
+                existing.associatedBox = associatedBox
+                return@withLock existing
             }
-            k1CompletionDelegateBootstrapped = true
-        }
 
-        return created
+            val box = resolveBoxContext()
+            val boxLabel = box?.let { "'${it.name.ifBlank { "Untitled" }}' (${it.id})" } ?: "none"
+            lprintln(
+                "info,ki,startup",
+                "request K1 completion delegate for K2 filePrefix=$filePrefix box=$boxLabel"
+            )
+
+            val created = KotlinInterface(
+                propertyClasses = propertyClasses,
+                properties = properties,
+                implicitReceivers = implicitReceivers,
+                classLoader = classLoader,
+                filePrefix = "${filePrefix}_completion"
+            )
+            created.associatedBox = associatedBox
+            k1CompletionDelegate = created
+
+            if (!k1CompletionDelegateBootstrapped) {
+                val implicits = if (box != null) listOf(box) else emptyList()
+                lprintln(
+                    "info,ki,startup",
+                    "bootstrap K1 completion delegate filePrefix=${filePrefix}_completion box=$boxLabel introLength=${intro.length}"
+                )
+                if (box != null) {
+                    Box.withBoxContext(box) {
+                        created.exec(intro, implicits = implicits)
+                    }
+                } else {
+                    created.exec(intro)
+                }
+                k1CompletionDelegateBootstrapped = true
+            }
+
+            created
+        }
     }
 
     /**

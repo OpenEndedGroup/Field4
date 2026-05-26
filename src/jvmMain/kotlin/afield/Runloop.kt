@@ -9,11 +9,16 @@ import java.util.concurrent.Executors
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.max
 
+
 //@OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
 //fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, start = if (isMain.load()) CoroutineStart.UNDISPATCHED else CoroutineStart.DEFAULT, block = block)
 
 @OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
-fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, start = if (isMain.load()) CoroutineStart.DEFAULT else CoroutineStart.DEFAULT, block = block)
+fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(
+    Runloop.runLoop.main,
+    start = if (isMain.load()) CoroutineStart.DEFAULT else CoroutineStart.DEFAULT,
+    block = block
+)
 
 class Runloop {
 
@@ -25,7 +30,8 @@ class Runloop {
     companion object {
         val runLoop = Runloop()
         val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
-        @Volatile var mainThread: Thread? = null
+        @Volatile
+        var mainThread: Thread? = null
 
         val isMainThread: Boolean
             get() = mainThread == Thread.currentThread()
