@@ -16,7 +16,7 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Stop_box>(message.payload!!)
             val box = box(exec.uid)
 
-            stop(box)
+            stop(box, entrypoint = "stop-box")
 
             Handled.yes
         })
@@ -25,6 +25,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
+            FlightRecorder.recordExecuteEntrypoint("execute-fragment", box, exec)
             box.ke.executeFragment(box, exec, reply)
             Handled.yes
         })
@@ -33,6 +34,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
             val exec = Json.decodeFromJsonElement<ExecuteSymbol>(message.payload!!)
             val box = box(exec.uid)
+            FlightRecorder.recordExecuteSymbolEntrypoint("execute-symbol", box, exec)
             box.ke.executeSymbol(box, exec, reply)
             Handled.yes
         })
@@ -45,11 +47,13 @@ fun executing() {
 
 
             inMain {
+                FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
                 // experimental
                 if (box.ke is KotlinExecution)
                     box.ki = makeKIHere(box)
                 box.properties["_preamble"] = "" // remove record of previous preamble line execs
                 box.properties["_introduction"] = "" // ditto for introduction
+                box.properties.remove("_attic")
                 box.ke.executeAll(box, exec, reply)
             }
 
@@ -62,7 +66,21 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
 
+            FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
             box.ke.launchAll(box, exec, exec.code, "default", reply)
+
+
+            Handled.yes
+        })
+
+    handlers["continue-all"] = mutableSetOf(
+        { message, reply: (Message) -> Unit ->
+
+            val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
+            val box = box(exec.uid)
+
+            FlightRecorder.recordLaunchEntrypoint("continue-all", box, exec, strand = "default")
+            box.ke.continueAll(box, exec, exec.code, "default", reply)
 
 
             Handled.yes
@@ -74,6 +92,7 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
 
+            FlightRecorder.recordLaunchEntrypoint("launch-fragment", box, exec, strand = exec.strand)
             box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
 
             Handled.yes
@@ -87,7 +106,7 @@ fun executing() {
 
             lprintln("info,execution", "stop all has been called")
 
-            stop(box)
+            stop(box, entrypoint = "stop-all")
 
             Handled.yes
         })

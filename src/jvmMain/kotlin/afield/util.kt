@@ -2,13 +2,10 @@ package afield
 
 import afield.PersistOnExit.needingPersistance
 import afield.SavingContext.Companion.format
-import afield.stdlib.invoke
-import kotlinx.serialization.encodeToString
 import afield.logger.lprintln
-import java.lang.reflect.Field
-import java.lang.reflect.Method
-import java.lang.reflect.Modifier
+import afield.stdlib.invoke
 import java.io.File
+import java.lang.reflect.*
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
@@ -341,6 +338,7 @@ fun <T> lazyVar(
 data class Named<T>(val name: String, val value: T)
 
 infix fun <T> T.named(name: String) = Named(name, this)
+fun <T> T.namedHere(name: String = "${this!!.javaClass.name}", prefix : String = "${Box.context.get()}") = Named(prefix+"_"+name, this)
 
 /**
  * Dump an object's class hierarchy (superclasses + interfaces) and print:
@@ -413,6 +411,83 @@ fun Any?.reflectionDump(
         }
 
         println()
+    }
+}
+
+fun showMethodNames(a : Any) {
+    MethodParameterSpy.printClassMethods(a.javaClass)
+}
+
+class MethodParameterSpy {
+    // for the morbidly curious
+    fun <E : RuntimeException?> genericThrow() {
+    }
+
+    companion object {
+        private const val fmt = "%24s: %s%n"
+
+        fun printClassConstructors(c: Class<*>) {
+            val allConstructors: Array<Constructor<*>> = c.getConstructors()
+            System.out.format(fmt, "Number of constructors", allConstructors.size)
+            for (currentConstructor in allConstructors) {
+                printConstructor(currentConstructor)
+            }
+            val allDeclConst: Array<Constructor<*>> = c.getDeclaredConstructors()
+            System.out.format(
+                fmt, "Number of declared constructors",
+                allDeclConst.size
+            )
+            for (currentDeclConst in allDeclConst) {
+                printConstructor(currentDeclConst)
+            }
+        }
+
+        fun printClassMethods(c: Class<*>) {
+            val allMethods = c.getDeclaredMethods()
+            System.out.format(fmt, "Number of methods", allMethods.size)
+            for (m in allMethods) {
+                printMethod(m)
+            }
+        }
+
+        fun printConstructor(c: Constructor<*>) {
+            System.out.format("%s%n", c.toGenericString())
+            val params: Array<Parameter?> = c.getParameters()
+            System.out.format(fmt, "Number of parameters", params.size)
+            for (i in params.indices) {
+                printParameter(params[i]!!)
+            }
+        }
+
+        fun printMethod(m: Method) {
+            System.out.format("%s%n", m.toGenericString())
+            System.out.format(fmt, "Return type", m.getReturnType())
+            System.out.format(fmt, "Generic return type", m.getGenericReturnType())
+
+            val params: Array<Parameter?> = m.getParameters()
+            for (i in params.indices) {
+                printParameter(params[i]!!)
+            }
+        }
+
+        fun printParameter(p: Parameter) {
+            System.out.format(fmt, "Parameter class", p.getType())
+            System.out.format(fmt, "Parameter name", p.getName())
+            System.out.format(fmt, "Modifiers", p.getModifiers())
+            System.out.format(fmt, "Is implicit?", p.isImplicit())
+            System.out.format(fmt, "Is name present?", p.isNamePresent())
+            System.out.format(fmt, "Is synthetic?", p.isSynthetic())
+        }
+
+        @JvmStatic
+        fun main(args: Array<String>) {
+            try {
+                printClassConstructors(Class.forName(args[0]))
+                printClassMethods(Class.forName(args[0]))
+            } catch (x: ClassNotFoundException) {
+                x.printStackTrace()
+            }
+        }
     }
 }
 

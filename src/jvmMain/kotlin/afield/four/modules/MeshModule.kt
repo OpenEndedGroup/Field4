@@ -1,12 +1,14 @@
 package afield.four.modules
 
 import afield.Named
+import afield.four.Target
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.buffers.buffer
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
@@ -37,7 +39,15 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         p.uboResolver = { oUboResolver(it) }
 
         val oSsboResolver = p.ssboResolver
-        p.ssboResolver = { oSsboResolver(it) }
+        p.ssboResolver = {
+            val prev = current.uniforms[it.name]
+            if (prev == null) oSsboResolver(it) else {
+                val prevSrc = prev.source
+                if (prevSrc == null) oSsboResolver(it)
+                else if (prevSrc.checkCompatibility(it) == false) oSsboResolver(it)
+                else oSsboResolver(prevSrc)
+            }
+        }
 
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
@@ -70,6 +80,16 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         m.value.inside = this
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
     fun enable() {
         current.enable()
     }
@@ -87,14 +107,36 @@ class MeshModule(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
 
-    var meshes = mutableMapOf<String, MeshMesh>()
+    var meshes = linkedMapOf<String, MeshMesh>()
+    var before = linkedMapOf<String, Target>()
+    var after = linkedMapOf<String, Target>()
 
-    val ti = Introspection(parameters.task, ShaderKind.TASK_SHADER, errorHandler = parameters.errorHandler)
-    val mi = Introspection(parameters.mesh, ShaderKind.MESH_SHADER, errorHandler = parameters.errorHandler)
-    val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
+    val ti = parameters.taskIntrospection
+        ?: Introspection(
+            parameters.task,
+            ShaderKind.TASK_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.taskSourceName,
+            includeResolver = parameters.taskIncludeResolver
+        )
+    val mi = parameters.meshIntrospection
+        ?: Introspection(
+            parameters.mesh,
+            ShaderKind.MESH_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.meshSourceName,
+            includeResolver = parameters.meshIncludeResolver
+        )
+    val fi = parameters.fragmentIntrospection
+        ?: Introspection(
+            parameters.fragment,
+            ShaderKind.FRAGMENT_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.fragmentSourceName,
+            includeResolver = parameters.fragmentIncludeResolver
+        )
 
-    val pushConstantSize =
-        (ti.pushConstants.associateBy { it.name } + mi.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = (ti.pushConstants + mi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -122,22 +164,21 @@ class MeshModule(val parameters: Parameters) : Renderable {
             // Collect sets -> bindings (may contain dups from multiple stages)
             val setsNeededRaw = mutableMapOf<Int, MutableList<Int>>()
 
-            // Build required sets for set >= 1 only (set=0 is global)
-            ti.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.ubos.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.ubos.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.ubos.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ubos.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.ssbo.forEach    { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.ssbo.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.ssbo.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.ssbo.forEach    { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.textures.forEach { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.textures.forEach { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.textures.forEach { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.textures.forEach { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
-            ti.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            mi.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
-            fi.images.forEach   { if (it.set != 0) setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ti.images.forEach   { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            mi.images.forEach   { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            fi.images.forEach   { setsNeededRaw.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
 
             // (2) Dedup + sort per-set binding lists so DescriptorSetLayout is deterministic & gap-free
             val setsNeeded = setsNeededRaw.mapValues { (_, v) -> v.distinct().sorted().toMutableList() }
@@ -155,7 +196,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 
-            // Build layouts for sets >= 1
+            // Build layouts for all sets used by the shader
             setsNeeded.entries.forEach { (set, bindingList) ->
                 var where = 0
                 val kinds = mutableListOf<Int>()
@@ -163,98 +204,97 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
                 bindingList.forEach { bind ->
                     var kind = 0
+                    var descriptorCount = 1
+
+                    fun noteBinding(stageFlag: Int, descriptorType: Int, count: Int = 1) {
+                        where = where or stageFlag
+                        if (kind == 0) kind = descriptorType
+                        else require(kind == descriptorType) {
+                            "binding $bind in set $set resolves to multiple descriptor types"
+                        }
+                        descriptorCount = maxOf(descriptorCount, count)
+                    }
 
                     ti.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
                     mi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
                     fi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
 
                     ti.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
                     mi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
                     fi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
 
                     // (1) Match on binding for textures/images too
                     ti.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_TASK_BIT_EXT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
                     mi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_MESH_BIT_EXT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
                     fi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
 
                     ti.images.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_TASK_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
                     mi.images.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_MESH_BIT_EXT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
                     fi.images.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
 
                     if (kind == 0) throw IllegalArgumentException(" couldn't find $bind for $bindingList")
                     kinds.add(kind)
+                    lens.add(descriptorCount)
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
@@ -487,12 +527,12 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 var vpcr: VkPushConstantRange.Buffer? = null
                 if (pushConstantSize > 0) {
                     vpcr = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT)
+                        .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT or VK_SHADER_STAGE_FRAGMENT_BIT)
                         .offset(0)
                         .size(pushConstantSize)
                 }
 
-                // ---- Pipeline layout includes global set=0 at index 0
+                // ---- Pipeline layout includes every shader-declared set, starting at 0
                 val highestSet = layouts.keys.maxOrNull() ?: -1
 
                 val ppLayout = if (highestSet >= 0) stack.callocLong(highestSet + 1) else null
@@ -602,6 +642,10 @@ class MeshModule(val parameters: Parameters) : Renderable {
             command.beginLabel(parameters.name, labelColor)
 
             val cmd = command.vkCommandBuffer
+            val frameIndex = parameters.renderer.currentImage
+            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+
+            fieldProbe?.beforeShaderUse(parameters.renderer, frameIndex)
 
             VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
 
@@ -615,7 +659,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 EXTExtendedDynamicState3.vkCmdSetDepthClampEnableEXT(cmd, false)
             }
 
-            val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+            val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
 
             uniforms.values.forEach { upd ->
                 upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)
@@ -639,6 +683,15 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 mesh.compute(this, command, pushConstantBuffer)
             }
 
+            after.forEach { (_, target) ->
+                target.render(command, parameters.renderer.currentImage)
+            }
+
+            fieldProbe?.let {
+                graphicsHostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
+                it.afterShaderUse(parameters.renderer, frameIndex)
+            }
+
             command.endLabel()
         }
     }
@@ -657,6 +710,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
             (it.value as? MeshMesh)?.let { mm -> mm.inside = this.pointer() }
             true
         }
+        before.putAll(old.before)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
@@ -699,6 +754,16 @@ class MeshModule(val parameters: Parameters) : Renderable {
     operator fun plusAssign(m: Pair<String, MeshMesh>) {
         meshes[m.first] = m.second
         m.second.inside = this.pointer()
+    }
+
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        before[m.first] = m.second.target
     }
 
 }

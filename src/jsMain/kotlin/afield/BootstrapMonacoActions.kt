@@ -339,6 +339,11 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
     hover.textContent = ".code"
     editor._domElement.appendChild(hover)
 
+    val context = document.createElement("div")
+    context.className = "hoverlay-left"
+    context.innerHTML = ""
+    editor._domElement.appendChild(context)
+
     run {
         val action = js("{}")
         action.id = "ai-assist-error"
@@ -517,9 +522,27 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     run {
         val action = js("{}")
+        action.id = "continue-all"
+        action.label = "Continue Box"
+        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.UpArrow))
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "execution"
+        action.contextMenuOrder = 2.1
+        action.run = { ed: dynamic ->
+            monacoRunContinueAll(ed)
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
         action.id = "stop-all"
         action.label = "Stop Box"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow))
+        action.keybindings = arrayOf(
+            keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow),
+            keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.DownArrow)
+        )
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -565,9 +588,11 @@ fun monacoRunAiAssistError(editor: dynamic) {
 }
 
 private fun shaderReloadActionForProperty(property: String): String? = when (property.lowercase()) {
-    "vertex", "fragment" -> "moduleHere_reload"
-    "compute" -> "computeModuleHere_reload"
-    "mesh", "task" -> "meshModuleHere_reload"
+    "vertex", "fragment", "vertex_fragment", "vertex_s", "fragment_s" -> "moduleHere_reload"
+    "compute", "compute_s" -> "computeModuleHere_reload"
+    "mesh", "task", "mesh_s", "task_s" -> "meshModuleHere_reload"
+    "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
+    "raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s" -> "rayTracingModuleHere_reload"
     else -> null
 }
 
@@ -664,7 +689,8 @@ fun monacoRunExecuteFragment(editor: dynamic) {
 fun monacoRunExecuteAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    val code = w.currentSelectedCode[0].code as? String ?: ""
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
 
     val payload = js("{}")
     payload.uid = uid
@@ -848,8 +874,19 @@ fun monacoRunLaunchFragment(editor: dynamic) {
 fun monacoRunLaunchAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    val code = w.currentSelectedCode[0].code as? String ?: ""
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
     w.launchAll(uid, code)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunContinueAll(editor: dynamic) {
+    val w = js("window")
+    val uid = w.currentSelectedCode[0].uid as String
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
+    w.continueAll(uid, code)
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -878,9 +915,10 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
     editor.onMouseDown(fun(e: dynamic) {
         // Check if Alt key is pressed and it's a double click
         val altKey = e.event.altKey as? Boolean ?: false
+        val shiftKey = e.event.shiftKey as? Boolean ?: false
         val detail = e.event.detail as? Int ?: 0
 
-        if (altKey && detail == 2) {
+        if (altKey && !shiftKey && detail == 2) {
             val position = e.target.position
             if (position != null) {
                 val model = editor.getModel()

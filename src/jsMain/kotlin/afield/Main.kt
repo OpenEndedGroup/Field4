@@ -4,6 +4,8 @@ package afield
 
 import CanvasGestures
 import clipRay
+import connectCenters
+import getCenter
 import doubleTap
 import handleCustomizationRequest
 import handleEvalRequest
@@ -19,6 +21,7 @@ import kotlinx.html.*
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.encodeToString
 import org.w3c.dom.*
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
@@ -26,7 +29,9 @@ import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
 import org.w3c.dom.url.URLSearchParams
 import registerDoubleTap
+import tripleTap
 import web.cssom.important
+import web.timers.clearTimeout
 import web.timers.setTimeout
 import kotlin.js.json
 import kotlin.math.abs
@@ -40,7 +45,7 @@ external fun interact(selector: HTMLElement): dynamic
 
 external fun notify(text: String, category: String)
 
-external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand: String)
+external fun setBoxRunning(uid: String, running: Boolean, watermark: Int, strand: String, mode: String)
 
 external fun showMonaco(): dynamic
 external fun hideMonaco(): dynamic
@@ -65,6 +70,132 @@ external object Provisional {
     fun set(uid: String, property: String, contents: String)
 }
 
+/**
+ * Tracks initial document loading progress. Backend load-status messages
+ * keep the UI in a loading state while metadata and box initialization are
+ * still being queued, and expected box counts keep the client from declaring
+ * success before the first box frame has arrived.
+ *
+ * Tracking begins automatically on backend status, expected counts, or the
+ * first [boxAdded] call. [start] only provides a watchdog for unusual cases.
+ */
+object LoadingTracker {
+    private var expectedBoxes = -1   // -1 = server hasn't told us yet
+    private val arrivedBoxIds = mutableSetOf<String>()
+    private val onlineBoxIds = mutableSetOf<String>()
+    private var timeoutHandle: Int? = null
+    private var finished = false
+    private var backendLoading = false
+    private var sawBackendStatus = false
+    private var statusText = "loading document"
+
+    /**
+     * The server tells us how many non-tombstoned boxes to expect.
+     * If count is 0, finish immediately (empty document).
+     */
+    fun setExpectedCount(count: Int) {
+        if (finished) return
+        expectedBoxes = count
+        if (count == 0) {
+            finish()
+        } else {
+            updateNotification()
+            resetTimeout()
+        }
+    }
+
+    /**
+     * Kick off the watchdog. The watchdog refreshes the loading notice while
+     * the backend is still active or while expected box frames are missing.
+     */
+    fun start() {
+        if (finished) return
+        resetTimeout()
+    }
+
+    fun documentLoadStatus(status: DocumentLoadStatus) {
+        if (finished) return
+        sawBackendStatus = true
+        backendLoading = !status.terminal
+        if (status.count >= 0) expectedBoxes = status.count
+        statusText = when {
+            status.message.isNotBlank() -> status.message
+            status.phase.isNotBlank() -> status.phase.replace("-", " ")
+            else -> "loading document"
+        }
+        if (expectedBoxes == 0 && status.terminal) {
+            finish()
+        } else {
+            updateNotification()
+            resetTimeout()
+        }
+    }
+
+    /** A new box arrived from the server (set-rect). */
+    fun boxAdded(uid: String) {
+        if (finished) return
+        arrivedBoxIds.add(uid)
+        updateNotification()
+        resetTimeout()
+    }
+
+    /** A box transitioned from offline to online. */
+    fun boxOnline(uid: String) {
+        if (finished) return
+        onlineBoxIds.add(uid)
+        updateNotification()
+        resetTimeout()
+        if (expectedBoxes > 0 && onlineBoxIds.size >= expectedBoxes) {
+            finish()
+        }
+    }
+
+    private fun updateNotification() {
+        val total = maxOf(if (expectedBoxes > 0) expectedBoxes else 0, arrivedBoxIds.size, onlineBoxIds.size)
+        val received = arrivedBoxIds.size
+        val online = onlineBoxIds.size
+        val detail = if (total > 0) "$statusText; $received/$total received, $online/$total online" else statusText
+        if (detail == "loading document") {
+            notify("loading document <<spinner>>", "setup")
+        } else {
+            notify("loading document \u2014 $detail <<spinner>>", "setup")
+        }
+    }
+
+    private fun resetTimeout() {
+        timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
+        timeoutHandle = kotlinx.browser.window.setTimeout({ handleIdleTimeout() }, 4000)
+    }
+
+    private fun handleIdleTimeout() {
+        if (finished) return
+        if (backendLoading) {
+            updateNotification()
+            resetTimeout()
+            return
+        }
+        if (expectedBoxes > 0 && arrivedBoxIds.size < expectedBoxes) {
+            updateNotification()
+            resetTimeout()
+            return
+        }
+        if (!sawBackendStatus && expectedBoxes < 0 && arrivedBoxIds.isEmpty()) {
+            updateNotification()
+            resetTimeout()
+            return
+        }
+        finish()
+    }
+
+    private fun finish() {
+        if (finished) return
+        finished = true
+        timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
+        timeoutHandle = null
+        notify("finished loading \u2014 press <b>?</b> for help", "setup")
+    }
+}
+
 lateinit var mainViewport: HTMLElement
 lateinit var mainCanvas: HTMLElement
 lateinit var overlaySVGLayer: SVGSVGElement
@@ -87,6 +218,8 @@ private const val dotAlphaSmallActive = 0.16
 private const val dotAlphaLargeActive = 0.24
 private const val axisAlphaIdle = 0.0
 private const val axisAlphaActive = 0.12
+private const val monacoMinWidthPx = 420.0
+private const val monacoViewportGutterPx = 10.0
 
 private var dotAlphaSmall = dotAlphaSmallIdle
 private var dotAlphaLarge = dotAlphaLargeIdle
@@ -97,17 +230,31 @@ private var axisAlphaTarget = axisAlphaIdle
 private var backgroundFadeTimeoutHandle: Int? = null
 private var backgroundLerpHandle: Int? = null
 
+private var editorOpacity = 1.0
+private var editorOpacityTarget = 1.0
+private const val editorOpacityPanning = 0.5
+private const val editorOpacityIdle = 1.0
+private var navigationPanAnimationHandle: Int? = null
+private var navigationPanAnimationGeneration = 0
+
 @JsExport
 @JsName("launchNumber")
 var launchNumber = 0
 
 external fun launchAll(uid: String, code: String)
+external fun continueAll(uid: String, code: String)
 
 @JsExport
 @JsName("canvasGestures")
 var canvasGestures = CanvasGestures(launcher = {
     it.forEach { launchAll(it.unsafeCast<dynamic>().uid as String, it.unsafeCast<dynamic>().code as String) }
-})
+}).also {
+    val w = window.asDynamic()
+    w.canvasGestures = it
+    w.rebuildConnectionGroup = { translationOnly: dynamic ->
+        it.rebuildConnectionGroup((translationOnly as? Boolean) ?: false)
+    }
+}
 
 var selected = mutableSetOf<HTMLElement>()
 var selectedList = eval("[]")
@@ -136,10 +283,29 @@ var lastAltDownUid: String? = null
 var lastAltDownStamp = 0.0
 var lastShiftDownUid: String? = null
 var lastShiftDownStamp = 0.0
+var pendingShiftToggleBox: HTMLElement? = null
+var pendingShiftToggleDownX = 0.0
+var pendingShiftToggleDownY = 0.0
+var pendingShiftToggleHadDrag = false
+private const val shiftToggleClickSlopPx = 4.0
 
 // Layers system state
 var visibleLayers = mutableSetOf("default")
 var activeLayer: String? = null
+
+private fun isLayerDebugEnabled(): Boolean {
+    val raw = window.asDynamic().layerDebug
+    return !(raw == false || raw == "false" || raw == "0")
+}
+
+fun layerDebugLog(event: String, payload: dynamic = null) {
+    if (!isLayerDebugEnabled()) return
+    if (payload == null || payload == js("undefined")) {
+        console.info("[layers] $event")
+    } else {
+        console.info("[layers] $event", payload)
+    }
+}
 
 fun selectionContextChanged() {
     if (currentAnnotations.isNotEmpty()) {
@@ -159,7 +325,156 @@ fun serviceEvents() {
 
 private fun findBoxElementByUid(uid: String): HTMLElement? {
     val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
-    return boxes.firstOrNull { (it.asDynamic().uid as? String) == uid } as? HTMLElement
+    return boxes.firstOrNull {
+        val candidate = (it.asDynamic().uid as? String)
+            ?: it.getAttribute("uid")
+            ?: it.getAttribute("data-uid")
+        candidate == uid
+    } as? HTMLElement
+}
+
+private var actorArcCounter = 0
+private const val ACTOR_ARC_LAYER_ID = "actor-arc-layer"
+private const val ACTOR_ARC_DURATION_MS = 150
+private const val ACTOR_ARC_DOT_RADIUS = 3.25
+
+// dedup: key → (SVG group, current timeout handle)
+private val activeArcs = mutableMapOf<String, Pair<SVGElement, web.timers.Timeout>>()
+
+private fun arcKey(arc: ActorArc): String =
+    "${arc.senderUid}|${arc.handlerUid}|${arc.targetUid}|${arc.isReply}"
+
+private fun ensureActorArcLayer(): SVGSVGElement {
+    val existing = document.getElementById(ACTOR_ARC_LAYER_ID) as? SVGSVGElement
+    if (existing != null) return existing
+
+    val svgNs = "http://www.w3.org/2000/svg"
+    val layer = document.createElementNS(svgNs, "svg") as SVGSVGElement
+    layer.id = ACTOR_ARC_LAYER_ID
+    layer.setAttribute("style", "position: absolute; top:0; bottom:0; left:0; right:0; z-index: 19; pointer-events: none")
+    layer.setAttribute("height", "100%")
+    layer.setAttribute("width", "100%")
+    document.body?.appendChild(layer)
+    console.log("[actor-arc] created SVG layer")
+    return layer
+}
+
+/**
+ * Get a box's world-space DOMRect (screen rect offset by mainTranslation).
+ */
+private fun boxWorldRect(uid: String): DOMRect? {
+    val el = findBoxElementByUid(uid) ?: return null
+    val r = el.getBoundingClientRect()
+    return DOMRect(r.x - mainTranslation[0], r.y - mainTranslation[1], r.width, r.height)
+}
+
+private fun drawActorArc(arc: ActorArc) {
+    console.log("[actor-arc] drawActorArc: sender=${arc.senderUid} target=${arc.targetUid} handler=${arc.handlerUid} reply=${arc.isReply}")
+
+    val svgNs = "http://www.w3.org/2000/svg"
+    val layer = ensureActorArcLayer()
+
+    val vbw = window.innerWidth.toDouble()
+    val vbh = window.innerHeight.toDouble()
+    layer.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+
+    val key = arcKey(arc)
+    val existing = activeArcs[key]
+    if (existing != null) {
+        // same arc already on screen – cancel old timeout and schedule a fresh one
+        clearTimeout(existing.second)
+        val handle = setTimeout({ existing.first.remove(); activeArcs.remove(key) }, ACTOR_ARC_DURATION_MS)
+        activeArcs[key] = existing.first to handle
+        return
+    }
+
+    val group = document.createElementNS(svgNs, "g") as SVGElement
+    group.id = "actor-arc-${actorArcCounter++}"
+    val color = if (arc.isReply) "rgba(120, 220, 160, 0.85)" else "rgba(235, 150, 70, 0.85)"
+
+    if (arc.isReply) {
+        val senderUid = arc.senderUid
+        if (senderUid == null) {
+            console.log("[actor-arc] reply arc skipped: senderUid is null")
+            return
+        }
+        val fromRect = boxWorldRect(arc.handlerUid)
+        val toRect = boxWorldRect(senderUid)
+        if (fromRect == null || toRect == null) return
+        drawClippedLine(group, fromRect, toRect, color, svgNs)
+    } else {
+        val senderUid = arc.senderUid
+        if (senderUid == null) {
+            console.log("[actor-arc] send arc skipped: senderUid is null")
+            return
+        }
+        val fromRect = boxWorldRect(senderUid)
+        val handlerRect = boxWorldRect(arc.handlerUid)
+        if (fromRect == null || handlerRect == null) return
+        val (senderClip, handlerClip) = drawClippedLine(group, fromRect, handlerRect, color, svgNs)
+
+        if (arc.handlerUid != arc.targetUid && senderClip != null && handlerClip != null) {
+            val targetRect = boxWorldRect(arc.targetUid) ?: return
+            // start 2/3 along the sender→handler line
+            val branchPt = Point(
+                senderClip.x + (handlerClip.x - senderClip.x) * 2.0 / 3.0,
+                senderClip.y + (handlerClip.y - senderClip.y) * 2.0 / 3.0
+            )
+            val targetCenter = getCenter(targetRect)
+            val dx = targetCenter.x - branchPt.x
+            val dy = targetCenter.y - branchPt.y
+            val toClip = clipRay(targetRect, -dx, -dy)
+            drawLineBetweenPoints(group, branchPt, toClip.point, "rgba(180, 130, 255, 0.85)", svgNs)
+        }
+    }
+
+    layer.appendChild(group)
+
+    val handle = setTimeout({
+        group.remove()
+        activeArcs.remove(key)
+    }, ACTOR_ARC_DURATION_MS)
+    activeArcs[key] = group to handle
+}
+
+/**
+ * Draw a straight line between two box rects, clipped to their edges
+ * (matching parent→child connection placement), with a small dot at
+ * the receiving (end) side. Returns the clipped start/end points.
+ */
+private fun drawClippedLine(parent: SVGElement, fromRect: DOMRect, toRect: DOMRect, color: String, svgNs: String): Pair<Point?, Point?> {
+    val (fromClip, toClip) = connectCenters(fromRect, toRect)
+    val a = fromClip.point
+    val b = toClip.point
+    if (a.distance(b) < 1.0) return null to null
+
+    drawLineBetweenPoints(parent, a, b, color, svgNs)
+    return a to b
+}
+
+/**
+ * Draw a straight line between two points with a small dot at the end.
+ */
+private fun drawLineBetweenPoints(parent: SVGElement, a: Point, b: Point, color: String, svgNs: String) {
+    if (a.distance(b) < 1.0) return
+
+    val line = document.createElementNS(svgNs, "line") as SVGElement
+    line.setAttribute("x1", a.x.toString())
+    line.setAttribute("y1", a.y.toString())
+    line.setAttribute("x2", b.x.toString())
+    line.setAttribute("y2", b.y.toString())
+    line.setAttribute("stroke", color)
+    line.setAttribute("stroke-width", "1")
+    line.setAttribute("fill", "none")
+    parent.appendChild(line)
+
+    // dot at receiving end
+    val dot = document.createElementNS(svgNs, "circle") as SVGElement
+    dot.setAttribute("cx", b.x.toString())
+    dot.setAttribute("cy", b.y.toString())
+    dot.setAttribute("r", ACTOR_ARC_DOT_RADIUS.toString())
+    dot.setAttribute("fill", color)
+    parent.appendChild(dot)
 }
 
 private fun domRectToRect(r: dynamic): Rect {
@@ -205,52 +520,1140 @@ private fun collectScreenshotRects(box: HTMLElement): List<Rect> {
     return rects
 }
 
+private fun svgContentClientRect(svg: SVGElement): Rect? = runCatching {
+    val bbox = svg.asDynamic().getBBox?.invoke() ?: return@runCatching null
+    val ctm = svg.asDynamic().getScreenCTM?.invoke() ?: return@runCatching null
+    val x = (bbox.x as? Number)?.toDouble() ?: return@runCatching null
+    val y = (bbox.y as? Number)?.toDouble() ?: return@runCatching null
+    val w = (bbox.width as? Number)?.toDouble() ?: return@runCatching null
+    val h = (bbox.height as? Number)?.toDouble() ?: return@runCatching null
+    if (w <= 0.0 || h <= 0.0) return@runCatching null
+
+    fun point(px: Double, py: Double): Pair<Double, Double>? {
+        val p = svg.asDynamic().createSVGPoint?.invoke() ?: return null
+        p.x = px
+        p.y = py
+        val transformed = p.matrixTransform(ctm)
+        val tx = (transformed.x as? Number)?.toDouble() ?: return null
+        val ty = (transformed.y as? Number)?.toDouble() ?: return null
+        return tx to ty
+    }
+
+    val corners = listOfNotNull(
+        point(x, y),
+        point(x + w, y),
+        point(x, y + h),
+        point(x + w, y + h)
+    )
+    if (corners.isEmpty()) return@runCatching null
+    val left = corners.minOf { it.first }
+    val top = corners.minOf { it.second }
+    val right = corners.maxOf { it.first }
+    val bottom = corners.maxOf { it.second }
+    val width = right - left
+    val height = bottom - top
+    if (width <= 0.0 || height <= 0.0) return@runCatching null
+    Rect(left, top, width, height).expand(8.0)
+}.getOrNull()
+
+private fun svgGraphicClientRect(element: SVGElement): Rect? = runCatching {
+    val bbox = element.asDynamic().getBBox?.invoke() ?: return@runCatching null
+    val ctm = element.asDynamic().getScreenCTM?.invoke() ?: return@runCatching null
+    val pointFactory = (element.asDynamic().ownerSVGElement ?: element).asDynamic().createSVGPoint ?: return@runCatching null
+    val x = (bbox.x as? Number)?.toDouble() ?: return@runCatching null
+    val y = (bbox.y as? Number)?.toDouble() ?: return@runCatching null
+    val w = (bbox.width as? Number)?.toDouble() ?: return@runCatching null
+    val h = (bbox.height as? Number)?.toDouble() ?: return@runCatching null
+    if (w <= 0.0 || h <= 0.0) return@runCatching null
+
+    fun point(px: Double, py: Double): Pair<Double, Double>? {
+        val p = pointFactory.invoke() ?: return null
+        p.x = px
+        p.y = py
+        val transformed = p.matrixTransform(ctm)
+        val tx = (transformed.x as? Number)?.toDouble() ?: return null
+        val ty = (transformed.y as? Number)?.toDouble() ?: return null
+        return tx to ty
+    }
+
+    val corners = listOfNotNull(
+        point(x, y),
+        point(x + w, y),
+        point(x, y + h),
+        point(x + w, y + h)
+    )
+    if (corners.isEmpty()) return@runCatching null
+    val left = corners.minOf { it.first }
+    val top = corners.minOf { it.second }
+    val right = corners.maxOf { it.first }
+    val bottom = corners.maxOf { it.second }
+    val width = right - left
+    val height = bottom - top
+    if (width <= 0.0 || height <= 0.0) return@runCatching null
+    Rect(left, top, width, height).expand(8.0)
+}.getOrNull()
+
+private fun svgIntrinsicWidth(svg: SVGElement): Double {
+    val widthAttr = svg.getAttribute("width")
+        ?.removeSuffix("px")
+        ?.trim()
+        ?.toDoubleOrNull()
+        ?: 0.0
+    val viewBoxWidth = svg.getAttribute("viewBox")
+        ?.trim()
+        ?.split(Regex("\\s+"))
+        ?.takeIf { it.size == 4 }
+        ?.getOrNull(2)
+        ?.toDoubleOrNull()
+        ?: 0.0
+    return max(widthAttr, viewBoxWidth)
+}
+
+private fun disclosureTitleClientRect(disclosure: HTMLElement): Rect? {
+    val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
+    if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
+    val header = disclosure.querySelector(".disclosure-header") as? HTMLElement ?: return disclosureRect
+    if (!isOverlayVisible(header)) return disclosureRect
+    val headerRect = domRectToRect(header.getBoundingClientRect())
+    val titleRect = (header.querySelector(".title") as? HTMLElement)
+        ?.takeIf { isOverlayVisible(it) }
+        ?.let { domRectToRect(it.getBoundingClientRect()) }
+
+    val targetWidth = min(
+        disclosureRect.w,
+        max(
+            108.0,
+            max(titleRect?.w ?: 0.0, headerRect.w.coerceAtMost(180.0)) + 20.0
+        )
+    )
+    val targetHeight = max(headerRect.h, titleRect?.h ?: 0.0)
+    return Rect(disclosureRect.x, disclosureRect.y, targetWidth, targetHeight)
+}
+
+private fun cssPixelsOrZero(raw: String?): Double =
+    raw?.removeSuffix("px")?.trim()?.toDoubleOrNull() ?: 0.0
+
+private fun hasStyledBox(element: HTMLElement): Boolean {
+    val style = window.getComputedStyle(element)
+    val background = style.backgroundColor?.trim()?.lowercase()
+    val hasBackground = background != null &&
+        background != "transparent" &&
+        background != "rgba(0, 0, 0, 0)" &&
+        background != "rgba(0,0,0,0)"
+    val borderWidth = cssPixelsOrZero(style.borderTopWidth) +
+        cssPixelsOrZero(style.borderRightWidth) +
+        cssPixelsOrZero(style.borderBottomWidth) +
+        cssPixelsOrZero(style.borderLeftWidth)
+    return hasBackground || borderWidth > 0.0
+}
+
+private fun disclosureBodyClientRect(disclosure: HTMLElement): Rect? {
+    val content = disclosure.querySelector(".disclosure-content") as? HTMLElement ?: return null
+    if (!isOverlayVisible(content)) return null
+
+    val rects = content.querySelectorAll("*").asList()
+        .mapNotNull { node ->
+            val element = node as? Element ?: return@mapNotNull null
+            if (!isOverlayVisible(element)) return@mapNotNull null
+            val rect = domRectToRect(element.getBoundingClientRect())
+            if (rect.w <= 2.0 || rect.h <= 2.0) return@mapNotNull null
+
+            when (element) {
+                is SVGElement,
+                is HTMLCanvasElement,
+                is HTMLIFrameElement,
+                is HTMLImageElement,
+                is HTMLTableElement,
+                is HTMLVideoElement -> rect
+
+                is HTMLElement -> {
+                    val text = element.textContent?.trim().orEmpty()
+                    val include = element.children.length == 0 ||
+                        hasStyledBox(element) ||
+                        text.isNotEmpty()
+                    if (include) rect else null
+                }
+
+                else -> null
+            }
+        }
+
+    return unionRects(rects)?.expand(6.0)
+}
+
+private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
+    val outputArea = box.querySelector(".outputArea") as? HTMLElement ?: return emptyList()
+    if (outputArea.style.visibility == "hidden") return emptyList()
+
+    val disclosureElements = outputArea.querySelectorAll(".disclosure").asList()
+        .mapNotNull { disclosure ->
+            val element = disclosure as? HTMLElement ?: return@mapNotNull null
+            if (!isOverlayVisible(element)) return@mapNotNull null
+            val rect = domRectToRect(element.getBoundingClientRect())
+            if (rect.w <= 2.0 || rect.h <= 2.0) return@mapNotNull null
+            element
+        }
+    fun disclosureScreenshotRect(disclosure: HTMLElement): Rect? {
+        val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
+        if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
+        val disclosureTitleRect = disclosureTitleClientRect(disclosure)
+        val svgRects = disclosure.querySelectorAll("svg").asList()
+            .mapNotNull { node ->
+                val svg = node as? SVGElement ?: return@mapNotNull null
+                if (!isOverlayVisible(svg as Element)) return@mapNotNull null
+                svgContentClientRect(svg) ?: domRectToRect(svg.getBoundingClientRect())
+            }
+        if (svgRects.isNotEmpty()) {
+            val maxArea = svgRects.maxOf { it.w * it.h }
+            val meaningful = svgRects.filter { rect ->
+                val area = rect.w * rect.h
+                area >= max(2500.0, maxArea * 0.15)
+            }
+            val bodyRect = unionRects(
+                meaningful.ifEmpty {
+                    listOf(svgRects.maxByOrNull { it.w * it.h } ?: svgRects.last())
+                }
+            ) ?: disclosureRect
+            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+        }
+        val bodyRect = disclosureBodyClientRect(disclosure) ?: disclosureRect
+        return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+    }
+
+    if (disclosureElements.size > 1) {
+        return disclosureElements.mapNotNull(::disclosureScreenshotRect)
+    }
+
+    val disclosureTitleRect = disclosureElements.firstOrNull()?.let(::disclosureTitleClientRect)
+
+    val svgRects = outputArea.querySelectorAll("svg").asList()
+        .mapNotNull { node ->
+            val svg = node as? SVGElement ?: return@mapNotNull null
+            if (!isOverlayVisible(svg as Element)) return@mapNotNull null
+            svgContentClientRect(svg) ?: domRectToRect(svg.getBoundingClientRect())
+        }
+    if (svgRects.isNotEmpty()) {
+        val maxArea = svgRects.maxOf { it.w * it.h }
+        val meaningful = svgRects.filter { rect ->
+            val area = rect.w * rect.h
+            area >= max(2500.0, maxArea * 0.15)
+        }
+        val trimmed = meaningful.ifEmpty {
+            listOf(svgRects.maxByOrNull { it.w * it.h } ?: svgRects.last())
+        }
+        if (disclosureTitleRect == null) return trimmed
+        return trimmed.map { rect -> unionRects(listOf(disclosureTitleRect, rect)) ?: rect }
+    }
+
+    disclosureElements.firstOrNull()?.let(::disclosureScreenshotRect)?.let { return listOf(it) }
+    return listOf(domRectToRect(outputArea.getBoundingClientRect()))
+}
+
+private fun visibleMonacoContainer(): HTMLElement? {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return null
+    return if (isOverlayVisible(container)) container else null
+}
+
+private fun currentViewportRect() = Rect(
+    window.scrollX.toDouble(),
+    window.scrollY.toDouble(),
+    window.innerWidth.toDouble(),
+    window.innerHeight.toDouble()
+)
+
+private fun clipForPageRect(pageRect: Rect): Rect? {
+    val viewport = currentViewportRect()
+    val left = max(pageRect.x, viewport.x)
+    val top = max(pageRect.y, viewport.y)
+    val right = min(pageRect.right, viewport.right)
+    val bottom = min(pageRect.bottom, viewport.bottom)
+    val width = right - left
+    val height = bottom - top
+    if (width <= 0.0 || height <= 0.0) return null
+    return Rect(left, top, width, height)
+}
+
+private fun clipForVisibleElement(element: HTMLElement, padding: Double): Rect? {
+    val pageRect = domRectToRect(element.getBoundingClientRect())
+        .expand(max(0.0, padding))
+        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    return clipForPageRect(pageRect)
+}
+
+private fun visibleDocsIframeElement(): HTMLElement? {
+    val iframe = document.getElementById("docs-iframe") as? HTMLElement
+    if (iframe != null && isOverlayVisible(iframe)) return iframe
+    val container = document.querySelector(".docs-iframe-container") as? HTMLElement ?: return null
+    return if (isOverlayVisible(container)) container else null
+}
+
+private fun clipForVisibleDocsIframe(padding: Double): Rect? {
+    val element = visibleDocsIframeElement() ?: return null
+    val maxHeight = 1120.0
+    val pageRect = domRectToRect(element.getBoundingClientRect())
+        .expand(max(0.0, padding))
+        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    val clippedHeight = min(pageRect.h, maxHeight)
+    return clipForPageRect(Rect(pageRect.x, pageRect.y, pageRect.w, clippedHeight))
+}
+
+private fun pageRectForElement(element: HTMLElement): Rect =
+    domRectToRect(element.getBoundingClientRect())
+        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+
+private fun visibleSlideNoteOverlay(): HTMLElement? {
+    val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return null
+    if (!isOverlayVisible(overlay)) return null
+    if (overlay.style.display == "none") return null
+    return overlay
+}
+
+private fun guideAnnotationScreenshotRect(): Rect? {
+    if (currentAnnotations.isEmpty()) return null
+    val layer = document.getElementById("slide-annotation-layer") as? SVGSVGElement ?: return null
+    if (!isOverlayVisible(layer)) return null
+    val group = layer.querySelector("[data-name=\"slideAnnotations\"]") as? SVGElement ?: return null
+    return svgGraphicClientRect(group)
+}
+
+private fun snapGuideScreenshotRect(): Rect? {
+    val group = document.querySelector("#snap-guides") as? SVGElement ?: return null
+    if (!isOverlayVisible(group)) return null
+    return svgGraphicClientRect(group)
+}
+
+private fun activeSnapReferenceScreenshotRects(): List<Rect> =
+    boxSnappingSystem.activeSnapReferenceBoxes().map { domRectToRect(it.getBoundingClientRect()) }
+
+private fun spatialNavScreenshotRects(): List<Rect> {
+    if (!spatialNavActive) return emptyList()
+    val rects = mutableListOf<Rect>()
+    val selectors = listOf(
+        ".spatial-nav-highlight",
+        ".spatial-nav-badge",
+        ".spatial-nav-bookmark-badge",
+        ".spatial-nav-lines"
+    )
+    selectors.forEach { selector ->
+        document.querySelectorAll(selector).asList().forEach { node ->
+            val element = node as? HTMLElement ?: return@forEach
+            if (!isOverlayVisible(element)) return@forEach
+            val rect = domRectToRect(element.getBoundingClientRect())
+            if (rect.w > 0.0 && rect.h > 0.0) rects.add(rect)
+        }
+    }
+    document.querySelectorAll("svg.spatial-nav-lines").asList().forEach { node ->
+        val svg = node as? SVGElement ?: return@forEach
+        if (!isOverlayVisible(svg)) return@forEach
+        svgGraphicClientRect(svg)?.let { rects.add(it) }
+    }
+    return rects
+}
+
+private fun collectGuideScreenshotRects(box: HTMLElement): List<Rect> {
+    val rects = mutableListOf<Rect>()
+    visibleSlideNoteOverlay()?.let { rects.add(domRectToRect(it.getBoundingClientRect())) }
+    guideAnnotationScreenshotRect()?.let { rects.add(it) }
+    snapGuideScreenshotRect()?.let { rects.add(it) }
+    rects.addAll(activeSnapReferenceScreenshotRects())
+    rects.addAll(spatialNavScreenshotRects())
+    return rects
+}
+
+private fun clipForWindowEditorCapture(box: HTMLElement, padding: Double): Rect? {
+    val rects = mutableListOf(pageRectForElement(box))
+    visibleSlideNoteOverlay()?.let { rects.add(pageRectForElement(it)) }
+    clipForRenderedEditorContent(0.0)?.let { rects.add(it) }
+    val union = unionRects(rects) ?: return null
+    return clipForPageRect(union.expand(max(0.0, padding)))
+}
+
+private fun clipForRenderedEditorContent(padding: Double): Rect? {
+    val container = visibleMonacoContainer() ?: return null
+    val editor = window.asDynamic().globalEditor ?: return clipForVisibleElement(container, padding)
+    val containerRect = container.getBoundingClientRect()
+    val headerHeight = runCatching {
+        val hover = container.querySelector(".hoverlay") as? HTMLElement ?: return@runCatching 0.0
+        hover.getBoundingClientRect().height
+    }.getOrDefault(0.0)
+    val contentHeight = runCatching {
+        (editor.getContentHeight?.invoke() as? Number)?.toDouble() ?: 0.0
+    }.getOrDefault(0.0)
+    val domBottom = container.querySelectorAll(
+        ".view-lines > div, .view-zones > div, .margin-view-zones > div, .view-overlays > div, .margin-view-overlays > div, .execution_output"
+    ).asList().mapNotNull {
+        val element = it as? HTMLElement ?: return@mapNotNull null
+        if (!isOverlayVisible(element)) return@mapNotNull null
+        element.getBoundingClientRect().bottom - containerRect.top
+    }.maxOrNull() ?: 0.0
+    val layoutInfo = runCatching { editor.getLayoutInfo?.invoke() }.getOrNull()
+    val contentLeft = (layoutInfo?.contentLeft as? Number)?.toDouble() ?: 0.0
+    val scrollWidth = runCatching {
+        (editor.getContentWidth?.invoke() as? Number)?.toDouble()
+            ?: (editor.getScrollWidth?.invoke() as? Number)?.toDouble()
+            ?: 0.0
+    }.getOrDefault(0.0)
+    val scrollbarWidth = runCatching {
+        (layoutInfo?.verticalScrollbarWidth as? Number)?.toDouble()
+            ?: (layoutInfo?.scrollbarWidth as? Number)?.toDouble()
+            ?: 0.0
+    }.getOrDefault(0.0)
+    val domRight = container.querySelectorAll(
+        ".margin, .margin-view-overlays, .line-numbers, .view-lines > div, .view-zones > div, .margin-view-zones > div, .view-overlays > div, .execution_output"
+    ).asList().mapNotNull {
+        val element = it as? Element ?: return@mapNotNull null
+        if (!isOverlayVisible(element)) return@mapNotNull null
+        val right = element.getBoundingClientRect().right - containerRect.left
+        if (right > 0.0) right else null
+    }.maxOrNull() ?: 0.0
+    val trimmedHeight = max(
+        160.0,
+        max(domBottom, headerHeight + contentHeight) + 20.0
+    ).coerceAtMost(containerRect.height)
+    val trimmedWidth = max(
+        360.0,
+        max(domRight, contentLeft + scrollWidth + scrollbarWidth) + 24.0
+    ).coerceAtMost(containerRect.width)
+    val pageRect = Rect(
+        containerRect.left,
+        containerRect.top,
+        trimmedWidth,
+        trimmedHeight
+    ).expand(max(0.0, padding)).translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    return clipForPageRect(pageRect)
+}
+
+private fun clearSelectionForScreenshot() {
+    selected.toList().forEach { deselectBox(it) }
+}
+
+private fun hideNotificationsForScreenshot() {
+    document.querySelectorAll(".bubble").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach {
+            it.style.visibility = "hidden"
+            it.style.opacity = "0"
+            it.style.setProperty("pointer-events", "none")
+        }
+}
+
+private fun disclosureInterfaceFor(container: Element): dynamic {
+    val factory = js("window.disclosureInterface")
+    if (factory == null || factory == js("undefined")) return null
+    return runCatching { factory(container) }.getOrNull()
+}
+
+private fun openAllOutputDisclosures(outputArea: HTMLElement) {
+    outputArea.style.visibility = "visible"
+    outputArea.style.height = "auto"
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val inter = disclosureInterfaceFor(contain) ?: return
+    val ids = contain.querySelectorAll(".disclosure").asList().mapNotNull {
+        it.asDynamic().__disclosureId as? String
+    }
+    ids.forEach { id ->
+        runCatching {
+            (inter.open as (String) -> Unit).invoke(id)
+        }
+    }
+}
+
+private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
+    outputArea.style.maxHeight = "none"
+    val maxDisclosureHeight = max(680.0, min(1400.0, window.innerHeight.toDouble() * 0.82))
+    outputArea.querySelectorAll(".disclosure-content").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach { content ->
+            content.style.maxHeight = "none"
+            content.style.setProperty("overflow", "visible")
+            val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
+            val childHeights = content.children.asList()
+                .mapNotNull { child ->
+                    val element = child as? HTMLElement ?: return@mapNotNull null
+                    val rect = element.getBoundingClientRect()
+                    max(
+                        rect.height,
+                        (element.scrollHeight as? Number)?.toDouble() ?: 0.0
+                    )
+                }
+            val svgHeights = content.querySelectorAll("svg").asList()
+                .mapNotNull { node ->
+                    val svg = node as? HTMLElement ?: return@mapNotNull null
+                    val rectHeight = svg.getBoundingClientRect().height
+                    val scrollHeightSvg = (svg.scrollHeight as? Number)?.toDouble() ?: 0.0
+                    max(rectHeight, scrollHeightSvg)
+                }
+            val naturalHeight = max(
+                scrollHeight,
+                max(
+                    childHeights.maxOrNull() ?: 0.0,
+                    svgHeights.maxOrNull() ?: 0.0
+                )
+            )
+            val minimumHeight = when {
+                content.querySelector("iframe") != null -> 220.0
+                content.querySelector("input, textarea, select, button") != null -> 260.0
+                content.querySelector("svg") != null -> 260.0
+                else -> 120.0
+            }
+            val targetHeight = max(minimumHeight, naturalHeight + 36.0)
+                .coerceAtMost(maxDisclosureHeight)
+            content.style.height = "${targetHeight}px"
+        }
+}
+
+private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTMLElement) {
+    val currentWidth = box.getBoundingClientRect().width
+    val maxContentWidth = outputArea.querySelectorAll(".disclosure-content").asList()
+        .mapNotNull { it as? HTMLElement }
+        .map { content ->
+            val scrollW = (content.scrollWidth as? Number)?.toDouble() ?: 0.0
+            val contentRect = content.getBoundingClientRect()
+            val childW = content.children.asList()
+                .mapNotNull { child ->
+                    val element = child as? Element ?: return@mapNotNull null
+                    if (!isOverlayVisible(element)) return@mapNotNull null
+                    val edgeW = element.getBoundingClientRect().right - contentRect.left
+                    val html = element as? HTMLElement
+                    max(
+                        edgeW,
+                        max(
+                            html?.getBoundingClientRect()?.width ?: 0.0,
+                            (html?.scrollWidth as? Number)?.toDouble() ?: 0.0
+                        )
+                    )
+                }
+                .maxOrNull() ?: 0.0
+            val svgW = content.querySelectorAll("svg").asList()
+                .mapNotNull { node ->
+                    val svg = node as? SVGElement ?: return@mapNotNull null
+                    if (!isOverlayVisible(svg as Element)) return@mapNotNull null
+                    val contentRight = svgContentClientRect(svg)?.right?.minus(contentRect.left) ?: 0.0
+                    max(
+                        max(contentRight, svg.getBoundingClientRect().right - contentRect.left),
+                        svgIntrinsicWidth(svg)
+                    )
+                }
+                .maxOrNull() ?: 0.0
+            max(scrollW, max(childW, svgW))
+        }
+        .maxOrNull() ?: 0.0
+
+    if (maxContentWidth <= 0.0) return
+
+    val disclosureWidth = (maxContentWidth + 56.0)
+        .coerceAtMost(max(1040.0, window.innerWidth.toDouble() * 0.94))
+
+    outputArea.querySelectorAll(".disclosure").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach { disclosure ->
+            disclosure.style.width = "${disclosureWidth}px"
+            disclosure.style.maxWidth = "none"
+        }
+    outputArea.querySelectorAll(".disclosure-content").asList()
+        .mapNotNull { it as? HTMLElement }
+        .forEach { content ->
+            content.style.width = "${disclosureWidth}px"
+            content.style.maxWidth = "none"
+        }
+
+    val desiredWidth = (disclosureWidth + 32.0)
+        .coerceAtLeast(currentWidth)
+        .coerceAtMost(max(920.0, window.innerWidth.toDouble() * 0.95))
+
+    if (desiredWidth > currentWidth + 2.0) {
+        box.style.width = "${desiredWidth}px"
+    }
+}
+
+private fun openNestedDisclosuresForScreenshot(targetBox: HTMLElement) {
+    fun openFor(box: HTMLElement) {
+        val nestedIn = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return
+        val parentBox = document.body
+            ?.getElementsByClassName("box")
+            ?.asList()
+            ?.firstOrNull { it.unsafeCast<dynamic>().uid == nestedIn } as? HTMLElement ?: return
+        openFor(parentBox)
+        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+        val contain = outputArea.querySelector(".disclosure-group") ?: return
+        runCatching {
+            val inter = disclosureInterfaceFor(contain) ?: return@runCatching
+            (inter.open as (String) -> Unit).invoke("nested")
+        }
+    }
+
+    openFor(targetBox)
+}
+
+private fun revealBoxForScreenshot(
+    box: HTMLElement,
+    openOutputs: Boolean,
+    panIntoView: Boolean,
+    padding: Double
+): Rect? {
+    openNestedDisclosuresForScreenshot(box)
+    if (openOutputs) {
+        val outputArea = box.querySelector(".outputArea") as? HTMLElement
+        if (outputArea != null) {
+            openAllOutputDisclosures(outputArea)
+            val hasIframeOutputs = outputArea.querySelector("iframe") != null
+            if (!hasIframeOutputs) {
+                fitOutputDisclosuresForScreenshot(outputArea)
+                fitBoxWidthToOutputsForScreenshot(box, outputArea)
+            }
+        }
+    }
+
+    var targetRect = unionRects(collectScreenshotRects(box)) ?: return null
+    if (panIntoView) {
+        ensureRectVisibleForScreenshot(targetRect.expand(padding))
+        targetRect = unionRects(collectScreenshotRects(box)) ?: targetRect
+    }
+    return targetRect
+}
+
+private fun iframeOutputRectForScreenshot(
+    box: HTMLElement,
+    openOutputs: Boolean,
+    panIntoView: Boolean,
+    padding: Double
+): Rect? {
+    if (!openOutputs) return null
+    val outputArea = box.querySelector(".outputArea") as? HTMLElement ?: return null
+    if (outputArea.querySelector("iframe") == null) return null
+
+    openNestedDisclosuresForScreenshot(box)
+    openAllOutputDisclosures(outputArea)
+
+    fun visibleDisclosureRects(): List<Rect> =
+        outputArea.querySelectorAll(".disclosure").asList()
+            .mapNotNull { it as? HTMLElement }
+            .filter { isOverlayVisible(it) }
+            .map { domRectToRect(it.getBoundingClientRect()) }
+            .filter { it.w > 2.0 && it.h > 2.0 }
+
+    var targetRect = unionRects(visibleDisclosureRects())
+        ?: domRectToRect(outputArea.getBoundingClientRect())
+
+    if (panIntoView) {
+        ensureRectVisibleForScreenshot(targetRect.expand(padding))
+        targetRect = unionRects(visibleDisclosureRects())
+            ?: domRectToRect(outputArea.getBoundingClientRect())
+    }
+
+    return targetRect
+}
+
+private fun ensureRectVisibleForScreenshot(rect: Rect) {
+    if (rect.w <= 0.0 || rect.h <= 0.0) return
+
+    val safe = navigationSafeViewportRect(padding = 12.0, occluderGap = 10.0)
+    val inset = 10.0
+    val leftBound = safe.x + inset
+    val rightBound = safe.right - inset
+    val topBound = safe.y + inset
+    val bottomBound = safe.bottom - inset
+
+    var dx = 0.0
+    var dy = 0.0
+
+    if (rect.w >= rightBound - leftBound) {
+        dx = leftBound - rect.x
+    } else if (rect.x < leftBound) {
+        dx = leftBound - rect.x
+    } else if (rect.right > rightBound) {
+        dx = rightBound - rect.right
+    }
+
+    if (rect.h >= bottomBound - topBound) {
+        dy = topBound - rect.y
+    } else if (rect.y < topBound) {
+        dy = topBound - rect.y
+    } else if (rect.bottom > bottomBound) {
+        dy = bottomBound - rect.bottom
+    }
+
+    if (abs(dx) < 0.5 && abs(dy) < 0.5) return
+    applyViewportTranslation(
+        nextX = mainTranslation[0] + dx,
+        nextY = mainTranslation[1] + dy,
+        panning = false,
+        refreshSpatial = false,
+        syncServer = true
+    )
+}
+
+private fun globalEditorText(): String? = runCatching {
+    val editor = window.asDynamic().globalEditor ?: return@runCatching null
+    val model = editor.getModel?.invoke() ?: return@runCatching null
+    model.getValue?.invoke() as? String
+}.getOrNull()
+
+private fun boxPropertyText(box: HTMLElement, property: String): String? = runCatching {
+    box.asDynamic()[property] as? String
+}.getOrNull()
+
+private fun normalizeEditorSyncText(text: String?): String? =
+    text?.replace("\r\n", "\n")?.trimEnd('\n')
+
+private fun layoutGlobalEditor() {
+    runCatching {
+        val editor = window.asDynamic().globalEditor ?: return@runCatching
+        editor.layout?.invoke()
+    }
+}
+
+private fun prepareMonacoForScreenshotLayout() {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
+    val targetWidth = min(860.0, max(760.0, window.innerWidth.toDouble() * 0.38))
+    val targetHeight = min(1200.0, max(840.0, window.innerHeight.toDouble() * 0.72))
+    container.style.top = "12px"
+    container.style.right = "12px"
+    container.style.width = "${targetWidth}px"
+    container.style.height = "${targetHeight}px"
+}
+
+private fun syncEditorToBoxForScreenshot(box: HTMLElement, property: String): Boolean {
+    val w = window.asDynamic()
+    val editor = w.globalEditor ?: return false
+    val monacoValue = w.globalMonaco
+    val code = boxPropertyText(box, property) ?: ""
+
+    val selectedArray = eval("[]")
+    selectedArray.push(box)
+    w.currentSelectedCode = selectedArray
+    w.currentSelectedProperty = property
+    w.selectedProperty = property
+
+    val language = if (property == "code") {
+        (box.asDynamic().code_language as? String) ?: monacoFindLanguageForPropertyName(property)
+    } else {
+        monacoFindLanguageForPropertyName(property)
+    }
+
+    runCatching { w.clear(editor) }
+    runCatching { w.pauseLineTracking() }
+    runCatching { editor.setValue(code.replace("\r\n", "\n")) }
+    runCatching { editor.getModel()?.setEOL(0) }
+    runCatching { monacoValue?.editor?.setModelLanguage(editor.getModel(), language.lowercase()) }
+    runCatching {
+        editor._domElement
+            .querySelectorAll(".hoverlay")[0]
+            .innerHTML = "$property <i>($language)</i>"
+    }
+    runCatching { editor.setScrollTop(0) }
+    runCatching { editor.setScrollLeft(0) }
+    runCatching { editor.setPosition(js("{ lineNumber: 1, column: 1 }")) }
+    runCatching { editor.revealLineNearTop(1) }
+    runCatching { w.unpauseLineTracking() }
+    layoutGlobalEditor()
+    return true
+}
+
+private fun switchSelectionToProperty(
+    uid: String,
+    property: String,
+    syncEditor: Boolean = false,
+    applyScreenshotLayout: Boolean = false
+): Boolean {
+    val box = findBoxElementByUid(uid) ?: return false
+    selected.toList().forEach {
+        if (it != box) {
+            deselectBox(it)
+        }
+    }
+    selectedProperty = property
+    window.unsafeCast<dynamic>().selectedProperty = selectedProperty
+    if (!selected.contains(box)) {
+        selectBox(box)
+    } else {
+        window.unsafeCast<dynamic>().selectedList = selectedList
+        selectionContextChanged()
+    }
+    if (!syncEditor) return true
+    runCatching { switchToMonaco() }
+    if (applyScreenshotLayout) {
+        prepareMonacoForScreenshotLayout()
+    }
+    layoutGlobalEditor()
+    return window.asDynamic().globalEditor != null
+}
+
+private fun openNestedDisclosuresForNavigation(targetBox: HTMLElement) {
+    fun openFor(box: HTMLElement) {
+        val nestedIn = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return
+        val parentBox = findBoxElementByUid(nestedIn) ?: return
+        openFor(parentBox)
+
+        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+
+        val contain = outputArea.querySelector(".disclosure-group") ?: return
+        val inter = disclosureInterfaceFor(contain) ?: return
+        runCatching {
+            (inter.open as (String) -> Unit).invoke("nested")
+        }.onFailure {
+            console.info("[nav] failed to open nested disclosure", it)
+        }
+    }
+
+    openFor(targetBox)
+}
+
+private fun navigateToBoxProperty(
+    uid: String,
+    property: String = "code",
+    scrollToLine: Int? = null,
+    highlightLine: Int? = null,
+    syncEditor: Boolean = true
+): Boolean {
+    val box = findBoxElementByUid(uid) ?: return false
+    openNestedDisclosuresForNavigation(box)
+    switchSelectionToProperty(uid, property, syncEditor = syncEditor)
+    val targetLine = scrollToLine ?: highlightLine
+
+    setTimeout({
+        runCatching {
+            ensureBoxVisibleForNavigation(box)
+        }.onFailure {
+            console.info("[nav] failed to scroll to box", it)
+        }
+    }, 50)
+
+    if (targetLine != null) {
+        setTimeout({
+            val w = window.unsafeCast<dynamic>()
+            val editor = w.globalEditor
+            val monaco = w.globalMonaco
+            if (editor != null && editor != undefined && monaco != null && monaco != undefined) {
+                runCatching {
+                    editor.revealLineInCenter(targetLine)
+                    val lineToHighlight = highlightLine ?: targetLine
+                    val range = js("new monaco.Range(lineToHighlight, 1, lineToHighlight, 1)")
+                    editor.setSelection(range)
+                    editor.revealLineInCenter(lineToHighlight)
+                }.onFailure {
+                    console.info("[nav] failed to scroll to line", it)
+                }
+            }
+        }, 100)
+    }
+
+    return true
+}
+
+private fun editorIsSyncedFor(box: HTMLElement, property: String): Boolean {
+    val expected = boxPropertyText(box, property)?.takeIf { it.isNotBlank() } ?: return true
+    val actual = globalEditorText() ?: return false
+    return normalizeEditorSyncText(actual) == normalizeEditorSyncText(expected)
+}
+
+private fun editorHasRenderableContentFor(box: HTMLElement, property: String): Boolean {
+    val expected = normalizeEditorSyncText(boxPropertyText(box, property)) ?: return true
+    val actual = normalizeEditorSyncText(globalEditorText())
+    if (actual == expected) return true
+    if (actual != null && actual.isBlank()) return false
+
+    val expectedFirst = expected.lineSequence().firstOrNull { it.isNotBlank() }?.trim()
+    val actualFirst = actual?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    if (expectedFirst != null && expectedFirst == actualFirst) return true
+
+    val editorDomText = runCatching {
+        val container = visibleMonacoContainer() ?: return@runCatching null
+        val lines = container.querySelector(".view-lines") ?: return@runCatching null
+        (lines.textContent as? String)?.replace('\u00A0', ' ')
+    }.getOrNull()
+    val editorFirst = editorDomText
+        ?.lineSequence()
+        ?.firstOrNull { it.isNotBlank() }
+        ?.trim()
+    return editorFirst != null && expectedFirst != null && editorFirst.startsWith(expectedFirst)
+}
+
+private fun editorSyncDebug(box: HTMLElement, property: String): String {
+    val expected = normalizeEditorSyncText(boxPropertyText(box, property))
+    val actual = normalizeEditorSyncText(globalEditorText())
+    val visible = visibleMonacoContainer() != null
+    val editorExists = window.asDynamic().globalEditor != null
+    val domText = runCatching {
+        val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return@runCatching null
+        val lines = container.querySelector(".view-lines") ?: return@runCatching null
+        (lines.textContent as? String)?.replace('\u00A0', ' ')
+    }.getOrNull()
+    val expectedFirst = expected?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    val actualFirst = actual?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    val domFirst = domText?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+    return buildString {
+        append("editor=")
+        append(editorExists)
+        append(" visible=")
+        append(visible)
+        append(" expectedLen=")
+        append(expected?.length ?: -1)
+        append(" actualLen=")
+        append(actual?.length ?: -1)
+        append(" expectedFirst=")
+        append(expectedFirst ?: "<null>")
+        append(" actualFirst=")
+        append(actualFirst ?: "<null>")
+        append(" domFirst=")
+        append(domFirst ?: "<null>")
+    }
+}
+
+private fun applyViewportTranslation(
+    nextX: Double,
+    nextY: Double,
+    panning: Boolean = false,
+    refreshSpatial: Boolean = true,
+    syncServer: Boolean = true
+) {
+    val mc = mainCanvas.unsafeCast<dynamic>()
+    (mc as HTMLElement).style.transform = "translate(${nextX}px, ${nextY}px)"
+    mainTranslation = listOf(nextX, nextY)
+    mc.data_x = nextX
+    mc.data_y = nextY
+
+    updateBackgroundGrid(nextX, nextY, panning = panning)
+
+    if (syncServer) {
+        send(
+            Message("set-viewport").payload(
+                Set_rect(
+                    uid = "root",
+                    property = "viewport",
+                    value = Rect(nextX, nextY, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+                )
+            )
+        )
+    }
+
+    canvasGestures.rebuildConnectionGroup(translationOnly = true)
+    repositionSlideNoteOverlayIfVisible()
+    if (refreshSpatial && spatialNavActive) {
+        refreshSpatialNavTargets()
+    }
+}
+
+private fun cancelNavigationPanAnimation() {
+    navigationPanAnimationGeneration += 1
+    navigationPanAnimationHandle?.let { window.cancelAnimationFrame(it) }
+    navigationPanAnimationHandle = null
+}
+
+private fun animateViewportTranslation(
+    nextX: Double,
+    nextY: Double,
+    durationMs: Double = 220.0,
+    refreshSpatialDuringAnimation: Boolean = spatialNavActive
+) {
+    val startX = mainTranslation[0]
+    val startY = mainTranslation[1]
+    val dx = nextX - startX
+    val dy = nextY - startY
+    val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+    if (distance < 1.0 || durationMs <= 0.0) {
+        applyViewportTranslation(nextX, nextY, panning = false, refreshSpatial = refreshSpatialDuringAnimation)
+        return
+    }
+
+    cancelNavigationPanAnimation()
+    val generation = navigationPanAnimationGeneration
+    val startAt = window.performance.now()
+
+    fun easeInOutQuint(t: Double): Double {
+        return if (t < 0.5) {
+            16.0 * t * t * t * t * t
+        } else {
+            val x = -2.0 * t + 2.0
+            1.0 - (x * x * x * x * x) / 2.0
+        }
+    }
+
+    fun frame(now: Double) {
+        if (generation != navigationPanAnimationGeneration) return
+
+        val t = ((now - startAt) / durationMs).coerceIn(0.0, 1.0)
+        val eased = easeInOutQuint(t)
+        val x = startX + dx * eased
+        val y = startY + dy * eased
+
+        val done = t >= 0.999
+        applyViewportTranslation(
+            nextX = x,
+            nextY = y,
+            panning = false,
+            refreshSpatial = refreshSpatialDuringAnimation,
+            syncServer = done
+        )
+
+        if (done) {
+            navigationPanAnimationHandle = null
+        } else {
+            navigationPanAnimationHandle = window.requestAnimationFrame { ts -> frame(ts) }
+        }
+    }
+
+    navigationPanAnimationHandle = window.requestAnimationFrame { ts -> frame(ts) }
+}
+
 private fun centerViewportOn(rect: Rect) {
     val dx = window.innerWidth / 2.0 - (rect.x + rect.w / 2.0)
     val dy = window.innerHeight / 2.0 - (rect.y + rect.h / 2.0)
     val nextX = mainTranslation[0] + dx
     val nextY = mainTranslation[1] + dy
 
-    mainCanvas.style.transform = "translate(${nextX}px, ${nextY}px)"
-    mainTranslation = listOf(nextX, nextY)
-    updateBackgroundGrid(nextX, nextY, panning = false)
+    applyViewportTranslation(nextX, nextY, panning = false)
+}
 
-    send(
-        Message("set-viewport").payload(
-            Set_rect(
-                uid = "root",
-                property = "viewport",
-                value = Rect(nextX, nextY, window.innerWidth.toDouble(), window.innerHeight.toDouble())
-            )
-        )
+private fun isOverlayVisible(element: Element?): Boolean {
+    if (element == null) return false
+    val style = window.getComputedStyle(element)
+    if (style.display == "none" || style.visibility == "hidden") return false
+    val opacity = style.opacity.toDoubleOrNull() ?: 1.0
+    if (opacity <= 0.05) return false
+    val rect = element.getBoundingClientRect()
+    return rect.width > 1.0 && rect.height > 1.0
+}
+
+private fun navigationSafeViewportRect(padding: Double = 16.0, occluderGap: Double = 14.0): Rect {
+    val viewportWidth = window.innerWidth.toDouble()
+    val viewportHeight = window.innerHeight.toDouble()
+    val base = Rect(
+        padding,
+        padding,
+        (viewportWidth - padding * 2.0).coerceAtLeast(1.0),
+        (viewportHeight - padding * 2.0).coerceAtLeast(1.0)
     )
 
-    canvasGestures.rebuildConnectionGroup(translationOnly = true)
-    repositionSlideNoteOverlayIfVisible()
+    val occluderRects = listOf(".docs-iframe-container", ".monaco-editor-container")
+        .mapNotNull { selector ->
+            val element = document.querySelector(selector) as? HTMLElement ?: return@mapNotNull null
+            if (!isOverlayVisible(element)) return@mapNotNull null
+            val rect = element.getBoundingClientRect()
+            Rect(rect.left, rect.top, rect.width, rect.height)
+        }
+
+    val occluder = occluderRects.maxByOrNull { it.w * it.h } ?: return base
+    val occluderRight = occluder.right
+    val occluderBottom = occluder.bottom
+
+    val overlapsBase = occluder.x < base.right &&
+        occluderRight > base.x &&
+        occluder.y < base.bottom &&
+        occluderBottom > base.y
+    if (!overlapsBase) return base
+
+    // Monaco/docs panel is generally side-docked; carve it out horizontally.
+    val leftSafeWidth = (occluder.x - occluderGap) - base.x
+    val rightSafeX = max(base.x, occluderRight + occluderGap)
+    val rightSafeWidth = base.right - rightSafeX
+    val carved = if (leftSafeWidth >= rightSafeWidth) {
+        Rect(base.x, base.y, leftSafeWidth.coerceAtLeast(0.0), base.h)
+    } else {
+        Rect(rightSafeX, base.y, rightSafeWidth.coerceAtLeast(0.0), base.h)
+    }
+
+    val minSafeWidth = viewportWidth * 0.22
+    return if (carved.w >= minSafeWidth) carved else base
+}
+
+private fun ensureBoxVisibleForNavigation(target: HTMLElement) {
+    val rect = target.getBoundingClientRect()
+    if (rect.width <= 0.0 || rect.height <= 0.0) return
+
+    val safe = navigationSafeViewportRect()
+    val safeRight = safe.right
+    val safeBottom = safe.bottom
+    val marginX = min(48.0, safe.w * 0.2)
+    val marginY = min(42.0, safe.h * 0.2)
+    val leftBound = safe.x + marginX
+    val rightBound = safeRight - marginX
+    val topBound = safe.y + marginY
+    val bottomBound = safeBottom - marginY
+
+    val targetCenterX = rect.left + rect.width / 2.0
+    val targetCenterY = rect.top + rect.height / 2.0
+    val safeCenterX = safe.x + safe.w / 2.0
+    val safeCenterY = safe.y + safe.h / 2.0
+
+    var dx = 0.0
+    var dy = 0.0
+
+    if (rightBound <= leftBound || rect.width > rightBound - leftBound) {
+        dx = safeCenterX - targetCenterX
+    } else if (rect.left < leftBound) {
+        dx = leftBound - rect.left
+    } else if (rect.right > rightBound) {
+        dx = rightBound - rect.right
+    }
+
+    if (bottomBound <= topBound || rect.height > bottomBound - topBound) {
+        dy = safeCenterY - targetCenterY
+    } else if (rect.top < topBound) {
+        dy = topBound - rect.top
+    } else if (rect.bottom > bottomBound) {
+        dy = bottomBound - rect.bottom
+    }
+
+    if (abs(dx) < 0.5 && abs(dy) < 0.5) return
+    animateViewportTranslation(
+        nextX = mainTranslation[0] + dx,
+        nextY = mainTranslation[1] + dy,
+        durationMs = 420.0,
+        refreshSpatialDuringAnimation = spatialNavActive
+    )
 }
 
 private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotResponse {
+    if (window.asDynamic().fieldClientOpen != true || window.asDynamic().fieldBackdoorDisconnectedOverlayActive == true) {
+        return BoxScreenshotResponse(uid = req.uid, success = false, message = "Field page is not connected")
+    }
     val box = findBoxElementByUid(req.uid)
         ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
 
+    hideNotificationsForScreenshot()
     if (req.hideMonaco) {
+        clearSelectionForScreenshot()
         runCatching { hideMonaco() }
     }
 
-    fun measure(): Rect? = unionRects(collectScreenshotRects(box))
-
-    var targetRect = measure() ?: return BoxScreenshotResponse(
-        uid = req.uid,
-        success = false,
-        message = "no geometry for ${req.uid}"
+    val iframeOutputRect = iframeOutputRectForScreenshot(
+        box,
+        openOutputs = req.openOutputs,
+        panIntoView = req.panIntoView,
+        padding = req.padding
     )
 
-    if (req.panIntoView) {
-        centerViewportOn(targetRect.expand(req.padding))
-        targetRect = measure() ?: targetRect
+    val targetRect = if (iframeOutputRect != null) {
+        iframeOutputRect
+    } else {
+        val revealedRect = revealBoxForScreenshot(
+            box,
+            openOutputs = req.openOutputs,
+            panIntoView = req.panIntoView,
+            padding = req.padding
+        ) ?: return BoxScreenshotResponse(
+            uid = req.uid,
+            success = false,
+            message = "no geometry for ${req.uid}"
+        )
+
+        // For docs captures that open outputs, crop to the visible disclosures instead
+        // of the whole box body to avoid large empty header/code regions.
+        if (req.openOutputs) {
+            unionRects(collectOutputScreenshotRects(box)) ?: revealedRect
+        } else {
+            revealedRect
+        }
     }
 
-    val padded = targetRect.expand(req.padding)
+    val guideAwareRect = unionRects(listOf(targetRect) + collectGuideScreenshotRects(box)) ?: targetRect
+
+    val padded = guideAwareRect.expand(req.padding)
     val clip = padded.translate(window.scrollX.toDouble(), window.scrollY.toDouble())
     val viewport = Rect(
         window.scrollX.toDouble(),
@@ -275,22 +1678,159 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
     )
 }
 
+private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreenshotResponse {
+    if (window.asDynamic().fieldClientOpen != true || window.asDynamic().fieldBackdoorDisconnectedOverlayActive == true) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "Field page is not connected")
+    }
+    val box = req.uid?.let(::findBoxElementByUid)
+    if (req.uid != null && box == null) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
+    }
+    if (req.showEditor && box == null) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "showEditor requires a target box")
+    }
+    if (req.editorOnly && (!req.showEditor || box == null)) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "editorOnly requires a target box and showEditor")
+    }
+
+    selectedProperty = req.property
+    window.unsafeCast<dynamic>().selectedProperty = selectedProperty
+    hideNotificationsForScreenshot()
+
+    if (req.showEditor && box != null) {
+        if (!switchSelectionToProperty(req.uid!!, req.property, syncEditor = true, applyScreenshotLayout = true)) {
+            return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet")
+        }
+    } else {
+        clearSelectionForScreenshot()
+        runCatching { hideMonaco() }
+    }
+
+    if (box != null) {
+        revealBoxForScreenshot(
+            box,
+            openOutputs = req.openOutputs,
+            panIntoView = req.panIntoView,
+            padding = req.padding
+        )
+    }
+
+    if (req.showEditor && box != null && !editorHasRenderableContentFor(box, req.property)) {
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = false,
+            message = "editor not synced yet; ${editorSyncDebug(box, req.property)}"
+        )
+    }
+
+    val viewport = currentViewportRect()
+    if (req.editorOnly) {
+        val editor = visibleMonacoContainer()
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
+        val clip = clipForRenderedEditorContent(req.padding)
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = true,
+            clip = clip,
+            viewport = viewport
+        )
+    }
+
+    if (req.showEditor && box != null) {
+        val clip = clipForWindowEditorCapture(box, req.padding)
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid window-editor clip")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = true,
+            clip = clip,
+            viewport = viewport
+        )
+    }
+
+    visibleDocsIframeElement()?.let {
+        val clip = clipForVisibleDocsIframe(req.padding)
+            ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid docs iframe clip")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = true,
+            clip = clip,
+            viewport = viewport
+        )
+    }
+
+    return WindowScreenshotResponse(
+        uid = req.uid,
+        success = true,
+        viewport = viewport
+    )
+}
+
+private fun dynamicString(value: dynamic): String? = value as? String
+
+private fun dynamicDouble(value: dynamic, default: Double): Double =
+    (value as? Number)?.toDouble() ?: default
+
+private fun dynamicBoolean(value: dynamic, default: Boolean): Boolean =
+    (value as? Boolean) ?: default
+
+private fun rawToBoxScreenshotRequest(raw: dynamic) = BoxScreenshotRequest(
+    uid = dynamicString(raw?.uid) ?: "",
+    padding = dynamicDouble(raw?.padding, 12.0),
+    panIntoView = dynamicBoolean(raw?.panIntoView, true),
+    hideMonaco = dynamicBoolean(raw?.hideMonaco, true),
+    openOutputs = dynamicBoolean(raw?.openOutputs, false)
+)
+
+private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest(
+    uid = dynamicString(raw?.uid),
+    property = dynamicString(raw?.property) ?: "code",
+    panIntoView = dynamicBoolean(raw?.panIntoView, true),
+    showEditor = dynamicBoolean(raw?.showEditor, false),
+    openOutputs = dynamicBoolean(raw?.openOutputs, false),
+    editorOnly = dynamicBoolean(raw?.editorOnly, false),
+    padding = dynamicDouble(raw?.padding, 12.0)
+)
+
+private fun prepareBoxScreenshotJson(raw: dynamic): String {
+    val request = rawToBoxScreenshotRequest(raw)
+    val response = runCatching { prepareBoxScreenshot(request) }.getOrElse { throwable ->
+        BoxScreenshotResponse(
+            uid = request.uid,
+            success = false,
+            message = throwable.message ?: "Unexpected box screenshot preparation failure"
+        )
+    }
+    return Json.encodeToString(response)
+}
+
+private fun prepareWindowScreenshotJson(raw: dynamic): String {
+    val request = rawToWindowScreenshotRequest(raw)
+    val response = runCatching { prepareWindowScreenshot(request) }.getOrElse { throwable ->
+        WindowScreenshotResponse(
+            uid = request.uid,
+            success = false,
+            message = throwable.message ?: "Unexpected window screenshot preparation failure"
+        )
+    }
+    return Json.encodeToString(response)
+}
+
 private fun attachPanToNestedArea(container: HTMLElement) {
-    if (container.asDynamic().panHandlersAttached == true) return
-    container.asDynamic().panHandlersAttached = true
+    val content = container.querySelector(".nested-content") as? HTMLElement ?: run {
+        val nc = document.createElement("div") as HTMLElement
+        nc.classList.add("nested-content")
+        container.appendChild(nc)
+        nc
+    }
+
     container.style.asDynamic().overflow = "hidden"
     container.style.asDynamic().touchAction = "none"
-    container.style.asDynamic().width = "100000px"
-    container.style.asDynamic().height = "100000px"
-
-    var panActive = false
-    var startX = 0.0
-    var startY = 0.0
-    var baseX = 0.0
-    var baseY = 0.0
+    container.style.asDynamic().width = "100%"
+    container.style.asDynamic().height = "100%"
 
     fun applyTranslation(x: Double, y: Double) {
-        container.style.transform = "translate(${x}px, ${y}px)"
+        content.style.transform = "translate(${x}px, ${y}px)"
         container.asDynamic().data_x = x
         container.asDynamic().data_y = y
         canvasGestures.rebuildConnectionGroup()
@@ -300,6 +1840,15 @@ private fun attachPanToNestedArea(container: HTMLElement) {
     val initX = (container.asDynamic().data_x as? Double) ?: 0.0
     val initY = (container.asDynamic().data_y as? Double) ?: 0.0
     applyTranslation(initX, initY)
+
+    if (container.asDynamic().panHandlersAttached == true) return
+    container.asDynamic().panHandlersAttached = true
+
+    var panActive = false
+    var startX = 0.0
+    var startY = 0.0
+    var baseX = 0.0
+    var baseY = 0.0
 
     val wheelHandler: (dynamic) -> dynamic = { event: dynamic ->
         event.preventDefault()
@@ -372,17 +1921,26 @@ private fun applyBackgroundAlphas() {
     mainViewport.style.setProperty("--axis-alpha", axisAlpha.toString())
 }
 
+private fun applyEditorOpacity() {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
+    if (container.style.visibility == "hidden" || container.style.opacity == "0") return
+    container.style.opacity = editorOpacity.toString()
+}
+
 private fun stepBackgroundLerp(): Boolean {
     val deltaSmall = dotAlphaSmallTarget - dotAlphaSmall
     val deltaLarge = dotAlphaLargeTarget - dotAlphaLarge
     val deltaAxis = axisAlphaTarget - axisAlpha
-    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005
+    val deltaEditor = editorOpacityTarget - editorOpacity
+    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005 || abs(deltaEditor) > 0.005
 
     dotAlphaSmall += deltaSmall * 0.18
     dotAlphaLarge += deltaLarge * 0.18
     axisAlpha += deltaAxis * 0.18
+    editorOpacity += deltaEditor * 0.15
 
     applyBackgroundAlphas()
+    applyEditorOpacity()
     return changed
 }
 
@@ -401,6 +1959,7 @@ private fun bumpBackgroundVisibility() {
     dotAlphaSmallTarget = dotAlphaSmallActive
     dotAlphaLargeTarget = dotAlphaLargeActive
     axisAlphaTarget = axisAlphaActive
+    editorOpacityTarget = editorOpacityPanning
     scheduleBackgroundLerp()
 
     backgroundFadeTimeoutHandle?.let { window.clearTimeout(it) }
@@ -408,6 +1967,7 @@ private fun bumpBackgroundVisibility() {
         dotAlphaSmallTarget = dotAlphaSmallIdle
         dotAlphaLargeTarget = dotAlphaLargeIdle
         axisAlphaTarget = axisAlphaIdle
+        editorOpacityTarget = editorOpacityIdle
         scheduleBackgroundLerp()
     }, 420)
 }
@@ -806,8 +2366,18 @@ fun select(selector: String): List<HTMLElement> {
 
 // Layers system functions
 fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: Double = 300.0) {
+    val before = visibleLayers.toList()
     visibleLayers.clear()
     visibleLayers.addAll(layers)
+    layerDebugLog(
+        "setVisibleLayers",
+        json(
+            "before" to before,
+            "after" to visibleLayers.toList(),
+            "animated" to animated,
+            "duration" to duration
+        )
+    )
     send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList(), animated, duration)))
     if (animated) {
         updateAllBoxVisibility(animated = true, duration = duration)
@@ -819,7 +2389,17 @@ fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: D
 }
 
 fun setActiveLayer(layer: String?, animated: Boolean = false, duration: Double = 500.0) {
+    val before = activeLayer
     activeLayer = layer
+    layerDebugLog(
+        "setActiveLayer",
+        json(
+            "before" to before,
+            "after" to activeLayer,
+            "animated" to animated,
+            "duration" to duration
+        )
+    )
     send(Message("set-active-layer").payload(SetActiveLayer(layer, animated, duration)))
 }
 
@@ -873,7 +2453,26 @@ private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
 }
 
 private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boolean = false) {
+    // Immediate state changes can race against prior fade-out timers; cancel those first.
+    clearPendingVisibilityHide(box)
+
     val visible = isBoxVisible(box)
+    val uid = box.asDynamic().uid as? String ?: "(unknown)"
+    val boxLayers = (box.asDynamic().box_layers as? String) ?: "default"
+    val serverVisible = box.asDynamic().server_visible as? Boolean
+
+    layerDebugLog(
+        "applyBoxVisibilityImmediate",
+        json(
+            "uid" to uid,
+            "visible" to visible,
+            "includeOutputArea" to includeOutputArea,
+            "layers" to boxLayers,
+            "server_visible" to serverVisible,
+            "displayBefore" to box.style.display,
+            "visibilityBefore" to box.style.visibility
+        )
+    )
 
     box.style.visibility = if (visible) "visible" else "hidden"
     box.style.opacity = if (visible) "1" else "0"
@@ -884,6 +2483,7 @@ private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boo
 
     val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
     if (outputArea != null) {
+        clearPendingVisibilityHide(outputArea)
         outputArea.style.visibility = if (visible) "visible" else "hidden"
         outputArea.style.opacity = if (visible) "1" else "0"
         outputArea.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
@@ -904,7 +2504,29 @@ fun isBoxVisible(box: HTMLElement): Boolean {
     return layers.any { layer -> visibleLayers.contains(layer) }
 }
 
+private fun clearPendingVisibilityHide(element: HTMLElement) {
+    val pending = element.asDynamic().__visibilityHideTimeout
+    if (pending != null && pending != js("undefined")) {
+        val uid = element.asDynamic().uid as? String ?: element.className
+        layerDebugLog("clearPendingVisibilityHide", json("id" to uid, "handle" to pending))
+        window.clearTimeout((pending as Number).toInt())
+        element.asDynamic().__visibilityHideTimeout = null
+    }
+}
+
 private fun applyFadeVisibility(element: HTMLElement, show: Boolean, duration: Double) {
+    clearPendingVisibilityHide(element)
+    val uid = element.asDynamic().uid as? String ?: element.className
+    layerDebugLog(
+        "applyFadeVisibility",
+        json(
+            "id" to uid,
+            "show" to show,
+            "duration" to duration,
+            "displayBefore" to element.style.display,
+            "visibilityBefore" to element.style.visibility
+        )
+    )
     element.style.transition = "opacity ${duration}ms ease"
     if (show) {
         if (element.classList.contains("box")) {
@@ -921,14 +2543,26 @@ private fun applyFadeVisibility(element: HTMLElement, show: Boolean, duration: D
     } else {
         element.style.opacity = "0"
         element.style.asDynamic().pointerEvents = "none"
-        setTimeout({
+        val hideHandle = setTimeout({
+            layerDebugLog("applyFadeVisibility hide timer fired", json("id" to uid, "duration" to duration))
             element.style.visibility = "hidden"
             element.style.display = "none"
+            element.asDynamic().__visibilityHideTimeout = null
         }, duration.toInt())
+        element.asDynamic().__visibilityHideTimeout = hideHandle
+        layerDebugLog("applyFadeVisibility scheduled hide timer", json("id" to uid, "handle" to hideHandle, "duration" to duration))
     }
 }
 
 fun updateAllBoxVisibility(animated: Boolean = false, duration: Double = 250.0) {
+    layerDebugLog(
+        "updateAllBoxVisibility",
+        json(
+            "animated" to animated,
+            "duration" to duration,
+            "visibleLayers" to visibleLayers.toList()
+        )
+    )
     select(".box").forEach { box ->
         val visible = isBoxVisible(box)
         val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
@@ -1340,6 +2974,7 @@ private fun installSpatialNavigationShortcut() {
                     if (target != null) {
                         selected.toList().forEach { deselectBox(it) }
                         selectBox(target)
+                        ensureBoxVisibleForNavigation(target)
                         spatialNavAnchor = target
                         refreshSpatialNavTargets()
                     } else {
@@ -1479,17 +3114,50 @@ var styles = CssBuilder().apply {
 suspend fun main() {
     launchNumber++
     println(" -- welcome to Main.kt --")
+    val searchParams = URLSearchParams(document.location?.search)
+    val filename = searchParams.get("file") ?: "default"
+    val username = searchParams.get("user") ?: "everybody"
+    val sessionKey = searchParams.get("sessionKey")
+    val scratch = searchParams.get("scratch") == "1" || searchParams.get("scratch") == "true"
+    window.asDynamic().fieldBackdoorUiReady = false
+    window.asDynamic().fieldBackdoorDisconnectedOverlayActive = false
+    window.asDynamic().currentDocumentFilename = filename
+    window.asDynamic().currentDocumentSessionKey = sessionKey
+    window.asDynamic().currentDocumentScratch = scratch
     window.unsafeCast<dynamic>().selected = selected
     window.unsafeCast<dynamic>().selectedList = selectedList
     window.unsafeCast<dynamic>().selectedProperty = selectedProperty
     window.unsafeCast<dynamic>().selectionContextChanged = { selectionContextChanged() }
+    window.unsafeCast<dynamic>().switchToProperty = { uid: String, property: String ->
+        switchSelectionToProperty(uid, property, syncEditor = true)
+    }
+    window.unsafeCast<dynamic>().navigateToBoxProperty = { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
+        navigateToBoxProperty(uid, property, scrollToLine, highlightLine)
+    }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
+    window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
+    window.asDynamic().fieldBackdoorPrepareWindowScreenshot = { raw: dynamic -> prepareWindowScreenshotJson(raw) }
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
 
+    // Intercept clicks on box-reference links anywhere in the document (Monaco view zones, output areas, etc.)
+    document.addEventListener("click", { event ->
+        val target = (event.target as? Element) ?: return@addEventListener
+        val link = target.closest("a[data-box-uid], a[href^='#box:']") ?: return@addEventListener
+        val uid = link.getAttribute("data-box-uid")?.trim()?.takeIf { it.isNotBlank() }
+            ?: link.getAttribute("href")?.removePrefix("#box:")?.trim()?.takeIf { it.isNotBlank() }
+            ?: return@addEventListener
+        event.preventDefault()
+        event.stopPropagation()
+        navigateToBoxProperty(uid)
+    })
+
     // Initialize the box snapping system
     boxSnappingSystem.initialize()
+
+    document.title = filename.substringAfterLast("/")
+    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch)))
 
     initializeClient()
     registerDoubleTap()
@@ -1497,6 +3165,10 @@ suspend fun main() {
 
     doubleTap["Escape"] = {
         removeNewestOutput()
+        null
+    }
+    tripleTap["Escape"] = {
+        clearFocusedEditorOutputs()
         null
     }
 
@@ -1540,12 +3212,25 @@ suspend fun main() {
             mainCanvas.append {
                 createBox("", frame = set.value, uid = u, sendInitialSync = false)
             }
+            LoadingTracker.boxAdded(u)
         } else {
             val box = found as HTMLElement
             applyFrameToBox(box, set.value)
             applyBoxVisibilityImmediate(box)
         }
         return true
+    }
+
+    handlers.put("expected-box-count") { message, _ ->
+        val ebc = Json.decodeFromJsonElement<Expected_box_count>(message.payload!!)
+        LoadingTracker.setExpectedCount(ebc.count)
+        Handled.yes
+    }
+
+    handlers.put("document-load-status") { message, _ ->
+        val status = Json.decodeFromJsonElement<DocumentLoadStatus>(message.payload!!)
+        LoadingTracker.documentLoadStatus(status)
+        Handled.yes
     }
 
     handlers.put("set-rect") { message, _ ->
@@ -1602,6 +3287,14 @@ suspend fun main() {
         val uid = payload["uid"] as? String ?: return@put Handled.no
         val visible = payload["visible"] as? Boolean ?: return@put Handled.no
         val duration = (payload["duration"] as? Double) ?: 300.0
+        layerDebugLog(
+            "recv set-visibility-animated",
+            json(
+                "uid" to uid,
+                "visible" to visible,
+                "duration" to duration
+            )
+        )
 
         val boxes = document.body!!.getElementsByClassName("box").asList()
         val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
@@ -1616,6 +3309,7 @@ suspend fun main() {
             }
 
             if (visible) {
+                clearPendingVisibilityHide(found)
                 // Fade in: set visibility first with opacity 0, then animate to 1
                 found.style.display = "flex"
                 found.style.visibility = "visible"
@@ -1631,15 +3325,18 @@ suspend fun main() {
                 }, duration.toInt() + 10)
             } else {
                 // Fade out: animate opacity to 0, then set visibility hidden
+                clearPendingVisibilityHide(found)
                 found.style.transition = "opacity ${duration}ms ease-in-out"
                 found.style.opacity = "0"
 
-                window.setTimeout({
+                val hideHandle = window.setTimeout({
                     found.style.visibility = "hidden"
                     found.style.display = "none"
                     found.style.transition = ""
                     found.style.opacity = "1" // Reset for next show
+                    found.asDynamic().__visibilityHideTimeout = null
                 }, duration.toInt())
+                found.asDynamic().__visibilityHideTimeout = hideHandle
             }
 
             // Update connections after animation
@@ -1672,6 +3369,15 @@ suspend fun main() {
             "visible" -> {
                 if (found != null) {
                     val box = found as HTMLElement
+                    layerDebugLog(
+                        "recv set-boolean visible",
+                        json(
+                            "uid" to u,
+                            "value" to set.number,
+                            "box_layers" to ((box.asDynamic().box_layers as? String) ?: "default"),
+                            "visibleLayers" to visibleLayers.toList()
+                        )
+                    )
                     box.asDynamic().server_visible = set.number
                     applyBoxVisibilityImmediate(box)
                     canvasGestures.rebuildConnectionGroup()
@@ -1688,6 +3394,7 @@ suspend fun main() {
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
                         canvasGestures.rebuildConnectionGroup()
+                        LoadingTracker.boxOnline(u)
                     }
                 }
             }
@@ -1721,8 +3428,21 @@ suspend fun main() {
     handlers.put("is-running") { message, _ ->
         println(" got is-running message ${message}")
         val isRunning = Json.decodeFromJsonElement<IsRunning>(message.payload!!)
-        setBoxRunning(isRunning.uid, isRunning.isRunning, isRunning.watermark, isRunning.strand)
+        setBoxRunning(isRunning.uid, isRunning.isRunning, isRunning.watermark, isRunning.strand, isRunning.mode)
 
+        Handled.yes
+    }
+    handlers.put("output") { message, _ ->
+        val output = Json.decodeFromJsonElement<Output>(message.payload!!)
+        routeMonacoOutput(output)
+        Handled.yes
+    }
+    handlers.put("peer-output") { message, _ ->
+        if (!window.location.search.contains("user=playwright")) {
+            return@put Handled.no
+        }
+        val output = Json.decodeFromJsonElement<Output>(message.payload!!)
+        routeMonacoOutput(output)
         Handled.yes
     }
     handlers.put("describe-action") { message, _ ->
@@ -1776,11 +3496,21 @@ suspend fun main() {
             return outputArea
         }
         val inter = di(contain!!)
-        val nestedRoot = (inter.upsertDisclosure as (String, String, String) -> HTMLElement).invoke(
+        val disclosureContent = (contain.querySelectorAll(".disclosure").asList().firstOrNull {
+            (it.asDynamic().__disclosureId as? String) == "nested"
+        } as? HTMLElement)?.querySelector(".disclosure-content") as? HTMLElement ?: (
+            inter.upsertDisclosure as (String, String, String) -> HTMLElement
+        ).invoke(
             "nested",
             "nested",
             ""
         ) as HTMLElement
+        val nestedRoot = disclosureContent.querySelector(".nested-root") as? HTMLElement ?: run {
+            val host = document.createElement("div") as HTMLElement
+            host.classList.add("nested-root")
+            disclosureContent.appendChild(host)
+            host
+        }
         nestedRoot.style.asDynamic().overflow = "hidden"
         nestedRoot.style.position = "relative"
         nestedRoot.style.width = "100%"
@@ -1793,10 +3523,26 @@ suspend fun main() {
             nestedRoot.appendChild(nc)
             nc
         }
+        val content = canvas.querySelector(".nested-content") as? HTMLElement ?: run {
+            val nc = document.createElement("div") as HTMLElement
+            nc.classList.add("nested-content")
+            canvas.appendChild(nc)
+            nc
+        }
+        val directBoxes = mutableListOf<HTMLElement>()
+        for (i in 0 until canvas.children.length) {
+            val child = canvas.children.item(i) as? HTMLElement ?: continue
+            if (child.classList.contains("box")) {
+                directBoxes += child
+            }
+        }
+        directBoxes.forEach { child ->
+            content.appendChild(child)
+        }
         attachPanToNestedArea(canvas)
         outputArea.style.visibility = "visible"
         outputArea.style.height = "auto"
-        return canvas
+        return content
     }
 
     fun handleNestedTopology(parent: HTMLElement, nestedIds: List<String>) {
@@ -1868,11 +3614,39 @@ suspend fun main() {
 
     handlers.put("box-screenshot") { message, reply ->
         val req = Json.decodeFromJsonElement<BoxScreenshotRequest>(message.payload!!)
-        val result = prepareBoxScreenshot(req)
         val responseName = message.replyTo ?: "box-screenshot"
-        reply(Message(responseName).payload(result))
+        window.setTimeout({
+            val result = runCatching { prepareBoxScreenshot(req) }.getOrElse { throwable ->
+                console.error("[screenshot] box prep failed", throwable)
+                BoxScreenshotResponse(
+                    uid = req.uid,
+                    success = false,
+                    message = throwable.message ?: "Unexpected box screenshot preparation failure"
+                )
+            }
+            reply(Message(responseName).payload(result))
+        }, 220)
         Handled.yes
     }
+
+    handlers.put("window-screenshot") { message, reply ->
+        val req = Json.decodeFromJsonElement<WindowScreenshotRequest>(message.payload!!)
+        val responseName = message.replyTo ?: "window-screenshot"
+        window.setTimeout({
+            val result = runCatching { prepareWindowScreenshot(req) }.getOrElse { throwable ->
+                console.error("[screenshot] window prep failed", throwable)
+                WindowScreenshotResponse(
+                    uid = req.uid,
+                    success = false,
+                    message = throwable.message ?: "Unexpected window screenshot preparation failure"
+                )
+            }
+            reply(Message(responseName).payload(result))
+        }, 220)
+        Handled.yes
+    }
+
+    window.asDynamic().fieldBackdoorUiReady = true
 
     handlers.put("set-output") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_output>(message.payload!!)
@@ -1880,7 +3654,6 @@ suspend fun main() {
 
         var found = defaultCreate(u)
 
-        println(" got set-output request for ${u} with ${set.value}")
         when (set.property) {
             "outputarea" -> {
                 handleOutputAreaRequest(found as HTMLElement, set)
@@ -1908,14 +3681,20 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("actor-arc") { message, _ ->
+        val arc = Json.decodeFromJsonElement<ActorArc>(message.payload!!)
+        drawActorArc(arc)
+        Handled.yes
+    }
+
     handlers.put("set-string") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
         val u = set.uid
 
         var found = defaultCreate(u)
 
-        when (set.property) {
-            "name" -> {
+        when {
+            set.property == "name" -> {
                 if (found === null) {
                     mainCanvas.append {
                         createBox(set.value, frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
@@ -1926,78 +3705,196 @@ suspend fun main() {
                 found.unsafeCast<dynamic>().name = set.value
             }
 
-            "code" -> {
+            set.property == "code" -> {
                 found.unsafeCast<dynamic>().code = set.value
                 notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, "code", set.value)
+                notifyEmbeddedEditorOfRemoteUpdate(u, "code", set.value)
             }
 
-            "code_editorState" -> {
-                found.unsafeCast<dynamic>().code_editorState = set.value
-                notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(u, "code", set.value)
+            set.property.endsWith("_editorState") -> {
+                found.unsafeCast<dynamic>()[set.property] = set.value
+                notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(
+                    u,
+                    set.property.removeSuffix("_editorState"),
+                    set.value
+                )
             }
 
-            "code_decorationState" -> {
+            set.property == "code_decorationState" -> {
                 found.unsafeCast<dynamic>().decorSpec = set.value
                 val sv = JSON.parse<dynamic>(set.value)
                 setDecorationsForEditor(u, "code",found.unsafeCast<HTMLElement>(), sv)
             }
 
-            "code_language" -> {
+            set.property == "code_language" -> {
                 if (set.value != found.unsafeCast<dynamic>().code_language) {
                     found.unsafeCast<dynamic>().code_language = set.value
                     notifyPotentialEditedPropertyHasHadLanguageChanged(u, "code", set.value)
                 }
             }
 
-            "fragment" -> {
-                found.unsafeCast<dynamic>().fragment = set.value
-            }
+            else -> when (set.property) {
+                "fragment" -> {
+                    found.unsafeCast<dynamic>().fragment = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
+                }
 
-            "task" -> {
-                found.unsafeCast<dynamic>().task = set.value
-            }
+                "vertex_fragment" -> {
+                    found.unsafeCast<dynamic>().vertex_fragment = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "vertex_fragment", set.value)
+                }
 
-            "mesh" -> {
-                found.unsafeCast<dynamic>().mesh = set.value
-            }
+                "fragment_s" -> {
+                    found.unsafeCast<dynamic>().fragment_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "fragment_s", set.value)
+                }
 
-            "metadata" -> {
-                found.unsafeCast<dynamic>().metadata = set.value
-            }
+                "task" -> {
+                    found.unsafeCast<dynamic>().task = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "task", set.value)
+                }
 
-            "compute" -> {
-                found.unsafeCast<dynamic>().compute = set.value
-            }
+                "task_s" -> {
+                    found.unsafeCast<dynamic>().task_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "task_s", set.value)
+                }
 
-            "preamble" -> {
-                found.unsafeCast<dynamic>().preamble = set.value
-            }
+                "mesh" -> {
+                    found.unsafeCast<dynamic>().mesh = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "mesh", set.value)
+                }
 
-            "introduction" -> {
-                found.unsafeCast<dynamic>().introduction = set.value
-            }
+                "mesh_s" -> {
+                    found.unsafeCast<dynamic>().mesh_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "mesh_s", set.value)
+                }
 
-            "vertex" -> {
-                found.unsafeCast<dynamic>().vertex = set.value
-            }
+                "raygen" -> {
+                    found.unsafeCast<dynamic>().raygen = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "raygen", set.value)
+                }
 
-            "customization" -> {
-                handleCustomizationRequest(found as HTMLElement, set)
-            }
+                "raygen_s" -> {
+                    found.unsafeCast<dynamic>().raygen_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "raygen_s", set.value)
+                }
 
-            "layers" -> {
+                "miss" -> {
+                    found.unsafeCast<dynamic>().miss = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "miss", set.value)
+                }
+
+                "miss_s" -> {
+                    found.unsafeCast<dynamic>().miss_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "miss_s", set.value)
+                }
+
+                "closesthit" -> {
+                    found.unsafeCast<dynamic>().closesthit = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "closesthit", set.value)
+                }
+
+                "closesthit_s" -> {
+                    found.unsafeCast<dynamic>().closesthit_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "closesthit_s", set.value)
+                }
+
+                "anyhit" -> {
+                    found.unsafeCast<dynamic>().anyhit = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "anyhit", set.value)
+                }
+
+                "anyhit_s" -> {
+                    found.unsafeCast<dynamic>().anyhit_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "anyhit_s", set.value)
+                }
+
+                "intersection" -> {
+                    found.unsafeCast<dynamic>().intersection = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "intersection", set.value)
+                }
+
+                "intersection_s" -> {
+                    found.unsafeCast<dynamic>().intersection_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "intersection_s", set.value)
+                }
+
+                "callable" -> {
+                    found.unsafeCast<dynamic>().callable = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "callable", set.value)
+                }
+
+                "callable_s" -> {
+                    found.unsafeCast<dynamic>().callable_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "callable_s", set.value)
+                }
+
+                "metadata" -> {
+                    found.unsafeCast<dynamic>().metadata = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "metadata", set.value)
+                }
+
+                "compute" -> {
+                    found.unsafeCast<dynamic>().compute = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "compute", set.value)
+                }
+
+                "compute_s" -> {
+                    found.unsafeCast<dynamic>().compute_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "compute_s", set.value)
+                }
+
+                "preamble" -> {
+                    found.unsafeCast<dynamic>().preamble = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "preamble", set.value)
+                }
+
+                "introduction" -> {
+                    found.unsafeCast<dynamic>().introduction = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "introduction", set.value)
+                }
+
+                "attic" -> {
+                    found.unsafeCast<dynamic>().attic = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "attic", set.value)
+                }
+
+                "vertex" -> {
+                    found.unsafeCast<dynamic>().vertex = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "vertex", set.value)
+                }
+
+                "vertex_s" -> {
+                    found.unsafeCast<dynamic>().vertex_s = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "vertex_s", set.value)
+                }
+
+                "customization" -> {
+                    handleCustomizationRequest(found as HTMLElement, set)
+                }
+
+                "layers" -> {
+                layerDebugLog(
+                    "recv set-string layers",
+                    json(
+                        "uid" to set.uid,
+                        "value" to set.value,
+                        "visibleLayers" to visibleLayers.toList()
+                    )
+                )
                 found.unsafeCast<dynamic>().box_layers = set.value
                 updateAllBoxVisibility()
                 canvasGestures.rebuildConnectionGroup()
-            }
+                }
 
-            "layerFrames" -> {
-                // layerFrames comes as a JSON string representation of Map<String, Rect>
-                try {
-                    val parsed = JSON.parse<dynamic>(set.value)
-                    found.unsafeCast<dynamic>().box_layerFrames = parsed
-                } catch (e: Exception) {
-                    console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
+                "layerFrames" -> {
+                    // layerFrames comes as a JSON string representation of Map<String, Rect>
+                    try {
+                        val parsed = JSON.parse<dynamic>(set.value)
+                        found.unsafeCast<dynamic>().box_layerFrames = parsed
+                    } catch (e: Exception) {
+                        console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
+                    }
                 }
             }
         }
@@ -2008,110 +3905,7 @@ suspend fun main() {
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
-        val boxes = document.body!!.getElementsByClassName("box").asList()
-        val found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == sel.uid }
-
-        if (found != null) {
-            val box = found as HTMLElement
-
-            // Open nested disclosure areas if the box is nested
-            fun openNestedDisclosures(targetBox: HTMLElement) {
-                // Check if box is nested inside another box
-                val nestedIn = targetBox.unsafeCast<dynamic>().box_nestedIn as? String
-                if (nestedIn != null) {
-                    // Find the parent box
-                    val parentBoxes = document.body!!.getElementsByClassName("box").asList()
-                    val parentBox = parentBoxes.firstOrNull {
-                        it.unsafeCast<dynamic>().uid == nestedIn
-                    } as? HTMLElement
-
-                    if (parentBox != null) {
-                        // Recursively open parent disclosures first
-                        openNestedDisclosures(parentBox)
-
-                        // Open the nested disclosure for this parent
-                        val outputArea = parentBox.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
-                        if (outputArea != null) {
-                            val contain = outputArea.querySelector(".disclosure-group")
-                            val di = js("window.disclosureInterface")
-                            if (di != null && di != undefined) {
-                                try {
-                                    val inter = di(contain)
-                                    if (inter.open != null && inter.open != undefined) {
-                                        (inter.open as (String) -> Unit).invoke("nested")
-                                    }
-                                } catch (e: Exception) {
-                                    console.info("[nav] failed to open nested disclosure", e)
-                                }
-                            }
-
-                            // Make sure the output area is visible
-                            outputArea.style.visibility = "visible"
-                            outputArea.style.height = "auto"
-                        }
-                    }
-                }
-            }
-
-            // Open all parent disclosures
-            openNestedDisclosures(box)
-
-            // Scroll the nested area so the target box is visible
-            setTimeout( {
-                try {
-                    box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
-                } catch (e: Exception) {
-                    console.info("[nav] failed to scroll to box", e)
-                }
-            }, 50)
-
-            // Deselect all boxes first
-            selected.toList().forEach { deselectBox(it) }
-
-            // Select the target box
-            selectBox(box)
-
-            // Set the selected property
-            selectedProperty = sel.property
-            window.unsafeCast<dynamic>().selectedProperty = sel.property
-            selectionContextChanged()
-
-            // Trigger editor to show this property
-            val w = window.unsafeCast<dynamic>()
-            if (w.switchToProperty != null && w.switchToProperty != undefined) {
-                try {
-                    w.switchToProperty(sel.uid, sel.property)
-                } catch (e: Exception) {
-                    console.info("[nav] switchToProperty failed", e)
-                }
-            }
-
-            // Scroll to line if specified
-            if (sel.scrollToLine != null) {
-                setTimeout( {
-                    val editor = w.globalEditor
-                    if (editor != null && editor != undefined) {
-                        try {
-                            val monaco = w.globalMonaco
-                            if (monaco != null && monaco != undefined) {
-                                // Reveal line at center
-                                editor.revealLineInCenter(sel.scrollToLine)
-
-                                // Highlight line if specified
-                                if (sel.highlightLine != null) {
-                                    val line = sel.highlightLine!!
-                                    val range = js("new monaco.Range(line, 1, line, 1)")
-                                    editor.setSelection(range)
-                                    editor.revealLineInCenter(sel.highlightLine)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            console.info("[nav] failed to scroll to line", e)
-                        }
-                    }
-                }, 100)
-            }
-        }
+        navigateToBoxProperty(sel.uid, sel.property, sel.scrollToLine, sel.highlightLine)
 
         Handled.yes
     }
@@ -2275,12 +4069,6 @@ suspend fun main() {
         Handled.yes
     }
 
-    val filename = URLSearchParams(document.location?.search).get("file") ?: "default"
-    val username = URLSearchParams(document.location?.search).get("user") ?: "everybody"
-    window.asDynamic().currentDocumentFilename = filename
-    val hello = Message("hello").payload(Hello(filename, username))
-    onOpen.add(hello)
-
     val body = document.body ?: error("No body")
     body.append {
         style {
@@ -2351,6 +4139,7 @@ suspend fun main() {
     mainViewport.onmousemove = { event ->
         if (event.buttons.toInt() ===4) {
             // this is actually a drag gesture
+            cancelNavigationPanAnimation()
             event.preventDefault()
             event.stopPropagation()
 
@@ -2392,6 +4181,7 @@ suspend fun main() {
         if (event.target is SVGElement) {
         } else {
 
+            cancelNavigationPanAnimation()
             event.preventDefault()
             event.stopPropagation()
 
@@ -2493,17 +4283,78 @@ suspend fun main() {
         dyn.data_y = top
         dyn.data_w = rect.width
         dyn.data_h = rect.height
+        dyn.data_right_margin = max(0.0, window.innerWidth.toDouble() - rect.right)
         dyn.data_initialized = true
+    }
+
+    fun updateRightMarginData(el: HTMLElement) {
+        val rect = el.getBoundingClientRect()
+        el.asDynamic().data_right_margin = max(0.0, window.innerWidth.toDouble() - rect.right)
+    }
+
+    fun mirrorOverlayGeometry(source: HTMLElement, target: HTMLElement) {
+        ensureAbsolutePosition(target)
+        val sourceDyn = source.asDynamic()
+        val targetDyn = target.asDynamic()
+        target.style.transform = "translate(0px, 0px)"
+        target.style.left = source.style.left
+        target.style.top = source.style.top
+        target.style.width = source.style.width
+        target.style.height = source.style.height
+        target.style.right = "auto"
+        target.style.bottom = "auto"
+        targetDyn.data_x = sourceDyn.data_x
+        targetDyn.data_y = sourceDyn.data_y
+        targetDyn.data_w = sourceDyn.data_w
+        targetDyn.data_h = sourceDyn.data_h
+        targetDyn.data_right_margin = sourceDyn.data_right_margin
+    }
+
+    fun anchorOverlayToRightEdge(el: HTMLElement) {
+        ensureAbsolutePosition(el)
+        val dyn = el.asDynamic()
+        val rect = el.getBoundingClientRect()
+        val rightMargin = (dyn.data_right_margin as? Number)?.toDouble()
+            ?: max(0.0, window.innerWidth.toDouble() - rect.right)
+        val currentWidth = (dyn.data_w as? Number)?.toDouble() ?: rect.width
+        val maxWidth = max(monacoMinWidthPx, window.innerWidth.toDouble() - rightMargin - monacoViewportGutterPx)
+        val width = min(max(currentWidth, monacoMinWidthPx), maxWidth)
+        val left = window.scrollX.toDouble() + window.innerWidth.toDouble() - rightMargin - width
+
+        el.style.transform = "translate(0px, 0px)"
+        el.style.left = "${left}px"
+        el.style.right = "auto"
+        el.style.width = "${width}px"
+        dyn.data_x = left
+        dyn.data_w = width
+        dyn.data_right_margin = rightMargin
+    }
+
+    fun anchorEditorOverlaysToRightEdge() {
+        val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
+        val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
+
+        if (monacoContainer != null) {
+            anchorOverlayToRightEdge(monacoContainer)
+            if (docsContainer != null) {
+                mirrorOverlayGeometry(monacoContainer, docsContainer)
+            }
+        } else if (docsContainer != null) {
+            anchorOverlayToRightEdge(docsContainer)
+        }
+
+        layoutGlobalEditor()
     }
 
     monacoResizeHandler = { event: dynamic ->
 
         val target: dynamic = event.target
-        ensureAbsolutePosition(target as HTMLElement)
+        val targetElement = target as HTMLElement
+        ensureAbsolutePosition(targetElement)
         val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
         val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
 
-        (target as HTMLElement).style.transform = "translate(0px, 0px)"
+        targetElement.style.transform = "translate(0px, 0px)"
         target.style.left = "${x}px"
         target.style.top = "${y}px"
         target.style.width = event.rect.width + "px"
@@ -2513,20 +4364,12 @@ suspend fun main() {
         target.data_y = y
         target.data_w = event.rect.width
         target.data_h = event.rect.height
+        updateRightMarginData(targetElement)
 
         // Keep docs container in sync when Monaco is resized
         val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
         if (docsContainer != null) {
-            ensureAbsolutePosition(docsContainer)
-            docsContainer.style.transform = "translate(0px, 0px)"
-            docsContainer.style.left = target.style.left
-            docsContainer.style.top = target.style.top
-            docsContainer.style.width = target.style.width
-            docsContainer.style.height = target.style.height
-            docsContainer.asDynamic().data_x = target.data_x
-            docsContainer.asDynamic().data_y = target.data_y
-            docsContainer.asDynamic().data_w = target.data_w
-            docsContainer.asDynamic().data_h = target.data_h
+            mirrorOverlayGeometry(targetElement, docsContainer)
         }
     }
 
@@ -2542,7 +4385,8 @@ suspend fun main() {
         json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
     ).on("resizemove") { event: dynamic ->
         val target: dynamic = event.target
-        ensureAbsolutePosition(target as HTMLElement)
+        val targetElement = target as HTMLElement
+        ensureAbsolutePosition(targetElement)
         val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
         val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
 
@@ -2556,20 +4400,12 @@ suspend fun main() {
         target.data_y = y
         target.data_w = event.rect.width
         target.data_h = event.rect.height
+        updateRightMarginData(targetElement)
 
         // Mirror size back to Monaco container
         val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
         if (monacoContainer != null) {
-            ensureAbsolutePosition(monacoContainer)
-            monacoContainer.style.transform = "translate(0px, 0px)"
-            monacoContainer.style.left = target.style.left
-            monacoContainer.style.top = target.style.top
-            monacoContainer.style.width = target.style.width
-            monacoContainer.style.height = target.style.height
-            monacoContainer.asDynamic().data_x = target.data_x
-            monacoContainer.asDynamic().data_y = target.data_y
-            monacoContainer.asDynamic().data_w = target.data_w
-            monacoContainer.asDynamic().data_h = target.data_h
+            mirrorOverlayGeometry(targetElement, monacoContainer)
         }
 
         // Notify Monaco editor about size change
@@ -2615,7 +4451,20 @@ suspend fun main() {
         )
     }
 
-    interactable.on("up") { _ -> }
+    interactable.on("up") { event ->
+        val pendingBox = pendingShiftToggleBox
+        if (pendingBox != null) {
+            val upX = (event.clientX as? Number)?.toDouble() ?: pendingShiftToggleDownX
+            val upY = (event.clientY as? Number)?.toDouble() ?: pendingShiftToggleDownY
+            val moved = abs(upX - pendingShiftToggleDownX) > shiftToggleClickSlopPx ||
+                abs(upY - pendingShiftToggleDownY) > shiftToggleClickSlopPx
+            if (!pendingShiftToggleHadDrag && !moved && selected.contains(pendingBox)) {
+                deselectBox(pendingBox)
+            }
+        }
+        pendingShiftToggleBox = null
+        pendingShiftToggleHadDrag = false
+    }
 
     interactable.on("dragend") { event ->
         provideMissingMouseup(event)
@@ -2624,6 +4473,9 @@ suspend fun main() {
     }
 
     interactable.on("dragstart") { event ->
+        if (pendingShiftToggleBox != null) {
+            pendingShiftToggleHadDrag = true
+        }
         selected.copy().forEach {
             it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
             it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)
@@ -2631,15 +4483,41 @@ suspend fun main() {
     }
 
     interactable.on("down") { event ->
+        pendingShiftToggleBox = null
+        pendingShiftToggleHadDrag = false
 
 
         val originalTarget = event.target as? HTMLElement
         val insideOutputArea = originalTarget?.closest(".outputArea") != null
 
+        // If the click originates from inside an embedded Monaco editor,
+        // don't re-select the box — that would disrupt the main editor.
+        val insideEmbeddedEditor = originalTarget?.closest(".monaco-editor") != null && insideOutputArea
+        if (insideEmbeddedEditor) return@on
+
+        // If the click originates from a disclosure header (output area UI),
+        // don't intercept — let the disclosure handle its own alt-click removal.
+        val insideDisclosureHeader = originalTarget?.closest(".disclosure-header") != null
+        if (insideOutputArea && insideDisclosureHeader) return@on
+
         val target: dynamic = reorient(event.target)
         if (event.altKey) {
             val uid = target.uid as? String ?: return@on
             val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
+            val continueRequested = (event.shiftKey as? Boolean) == true
+
+            // Shift+Alt+Click: custom marking menu
+            if (continueRequested) {
+                if (uid == lastAltDownUid && kotlin.math.abs(stamp - lastAltDownStamp) < 30.0) {
+                    return@on
+                }
+                lastAltDownUid = uid
+                lastAltDownStamp = stamp
+                if (!target.classList.contains("box")) return@on
+                requestCustomMarkingMenu(uid, event.x as Double, event.y as Double, event)
+                return@on
+            }
+
             if (uid == lastAltDownUid && kotlin.math.abs(stamp - lastAltDownStamp) < 30.0) {
                 return@on
             }
@@ -2658,8 +4536,13 @@ suspend fun main() {
                 notify(" <i>${target.name}</i> is already running", "launch")
                 already = true
             } else {
-                notify("launched <i>${target.name}</i>", "launch")
-                launchAll(target.uid, target["code"])
+                if (continueRequested) {
+                    notify("continuing <i>${target.name}</i>", "launch")
+                    continueAll(target.uid, target["code"])
+                } else {
+                    notify("launched <i>${target.name}</i>", "launch")
+                    launchAll(target.uid, target["code"])
+                }
                 already = false
             }
 
@@ -2671,8 +4554,9 @@ suspend fun main() {
             )
 
             if (!already) {
-                menus.add(json("text" to "launch", "callback" to {
-                    notify("<i>${target.name}</i> will continue", "launch")
+                menus.add(json("text" to "continue", "callback" to {
+                    notify("continuing <i>${target.name}</i>", "launch")
+                    continueAll(target.uid, target["code"])
                 }, "radius" to 1.0, "angle" to 180.0))
             }
 
@@ -2713,7 +4597,13 @@ suspend fun main() {
                     lastShiftDownUid = uid
                     lastShiftDownStamp = stamp
 
-                    if (selected.contains(boxEl)) deselectBox(boxEl) else selectBox(boxEl)
+                    if (selected.contains(boxEl)) {
+                        pendingShiftToggleBox = boxEl
+                        pendingShiftToggleDownX = (event.clientX as? Number)?.toDouble() ?: 0.0
+                        pendingShiftToggleDownY = (event.clientY as? Number)?.toDouble() ?: 0.0
+                    } else {
+                        selectBox(boxEl)
+                    }
                 }
             } else {
                 selected.copy().forEach {
@@ -2893,7 +4783,7 @@ suspend fun main() {
         hideMonaco()
 
         later({
-            notify("finished loading — press <b>?</b> for help", "setup")
+            LoadingTracker.start()
             (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = ""
         }, 100)
 
@@ -2910,6 +4800,7 @@ suspend fun main() {
     registerMouseBug()
 
     window.addEventListener("resize", {
+        anchorEditorOverlaysToRightEdge()
         canvasGestures.rebuildConnectionGroup()
         repositionSlideNoteOverlayIfVisible()
         if (spatialNavActive) {

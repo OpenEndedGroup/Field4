@@ -7,6 +7,18 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+/*
+FIELD_TEST
+id: graphics.polynomial-tree-fitting.smoke
+runner: jvm-main
+entrypoint: afield.examples.graphics.PolynomialTreeFittingSmokeTest
+tags: [smoke, graphics, polynomial, fitting]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "PolynomialTreeFitting smoke tests passed"
+*/
 /**
  * Smoke tests for polynomial-tree fitting + leaf rendering styles.
  *

@@ -8,6 +8,11 @@ import {
         addExecutionMarker,
         setStatusForExecutionMarker,
         clearAllDecorations,
+        setOutputScrollTail,
+        nudgeOutputScrollTail,
+        getOutputScrollTail,
+        setOutputMaxHeight,
+        getOutputMaxHeight,
         chatKeyboardCallback,
         addPromptBox,
         addOutput
@@ -22,6 +27,11 @@ window.addInlineOutput = addInlineOutput;
 window.addExecutionMarker = addExecutionMarker;
 window.setStatusForExecutionMarker = setStatusForExecutionMarker;
 window.clearAllDecorations = clearAllDecorations;
+window.setOutputScrollTail = setOutputScrollTail;
+window.nudgeOutputScrollTail = nudgeOutputScrollTail;
+window.getOutputScrollTail = getOutputScrollTail;
+window.setOutputMaxHeight = setOutputMaxHeight;
+window.getOutputMaxHeight = getOutputMaxHeight;
 window.chatKeyboardCallback = chatKeyboardCallback;
 window.addPromptBox = addPromptBox;
 window.addOutput = addOutput;

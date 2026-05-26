@@ -12,11 +12,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 object Ai4CompletionDoc {
     private val bridge: OpenAiIdeCodexBridge by lazy {
-        val model = System.getenv("AFIELD_COMPLETION_DOC_MODEL") ?: "gpt-5.2"
+        val model = System.getenv("AFIELD_COMPLETION_DOC_MODEL") ?: "GPT-5.3-Codex"
         OpenAiIdeCodexBridge(
             model = model,
             log = SilentLog,
-            reasoningEffort = ReasoningEffort.LOW
+            reasoningEffort = ReasoningEffort.MEDIUM
         )
     }
     private val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()

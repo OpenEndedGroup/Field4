@@ -253,6 +253,9 @@ class BoxSnappingSystem {
         snapGuidesGroup?.let { it.innerHTML = "" }
         activeSnapTargets.clear()
     }
+
+    fun activeSnapReferenceBoxes(): List<HTMLElement> =
+        activeSnapTargets.mapNotNull { it.referenceBox }.distinct()
     
     /**
      * Apply snapping to a proposed position while dragging a box

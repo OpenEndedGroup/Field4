@@ -1,19 +1,126 @@
 package afield
 
+import handleOutputAreaRequest
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.html.dom.append
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import openEditorInOutput
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
 import web.url.URL
 import kotlin.js.Date
+import kotlin.math.abs
 
 var lastMouse = 0.0 to 0.0
 
 external fun showPickMenu_custom(options: dynamic): dynamic
+
+private fun browserPrompt(message: String, defaultValue: String): String? =
+    window.asDynamic().prompt(message, defaultValue)
+
+private fun defaultMp4Path(kind: String): String {
+    val stamp = Date.now().toLong().toString()
+    return "/tmp/field4-$kind-$stamp.mp4"
+}
+
+private fun promptMp4Target(kind: String): Pair<String, Double>? {
+    val path = browserPrompt("Output .mp4 path for $kind capture", defaultMp4Path(kind))?.trim()
+        ?.takeIf { it.isNotEmpty() } ?: return null
+
+    val durationText = browserPrompt("Duration in seconds", "3")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val duration = durationText.toDoubleOrNull()
+    if (duration == null || duration <= 0.0) {
+        notify("Duration must be a positive number", "error")
+        return null
+    }
+
+    return path to duration
+}
+
+private fun requireSingleSelectedBox(): dynamic? {
+    if (selected.size != 1) {
+        notify("Select exactly one box", "command")
+        return null
+    }
+    return selected.first().unsafeCast<dynamic>()
+}
+
+private fun sendBoxVideo(request: AgentBoxVideo) {
+    val callbackName = "agent-box-video-${Date.now().toLong()}"
+    notify("Recording box MP4...", "command")
+    sendWithReply(Message("agent-box-video").payload(request), callbackName) { message, _ ->
+        val response = Json.decodeFromJsonElement<AgentVideoResponse>(message.payload!!)
+        if (response.ok) {
+            notify("Saved MP4 to ${response.path}", "command")
+        } else {
+            notify(response.message.ifEmpty { "MP4 recording failed" }, "error")
+        }
+        Handled.yes_remove
+    }
+}
+
+private fun sendWindowVideo(request: AgentWindowVideo) {
+    val callbackName = "agent-window-video-${Date.now().toLong()}"
+    notify("Recording window MP4...", "command")
+    sendWithReply(Message("agent-window-video").payload(request), callbackName) { message, _ ->
+        val response = Json.decodeFromJsonElement<AgentVideoResponse>(message.payload!!)
+        if (response.ok) {
+            notify("Saved MP4 to ${response.path}", "command")
+        } else {
+            notify(response.message.ifEmpty { "MP4 recording failed" }, "error")
+        }
+        Handled.yes_remove
+    }
+}
+
+fun recordSelectedBoxMp4() {
+    val box = requireSingleSelectedBox() ?: return
+    val uid = box.uid as? String ?: return
+    val (path, durationSec) = promptMp4Target("box") ?: return
+    sendBoxVideo(
+        AgentBoxVideo(
+            uid = uid,
+            path = path,
+            durationSec = durationSec,
+            fps = 30
+        )
+    )
+}
+
+fun recordSelectedBoxEditorMp4() {
+    val box = requireSingleSelectedBox() ?: return
+    val uid = box.uid as? String ?: return
+    val (path, durationSec) = promptMp4Target("editor") ?: return
+    sendWindowVideo(
+        AgentWindowVideo(
+            path = path,
+            uid = uid,
+            showEditor = true,
+            editorOnly = true,
+            openOutputs = false,
+            durationSec = durationSec,
+            fps = 30
+        )
+    )
+}
+
+fun recordWindowMp4() {
+    val (path, durationSec) = promptMp4Target("window") ?: return
+    sendWindowVideo(
+        AgentWindowVideo(
+            path = path,
+            uid = null,
+            showEditor = false,
+            editorOnly = false,
+            openOutputs = false,
+            durationSec = durationSec,
+            fps = 30
+        )
+    )
+}
 
 private fun downloadEdnFile(filename: String, edn: String) {
     val blob = js("new Blob([edn], { type: 'application/edn' })")
@@ -36,6 +143,91 @@ fun registerMouseBug() {
         val y = (event as MouseEvent).pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)
         lastMouse = x to y
     })
+}
+
+private fun allBoxesOnCanvas(): List<HTMLElement> =
+    document.body!!.getElementsByClassName("box").asList().mapNotNull { it as? HTMLElement }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun normalizeNestedPanForSelection() {
+    val allBoxes = allBoxesOnCanvas()
+    val boxByUid = allBoxes.mapNotNull { box ->
+        val uid = box.unsafeCast<dynamic>().uid as? String
+        if (uid == null) null else uid to box
+    }.toMap()
+
+    val parentByUid = linkedMapOf<String, HTMLElement>()
+    selected.forEach { box ->
+        val uid = box.unsafeCast<dynamic>().uid as? String
+        val nested = box.unsafeCast<dynamic>().box_nested as? Array<String>
+        if (uid != null && nested != null && nested.isNotEmpty()) {
+            parentByUid[uid] = box
+        }
+
+        val nestedIn = box.unsafeCast<dynamic>().box_nestedIn as? String
+        if (nestedIn != null) {
+            boxByUid[nestedIn]?.let { parentByUid[nestedIn] = it }
+        }
+    }
+
+    if (parentByUid.isEmpty()) {
+        notify("Select a nest parent or a box inside a nest", "command")
+        return
+    }
+
+    val updates = mutableListOf<Set_rect>()
+    var adjustedChildren = 0
+    var resetNests = 0
+
+    parentByUid.values.forEach { parent ->
+        val nestedCanvas = parent.querySelector(".nested-canvas") as? HTMLElement ?: return@forEach
+        val nestedContent = nestedCanvas.querySelector(".nested-content") as? HTMLElement
+
+        val panX = (nestedCanvas.asDynamic().data_x as? Number)?.toDouble() ?: 0.0
+        val panY = (nestedCanvas.asDynamic().data_y as? Number)?.toDouble() ?: 0.0
+
+        val childIds = (parent.unsafeCast<dynamic>().box_nested as? Array<String>)?.toList() ?: emptyList()
+        if (childIds.isEmpty()) {
+            nestedContent?.style?.transform = "translate(0px, 0px)"
+            nestedCanvas.asDynamic().data_x = 0.0
+            nestedCanvas.asDynamic().data_y = 0.0
+            return@forEach
+        }
+
+        if (abs(panX) > 1e-6 || abs(panY) > 1e-6) {
+            childIds.forEach { childId ->
+                val child = boxByUid[childId] ?: return@forEach
+                val d = child.unsafeCast<dynamic>()
+
+                val x = (d.data_x as? Number)?.toDouble() ?: 0.0
+                val y = (d.data_y as? Number)?.toDouble() ?: 0.0
+                val w = (d.data_w as? Number)?.toDouble() ?: child.getBoundingClientRect().width
+                val h = (d.data_h as? Number)?.toDouble() ?: child.getBoundingClientRect().height
+                val nx = x + panX
+                val ny = y + panY
+
+                d.data_x = nx
+                d.data_y = ny
+                child.style.transform = "translate(${nx}px, ${ny}px)"
+
+                updates += Set_rect(childId, "frame", Rect(nx, ny, w, h))
+                adjustedChildren++
+            }
+        }
+
+        nestedContent?.style?.transform = "translate(0px, 0px)"
+        nestedCanvas.asDynamic().data_x = 0.0
+        nestedCanvas.asDynamic().data_y = 0.0
+        resetNests++
+    }
+
+    if (updates.isNotEmpty()) {
+        send(Message("set-rects").payload(Set_rects(updates)))
+    }
+
+    canvasGestures.rebuildConnectionGroup()
+    notify("Reset pan on $resetNests nest(s), adjusted $adjustedChildren box frame(s)", "command")
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -61,6 +253,13 @@ fun deleteSelectedBoxes() {
         )
     )
     selected.forEach {
+        val uid = it.unsafeCast<dynamic>().uid as? String
+        if (uid != null) {
+            val emb = js("window.embeddedEditors")
+            if (emb != null) {
+                (emb.disposeForBox as? Function<*>)?.asDynamic()?.call(emb, uid)
+            }
+        }
         it.parentElement?.removeChild(it)
     }
     canvasGestures.rebuildConnectionGroup()
@@ -69,13 +268,73 @@ fun deleteSelectedBoxes() {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun selectAllBoxes() {
-    val boxes = document.body!!.getElementsByClassName("box").asList().mapNotNull { it as? HTMLElement }
+    val boxes = allBoxesOnCanvas()
     if (boxes.isEmpty()) return
 
     // Normalize selection state then select everything
     selected.toList().forEach { deselectBox(it) }
     boxes.forEach { selectBox(it) }
     canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun selectAllNestedBoxes() {
+    val nestedBoxes = allBoxesOnCanvas().filter { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
+    if (nestedBoxes.isEmpty()) {
+        notify("No nested boxes in this document", "command")
+        return
+    }
+    selected.toList().forEach { deselectBox(it) }
+    nestedBoxes.forEach { selectBox(it) }
+    canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun connectFromNestParentToSelection() {
+    val selectedNested = selected.filter { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
+    if (selectedNested.isEmpty()) {
+        notify("Select one or more nested boxes", "command")
+        return
+    }
+
+    val boxByUid = allBoxesOnCanvas().mapNotNull { box ->
+        val uid = box.unsafeCast<dynamic>().uid as? String
+        if (uid == null) null else uid to box
+    }.toMap()
+
+    val groupedByParentUid = linkedMapOf<String, MutableList<String>>()
+    selectedNested.forEach { child ->
+        val childUid = child.unsafeCast<dynamic>().uid as? String ?: return@forEach
+        val parentUid = child.unsafeCast<dynamic>().box_nestedIn as? String ?: return@forEach
+        if (!boxByUid.containsKey(parentUid)) return@forEach
+        groupedByParentUid.getOrPut(parentUid) { mutableListOf() }.add(childUid)
+    }
+
+    if (groupedByParentUid.isEmpty()) {
+        notify("No valid nest parents found for selection", "error")
+        return
+    }
+
+    var linkCount = 0
+    groupedByParentUid.forEach { (parentUid, childUids) ->
+        val uniqueChildren = childUids.distinct().filter { it != parentUid }
+        if (uniqueChildren.isEmpty()) return@forEach
+        send(
+            Message("perform-action").payload(
+                Perform_action(
+                    listOf(parentUid) + uniqueChildren,
+                    "-connect"
+                )
+            )
+        )
+        linkCount += uniqueChildren.size
+    }
+
+    if (linkCount > 0) {
+        notify("Connected nest parent(s) to $linkCount selected nested box${if (linkCount == 1) "" else "es"}", "command")
+    }
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -264,6 +523,114 @@ fun moveSelectedBoxesForward() {
         it.parentNode?.appendChild(it)
     }
     canvasGestures.rebuildConnectionGroup()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun showAllLayers() {
+    val layers = getAllLayers().filter { it.isNotBlank() }.toSet().ifEmpty { setOf("default") }
+    setVisibleLayers(layers, animated = true, duration = 450.0)
+
+    val hostBox = selected.firstOrNull() ?: allBoxesOnCanvas().firstOrNull()
+    val hostUid = hostBox?.unsafeCast<dynamic>()?.uid as? String
+    if (hostBox != null && hostUid != null) {
+        handleOutputAreaRequest(
+            hostBox,
+            Set_output(
+                uid = hostUid,
+                property = "outputarea",
+                channel = "layers",
+                value = ""
+            )
+        )
+    }
+
+    notify("Showing all ${layers.size} layer${if (layers.size == 1) "" else "s"}", "command")
+}
+
+private fun layerNamesInNavigationOrder(): List<String> =
+    getAllLayers().filter { it.isNotBlank() }.distinct().sorted().ifEmpty { listOf("default") }
+
+private fun currentLayerForNavigation(layers: List<String>): String {
+    val active = activeLayer?.takeIf { layers.contains(it) }
+    if (active != null) return active
+
+    val soloVisible = visibleLayers.singleOrNull()?.takeIf { layers.contains(it) }
+    if (soloVisible != null) return soloVisible
+
+    return layers.first()
+}
+
+private fun soloLayerTarget(offset: Int): String {
+    val layers = layerNamesInNavigationOrder()
+    val current = currentLayerForNavigation(layers)
+    val currentIndex = layers.indexOf(current).takeIf { it >= 0 } ?: 0
+    val nextIndex = (currentIndex + offset + layers.size) % layers.size
+    return layers[nextIndex]
+}
+
+private fun soloLayer(offset: Int) {
+    val target = soloLayerTarget(offset)
+    setVisibleLayers(setOf(target), animated = true, duration = 450.0)
+    setActiveLayer(target, animated = true, duration = 450.0)
+    notify("Solo layer \"$target\"", "command")
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun soloNextLayer() {
+    soloLayer(1)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun soloPreviousLayer() {
+    soloLayer(-1)
+}
+
+private fun jsCommandStringLiteral(value: String): String = JSON.stringify(value)
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun refreshLayerShortcutActions() {
+    val next = soloLayerTarget(1)
+    val previous = soloLayerTarget(-1)
+    val nextLabel = jsCommandStringLiteral("Solo Next Layer: $next")
+    val previousLabel = jsCommandStringLiteral("Solo Previous Layer: $previous")
+    val nextDetail = jsCommandStringLiteral("Hide every other layer and make \"$next\" active. Shortcut: Alt+]")
+    val previousDetail = jsCommandStringLiteral("Hide every other layer and make \"$previous\" active. Shortcut: Alt+[")
+
+    allActions.layerNavigation = eval(
+        """
+        [{
+            id:'solo-next-layer',
+            label:$nextLabel,
+            detail:$nextDetail,
+            keybindings:(typeof monaco !== 'undefined') ? [(() => {
+                const key = monaco.KeyCode.BracketRight || monaco.KeyCode.US_CLOSE_SQUARE_BRACKET || monaco.KeyCode.CloseBracket || 0;
+                return key ? (monaco.KeyMod.Alt | key) : 0;
+            })()].filter(Boolean) : [],
+            canvasKeybinding: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key === ']' || event.code === 'BracketRight'),
+            run: () => {
+                window.soloNextLayer()
+                if (typeof updateActions === 'function') updateActions()
+            }
+        },{
+            id:'solo-previous-layer',
+            label:$previousLabel,
+            detail:$previousDetail,
+            keybindings:(typeof monaco !== 'undefined') ? [(() => {
+                const key = monaco.KeyCode.BracketLeft || monaco.KeyCode.US_OPEN_SQUARE_BRACKET || monaco.KeyCode.OpenBracket || 0;
+                return key ? (monaco.KeyMod.Alt | key) : 0;
+            })()].filter(Boolean) : [],
+            canvasKeybinding: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key === '[' || event.code === 'BracketLeft'),
+            run: () => {
+                window.soloPreviousLayer()
+                if (typeof updateActions === 'function') updateActions()
+            }
+        }]
+    """.trimIndent()
+    )
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -459,6 +826,9 @@ fun parseKeybindingSpec(spec: String): String? {
 fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<Action_Desc>>) {
     val all = eval("[]")
     val selId = selected.map { it.unsafeCast<dynamic>().uid as String }.map { "'$it'" }.joinToString(",")
+    val allBoxes = allBoxesOnCanvas()
+    val hasNestedBoxes = allBoxes.any { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
+    val hasSelectedNestedBoxes = boxes.any { (it.unsafeCast<dynamic>().box_nestedIn as? String) != null }
 
     fun escapeJsString(value: String): String {
         return value
@@ -673,6 +1043,20 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
+                id:'normalize-nested-pan', label:'Normalize Nested contents', 
+                detail:'Reset nest offset so that the boxes appear in the current position when the document is opened',
+                canvasKeybinding: (event) => false, 
+                run: () => { 
+                    normalizeNestedPanForSelection()
+                }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+        run {
+            val e = """
+            ({
                 id:'un-nest', label:'Un-nest selection', 
                 detail:'Bring a nested box out of it\'s nest',
                 canvasKeybinding: (event) => false, 
@@ -700,11 +1084,49 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         val a = eval(e)
         all.push(a)
     }
+    if (hasNestedBoxes) {
+        run {
+            val e = """
+            ({
+                id:'select-all-nested', label:'Select all nested',
+                detail:'Select all boxes that are currently nested inside another box',
+                canvasKeybinding: (event) => false,
+                run: () => { selectAllNestedBoxes() }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+    }
+    if (hasSelectedNestedBoxes) {
+        run {
+            val e = """
+            ({
+                id:'connect-nest-parent-to-selection', label:'Connect from nest parent to selection',
+                detail:'For each selected nested box, connect its nest parent to it',
+                canvasKeybinding: (event) => false,
+                run: () => { connectFromNestParentToSelection() }
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+    }
     allActions.fromSelection = all
     updateActions()
 }
 
 fun registerBuiltinCommands() {
+    // Expose openEditorInOutput to window so inline JS commands can call it
+    val w = js("window")
+    w.openEditorInOutput = ::openEditorInOutput
+    w.recordSelectedBoxMp4 = ::recordSelectedBoxMp4
+    w.recordSelectedBoxEditorMp4 = ::recordSelectedBoxEditorMp4
+    w.recordWindowMp4 = ::recordWindowMp4
+    w.soloNextLayer = ::soloNextLayer
+    w.soloPreviousLayer = ::soloPreviousLayer
+    w.refreshLayerShortcutActions = ::refreshLayerShortcutActions
+
     allActions.builtin = eval(
         """
         [{
@@ -733,9 +1155,19 @@ fun registerBuiltinCommands() {
             label:"Copy Selection",
             keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_C] : [],
             detail:"Copy selected boxes (and all their code & properties)",
-            canvasKeybinding: (event) => (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
+            canvasKeybinding: (event) => {
+                const copyChord = (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey)
+                if (!copyChord) return false
+                const sel = (window.getSelection && window.getSelection()) || null
+                const hasDomSelection = !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && (sel.toString() || "").length > 0)
+                return !hasDomSelection
+            },
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                if (window.embeddedEditors && window.embeddedEditors.getFocused && window.embeddedEditors.getFocused()) return
+                const sel = (window.getSelection && window.getSelection()) || null
+                const hasDomSelection = !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && (sel.toString() || "").length > 0)
+                if (hasDomSelection) return
                 copySelectedBoxesToClipboard()
             }
         },{
@@ -746,6 +1178,7 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='v') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
+                if (window.embeddedEditors && window.embeddedEditors.getFocused && window.embeddedEditors.getFocused()) return
                 pasteBoxesFromClipboard()
             }
         },{
@@ -762,6 +1195,14 @@ fun registerBuiltinCommands() {
             detail:"Bring to front",
             run: () => {
                     moveSelectedBoxesForward()
+            }
+        },{
+            id:'show-all-layers',
+            label:"Show All Layers",
+            detail:"Restore visibility for every layer and reopen the layers palette",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                showAllLayers()
             }
         },{
             id:'insert-from-workspace',
@@ -838,6 +1279,83 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => false,
             run: () => {
                 window.switchToMonaco();
+            }
+        },{
+            id:'add-editor-to-output',
+            label:"Add Editor to Output Area",
+            detail:"Open an embedded text editor for a property (e.g. fragment, vertex) in the selected box's output area",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                if (!window.selectedList || window.selectedList.length !== 1) {
+                    if (typeof window.notify === 'function') window.notify('Select exactly one box', 'command');
+                    return;
+                }
+                const box = window.selectedList[0];
+                const uid = box.uid;
+                if (!uid) return;
+                const props = [
+                    {label:'fragment',  description:'Fragment Shader (GLSL)'},
+                    {label:'vertex_fragment', description:'Shared Vertex+Fragment Shader (Slang)'},
+                    {label:'fragment_s', description:'Fragment Shader (Slang)'},
+                    {label:'vertex',    description:'Vertex Shader (GLSL)'},
+                    {label:'vertex_s',  description:'Vertex Shader (Slang)'},
+                    {label:'compute',   description:'Compute Shader (GLSL)'},
+                    {label:'compute_s', description:'Compute Shader (Slang)'},
+                    {label:'task',      description:'Task Shader (GLSL)'},
+                    {label:'task_s',    description:'Task Shader (Slang)'},
+                    {label:'mesh',      description:'Mesh Shader (GLSL)'},
+                    {label:'mesh_s',    description:'Mesh Shader (Slang)'},
+                    {label:'raygen',    description:'Ray Generation Shader (GLSL)'},
+                    {label:'raygen_s',  description:'Ray Generation Shader (Slang)'},
+                    {label:'miss',      description:'Miss Shader (GLSL)'},
+                    {label:'miss_s',    description:'Miss Shader (Slang)'},
+                    {label:'closesthit', description:'Closest Hit Shader (GLSL)'},
+                    {label:'closesthit_s', description:'Closest Hit Shader (Slang)'},
+                    {label:'anyhit',    description:'Any Hit Shader (GLSL)'},
+                    {label:'anyhit_s',  description:'Any Hit Shader (Slang)'},
+                    {label:'intersection', description:'Intersection Shader (GLSL)'},
+                    {label:'intersection_s', description:'Intersection Shader (Slang)'},
+                    {label:'callable',  description:'Callable Shader (GLSL)'},
+                    {label:'callable_s', description:'Callable Shader (Slang)'},
+                    {label:'preamble',  description:'Kotlin (preamble)'},
+                    {label:'introduction', description:'Kotlin (introduction)'},
+                    {label:'attic',     description:'Kotlin (attic)'},
+                    {label:'metadata',  description:'Metadata (YAML)'},
+                    {label:'code',      description:'Kotlin (main)'},
+                ];
+                if (typeof window.showPickMenu_custom === 'function') {
+                    window.showPickMenu_custom(props.map(p => ({
+                        label: '✎ ' + p.label,
+                        detail: p.description,
+                        run: () => { window.openEditorInOutput(uid, p.label); }
+                    })));
+                } else {
+                    window.openEditorInOutput(uid, 'fragment');
+                }
+            }
+        },{
+            id:'record-selected-box-mp4',
+            label:"Record Selected Box MP4",
+            detail:"Record a short MP4 clipped to the selected box and its outputs",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.recordSelectedBoxMp4();
+            }
+        },{
+            id:'record-selected-editor-mp4',
+            label:"Record Selected Editor MP4",
+            detail:"Record a short MP4 clipped to the selected box's Monaco editor",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.recordSelectedBoxEditorMp4();
+            }
+        },{
+            id:'record-window-mp4',
+            label:"Record Window MP4",
+            detail:"Record a short MP4 of the current Field window",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.recordWindowMp4();
             }
         }]
     """.trimIndent()

@@ -17,6 +17,18 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+/*
+FIELD_TEST
+id: stdlib.smile.smoke
+runner: jvm-main
+entrypoint: afield.examples.stdlib.SmileStdlibSmokeTest
+tags: [smoke, stdlib, smile, numerics]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "Smile stdlib smoke tests passed"
+*/
 /**
  * Focused smoke tests for Smile-backed stdlib helpers.
  *

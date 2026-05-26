@@ -18,12 +18,13 @@ object Options {
         else throw IllegalStateException("Unsupported OS: $it")
     }
 
-    val spirv_cross_path = "./bin/spirv-cross-$target" + (if (isWindows) ".exe"  else "")
-
     var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.335.1/macOS/lib/libvulkan.1.dylib"
     val useVulkanSDK = true
     val robustness = false
-    val profiling = false
+    val profiling = System.getProperty(
+        "afield.four.profiling",
+        System.getenv("AFIELD_FOUR_PROFILING") ?: "false"
+    ).toBoolean()
     var enableVR = true && !isMac
 
     fun doVulkanSDK() {
@@ -37,6 +38,7 @@ object Options {
 
     var validate = true
     var preferredDevice: String? = null
+    var enableRayTracing: Boolean = !isMac
     var requestedImages = 3
     var vsync = true
     val fov: Double = 30.0
@@ -44,6 +46,14 @@ object Options {
     val zFar: Double = 1000.0
 
     var openXRClearColor: FloatArray = floatArrayOf(0f, 0f, 0f, 1f)
+
+    // When true, the swap chain will prefer an HDR surface format (scRGB or HDR10) over the
+    // default 8-bit sRGB.  On macOS a small JVM→ObjC FFI call also sets
+    // CAMetalLayer.wantsExtendedDynamicRangeContent = YES so the OS actually delivers EDR
+    // headroom.  Requires VK_EXT_swapchain_colorspace on the instance and a display that
+    // advertises an HDR colorspace; falls back silently to sRGB when the hardware doesn't
+    // support any HDR format.
+    var enableHDR: Boolean = false
 
     // When true, prints OpenXR input diagnostics (interaction profiles, bound sources).
     var openXRDebugInput: Boolean = true
@@ -57,4 +67,3 @@ object Options {
     // target runtimes.
     var openXRWaitForGpuBeforeRelease: Boolean = false
 }
-

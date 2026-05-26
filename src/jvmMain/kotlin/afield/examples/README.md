@@ -12,6 +12,16 @@ This package contains all example code for Field4, organized by topic area. Thes
   - Template system with live data display
   - Shared chat across template instances
 
+- **`BooleanNetworkExplorer.kt`** - Console showcase for the Boolean-network stdlib
+  - Demonstrates the public API from `afield.stdlib.booleannetworks.kt`
+  - Prints attractor summaries for the bundled example networks
+  - Runs a small Kauffman regime sweep to compare random-network behavior
+
+- **`JoltPhysicsExample.kt`** - 3D rigid-body Jolt JNI examples
+  - Stress-test chaos scene generation
+  - Pickup/grab loop runtime for interactive control
+  - Off-center collision demo and debug wireframe output
+
 - **`playlist_example.kt`** - Examples of playlist functionality
   - Setting playlist order on boxes
   - Controlling frame delays with pauseList

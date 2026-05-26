@@ -160,18 +160,54 @@ class AfieldVirtualFileSystem(
             "code",
             "vertex",
             "fragment",
+            "vertex_fragment",
             "mesh",
             "task",
-            "compute"
+            "compute",
+            "raygen",
+            "miss",
+            "closesthit",
+            "anyhit",
+            "intersection",
+            "callable",
+            "vertex_s",
+            "fragment_s",
+            "mesh_s",
+            "task_s",
+            "compute_s",
+            "raygen_s",
+            "miss_s",
+            "closesthit_s",
+            "anyhit_s",
+            "intersection_s",
+            "callable_s"
         )
 
         val DEFAULT_LANGUAGE_BY_PROPERTY: Map<String, String> = mapOf(
             "code" to "Kotlin",
             "vertex" to "GLSL (vertex)",
             "fragment" to "GLSL (fragment)",
+            "vertex_fragment" to "Slang (vertex+fragment)",
             "mesh" to "GLSL (mesh)",
             "task" to "GLSL (task)",
-            "compute" to "GLSL (compute)"
+            "compute" to "GLSL (compute)",
+            "raygen" to "GLSL (ray generation)",
+            "miss" to "GLSL (miss)",
+            "closesthit" to "GLSL (closest hit)",
+            "anyhit" to "GLSL (any hit)",
+            "intersection" to "GLSL (intersection)",
+            "callable" to "GLSL (callable)",
+            "vertex_s" to "Slang (vertex)",
+            "fragment_s" to "Slang (fragment)",
+            "mesh_s" to "Slang (mesh)",
+            "task_s" to "Slang (task)",
+            "compute_s" to "Slang (compute)",
+            "raygen_s" to "Slang (ray generation)",
+            "miss_s" to "Slang (miss)",
+            "closesthit_s" to "Slang (closest hit)",
+            "anyhit_s" to "Slang (any hit)",
+            "intersection_s" to "Slang (intersection)",
+            "callable_s" to "Slang (callable)"
         )
     }
 }

@@ -1,14 +1,19 @@
 package afield
 
 
-import afield.logger.lprintln
+import afield.Generator.Companion.isMain
 import afield.four.util.MapOfSequences
+import afield.logger.lprintln
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.max
 
-@OptIn(DelicateCoroutinesApi::class)
-fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, block = block)
+//@OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
+//fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, start = if (isMain.load()) CoroutineStart.UNDISPATCHED else CoroutineStart.DEFAULT, block = block)
+
+@OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
+fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, start = if (isMain.load()) CoroutineStart.DEFAULT else CoroutineStart.DEFAULT, block = block)
 
 class Runloop {
 
@@ -21,7 +26,7 @@ class Runloop {
         val runLoop = Runloop()
         val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
         @Volatile var mainThread: Thread? = null
-        
+
         val isMainThread: Boolean
             get() = mainThread == Thread.currentThread()
     }
@@ -40,15 +45,14 @@ class Runloop {
             mainThread = Thread.currentThread()
         }
         while (true) {
-            lprintln("debug,runloop", "run loop anybody? ${Thread.currentThread()}/${Thread.currentThread().name}")
             preRun.update()
             main.frame()
             postRun.update()
             frame++
 
             if (shouldSleep) {
-                lprintln("debug,runloop", "framer has run out of work thread is ${Thread.currentThread().name}")
-                Thread.sleep(1)
+//                lprintln("debug,runloop", "framer has run out of work thread is ${Thread.currentThread().name}")
+                Thread.yield()
             }
             shouldSleep = true
         }
@@ -89,22 +93,26 @@ class RateLimiter(
         val delayMs = max(0, executeAt - System.currentTimeMillis())
         job = GlobalScope.launch {
             delay(delayMs)
-            // dispatch on your main runloop
+            var blockToRun: (() -> Unit)? = null
             synchronized(lock) {
-                // if there’s a newer pending block, schedule it now
+                // If there’s a newer pending block, schedule it now.
                 pending?.also { next ->
                     pending = null
                     val now = System.currentTimeMillis()
                     val nextExec = max(lastExecution + intervalMillis, now)
                     if (nextExec - now <= maxLatency * 1000) {
                         schedule(next, nextExec)
+                    } else {
+                        job = null
                     }
-                } ?: inMain {
+                } ?: run {
                     lastExecution = System.currentTimeMillis()
                     job = null
-                    block()
+                    blockToRun = block
                 }
-
+            }
+            blockToRun?.let { ready ->
+                ready()
             }
         }
     }

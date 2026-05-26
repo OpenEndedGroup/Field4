@@ -3,6 +3,7 @@ package afield.four.targets
 import afield.Rect
 import afield.four.Renderer
 import afield.four.Target
+import afield.four.buffers.MissingRefException
 import afield.four.device.CommandBuffer
 import afield.four.modules.*
 import afield.four.texture.image_layout_transition
@@ -186,6 +187,39 @@ class RenderTarget(
             modules.forEach { (_, mp) ->
                 mp.current.meshes.values.forEach { mesh ->
                     mesh.prepareForDraw(command)
+                    mesh.push.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+                mp.current.liveUniformStructures.values.forEach { structure ->
+                    structure.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+            }
+
+            meshModules.forEach { (_, mp) ->
+                mp.current.meshes.values.forEach { mesh ->
+                    mesh.push.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+                mp.current.liveUniformStructures.values.forEach { structure ->
+                    structure.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+            }
+
+            modules.forEach { (_, mp) ->
+                mp.current.before.forEach { (_, target) ->
+                    target.render(command, index)
+                }
+            }
+
+            meshModules.forEach { (_, mp) ->
+                mp.current.before.forEach { (_, target) ->
+                    target.render(command, index)
                 }
             }
 
@@ -218,6 +252,7 @@ class RenderTarget(
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
             command.inRenderPassInstance = false
+            command.flushDeferredGraphicsHostReadBarriers()
 
             // Transition swapchain image to PRESENT for presentation engine.
             // With sync2 you can use NONE for dst stage/access.

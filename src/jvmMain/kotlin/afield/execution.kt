@@ -2,17 +2,27 @@ package afield
 
 import afield.ai.Ai4GlslAutocomplete
 import afield.ai.KotlinSourceIndex
-import afield.ai.glslSpecForProperty
+import afield.ai.shaderSpecForProperty
+import afield.four.synth.AudioPatchSpec
+import afield.four.synth.InlineAudioSummaryTarget
 import afield.logger.lprintln
+import afield.macros.gatherPreambleUpwards
 import afield.macros.standardExecutionPractice
 import afield.stdlib.*
-import kotlinx.coroutines.*
-import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import io.ktor.websocket.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
+import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
+import kotlin.script.experimental.api.SourceCodeCompletionVariant
 
 @RunsAt(newRoot)
 fun installKEActions(root : Box) {
@@ -35,6 +45,15 @@ interface BoxExecution {
         strand: String = "default",
         reply: ((Message) -> Unit)
     )
+    fun continueAll(
+        inside: Box,
+        execute: Execute,
+        code: String = execute.code,
+        strand: String = "default",
+        reply: ((Message) -> Unit)
+    ) {
+        launchAll(inside, execute, code, strand, reply)
+    }
 
     fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: ((Message) -> Unit))
 
@@ -50,38 +69,666 @@ private fun escapeForHtml(text: String?): String {
     return text.replace("<", "&lt;").replace(">", "&gt;")
 }
 
-fun configureOutputProxies(box: Box, reply: (Message) -> Unit) {
+private fun simplifyTypeForOutput(type: String?): String {
+    if (type.isNullOrBlank()) return ""
+    return type.replace("kotlin.", "")
+}
+
+private val completionDescriptorRenderer = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
+    withDefinedIn = false
+}
+
+private fun renderCompletionType(type: org.jetbrains.kotlin.types.KotlinType?): String {
+    if (type == null) return "Unit"
+    return runCatching { completionDescriptorRenderer.renderType(type) }
+        .getOrElse { simplifyTypeForOutput(type.toString()) }
+}
+
+private fun renderCompletionParameter(parameter: ValueParameterDescriptor): String {
+    val renderedType = renderCompletionType(parameter.varargElementType ?: parameter.type)
+    return buildString {
+        if (parameter.isCrossinline) append("crossinline ")
+        if (parameter.isNoinline) append("noinline ")
+        if (parameter.varargElementType != null) append("vararg ")
+        append(parameter.name.asString())
+        append(": ")
+        append(renderedType)
+        if (parameter.declaresDefaultValue()) append(" = ...")
+    }
+}
+
+private fun renderFunctionCompletionSignature(descriptor: FunctionDescriptor): String {
+    val receiver = descriptor.extensionReceiverParameter?.let { renderCompletionType(it.type) + "." }.orEmpty()
+    val prefix = buildString {
+        if (descriptor.isSuspend) append("suspend ")
+        append("fun ")
+        append(receiver)
+        append(descriptor.name.asString())
+    }
+    val parameters = descriptor.valueParameters.map(::renderCompletionParameter)
+    val returnType = renderCompletionType(descriptor.returnType)
+    val singleLine = "$prefix(${parameters.joinToString(", ")}): $returnType"
+
+    if (parameters.size <= 2 && singleLine.length <= 100) return singleLine
+
+    return buildString {
+        append(prefix)
+        append("(\n")
+        parameters.forEachIndexed { index, parameter ->
+            append("    ")
+            append(parameter)
+            if (index != parameters.lastIndex) append(',')
+            append('\n')
+        }
+        append("): ")
+        append(returnType)
+    }
+}
+
+private fun buildCompletionDocumentation(
+    descriptor: DeclarationDescriptor,
+    existingDocumentation: String
+): String {
+    if (descriptor !is FunctionDescriptor) return existingDocumentation.trim()
+
+    val sections = mutableListOf<String>()
+    sections += buildString {
+        append("```kotlin\n")
+        append(renderFunctionCompletionSignature(descriptor))
+        append("\n```")
+    }
+
+    existingDocumentation.trim().takeIf { it.isNotEmpty() }?.let { sections += it }
+
+    descriptor.valueParameters.takeIf { it.isNotEmpty() }?.let { parameters ->
+        sections += buildString {
+            append("**Parameters**\n")
+            parameters.forEach { parameter ->
+                append("- `")
+                append(renderCompletionParameter(parameter))
+                append("`\n")
+            }
+        }.trimEnd()
+    }
+
+    descriptor.extensionReceiverParameter?.let { receiver ->
+        sections += "**Receiver** `${renderCompletionType(receiver.type)}`"
+    }
+
+    descriptor.returnType?.let { returnType ->
+        sections += "**Returns** `${renderCompletionType(returnType)}`"
+    }
+
+    return sections.joinToString("\n\n").trim()
+}
+
+private fun renderCompletionFallbackSignature(displayText: String, tail: String): String {
+    val display = displayText.trimEnd()
+    val suffix = tail.trim()
+    if (suffix.isBlank()) return display
+    if (display.isBlank()) return suffix
+    val separator = if (suffix.firstOrNull() in setOf(':', ')', ',', '.', '[', '<')) "" else " "
+    return display + separator + suffix
+}
+
+private fun escapeNotifyHtml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+}
+
+private val generatedBoxIdRegex = Regex(
+    pattern = """\b(B?[0-9a-f]{8}(?:[_-][0-9a-f]{4}){3}[_-][0-9a-f]{12})(?:__\d+)?\b""",
+    options = setOf(RegexOption.IGNORE_CASE)
+)
+
+private data class ContainerSummary(
+    val text: String,
+    val html: String
+)
+
+private fun boxContextLabel(currentBox: Box, targetBox: Box): String {
+    return when {
+        targetBox.name.isNotBlank() -> targetBox.name
+        targetBox.id == currentBox.id -> "this box"
+        else -> "box ${targetBox.id.take(8)}"
+    }
+}
+
+private fun canonicalGeneratedBoxIdCandidate(value: String): String {
+    val canonical = value
+        .removeSuffix("_")
+        .replace("_", "")
+        .replace("-", "")
+        .lowercase()
+    return canonical
+}
+
+private fun canonicalSessionBoxId(value: String): String {
+    return value
+        .replace("_", "")
+        .replace("-", "")
+        .lowercase()
+}
+
+private fun resolveGeneratedBoxSummary(box: Box, rawContainer: String): ContainerSummary? {
+    val candidates = generatedBoxIdRegex
+        .findAll(rawContainer)
+        .map { it.groupValues[1] }
+        .toList()
+
+    val sessionBoxes = buildList {
+        add(box)
+        if (box.isInsideInitialized()) {
+            addAll(box.inside.boxes.values)
+        }
+    }
+
+    lprintln(
+        "debug,symbol-context",
+        "resolveGeneratedBoxSummary raw='$rawContainer' currentBox='${box.id}' currentName='${box.name}' candidates=$candidates sessionBoxes=${sessionBoxes.map { "${it.id}:${it.name}" }}"
+    )
+
+    candidates.forEach { candidate ->
+        val canonical = canonicalGeneratedBoxIdCandidate(candidate)
+        val match = sessionBoxes.firstOrNull { canonicalSessionBoxId(it.id) == canonical }
+        if (match != null) {
+            val label = boxContextLabel(box, match)
+            lprintln(
+                "debug,symbol-context",
+                "resolveGeneratedBoxSummary matched candidate='$candidate' canonical='$canonical' to box='${match.id}' name='${match.name}' label='$label'"
+            )
+            return ContainerSummary(
+                text = label,
+                html = "<i>${escapeNotifyHtml(label)}</i>"
+            )
+        }
+    }
+
+    val rawCanonical = canonicalGeneratedBoxIdCandidate(rawContainer)
+        .filter { it in '0'..'9' || it in 'a'..'f' }
+    if (rawCanonical.length >= 32) {
+        val match = sessionBoxes.firstOrNull { rawCanonical.contains(canonicalSessionBoxId(it.id)) }
+        if (match != null) {
+            val label = boxContextLabel(box, match)
+            lprintln(
+                "debug,symbol-context",
+                "resolveGeneratedBoxSummary matched rawCanonical='$rawCanonical' to box='${match.id}' name='${match.name}' label='$label'"
+            )
+            return ContainerSummary(
+                text = label,
+                html = "<i>${escapeNotifyHtml(label)}</i>"
+            )
+        }
+    }
+
+    lprintln(
+        "debug,symbol-context",
+        "resolveGeneratedBoxSummary no-match raw='$rawContainer' rawCanonical='$rawCanonical'"
+    )
+
+    return null
+}
+
+private fun prettifyContainerSummary(box: Box, rawContainer: String): ContainerSummary {
+    resolveGeneratedBoxSummary(box, rawContainer)?.let {
+        lprintln("debug,symbol-context", "prettifyContainerSummary resolved raw='$rawContainer' -> text='${it.text}'")
+        return it
+    }
+    val text = rawContainer.replace(generatedBoxIdRegex) { matchResult ->
+        matchResult.groupValues[1]
+            .removeSuffix("_")
+            .replace('_', '-')
+            .replaceFirstChar { it.lowercase() }
+    }
+    lprintln("debug,symbol-context", "prettifyContainerSummary fallback raw='$rawContainer' -> text='$text'")
+    return ContainerSummary(
+        text = text,
+        html = escapeNotifyHtml(text)
+    )
+}
+
+private fun descriptorContainerSummary(box: Box, descriptor: DeclarationDescriptor): ContainerSummary? {
+    val container = descriptor.containingDeclaration ?: return null
+    val raw = when (container) {
+        is PackageViewDescriptor -> container.fqName.asString()
+        else -> completionDescriptorRenderer.render(container)
+            .lineSequence()
+            .firstOrNull()
+            ?.trim()
+            .orEmpty()
+    }
+    return prettifyContainerSummary(box, raw)
+}
+
+private fun buildFunctionSymbolContextHtml(box: Box, descriptor: FunctionDescriptor): String {
+    val container = descriptorContainerSummary(box, descriptor)
+    val funcName = descriptor.name.asString()
+    return buildString {
+        append("<div style='display:inline-block; max-width: 620px;'>")
+        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+        append(escapeNotifyHtml(renderFunctionCompletionSignature(descriptor)))
+        append("</code></div>")
+        if (container != null && container.text.isNotBlank()) {
+            append("<div style='color:#777;'>declared in ")
+            append(container.html)
+            append("</div>")
+        }
+        // Check if this function was AI-generated (lives in the attic)
+        val attic = box.attic
+        if (attic.isNotBlank()) {
+            val atticName = if (funcName.startsWith("__")) funcName else "__$funcName"
+            if (attic.contains("// @ai-gen: $atticName")) {
+                val uid = box.id
+                append("<div style='color:#b0b0ff; cursor:pointer; margin-top:2px;' ")
+                append("onclick=\"if(window.switchToProperty) window.switchToProperty('")
+                append(escapeNotifyHtml(uid))
+                append("','attic')\">")
+                append("\uD83E\uDD16 ai-generated — <u>view in attic</u>")
+                append("</div>")
+            }
+        }
+        append("</div>")
+    }
+}
+
+private fun shouldShowVariableValueDisclosure(value: Any?): Boolean {
+    return when (value) {
+        null,
+        is Number,
+        is Boolean,
+        is Char,
+        is String,
+        is Enum<*> -> false
+        else -> true
+    }
+}
+
+private fun renderVariableValueDisclosure(value: Any?): String {
+    if (!shouldShowVariableValueDisclosure(value)) return ""
+    val rendered = runCatching { value.h }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: return ""
+    return "<div class='afield-symbol-context-disclosure-body' style='margin-top:4px; overflow:auto;'>$rendered</div>"
+}
+
+private fun renderDisplayContent(content: Any?): String {
+    return when (content) {
+        is String -> content
+        else -> content.h
+    }
+}
+
+private fun renderVariableLocationSection(
+    label: String,
+    container: ContainerSummary?,
+    value: Any?
+): String {
+    if (container == null || container.text.isBlank()) return ""
+    val locationHtml = "<span style='color:#777;'>$label ${container.html}</span>"
+    val disclosure = renderVariableValueDisclosure(value)
+    if (disclosure.isBlank()) {
+        return "<div>$locationHtml</div>"
+    }
+    return buildString {
+        append("<details class='afield-symbol-context-disclosure' style='margin-top:2px;'>")
+        append("<summary tabindex='-1' onfocus='this.blur()' style='color:#777; cursor:pointer; user-select:none; outline:none; box-shadow:none;'>")
+        append(locationHtml)
+        append("</summary>")
+        append(disclosure)
+        append("</details>")
+    }
+}
+
+private fun buildRuntimeVariableSymbolContextHtml(
+    box: Box,
+    info: KotlinVariableInfo,
+    declarationOverride: String? = null,
+    locationLabel: String = "declared in"
+): String {
+    val declaration = declarationOverride
+        ?: runCatching { shortenType(info.descriptor.toString()) }
+            .getOrDefault(info.toString(true))
+    val rawLocation = shortenType(info.line.javaClass.name)
+    val location = prettifyContainerSummary(box, rawLocation)
+    lprintln(
+        "debug,symbol-context",
+        "buildRuntimeVariableSymbolContextHtml symbol='${info.name}' declaration='$declaration' rawLocation='$rawLocation' location='${location.text}' valueType='${info.value?.javaClass?.name}'"
+    )
+    return buildString {
+        append("<div style='display:inline-block; max-width: 620px;'>")
+        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+        append(escapeNotifyHtml(declaration))
+        append("</code></div>")
+        append(renderVariableLocationSection(label = locationLabel, container = location, value = info.value))
+        append("</div>")
+    }
+}
+
+private fun buildVariableSymbolContextHtml(
+    box: Box,
+    descriptor: VariableDescriptor,
+    runtimeInfo: KotlinVariableInfo? = null
+): String {
+    if (runtimeInfo != null) {
+        return buildRuntimeVariableSymbolContextHtml(
+            box = box,
+            info = runtimeInfo,
+            declarationOverride = completionDescriptorRenderer.render(descriptor),
+            locationLabel = "declared in"
+        )
+    }
+
+    val declaration = completionDescriptorRenderer.render(descriptor)
+    val container = descriptorContainerSummary(box, descriptor)
+    return buildString {
+        append("<div style='display:inline-block; max-width: 620px;'>")
+        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+        append(escapeNotifyHtml(declaration))
+        append("</code></div>")
+        append(renderVariableLocationSection(label = "declared in", container = container, value = null))
+        append("</div>")
+    }
+}
+
+private fun buildSymbolContextHtml(
+    box: Box,
+    descriptor: DeclarationDescriptor?,
+    fallbackDisplay: String,
+    fallbackDocumentation: String,
+    runtimeVariableInfo: KotlinVariableInfo? = null
+): String {
+    runtimeVariableInfo?.let {
+        val declarationOverride = (descriptor as? VariableDescriptor)?.let(completionDescriptorRenderer::render)
+        return buildRuntimeVariableSymbolContextHtml(
+            box = box,
+            info = it,
+            declarationOverride = declarationOverride,
+            locationLabel = "declared in"
+        )
+    }
+
+    descriptor?.let {
+        return when (it) {
+            is FunctionDescriptor -> buildFunctionSymbolContextHtml(box, it)
+            is VariableDescriptor -> buildVariableSymbolContextHtml(box, it, runtimeVariableInfo)
+            else -> {
+                val rendered = completionDescriptorRenderer.render(it)
+                val container = descriptorContainerSummary(box, it)
+                buildString {
+                    append("<div style='display:inline-block; max-width: 620px;'>")
+                    append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+                    append(escapeNotifyHtml(rendered))
+                    append("</code></div>")
+                    if (container != null && container.text.isNotBlank()) {
+                        append("<div style='color:#777;'>declared in ")
+                        append(container.html)
+                        append("</div>")
+                    }
+                    append("</div>")
+                }
+            }
+        }
+    }
+
+    val summary = fallbackDisplay.ifBlank {
+        fallbackDocumentation.lineSequence().firstOrNull()?.trim().orEmpty()
+    }
+    if (summary.isBlank()) return ""
+    return "<span style='color:#ddd;'><code>${escapeNotifyHtml(summary)}</code></span>"
+}
+
+private data class SymbolBounds(val start: Int, val end: Int, val text: String)
+
+data class DebugProbeSegment(
+    val rawText: String,
+    val expandedText: String,
+    val localLine: Int,
+    val startLine: Int,
+    val endLine: Int
+)
+
+private fun findSymbolBoundsAt(code: String, position: Int): SymbolBounds? {
+    if (code.isEmpty()) return null
+    val safePosition = position.coerceIn(0, code.length)
+    fun isIdentifierChar(c: Char) = c.isLetterOrDigit() || c == '_'
+
+    val probe = when {
+        safePosition < code.length && isIdentifierChar(code[safePosition]) -> safePosition
+        safePosition > 0 && isIdentifierChar(code[safePosition - 1]) -> safePosition - 1
+        else -> return null
+    }
+
+    var start = probe
+    while (start > 0 && isIdentifierChar(code[start - 1])) start--
+
+    var end = probe + 1
+    while (end < code.length && isIdentifierChar(code[end])) end++
+
+    if (end <= start) return null
+    return SymbolBounds(start = start, end = end, text = code.substring(start, end))
+}
+
+private fun completionCandidateName(variant: SourceCodeCompletionVariant): String {
+    val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
+    if (descriptor != null) return descriptor.name.asString()
+    return variant.text
+        .substringBefore('<')
+        .substringBefore('(')
+        .substringAfterLast('.')
+        .trim()
+}
+
+private fun symbolContextResponse(symbol: String = "", html: String = ""): SymbolContextResponse {
+    return SymbolContextResponse(
+        symbol = symbol,
+        html = html,
+        isLiveValue = html.contains("afield-symbol-context-disclosure")
+    )
+}
+
+private suspend fun isolatedSymbolContextComplete(
+    box: Box,
+    allCode: String,
+    position: Int
+): CompletionResult {
+    val analysisKi = KotlinInterface(
+        implicitReceivers = listOf(KotlinType(Box::class)),
+        filePrefix = "${box.id}_symbol_context"
+    )
+    analysisKi.associatedBox = box
+    Box.withBoxContext(box) {
+        analysisKi.exec(intro, implicits = listOf(box))
+    }
+    return analysisKi.complete(allCode, position)
+}
+
+private data class SymbolContextCacheKey(
+    val property: String,
+    val codeHash: Int,
+    val codeLength: Int,
+    val cursor: Int,
+    val contextGeneration: Int
+)
+
+private object KotlinSymbolContextCache {
+    private const val maxEntries = 256
+    private val cache = object : LinkedHashMap<SymbolContextCacheKey, SymbolContextResponse>(maxEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SymbolContextCacheKey, SymbolContextResponse>?): Boolean {
+            return size > maxEntries
+        }
+    }
+
+    @Synchronized
+    fun get(key: SymbolContextCacheKey): SymbolContextResponse? = cache[key]
+
+    @Synchronized
+    fun put(key: SymbolContextCacheKey, value: SymbolContextResponse) {
+        cache[key] = value
+    }
+}
+
+private fun resolveInheritedPropertyWithSource(box: Box, name: String): Pair<Any?, Box?> {
+    box.getPropertyRaw(name)?.let { return it to box }
+    val seen = mutableSetOf(box)
+    var fringe = setOf(box)
+    while (fringe.isNotEmpty()) {
+        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
+        seen.addAll(nextFringe)
+        for (parent in nextFringe) {
+            parent.getPropertyRaw(name)?.let { return it to parent }
+        }
+        fringe = nextFringe
+    }
+    return null to null
+}
+
+private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContextResponse {
+    box.ki.context.functions[symbol]?.let { info ->
+        val location = prettifyContainerSummary(box, shortenType(info.line.javaClass.name))
+        val html = buildString {
+            append("<div style='display:inline-block; max-width: 620px;'>")
+            append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+            append(escapeNotifyHtml(info.toString(true)))
+            append("</code></div>")
+            append("<div style='color:#777;'>defined in ")
+            append(location.html)
+            append("</div>")
+            append("</div>")
+        }
+        return symbolContextResponse(symbol = symbol, html = html)
+    }
+
+    box.ki.context.vars[symbol]?.let { info ->
+        return symbolContextResponse(
+            symbol = symbol,
+            html = buildRuntimeVariableSymbolContextHtml(
+                box = box,
+                info = info,
+                declarationOverride = runCatching { shortenType(info.descriptor.toString()) }
+                    .getOrDefault(info.toString(true)),
+                locationLabel = "defined in"
+            )
+        )
+    }
+
+    // Check if symbol corresponds to a preamble-defined extension property (e.g. from prop<T>())
+    runCatching {
+        val preamble = gatherPreambleUpwards(box)
+        val propRegex = Regex("""var\s+Box\.${Regex.escape(symbol)}\s+by\s+(?:Inheritance|Delegation|InheritanceFromContext)\s*<\s*([^>]+?)\s*>""")
+        propRegex.find(preamble)?.let { match ->
+            val declaredType = shortenType(match.groupValues[1].trim())
+            val (value, sourceBox) = resolveInheritedPropertyWithSource(box, symbol)
+            val declaration = "var Box.$symbol: $declaredType"
+            val locationLabel = if (sourceBox != null && sourceBox.id != box.id) "inherited from" else "property of"
+            val locationBox = sourceBox ?: box
+            val container = ContainerSummary(
+                text = boxContextLabel(box, locationBox),
+                html = "<i>${escapeNotifyHtml(boxContextLabel(box, locationBox))}</i>"
+            )
+            val html = buildString {
+                append("<div style='display:inline-block; max-width: 620px;'>")
+                append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+                append(escapeNotifyHtml(declaration))
+                append("</code></div>")
+                append(renderVariableLocationSection(label = locationLabel, container = container, value = value))
+                append("</div>")
+            }
+            return symbolContextResponse(symbol = symbol, html = html)
+        }
+    }
+
+    return symbolContextResponse(symbol = symbol, html = "")
+}
+
+private fun renderPrintedOutput(content: Any?): String {
+    return when (content) {
+        null -> ""
+        is String -> content
+        is CharSequence -> content.toString()
+        is Number, is Boolean, is Char, is Enum<*> -> content.toString()
+        else -> ValueVisualizer.visualize(content, appendable = true)
+    }
+}
+
+internal fun dispatchExecutionOutput(
+    box: Box,
+    reply: ((Message) -> Unit)?,
+    output: Output,
+    originSession: WebSocketSession? = thisSession.get()
+) {
+    val normalized = if (output.uid.isBlank()) output.copy(uid = box.id) else output
+    reply?.invoke(Message("output").payload(normalized))
+    _sendToPeerSessions(
+        Message("peer-output").payload(normalized),
+        sessionInfo = box.inside,
+        current = originSession
+    )
+}
+
+fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: WebSocketSession? = thisSession.get()) {
     box.output.proxy = { content, nl, line ->
-        val n = content?.toString() ?: ""
+        val n = renderPrintedOutput(content)
         if (n.trim().length > 0) {
-            reply(
-                Message("output").payload(
-                    Output(
-                        line = line.i, kind = "normal", html = n.trim()+(if(nl) "\n" else ""), frame = Runloop.runLoop.frame.toInt()
-                    )
-                )
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = line.i,
+                    kind = "normal",
+                    html = n.trim() + (if (nl) "\n" else ""),
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
             )
         }
     }
 
     box.output.errorProxy = { content, property, nl ->
         val n = content?.toString() ?: ""
-        if (n.trim().length > 0) {
-            reply(
-                Message("output").payload(
-                    Output(
-                        line = nl.i, kind = "err", property = property, html = escapeForHtml(n), frame = Runloop.runLoop.frame.toInt()
-                    )
-                )
-            )
-        }
+        dispatchExecutionOutput(
+            box,
+            reply,
+            Output(
+                uid = box.id,
+                line = nl.i,
+                kind = "err",
+                property = property,
+                html = if (n.trim().isEmpty()) "" else escapeForHtml(n),
+                frame = Runloop.runLoop.frame.toInt()
+            ),
+            originSession = originSession
+        )
+    }
+
+    box.output.displayProxy = { channel, content ->
+        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
     }
 }
 
 
 @Suppress("UnstableApiUsage")
 class KotlinExecution : BoxExecution {
+    private fun normalizedLaunchCode(exec: Execute): String {
+        val leadingLines = exec.line.coerceAtLeast(0)
+        return "\n".repeat(leadingLines) + exec.code.trimEnd()
+    }
+
+    private fun cacheLaunchReturnValue(box: Box, strand: String, code: String, returnValue: Any?) {
+        if (returnValue == null) {
+            box.cachedLaunchReturns.remove(strand)
+            return
+        }
+        box.cachedLaunchReturns[strand] = CachedLaunchReturn(code, returnValue)
+    }
+
     override fun executeFragment(box: Box, exec: Execute, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
 
         val ln = Math.max(0, exec.line)
 
@@ -93,16 +740,18 @@ class KotlinExecution : BoxExecution {
         if (existingFunction != null) {
             lprintln("debug,execution", "found existing function: $existingFunction")
 
-            reply(
-                Message("output").payload(
-                    Output(
-                        line = ln + dur,
-                        kind = "normal",
-                        html = existingFunction.function.toString() + "<br>",
-                        annotation = "<i>${existingFunction.name}=</i>(function)",
-                        frame = Runloop.runLoop.frame.toInt()
-                    )
-                )
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = ln + dur,
+                    kind = "normal",
+                    html = existingFunction.function.toString() + "<br>",
+                    annotation = "<i>${existingFunction.name}=</i>(function)",
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
             )
             return
         }
@@ -113,7 +762,7 @@ class KotlinExecution : BoxExecution {
         box._currentlyExecutingFragment = true
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
-            execute(box, code, reply, 0, finishedHandler = {
+            execute(box, code, reply, originSession, 0, runSetupBlocks = true, finishedHandler = {
                 box._currentlyExecutingFragment = false
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
@@ -123,14 +772,15 @@ class KotlinExecution : BoxExecution {
     }
 
     override fun executeAll(box: Box, exec: Execute, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
 
-        val code = exec.code
+        val code = exec.code.trimEnd()
 
         val wm = ++box.fragmentGeneration
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
             box.resetStdlibRandom()
-            execute(box, code, reply, code.split("\n").size, finishedHandler = {
+            execute(box, code, reply, originSession, code.split("\n").size, finishedHandler = {
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
         }
@@ -139,15 +789,20 @@ class KotlinExecution : BoxExecution {
     }
 
     override fun launchAll(box: Box, exec: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
 
         box.preamble = "" // still controversial
+        box.properties.remove("_attic") //?
 
-        val generation = box.runGeneration.incrementAndGet("default")
-        send(Message("is-running").payload(IsRunning(exec.uid, true, generation, strand)))
-
-        val ln = Math.max(0, exec.line)
-
-        val code = ("\n" * ln) + exec.code.trimEnd()
+        val normalizedCode = normalizedLaunchCode(exec)
+        val launchMode = "launch"
+        val pendingWatermark = box.runGeneration.incrementAndGet(strand)
+        box.currentRunningStates[strand] = RunningState(pendingWatermark, launchMode)
+        send(
+            Message("is-running").payload(
+                IsRunning(exec.uid, true, pendingWatermark, strand, launchMode)
+            )
+        )
 
         inMain {
 
@@ -158,16 +813,69 @@ class KotlinExecution : BoxExecution {
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}
             // this is just the field2 design
 
-            execute(box, code, reply, exec.line) { returnValue ->
+            execute(
+                box,
+                normalizedCode,
+                reply,
+                originSession,
+                exec.line,
+                finishedHandler = {
+                    if (box.currentRunningStates[strand]?.watermark == pendingWatermark) {
+                        box.currentRunningStates.remove(strand)
+                    }
+                    send(
+                        Message("is-running").payload(
+                            IsRunning(exec.uid, false, pendingWatermark, strand, launchMode)
+                        )
+                    )
+                }
+            ) { returnValue ->
+                cacheLaunchReturnValue(box, strand, normalizedCode, returnValue)
+                configureOutputProxies(box, reply, originSession)
 
-                configureOutputProxies(box, reply)
-
-                launchReturnValue(box, returnValue, strand = strand, { isRunning, strand, watermark ->
-                    send(Message("is-running").payload(IsRunning(exec.uid, isRunning, watermark, strand)))
-                })
+                launchReturnValue(box, returnValue, strand = strand) { isRunning, strand, watermark ->
+                    if (isRunning) {
+                        box.currentRunningStates[strand] = RunningState(watermark, launchMode)
+                    } else if (box.currentRunningStates[strand]?.watermark == watermark) {
+                        box.currentRunningStates.remove(strand)
+                    }
+                    send(
+                        Message("is-running").payload(
+                            IsRunning(exec.uid, isRunning, watermark, strand, launchMode)
+                        )
+                    )
+                }
             }
+        }
+    }
 
-            send(Message("is-running").payload(IsRunning(exec.uid, false, generation, strand)))
+    override fun continueAll(box: Box, exec: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
+        val cached = box.cachedLaunchReturns[strand]
+        val normalizedCode = normalizedLaunchCode(exec)
+
+        if (cached == null || cached.code != normalizedCode) {
+            lprintln("debug,execution", "continue cache miss for ${box.id} on strand $strand")
+            launchAll(box, exec, code, strand, reply)
+            return
+        }
+
+        val originSession = thisSession.get()
+        val launchMode = "continue"
+        lprintln("debug,execution", "continuing cached return value for ${box.id} on strand $strand")
+        inMain {
+            configureOutputProxies(box, reply, originSession)
+            launchReturnValue(box, cached.returnValue, strand = strand) { isRunning, notifiedStrand, watermark ->
+                if (isRunning) {
+                    box.currentRunningStates[notifiedStrand] = RunningState(watermark, launchMode)
+                } else if (box.currentRunningStates[notifiedStrand]?.watermark == watermark) {
+                    box.currentRunningStates.remove(notifiedStrand)
+                }
+                send(
+                    Message("is-running").payload(
+                        IsRunning(exec.uid, isRunning, watermark, notifiedStrand, launchMode)
+                    )
+                )
+            }
         }
     }
 
@@ -176,49 +884,56 @@ class KotlinExecution : BoxExecution {
         box: Box,
         code: String,
         reply: ((Message) -> Unit)?,
+        originSession: WebSocketSession?,
         ln: Int,
+        runSetupBlocks: Boolean = true,
         finishedHandler: () -> Unit = {},
         handleReturn: (Any?) -> Unit
     ) {
 
         Box.withBoxContext(box) {
+            var dur = code.split("\n").count()
             try {
-                var dur = code.split("\n").count()
                 var hasError = false
                 var output = mutableListOf<String>("")
                 box.output.proxy = { content, nl, line ->
-                    output[output.size - 1] = output[output.size - 1] + content.toString()
+                    val rendered = renderPrintedOutput(content)
+                    output[output.size - 1] = output[output.size - 1] + rendered
                     if (nl) output.add("")
 
-                    lprintln("debug,execution", "out $content")
-                    reply?.invoke(
-                        Message("output").payload(
-                            Output(
-                                line = line.i,
-                                kind = "normal",
-                                html = content.toString().trim()+(if(nl) "\n" else ""),
-                                frame = Runloop.runLoop.frame.toInt()
-                            )
-                        )
+//                    lprintln("debug,execution", "out $content")
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = line.i,
+                            kind = "normal",
+                            html = rendered.trim() + (if (nl) "\n" else ""),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
                     )
 
                 }
                 box.output.errorProxy = { content, property, line ->
                     hasError = hasError || content != null
-                    reply?.invoke(
-                        Message("output").payload(
-                            Output(
-                                line = (line + ln).i,
-                                kind = "error",
-                                property = property,
-                                html = escapeForHtml(content?.toString()),
-                                frame = Runloop.runLoop.frame.toInt()
-                            )
-                        )
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = (line + ln).i,
+                            kind = "error",
+                            property = property,
+                            html = escapeForHtml(content?.toString()),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
                     )
                 }
                 box.output.displayProxy = { channel, content ->
-                    send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, content.toString())))
+                    send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
                 }
 
             val returnValues: List<ResultValue?> = standardExecutionPractice(box.ki, code, { compileError ->
@@ -227,31 +942,45 @@ class KotlinExecution : BoxExecution {
                 var first = true
                 compileError.forEach {
                     lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
+                    it.location?.start?.line?.let { lineNumber ->
+                        val lineIndex = lineNumber - 1
+                        val sourceLine = code.lines().getOrNull(lineIndex)
+                        if (sourceLine != null) {
+                            lprintln("debug,execution", "compile error source line $lineNumber: $sourceLine")
+                        }
+                    }
                     if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                         var message = it.message
                         message = improveMessage(box, message)
                         first = false
                         if (it.location != null) {
-                            reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = it.location!!.start.line,
-                                        kind = "error",
-                                        html = escapeForHtml(message),
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = it.location!!.start.line,
+                                    startColumn = it.location!!.start.col,
+                                    endLine = it.location!!.end?.line ?: -1,
+                                    endColumn = it.location!!.end?.col ?: -1,
+                                    kind = "error",
+                                    html = escapeForHtml(message),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                         } else {
-                            reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = ln + dur,
-                                        kind = "error",
-                                        html = escapeForHtml(message),
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = ln + dur,
+                                    kind = "error",
+                                    html = escapeForHtml(message),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                         }
                     }
@@ -279,18 +1008,20 @@ class KotlinExecution : BoxExecution {
                 }
 
                 var firstLine = if (firstLineInThisBox!=-1) firstLineInThisBox else fallbackFirstLine
-                reply?.invoke(
-                    Message("output").payload(
-                        Output(
-                            line = firstLine,
-                            kind = "error",
-                            html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
-                            frame = Runloop.runLoop.frame.toInt()
-                        )
-                    )
+                dispatchExecutionOutput(
+                    box,
+                    reply,
+                    Output(
+                        uid = box.id,
+                        line = firstLine,
+                        kind = "error",
+                        html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
+                        frame = Runloop.runLoop.frame.toInt()
+                    ),
+                    originSession = originSession
                 )
 
-            }, implicits = listOf(box))
+            }, implicits = listOf(box), runSetupBlocks = runSetupBlocks)
 
             if (!hasError) {
                 var size = 0
@@ -306,15 +1037,17 @@ class KotlinExecution : BoxExecution {
                 returnValues.forEach { returnValue ->
                     when (returnValue) {
                         is ResultValue.Unit -> {
-                            if (size == 0) reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = dur,
-                                        kind = "ok",
-                                        html = "ok",
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            if (size == 0) dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = dur,
+                                    kind = "ok",
+                                    html = "ok",
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                             handleReturn(null)
                         }
@@ -322,63 +1055,92 @@ class KotlinExecution : BoxExecution {
                         is ResultValue.NotEvaluated -> {}
 
                         is ResultValue.Error -> {
-                            reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = ln + dur,
-                                        kind = "error",
-                                        html = escapeForHtml(returnValue.error.message ?: returnValue.error.javaClass.name),
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = ln + dur,
+                                    kind = "error",
+                                    html = escapeForHtml(returnValue.error.message ?: returnValue.error.javaClass.name),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                             handleReturn(null)
                         }
 
                         is ResultValue.Value -> {
+                            val audioPatch = returnValue.value as? AudioPatchSpec
                             if (size == 0) {
-                                val name = returnValue.name
-                                val value = findDefinition(returnValue.value, search = box.root.children)
-                                val type = returnValue.type
-
-                                if (value.length > 0) {
-                                    reply?.invoke(
-                                        Message("output").payload(
-                                            Output(
-                                                line = ln + dur,
-                                                kind = "normal",
-                                                html = value,//.trim().replace("\n", "<br>") + "<br>",
-                                                annotation = "<i>${name}=</i>${type}",
-                                                frame = Runloop.runLoop.frame.toInt()
-                                            )
-                                        )
-                                    )
-                                } else reply?.invoke(
-
-                                    Message("output").payload(
+                                if (returnValue.value == null) {
+                                    dispatchExecutionOutput(
+                                        box,
+                                        reply,
                                         Output(
-                                            line = ln + dur,
+                                            uid = box.id,
+                                            line = dur,
                                             kind = "ok",
                                             html = "ok",
                                             frame = Runloop.runLoop.frame.toInt()
-                                        )
+                                        ),
+                                        originSession = originSession
                                     )
+                                    handleReturn(null)
+                                    return@forEach
+                                }
+                                val name = returnValue.name
+                                val type = simplifyTypeForOutput(returnValue.type)
+                                val annotation = "<i>${name}=</i>${type}"
+                                audioPatch?.inlineSummaryTarget = InlineAudioSummaryTarget(
+                                    line = ln + dur,
+                                    annotation = annotation
                                 )
-                            }
+                                val value = returnValue.value.h
+
+                                if (value.length > 0) {
+                                    dispatchExecutionOutput(
+                                        box,
+                                        reply,
+                                        Output(
+                                            uid = box.id,
+                                            line = ln + dur,
+                                            kind = "normal",
+                                            html = value,
+                                            annotation = annotation,
+                                            frame = Runloop.runLoop.frame.toInt()
+                                        ),
+                                        originSession = originSession
+                                    )
+                                } else dispatchExecutionOutput(
+                                    box,
+                                    reply,
+                                    Output(
+                                        uid = box.id,
+                                        line = ln + dur,
+                                        kind = "ok",
+                                        html = "ok",
+                                        frame = Runloop.runLoop.frame.toInt()
+                                    ),
+                                    originSession = originSession
+                                )
+                            } else audioPatch?.inlineSummaryTarget = null
 
                             handleReturn(returnValue.value)
                         }
 
                         null -> {
-                            if (size == 0) reply?.invoke(
-                                Message("output").payload(
-                                    Output(
-                                        line = ln + dur,
-                                        kind = "ok",
-                                        html = "ok",
-                                        frame = Runloop.runLoop.frame.toInt()
-                                    )
-                                )
+                            if (size == 0) dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = ln + dur,
+                                    kind = "ok",
+                                    html = "ok",
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
                             )
                             handleReturn(null)
                         }
@@ -389,6 +1151,22 @@ class KotlinExecution : BoxExecution {
             } else {
                 lprintln("error,execution", "execution finished with errors")
             }
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                lprintln("error,execution", "uncaught exception while executing fragment inside box $box")
+                lprintln("error,execution", t.stackTraceToString())
+                dispatchExecutionOutput(
+                    box,
+                    reply,
+                    Output(
+                        uid = box.id,
+                        line = ln + dur,
+                        kind = "error",
+                        html = escapeForHtml(t.message ?: t.javaClass.name),
+                        frame = Runloop.runLoop.frame.toInt()
+                    ),
+                    originSession = originSession
+                )
             } finally {
                 finishedHandler()
             }
@@ -402,76 +1180,21 @@ class KotlinExecution : BoxExecution {
         strand: String = "default",
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
     ) {
-        val generation = inside.runGeneration.incrementAndGet(strand)
-        when (returnValue) {
-
-
-            is Sequence<*> -> {
-                val a = returnValue.iterator()
-                inMain {
-                    notify(true, strand, generation)
-                    while (inside.runGeneration[strand] == generation && a.hasNext()) {
-                        val n = a.next()
-                        yield()
-                    }
-                    notify(false, strand, generation)
-                }
-            }
-
-            is Frames -> {
-                returnValue.shouldend = {
-                    inside.runGeneration[strand] != generation
-                }
-                val original = returnValue.atEnd
-                returnValue.atEnd = {
-                    original()
-                    notify(false, strand, generation)
-                }
-                inMain {
-                    notify(true, strand, generation)
-                    returnValue.job = kotlin.coroutines.coroutineContext[Job]!!
-                    inside.jobs += returnValue.job!!
-                    try {
-                        returnValue.body()
-                        // throwing here (a cancellation exception) does not
-                        // run atEnd (should it?)
-                    } catch (e: CancellationException) {
-                    } catch (t: Throwable) {
-                        lprintln("error,execution", t.stackTraceToString())
-                        var firstLine = -1
-                        t.stackTrace.forEach { e ->
-                            if (firstLine == -1 && e.fileName.contains(inside.id)) {
-                                firstLine = e.lineNumber
-                            }
-                        }
-                        inside.error(t.message ?: "", line = firstLine)
-                    } finally {
-                        notify(false, strand, generation)
-                    }
-                }
-            }
-
-            else -> {
-                notify(false, strand, generation)
-
-            }
-
-        }
+        ReturnValueRegistry.launch(inside, returnValue, strand, notify)
     }
 
     override fun stop(box: Box) {
         box.runGeneration.incrementAndGet("default")
-        box.jobs.removeAll {
-            it.cancel()
-            true
-        }
+        val jobsToCancel = box.jobs.toList()
+        box.jobs.clear()
+        jobsToCancel.forEach { it.cancel() }
     }
 
     private fun completeYamlMetadata(box: Box, allCode: String, position: Int, line: Int, column: Int): Completion {
         // Helper function to calculate bounds for replacing a prefix
         fun calculateBounds(lines: List<String>, currentLineIndex: Int, prefixInLine: String, currentPosition: Int): Pair<Int, Int> {
             // Calculate line start position, accounting for newline characters
-            val lineStart = lines.take(currentLineIndex).sumOf { it.length + 1 }
+            val lineStart = lines.take(currentLineIndex).sumOf { lineText: String -> lineText.length + 1 }
             val beforeCursor = lines[currentLineIndex].substring(0, minOf(column, lines[currentLineIndex].length))
             val prefixStart = beforeCursor.lastIndexOf(prefixInLine)
             return if (prefixStart >= 0) {
@@ -652,6 +1375,112 @@ class KotlinExecution : BoxExecution {
         return tags
     }
 
+    fun describeSymbolContext(box: Box, request: SymbolContextRequest): SymbolContextResponse {
+        val cacheKey = SymbolContextCacheKey(
+            property = request.property,
+            codeHash = request.allCode.hashCode(),
+            codeLength = request.allCode.length,
+            cursor = request.position,
+            contextGeneration = box.ki.context.generation
+        )
+        if (!request.forceRefresh) {
+            KotlinSymbolContextCache.get(cacheKey)?.let { return it }
+        }
+
+        val bounds = findSymbolBoundsAt(request.allCode, request.position)
+        if (bounds == null || bounds.text.isBlank()) {
+            val empty = SymbolContextResponse()
+            if (!request.forceRefresh) {
+                KotlinSymbolContextCache.put(cacheKey, empty)
+            }
+            return empty
+        }
+
+        val symbol = bounds.text
+        if (request.forceRefresh) {
+            val runtimeOnly = fallbackRuntimeSymbolContext(box, symbol)
+            if (runtimeOnly.html.isNotBlank()) {
+                return runtimeOnly
+            }
+        }
+
+        val response = runCatching {
+            when (val completion = runBlocking { isolatedSymbolContextComplete(box, request.allCode, bounds.end) }) {
+                is CompletionResult.Success -> {
+                    val bestVariant = completion.metadata
+                        .firstOrNull { completionCandidateName(it) == symbol }
+                        ?: completion.metadata.firstOrNull { completionCandidateName(it).startsWith(symbol) }
+
+                    if (bestVariant != null) {
+                        val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
+                        symbolContextResponse(
+                            symbol = symbol,
+                            html = buildSymbolContextHtml(
+                                box = box,
+                                descriptor = descriptor,
+                                fallbackDisplay = bestVariant.displayText,
+                                fallbackDocumentation = bestVariant.tail,
+                                runtimeVariableInfo = box.ki.context.vars[symbol]
+                            )
+                        )
+                    } else {
+                        fallbackRuntimeSymbolContext(box, symbol)
+                    }
+                }
+
+                else -> fallbackRuntimeSymbolContext(box, symbol)
+            }
+        }.getOrElse {
+            fallbackRuntimeSymbolContext(box, symbol)
+        }
+
+        if (!request.forceRefresh && !response.isLiveValue) {
+            KotlinSymbolContextCache.put(cacheKey, response)
+        }
+        return response
+    }
+
+    fun resolveDebugProbeSegment(box: Box, allCode: String, line: Int): DebugProbeSegment? {
+        val lines = allCode.lines()
+        if (line !in 1..lines.size) return null
+
+        val breaks = lines.mapIndexedNotNull { index, rawLine ->
+            val trimmed = rawLine.trim()
+            if (trimmed.startsWith("//%-") || trimmed.startsWith("/*%-*/")) index else null
+        } + lines.size
+
+        var at = 0
+        for (breakIndex in breaks) {
+            val startLine = at + 1
+            val endLine = breakIndex.coerceAtLeast(startLine)
+            if (line in startLine..endLine) {
+                val rawText = lines.subList(at, breakIndex).joinToString("\n")
+                val expanded = runCatching {
+                    box.ki.applyMacros(box, rawText, previewOnly = true)
+                }.getOrElse { rawText }
+
+                var globalLine = startLine - 1
+                val expandedText = expanded
+                    .split("\n")
+                    .map { current ->
+                        globalLine++
+                        current.replace("__line__", "${globalLine - 1}")
+                    }
+                    .joinToString("\n")
+
+                return DebugProbeSegment(
+                    rawText = rawText,
+                    expandedText = expandedText,
+                    localLine = (line - startLine + 1).coerceAtLeast(1),
+                    startLine = startLine,
+                    endLine = endLine
+                )
+            }
+            at = breakIndex
+        }
+        return null
+    }
+
     override fun complete(box: Box, exec: CompletionRequest, reply: (Message) -> Unit) {
 
         val position = exec.position
@@ -665,7 +1494,7 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        if (glslSpecForProperty(property) != null) {
+        if (shaderSpecForProperty(property) != null) {
             val docName = File(thisSessionInfo.get().filename).name
             val fileKey = "afield://$docName/${box.id}/$property"
             GlobalScope.launch(Dispatchers.IO) {
@@ -685,9 +1514,27 @@ class KotlinExecution : BoxExecution {
                 val shaderProps = listOf(
                     "vertex" to box.vertex,
                     "fragment" to box.fragment,
+                    "vertex_fragment" to box.getPropertyRaw("vertex_fragment") as? String,
                     "mesh" to box.mesh,
                     "task" to box.task,
-                    "compute" to box.compute
+                    "compute" to box.compute,
+                    "raygen" to box.raygen,
+                    "miss" to box.miss,
+                    "closesthit" to box.closesthit,
+                    "anyhit" to box.anyhit,
+                    "intersection" to box.intersection,
+                    "callable" to box.callable,
+                    "vertex_s" to box.getPropertyRaw("vertex_s") as? String,
+                    "fragment_s" to box.getPropertyRaw("fragment_s") as? String,
+                    "mesh_s" to box.getPropertyRaw("mesh_s") as? String,
+                    "task_s" to box.getPropertyRaw("task_s") as? String,
+                    "compute_s" to box.getPropertyRaw("compute_s") as? String,
+                    "raygen_s" to box.getPropertyRaw("raygen_s") as? String,
+                    "miss_s" to box.getPropertyRaw("miss_s") as? String,
+                    "closesthit_s" to box.getPropertyRaw("closesthit_s") as? String,
+                    "anyhit_s" to box.getPropertyRaw("anyhit_s") as? String,
+                    "intersection_s" to box.getPropertyRaw("intersection_s") as? String,
+                    "callable_s" to box.getPropertyRaw("callable_s") as? String
                 )
                 shaderProps.forEach { (name, value) ->
                     if (name != property && !value.isNullOrBlank()) {
@@ -711,7 +1558,7 @@ class KotlinExecution : BoxExecution {
                 val metadata = candidates.take(3).mapIndexed { idx, candidate ->
                     val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
                     val doc = buildString {
-                        val notes = candidate.documentation.ifBlank { "AI4 GLSL completion" }
+                        val notes = candidate.documentation.ifBlank { "AI4 shader completion" }
                         append("**Notes**\n")
                         notes.lineSequence().forEach { line ->
                             val trimmed = line.trim()
@@ -719,7 +1566,9 @@ class KotlinExecution : BoxExecution {
                         }
                         if (candidate.text.isNotBlank()) {
                             append("\n**Insertion**\n")
-                            append("```glsl\n")
+                            append("```")
+                            append(if (property.lowercase().endsWith("_s") || property == "vertex_fragment") "slang" else "glsl")
+                            append("\n")
                             append(candidate.text.trimEnd())
                             append("\n```\n")
                         }
@@ -746,26 +1595,23 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        fun completionFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
+        fun completionFor(c: CompletionResult.Success): List<Metadata> {
+            val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             return c.metadata.map {
 //                println(it.extraInfo)
                 var extraDoc = ""
-                val descriptor = it.extraInfo.getOrDefault("original", null)
+                val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
                 var mainText = it.displayText
                 var symbolName: String? = null
+                val rawSymbolName = it.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
 
                 descriptor?.let {
-                    if (descriptor is DeclarationDescriptor) {
 //                                                mainText = DescriptorRenderer.HTML.render(descriptor as DeclarationDescriptor)
-                        mainText = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
-                            withDefinedIn = false
-                        }.render(descriptor as DeclarationDescriptor) + "\n"
-                        // Extract symbol name for KDoc lookup
-                        symbolName = descriptor.name.asString()
-                    }
+                    mainText = completionDescriptorRenderer.render(descriptor) + "\n"
+                    // Extract symbol name for KDoc lookup
+                    symbolName = descriptor.name.asString()
                     (it as? Annotated)?.let {
                         it.annotations.forEach {
-                            print(it.fqName)
                             if (it.fqName.toString() == "afield.Doc") {
                                 extraDoc += it.allValueArguments.values.joinToString(separator = "\n")
                                     .trim('\"')
@@ -774,25 +1620,87 @@ class KotlinExecution : BoxExecution {
                     }
                 }
 
-                // Try to get KDoc from the source index for afield symbols
-                if (extraDoc.isEmpty() && symbolName != null) {
-                    val kdoc = KotlinSourceIndex.getKDocForSymbol(symbolName)
-                    if (kdoc != null) {
-                        extraDoc = kdoc
+                val candidateName = (symbolName ?: rawSymbolName).trim()
+                val shouldEnrich = activeToken.isNotBlank() &&
+                    candidateName.isNotBlank() &&
+                    candidateName.startsWith(activeToken)
+
+                // Try to get KDoc from the source index for afield symbols.
+                // Skip for dot-completion (member access) since the simple name is ambiguous —
+                // e.g. "add" could be Vector3f.add or LittleHistory.add.
+                val isDotCompletion = c.bounds.start > 0 && allCode.let { code ->
+                    val charBefore = code.getOrNull(c.bounds.start - 1)
+                    charBefore == '.' || (charBefore == '?' && c.bounds.start > 1 && code[c.bounds.start - 2] == '.')
+                }
+
+                // KDoc lookup for name completions (not dot-completion) — check extraInfo first, then index
+                if (extraDoc.isEmpty() && candidateName.isNotEmpty() && !isDotCompletion) {
+                    // Check if KDoc was embedded in the completion item
+                    val embeddedKdoc = it.extraInfo?.get("kdoc") as? String
+                    if (!embeddedKdoc.isNullOrBlank()) {
+                        extraDoc = embeddedKdoc
+                    } else {
+                        val kdoc = try { KotlinSourceIndex.getKDocForSymbol(candidateName) } catch (_: Exception) { null }
+                        if (kdoc != null) {
+                            extraDoc = kdoc
+                        }
                     }
                 }
 
-                Metadata(
+                // For dot-completion, try qualified KDoc lookup using receiver type from extraInfo
+                if (isDotCompletion && extraDoc.isEmpty() && candidateName.isNotEmpty()) {
+                    val receiverType = it.extraInfo?.get("receiverType") as? String
+                    if (receiverType != null) {
+                        val kdoc = try { KotlinSourceIndex.getKDocForSymbol("$receiverType.$candidateName") } catch (_: Exception) { null }
+                        if (kdoc != null) {
+                            extraDoc = kdoc
+                        }
+                    }
+                }
+
+                // For K2 without descriptor, build documentation from the display text (signature)
+                val documentation = if (descriptor != null) {
+                    buildCompletionDocumentation(descriptor, extraDoc)
+                } else if (it.displayText.isNotBlank()) {
+                    // Build signature-based documentation for all K2 items
+                    buildString {
+                        append("```kotlin\n")
+                        append(renderCompletionFallbackSignature(it.displayText, it.tail))
+                        append("\n```")
+                        if (extraDoc.isNotBlank()) {
+                            append("\n\n")
+                            append(extraDoc.trim())
+                        }
+                    }
+                } else {
+                    extraDoc.trim()
+                }
+
+                val rawMetadata = Metadata(
                     icon = it.icon,
                     tail = it.tail,
                     text = it.text,
                     displayText = mainText.trim(),
-                    documentation = extraDoc.trim()
+                    documentation = documentation
                 )
+
+                if (shouldEnrich) {
+                    KotlinCompletionSupport.enrichMetadata(
+                        box = box,
+                        allCode = allCode,
+                        symbolName = symbolName,
+                        metadata = rawMetadata,
+                        position = position,
+                        receiverTypeHint = it.extraInfo?.get("receiverQualifiedName") as? String
+                            ?: it.extraInfo?.get("receiverType") as? String
+                    )
+                } else {
+                    rawMetadata
+                }
             }
         }
 
-        fun importHelpFor(c: KotlinInterface.CompletionResult.Success): List<Metadata> {
+        fun importHelpFor(c: CompletionResult.Success): List<Metadata> {
             val s = allCode.substring(c.bounds.start, c.bounds.end)
             if (s.length>0)
             return classesWithPrefix(s).map {
@@ -812,11 +1720,14 @@ class KotlinExecution : BoxExecution {
             launch(Runloop.runLoop.main) {
                 val c = box.ki.complete(allCode, position)
                 when (c) {
-                    is KotlinInterface.CompletionResult.Success -> {
+                    is CompletionResult.Success -> {
+                        val synthetic = KotlinCompletionSupport.namedArgumentCompletions(box, allCode, position)
+                        val boundsStart = synthetic?.bounds?.start ?: c.bounds.start
+                        val boundsEnd = synthetic?.bounds?.end ?: c.bounds.end
                         val completions = Completion(
-                            boundsStart = c.bounds.start,
-                            boundsEnd = c.bounds.end,
-                            metadata = completionFor(c) + importHelpFor(c)
+                            boundsStart = boundsStart,
+                            boundsEnd = boundsEnd,
+                            metadata = (synthetic?.metadata ?: emptyList()) + completionFor(c) + importHelpFor(c)
                         )
 
                         reply(

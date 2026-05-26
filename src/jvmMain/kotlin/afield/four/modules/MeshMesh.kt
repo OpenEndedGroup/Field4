@@ -77,6 +77,9 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
     var z = 1;
 
     internal fun initializePushConstantsFromModule(inside: MeshModulePointer) {
+        for (pc in inside.current.fi.pushConstants) {
+            push.setMembers(pc.members)
+        }
         for (pc in inside.current.mi.pushConstants) {
             push.setMembers(pc.members)
         }
@@ -115,14 +118,17 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
         MemoryStack.stackPush().use { _ ->
             fun pushConstantsForCurrentDispatch(): Boolean {
                 if (pushConstantBuffer.limit() <= 0) return true
+                for (pc in inside.fi.pushConstants) {
+                    push.setMembers(pc.members)
+                }
                 for (pc in inside.mi.pushConstants) {
                     push.setMembers(pc.members)
                 }
                 for (pc in inside.ti.pushConstants) {
                     push.setMembers(pc.members)
                 }
-                pushConstantBuffer.clear()
                 try {
+                    pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
                         throw MissingRefException("risk of GPU null ref `$it`")
                     }
@@ -132,11 +138,10 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
                     return false
                 }
                 pushConstantBuffer.clear()
-
                 VK10.vkCmdPushConstants(
                     cmd.vkCommandBuffer,
                     inside.pipelineLayout,
-                    VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT,
+                    VK_SHADER_STAGE_TASK_BIT_EXT or VK_SHADER_STAGE_MESH_BIT_EXT or VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
                     0,
                     pushConstantBuffer
                 )

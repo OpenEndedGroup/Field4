@@ -16,11 +16,18 @@
 
     <style>
         body {
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-family: "Iosevka Web", monospace;
             margin: 0;
             padding: 0;
 
             background: rgba(20, 20, 20, 1);
+        }
+
+        .monaco-editor .margin-view-overlays .codicon-folding-collapsed,
+        .monaco-editor .margin-view-overlays .codicon-folding-expanded,
+        .monaco-editor .margin-view-overlays .codicon-folding-manual-collapsed,
+        .monaco-editor .margin-view-overlays .codicon-folding-manual-expanded {
+            transform: translateX(-4px);
         }
 
         /* Minimal cyan control skin */
@@ -34,7 +41,7 @@
         }
 
         .field-control {
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-family: "Iosevka Web", monospace;
             background: var(--field-panel);
             border: 1px solid rgba(var(--field-cyan-rgb), 0.12);
             border-radius: 10px;
@@ -149,6 +156,13 @@
 
         .vec2-shell .vec2-visual {
             flex: 0 0 auto;
+        }
+
+        .hoverlay-left details.afield-symbol-context-disclosure > summary,
+        .hoverlay-left details.afield-symbol-context-disclosure > summary:focus,
+        .hoverlay-left details.afield-symbol-context-disclosure > summary:focus-visible {
+            outline: none;
+            box-shadow: none;
         }
 
         .vec2-shell .vec2-tl,
@@ -435,18 +449,19 @@
 
 
         .execution_output {
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
+            font-family: "Iosevka Web", monospace !important;
             font-size: 80%;
             padding: 5px;
             padding-left: 0px;
-            padding-top: 0px;
+            padding-bottom: 0px;
+            padding-top:3px;
         }
 
         .output_annotation {
             position: absolute;
             top: 10px;
             font-size: 50%;
-            right: 60px;
+            right: 20px;
             opacity: 0.8;
         }
 
@@ -459,10 +474,111 @@
         .error .inner_output {
             background: rgba(255, 0, 0, 0.3) !important;
             border: 1px solid red;
+            font-size: 90%;
+            font-style: italic;
         }
 
         .inner_output {
             overflow-wrap: anywhere;
+        }
+
+        .inner_output .kotlin-error {
+            line-height: 1.35;
+        }
+
+        .inner_output .kotlin-error-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .inner_output .kotlin-error-details {
+            margin-top: 2px;
+        }
+
+        .inner_output .kotlin-error-details > summary {
+            cursor: pointer;
+            user-select: none;
+            opacity: 0.85;
+        }
+
+        .inner_output .kotlin-error-details[open] > summary {
+            margin-bottom: 4px;
+        }
+
+        .inner_output .kotlin-error-candidate-list {
+            margin: 0 0 0 18px;
+            padding: 0;
+        }
+
+        .inner_output .kotlin-error-candidate-list li {
+            margin: 2px 0;
+        }
+
+        .inner_output .kotlin-error-defined {
+            opacity: 0.75;
+            font-size: 90%;
+        }
+
+        .inner_output .kotlin-error code {
+            font-family: inherit;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 1px 3px;
+            border-radius: 4px;
+        }
+
+        .inner_output .kotlin-type-params {
+            opacity: 0.7;
+            font-size: 0.95em;
+            color: rgba(220, 235, 255, 1);
+            font-style: normal;
+        }
+
+        .inner_output .kotlin-type {
+            font-style: normal;
+            font-weight: 650;
+            color: rgba(240, 245, 255, 1);
+        }
+
+        .error .inner_output code {
+            font-style: normal;
+        }
+
+        @keyframes errorPulseBorder {
+            0% {
+                border-color: rgba(255, 0, 0, 0.9);
+                box-shadow: 0 0 0 rgba(255, 100, 100, 0.0);
+            }
+            50% {
+                border-color: rgba(255, 200, 200, 1.0);
+                box-shadow: 0 0 0 2px rgba(255, 110, 110, 0.35);
+            }
+            100% {
+                border-color: rgba(255, 0, 0, 0.9);
+                box-shadow: 0 0 0 rgba(255, 100, 100, 0.0);
+            }
+        }
+
+        .error .inner_output.error-pulse {
+            animation: errorPulseBorder 0.45s ease-out;
+        }
+
+        .kotlin-error-marker {
+            position: relative;
+            box-shadow: inset 0 -2px 0 rgba(255, 80, 80, 0.85);
+            border-bottom: 1px solid rgba(255, 80, 80, 0.65);
+            border-radius: 2px;
+        }
+
+        .kotlin-error-marker::after {
+            content: "";
+            position: absolute;
+            top: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 80, 80, 0.9);
+            border-radius: 4px;
         }
 
         ::-webkit-scrollbar-corner {
@@ -497,10 +613,16 @@
         .margin-view-overlays {
             opacity: 1 !important;
             font-size: 70% !important;
+            z-index: 1 !important;
             -webkit-user-select: none; /* Safari */
             -moz-user-select: none; /* Firefox */
             -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Standard syntax */
+        }
+
+        .margin-view-zones {
+            z-index: 2 !important;
+            pointer-events: auto !important;
         }
 
         [contenteditable] {
@@ -508,7 +630,7 @@
         }
 
         .monaco-editor {
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
+            font-family: "Iosevka Web", monospace !important;
         }
 
         .monaco-editor .margin {
@@ -524,7 +646,9 @@
             top: 10px;
             right: 10px;
             height: calc(100vh - 20px);
-            width: calc(40vw - 60px);
+            width: max(420px, calc(40vw - 60px));
+            min-width: min(420px, calc(100vw - 20px));
+            max-width: calc(100vw - 20px);
             position: absolute;
             border: 5px solid black;
             border-radius: 5px;
@@ -545,7 +669,9 @@
             top: 10px;
             right: 10px;
             height: calc(100vh - 20px);
-            width: calc(40vw - 60px);
+            width: max(420px, calc(40vw - 60px));
+            min-width: min(420px, calc(100vw - 20px));
+            max-width: calc(100vw - 20px);
             position: absolute;
             border: 5px solid black;
             border-radius: 5px;
@@ -576,7 +702,7 @@
             padding: 6px 12px;
             border-radius: 8px;
             cursor: pointer;
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-family: "Iosevka Web", monospace;
             font-size: 12px;
             transition: background 0.2s ease, transform 0.2s ease;
         }
@@ -666,7 +792,7 @@
         }
 
         .closeBox + .hoverable {
-            margin-left: 4.5px;
+            margin-left: 4.8px;
         }
 
         body::-webkit-scrollbar {
@@ -830,6 +956,14 @@
             background-image: url("data:image/svg+xml,%3Csvg%20id%3D'stripes-svg'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'100%25'%20height%3D'100%25'%3E%3Cdefs%3E%3Cpattern%20id%3D'svg-stripes-pattern-5289'%20patternTransform%3D'rotate(45)'%20width%3D'100%25'%20height%3D'17'%20x%3D'0'%20y%3D'0'%20patternUnits%3D'userSpaceOnUse'%3E%3Canimate%20attributeName%3D'y'%20begin%3D'0s'%20dur%3D'100s'%20from%3D'0'%20to%3D'5000px'%20repeatCount%3D'indefinite'%20fill%3D'freeze'%3E%3C%2Fanimate%3E%3Cg%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'7'%20fill%3D'rgba(0%2C%200%2C%200%2C%201)'%3E%3C%2Frect%3E%3Crect%20x%3D'0'%20y%3D'7'%20width%3D'100%25'%20height%3D'10'%20fill%3D'rgba(150%2C%20255%2C%20208%2C%200.3)'%3E%3C%2Frect%3E%3C%2Fg%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'url(%23svg-stripes-pattern-5289)'%3E%3C%2Frect%3E%3C%2Fsvg%3E");
         }
 
+        .running-continued {
+            background-image: url("data:image/svg+xml,%3Csvg%20id%3D'stripes-svg'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'100%25'%20height%3D'100%25'%3E%3Cdefs%3E%3Cpattern%20id%3D'svg-stripes-pattern-continued'%20patternTransform%3D'rotate(45)'%20width%3D'100%25'%20height%3D'17'%20x%3D'0'%20y%3D'0'%20patternUnits%3D'userSpaceOnUse'%3E%3Canimate%20attributeName%3D'y'%20begin%3D'0s'%20dur%3D'100s'%20from%3D'0'%20to%3D'5000px'%20repeatCount%3D'indefinite'%20fill%3D'freeze'%3E%3C%2Fanimate%3E%3Cg%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'7'%20fill%3D'rgba(0%2C%200%2C%200%2C%201)'%3E%3C%2Frect%3E%3Crect%20x%3D'0'%20y%3D'7'%20width%3D'100%25'%20height%3D'10'%20fill%3D'rgba(120%2C%20190%2C%20255%2C%200.35)'%3E%3C%2Frect%3E%3C%2Fg%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'url(%23svg-stripes-pattern-continued)'%3E%3C%2Frect%3E%3C%2Fsvg%3E");
+        }
+
+        .running-ending {
+            background-image: url("data:image/svg+xml,%3Csvg%20id%3D'stripes-svg'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'100%25'%20height%3D'100%25'%3E%3Cdefs%3E%3Cpattern%20id%3D'svg-stripes-pattern-ending'%20patternTransform%3D'rotate(45)'%20width%3D'100%25'%20height%3D'17'%20x%3D'0'%20y%3D'0'%20patternUnits%3D'userSpaceOnUse'%3E%3Canimate%20attributeName%3D'y'%20begin%3D'0s'%20dur%3D'100s'%20from%3D'0'%20to%3D'5000px'%20repeatCount%3D'indefinite'%20fill%3D'freeze'%3E%3C%2Fanimate%3E%3Cg%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'7'%20fill%3D'rgba(0%2C%200%2C%200%2C%201)'%3E%3C%2Frect%3E%3Crect%20x%3D'0'%20y%3D'7'%20width%3D'100%25'%20height%3D'10'%20fill%3D'rgba(205%2C%20118%2C%2034%2C%200.42)'%3E%3C%2Frect%3E%3C%2Fg%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'url(%23svg-stripes-pattern-ending)'%3E%3C%2Frect%3E%3C%2Fsvg%3E");
+        }
+
         .box * {
             position: relative;
         }
@@ -844,7 +978,7 @@
         }
 
         .doubleClickToEdit {
-            /*backdrop-filter: blur(5px) brightness(0.75);*/
+            backdrop-filter: blur(5px) brightness(0.7);
             padding: 8px;
             display: block;
         }
@@ -873,18 +1007,9 @@
         }
 
         .tick_text {
-            /* margin-left: 10px; */
-            /* padding-top: 3px; */
-            /* padding-left: 8px; */
-            /* padding-right: 8px; */
-            transform: translate(10px, 0px);
-            /* filter: invert(0.5); */
             background: black;
             display: inline-block;
             border-radius: 3px;
-            margin-left: 15px;
-            /*margin-left: 30px;*/
-            /* float: right; */
         }
 
 
@@ -899,11 +1024,25 @@
             transition: color 0.3s;
             margin-left: 8px;
             margin-top: -3px;
-            font-size: 15px;
+            font-size: 13.5px;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+        }
+
+        /* Smaller controls inside embedded editors */
+        .outputArea .monaco-editor .hoverable {
+            font-size: 10.5px;
+        }
+
+        .outputArea .monaco-editor .closeBox + .hoverable {
+            margin-left: 5.8px;
+        }
+
+        /* Remove Monaco focus outline inside embedded editors */
+        .outputArea .monaco-editor {
+            outline: none !important;
         }
 
         .notselectable {
@@ -923,7 +1062,7 @@
 
         .markingButton {
             font-size: 90%;
-            font-family: "iosevka web" !important;
+            font-family: "Iosevka Web" !important;
             filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2));
             border: 1px solid rgba(255, 255, 255, 0.15);
             padding: 10px;
@@ -1063,18 +1202,36 @@
         }
 
         .hoverlay {
+            backdrop-filter: blur(10px) brightness(0.0);
             position: absolute;
-            bottom: 5px;
-            right: 20px;
+            bottom: 0px;
+            right: 0px;
             color: white;
             /* border: 1px solid white; */
             padding: 10px;
-            border-radius: 5px;
+            border-top-left-radius: 5px;
             background: rgba(0, 0, 0, 0.3);
             /*backdrop-filter: blur(10px);*/
             opacity: 1;
             font-size: 10px;
             z-index: 100;
+        }
+
+        .hoverlay-left {
+            backdrop-filter: blur(10px) brightness(0.0);
+            position: absolute;
+            bottom: 0px;
+            left: 35px;
+            color: white;
+            padding: 10px;
+            border-top-right-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            font-size: 10px;
+            z-index: 100;
+            max-width: calc(100% - 220px);
+            pointer-events: none;
+            transition: opacity 0.12s ease;
         }
 
         .status-good {
@@ -1292,10 +1449,13 @@
         <span class="leftKey"><kbd>⌥</kbd> click</span> <span class="rightKey"><b>launches</b> a box</span><br>
         <span class="leftKey"><kbd>⌥</kbd> <kbd>↑</kbd></span> <span
             class="rightKey">also <b>launches</b> a box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>↑</kbd></span> <span class="rightKey"><b>continues</b> a launched box</span><br>
         <span class="leftKey"><kbd>⌥</kbd> <kbd>↓</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span><br>
+        <span class="leftKey"><kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>↓</kbd></span> <span class="rightKey">also <b>stops</b> a launched box</span><br>
         <span class="leftKey"><kbd>⌥</kbd> <kbd>↩</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
         <span class="leftKey"><kbd>⌥</kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
-        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear output</b> annotations from the editor</span><br><br>
+        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear newest output</b> annotation from the current editor</span><br>
+        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear all outputs</b> from the current editor</span><br><br>
         <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span
             class="rightKey">opens <b>autocomplete</b></span><br><br>
         <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span><br><br>
@@ -1319,7 +1479,7 @@
 <div class="monaco-editor-container"></div>
 <div class="docs-iframe-container">
     <button class="docs-iframe-back" type="button" onclick="exitDocsIframe()">←</button>
-    <iframe id="docs-iframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+    <iframe id="docs-iframe" sandbox="allow-scripts allow-same-origin allow-forms" allow="clipboard-read; clipboard-write"></iframe>
 </div>
 
 
@@ -1341,6 +1501,7 @@
 <link rel="stylesheet" href="/github-dark.min.css">
 <script src="/highlight.min.js"></script>
 <script src="outputareas2.js" type="module"></script>
+<script src="embeddedEditors.js" type="module"></script>
 <script src="sliders.js"></script>
 <script src="decorations.js"></script>
 <script src="trays.js"></script>

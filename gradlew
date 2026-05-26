@@ -119,7 +119,7 @@ CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 
 # GRADLE JVM WRAPPER START MARKER
-BUILD_DIR="${HOME}/my-custom-path/gradle-jvm"
+BUILD_DIR="${HOME}/.field4/gradle-jvm"
 JVM_ARCH=$(uname -m)
 JVM_TEMP_FILE=$BUILD_DIR/gradle-jvm-temp.tar.gz
 if [ "$darwin" = "true" ]; then
@@ -132,7 +132,7 @@ if [ "$darwin" = "true" ]; then
         JVM_URL=https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz
         JVM_TARGET_DIR=$BUILD_DIR/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64-9bac56
         ;;
-    *) 
+    *)
         die "Unknown architecture $JVM_ARCH"
         ;;
     esac
@@ -150,7 +150,7 @@ else
             JVM_URL=https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz
             JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-11.0.9.12.1-linux-aarch64-c61d04
             ;;
-        *) 
+        *)
             die "Unknown architecture $JVM_ARCH"
             ;;
         esac
@@ -185,7 +185,7 @@ else
     *".zip") unzip "$JVM_TEMP_FILE" -d "$JVM_TARGET_DIR" ;;
     *) tar -x -f "$JVM_TEMP_FILE" -C "$JVM_TARGET_DIR" ;;
   esac
-  
+
   rm -f "$JVM_TEMP_FILE"
 
   echo "$JVM_URL" >"$JVM_TARGET_DIR/.flag"

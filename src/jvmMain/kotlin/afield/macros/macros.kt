@@ -1,31 +1,21 @@
 package afield.macros
 
-import afield.Box
-import afield.HasHierarchy
-import afield.KotlinInterface
+import afield.*
 import afield.logger.lprintln
-import afield.macroRegistration
-import afield.macro_printHere
-import afield.marco_printlnHere
-import afield.runAll
-import afield.stdlib.Delegation
-import afield.stdlib.macro_computeModuleHere
-import afield.stdlib.macro_meshModuleHere
-import afield.stdlib.macro_moduleHere
-import afield.stdlib.macro_prop
-import afield.stdlib.macro_root_prop
-import kotlinx.coroutines.runBlocking
+import afield.stdlib.*
+import kotlinx.coroutines.withContext
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
 
 suspend fun standardExecutionPractice(
-    ki: KotlinInterface,
+    ki: KotlinScriptEngine,
     s: String,
     onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onCompileError default handler $it") },
     onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onEvalError default handler $it") },
     onEvalException: (Throwable) -> Unit = { lprintln("error,macros", "onEvalException default handler $it"); throw it },
-    implicits: List<Any> = emptyList()
+    implicits: List<Any> = emptyList(),
+    runSetupBlocks: Boolean = true
 ): List<ResultValue?> {
 
     var lines = s.lines()
@@ -42,15 +32,35 @@ suspend fun standardExecutionPractice(
     var result = mutableListOf<ResultValue?>()
     breaks.forEach {
         val code = lines.subList(at, it).joinToString("\n")
-        val code2 = ki.applyMacros(implicits[0] as Box, code)
+        // Offload macro expansion (PSI parsing + AST rewriting) off the Framer
+        val code2 = if (KotlinEngineConfig.offloadCompilation) {
+            withContext(ki.compilationDispatcher) { ki.applyMacros(implicits[0] as Box, code) }
+        } else {
+            ki.applyMacros(implicits[0] as Box, code)
+        }
 
         val code3 = code2.split("\n").mapIndexedNotNull { index, line ->
             ll++
             line.replace("__line__", "${ll - 1}")
         }.joinToString("\n")
 
-        checkPreambleAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
-        checkIntroductionAndExecute(implicits[0] as Box, onCompileError, onEvalError, onEvalException)
+        if (runSetupBlocks) {
+            // Use isolated error handlers for setup blocks (preamble/introduction/attic)
+            // so that setup errors don't suppress the main code's return value display.
+            // Setup errors are logged but don't propagate to the caller's hasError flag.
+            val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
+            }
+            val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
+            }
+            val setupEvalException: (Throwable) -> Unit = { throwable ->
+                lprintln("error,macros", "setup exception: ${throwable.message}")
+            }
+            checkPreambleAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
+            checkIntroductionAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
+            checkAtticAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
+        }
         val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
         at = it
         result.add(ret)
@@ -109,23 +119,23 @@ fun gatherPreambleUpwards(startingAt: Box): String {
     return total
 }
 
-fun checkPreambleAndExecute(
+suspend fun checkPreambleAndExecute(
     inside: Box,
     onCompileError: (List<ScriptDiagnostic>) -> Unit,
     onEvalError: (List<ScriptDiagnostic>) -> Unit,
     onEvalException: (Throwable) -> Unit
 ) {
-    val _was = inside.getPropertyRaw("_preamble", null) as String?
+    val _was = (inside.getPropertyRaw("_preamble", null) as String?)?.let(::normalizePreambleText)
     val was: Map<String, String> =
-        if (_was == null) emptyMap<String, String>() else _was.split("\n").filter { it.trim().length > 0 }
+        if (_was == null) emptyMap<String, String>() else _was.preambleSegments()
             .prefixAwareMap()
 
-    var now = gatherPreambleUpwards(inside)
+    var now = normalizePreambleText(gatherPreambleUpwards(inside))
 
 
     inside.setPropertyRaw("_preamble", now)
 
-    val extra: MutableMap<String, String> = now.split("\n").filter { it.trim().length > 0 }.prefixAwareMap()
+    val extra: MutableMap<String, String> = now.preambleSegments().prefixAwareMap()
     was.forEach {
         if (extra.containsKey(it.key)) {
             if (extra[it.key] != it.value) {
@@ -137,7 +147,7 @@ fun checkPreambleAndExecute(
     }
 
     val extraLines = extra.values.joinToString(separator = "\n")
-    if (extraLines.trim().isNotEmpty()) runBlocking {
+    if (extraLines.trim().isNotEmpty()) {
         println(" preamble, extra lines are ${extraLines}, executing")
         (inside as Box).ki.exec(
             extraLines, onCompileError, onEvalError, onEvalException, implicits = listOf(inside as Box)
@@ -147,13 +157,13 @@ fun checkPreambleAndExecute(
 
     // remove duplicate lines in the order that they arrive
 
-    val raw = inside.getPropertyRaw("preamble", "") as String
-    val next = (extra + raw.split("\n").filter { it.trim().isNotEmpty() }.prefixAwareMap()).values.joinToString(separator = "\n")
+    val raw = normalizePreambleText(inside.getPropertyRaw("preamble", "") as String)
+    val next = normalizePreambleText((extra + raw.preambleSegments().prefixAwareMap()).values.joinToString(separator = "\n"))
     inside.setPropertyRaw("_preamble", next)
     inside.setPropertyRaw("preamble", next)
 }
 
-fun checkIntroductionAndExecute(
+suspend fun checkIntroductionAndExecute(
     inside: Box,
     onCompileError: (List<ScriptDiagnostic>) -> Unit,
     onEvalError: (List<ScriptDiagnostic>) -> Unit,
@@ -161,17 +171,45 @@ fun checkIntroductionAndExecute(
 ) {
     val current = inside.getPropertyRaw("introduction", "") as String
     val was = inside.getPropertyRaw("_introduction", null) as String?
-    
+
     // Execute all of introduction if and only if any of it has changed
     if (current.trim().isNotEmpty() && current != was) {
-        runBlocking {
-            println(" introduction has changed, executing all of it")
-            inside.ki.exec(
-                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
-            )
-            println(" finished introduction ")
-        }
+        println(" introduction has changed, executing all of it")
+        inside.ki.exec(
+            current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+        )
+        println(" finished introduction ")
         inside.setPropertyRaw("_introduction", current)
+    }
+}
+
+suspend fun checkAtticAndExecute(
+    inside: Box,
+    onCompileError: (List<ScriptDiagnostic>) -> Unit,
+    onEvalError: (List<ScriptDiagnostic>) -> Unit,
+    onEvalException: (Throwable) -> Unit
+) {
+    val current = inside.getPropertyRaw("attic", "") as String
+    val was = inside.getPropertyRaw("_attic", null) as String?
+
+    val currentTrimmed = current.trim()
+    val isEmpty = currentTrimmed.isEmpty()
+    val isSame = current == was
+
+    lprintln("info,attic", "checkAtticAndExecute for '${inside.name}' (${inside.id}): " +
+            "empty=$isEmpty, same=$isSame, currentLen=${currentTrimmed.length}, wasLen=${was?.trim()?.length ?: -1}")
+
+    if (!isEmpty && !isSame) {
+        lprintln("info,attic", "attic changed for '${inside.name}' — executing all of it (${currentTrimmed.lines().size} lines)")
+        inside.ki.exec(
+            current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+        )
+        inside.setPropertyRaw("_attic", current)
+        lprintln("info,attic", "attic execution complete for '${inside.name}', _attic cache updated")
+    } else if (isEmpty) {
+        lprintln("info,attic", "attic is empty for '${inside.name}' — skipping")
+    } else {
+        lprintln("info,attic", "attic unchanged for '${inside.name}' — skipping (already executed)")
     }
 }
 
@@ -188,9 +226,52 @@ private fun List<String>.prefixAwareMap(): MutableMap<String, String> {
     return m
 }
 
+private const val preambleBlockStartMarker = "/*start*/"
+private const val preambleBlockEndMarker = "/*end*/"
+
+private fun String.preambleSegments(): List<String> {
+    val segments = mutableListOf<String>()
+    val currentBlock = mutableListOf<String>()
+    var inBlock = false
+
+    fun flushBlock() {
+        if (currentBlock.isNotEmpty()) {
+            segments += currentBlock.joinToString(separator = "\n")
+            currentBlock.clear()
+        }
+        inBlock = false
+    }
+
+    this.lines().forEach { rawLine ->
+        val line = rawLine.trimEnd()
+        if (line.isBlank()) return@forEach
+
+        if (inBlock) {
+            currentBlock += line
+            if (line.contains(preambleBlockEndMarker)) flushBlock()
+            return@forEach
+        }
+
+        if (line.contains(preambleBlockStartMarker)) {
+            inBlock = true
+            currentBlock += line
+            if (line.contains(preambleBlockEndMarker)) flushBlock()
+        } else {
+            segments += line
+        }
+    }
+
+    flushBlock()
+    return segments
+}
+
 private fun String.prefixFor(): String {
     val regex = Regex("^\\s*/\\*(.*?)\\*/")
-    val match = regex.find(this)
+    val match = this.lines()
+        .asSequence()
+        .map { it.replace(preambleBlockStartMarker, "").replace(preambleBlockEndMarker, "").trim() }
+        .mapNotNull { regex.find(it) }
+        .firstOrNull()
     return match?.groupValues?.get(1)?.trim() ?: this
 }
 
@@ -200,14 +281,17 @@ object MacroRegistry {
     class MacroExpansionProblem(msg: String) : Exception(msg)
 
     val callRewrite = mutableMapOf<String, (Box, String, List<String>) -> Insert?>()
+    val callRewriteWithContext = mutableMapOf<String, (Box, String, List<String>, ContainingFunction?) -> Insert?>()
 
-    fun rewrite(box: Box, identifier: String, arguments: List<String>): Insert? {
-        val a = callRewrite.get(identifier)?.invoke(box, identifier, arguments)
+    fun rewrite(box: Box, identifier: String, arguments: List<String>, containingFunction: ContainingFunction? = null): Insert? {
+        val a = callRewriteWithContext.get(identifier)?.invoke(box, identifier, arguments, containingFunction)
+            ?: callRewrite.get(identifier)?.invoke(box, identifier, arguments)
         return a
     }
 
     init {
 
+        registerLygiaIncludeRoot()
         callRewrite["moduleHere"] = { box, id, args ->
             box.macro_moduleHere(args)
         }
@@ -216,6 +300,9 @@ object MacroRegistry {
         }
         callRewrite["computeModuleHere"] = { box, id, args ->
             box.macro_computeModuleHere(args)
+        }
+        callRewrite["shadertoyHere"] = { box, id, args ->
+            box.macro_shadertoyHere(args)
         }
         callRewrite["prop"] = { box, id, args ->
             box.macro_prop(args)
@@ -229,10 +316,22 @@ object MacroRegistry {
         callRewrite["_println"] = { box, id, args ->
             box.marco_printlnHere(args)
         }
+        callRewrite["print"] = { box, id, args ->
+            box.macro_printHere(args)
+        }
+        callRewrite["println"] = { box, id, args ->
+            box.marco_printlnHere(args)
+        }
 
         runAll(macroRegistration)
     }
 }
+
+data class ContainingFunction(
+    val name: String,
+    val parameterList: String,
+    val returnType: String
+)
 
 data class Insert(
     val start: String = "",

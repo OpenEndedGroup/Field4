@@ -43,6 +43,9 @@ window.lastActions = lastActions
 
 function updateActions() {
         ensureBuiltinKeybindings();
+        if (typeof window.refreshLayerShortcutActions === "function") {
+                window.refreshLayerShortcutActions()
+        }
         let all = []
         Object.keys(allActions).forEach(key => {
                 all.push(...allActions[key])
@@ -57,6 +60,10 @@ function setActions(actions) {
         for (let a of actions) {
                 let found = lastActions.find(x => x.id === a.id)
                 if (!found) add.push(a)
+                else if (found.label !== a.label || found.detail !== a.detail) {
+                        remove.push(found)
+                        add.push(a)
+                }
         }
 
         for (let a of lastActions) {
@@ -212,10 +219,28 @@ function bootstrapAnywhereProviders() {
         const propertyNames = [
                 "code",
                 "vertex",
+                "vertex_fragment",
+                "vertex_s",
                 "fragment",
+                "fragment_s",
                 "compute",
+                "compute_s",
                 "task",
+                "task_s",
                 "mesh",
+                "mesh_s",
+                "raygen",
+                "raygen_s",
+                "miss",
+                "miss_s",
+                "closesthit",
+                "closesthit_s",
+                "anyhit",
+                "anyhit_s",
+                "intersection",
+                "intersection_s",
+                "callable",
+                "callable_s",
                 "preamble",
                 "metadata",
         ]

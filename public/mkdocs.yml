@@ -1,13 +1,45 @@
 site_name: OpenEndedGroup | Field·4
 
+hooks:
+  - docs_hooks.py
+
 nav:
   - Home: index.md
   - Installation: installation.md
   - Survival Guide: survivalGuide.md
+  - Feature Overview: funFeatures.md
+  - AI Overview: aiFeatures.md
   - Kotlin Overview: kotlin_overview.md
-  - VR:
-    - Sketch 2: vr_sketch2.md
+  - Reference:
     - FLine Examples: fline_examples.md
+    - Visualizers & Controls: visualizers.md
+    - Staging area:
+      - Staging Overview: staging.md
+      - Field Systems:
+        - Fabricate Renderer: fabricate_renderer.md
+        - Ray Tracing Examples: ray_tracing_examples.md
+        - afield.four Graphics: afield_four_graphics.md
+        - Interactive Guides: interactive_guides.md
+        - Guide Chat: guide_chat.md
+        - VR Drawing Sketch: vr_sketch2.md
+      - Small Languages:
+        - Forth Examples: forth_examples.md
+        - Nano Examples: nano_examples.md
+      - Drawing From Data:
+        - Functions Examples: functions_examples.md
+        - Interpolants Examples: interpolants_examples.md
+        - Timeseries Examples: timeseries_examples.md
+        - Particle Filter Examples: pf_examples.md
+        - Stats Examples: stats_examples.md
+        - Colors Examples: colors_examples.md
+        - Correlations Examples: correlations_examples.md
+        - Smile Neighbors Examples: smile_neighbors_examples.md
+        - Graph Connectivity Examples: graph_connectivity_examples.md
+      - Networks and Dynamics:
+        - Sorting Networks Examples: sorting_networks_examples.md
+        - Interaction Nets Examples: interaction_nets_examples.md
+        - Boolean Networks Examples: boolean_networks_examples.md
+        - Boolean Network Music Examples: boolean_network_music_examples.md
 
 markdown_extensions:
   - pymdownx.superfences:         # required extension
@@ -45,8 +77,7 @@ theme:
     scheme: slate
     primary: black
     accent: red
-  font:
-    text: "Roboto Condensed"
+  font: false
   custom_dir: overrides
   features:
     - navigation.path
@@ -58,8 +89,12 @@ extra_css:
   - assets/code-diff-player/code-diff-player.css
 
 extra_javascript:
+  - assets/dot-grid.js
+  - assets/lesswrong-rail.js
+  - assets/image-lightbox.js
   - assets/code-diff-player/fence-upgrade.js
   - assets/code-diff-player/code-diff-player.js
+  - assets/code-diff-player/field-doc-export.js
 
 site_url: http://openendedgroup.com/Field4/
 site_dir: field4

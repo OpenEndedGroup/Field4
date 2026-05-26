@@ -1,11 +1,13 @@
 package afield.four.device
 
+import afield.four.buffers.VulkanBuffer
 import afield.four.util.vkCheck
 import afield.logger.lblock
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
 import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+import org.lwjgl.vulkan.VK13.*
 
 class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: Boolean) {
     private val commandPool: CommandPool
@@ -16,6 +18,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     // True while recording commands inside a render pass instance / dynamic rendering.
     // This is used to avoid recording transfer ops (vkCmdCopyBuffer, etc.) in illegal contexts.
     var inRenderPassInstance: Boolean = false
+    private val deferredGraphicsHostReadBuffers = LinkedHashSet<VulkanBuffer>()
 
     data class DynamicRenderingInheritance(
         val colorFormats: IntArray = intArrayOf(),
@@ -57,6 +60,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     @JvmOverloads
     fun beginRecording(inheritanceInfo: SecondaryInheritance? = null) {
         inRenderPassInstance = false
+        deferredGraphicsHostReadBuffers.clear()
         MemoryStack.stackPush().use { stack ->
             val cmdBufInfo = VkCommandBufferBeginInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
@@ -113,12 +117,49 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
     }
 
     fun endRecording() {
+        if (!inRenderPassInstance) {
+            flushDeferredGraphicsHostReadBarriers()
+        }
         vkCheck(VK10.vkEndCommandBuffer(vkCommandBuffer), "Failed to end command buffer")
         inRenderPassInstance = false
+        deferredGraphicsHostReadBuffers.clear()
     }
 
     fun reset() {
         VK10.vkResetCommandBuffer(vkCommandBuffer, VK10.VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)
         inRenderPassInstance = false
+        deferredGraphicsHostReadBuffers.clear()
+    }
+
+    fun deferGraphicsHostReadBarrier(buffer: VulkanBuffer) {
+        deferredGraphicsHostReadBuffers += buffer
+    }
+
+    fun flushDeferredGraphicsHostReadBarriers() {
+        if (deferredGraphicsHostReadBuffers.isEmpty()) return
+
+        MemoryStack.stackPush().use { stack ->
+            val barriers = VkBufferMemoryBarrier2.calloc(deferredGraphicsHostReadBuffers.size, stack)
+            deferredGraphicsHostReadBuffers.forEachIndexed { index, buffer ->
+                barriers[index]
+                    .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                    .srcStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                    .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                    .dstStageMask(VK_PIPELINE_STAGE_2_HOST_BIT)
+                    .dstAccessMask(VK_ACCESS_2_HOST_READ_BIT)
+                    .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .buffer(buffer.buffer)
+                    .offset(0L)
+                    .size(buffer.requestedSize)
+            }
+
+            val dep = VkDependencyInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+                .pBufferMemoryBarriers(barriers)
+            vkCmdPipelineBarrier2(vkCommandBuffer, dep)
+        }
+
+        deferredGraphicsHostReadBuffers.clear()
     }
 }

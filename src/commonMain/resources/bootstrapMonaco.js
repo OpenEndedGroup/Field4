@@ -6,6 +6,7 @@ import {
         monacoStartSelectionMonitor,
         monacoHandleOutput,
         monacoLaunchAll,
+        monacoContinueAll,
         monacoKindForIcon,
         monacoGetEnclosingScope
 } from "./afield.mjs"
@@ -33,7 +34,7 @@ require(["vs/editor/editor.main"], function (e, is) {
         });
         require(["vs/basic-languages/yaml/yaml"], function (e, is) {
         });
-        require(["bithero/glsl", "bithero/forth"], function () {
+        require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/nano"], function () {
                 initMonaco()
                 require(["vs/platform/quickinput/common/quickInput"], function (is) {
                         initQuickPick(is)
@@ -52,6 +53,435 @@ const monacoLog = (...args) => {
 };
 
 const kindForIcon = monacoKindForIcon
+const SYMBOL_CONTEXT_DEBOUNCE_MS = 180
+const SYMBOL_CONTEXT_CACHE_MAX = 200
+const SYMBOL_CONTEXT_POLL_MS = 250
+
+const stopSymbolContextPolling = (editor) => {
+        if (!editor || editor._afieldSymbolContextPollTimer == null) return
+        clearInterval(editor._afieldSymbolContextPollTimer)
+        editor._afieldSymbolContextPollTimer = null
+}
+
+const captureBadgeViewState = (node) => {
+        const details = node && node.querySelector("details.afield-symbol-context-disclosure")
+        const body = node && node.querySelector(".afield-symbol-context-disclosure-body")
+        return {
+                detailsOpen: !!(details && details.open),
+                scrollTop: body ? body.scrollTop : 0,
+        }
+}
+
+const applyDisclosureLayout = (editor, node) => {
+        if (!node) return
+        const body = node.querySelector(".afield-symbol-context-disclosure-body")
+        if (!body) return
+        const layoutHeight = (editor && typeof editor.getLayoutInfo === "function" && editor.getLayoutInfo())
+                ? editor.getLayoutInfo().height
+                : ((editor && editor._domElement && editor._domElement.clientHeight) || 0)
+        const maxHeight = layoutHeight > 0 ? Math.min(200, Math.floor(layoutHeight / 2)) : 200
+        body.style.maxHeight = `${Math.max(0, maxHeight)}px`
+        body.style.overflow = "auto"
+}
+
+const syncSymbolContextPolling = (editor) => {
+        if (!editor) return
+        const meta = editor._afieldSymbolContextMeta
+        const node = editor && editor._domElement && editor._domElement.querySelector(".hoverlay-left")
+        const details = node && node.querySelector("details.afield-symbol-context-disclosure")
+        const shouldPoll = !!(meta && meta.isLiveValue && details && details.open)
+        if (!shouldPoll) {
+                stopSymbolContextPolling(editor)
+                return
+        }
+        if (editor._afieldSymbolContextPollTimer != null) return
+
+        editor._afieldSymbolContextPollTimer = setInterval(() => {
+                const request = buildSymbolContextRequest(editor, editor._afieldSymbolContextResolveContext, { allowUnfocused: true })
+                if (!request || !editor._afieldSymbolContextMeta || request.key !== editor._afieldSymbolContextMeta.key) {
+                        stopSymbolContextPolling(editor)
+                        return
+                }
+                const state = ensureSymbolContextState()
+                if (state.inFlight != null) return
+                dispatchSymbolContextRequest(request, { forceRefresh: true })
+        }, SYMBOL_CONTEXT_POLL_MS)
+}
+
+const attachDisclosureToggle = (editor, node) => {
+        if (!node) return
+        const details = node.querySelector("details.afield-symbol-context-disclosure")
+        if (!details) {
+                syncSymbolContextPolling(editor)
+                return
+        }
+        details.addEventListener("toggle", () => {
+                syncSymbolContextPolling(editor)
+        })
+}
+
+const setEditorContextBadge = (editor, payload = null) => {
+        const node = editor && editor._domElement && editor._domElement.querySelector(".hoverlay-left")
+        if (!node) return
+
+        const previousState = captureBadgeViewState(node)
+        const next = ((payload && payload.html) || "").trim()
+        if (next.length === 0) {
+                node.innerHTML = ""
+                node.style.opacity = "0"
+                node.style.pointerEvents = "none"
+                editor._afieldSymbolContextMeta = null
+                stopSymbolContextPolling(editor)
+                return
+        }
+
+        node.innerHTML = next
+        if (previousState.detailsOpen) {
+                const details = node.querySelector("details.afield-symbol-context-disclosure")
+                if (details) details.open = true
+        }
+        applyDisclosureLayout(editor, node)
+        const body = node.querySelector(".afield-symbol-context-disclosure-body")
+        if (body && previousState.detailsOpen) {
+                body.scrollTop = previousState.scrollTop
+        }
+        node.style.opacity = "1"
+        node.style.pointerEvents = "auto"
+        editor._afieldSymbolContextMeta = payload
+        attachDisclosureToggle(editor, node)
+        syncSymbolContextPolling(editor)
+}
+
+window.setEditorContextBadge = setEditorContextBadge
+
+const ensureSymbolContextState = () => {
+        if (!window.afieldSymbolContextState) {
+                        window.afieldSymbolContextState = {
+                        inFlight: null,
+                        queued: null,
+                        latestDesiredKey: null,
+                        lastNotifiedKey: null,
+                        cache: new Map(),
+                }
+        }
+        return window.afieldSymbolContextState
+}
+
+const trimSymbolContextCache = (cache) => {
+        while (cache.size > SYMBOL_CONTEXT_CACHE_MAX) {
+                const firstKey = cache.keys().next()
+                if (firstKey.done) break
+                cache.delete(firstKey.value)
+        }
+}
+
+const findIdentifierBounds = (text, offset) => {
+        if (!text || text.length === 0) return null
+        const safeOffset = Math.max(0, Math.min(offset, text.length))
+        const isIdentifierChar = (ch) => /[A-Za-z0-9_]/.test(ch)
+
+        let probe = -1
+        if (safeOffset < text.length && isIdentifierChar(text[safeOffset])) {
+                probe = safeOffset
+        } else if (safeOffset > 0 && isIdentifierChar(text[safeOffset - 1])) {
+                probe = safeOffset - 1
+        }
+        if (probe < 0) return null
+
+        let start = probe
+        while (start > 0 && isIdentifierChar(text[start - 1])) start--
+
+        let end = probe + 1
+        while (end < text.length && isIdentifierChar(text[end])) end++
+
+        if (end <= start) return null
+        return {
+                start,
+                end,
+                text: text.slice(start, end),
+        }
+}
+
+const escapeProbeHtml = (value) => String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+
+const newDebugProbeRequestId = () => {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+                return window.crypto.randomUUID()
+        }
+        return `debug-probe-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const buildDebugProbeRequest = (editor, resolveContext, positionOverride = null) => {
+        const model = editor && editor.getModel && editor.getModel()
+        if (!model || model.getLanguageId() !== "kotlin") return null
+
+        const context = resolveContext ? resolveContext(editor) : null
+        if (!context || !context.uid || !context.property) return null
+
+        const position = positionOverride || (editor.getPosition && editor.getPosition())
+        if (!position) return null
+
+        const allCode = model.getValue()
+        const offset = model.getOffsetAt(position)
+        const bounds = findIdentifierBounds(allCode, offset)
+        if (!bounds || !bounds.text) return null
+
+        return {
+                editor,
+                payload: {
+                        requestId: newDebugProbeRequestId(),
+                        uid: context.uid,
+                        property: context.property,
+                        allCode,
+                        line: position.lineNumber,
+                        position: offset,
+                        symbol: bounds.text,
+                        maxHits: 24,
+                        timeoutMs: 8000,
+                },
+        }
+}
+
+const findDebugProbeBox = (uid) => {
+        if (!uid || !document || !document.body) return null
+        const boxes = Array.from(document.body.getElementsByClassName("box"))
+        return boxes.find((box) => box && box.uid === uid) || null
+}
+
+const ensureDebugProbeOutputRoot = (uid, channel) => {
+        const box = findDebugProbeBox(uid)
+        if (!box) return null
+        const outputArea = box.querySelector && box.querySelector(".outputArea")
+        if (!outputArea) return null
+        outputArea.style.visibility = "visible"
+        outputArea.style.height = "auto"
+        const contain = outputArea.querySelector(".disclosure-group")
+        if (!contain || typeof window.disclosureInterface !== "function") return null
+        const inter = window.disclosureInterface(contain)
+        if (!inter || typeof inter.upsertDisclosure !== "function") return null
+        const channelId = channel || "debug probe"
+        const contentRoot = inter.upsertDisclosure(channelId, "Debug Probe", "")
+        if (typeof inter.open === "function") inter.open(channelId)
+        return contentRoot || null
+}
+
+const renderDebugProbeEvent = (editor, payload) => {
+        if (!payload) return
+        let html = typeof payload.html === "string" ? payload.html : ""
+        if (html.trim().length === 0) return
+        // Wrap debug probe output in a container that reduces font size by 30%, except for .h2 visualizer
+        html = `<div class='afield-debug-probe-root'>${html}</div>`
+        const root = ensureDebugProbeOutputRoot(payload.uid, payload.channel)
+        if (root && "innerHTML" in root) {
+                root.innerHTML = html
+                return
+        }
+        if (!editor || typeof window.addOutput !== "function") return
+        const line = Number(payload.line || 1)
+        const annotation = payload.annotation || ""
+        const sequence = Number(payload.sequence || Date.now())
+        window.addOutput(editor, html, line, "normal", annotation, sequence, -1, -1, -1)
+}
+
+const installDebugProbeDoubleClick = (editor, resolveContext) => {
+        if (!editor || editor._afieldDebugProbeInstalled) return
+        editor._afieldDebugProbeInstalled = true
+
+        editor.onMouseDown((e) => {
+                const altKey = !!(e && e.event && e.event.altKey)
+                const shiftKey = !!(e && e.event && e.event.shiftKey)
+                const detail = Number((e && e.event && e.event.detail) || 0)
+                if (!(altKey && shiftKey && detail === 2)) return
+
+                const position = e && e.target && e.target.position
+                const request = buildDebugProbeRequest(editor, resolveContext, position)
+                if (!request) return
+
+                const requestId = request.payload.requestId
+                const placeholder = {
+                        requestId,
+                        uid: request.payload.uid,
+                        channel: "debug probe",
+                        line: request.payload.line,
+                        annotation: `<i>debug ${escapeProbeHtml(request.payload.symbol)}</i>`,
+                        html: `<div style='min-width:320px; color:#ddd; font:10px/1.45 iosevka;'><div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap;'><div style='font-size:13px; color:#9ad;'><strong>debug probe</strong> <code>${escapeProbeHtml(request.payload.symbol)}</code></div><span style='display:inline-block; padding:2px 8px; border-radius:999px; background:rgba(56,92,152,0.32); color:#d8e7ff;'>waiting</span></div><div style='margin-top:8px; color:#c9ddff;'>Attaching to the JVM helper…</div></div>`,
+                        sequence: 0,
+                }
+                renderDebugProbeEvent(editor, placeholder)
+
+                window.afieldActiveDebugProbe = {
+                        requestId,
+                        editor,
+                        uid: request.payload.uid,
+                }
+
+                sendWithReply("debug-probe", request.payload, "debug-probe-event", (message, payload) => {
+                        const active = window.afieldActiveDebugProbe
+                        if (!active || !payload || payload.requestId !== active.requestId) return true
+                        renderDebugProbeEvent(active.editor, payload)
+                        if (payload.done) {
+                                window.afieldActiveDebugProbe = null
+                        }
+                        return true
+                })
+        })
+}
+
+window.installDebugProbeDoubleClick = installDebugProbeDoubleClick
+
+const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
+        const allowUnfocused = !!options.allowUnfocused
+        if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
+        const model = editor.getModel && editor.getModel()
+        if (!model || model.getLanguageId() !== "kotlin") return null
+
+        const context = resolveContext ? resolveContext(editor) : null
+        if (!context || !context.uid || !context.property) return null
+
+        const position = editor.getPosition && editor.getPosition()
+        if (!position) return null
+
+        const allCode = model.getValue()
+        const offset = model.getOffsetAt(position)
+        const bounds = findIdentifierBounds(allCode, offset)
+        if (!bounds || !bounds.text) return null
+
+        return {
+                key: `${context.uid}::${context.property}::${model.getVersionId()}::${bounds.start}:${bounds.end}`,
+                editor,
+                payload: {
+                        uid: context.uid,
+                        property: context.property,
+                        allCode,
+                        line: position.lineNumber,
+                        column: position.column,
+                        position: offset,
+                        forceRefresh: false,
+                },
+        }
+}
+
+const dispatchSymbolContextRequest = (request, options = {}) => {
+        const state = ensureSymbolContextState()
+        state.inFlight = request
+
+        const requestPayload = {
+                ...request.payload,
+                forceRefresh: !!options.forceRefresh,
+        }
+
+        sendWithReply("symbol-context", requestPayload, "symbol-context", (message, payload) => {
+                const completed = state.inFlight
+                state.inFlight = null
+
+                if (completed && payload && typeof payload.html === "string") {
+                        const cachedPayload = {
+                                html: payload.html || "",
+                                isLiveValue: !!payload.isLiveValue,
+                                key: completed.key,
+                        }
+                        if (!cachedPayload.isLiveValue) {
+                                state.cache.set(completed.key, cachedPayload)
+                                trimSymbolContextCache(state.cache)
+                        } else {
+                                state.cache.delete(completed.key)
+                        }
+
+                        if (state.latestDesiredKey === completed.key) {
+                                const previousHtml = completed.editor && completed.editor._afieldSymbolContextMeta
+                                        ? completed.editor._afieldSymbolContextMeta.html
+                                        : null
+                                if (previousHtml !== cachedPayload.html ||
+                                        !completed.editor._afieldSymbolContextMeta ||
+                                        completed.editor._afieldSymbolContextMeta.isLiveValue !== cachedPayload.isLiveValue) {
+                                        setEditorContextBadge(completed.editor, cachedPayload)
+                                } else {
+                                        completed.editor._afieldSymbolContextMeta = cachedPayload
+                                        syncSymbolContextPolling(completed.editor)
+                                }
+                                state.lastNotifiedKey = completed.key
+                        }
+                }
+
+                if (state.queued && (!completed || state.queued.key !== completed.key)) {
+                        const next = state.queued
+                        state.queued = null
+                        dispatchSymbolContextRequest(next)
+                }
+
+                return true
+        })
+}
+
+const queueSymbolContextRequest = (request) => {
+        const state = ensureSymbolContextState()
+        state.latestDesiredKey = request.key
+
+        if (state.lastNotifiedKey === request.key) return
+        if (state.inFlight && state.inFlight.key === request.key) return
+        if (state.queued && state.queued.key === request.key) return
+
+        if (state.cache.has(request.key)) {
+                const cached = state.cache.get(request.key)
+                if (cached && cached.isLiveValue) {
+                        state.cache.delete(request.key)
+                } else {
+                setEditorContextBadge(request.editor, cached)
+                state.lastNotifiedKey = request.key
+                return
+                }
+        }
+
+        if (state.inFlight) {
+                state.queued = request
+                return
+        }
+
+        dispatchSymbolContextRequest(request)
+}
+
+const installSymbolContextMonitor = (editor, resolveContext) => {
+        if (!editor || editor._afieldSymbolContextInstalled) return
+        editor._afieldSymbolContextInstalled = true
+        editor._afieldSymbolContextResolveContext = resolveContext
+
+        let debounceTimer = null
+        const schedule = () => {
+                if (debounceTimer !== null) clearTimeout(debounceTimer)
+                debounceTimer = setTimeout(() => {
+                        debounceTimer = null
+                        const request = buildSymbolContextRequest(editor, resolveContext)
+                        if (!request) {
+                                setEditorContextBadge(editor, "")
+                                return
+                        }
+                        queueSymbolContextRequest(request)
+                }, SYMBOL_CONTEXT_DEBOUNCE_MS)
+        }
+
+        editor.onDidChangeCursorPosition(() => {
+                stopSymbolContextPolling(editor)
+                schedule()
+        })
+        if (typeof editor.onDidFocusEditorText === "function") {
+                editor.onDidFocusEditorText(() => {
+                        schedule()
+                })
+        }
+        editor.onDidChangeModelContent(() => {
+                const state = ensureSymbolContextState()
+                state.lastNotifiedKey = null
+                stopSymbolContextPolling(editor)
+                schedule()
+        })
+    }
+
+window.installSymbolContextMonitor = installSymbolContextMonitor
 
 const isSuggestWidgetVisible = () => {
         const widget = document.querySelector('.editor-widget.suggest-widget');
@@ -78,6 +508,7 @@ const initMonaco = () => {
         }, '');
 
         var completionProvider = {
+                triggerCharacters: ['.'],
                 provideCompletionItems: (model, position, context, cancellationToken) => {
                         var word = model.getWordUntilPosition(position);
                         var languageId = model.getLanguageId()
@@ -104,18 +535,24 @@ const initMonaco = () => {
                                 return {suggestions: cached.merged || cached.base || [], incomplete: false}
                         }
 
-                        const basePayload = {
-                                uid: window.currentSelectedCode[0].uid,
-                                line: completionInfo.at[0],
-                                allCode: completionInfo.allCode,
-                                column: completionInfo.at[1],
-                                position: ed.getModel().getOffsetAt({
-                                        column: completionInfo.at[1], lineNumber: completionInfo.at[0]
-                                }),
-                                property: window.currentSelectedProperty
+// Resolve uid/property: check embedded editor first, fall back to main editor globals
+				const embEntry = window.embeddedEditors && window.embeddedEditors.getByModel(model);
+				const completionUid = embEntry ? embEntry.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
+				const completionProperty = embEntry ? embEntry.property : window.currentSelectedProperty;
+				if (!completionUid) return { suggestions: [] };
+
+				const basePayload = {
+					uid: completionUid,
+					line: completionInfo.at[0],
+					allCode: completionInfo.allCode,
+					column: completionInfo.at[1],
+					position: model.getOffsetAt({
+						column: completionInfo.at[1], lineNumber: completionInfo.at[0]
+					}),
+					property: completionProperty
                         }
 
-                        const rangeForPayload = (payload) => {
+                        const rangeForPayload = (payload, activeModel) => {
                                 if (payload.useLineColumns) {
                                         return {
                                                 startLineNumber: payload.lineStart,
@@ -124,8 +561,9 @@ const initMonaco = () => {
                                                 endColumn: payload.columnsStart + 1,
                                         }
                                 }
-                                var start = ed.getModel().getPositionAt(payload.boundsStart)
-                                var end = ed.getModel().getPositionAt(payload.boundsEnd)
+                                var completionModel = activeModel || model
+                                var start = completionModel.getPositionAt(payload.boundsStart)
+                                var end = completionModel.getPositionAt(payload.boundsEnd)
                                 return {
                                         startLineNumber: start.lineNumber,
                                         endLineNumber: end.lineNumber,
@@ -136,7 +574,7 @@ const initMonaco = () => {
 
                         const buildSuggestions = (payload, opts = {}) => {
                                 let idx = opts.offset || 0
-                                const rangeObj = rangeForPayload(payload)
+                                const rangeObj = rangeForPayload(payload, opts.model || model)
                                 return payload.metadata.map(m => {
                                         let command = null
                                         if (m.prefix) {
@@ -147,17 +585,18 @@ const initMonaco = () => {
                                                 }
                                         }
 
-                                        const sortPrefix = opts.ai ? "0000" : "1000"
+                                        const sortPrefix = opts.ai ? "9000" : "1000"
                                         const sortText = sortPrefix + (idx++).toString(36).padStart(6, "0")
 
                                         return {
                                                 label: m.displayText,
                                                 insertText: m.text,
+                                                filterText: m.text,
                                                 range: rangeObj,
                                                 kind: kindForIcon(m.icon),
                                                 detail: m.tail,
                                                 sortText: sortText,
-                                                preselect: !!opts.ai,
+                                                preselect: false,
                                                 documentation: {
                                                         value: m.documentation,
                                                         isTrusted: true,
@@ -191,18 +630,21 @@ const initMonaco = () => {
                                 sendWithReply("complete-kotlin-ai", basePayload, "complete-kotlin-ai", (message, payload) => {
                                         if (window.currentEditorGeneration !== currentGen) return true
                                         if (!window.kotlinAiCompletion || window.kotlinAiCompletion.key !== sessionKey) return true
-                                        const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true})
+                                        const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true, model})
                                         window.kotlinAiCompletion.ai = aiSuggestions
-                                        window.kotlinAiCompletion.merged = (window.kotlinAiCompletion.base || []).concat(aiSuggestions)
-                                        if (aiSuggestions.length > 0) {
+                                        const baseExisting = window.kotlinAiCompletion.base || []
+                                        const hasBase = baseExisting.length > 0
+                                        window.kotlinAiCompletion.merged = hasBase ? baseExisting : aiSuggestions
+                                        if (!hasBase && aiSuggestions.length > 0) {
                                                 window.kotlinAiCompletion.useCacheOnce = true
                                                 if (isSuggestWidgetVisible()) {
                                                         try {
-                                                                if (globalEditor && globalEditor.trigger) {
+                                                                const activeEditor = embEntry ? embEntry.editor : globalEditor
+                                                                if (activeEditor && activeEditor.trigger) {
                                                                         // Close then re-open to refresh items only if user still has the picker open.
-                                                                        globalEditor.trigger("afield-ai", "hideSuggestWidget", {})
+                                                                        activeEditor.trigger("afield-ai", "hideSuggestWidget", {})
                                                                         setTimeout(() => {
-                                                                                globalEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
+                                                                                activeEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
                                                                         }, 0)
                                                                 }
                                                         } catch (_) {
@@ -218,10 +660,10 @@ const initMonaco = () => {
 
                                         if (window.currentEditorGeneration !== currentGen) return true
 
-                                        const baseSuggestions = buildSuggestions(payload, {offset: 0})
+                                        const baseSuggestions = buildSuggestions(payload, {offset: 0, model})
                                         window.kotlinAiCompletion.base = baseSuggestions
                                         const aiExisting = window.kotlinAiCompletion.ai || []
-                                        window.kotlinAiCompletion.merged = aiExisting.length > 0 ? baseSuggestions.concat(aiExisting) : baseSuggestions
+                                        window.kotlinAiCompletion.merged = baseSuggestions.length > 0 ? baseSuggestions : aiExisting
 
                                         monacoLog("resolving. Answer is ", {suggestions: baseSuggestions})
                                         resolve({suggestions: baseSuggestions})
@@ -236,23 +678,36 @@ const initMonaco = () => {
                                 if (!item || !item.data) return item
                                 if (item.data.aiDocResolved || item.data.aiDocPending) return item
                                 if (item.data.source !== "kotlin") return item
-                                if (!globalEditor || !globalEditor.getModel) return item
-                                var model = globalEditor.getModel()
+                                const existingDocValue = (item.documentation && item.documentation.value) ? item.documentation.value.trim() : ""
+                                if (existingDocValue.length > 0) {
+                                        item.data.aiDocResolved = true
+                                        return item
+                                }
+
+                                // Find the right editor+model: check focused embedded editor first, fall back to globalEditor
+                                const embFocused = window.embeddedEditors && window.embeddedEditors.getFocused();
+                                const resolveEditor = embFocused ? embFocused.editor : globalEditor;
+                                if (!resolveEditor || !resolveEditor.getModel) return item
+                                var model = resolveEditor.getModel()
                                 if (!model) return item
-                                var pos = globalEditor.getPosition()
+                                var pos = resolveEditor.getPosition()
                                 if (!pos) return item
+
+                                const resolveUid = embFocused ? embFocused.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
+                                const resolveProperty = embFocused ? embFocused.property : window.currentSelectedProperty;
+                                if (!resolveUid) return item;
 
                                 item.data.aiDocPending = true
                                 var rawLabel = item.label
                                 var labelText = (typeof rawLabel === "string") ? rawLabel : ((rawLabel && rawLabel.label) ? rawLabel.label : "")
                                 var payload = {
-                                        uid: window.currentSelectedCode[0].uid,
-                                        property: window.currentSelectedProperty,
+                                        uid: resolveUid,
+                                        property: resolveProperty,
                                         label: labelText || "",
                                         insertText: item.data.insertText || item.insertText || "",
                                         detail: item.data.detail || item.detail || "",
                                         displayText: item.data.displayText || labelText || "",
-                                        existingDocumentation: (item.documentation && item.documentation.value) ? item.documentation.value : "",
+                                        existingDocumentation: existingDocValue,
                                         allCode: model.getValue(),
                                         line: pos.lineNumber,
                                         column: pos.column,
@@ -290,7 +745,9 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("python", completionProvider)
         monaco.languages.registerCompletionItemProvider("clojure", completionProvider)
         monaco.languages.registerCompletionItemProvider("glsl", completionProvider)
+        monaco.languages.registerCompletionItemProvider("slang", completionProvider)
         monaco.languages.registerCompletionItemProvider("forth", completionProvider)
+        monaco.languages.registerCompletionItemProvider("nano", completionProvider)
         monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 
@@ -301,46 +758,100 @@ const initMonaco = () => {
                 clearAllDecorations()
         })
 
+        installSymbolContextMonitor(ed, () => {
+                const selected = window.currentSelectedCode || []
+                if (!selected[0] || !selected[0].uid) return null
+                return {
+                        uid: selected[0].uid,
+                        property: window.currentSelectedProperty || "code",
+                }
+        })
+        installDebugProbeDoubleClick(ed, () => {
+                const selected = window.currentSelectedCode || []
+                if (!selected[0] || !selected[0].uid) return null
+                return {
+                        uid: selected[0].uid,
+                        property: window.currentSelectedProperty || "code",
+                }
+        })
+
         beginLineTracking(globalEditor)
         initMarkerSupport(globalEditor)
 }
 
-const setBoxRunning = (uid, isRunning, watermark, strand) => {
-        // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand)
+const syncBoxRunningClass = (box) => {
+        box.classList.remove("running", "running-continued", "running-ending")
+        const runningEntries = box.runningEntries ?? new Map()
+        if (runningEntries.size === 0) return
+
+        const modes = [...runningEntries.values()]
+        const hasFreshLaunch = modes.some((mode) => mode !== "continue" && mode !== "ending")
+        const hasEndingOnly = !hasFreshLaunch && modes.some((mode) => mode === "ending")
+        box.classList.add(hasFreshLaunch ? "running" : hasEndingOnly ? "running-ending" : "running-continued")
+}
+
+const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
+        // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand, mode)
         let first = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
         let name = `${watermark}--${strand}`
         if (first) {
                 // Track the highest watermark per strand to ignore stale stop signals
                 first.latestWatermark = first.latestWatermark ?? new Map()
+                first.runningEntries = first.runningEntries ?? new Map()
                 const lastWatermark = first.latestWatermark.get(strand) ?? -Infinity
 
-                // console.log(" is running ", first, first.runningList, watermark, isRunning)
+                const parseRunningEntry = (entryName) => {
+                        const separatorIndex = entryName.indexOf("--")
+                        if (separatorIndex <= 0) return null
+                        const entryWatermark = Number(entryName.substring(0, separatorIndex))
+                        const entryStrand = entryName.substring(separatorIndex + 2)
+                        if (!Number.isFinite(entryWatermark)) return null
+                        return { entryWatermark, entryStrand }
+                }
+
+                // console.log(" is running ", first, first.runningEntries, watermark, isRunning, mode)
                 if (isRunning) {
-                        first.classList.add("running");
-                        first.runningList = first.runningList ?? new Set()
-                        first.runningList.add(name)
+                        // Ignore delayed start events for a strand when we have already seen a newer watermark.
+                        if (watermark < lastWatermark) return
+
+                        first.runningEntries.set(name, mode)
                         if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
-                        setStatusForExecutionMarker(strand, true)
+                        syncBoxRunningClass(first)
+                        setStatusForExecutionMarker(strand, true, mode)
 
                 } else {
                         // Ignore stop messages that are older than the latest start we saw
                         if (watermark < lastWatermark) return
-                        first.runningList = first.runningList ?? new Set()
 
-                        setStatusForExecutionMarker(strand, false)
+                        setStatusForExecutionMarker(strand, false, mode)
 
-                        if (first.runningList.delete(name)) {
-
-                        } else {
-                                // TODO
-                                monacoLog("tried to remove a watermark that wasn't there; clearing running list")
-                                first.runningList.clear()
+                        let removedAny = false
+                        if (first.runningEntries.delete(name)) {
+                                removedAny = true
                         }
+
+                        // Also prune any stale entries for this strand that are at or below this stop watermark.
+                        for (const runningEntryName of [...first.runningEntries.keys()]) {
+                                const parsed = parseRunningEntry(runningEntryName)
+                                if (!parsed) continue
+                                if (parsed.entryStrand !== strand) continue
+                                if (parsed.entryWatermark <= watermark) {
+                                        first.runningEntries.delete(runningEntryName)
+                                        removedAny = true
+                                }
+                        }
+
+                        if (!removedAny) {
+                                // TODO
+                                monacoLog("tried to remove a watermark that wasn't there; clearing running state")
+                                first.runningEntries.clear()
+                        }
+                        syncBoxRunningClass(first)
                         setTimeout(() => {
-                                if (first.runningList.size === 0) first.classList.remove("running")
+                                syncBoxRunningClass(first)
                         }, 100)
                 }
-                // console.log(" outOfrunning ", first, first.runningList, watermark, isRunning)
+                // console.log(" outOfrunning ", first, first.runningEntries, watermark, isRunning, mode)
         } else {
                 console.warn("warning: tried to set running status on something that doesn't exist?", uid)
         }
@@ -439,7 +950,11 @@ window.addEventListener("resize", syncDocsIframeBoundsToMonaco)
 window.addEventListener("keydown", (e) => {
             const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p';
             if (e.key === "F1" || isCtrlOrCmdP) {
-
+                    // If an embedded editor has focus, let it handle F1 itself
+                    // (it has its own command palette action registered)
+                    if (window.embeddedEditors && window.embeddedEditors.getFocused()) {
+                            return;
+                    }
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     openQuickCommandPalette()
@@ -460,11 +975,14 @@ const isMonacoTextTarget = (el) => {
 const isMonacoTextFocused = () => {
         const ed = window.globalEditor
         if (ed && typeof ed.hasTextFocus === "function" && ed.hasTextFocus()) return true
+        if (window.embeddedEditors && window.embeddedEditors.getFocused()) return true
         return isMonacoTextTarget(document.activeElement)
 }
 
 const runMonacoAction = (id) => {
-        const ed = window.globalEditor
+        // Prefer the focused embedded editor, fall back to the main editor
+        const emb = window.embeddedEditors && window.embeddedEditors.getFocused();
+        const ed = emb ? emb.editor : window.globalEditor;
         if (!ed) return false
         try {
                 const action = ed.getAction && ed.getAction(id)
@@ -572,7 +1090,17 @@ window.handleOutput = monacoHandleOutput
 window.hideMonaco = hideMonaco
 window.showMonaco = showMonaco
 window.launchAll = monacoLaunchAll
+window.continueAll = monacoContinueAll
 
+// Style for debug probe font size reduction, except for .h2 visualizer
+if (typeof document !== "undefined") {
+        const style = document.createElement("style");
+        style.innerHTML = `
+                .afield-debug-probe-root { font-size: 70% !important; }
+                .afield-debug-probe-root .h2, .afield-debug-probe-root.h2 { font-size: revert !important; }
+        `;
+        document.head.appendChild(style);
+}
 // Documentation iframe support
 let docsIframeAnimationGeneration = 0
 

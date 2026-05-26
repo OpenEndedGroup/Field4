@@ -11,9 +11,10 @@
             --bg: #0f0f10;
             --ink: #e8f0fb;
             --muted: rgba(232, 240, 251, 0.65);
-            --accent: #5de4c7;
-            --panel: rgba(8, 12, 18, 0.7);
+            --accent: #62d7ff;
             --border: rgba(255, 255, 255, 0.08);
+            --selection: rgba(255, 211, 92, 0.95);
+            --selection-soft: rgba(255, 211, 92, 0.22);
         }
 
         * { box-sizing: border-box; }
@@ -27,7 +28,7 @@
         }
 
         body {
-            font-family: "Iosevka Web", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-family: "Iosevka Web", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             color: var(--ink);
             background: var(--bg);
         }
@@ -37,39 +38,156 @@
             inset: 0;
         }
 
+        #canvas-wrap canvas:focus,
+        #canvas-wrap canvas:focus-visible {
+            outline: none;
+        }
+
         #hud {
             position: absolute;
-            top: 0;
-            right: 0;
+            top: 6px;
+            left: 6px;
+            right: 6px;
             z-index: 10;
-            padding: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
             pointer-events: none;
         }
 
-        #hud .meta {
-            font-size: 12px;
-            color: var(--muted);
-            text-rendering: geometricPrecision;
+        #hud-left,
+        #hud-right {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }
 
-        #hud .status {
+        #hud-right {
+            margin-left: auto;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .hud-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px;
+            border-radius: 6px;
+            border: 1px solid rgba(98, 215, 255, 0.16);
+            background: transparent;
+            pointer-events: auto;
+        }
+
+        .hud-button {
+            appearance: none;
+            border: 1px solid rgba(98, 215, 255, 0.16);
+            border-radius: 5px;
+            background: transparent;
+            color: #a7dfff;
+            font: inherit;
+            height: 22px;
+            min-width: 22px;
+            padding: 0 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .hud-button.is-icon {
+            width: 22px;
+            padding: 0;
+        }
+
+        .hud-button.is-active {
+            color: #071015;
+            background: var(--accent);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .hud-button svg {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.6;
+        }
+
+        .hud-label,
+        .meta,
+        .selection-status {
             font-size: 11px;
             color: var(--muted);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            text-align: right;
         }
-        #hud .meta b {
+
+        .meta b {
             color: var(--ink);
             font-weight: 700;
         }
-        #hud .meta span {
+
+        .meta span {
             font-weight: 100;
             letter-spacing: 0.04em;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .selection-status.is-empty {
+            visibility: hidden;
+        }
+
+        #marquee {
+            position: absolute;
+            z-index: 9;
+            border: 1px dashed rgba(98, 215, 255, 0.86);
+            background: rgba(98, 215, 255, 0.1);
+            pointer-events: none;
+            display: none;
         }
     </style>
 </head>
 <body>
 <div id="canvas-wrap"></div>
+<div id="marquee"></div>
 <div id="hud">
-    <div class="meta" id="meta">waiting for data...</div>
+    <div id="hud-left">
+        <div class="hud-group hidden" id="mode-group" aria-label="Three.js viewer tools">
+            <button type="button" class="hud-button is-icon is-active" data-mode="camera" aria-label="Camera tool" title="Camera tool">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 5.2h2.1l1-1.4h3.8l1 1.4H13a1.2 1.2 0 0 1 1.2 1.2v4.4A1.2 1.2 0 0 1 13 12H3a1.2 1.2 0 0 1-1.2-1.2V6.4A1.2 1.2 0 0 1 3 5.2Z"></path>
+                    <circle cx="8" cy="8.5" r="2.2"></circle>
+                </svg>
+            </button>
+            <button type="button" class="hud-button is-icon" data-mode="edit" aria-label="Edit tool" title="Edit tool">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 11.8 2.6 13.4 4.2 13l6.7-6.7-1.2-1.2L3 11.8Z"></path>
+                    <path d="M8.9 4.9 10.1 3.7a1.1 1.1 0 0 1 1.6 0l.6.6a1.1 1.1 0 0 1 0 1.6l-1.2 1.2"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="hud-group hidden" id="mask-group" aria-label="Selection masks">
+            <button type="button" class="hud-button is-icon is-active" data-mask="point" aria-label="Toggle vertex selection" title="Vertex selection">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.4"></circle></svg>
+            </button>
+            <button type="button" class="hud-button is-icon is-active" data-mask="edge" aria-label="Toggle edge selection" title="Edge selection">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 12.5 L13.5 3.5"></path></svg>
+            </button>
+            <button type="button" class="hud-button is-icon is-active" data-mask="face" aria-label="Toggle fill selection" title="Fill selection">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4 L13.2 12.6 L2.8 12.6 Z"></path></svg>
+            </button>
+        </div>
+    </div>
+    <div id="hud-right">
+        <div class="selection-status is-empty hidden" id="selection-status"></div>
+        <div class="meta" id="meta">waiting for data...</div>
+    </div>
 </div>
 
 <script type="importmap">
@@ -81,359 +199,1874 @@
     }
 </script>
 <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        const container = document.getElementById('canvas-wrap');
-        const metaEl = document.getElementById('meta');
-        const urlParams = new URLSearchParams(window.location.search);
+const container = document.getElementById('canvas-wrap');
+const marqueeEl = document.getElementById('marquee');
+const metaEl = document.getElementById('meta');
+const selectionStatusEl = document.getElementById('selection-status');
+const modeGroupEl = document.getElementById('mode-group');
+const maskGroupEl = document.getElementById('mask-group');
+const urlParams = new URLSearchParams(window.location.search);
 
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: true,
-            powerPreference: 'high-performance'
-        });
-        function getDpr() {
-            const override = parseFloat(urlParams.get('dpr'));
-            if (Number.isFinite(override) && override > 0) return override;
-            return Math.max(2, window.devicePixelRatio || 1);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+function getDpr() {
+    const override = parseFloat(urlParams.get('dpr'));
+    if (Number.isFinite(override) && override > 0) return override;
+    return Math.max(2, window.devicePixelRatio || 1);
+}
+renderer.setPixelRatio(getDpr());
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.domElement.style.width = '100%';
+renderer.domElement.style.height = '100%';
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.01, 10000);
+camera.position.set(1.4, 1.2, 2.3);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.7;
+controls.zoomSpeed = 0.9;
+controls.panSpeed = 0.6;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
+keyLight.position.set(5, 8, 6);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x88ccff, 0.3);
+rimLight.position.set(-6, -3, 4);
+scene.add(rimLight);
+
+const grid = new THREE.GridHelper(10, 20, 0x3a4d66, 0x273447);
+grid.rotation.x = Math.PI / 2;
+if (Array.isArray(grid.material)) {
+    grid.material.forEach((mat) => {
+        mat.opacity = 0.55;
+        mat.transparent = true;
+    });
+} else {
+    grid.material.opacity = 0.55;
+    grid.material.transparent = true;
+}
+scene.add(grid);
+
+const axes = new THREE.AxesHelper(0.9);
+axes.material.depthTest = false;
+axes.renderOrder = 1;
+scene.add(axes);
+
+const baseGeometryRoot = new THREE.Group();
+const editorOverlayRoot = new THREE.Group();
+scene.add(baseGeometryRoot);
+scene.add(editorOverlayRoot);
+
+let pointMaterial = null;
+let interactiveObjects = [];
+let editableHitObjects = [];
+let payloadState = { editable: null };
+const payloadGeometrySlots = {
+    lines: null,
+    fills: null,
+    points: null,
+    interactive: []
+};
+const editableGeometrySlots = {
+    lines: [],
+    points: [],
+    faces: []
+};
+let cameraPointerDown = null;
+let cameraIsDragging = false;
+let hasFramedInitialGeometry = false;
+
+const raycaster = new THREE.Raycaster();
+raycaster.params.Line = { threshold: 0.06 };
+raycaster.params.Points = { threshold: 1.5 };
+
+const pointer = new THREE.Vector2();
+const DRAG_THRESHOLD_PX = 4;
+const EDGE_SAMPLES = 24;
+
+const editorState = {
+    mode: 'camera',
+    uiVisible: true,
+    scene: null,
+    selection: new Set(),
+    mask: { point: true, edge: true, face: true },
+    items: new Map(),
+    points: [],
+    edges: [],
+    faces: [],
+    handleRadius: 0.05,
+    pointerDown: null,
+    dragging: null,
+    marquee: null
+};
+
+function vec3FromArray(value) {
+    return new THREE.Vector3(value[0], value[1], value[2]);
+}
+
+function arrayFromVec3(value) {
+    return [value.x, value.y, value.z];
+}
+
+function cubicPoint(a, c1, c2, b, t) {
+    const mt = 1 - t;
+    const mt2 = mt * mt;
+    const t2 = t * t;
+    return [
+        (mt2 * mt * a[0]) + (3 * mt2 * t * c1[0]) + (3 * mt * t2 * c2[0]) + (t2 * t * b[0]),
+        (mt2 * mt * a[1]) + (3 * mt2 * t * c1[1]) + (3 * mt * t2 * c2[1]) + (t2 * t * b[1]),
+        (mt2 * mt * a[2]) + (3 * mt2 * t * c1[2]) + (3 * mt * t2 * c2[2]) + (t2 * t * b[2])
+    ];
+}
+
+function sampleCubic(a, c1, c2, b, count = EDGE_SAMPLES) {
+    const out = [];
+    for (let i = 0; i <= count; i += 1) {
+        out.push(cubicPoint(a, c1, c2, b, i / count));
+    }
+    return out;
+}
+
+function pointRef(lineIndex, nodeIndex, handle) {
+    return { lineIndex, nodeIndex, handle };
+}
+
+function pointRefKey(ref) {
+    return `${ref.lineIndex}:${ref.nodeIndex}:${ref.handle}`;
+}
+
+function itemKey(kind, parts) {
+    return `${kind}:${parts.join(':')}`;
+}
+
+function cloneRef(ref) {
+    return { lineIndex: ref.lineIndex, nodeIndex: ref.nodeIndex, handle: ref.handle };
+}
+
+function uniqueRefs(refs) {
+    const seen = new Set();
+    const out = [];
+    refs.forEach((ref) => {
+        const key = pointRefKey(ref);
+        if (!seen.has(key)) {
+            seen.add(key);
+            out.push(cloneRef(ref));
         }
-        renderer.setPixelRatio(getDpr());
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setClearColor(0x000000, 0);
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.domElement.style.width = '100%';
-        renderer.domElement.style.height = '100%';
-        container.appendChild(renderer.domElement);
+    });
+    return out;
+}
 
-        const scene = new THREE.Scene();
+function getNodePoint(node, handle) {
+    if (handle === 'TO') return node.to;
+    if (handle === 'C1') return node.c1;
+    if (handle === 'C2') return node.c2;
+    return null;
+}
 
-        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.01, 10000);
-        camera.position.set(1.4, 1.2, 2.3);
+function resolveRefPoint(sceneData, ref) {
+    const line = sceneData.lines[ref.lineIndex];
+    if (!line) return null;
+    const node = line.nodes[ref.nodeIndex];
+    if (!node) return null;
+    return getNodePoint(node, ref.handle);
+}
 
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        controls.rotateSpeed = 0.7;
-        controls.zoomSpeed = 0.9;
-        controls.panSpeed = 0.6;
+function translatePointRefs(sceneData, refs, dx, dy, dz) {
+    uniqueRefs(refs).forEach((ref) => {
+        const point = resolveRefPoint(sceneData, ref);
+        if (!point) return;
+        point[0] += dx;
+        point[1] += dy;
+        point[2] += dz;
+    });
+}
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambient);
-        const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
-        keyLight.position.set(5, 8, 6);
-        scene.add(keyLight);
-        const rimLight = new THREE.DirectionalLight(0x88ccff, 0.3);
-        rimLight.position.set(-6, -3, 4);
-        scene.add(rimLight);
+function buildEditorItems(sceneData) {
+    const items = new Map();
+    const points = [];
+    const edges = [];
+    const faces = [];
 
-        const grid = new THREE.GridHelper(10, 20, 0x3a4d66, 0x273447);
-        grid.rotation.x = Math.PI / 2;
-        if (Array.isArray(grid.material)) {
-            grid.material.forEach((mat) => {
-                mat.opacity = 0.55;
-                mat.transparent = true;
-            });
-        } else {
-            grid.material.opacity = 0.55;
-            grid.material.transparent = true;
-        }
-        scene.add(grid);
+    sceneData.lines.forEach((line) => {
+        const pieces = [];
+        let currentPiece = null;
+        let previousAnchor = null;
+        let firstAnchor = null;
+        let previousAnchorPoint = null;
 
-        const axes = new THREE.AxesHelper(0.9);
-        axes.material.depthTest = false;
-        axes.renderOrder = 1;
-        scene.add(axes);
-
-        const geometryRoot = new THREE.Group();
-        scene.add(geometryRoot);
-
-        let pointMaterial = null;
-
-        function disposeObject(obj) {
-            obj.traverse((child) => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (Array.isArray(child.material)) child.material.forEach((mat) => mat.dispose());
-                    else child.material.dispose();
-                }
-            });
-        }
-
-        function clearGeometry() {
-            geometryRoot.children.forEach((child) => disposeObject(child));
-            geometryRoot.clear();
-        }
-
-        function buildGeometry(data) {
-            if (!data || !data.attributes || !data.attributes.position) return null;
-            const geometry = new THREE.BufferGeometry();
-            const pos = data.attributes.position;
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos.array, pos.itemSize));
-
-            const col = data.attributes.color;
-            if (col) geometry.setAttribute('color', new THREE.Float32BufferAttribute(col.array, col.itemSize));
-
-            const alpha = data.attributes.alpha;
-            if (alpha) geometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alpha.array, alpha.itemSize));
-
-            const size = data.attributes.size;
-            if (size) geometry.setAttribute('size', new THREE.Float32BufferAttribute(size.array, size.itemSize));
-
-            if (data.index && data.index.array && data.index.array.length) {
-                geometry.setIndex(data.index.array);
+        function ensurePiece() {
+            if (!currentPiece) {
+                currentPiece = {
+                    lineIndex: line.lineIndex,
+                    pieceIndex: pieces.length,
+                    nodeIndices: [],
+                    pointRefs: [],
+                    boundary: [],
+                    closed: false
+                };
+                pieces.push(currentPiece);
             }
-            geometry.computeBoundingSphere();
-            return geometry;
+            return currentPiece;
         }
 
-        function ensureAttribute(geometry, name, itemSize, fillValue) {
-            if (geometry.getAttribute(name)) return;
-            const count = geometry.getAttribute('position').count;
-            const array = new Float32Array(count * itemSize);
-            if (Array.isArray(fillValue)) {
-                for (let i = 0; i < count; i += 1) {
-                    for (let c = 0; c < itemSize; c += 1) {
-                        array[i * itemSize + c] = fillValue[Math.min(c, fillValue.length - 1)];
+        function addPointItem(node, handle, role, point) {
+            const ref = pointRef(line.lineIndex, node.nodeIndex, handle);
+            const key = itemKey('point', [line.lineIndex, node.nodeIndex, handle]);
+            const item = {
+                kind: 'point',
+                key,
+                pointRefs: [ref],
+                x: point[0],
+                y: point[1],
+                z: point[2],
+                role
+            };
+            items.set(key, item);
+            points.push(item);
+            return ref;
+        }
+
+        function addAnchor(node, point) {
+            const piece = ensurePiece();
+            const ref = addPointItem(node, 'TO', 'anchor', point);
+            piece.pointRefs.push(ref);
+            piece.boundary.push(point.slice());
+            if (!firstAnchor) firstAnchor = ref;
+            previousAnchor = ref;
+            previousAnchorPoint = point;
+            return ref;
+        }
+
+        line.nodes.forEach((node) => {
+            if (node.kind === 'move') {
+                currentPiece = null;
+                previousAnchor = null;
+                firstAnchor = null;
+                previousAnchorPoint = null;
+                const movePiece = ensurePiece();
+                movePiece.nodeIndices.push(node.nodeIndex);
+                addAnchor(node, node.to);
+                return;
+            }
+
+            if (node.kind === 'line') {
+                const linePiece = ensurePiece();
+                linePiece.nodeIndices.push(node.nodeIndex);
+                const previousForLine = previousAnchor ? cloneRef(previousAnchor) : null;
+                const startPoint = previousAnchorPoint ? previousAnchorPoint.slice() : null;
+                const nextAnchor = addAnchor(node, node.to);
+                if (previousForLine && startPoint) {
+                    const edgeItem = {
+                        kind: 'edge',
+                        key: itemKey('edge', [line.lineIndex, linePiece.pieceIndex, linePiece.nodeIndices.length]),
+                        pointRefs: [cloneRef(previousForLine), cloneRef(nextAnchor)],
+                        points: [startPoint, node.to.slice()],
+                        lineIndex: line.lineIndex
+                    };
+                    items.set(edgeItem.key, edgeItem);
+                    edges.push(edgeItem);
+                }
+                previousAnchor = nextAnchor;
+                previousAnchorPoint = node.to;
+                return;
+            }
+
+            if (node.kind === 'cubic') {
+                const cubicPiece = ensurePiece();
+                cubicPiece.nodeIndices.push(node.nodeIndex);
+                const previousForCubic = previousAnchor ? cloneRef(previousAnchor) : null;
+                const startPoint = previousAnchorPoint ? previousAnchorPoint.slice() : null;
+                const c1Ref = addPointItem(node, 'C1', 'control', node.c1);
+                const c2Ref = addPointItem(node, 'C2', 'control', node.c2);
+                cubicPiece.pointRefs.push(c1Ref, c2Ref);
+                const endRef = addAnchor(node, node.to);
+                if (previousForCubic && startPoint) {
+                    const samples = sampleCubic(startPoint, node.c1, node.c2, node.to);
+                    for (let i = 1; i < samples.length; i += 1) {
+                        cubicPiece.boundary.push(samples[i].slice());
+                    }
+                    const edgeItem = {
+                        kind: 'edge',
+                        key: itemKey('edge', [line.lineIndex, cubicPiece.pieceIndex, cubicPiece.nodeIndices.length]),
+                        pointRefs: [cloneRef(previousForCubic), cloneRef(c1Ref), cloneRef(c2Ref), cloneRef(endRef)],
+                        points: samples,
+                        lineIndex: line.lineIndex
+                    };
+                    items.set(edgeItem.key, edgeItem);
+                    edges.push(edgeItem);
+                }
+                previousAnchor = endRef;
+                previousAnchorPoint = node.to;
+                return;
+            }
+
+            if (node.kind === 'close') {
+                const closePiece = ensurePiece();
+                closePiece.nodeIndices.push(node.nodeIndex);
+                closePiece.closed = true;
+                if (previousAnchor && firstAnchor && previousAnchorPoint) {
+                    const firstPoint = resolveRefPoint(sceneData, firstAnchor);
+                    if (firstPoint) {
+                        const closeEdge = {
+                            kind: 'edge',
+                            key: itemKey('edge', [line.lineIndex, closePiece.pieceIndex, closePiece.nodeIndices.length]),
+                            pointRefs: [cloneRef(previousAnchor), cloneRef(firstAnchor)],
+                            points: [previousAnchorPoint.slice(), firstPoint.slice()],
+                            lineIndex: line.lineIndex
+                        };
+                        items.set(closeEdge.key, closeEdge);
+                        edges.push(closeEdge);
                     }
                 }
-            } else {
-                array.fill(fillValue);
+                currentPiece = null;
+                previousAnchor = null;
+                firstAnchor = null;
+                previousAnchorPoint = null;
             }
-            geometry.setAttribute(name, new THREE.BufferAttribute(array, itemSize));
-        }
+        });
 
-        function addLines(data) {
-            const geometry = buildGeometry(data);
-            if (!geometry) return;
+        pieces.forEach((piece) => {
+            if (!piece.closed || piece.boundary.length < 3) return;
+            const faceItem = {
+                kind: 'face',
+                key: itemKey('face', [line.lineIndex, piece.pieceIndex]),
+                pointRefs: uniqueRefs(piece.pointRefs),
+                boundary: piece.boundary.map((point) => point.slice()),
+                lineIndex: line.lineIndex
+            };
+            items.set(faceItem.key, faceItem);
+            faces.push(faceItem);
+        });
+    });
+
+    return { items, points, edges, faces };
+}
+
+function selectedItems(state) {
+    return Array.from(state.selection).map((key) => state.items.get(key)).filter(Boolean);
+}
+
+function selectionRefs(state) {
+    const refs = [];
+    selectedItems(state).forEach((item) => refs.push(...(item.pointRefs || [])));
+    return uniqueRefs(refs);
+}
+
+function updateSelectionStatus() {
+    if (editorState.mode !== 'edit' || !editorState.scene || !editorState.uiVisible) {
+        selectionStatusEl.classList.add('hidden');
+        return;
+    }
+    const counts = { point: 0, edge: 0, face: 0 };
+    selectedItems(editorState).forEach((item) => {
+        counts[item.kind] = (counts[item.kind] || 0) + 1;
+    });
+    const parts = [];
+    if (counts.point) parts.push(`${counts.point} point${counts.point === 1 ? '' : 's'}`);
+    if (counts.edge) parts.push(`${counts.edge} edge${counts.edge === 1 ? '' : 's'}`);
+    if (counts.face) parts.push(`${counts.face} face${counts.face === 1 ? '' : 's'}`);
+    selectionStatusEl.classList.remove('hidden');
+    if (parts.length) {
+        selectionStatusEl.textContent = parts.join(' | ');
+        selectionStatusEl.classList.remove('is-empty');
+    } else {
+        selectionStatusEl.textContent = '';
+        selectionStatusEl.classList.add('is-empty');
+    }
+}
+
+function applySelection(keys, additive) {
+    const next = additive ? new Set(editorState.selection) : new Set();
+    keys.forEach((key) => next.add(key));
+    editorState.selection = next;
+    rebuildEditableView();
+}
+
+function toggleSelection(key) {
+    const next = new Set(editorState.selection);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    editorState.selection = next;
+    rebuildEditableView();
+}
+
+function updateMeta(meta) {
+    if (!meta) {
+        metaEl.textContent = 'no geometry';
+        return;
+    }
+    metaEl.innerHTML = `<b>${meta.lineSegments}</b><span> ln</span> | <b>${meta.triangles}</b><span> tri</span> | <b>${meta.points}</b><span> p</span>`;
+}
+
+function disposeObject(obj) {
+    obj.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (Array.isArray(child.material)) child.material.forEach((mat) => mat.dispose());
+            else child.material.dispose();
+        }
+    });
+}
+
+function clearGroup(group) {
+    group.children.forEach((child) => disposeObject(child));
+    group.clear();
+}
+
+function typedArrayCtor(type) {
+    if (type === 'Uint8Array') return Uint8Array;
+    if (type === 'Uint16Array') return Uint16Array;
+    if (type === 'Uint32Array') return Uint32Array;
+    if (type === 'Int8Array') return Int8Array;
+    if (type === 'Int16Array') return Int16Array;
+    if (type === 'Int32Array') return Int32Array;
+    if (type === 'Float64Array') return Float64Array;
+    return Float32Array;
+}
+
+function typedArrayFromSpec(spec, fallbackType = 'Float32Array') {
+    const Ctor = typedArrayCtor(spec?.type || fallbackType);
+    return spec?.array instanceof Ctor ? spec.array : new Ctor(spec?.array || []);
+}
+
+function makeDynamicAttribute(spec, fallbackType = 'Float32Array') {
+    const attribute = new THREE.BufferAttribute(
+        typedArrayFromSpec(spec, fallbackType),
+        spec.itemSize,
+        !!spec.normalized
+    );
+    attribute.setUsage(THREE.DynamicDrawUsage);
+    return attribute;
+}
+
+function markAttributeUpdated(attribute, count) {
+    if (attribute.updateRange) {
+        attribute.updateRange.offset = 0;
+        attribute.updateRange.count = count;
+    }
+    attribute.needsUpdate = true;
+}
+
+function attributeSpec(itemSize, array, type = 'Float32Array', normalized = false) {
+    return { itemSize, array, type, normalized };
+}
+
+function cloneGeometryDataWithDefaults(data, defaults = {}) {
+    if (!data || !data.attributes || !data.attributes.position) return null;
+    const attributes = { ...data.attributes };
+    const vertexCount = Math.floor(attributes.position.array.length / attributes.position.itemSize);
+    Object.entries(defaults).forEach(([name, spec]) => {
+        if (attributes[name]) return;
+        const itemSize = spec.itemSize || 1;
+        const array = new Array(vertexCount * itemSize);
+        for (let i = 0; i < vertexCount; i += 1) {
+            for (let c = 0; c < itemSize; c += 1) {
+                const fill = Array.isArray(spec.fill) ? spec.fill[Math.min(c, spec.fill.length - 1)] : spec.fill;
+                array[i * itemSize + c] = fill;
+            }
+        }
+        attributes[name] = attributeSpec(itemSize, array, spec.type || 'Float32Array', !!spec.normalized);
+    });
+    return { ...data, attributes };
+}
+
+function buildGeometry(data) {
+    if (!data || !data.attributes || !data.attributes.position) return null;
+    const geometry = new THREE.BufferGeometry();
+    Object.entries(data.attributes).forEach(([name, spec]) => {
+        geometry.setAttribute(name, makeDynamicAttribute(spec));
+    });
+    if (data.index && data.index.array && data.index.array.length) {
+        const index = new THREE.BufferAttribute(typedArrayFromSpec(data.index, 'Uint32Array'), 1);
+        index.setUsage(THREE.DynamicDrawUsage);
+        geometry.setIndex(index);
+    }
+    const position = geometry.getAttribute('position');
+    const count = data.index?.array?.length || position.count;
+    geometry.setDrawRange(0, count);
+    geometry.computeBoundingSphere();
+    return geometry;
+}
+
+function canUpdateGeometryInPlace(geometry, data, allowExtraAttributes = []) {
+    if (!geometry || !data || !data.attributes || !data.attributes.position) return false;
+    const allowExtra = new Set(allowExtraAttributes);
+    const incomingNames = Object.keys(data.attributes).sort().join('|');
+    const existingNames = Object.keys(geometry.attributes).filter((name) => !allowExtra.has(name)).sort().join('|');
+    if (incomingNames !== existingNames) return false;
+
+    for (const [name, spec] of Object.entries(data.attributes)) {
+        const attribute = geometry.getAttribute(name);
+        if (!attribute) return false;
+        if (attribute.itemSize !== spec.itemSize) return false;
+        if (!!attribute.normalized !== !!spec.normalized) return false;
+        if (attribute.array.length < spec.array.length) return false;
+    }
+
+    const incomingIndex = data.index?.array || null;
+    const existingIndex = geometry.getIndex();
+    if (!!incomingIndex !== !!existingIndex) return false;
+    if (incomingIndex && existingIndex.array.length < incomingIndex.length) return false;
+    return true;
+}
+
+function updateGeometryInPlace(geometry, data, computeNormals = false) {
+    if (!canUpdateGeometryInPlace(geometry, data, computeNormals ? ['normal'] : [])) return false;
+    Object.entries(data.attributes).forEach(([name, spec]) => {
+        const attribute = geometry.getAttribute(name);
+        attribute.array.set(spec.array, 0);
+        attribute.count = Math.floor(spec.array.length / attribute.itemSize);
+        markAttributeUpdated(attribute, spec.array.length);
+    });
+
+    const index = geometry.getIndex();
+    if (data.index?.array && index) {
+        index.array.set(data.index.array, 0);
+        index.count = data.index.array.length;
+        markAttributeUpdated(index, data.index.array.length);
+    }
+
+    const drawCount = data.index?.array?.length || geometry.getAttribute('position').count;
+    geometry.setDrawRange(0, drawCount);
+    if (computeNormals) geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    return true;
+}
+
+function removeSlot(slot) {
+    if (!slot) return null;
+    if (slot.object) {
+        disposeObject(slot.object);
+        slot.object.removeFromParent();
+    }
+    return null;
+}
+
+function removeInteractiveSlot(slot) {
+    if (!slot) return null;
+    slot.lines = removeSlot(slot.lines);
+    slot.fills = removeSlot(slot.fills);
+    slot.points = removeSlot(slot.points);
+    return null;
+}
+
+function clearPayloadGeometrySlots() {
+    payloadGeometrySlots.lines = removeSlot(payloadGeometrySlots.lines);
+    payloadGeometrySlots.fills = removeSlot(payloadGeometrySlots.fills);
+    payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
+    payloadGeometrySlots.interactive.forEach((slot) => removeInteractiveSlot(slot));
+    payloadGeometrySlots.interactive.length = 0;
+}
+
+function clearEditableGeometrySlots() {
+    editableGeometrySlots.lines.forEach((slot) => removeSlot(slot));
+    editableGeometrySlots.points.forEach((slot) => removeSlot(slot));
+    editableGeometrySlots.faces.forEach((slot) => removeSlot(slot));
+    editableGeometrySlots.lines.length = 0;
+    editableGeometrySlots.points.length = 0;
+    editableGeometrySlots.faces.length = 0;
+}
+
+function upsertGeometrySlot(slot, data, options) {
+    const normalized = cloneGeometryDataWithDefaults(data, options.defaults || {});
+    if (!normalized) return removeSlot(slot);
+
+    if (slot && slot.object && slot.kind === options.kind && updateGeometryInPlace(slot.object.geometry, normalized, !!options.computeNormals)) {
+        if (options.afterUpdate) options.afterUpdate(slot);
+        return slot;
+    }
+
+    slot = removeSlot(slot);
+    const geometry = buildGeometry(normalized);
+    if (!geometry) return null;
+    if (options.computeNormals) geometry.computeVertexNormals();
+    const material = options.makeMaterial();
+    const object = new options.ObjectClass(geometry, material);
+    if (options.configureObject) options.configureObject(object, material);
+    baseGeometryRoot.add(object);
+    slot = { kind: options.kind, object, material };
+    if (options.afterUpdate) options.afterUpdate(slot);
+    return slot;
+}
+
+function geometryDataFromArrays(positions, colors = null, alphas = null, sizes = null, indices = null) {
+    if (!positions || positions.length === 0) return null;
+    const attributes = {
+        position: attributeSpec(3, positions)
+    };
+    if (colors) attributes.color = attributeSpec(3, colors);
+    if (alphas) attributes.alpha = attributeSpec(1, alphas);
+    if (sizes) attributes.size = attributeSpec(1, sizes);
+    let index = null;
+    if (indices && indices.length) {
+        let maxIndex = 0;
+        indices.forEach((value) => { if (value > maxIndex) maxIndex = value; });
+        index = {
+            type: maxIndex > 65535 ? 'Uint32Array' : 'Uint16Array',
+            array: indices
+        };
+    }
+    return { attributes, index };
+}
+
+function ensureAttribute(geometry, name, itemSize, fillValue) {
+    if (geometry.getAttribute(name)) return;
+    const count = geometry.getAttribute('position').count;
+    const array = new Float32Array(count * itemSize);
+    if (Array.isArray(fillValue)) {
+        for (let i = 0; i < count; i += 1) {
+            for (let c = 0; c < itemSize; c += 1) {
+                array[i * itemSize + c] = fillValue[Math.min(c, fillValue.length - 1)];
+            }
+        }
+    } else {
+        array.fill(fillValue);
+    }
+    geometry.setAttribute(name, new THREE.BufferAttribute(array, itemSize));
+}
+
+function makeLineMaterial() {
+    return new THREE.ShaderMaterial({
+        vertexShader: `
+            attribute vec3 color;
+            attribute float alpha;
+            varying vec4 vColor;
+            void main() {
+                vColor = vec4(color, alpha);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            varying vec4 vColor;
+            void main() {
+                gl_FragColor = vColor;
+            }
+        `,
+        transparent: true,
+        depthWrite: false
+    });
+}
+
+function makePointMaterial() {
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            uPixelRatio: { value: getDpr() }
+        },
+        vertexShader: `
+            attribute float size;
+            attribute vec3 color;
+            attribute float alpha;
+            varying vec4 vColor;
+            uniform float uPixelRatio;
+            void main() {
+                vColor = vec4(color, alpha);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = max(size * uPixelRatio, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `,
+        fragmentShader: `
+            varying vec4 vColor;
+            void main() {
+                vec2 uv = gl_PointCoord - vec2(0.5);
+                float dist = dot(uv, uv);
+                if (dist > 0.25) discard;
+                float shapeAlpha = smoothstep(0.25, 0.02, dist);
+                gl_FragColor = vec4(vColor.rgb, vColor.a * shapeAlpha);
+            }
+        `,
+        transparent: true,
+        depthWrite: false
+    });
+}
+
+function makeFillMaterial() {
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 1.0,
+        roughness: 0.6,
+        metalness: 0.1,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+    });
+    material.depthWrite = false;
+    material.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <color_pars_vertex>', '#include <color_pars_vertex>\nattribute float alpha;\nvarying float vAlpha;')
+            .replace('#include <color_vertex>', '#include <color_vertex>\nvAlpha = alpha;');
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <color_pars_fragment>', '#include <color_pars_fragment>\nvarying float vAlpha;')
+            .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );');
+    };
+    material.customProgramCacheKey = () => 'vertex-alpha-v1';
+    return material;
+}
+
+function makeInteractiveLineMaterial(hoverColor) {
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            uHover: { value: 0.0 },
+            uHoverColor: { value: hoverColor ? new THREE.Color(hoverColor[0], hoverColor[1], hoverColor[2]) : new THREE.Color(1, 1, 1) },
+            uHoverAlpha: { value: hoverColor ? hoverColor[3] : 1.0 }
+        },
+        vertexShader: `
+            attribute vec3 color;
+            attribute float alpha;
+            varying vec4 vColor;
+            void main() {
+                vColor = vec4(color, alpha);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uHover;
+            uniform vec3 uHoverColor;
+            uniform float uHoverAlpha;
+            varying vec4 vColor;
+            void main() {
+                vec3 c = mix(vColor.rgb, uHoverColor, uHover);
+                float a = mix(vColor.a, uHoverAlpha, uHover);
+                gl_FragColor = vec4(c, a);
+            }
+        `,
+        transparent: true,
+        depthWrite: false
+    });
+}
+
+function makeInteractivePointMaterial(hoverColor) {
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            uPixelRatio: { value: getDpr() },
+            uHover: { value: 0.0 },
+            uHoverColor: { value: hoverColor ? new THREE.Color(hoverColor[0], hoverColor[1], hoverColor[2]) : new THREE.Color(1, 1, 1) },
+            uHoverAlpha: { value: hoverColor ? hoverColor[3] : 1.0 }
+        },
+        vertexShader: `
+            attribute float size;
+            attribute vec3 color;
+            attribute float alpha;
+            varying vec4 vColor;
+            uniform float uPixelRatio;
+            void main() {
+                vColor = vec4(color, alpha);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = max(size * uPixelRatio, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `,
+        fragmentShader: `
+            uniform float uHover;
+            uniform vec3 uHoverColor;
+            uniform float uHoverAlpha;
+            varying vec4 vColor;
+            void main() {
+                vec2 uv = gl_PointCoord - vec2(0.5);
+                float dist = dot(uv, uv);
+                if (dist > 0.25) discard;
+                float shapeAlpha = smoothstep(0.25, 0.02, dist);
+                vec3 c = mix(vColor.rgb, uHoverColor, uHover);
+                float a = mix(vColor.a, uHoverAlpha, uHover);
+                gl_FragColor = vec4(c, a * shapeAlpha);
+            }
+        `,
+        transparent: true,
+        depthWrite: false
+    });
+}
+
+function makeInteractiveFillMaterial(hoverColor) {
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 1.0,
+        roughness: 0.6,
+        metalness: 0.1,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+    });
+    material.depthWrite = false;
+    const color = hoverColor ? new THREE.Color(hoverColor[0], hoverColor[1], hoverColor[2]) : null;
+    const alpha = hoverColor ? hoverColor[3] : 1.0;
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.uHover = { value: 0.0 };
+        shader.uniforms.uHoverColor = { value: color || new THREE.Color(1, 1, 1) };
+        shader.uniforms.uHoverAlpha = { value: alpha };
+        material.userData.shader = shader;
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <color_pars_vertex>', '#include <color_pars_vertex>\nattribute float alpha;\nvarying float vAlpha;')
+            .replace('#include <color_vertex>', '#include <color_vertex>\nvAlpha = alpha;');
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <color_pars_fragment>', '#include <color_pars_fragment>\nvarying float vAlpha;\nuniform float uHover;\nuniform vec3 uHoverColor;\nuniform float uHoverAlpha;')
+            .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * mix(vAlpha, uHoverAlpha, uHover) );')
+            .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, uHoverColor, uHover);');
+    };
+    material.customProgramCacheKey = () => 'interactive-vertex-alpha-v1';
+    return material;
+}
+
+function updateHoverMaterial(material, hoverColor) {
+    const color = hoverColor ? new THREE.Color(hoverColor[0], hoverColor[1], hoverColor[2]) : new THREE.Color(1, 1, 1);
+    const alpha = hoverColor ? hoverColor[3] : 1.0;
+    const targets = [];
+    if (material?.uniforms) targets.push(material.uniforms);
+    if (material?.userData?.shader?.uniforms) targets.push(material.userData.shader.uniforms);
+    targets.forEach((uniforms) => {
+        if (uniforms.uHoverColor) uniforms.uHoverColor.value.copy(color);
+        if (uniforms.uHoverAlpha) uniforms.uHoverAlpha.value = alpha;
+        if (uniforms.uHover) uniforms.uHover.value = 0.0;
+    });
+}
+
+function interactiveSlotOptions(kind, hoverColor) {
+    if (kind === 'lines') {
+        return {
+            kind: 'interactive-lines',
+            ObjectClass: THREE.LineSegments,
+            defaults: {
+                color: { itemSize: 3, fill: [1, 1, 1] },
+                alpha: { itemSize: 1, fill: 1 }
+            },
+            makeMaterial: () => makeInteractiveLineMaterial(hoverColor),
+            configureObject: (object, material) => { object.userData.interactiveMat = material; },
+            afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
+        };
+    }
+    if (kind === 'fills') {
+        return {
+            kind: 'interactive-fills',
+            ObjectClass: THREE.Mesh,
+            computeNormals: true,
+            defaults: {
+                color: { itemSize: 3, fill: [1, 1, 1] },
+                alpha: { itemSize: 1, fill: 1 }
+            },
+            makeMaterial: () => makeInteractiveFillMaterial(hoverColor),
+            configureObject: (object, material) => { object.userData.interactiveMat = material; },
+            afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
+        };
+    }
+    return {
+        kind: 'interactive-points',
+        ObjectClass: THREE.Points,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 },
+            size: { itemSize: 1, fill: 3 }
+        },
+        makeMaterial: () => makeInteractivePointMaterial(hoverColor),
+        configureObject: (object, material) => { object.userData.interactiveMat = material; },
+        afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
+    };
+}
+
+function upsertInteractiveObject(slot, obj) {
+    if (!obj) return removeInteractiveSlot(slot);
+    const hoverColor = obj.hoverColor || null;
+    const next = slot || {};
+    next.lines = upsertGeometrySlot(next.lines, obj.lines, interactiveSlotOptions('lines', hoverColor));
+    next.fills = upsertGeometrySlot(next.fills, obj.fills, interactiveSlotOptions('fills', hoverColor));
+    next.points = upsertGeometrySlot(next.points, obj.points, interactiveSlotOptions('points', hoverColor));
+    const meshes = [next.lines?.object, next.fills?.object, next.points?.object].filter(Boolean);
+    if (!meshes.length) return removeInteractiveSlot(next);
+    next.entry = {
+        callbackId: obj.callbackId || '',
+        hoverColor,
+        meshes,
+        hovering: false,
+        vertices: obj.vertices || []
+    };
+    return next;
+}
+
+function addInteractiveObject(obj) {
+    const meshes = [];
+    const hoverColor = obj.hoverColor || null;
+    if (obj.lines) {
+        const geometry = buildGeometry(obj.lines);
+        if (geometry) {
             ensureAttribute(geometry, 'color', 3, 1);
             ensureAttribute(geometry, 'alpha', 1, 1);
-            const material = new THREE.ShaderMaterial({
-                vertexShader: `
-                    attribute vec3 color;
-                    attribute float alpha;
-                    varying vec4 vColor;
-                    void main() {
-                        vColor = vec4(color, alpha);
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    varying vec4 vColor;
-                    void main() {
-                        gl_FragColor = vColor;
-                    }
-                `,
-                transparent: true,
-                depthWrite: false
-            });
-            const lines = new THREE.LineSegments(geometry, material);
-            geometryRoot.add(lines);
+            const material = makeInteractiveLineMaterial(hoverColor);
+            const three = new THREE.LineSegments(geometry, material);
+            three.userData.interactiveMat = material;
+            baseGeometryRoot.add(three);
+            meshes.push(three);
         }
-
-        function addFills(data) {
-            const geometry = buildGeometry(data);
-            if (!geometry) return;
+    }
+    if (obj.fills) {
+        const geometry = buildGeometry(obj.fills);
+        if (geometry) {
             geometry.computeVertexNormals();
             ensureAttribute(geometry, 'color', 3, 1);
             ensureAttribute(geometry, 'alpha', 1, 1);
-            const material = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                vertexColors: true,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 1.0,
-                roughness: 0.6,
-                metalness: 0.1,
-                polygonOffset: true,
-                polygonOffsetFactor: 1,
-                polygonOffsetUnits: 1
-            });
-            material.depthWrite = false;
-            material.onBeforeCompile = (shader) => {
-                shader.vertexShader = shader.vertexShader
-                    .replace(
-                        '#include <color_pars_vertex>',
-                        '#include <color_pars_vertex>\nattribute float alpha;\nvarying float vAlpha;'
-                    )
-                    .replace(
-                        '#include <color_vertex>',
-                        '#include <color_vertex>\nvAlpha = alpha;'
-                    );
-                shader.fragmentShader = shader.fragmentShader
-                    .replace(
-                        '#include <color_pars_fragment>',
-                        '#include <color_pars_fragment>\nvarying float vAlpha;'
-                    )
-                    .replace(
-                        'vec4 diffuseColor = vec4( diffuse, opacity );',
-                        'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );'
-                    );
-            };
-            material.customProgramCacheKey = () => 'vertex-alpha-v1';
-            const mesh = new THREE.Mesh(geometry, material);
-            geometryRoot.add(mesh);
+            const material = makeInteractiveFillMaterial(hoverColor);
+            const three = new THREE.Mesh(geometry, material);
+            three.userData.interactiveMat = material;
+            baseGeometryRoot.add(three);
+            meshes.push(three);
         }
-
-        function addPoints(data) {
-            const geometry = buildGeometry(data);
-            if (!geometry) return;
+    }
+    if (obj.points) {
+        const geometry = buildGeometry(obj.points);
+        if (geometry) {
             ensureAttribute(geometry, 'color', 3, 1);
             ensureAttribute(geometry, 'alpha', 1, 1);
             ensureAttribute(geometry, 'size', 1, 3);
+            const material = makeInteractivePointMaterial(hoverColor);
+            const three = new THREE.Points(geometry, material);
+            three.userData.interactiveMat = material;
+            baseGeometryRoot.add(three);
+            meshes.push(three);
+        }
+    }
+    if (meshes.length) {
+        interactiveObjects.push({ callbackId: obj.callbackId || '', hoverColor, meshes, hovering: false, vertices: obj.vertices || [] });
+    }
+}
 
-            const material = new THREE.ShaderMaterial({
-                uniforms: {
-                    uPixelRatio: { value: getDpr() }
-                },
-                vertexShader: `
-                    attribute float size;
-                    attribute vec3 color;
-                    attribute float alpha;
-                    varying vec4 vColor;
-                    uniform float uPixelRatio;
-                    void main() {
-                        vColor = vec4(color, alpha);
-                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                        gl_PointSize = max(size * uPixelRatio, 1.0);
-                        gl_Position = projectionMatrix * mvPosition;
+function verticesForLine(line) {
+    return line.nodes
+        .filter((node) => node.kind !== 'close' && node.to)
+        .map((node) => ({
+            index: node.nodeIndex,
+            position: node.to
+        }));
+}
+
+function makeInteractiveEntry(line, meshes) {
+    return {
+        callbackId: line.callbackId || '',
+        hoverColor: line.hoverColor || null,
+        meshes,
+        hovering: false,
+        vertices: verticesForLine(line)
+    };
+}
+
+function intersectionForHit(entry, hit) {
+    const p = hit && hit.point ? hit.point : new THREE.Vector3();
+    let closestVertexIndex = -1;
+    let bestDistance = Infinity;
+    (entry.vertices || []).forEach((vertex) => {
+        const position = vertex.position || [0, 0, 0];
+        const dx = p.x - position[0];
+        const dy = p.y - position[1];
+        const dz = p.z - position[2];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < bestDistance) {
+            bestDistance = d2;
+            closestVertexIndex = vertex.index;
+        }
+    });
+    return {
+        closestVertexIndex,
+        x: p.x,
+        y: p.y,
+        z: p.z
+    };
+}
+
+function setInteractiveHover(entry, hovered) {
+    if (entry.hovering === hovered) return;
+    entry.hovering = hovered;
+    const hoverValue = hovered ? 1.0 : 0.0;
+    entry.meshes.forEach((mesh) => {
+        const material = mesh.userData.interactiveMat;
+        if (!material) return;
+        if (material.uniforms && material.uniforms.uHover) {
+            material.uniforms.uHover.value = hoverValue;
+        } else if (material.userData && material.userData.shader && material.userData.shader.uniforms && material.userData.shader.uniforms.uHover) {
+            material.userData.shader.uniforms.uHover.value = hoverValue;
+        }
+    });
+}
+
+function updateInteractiveHover() {
+    if (!interactiveObjects.length) return false;
+    raycaster.setFromCamera(pointer, camera);
+    const meshes = interactiveObjects.flatMap((entry) => entry.meshes);
+    const hits = raycaster.intersectObjects(meshes, false);
+    const hitSet = new Set(hits.map((hit) => hit.object));
+    let anyPointer = false;
+    interactiveObjects.forEach((entry) => {
+        const isHit = entry.meshes.some((mesh) => hitSet.has(mesh));
+        if (entry.hoverColor) setInteractiveHover(entry, isHit);
+        if (isHit && entry.callbackId) anyPointer = true;
+    });
+    return anyPointer;
+}
+
+function addPayloadLines(data) {
+    payloadGeometrySlots.lines = upsertGeometrySlot(payloadGeometrySlots.lines, data, {
+        kind: 'payload-lines',
+        ObjectClass: THREE.LineSegments,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 }
+        },
+        makeMaterial: () => makeLineMaterial()
+    });
+}
+
+function addPayloadFills(data) {
+    payloadGeometrySlots.fills = upsertGeometrySlot(payloadGeometrySlots.fills, data, {
+        kind: 'payload-fills',
+        ObjectClass: THREE.Mesh,
+        computeNormals: true,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 }
+        },
+        makeMaterial: () => makeFillMaterial()
+    });
+}
+
+function addPayloadPoints(data) {
+    payloadGeometrySlots.points = upsertGeometrySlot(payloadGeometrySlots.points, data, {
+        kind: 'payload-points',
+        ObjectClass: THREE.Points,
+        defaults: {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 },
+            size: { itemSize: 1, fill: 3 }
+        },
+        makeMaterial: () => makePointMaterial(),
+        afterUpdate: (slot) => { pointMaterial = slot.material; }
+    });
+}
+
+function buildSegmentsGeometry(points, color, alpha) {
+    if (!points || points.length < 2) return null;
+    const positions = [];
+    const colors = [];
+    const alphas = [];
+    for (let i = 0; i < points.length - 1; i += 1) {
+        const a = points[i];
+        const b = points[i + 1];
+        positions.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+        colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+        alphas.push(alpha, alpha);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
+    geometry.computeBoundingSphere();
+    return geometry;
+}
+
+function buildPointsGeometry(points, color, alpha, size) {
+    if (!points || points.length === 0) return null;
+    const positions = [];
+    const colors = [];
+    const alphas = [];
+    const sizes = [];
+    points.forEach((point) => {
+        positions.push(point[0], point[1], point[2]);
+        colors.push(color[0], color[1], color[2]);
+        alphas.push(alpha);
+        sizes.push(size);
+    });
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
+    geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+    geometry.computeBoundingSphere();
+    return geometry;
+}
+
+function buildFaceGeometry(boundary) {
+    if (!boundary || boundary.length < 3) return null;
+    const positions = [];
+    const indices = [];
+    boundary.forEach((point) => positions.push(point[0], point[1], point[2]));
+    for (let i = 1; i < boundary.length - 1; i += 1) {
+        indices.push(0, i, i + 1);
+    }
+    if (!indices.length) return null;
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    return geometry;
+}
+
+function computeHandleRadius(bounds) {
+    if (!bounds || !bounds.min || !bounds.max) return 0.04;
+    const dx = bounds.max[0] - bounds.min[0];
+    const dy = bounds.max[1] - bounds.min[1];
+    const dz = bounds.max[2] - bounds.min[2];
+    const span = Math.max(dx, dy, dz, 1);
+    return Math.max(span * 0.018, 0.024);
+}
+
+function renderPayloadGeometry(payload) {
+    clearEditableGeometrySlots();
+    clearGroup(editorOverlayRoot);
+    interactiveObjects = [];
+    editableHitObjects = [];
+    if (payload.lines) addPayloadLines(payload.lines);
+    else payloadGeometrySlots.lines = removeSlot(payloadGeometrySlots.lines);
+    if (payload.fills) addPayloadFills(payload.fills);
+    else payloadGeometrySlots.fills = removeSlot(payloadGeometrySlots.fills);
+    if (payload.points) addPayloadPoints(payload.points);
+    else payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
+
+    const interactivePayload = payload.interactive || [];
+    for (let i = 0; i < interactivePayload.length; i += 1) {
+        payloadGeometrySlots.interactive[i] = upsertInteractiveObject(payloadGeometrySlots.interactive[i], interactivePayload[i]);
+        const entry = payloadGeometrySlots.interactive[i]?.entry;
+        if (entry) interactiveObjects.push(entry);
+    }
+    for (let i = interactivePayload.length; i < payloadGeometrySlots.interactive.length; i += 1) {
+        removeInteractiveSlot(payloadGeometrySlots.interactive[i]);
+    }
+    payloadGeometrySlots.interactive.length = interactivePayload.length;
+}
+
+function renderEditableBaseGeometry() {
+    clearPayloadGeometrySlots();
+    interactiveObjects = [];
+    const sceneData = editorState.scene;
+    if (!sceneData) return;
+
+    sceneData.lines.forEach((line) => {
+        const color = line.color;
+        const interactive = !!(line.callbackId || line.hoverColor);
+        const lineMeshes = [];
+        if (line.stroked) {
+            const positions = [];
+            let previous = null;
+            line.nodes.forEach((node) => {
+                if (node.kind === 'move') {
+                    previous = node.to;
+                } else if (node.kind === 'line' && previous) {
+                    positions.push(previous[0], previous[1], previous[2], node.to[0], node.to[1], node.to[2]);
+                    previous = node.to;
+                } else if (node.kind === 'cubic' && previous) {
+                    const samples = sampleCubic(previous, node.c1, node.c2, node.to);
+                    for (let i = 0; i < samples.length - 1; i += 1) {
+                        const a = samples[i];
+                        const b = samples[i + 1];
+                        positions.push(a[0], a[1], a[2], b[0], b[1], b[2]);
                     }
-                `,
-                fragmentShader: `
-                    varying vec4 vColor;
-                    void main() {
-                        vec2 uv = gl_PointCoord - vec2(0.5);
-                        float dist = dot(uv, uv);
-                        if (dist > 0.25) discard;
-                        float shapeAlpha = smoothstep(0.25, 0.02, dist);
-                        gl_FragColor = vec4(vColor.rgb, vColor.a * shapeAlpha);
-                    }
-                `,
+                    previous = node.to;
+                } else if (node.kind === 'close') {
+                    previous = null;
+                }
+            });
+            if (positions.length) {
+                const vertexCount = positions.length / 3;
+                const colors = new Array(vertexCount * 3);
+                const alphas = new Array(vertexCount);
+                for (let i = 0; i < vertexCount; i += 1) {
+                    colors[i * 3] = color[0];
+                    colors[i * 3 + 1] = color[1];
+                    colors[i * 3 + 2] = color[2];
+                    alphas[i] = color[3];
+                }
+                const data = geometryDataFromArrays(positions, colors, alphas);
+                editableGeometrySlots.lines[line.lineIndex] = upsertGeometrySlot(editableGeometrySlots.lines[line.lineIndex], data, {
+                    kind: 'editable-line',
+                    ObjectClass: THREE.LineSegments,
+                    makeMaterial: () => interactive ? makeInteractiveLineMaterial(line.hoverColor || null) : makeLineMaterial(),
+                    configureObject: interactive ? ((object, material) => { object.userData.interactiveMat = material; }) : null,
+                    afterUpdate: interactive ? ((slot) => updateHoverMaterial(slot.material, line.hoverColor || null)) : null
+                });
+                if (editableGeometrySlots.lines[line.lineIndex]?.object) {
+                    lineMeshes.push(editableGeometrySlots.lines[line.lineIndex].object);
+                }
+            } else {
+                editableGeometrySlots.lines[line.lineIndex] = removeSlot(editableGeometrySlots.lines[line.lineIndex]);
+            }
+        } else {
+            editableGeometrySlots.lines[line.lineIndex] = removeSlot(editableGeometrySlots.lines[line.lineIndex]);
+        }
+
+        if (line.pointed) {
+            const anchors = line.nodes.filter((node) => node.kind !== 'close' && node.to).map((node) => node.to);
+            const positions = [];
+            const colors = [];
+            const alphas = [];
+            const sizes = [];
+            anchors.forEach((point) => {
+                positions.push(point[0], point[1], point[2]);
+                colors.push(color[0], color[1], color[2]);
+                alphas.push(color[3]);
+                sizes.push(Math.max(1.5, line.pointSize * 3.0));
+            });
+            const data = geometryDataFromArrays(positions, colors, alphas, sizes);
+            editableGeometrySlots.points[line.lineIndex] = upsertGeometrySlot(editableGeometrySlots.points[line.lineIndex], data, {
+                kind: 'editable-points',
+                ObjectClass: THREE.Points,
+                makeMaterial: () => interactive ? makeInteractivePointMaterial(line.hoverColor || null) : makePointMaterial(),
+                configureObject: interactive ? ((object, material) => { object.userData.interactiveMat = material; }) : null,
+                afterUpdate: (slot) => {
+                    pointMaterial = slot.material;
+                    if (interactive) updateHoverMaterial(slot.material, line.hoverColor || null);
+                }
+            });
+            if (editableGeometrySlots.points[line.lineIndex]?.object) {
+                lineMeshes.push(editableGeometrySlots.points[line.lineIndex].object);
+            }
+        } else {
+            editableGeometrySlots.points[line.lineIndex] = removeSlot(editableGeometrySlots.points[line.lineIndex]);
+        }
+
+        if (interactive && lineMeshes.length) {
+            interactiveObjects.push(makeInteractiveEntry(line, lineMeshes));
+        }
+    });
+
+    editorState.faces.forEach((face, faceIndex) => {
+        const line = sceneData.lines[face.lineIndex];
+        if (!line || !line.filled || !face.boundary || face.boundary.length < 3) {
+            editableGeometrySlots.faces[faceIndex] = removeSlot(editableGeometrySlots.faces[faceIndex]);
+            return;
+        }
+        const positions = [];
+        const indices = [];
+        face.boundary.forEach((point) => positions.push(point[0], point[1], point[2]));
+        for (let i = 1; i < face.boundary.length - 1; i += 1) {
+            indices.push(0, i, i + 1);
+        }
+        const count = positions.length / 3;
+        const colors = new Array(count * 3);
+        const alphas = new Array(count);
+        for (let i = 0; i < count; i += 1) {
+            colors[i * 3] = line.color[0];
+            colors[i * 3 + 1] = line.color[1];
+            colors[i * 3 + 2] = line.color[2];
+            alphas[i] = line.color[3];
+        }
+        const interactive = !!(line.callbackId || line.hoverColor);
+        const data = geometryDataFromArrays(positions, colors, alphas, null, indices);
+        editableGeometrySlots.faces[faceIndex] = upsertGeometrySlot(editableGeometrySlots.faces[faceIndex], data, {
+            kind: 'editable-face',
+            ObjectClass: THREE.Mesh,
+            computeNormals: true,
+            makeMaterial: () => interactive ? makeInteractiveFillMaterial(line.hoverColor || null) : makeFillMaterial(),
+            configureObject: interactive ? ((object, material) => { object.userData.interactiveMat = material; }) : null,
+            afterUpdate: interactive ? ((slot) => updateHoverMaterial(slot.material, line.hoverColor || null)) : null
+        });
+        if (interactive && editableGeometrySlots.faces[faceIndex]?.object) {
+            interactiveObjects.push(makeInteractiveEntry(line, [editableGeometrySlots.faces[faceIndex].object]));
+        }
+    });
+    for (let i = sceneData.lines.length; i < editableGeometrySlots.lines.length; i += 1) {
+        editableGeometrySlots.lines[i] = removeSlot(editableGeometrySlots.lines[i]);
+    }
+    for (let i = sceneData.lines.length; i < editableGeometrySlots.points.length; i += 1) {
+        editableGeometrySlots.points[i] = removeSlot(editableGeometrySlots.points[i]);
+    }
+    for (let i = editorState.faces.length; i < editableGeometrySlots.faces.length; i += 1) {
+        editableGeometrySlots.faces[i] = removeSlot(editableGeometrySlots.faces[i]);
+    }
+    editableGeometrySlots.lines.length = sceneData.lines.length;
+    editableGeometrySlots.points.length = sceneData.lines.length;
+    editableGeometrySlots.faces.length = editorState.faces.length;
+}
+
+function createHandleMesh(point, radius, fill, stroke, selected) {
+    const geometry = new THREE.SphereGeometry(selected ? radius * 1.25 : radius, 10, 10);
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: fill, transparent: true, opacity: 1.0 }));
+    mesh.position.set(point[0], point[1], point[2]);
+    const wire = new THREE.Mesh(
+        new THREE.SphereGeometry(selected ? radius * 1.35 : radius * 1.08, 10, 10),
+        new THREE.MeshBasicMaterial({ color: stroke, wireframe: true, transparent: true, opacity: 0.95 })
+    );
+    wire.position.copy(mesh.position);
+    editorOverlayRoot.add(mesh);
+    editorOverlayRoot.add(wire);
+}
+
+function renderEditableOverlay() {
+    clearGroup(editorOverlayRoot);
+    editableHitObjects = [];
+    if (editorState.mode !== 'edit' || !editorState.scene || !editorState.uiVisible) {
+        updateSelectionStatus();
+        return;
+    }
+
+    const selectedRefKeys = new Set(selectionRefs(editorState).map(pointRefKey));
+    const visibleControls = editorState.mask.point || selectedRefKeys.size > 0;
+    const sceneData = editorState.scene;
+
+    editorState.faces.forEach((face) => {
+        const geometry = buildFaceGeometry(face.boundary);
+        if (!geometry) return;
+        if (editorState.selection.has(face.key)) {
+            const selectedMesh = new THREE.Mesh(geometry.clone(), new THREE.MeshBasicMaterial({
+                color: new THREE.Color(1.0, 0.83, 0.36),
                 transparent: true,
+                opacity: 0.16,
+                side: THREE.DoubleSide,
+                depthTest: false,
                 depthWrite: false
-            });
-            pointMaterial = material;
-            const points = new THREE.Points(geometry, material);
-            geometryRoot.add(points);
+            }));
+            selectedMesh.renderOrder = 20;
+            editorOverlayRoot.add(selectedMesh);
         }
-
-        function frameBounds(bounds, pad = 1.25) {
-            if (!bounds || !bounds.min || !bounds.max) return;
-            const minV = new THREE.Vector3(...bounds.min);
-            const maxV = new THREE.Vector3(...bounds.max);
-            const size = new THREE.Vector3().subVectors(maxV, minV);
-            const center = new THREE.Vector3().addVectors(minV, maxV).multiplyScalar(0.5);
-            const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-            const fov = THREE.MathUtils.degToRad(camera.fov);
-            const distance = (maxDim / (2 * Math.tan(fov / 2))) * pad;
-            const direction = new THREE.Vector3(0.8, 0.9, 1.1).normalize();
-
-            camera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
-            camera.near = Math.max(distance / 100, 0.001);
-            camera.far = Math.max(distance * 100, camera.near + 1);
-            camera.updateProjectionMatrix();
-            controls.target.copy(center);
-            controls.update();
+        if (editorState.mask.face) {
+            const hitMesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false }));
+            hitMesh.userData.itemKey = face.key;
+            editableHitObjects.push(hitMesh);
+            editorOverlayRoot.add(hitMesh);
         }
+    });
 
-        function updateMeta(meta) {
-            if (!meta) {
-                metaEl.textContent = 'no geometry';
-                return;
-            }
-            metaEl.innerHTML = `<b>${meta.lineSegments}</b><span> ln</span> | <b>${meta.triangles}</b><span> tri</span> | <b>${meta.points}</b><span> p</span>`;
-        }
-
-        function applyGeometry(payload) {
-            if (!payload || payload.type !== 'three/geometry') return;
-            clearGeometry();
-            if (payload.lines) addLines(payload.lines);
-            if (payload.fills) addFills(payload.fills);
-            if (payload.points) addPoints(payload.points);
-            updateMeta(payload.meta);
-            if (payload.bounds && payload.autoFrame !== false) {
-                frameBounds(payload.bounds);
+    editorState.edges.forEach((edge) => {
+        if (editorState.selection.has(edge.key)) {
+            const geometry = buildSegmentsGeometry(edge.points, [1.0, 0.83, 0.36], 0.95);
+            if (geometry) {
+                const line = new THREE.LineSegments(geometry, makeLineMaterial());
+                line.renderOrder = 21;
+                line.material.depthTest = false;
+                editorOverlayRoot.add(line);
             }
         }
-
-        function onResize() {
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            renderer.setPixelRatio(getDpr());
-            renderer.setSize(width, height);
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            if (pointMaterial) {
-                pointMaterial.uniforms.uPixelRatio.value = getDpr();
+        if (editorState.mask.edge) {
+            const geometry = buildSegmentsGeometry(edge.points, [1, 1, 1], 0.0);
+            if (geometry) {
+                const hitLine = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ transparent: true, opacity: 0.0 }));
+                hitLine.userData.itemKey = edge.key;
+                editableHitObjects.push(hitLine);
+                editorOverlayRoot.add(hitLine);
             }
         }
-        window.addEventListener('resize', onResize);
+    });
 
-        function render() {
-            controls.update();
-            renderer.render(scene, camera);
-            requestAnimationFrame(render);
-        }
-        render();
-
-        const clientUid = (urlParams.get('uid') || '').trim() || `three-${Math.random().toString(36).slice(2)}`;
-
-        const wsState = {
-            ws: null,
-            reconnectTimer: null
-        };
-
-        function buildWsUrl() {
-            const override = urlParams.get('ws');
-            if (override) return override;
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const overrideHost = urlParams.get('wsHost');
-            const hostBase = overrideHost ?? window.location.host;
-            const needsPort = !hostBase.includes(':') && window.location.port;
-            const host = needsPort ? `${hostBase}:${window.location.port}` : hostBase;
-            const path = urlParams.get('wsPath') ?? '/ws';
-            return `${protocol}//${host}${path}`;
-        }
-
-        function sendMessage(payload) {
-            if (!wsState.ws || wsState.ws.readyState !== WebSocket.OPEN) return;
-            const message = { channel: "__threejs__", debug_uid: clientUid, ...payload };
-            wsState.ws.send(JSON.stringify(message));
-        }
-
-        function connectWs() {
-            const ws = new WebSocket(buildWsUrl());
-            wsState.ws = ws;
-
-            ws.addEventListener('open', () => {
-                sendMessage({ type: 'hello' });
-            });
-
-            ws.addEventListener('message', (event) => {
-                let message = null;
-                try {
-                    message = JSON.parse(event.data);
-                } catch (error) {
+    if (visibleControls) {
+        sceneData.lines.forEach((line) => {
+            let previousAnchor = null;
+            line.nodes.forEach((node) => {
+                if (node.kind === 'move') {
+                    previousAnchor = node.to;
                     return;
                 }
-                applyGeometry(message);
-            });
-
-            ws.addEventListener('close', () => {
-                if (!wsState.reconnectTimer) {
-                    wsState.reconnectTimer = window.setTimeout(() => {
-                        wsState.reconnectTimer = null;
-                        connectWs();
-                    }, 1200);
+                if (node.kind === 'line') {
+                    previousAnchor = node.to;
+                    return;
+                }
+                if (node.kind === 'cubic' && previousAnchor) {
+                    const leftGeometry = buildSegmentsGeometry([previousAnchor, node.c1], [0.53, 0.75, 0.84], 0.42);
+                    const rightGeometry = buildSegmentsGeometry([node.to, node.c2], [0.53, 0.75, 0.84], 0.42);
+                    if (leftGeometry) editorOverlayRoot.add(new THREE.LineSegments(leftGeometry, makeLineMaterial()));
+                    if (rightGeometry) editorOverlayRoot.add(new THREE.LineSegments(rightGeometry, makeLineMaterial()));
+                    previousAnchor = node.to;
+                } else if (node.kind === 'cubic') {
+                    previousAnchor = node.to;
+                } else if (node.kind === 'close') {
+                    previousAnchor = null;
                 }
             });
+        });
+    }
 
-            ws.addEventListener('error', () => {
-                ws.close();
-            });
+    if (visibleControls) {
+        editorState.points.forEach((item) => {
+            const refKey = pointRefKey(item.pointRefs[0]);
+            const selected = selectedRefKeys.has(refKey) || editorState.selection.has(item.key);
+            const fill = item.role === 'control' ? 0x0f1a22 : 0x081117;
+            const stroke = selected ? 0xffd35c : 0x62d7ff;
+            createHandleMesh([item.x, item.y, item.z], item.role === 'control' ? editorState.handleRadius * 0.8 : editorState.handleRadius, fill, stroke, selected);
+            if (editorState.mask.point) {
+                const hitMesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(editorState.handleRadius * 2.2, 10, 10),
+                    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0, depthWrite: false })
+                );
+                hitMesh.position.set(item.x, item.y, item.z);
+                hitMesh.userData.itemKey = item.key;
+                editableHitObjects.push(hitMesh);
+                editorOverlayRoot.add(hitMesh);
+            }
+        });
+    }
+
+    updateSelectionStatus();
+}
+
+function rebuildEditableView() {
+    if (!editorState.scene) {
+        clearGroup(editorOverlayRoot);
+        updateSelectionStatus();
+        return;
+    }
+    const derived = buildEditorItems(editorState.scene);
+    editorState.items = derived.items;
+    editorState.points = derived.points;
+    editorState.edges = derived.edges;
+    editorState.faces = derived.faces;
+    renderEditableBaseGeometry();
+    renderEditableOverlay();
+}
+
+function frameBounds(bounds, pad = 1.25) {
+    if (!bounds || !bounds.min || !bounds.max) return;
+    const minV = new THREE.Vector3(...bounds.min);
+    const maxV = new THREE.Vector3(...bounds.max);
+    const size = new THREE.Vector3().subVectors(maxV, minV);
+    const center = new THREE.Vector3().addVectors(minV, maxV).multiplyScalar(0.5);
+    const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+    const fov = THREE.MathUtils.degToRad(camera.fov);
+    const distance = (maxDim / (2 * Math.tan(fov / 2))) * pad;
+    const direction = new THREE.Vector3(0.8, 0.9, 1.1).normalize();
+    camera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
+    camera.near = Math.max(distance / 100, 0.001);
+    camera.far = Math.max(distance * 100, camera.near + 1);
+    camera.updateProjectionMatrix();
+    controls.target.copy(center);
+    controls.update();
+}
+
+function setMode(mode) {
+    editorState.mode = mode;
+    controls.enabled = mode === 'camera';
+    modeGroupEl.querySelectorAll('[data-mode]').forEach((button) => {
+        button.classList.toggle('is-active', button.getAttribute('data-mode') === mode);
+    });
+    maskGroupEl.classList.toggle('hidden', mode !== 'edit' || !editorState.uiVisible);
+    if (mode !== 'edit') hideMarquee();
+    renderEditableOverlay();
+}
+
+function updateEditableHud() {
+    const editable = !!payloadState.editableEnabled;
+    modeGroupEl.classList.toggle('hidden', !editable || !editorState.uiVisible);
+    if (!editable) {
+        maskGroupEl.classList.add('hidden');
+        selectionStatusEl.classList.add('hidden');
+        controls.enabled = true;
+        editorState.mode = 'camera';
+    } else {
+        if (!editorState.uiVisible) {
+            maskGroupEl.classList.add('hidden');
+            selectionStatusEl.classList.add('hidden');
         }
+        setMode(editorState.mode === 'edit' ? 'edit' : 'camera');
+    }
+}
 
-        connectWs();
+function applyGeometry(payload) {
+    if (!payload || payload.type !== 'three/geometry') return;
+    payloadState = payload;
+    editorState.pointerDown = null;
+    editorState.dragging = null;
+    editorState.marquee = null;
+    hideMarquee();
+
+    updateMeta(payload.meta);
+    editorState.scene = payload.scene ? JSON.parse(JSON.stringify(payload.scene)) : null;
+    editorState.selection = new Set();
+    editorState.handleRadius = computeHandleRadius(payload.bounds);
+    if (!payload.editableEnabled) {
+        editorState.mode = 'camera';
+    }
+    if (editorState.scene) rebuildEditableView();
+    else renderPayloadGeometry(payload);
+    updateEditableHud();
+    if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
+        frameBounds(payload.bounds);
+        hasFramedInitialGeometry = true;
+    }
+}
+
+function buildWsUrl() {
+    const override = urlParams.get('ws');
+    if (override) return override;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const overrideHost = urlParams.get('wsHost');
+    const hostBase = overrideHost ?? window.location.host;
+    const needsPort = !hostBase.includes(':') && window.location.port;
+    const host = needsPort ? `${hostBase}:${window.location.port}` : hostBase;
+    const path = urlParams.get('wsPath') ?? '/ws';
+    return `${protocol}//${host}${path}`;
+}
+
+const clientUid = (urlParams.get('uid') || '').trim() || `three-${Math.random().toString(36).slice(2)}`;
+const wsState = { ws: null, reconnectTimer: null };
+
+function sendMessage(payload) {
+    if (!wsState.ws || wsState.ws.readyState !== WebSocket.OPEN) return;
+    const message = { channel: '__threejs__', debug_uid: clientUid, ...payload };
+    wsState.ws.send(JSON.stringify(message));
+}
+
+function connectWs() {
+    const ws = new WebSocket(buildWsUrl());
+    wsState.ws = ws;
+    ws.addEventListener('open', () => sendMessage({ type: 'hello' }));
+    ws.addEventListener('message', (event) => {
+        let message = null;
+        try { message = JSON.parse(event.data); } catch (_) { return; }
+        applyGeometry(message);
+    });
+    ws.addEventListener('close', () => {
+        if (!wsState.reconnectTimer) {
+            wsState.reconnectTimer = window.setTimeout(() => {
+                wsState.reconnectTimer = null;
+                connectWs();
+            }, 1200);
+        }
+    });
+    ws.addEventListener('error', () => ws.close());
+}
+
+function setPointerFromEvent(event) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+function intersectEditableHit(event) {
+    if (!editableHitObjects.length) return null;
+    setPointerFromEvent(event);
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(editableHitObjects, false);
+    return hits.length ? hits[0] : null;
+}
+
+function intersectPlaneFromEvent(event, plane) {
+    setPointerFromEvent(event);
+    raycaster.setFromCamera(pointer, camera);
+    const target = new THREE.Vector3();
+    const hit = raycaster.ray.intersectPlane(plane, target);
+    return hit ? target.clone() : null;
+}
+
+function computeSelectionAnchor(refs) {
+    const anchor = new THREE.Vector3();
+    let count = 0;
+    refs.forEach((ref) => {
+        const point = resolveRefPoint(editorState.scene, ref);
+        if (!point) return;
+        anchor.add(vec3FromArray(point));
+        count += 1;
+    });
+    if (!count) return null;
+    return anchor.multiplyScalar(1 / count);
+}
+
+function worldToCanvas(point) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const projected = vec3FromArray(point).project(camera);
+    return {
+        x: (projected.x * 0.5 + 0.5) * rect.width,
+        y: (-projected.y * 0.5 + 0.5) * rect.height,
+        visible: projected.z >= -1 && projected.z <= 1
+    };
+}
+
+function rectContainsPoint(rect, point) {
+    return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
+}
+
+function rectIntersectsProjectedPoints(rect, points) {
+    const visible = points.map(worldToCanvas).filter((point) => point.visible);
+    if (!visible.length) return false;
+    let minX = visible[0].x;
+    let minY = visible[0].y;
+    let maxX = visible[0].x;
+    let maxY = visible[0].y;
+    visible.forEach((point) => {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+    });
+    return rect.x <= maxX && rect.x + rect.w >= minX && rect.y <= maxY && rect.y + rect.h >= minY;
+}
+
+function marqueeSelection(rect) {
+    const keys = [];
+    if (editorState.mask.point) {
+        editorState.points.forEach((item) => {
+            const projected = worldToCanvas([item.x, item.y, item.z]);
+            if (projected.visible && rectContainsPoint(rect, projected)) keys.push(item.key);
+        });
+    }
+    if (editorState.mask.edge) {
+        editorState.edges.forEach((item) => {
+            if (rectIntersectsProjectedPoints(rect, item.points)) keys.push(item.key);
+        });
+    }
+    if (editorState.mask.face) {
+        editorState.faces.forEach((item) => {
+            if (rectIntersectsProjectedPoints(rect, item.boundary)) keys.push(item.key);
+        });
+    }
+    return keys;
+}
+
+function showMarquee(marquee) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const x = Math.min(marquee.x0, marquee.x1);
+    const y = Math.min(marquee.y0, marquee.y1);
+    const w = Math.abs(marquee.x1 - marquee.x0);
+    const h = Math.abs(marquee.y1 - marquee.y0);
+    marqueeEl.style.left = `${rect.left + x}px`;
+    marqueeEl.style.top = `${rect.top + y}px`;
+    marqueeEl.style.width = `${w}px`;
+    marqueeEl.style.height = `${h}px`;
+    marqueeEl.style.display = 'block';
+}
+
+function hideMarquee() {
+    marqueeEl.style.display = 'none';
+}
+
+function updateCursor(event = null) {
+    if (editorState.mode !== 'edit') {
+        renderer.domElement.style.cursor = '';
+        return;
+    }
+    const hit = event ? intersectEditableHit(event) : null;
+    renderer.domElement.style.cursor = hit ? 'pointer' : '';
+}
+
+modeGroupEl.querySelectorAll('[data-mode]').forEach((button) => {
+    button.addEventListener('click', () => setMode(button.getAttribute('data-mode')));
+});
+
+maskGroupEl.querySelectorAll('[data-mask]').forEach((button) => {
+    const mask = button.getAttribute('data-mask');
+    button.addEventListener('click', () => {
+        editorState.mask[mask] = !editorState.mask[mask];
+        button.classList.toggle('is-active', !!editorState.mask[mask]);
+        rebuildEditableView();
+    });
+});
+
+renderer.domElement.tabIndex = 0;
+renderer.domElement.addEventListener('keydown', (event) => {
+    if (event.key !== 'e' && event.key !== 'E') return;
+    const target = event.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+    editorState.uiVisible = !editorState.uiVisible;
+    updateEditableHud();
+    renderEditableOverlay();
+    event.preventDefault();
+    event.stopPropagation();
+});
+
+renderer.domElement.addEventListener('pointerdown', (event) => {
+    renderer.domElement.focus();
+    if (editorState.mode === 'camera') {
+        cameraIsDragging = false;
+        cameraPointerDown = { x: event.clientX, y: event.clientY };
+        return;
+    }
+    if (editorState.mode !== 'edit' || !editorState.scene) return;
+    const hit = intersectEditableHit(event);
+    editorState.pointerDown = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startCanvasX: event.clientX - renderer.domElement.getBoundingClientRect().left,
+        startCanvasY: event.clientY - renderer.domElement.getBoundingClientRect().top,
+        hitKey: hit?.object?.userData?.itemKey || null,
+        shiftKey: !!event.shiftKey
+    };
+    try { renderer.domElement.setPointerCapture(event.pointerId); } catch (_) {}
+    event.preventDefault();
+});
+
+renderer.domElement.addEventListener('pointermove', (event) => {
+    setPointerFromEvent(event);
+    if (editorState.mode === 'camera') {
+        if (cameraPointerDown) {
+            const dx = event.clientX - cameraPointerDown.x;
+            const dy = event.clientY - cameraPointerDown.y;
+            if (Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) cameraIsDragging = true;
+        }
+        return;
+    }
+    if (editorState.mode !== 'edit' || !editorState.scene) return;
+
+    const down = editorState.pointerDown;
+    if (!editorState.dragging && !editorState.marquee && down && down.pointerId === event.pointerId) {
+        const dx = event.clientX - down.startClientX;
+        const dy = event.clientY - down.startClientY;
+        if (Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+            if (down.hitKey) {
+                if (!editorState.selection.has(down.hitKey)) {
+                    const next = new Set(editorState.selection);
+                    next.add(down.hitKey);
+                    editorState.selection = next;
+                    rebuildEditableView();
+                }
+                let refs = selectionRefs(editorState);
+                if (!refs.length) {
+                    const item = editorState.items.get(down.hitKey);
+                    refs = item ? uniqueRefs(item.pointRefs || []) : [];
+                }
+                const anchor = computeSelectionAnchor(refs);
+                if (anchor && refs.length) {
+                    const viewNormal = camera.getWorldDirection(new THREE.Vector3()).normalize();
+                    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(viewNormal, anchor);
+                    const hitPoint = intersectPlaneFromEvent(event, plane);
+                    if (hitPoint) {
+                        editorState.dragging = {
+                            pointerId: event.pointerId,
+                            refs,
+                            plane,
+                            lastPoint: hitPoint
+                        };
+                    }
+                }
+            } else {
+                editorState.marquee = {
+                    pointerId: event.pointerId,
+                    x0: down.startCanvasX,
+                    y0: down.startCanvasY,
+                    x1: event.clientX - renderer.domElement.getBoundingClientRect().left,
+                    y1: event.clientY - renderer.domElement.getBoundingClientRect().top,
+                    additive: down.shiftKey
+                };
+                showMarquee(editorState.marquee);
+            }
+        }
+    }
+
+    if (editorState.dragging && editorState.dragging.pointerId === event.pointerId) {
+        const hitPoint = intersectPlaneFromEvent(event, editorState.dragging.plane);
+        if (hitPoint) {
+            const delta = new THREE.Vector3().subVectors(hitPoint, editorState.dragging.lastPoint);
+            if (delta.lengthSq() > 0) {
+                translatePointRefs(editorState.scene, editorState.dragging.refs, delta.x, delta.y, delta.z);
+                sendMessage({
+                    type: 'fline-edit-translate',
+                    sessionId: editorState.scene.sessionId,
+                    points: uniqueRefs(editorState.dragging.refs),
+                    dx: delta.x,
+                    dy: delta.y,
+                    dz: delta.z,
+                    space: 'MODEL'
+                });
+                editorState.dragging.lastPoint = hitPoint;
+                rebuildEditableView();
+            }
+        }
+        event.preventDefault();
+        return;
+    }
+
+    if (editorState.marquee && editorState.marquee.pointerId === event.pointerId) {
+        editorState.marquee.x1 = event.clientX - renderer.domElement.getBoundingClientRect().left;
+        editorState.marquee.y1 = event.clientY - renderer.domElement.getBoundingClientRect().top;
+        showMarquee(editorState.marquee);
+        event.preventDefault();
+        return;
+    }
+
+    updateCursor(event);
+});
+
+function finishPointer(event) {
+    if (editorState.mode === 'camera') {
+        cameraPointerDown = null;
+        return;
+    }
+    const hadMarquee = !!(editorState.marquee && editorState.marquee.pointerId === event.pointerId);
+    const hadDragging = !!(editorState.dragging && editorState.dragging.pointerId === event.pointerId);
+
+    if (editorState.marquee && editorState.marquee.pointerId === event.pointerId) {
+        const rect = {
+            x: Math.min(editorState.marquee.x0, editorState.marquee.x1),
+            y: Math.min(editorState.marquee.y0, editorState.marquee.y1),
+            w: Math.abs(editorState.marquee.x1 - editorState.marquee.x0),
+            h: Math.abs(editorState.marquee.y1 - editorState.marquee.y0)
+        };
+        const keys = marqueeSelection(rect);
+        const additive = editorState.marquee.additive;
+        editorState.marquee = null;
+        hideMarquee();
+        applySelection(keys, additive);
+    }
+
+    if (editorState.dragging && editorState.dragging.pointerId === event.pointerId) {
+        editorState.dragging = null;
+        rebuildEditableView();
+    }
+
+    const down = editorState.pointerDown;
+    if (down && down.pointerId === event.pointerId && editorState.mode === 'edit' && editorState.scene) {
+        if (!hadMarquee && !hadDragging) {
+            if (down.hitKey) {
+                if (down.shiftKey) toggleSelection(down.hitKey);
+                else applySelection([down.hitKey], false);
+            } else if (!down.shiftKey && editorState.selection.size > 0) {
+                editorState.selection = new Set();
+                rebuildEditableView();
+            }
+        }
+        editorState.pointerDown = null;
+    }
+
+    try { renderer.domElement.releasePointerCapture(event.pointerId); } catch (_) {}
+    updateCursor(event);
+}
+
+renderer.domElement.addEventListener('pointerup', finishPointer);
+renderer.domElement.addEventListener('pointercancel', finishPointer);
+renderer.domElement.addEventListener('click', (event) => {
+    if (editorState.mode !== 'camera' || cameraIsDragging) return;
+    setPointerFromEvent(event);
+    raycaster.setFromCamera(pointer, camera);
+    const meshes = interactiveObjects.flatMap((entry) => entry.meshes);
+    const hits = raycaster.intersectObjects(meshes, false);
+    if (!hits.length) return;
+    const hitObject = hits[0].object;
+    for (const entry of interactiveObjects) {
+        if (entry.meshes.includes(hitObject) && entry.callbackId) {
+            sendMessage({ type: 'fline-click', callbackId: entry.callbackId, ...intersectionForHit(entry, hits[0]) });
+            break;
+        }
+    }
+});
+
+function onResize() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    renderer.setPixelRatio(getDpr());
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    if (pointMaterial && pointMaterial.uniforms) pointMaterial.uniforms.uPixelRatio.value = getDpr();
+    if (editorState.marquee) showMarquee(editorState.marquee);
+}
+window.addEventListener('resize', onResize);
+
+function render() {
+    controls.update();
+    const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
+    if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
+    renderer.render(scene, camera);
+    requestAnimationFrame(render);
+}
+
+connectWs();
+render();
 </script>
 </body>
 </html>

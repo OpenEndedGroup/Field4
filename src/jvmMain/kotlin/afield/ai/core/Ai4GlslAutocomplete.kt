@@ -3,7 +3,7 @@ package afield.ai.core
 import com.openai.models.ReasoningEffort
 import java.util.concurrent.ConcurrentHashMap
 
-private fun glslCompletionThreadInstructions(langName: String): String = """
+private fun shaderCompletionThreadInstructions(langName: String): String = """
 You are an IDE autocomplete engine for $langName.
 
 Rules:
@@ -18,7 +18,7 @@ Rules:
 - Do not call tools; output plain text only.
 """.trimIndent()
 
-private fun glslCompletionPrompt(
+private fun shaderCompletionPrompt(
     lang: LanguageSpec,
     stage: String,
     line: Int,
@@ -41,8 +41,7 @@ $codeWithCursor
 ${contextBlock.trim()}
 """.trimIndent()
 
-private fun glslContextBlock(context: Map<String, String>): String {
-    if (context.isEmpty()) return ""
+private fun shaderContextBlock(context: Map<String, String>): String {
     val entries = context.filterValues { it.isNotBlank() }
     if (entries.isEmpty()) return ""
     return buildString {
@@ -134,7 +133,8 @@ private fun parseCandidateDocs(commentary: String, count: Int): List<String> {
 
 object Ai4GlslAutocomplete {
     private val bridge: OpenAiIdeCodexBridge by lazy {
-        val fastModel = System.getenv("AFIELD_GLSL_AUTOCOMPLETE_MODEL")
+        val fastModel = System.getenv("AFIELD_SHADER_AUTOCOMPLETE_MODEL")
+            ?: System.getenv("AFIELD_GLSL_AUTOCOMPLETE_MODEL")
             ?: "gpt-5.2"
         OpenAiIdeCodexBridge(
             model = fastModel,
@@ -154,20 +154,26 @@ object Ai4GlslAutocomplete {
         position: Int,
         maxOutputTokens: Long = 400
     ): List<CompletionCandidate> {
-        val lang = glslSpecForProperty(property) ?: return emptyList()
+        val lang = shaderSpecForProperty(property) ?: return emptyList()
         val stage = property.lowercase()
         val safePos = position.coerceIn(0, code.length)
         val codeWithCursor = code.substring(0, safePos) + "<cursor>" + code.substring(safePos)
         val wrapped = lang.wrap(codeWithCursor)
-        val contextBlock = glslContextBlock(context)
+        val includeManifest = GlslIncludeLibraryIndex.manifestFor("$property\n$code", limit = 16)
+        val contextWithIncludes = if (includeManifest.isBlank()) {
+            context
+        } else {
+            context + ("GLSL include libraries" to includeManifest)
+        }
+        val contextBlock = shaderContextBlock(contextWithIncludes)
 
         val state = threadByKey[fileKey] ?: bridge.startThread(
             fileKey,
             lang.wrap(code),
-            instructions = glslCompletionThreadInstructions(lang.name)
+            instructions = shaderCompletionThreadInstructions(lang.name)
         ).also { threadByKey[fileKey] = it }
 
-        val prompt = glslCompletionPrompt(lang, stage, line, column, wrapped, contextBlock)
+        val prompt = shaderCompletionPrompt(lang, stage, line, column, wrapped, contextBlock)
         val result = bridge.send(state, prompt, maxOutputTokens = maxOutputTokens)
         val cleaned = cleanCompletionText(result.text)
         val (candidatesText, notesText) = splitNotesBlock(cleaned)

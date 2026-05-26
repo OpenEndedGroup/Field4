@@ -307,9 +307,13 @@ class SavingContext {
                 val ednText = Edn.write(payload, ednCustom)
                 val metadataPath = File(root, METADATA_EDN).path
                 touched.add(metadataPath)
-                val cd = checkDifference(metadataPath, ednText)
-                altered = altered || cd
-                if (cd) alteredFiles.add(metadataPath)
+                val metadataChanged = checkDifference(metadataPath, ednText)
+                altered = altered || metadataChanged
+                if (metadataChanged) alteredFiles.add(metadataPath)
+
+                if (metadataChanged) {
+                    FlightRecorder.checkpointOnMetadataChange(fn)
+                }
 
                 SaveReloadLog.log(
                     "save",
@@ -410,8 +414,8 @@ class SavingContext {
         return boxes
     }
 
-    fun resolveStoredValue(value: Any?, directory: String): Any? {
-        return resolveValue(value, directory, { it }, createBoxes = false)
+    fun resolveStoredValue(value: Any?, directory: String, preferInlineFiles: Boolean = false): Any? {
+        return resolveValue(value, directory, { it }, createBoxes = false, preferInlineFiles = preferInlineFiles)
     }
 
     fun resolveStoredValueWithBoxes(
@@ -419,7 +423,8 @@ class SavingContext {
         directory: String,
         filterId: (String) -> String = { it },
         allowedRefIds: Set<String>? = null,
-        root: SessionInformation? = null
+        root: SessionInformation? = null,
+        preferInlineFiles: Boolean = false
     ): Any? {
         return resolveValue(
             value,
@@ -427,8 +432,69 @@ class SavingContext {
             filterId,
             createBoxes = true,
             allowedRefIds = allowedRefIds,
-            root = root
+            root = root,
+            preferInlineFiles = preferInlineFiles
         )
+    }
+
+    private fun normalizedEdnKey(key: Any?): String? {
+        val text = key?.toString() ?: return null
+        return if (text.startsWith(":")) text.substring(1) else text
+    }
+
+    private fun mapLookup(map: Map<*, *>, key: String): Any? {
+        map[key]?.let { return it }
+        map[":$key"]?.let { return it }
+        return map.entries.firstOrNull { normalizedEdnKey(it.key) == key }?.value
+    }
+
+    private fun numberLikeToDouble(value: Any?): Double? = when (value) {
+        is Number -> value.toDouble()
+        is String -> value.toDoubleOrNull()
+        else -> null
+    }
+
+    private fun coerceRect(value: Any?): Rect? {
+        val items = value as? List<*> ?: return null
+        if (items.size != 4) return null
+        val x = numberLikeToDouble(items[0]) ?: return null
+        val y = numberLikeToDouble(items[1]) ?: return null
+        val w = numberLikeToDouble(items[2]) ?: return null
+        val h = numberLikeToDouble(items[3]) ?: return null
+        return Rect(x, y, w, h)
+    }
+
+    private fun coerceBoxRefLike(value: Any?): BoxRef? = when (value) {
+        is BoxRef -> value
+        is String -> {
+            val id = value.removePrefix(":").trim()
+            if (id.isEmpty()) null else BoxRef(id)
+        }
+        else -> null
+    }
+
+    private fun normalizeTransferPropertyValue(name: String, value: Any?): Any? = when (name) {
+        "frame", "viewport" -> coerceRect(value) ?: value
+        "parents", "children", "nested" -> {
+            val collection = value as? Collection<*>
+            if (collection == null) {
+                value
+            } else {
+                val refs = LinkedHashSet<BoxRef>()
+                var valid = true
+                for (item in collection) {
+                    val ref = coerceBoxRefLike(item)
+                    if (ref == null) {
+                        valid = false
+                        break
+                    }
+                    refs.add(ref)
+                }
+                if (valid) refs else value
+            }
+        }
+        "nestedIn" -> coerceBoxRefLike(value) ?: value
+        else -> value
     }
 
     /**
@@ -443,7 +509,7 @@ class SavingContext {
      * @param rootValue The root EDN value from metadata.edn (should be a Map)
      */
     private fun mergePersistentProperties(rootValue: Map<*, *>) {
-        val savedProps = rootValue["persistentProperties"]
+        val savedProps = mapLookup(rootValue, "persistentProperties")
         if (savedProps != null) {
             val propsList = when (savedProps) {
                 is List<*> -> savedProps.mapNotNull { it?.toString() }
@@ -462,7 +528,7 @@ class SavingContext {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
                 mergePersistentProperties(rootValue)
-                rootValue["boxes"]
+                mapLookup(rootValue, "boxes")
             }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
@@ -477,12 +543,12 @@ class SavingContext {
 
         return boxList.mapNotNull { entry ->
             val map = entry as? Map<*, *> ?: return@mapNotNull null
-            val id = map["id"]?.toString() ?: return@mapNotNull null
-            val propsRaw = map["properties"] as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val id = mapLookup(map, "id")?.toString() ?: return@mapNotNull null
+            val propsRaw = mapLookup(map, "properties") as? Map<*, *> ?: emptyMap<Any?, Any?>()
             val props = LinkedHashMap<String, Any?>()
             for ((k, v) in propsRaw) {
-                val key = k?.toString() ?: continue
-                props[key] = v
+                val key = normalizedEdnKey(k) ?: continue
+                props[key] = normalizeTransferPropertyValue(key, v)
             }
             BoxTransferEdn(id, props)
         }
@@ -494,7 +560,7 @@ class SavingContext {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
                 mergePersistentProperties(rootValue)
-                rootValue["boxes"]
+                mapLookup(rootValue, "boxes")
             }
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
@@ -509,12 +575,12 @@ class SavingContext {
 
         return boxList.mapNotNull { entry ->
             val map = entry as? Map<*, *> ?: return@mapNotNull null
-            val id = map["id"]?.toString() ?: return@mapNotNull null
-            val propsRaw = map["properties"] as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val id = mapLookup(map, "id")?.toString() ?: return@mapNotNull null
+            val propsRaw = mapLookup(map, "properties") as? Map<*, *> ?: emptyMap<Any?, Any?>()
             val props = LinkedHashMap<String, Any?>()
             for ((k, v) in propsRaw) {
-                val key = k?.toString() ?: continue
-                props[key] = v
+                val key = normalizedEdnKey(k) ?: continue
+                props[key] = normalizeTransferPropertyValue(key, v)
             }
             BoxTransferEdn(id, props)
         }
@@ -526,13 +592,14 @@ class SavingContext {
         filterId: (String) -> String,
         createBoxes: Boolean,
         allowedRefIds: Set<String>? = null,
-        root: SessionInformation? = null
+        root: SessionInformation? = null,
+        preferInlineFiles: Boolean = false
     ): Any? = when (value) {
         null -> null
         is FileRef -> File(directory, value.path).readText()
         is FileInline -> {
             val file = File(directory, value.path)
-            if (file.exists()) file.readText() else value.inline
+            if (!preferInlineFiles && file.exists()) file.readText() else value.inline
         }
         is BoxRef -> {
             if (allowedRefIds != null && value.id !in allowedRefIds) {
@@ -561,7 +628,7 @@ class SavingContext {
         is List<*> -> {
             val resolved = mutableListOf<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root)
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -571,7 +638,7 @@ class SavingContext {
         is Set<*> -> {
             val resolved = LinkedHashSet<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root)
+                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -581,9 +648,9 @@ class SavingContext {
         is Map<*, *> -> {
             val mapped = LinkedHashMap<Any?, Any?>()
             for ((k, v) in value) {
-                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root)
+                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (keyResolved === SkipRef) continue
-                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root)
+                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (valueResolved === SkipRef) continue
                 mapped[keyResolved] = valueResolved
             }
@@ -606,9 +673,10 @@ class SavingContext {
         root: String,
         filterId: (String) -> String,
         createBoxes: Boolean,
-        allowedRefIds: Set<String>? = null
+        allowedRefIds: Set<String>? = null,
+        preferInlineFiles: Boolean = false
     ): Set<Box> {
-        return transfers.map { transfer ->
+        val boxes = transfers.map { transfer ->
             val id = filterId(transfer.id)
             val b = box(id, createIfMissing = createBoxes)
             transfer.properties.forEach { (name, value) ->
@@ -617,7 +685,8 @@ class SavingContext {
                     root,
                     filterId,
                     createBoxes = createBoxes,
-                    allowedRefIds = allowedRefIds
+                    allowedRefIds = allowedRefIds,
+                    preferInlineFiles = preferInlineFiles
                 )
                 if (v != null) {
                     b.setPropertyRaw(name, v)
@@ -628,13 +697,57 @@ class SavingContext {
             }
             b
         }.toSet()
+
+        reconcileLoadedTopology(boxes)
+        return boxes
+    }
+
+    private fun reconcileLoadedTopology(boxes: Set<Box>) {
+        // Loading through setPropertyRaw restores the forward refs but skips the normal mutation helpers
+        // that would repair inverse topology on boxes outside the loaded payload.
+        fun ensureConnection(parent: Box, child: Box) {
+            if (!parent.children.contains(child)) {
+                parent.setPropertyRaw("children", parent.children.toMutableSet().apply { add(child) })
+            }
+            if (!child.parents.contains(parent)) {
+                child.setPropertyRaw("parents", child.parents.toMutableSet().apply { add(parent) })
+            }
+        }
+
+        boxes.forEach { box ->
+            box.parents
+                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+                .forEach { parent -> ensureConnection(parent, box) }
+
+            box.children
+                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+                .forEach { child -> ensureConnection(box, child) }
+
+            box.nested
+                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+                .forEach { child ->
+                    if (child.nestedIn != box) {
+                        child.setPropertyRaw("nestedIn", box)
+                    }
+                    ensureConnection(box, child)
+                }
+
+            val nestedParent = box.nestedIn
+            if (nestedParent != null && !nestedParent.getPropertyRaw("_tombstone").isTrue()) {
+                if (!nestedParent.nested.contains(box)) {
+                    nestedParent.setPropertyRaw("nested", nestedParent.nested.toMutableSet().apply { add(box) })
+                }
+                ensureConnection(nestedParent, box)
+            }
+        }
     }
 
     fun loadFromEdnText(
         ednText: String,
         directory: String,
         filterId: (String) -> String = { it },
-        allowedRefIds: Set<String>? = null
+        allowedRefIds: Set<String>? = null,
+        preferInlineFiles: Boolean = false
     ): Set<Box> {
         val transfers = readEdnTransfersFromString(ednText)
         return instantiateTransfers(
@@ -642,7 +755,8 @@ class SavingContext {
             directory,
             filterId,
             createBoxes = true,
-            allowedRefIds = allowedRefIds
+            allowedRefIds = allowedRefIds,
+            preferInlineFiles = preferInlineFiles
         )
     }
 
@@ -709,6 +823,7 @@ class SavingContext {
 
         const val METADATA_EDN = "metadata.edn"
         const val METADATA_JSON = "metadata.json"
+        const val TRANSCRIPT_EDN = "transcript.edn"
 
         private val ednCustom = Edn.CustomTypes().apply {
             registerEdn(Rect::class, "afield/rect", { rect ->

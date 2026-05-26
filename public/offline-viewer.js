@@ -345,7 +345,7 @@ function showEditorForBox(box) {
     const container = document.getElementById('editor-container');
     const props = box.properties || {};
 
-    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'fragment', 'task', 'mesh', 'compute'];
+    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_s', 'fragment', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s'];
 
     // Get list of properties that contain code
     const codeProperties = editablePropsOrder.filter(key => typeof props[key] === 'string');
@@ -427,10 +427,15 @@ function getLanguageForProperty(property) {
         'clojure': 'clojure',
         'javascript': 'javascript',
         'vertex': 'cpp',
+        'vertex_s': 'cpp',
         'fragment': 'cpp',
+        'fragment_s': 'cpp',
         'task': 'cpp',
+        'task_s': 'cpp',
         'mesh': 'cpp',
-        'compute': 'cpp'
+        'mesh_s': 'cpp',
+        'compute': 'cpp',
+        'compute_s': 'cpp'
     };
     return languageMap[property] || 'kotlin';
 }
@@ -669,6 +674,75 @@ function drawConnections() {
     });
 }
 
+function makeHostRequestId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function requestFieldHost(messageType, payload, options = {}) {
+    if (window.top === window) {
+        return Promise.reject(new Error('not embedded in Field'));
+    }
+
+    const messageId = makeHostRequestId(messageType);
+    const responseType = `${messageType}-response`;
+    const timeoutMs = options.timeoutMs || 1800;
+
+    return new Promise((resolve, reject) => {
+        let settled = false;
+
+        const cleanup = () => {
+            window.removeEventListener('message', onMessage);
+            window.clearTimeout(timer);
+        };
+
+        const onMessage = (event) => {
+            const data = event.data || {};
+            if (data.type !== responseType || data.messageId !== messageId) {
+                return;
+            }
+            settled = true;
+            cleanup();
+            if (data.ok === false) {
+                reject(new Error(data.error || `${messageType} failed`));
+                return;
+            }
+            resolve(data.result);
+        };
+
+        const timer = window.setTimeout(() => {
+            if (settled) return;
+            cleanup();
+            reject(new Error('Field host request timed out'));
+        }, timeoutMs);
+
+        window.addEventListener('message', onMessage);
+        window.top.postMessage({ type: messageType, messageId, ...payload }, '*');
+    });
+}
+
+async function importOfflineDocViaLocalhost(recommendedName, ednText) {
+    const localBase = 'https://localhost:9092';
+    const response = await fetch(`${localBase}/api/import-offline-doc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            recommendedName,
+            ednText,
+            sourceUrl: window.location.href
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return {
+        localBase,
+        result
+    };
+}
+
 function setupOpenLocalButton(fileUrl, ednText, data) {
     const button = document.getElementById('open-local');
     button.style.display = 'inline-block';
@@ -685,22 +759,25 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         button.textContent = 'Sending to Field·4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
-            const localBase = 'https://localhost:9092';
-            const response = await fetch(`${localBase}/api/import-offline-doc`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            let localBase = 'https://localhost:9092';
+            let result = null;
+            let hostOpened = false;
+
+            try {
+                result = await requestFieldHost('field-import-offline-doc', {
                     recommendedName,
                     ednText,
-                    sourceUrl: window.location.href
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    sourceUrl: window.location.href,
+                    openInHost: true
+                });
+                hostOpened = true;
+            } catch (hostError) {
+                console.info('offline-viewer host import unavailable, falling back to localhost import', hostError);
+                const fallback = await importOfflineDocViaLocalhost(recommendedName, ednText);
+                localBase = fallback.localBase;
+                result = fallback.result;
             }
 
-            const result = await response.json();
             const localEdnUrl = result.projectUrl || `${localBase}/${encodeURIComponent(result.documentName)}/metadata.edn`;
             const openUrl = result.openUrl || `${localBase}/index.html?file=${encodeURIComponent(result.documentName)}`;
 
@@ -721,7 +798,12 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
             button.textContent = 'Open in Field·4';
             button.title = `Open ${result.documentName} in Field·4`;
 
-            // Launch Field·4 in a new tab
+            if (hostOpened) {
+                button.textContent = 'Opening in Field·4...';
+                return;
+            }
+
+            // Launch Field·4 in a new tab when we imported over localhost ourselves.
             window.open(openUrl, '_blank', 'noopener');
         } catch (error) {
             showError(`Failed to send to Field·4: ${error.message}`);

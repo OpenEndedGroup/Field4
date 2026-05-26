@@ -1,8 +1,10 @@
 package afield
 
+import afield.Generator.Companion.isMain
 import kotlinx.coroutines.*
-import org.joml.Vector3f
 import java.util.concurrent.LinkedTransferQueue
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.*
 
 class Frames {
@@ -10,6 +12,10 @@ class Frames {
     private var stillborn = false
 
     var atEnd = suspend {}
+    internal var onAtEndStart: (Job) -> Unit = {}
+    internal var onAtEndFinish: (Job) -> Unit = {}
+    internal var shouldCancelAtEnd = { false }
+    internal var inEndPhase = false
     var body = suspend {}
     var shouldend = { false }
 
@@ -45,7 +51,8 @@ class Frames {
             r = false
         }
 
-        if (shouldend() && job != null) {
+        val shouldCancel = if (inEndPhase) shouldCancelAtEnd() else shouldend()
+        if (shouldCancel && job != null) {
             job?.cancel()
             r = false
         }
@@ -55,11 +62,31 @@ class Frames {
             frameNumber++
             return r
         } catch (t: Throwable) {
-            // this seems a little wild
-            coroutineScope {
-                launch(coroutineContext[CoroutineDispatcher]!! + Job()) {
-                    atEnd()
+            if (inEndPhase) {
+                throw t
+            }
+            // Run the end phase outside the cancelled launch job, but preserve the
+            // current dispatcher and other contextual data (such as box context).
+            withContext(NonCancellable) {
+                val endScope = CoroutineScope(coroutineContext.minusKey(Job) + Job())
+                var endFailure: Throwable? = null
+                val endJob = endScope.launch {
+                    inEndPhase = true
+                    try {
+                        atEnd()
+                    } catch (endThrowable: Throwable) {
+                        endFailure = endThrowable
+                    } finally {
+                        inEndPhase = false
+                    }
                 }
+                onAtEndStart(endJob)
+                try {
+                    endJob.join()
+                } finally {
+                    onAtEndFinish(endJob)
+                }
+                endFailure?.let { throw it }
             }
             throw t
         }
@@ -111,6 +138,15 @@ fun loop(block: suspend Frames.() -> Unit): Frames {
     return v
 }
 
+fun Frames.end(block: suspend Frames.() -> Unit): Frames {
+    val original = atEnd
+    atEnd = {
+        original()
+        this@end.block()
+    }
+    return this
+}
+
 
 fun eachFrame(block: suspend Frames.() -> Unit): Frames {
     return frames {
@@ -143,26 +179,40 @@ operator fun Frames.plus(other: Frames): Frames = frames combined@{
 @OptIn(InternalCoroutinesApi::class)
 class Framer : CoroutineDispatcher() {
 
-    var nextList = LinkedTransferQueue<Pair<CoroutineContext, Runnable>>()
+    private val queueLock = Any()
+    private var nextList = LinkedTransferQueue<Pair<CoroutineContext, Runnable>>()
 
     override fun dispatch(context: CoroutineContext, block: Runnable) {
-        nextList.add(context to block)
+        synchronized(queueLock) {
+            nextList.add(context to block)
+        }
 //        println(" framer will dispatch $context $block $nextList ${nextList.size} ${System.identityHashCode(this)}")
     }
 
+
+
+    @OptIn(ExperimentalAtomicApi::class)
     fun frame(): Int {
-        var n = nextList.poll()
+        val currentList = synchronized(queueLock) {
+            val current = nextList
+            nextList = LinkedTransferQueue()
+            current
+        }
+        var n = currentList.poll()
         var c = 0
         while (n != null) {
             c++
             try {
+                isMain.store(true)
                 n.second.run()
             } catch (ex: Throwable) {
                 ex.printStackTrace()
+            } finally {
+                isMain.store(false)
             }
-            n = nextList.poll()
+            n = currentList.poll()
         }
-        if (c == 0) print(".") else print(":")
+//        if (c == 0) print(".") else print(":")
         return c
     }
 
@@ -221,6 +271,11 @@ class Generator<In, Out> internal constructor(
     private var pendingOutput: Out? = null
     private var waitingContinuation: Continuation<In>? = null
 
+    companion object
+    {
+        @OptIn(ExperimentalAtomicApi::class)
+        val isMain : AtomicBoolean = AtomicBoolean(false)
+    }
     /**
      * Starts the coroutine and runs until the first `yield`.
      * Returns the first yielded value, or null if the generator completed

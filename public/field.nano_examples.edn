@@ -1,0 +1,57 @@
+{:version 2
+ :boxes [{:id "nano-root"
+          :properties {:name "Nano Root"
+                       :frame #afield/rect [40.0 40.0 220.0 90.0]
+                       :children #{#afield/box "nano-add"
+                                   #afield/box "nano-fill"
+                                   #afield/box "nano-sum"
+                                   #afield/box "nano-data"
+                                   #afield/box "nano-call"}
+                       :parents #{#afield/box "root"}
+                       :isNanoRoot true}}
+
+         {:id "nano-add"
+          :properties {:name "Registers, output, and the first RAM write"
+                       :frame #afield/rect [320.0 40.0 320.0 110.0]
+                       :parents #{#afield/box "nano-root"}
+                       :children #{}
+                       :code_language "Nano"
+                       :code "ldi r0, 7\nldi r1, 9\nadd r0, r1\nsta r0, 24\nout r0\nhlt"}}
+
+         {:id "nano-fill"
+          :properties {:name "A loop that paints a strip of RAM"
+                       :frame #afield/rect [680.0 40.0 320.0 150.0]
+                       :parents #{#afield/box "nano-root"}
+                       :children #{}
+                       :code_language "Nano"
+                       :code "ldi r0, 20\nldi r1, 1\nldi r2, 8\n\nloop:\n    str r0, r1\n    inc r0\n    inc r1\n    dec r2\n    jnz loop\n\nout r1\nhlt"}}
+
+         {:id "nano-sum"
+          :properties {:name "Summation by counting down to zero"
+                       :frame #afield/rect [1040.0 40.0 320.0 150.0]
+                       :parents #{#afield/box "nano-root"}
+                       :children #{}
+                       :code_language "Nano"
+                       :code "ldi r0, 10\nldi r1, 0\n\nloop:\n    add r1, r0\n    dec r0\n    jnz loop\n\nsta r1, 28\nout r1\nhlt"}}
+
+         {:id "nano-data"
+          :properties {:name ".data turns the tail into a lookup table"
+                       :frame #afield/rect [1400.0 40.0 320.0 170.0]
+                       :parents #{#afield/box "nano-root"}
+                       :children #{}
+                       :code_language "Nano"
+                       :code "ldrr r0, 12\nldrr r1, 11\nldrr r2, 10\nadd r0, r1\nadd r0, r2\nsta r0, 29\nout r0\nhlt\n\n.data 5 8 13"}}
+
+         {:id "nano-call"
+          :properties {:name "call and ret let you factor repeated work"
+                       :frame #afield/rect [1760.0 40.0 320.0 170.0]
+                       :parents #{#afield/box "nano-root"}
+                       :children #{}
+                       :code_language "Nano"
+                       :code "ldi r0, 6\ncall dbl\ncall dbl\nsta r0, 30\nout r0\nhlt\n\ndbl:\n    add r0, r0\n    ret"}}
+
+         {:id "root"
+          :properties {:name "root"
+                       :children #{#afield/box "nano-root"}
+                       :parents #{}}}]
+ :persistentProperties ["frame" "name" "code" "code_language" "children" "parents" "isNanoRoot"]}

@@ -2,6 +2,18 @@ package afield
 
 import afield.logger.lprintln
 
+/*
+FIELD_TEST
+id: core.compiled-snippet.smoke
+runner: jvm-main
+entrypoint: afield.CompiledSnippetTest
+tags: [smoke, core, kotlin, snippets]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "CompiledSnippet tests passed"
+*/
 /**
  * Test for CompiledSnippet functionality - compile once, evaluate many times
  * 

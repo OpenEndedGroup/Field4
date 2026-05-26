@@ -3,6 +3,8 @@ package afield.ai.core
 import afield.*
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
+import afield.ai.RelatedContextDiscovery
+import afield.ai.searchWorkspaceSymbols
 import afield.logger.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,24 @@ fun installAi4() {
         name.equals(GLSL_MESH.name, ignoreCase = true) -> GLSL_MESH
         name.equals(GLSL_TASK.name, ignoreCase = true) -> GLSL_TASK
         name.equals(GLSL_COMPUTE.name, ignoreCase = true) -> GLSL_COMPUTE
+        name.equals(SLANG_VERTEX.name, ignoreCase = true) -> SLANG_VERTEX
+        name.equals(SLANG_FRAGMENT.name, ignoreCase = true) -> SLANG_FRAGMENT
+        name.equals(SLANG_MESH.name, ignoreCase = true) -> SLANG_MESH
+        name.equals(SLANG_TASK.name, ignoreCase = true) -> SLANG_TASK
+        name.equals(SLANG_COMPUTE.name, ignoreCase = true) -> SLANG_COMPUTE
+        name.startsWith("GLSL (ray", ignoreCase = true) -> GLSL_RAY_TRACING
+        name.equals(GLSL_MISS.name, ignoreCase = true) -> GLSL_MISS
+        name.equals(GLSL_CLOSEST_HIT.name, ignoreCase = true) -> GLSL_CLOSEST_HIT
+        name.equals(GLSL_ANY_HIT.name, ignoreCase = true) -> GLSL_ANY_HIT
+        name.equals(GLSL_INTERSECTION.name, ignoreCase = true) -> GLSL_INTERSECTION
+        name.equals(GLSL_CALLABLE.name, ignoreCase = true) -> GLSL_CALLABLE
+        name.startsWith("Slang (ray", ignoreCase = true) -> SLANG_RAY_TRACING
+        name.equals(SLANG_MISS.name, ignoreCase = true) -> SLANG_MISS
+        name.equals(SLANG_CLOSEST_HIT.name, ignoreCase = true) -> SLANG_CLOSEST_HIT
+        name.equals(SLANG_ANY_HIT.name, ignoreCase = true) -> SLANG_ANY_HIT
+        name.equals(SLANG_INTERSECTION.name, ignoreCase = true) -> SLANG_INTERSECTION
+        name.equals(SLANG_CALLABLE.name, ignoreCase = true) -> SLANG_CALLABLE
+        name.equals("nano", ignoreCase = true) -> NANO_ASM
         else -> LanguageSpec(
             name = name,
             wrap = { it.trimEnd() },
@@ -100,7 +120,32 @@ fun installAi4() {
         val docPath = sessionInfo.filename
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
-        val textProperties = linkedSetOf("code", "vertex", "fragment", "mesh", "task", "compute").apply {
+        val textProperties = linkedSetOf(
+            "code",
+            "vertex",
+            "fragment",
+            "vertex_fragment",
+            "mesh",
+            "task",
+            "compute",
+            "raygen",
+            "miss",
+            "closesthit",
+            "anyhit",
+            "intersection",
+            "callable",
+            "vertex_s",
+            "fragment_s",
+            "mesh_s",
+            "task_s",
+            "compute_s",
+            "raygen_s",
+            "miss_s",
+            "closesthit_s",
+            "anyhit_s",
+            "intersection_s",
+            "callable_s"
+        ).apply {
             if (exec.property.isNotBlank()) add(exec.property)
         }
 
@@ -108,9 +153,27 @@ fun installAi4() {
             "code" -> target.ke.languageName
             "vertex" -> "GLSL (vertex)"
             "fragment" -> "GLSL (fragment)"
+            "vertex_fragment" -> "Slang (vertex+fragment)"
             "compute" -> "GLSL (compute)"
             "mesh" -> "GLSL (mesh)"
             "task" -> "GLSL (task)"
+            "raygen" -> "GLSL (ray generation)"
+            "miss" -> "GLSL (miss)"
+            "closesthit" -> "GLSL (closest hit)"
+            "anyhit" -> "GLSL (any hit)"
+            "intersection" -> "GLSL (intersection)"
+            "callable" -> "GLSL (callable)"
+            "vertex_s" -> "Slang (vertex)"
+            "fragment_s" -> "Slang (fragment)"
+            "compute_s" -> "Slang (compute)"
+            "mesh_s" -> "Slang (mesh)"
+            "task_s" -> "Slang (task)"
+            "raygen_s" -> "Slang (ray generation)"
+            "miss_s" -> "Slang (miss)"
+            "closesthit_s" -> "Slang (closest hit)"
+            "anyhit_s" -> "Slang (any hit)"
+            "intersection_s" -> "Slang (intersection)"
+            "callable_s" -> "Slang (callable)"
             "customization", "remote_js" -> "JavaScript"
             "metadata" -> "YAML"
             else -> languageNameForProperty(target, property)
@@ -127,7 +190,10 @@ fun installAi4() {
             return when {
                 lower.endsWith(".kt") || lower.endsWith(".kts") -> "Kotlin"
                 lower.endsWith(".glsl") || lower.endsWith(".vert") || lower.endsWith(".frag")
-                    || lower.endsWith(".comp") || lower.endsWith(".mesh") || lower.endsWith(".task") -> "GLSL"
+                    || lower.endsWith(".comp") || lower.endsWith(".mesh") || lower.endsWith(".task")
+                    || lower.endsWith(".rgen") || lower.endsWith(".rmiss") || lower.endsWith(".rchit")
+                    || lower.endsWith(".rahit") || lower.endsWith(".rint") || lower.endsWith(".rcall") -> "GLSL"
+                lower.endsWith(".slang") -> "Slang"
                 lower.endsWith(".js") || lower.endsWith(".mjs") || lower.endsWith(".cjs") -> "JavaScript"
                 lower.endsWith(".ts") || lower.endsWith(".tsx") -> "TypeScript"
                 lower.endsWith(".java") -> "Java"
@@ -197,6 +263,65 @@ fun installAi4() {
             )
         }
 
+        val contextAttachments: List<ContextAttachment> = buildList {
+            textProperties.forEach { property ->
+                val content = textPropertyContents(box, property) ?: return@forEach
+                add(
+                    ContextAttachment(
+                        fileName = fileRefFor(docName, box.id, property),
+                        language = languageNameForBoxProperty(box, property),
+                        code = content
+                    )
+                )
+            }
+
+            val hasGraphicsProperties = listOf(
+                "vertex",
+                "fragment",
+                "mesh",
+                "task",
+                "compute",
+                "raygen",
+                "miss",
+                "closesthit",
+                "anyhit",
+                "intersection",
+                "callable",
+                "vertex_s",
+                "fragment_s",
+                "vertex_fragment",
+                "mesh_s",
+                "task_s",
+                "compute_s",
+                "raygen_s",
+                "miss_s",
+                "closesthit_s",
+                "anyhit_s",
+                "intersection_s",
+                "callable_s"
+            )
+                .any { property -> textPropertyContents(box, property) != null }
+            if (hasGraphicsProperties || exec.prompt.contains("moduleHere") || exec.prompt.contains("renderer")) {
+                val guidePath = Paths.get(System.getProperty("user.dir")).resolve("src/VULKAN_GRAPHICS_SYSTEM.md")
+                if (Files.exists(guidePath) && Files.isRegularFile(guidePath)) {
+                    val guide = runCatching { Files.readString(guidePath, StandardCharsets.UTF_8) }.getOrNull()
+                    if (!guide.isNullOrBlank()) {
+                        add(
+                            ContextAttachment(
+                                fileName = guidePath.toString(),
+                                language = "Markdown",
+                                code = guide
+                            )
+                        )
+                    }
+                }
+            }
+
+            if (hasGraphicsProperties || glslSpecForProperty(exec.property) != null || exec.extraPrompt.contains("include", ignoreCase = true)) {
+                GlslIncludeLibraryIndex.contextAttachmentFor(exec.extraPrompt.ifBlank { exec.prompt })?.let { add(it) }
+            }
+        }
+
         val resolveAttachment: (String) -> AttachmentResponse? = attachmentResolver@{ raw ->
             val requested = raw.trim()
             if (requested.isEmpty()) return@attachmentResolver null
@@ -222,6 +347,8 @@ fun installAi4() {
                 )
             }
 
+            GlslIncludeLibraryIndex.resolveAttachment(requested)?.let { return@attachmentResolver it }
+
             val candidatePaths = linkedSetOf<Path>()
             val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
             if (requestedPath != null) {
@@ -239,10 +366,13 @@ fun installAi4() {
             for (candidate in candidatePaths) {
                 if (!Files.exists(candidate) || !Files.isRegularFile(candidate)) continue
                 val content = runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
+                val related = RelatedContextDiscovery.forPath(candidate.toString())
                 return@attachmentResolver AttachmentResponse(
                     file = candidate.toString(),
                     language = languageForFilePath(candidate),
-                    content = content
+                    content = content,
+                    relatedGuides = related.guides,
+                    relatedExamples = related.examples
                 )
             }
 
@@ -265,121 +395,17 @@ fun installAi4() {
         val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
             val query = req.query.trim()
             if (query.isEmpty()) return@workspaceSymbolSearch WorkspaceSymbolSearchResult(emptyList())
-
-            val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
-            val definitions = index?.definitions.orEmpty()
-            val limit = req.limit.coerceAtLeast(1)
-            val exact = ArrayList<WorkspaceSymbolMatch>()
-            val prefix = ArrayList<WorkspaceSymbolMatch>()
-            val contains = ArrayList<WorkspaceSymbolMatch>()
-
-            val fileCache = HashMap<String, List<String>>()
-            fun fileLines(path: String): List<String>? {
-                return fileCache.getOrPut(path) {
-                    val direct = Paths.get(path)
-                    val resolved = if (Files.exists(direct)) direct else Paths.get(System.getProperty("user.dir")).resolve(path)
-                    if (!Files.exists(resolved)) return@getOrPut emptyList()
-                    runCatching { Files.readAllLines(resolved, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
-                }.takeIf { it.isNotEmpty() }
-            }
-
-            fun definitionLineText(def: KotlinDefinitionRecord): String? {
-                val lines = fileLines(def.filePath) ?: return null
-                val idx = def.line - 1
-                return lines.getOrNull(idx)?.trimEnd()
-            }
-
-            fun functionBody(def: KotlinDefinitionRecord, maxChars: Int = 6000): String? {
-                if (def.kind != "fun") return null
-                val lines = fileLines(def.filePath) ?: return null
-                val startIdx = (def.line - 1).coerceIn(0, lines.lastIndex)
-                var depth = 0
-                var found = false
-                val sb = StringBuilder()
-                var chars = 0
-                for (i in startIdx..lines.lastIndex) {
-                    val line = lines[i]
-                    var j = 0
-                    while (j < line.length) {
-                        val ch = line[j]
-                        if (!found) {
-                            if (ch == '{') {
-                                found = true
-                                depth = 1
-                                sb.append(ch)
-                            }
-                        } else {
-                            sb.append(ch)
-                            if (ch == '{') depth++
-                            if (ch == '}') {
-                                depth--
-                                if (depth == 0) return sb.toString().trimEnd()
-                            }
-                        }
-                        if (found) {
-                            chars++
-                            if (chars >= maxChars) return sb.toString().trimEnd()
-                        }
-                        j++
-                    }
-                    if (found) {
-                        sb.append('\n')
-                        chars++
-                        if (chars >= maxChars) return sb.toString().trimEnd()
-                    }
-                }
-                return if (found) sb.toString().trimEnd() else null
-            }
-
-            fun toMatch(def: KotlinDefinitionRecord): WorkspaceSymbolMatch {
-                val location = if (!def.fileId.isNullOrBlank()) {
-                    "${def.filePath}:${def.line} (fileId=${def.fileId})"
-                } else {
-                    "${def.filePath}:${def.line}"
-                }
-                val lineText = definitionLineText(def)
-                val body = functionBody(def)
-                return WorkspaceSymbolMatch(
-                    symbol = def.name,
-                    kind = def.kind,
-                    locationHint = location,
-                    filePath = def.filePath,
-                    fileId = def.fileId,
-                    line = def.line,
-                    definitionLine = lineText,
-                    definitionBody = body
-                )
-            }
-
-            for (def in definitions) {
-                val name = def.name
-                if (name.equals(query, ignoreCase = true)) {
-                    exact.add(toMatch(def))
-                    if (exact.size >= limit) break
-                    continue
-                }
-                if (name.startsWith(query, ignoreCase = true)) {
-                    prefix.add(toMatch(def))
-                    continue
-                }
-                if (name.contains(query, ignoreCase = true)) {
-                    contains.add(toMatch(def))
-                }
-            }
-
-            val matches = ArrayList<WorkspaceSymbolMatch>(limit)
-            for (bucket in listOf(exact, prefix, contains)) {
-                for (item in bucket) {
-                    matches.add(item)
-                    if (matches.size >= limit) break
-                }
-                if (matches.size >= limit) break
-            }
-
-            WorkspaceSymbolSearchResult(matches)
+            searchWorkspaceSymbols(
+                index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(),
+                rawQuery = query,
+                limit = req.limit
+            )
         }
 
-        val vectorStoreIds = KotlinSourceIndex.currentVectorStoreId()?.let { listOf(it) } ?: emptyList()
+        val vectorStoreIds = buildList {
+            KotlinSourceIndex.currentVectorStoreId()?.let { add(it) }
+            addAll(GlslIncludeLibraryIndex.currentVectorStoreIdsFor(exec.property, exec.extraPrompt + "\n" + exec.prompt))
+        }.distinct()
 
         if (exec.kind == "chat" || exec.kind == "cursor" || exec.kind == "rewrite" || exec.kind == "error") {
             clearProvisional(docPath)
@@ -418,6 +444,7 @@ fun installAi4() {
                             lang = lang,
                             lineNumber = exec.startLine,
                             userPrompt = exec.extraPrompt,
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
@@ -463,6 +490,7 @@ fun installAi4() {
                             lang = lang,
                             userPrompt = exec.extraPrompt,
                             imageUrls = exec.images,
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
@@ -495,11 +523,13 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Complete the code at <cursor>.",
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds
                         )
                     }
 
@@ -510,11 +540,13 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Rewrite only the code between <rewrite> and </rewrite>.",
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
                             editOtherFile = editOtherFile,
-                            workspaceSymbolSearch = workspaceSymbolSearch
+                            workspaceSymbolSearch = workspaceSymbolSearch,
+                            vectorStoreIds = vectorStoreIds
                         )
                     }
 
@@ -525,6 +557,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             userPrompt = "Fix the error described between <error> and </error>.",
+                            attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,

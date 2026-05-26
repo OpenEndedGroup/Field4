@@ -6,15 +6,16 @@
   --diff-text: #e8ecf2;
   --diff-accent: #5bd0ff;
   --diff-radius: 12px;
-}
-
-.md-typeset pre {
-    margin-left: -64px;
+  --diff-wrap-indent: 6.6ch;
 }
 
 .code-diff-player {
   position: relative;
   width: 100%;
+}
+
+.md-typeset .code-diff-player .code-diff-pre {
+  margin-left: -64px;
 }
 
 .code-diff-player.code-diff-static .code-diff-actions-bottom {
@@ -176,11 +177,12 @@
   position: relative;
   font-size: 15px;
   line-height: 1.4;
-  overflow-x: auto;
+  overflow-x: hidden;
   border: none;
   box-shadow: none;
-  white-space: pre;
+  white-space: normal;
   font-family: "Iosevka Web", "Iosevka", "IBM Plex Mono", "SFMono-Regular", "JetBrains Mono", "Menlo", "Consolas", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
   isolation: isolate;
 }
 
@@ -188,10 +190,14 @@
 .code-diff-pre.flash-delete { box-shadow: 0 0 0 2px rgba(255, 90, 95, 0.35); }
 
 /* mkdocs-like syntax colours */
-.code-diff-pre .hljs { color: #d7dce2; }
+.code-diff-pre .hljs,
+.code-diff-pre .hljs * {
+  color: #d7dce2;
+  font-weight: 300 !important;
+}
 .code-diff-pre .hljs-keyword,
 .code-diff-pre .hljs-built_in,
-.code-diff-pre .hljs-selector-tag { color: #7aa2f7; font-weight: 600; }
+.code-diff-pre .hljs-selector-tag { color: #7aa2f7; }
 .code-diff-pre .hljs-string,
 .code-diff-pre .hljs-attr { color: #8ccf7e; }
 .code-diff-pre .hljs-number,
@@ -205,7 +211,7 @@
   display: grid;
   grid-template-columns: 46px 1fr;
   align-items: flex-start;
-  white-space: pre;
+  white-space: normal;
   margin: 0;
   padding: 0;
   line-height: 1.32;
@@ -231,7 +237,10 @@
 
 .code-diff-line .code-text {
   display: block;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-left: var(--diff-wrap-indent);
+  text-indent: calc(-1 * var(--diff-wrap-indent));
   min-width: 0;
 }
 

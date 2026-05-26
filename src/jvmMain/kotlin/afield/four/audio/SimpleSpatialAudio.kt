@@ -4,8 +4,10 @@ package afield.four.audio
 
 import afield.four.targets.OpenXRHmdTarget
 import afield.four.targets.SideBySideStereoTarget
+import afield.four.texture.video.AudioDecoder
 import afield.four.util.Camera
 import afield.stdlib.Quat
+import afield.stdlib.Sound2VecAudioSubclip
 import afield.stdlib.Vec3
 import afield.stdlib.vec
 import org.joml.Vector3f
@@ -20,9 +22,11 @@ import org.lwjgl.openal.EXTEfx.*
 import org.lwjgl.openal.SOFTHRTF
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.ShortBuffer
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -406,6 +410,114 @@ class SimpleSpatialAudioEngine(
     }
 
     /**
+     * Create an OpenAL buffer from interleaved 16-bit PCM audio.
+     */
+    fun loadPcm16(
+        pcm16: ShortArray,
+        sampleRate: Int,
+        channels: Int,
+        name: String? = null,
+    ): SoundBuffer {
+        requireInitialized()
+        require(channels == 1 || channels == 2) { "OpenAL: only mono or stereo PCM16 is supported" }
+
+        val key = name
+        if (key != null) {
+            bufferByName[key]?.let { return it }
+        }
+
+        val bufferId = alGenBuffers()
+        if (bufferId == 0) {
+            error("OpenAL: Failed to generate PCM buffer")
+        }
+
+        val pcm = MemoryUtil.memAlloc(pcm16.size * Short.SIZE_BYTES)
+        pcm.asShortBuffer().put(pcm16).flip()
+        val format = if (channels == 1) AL_FORMAT_MONO16 else AL_FORMAT_STEREO16
+
+        try {
+            alBufferData(bufferId, format, pcm, sampleRate)
+            if (alGetError() != AL_NO_ERROR) {
+                alDeleteBuffers(bufferId)
+                error("OpenAL: Failed to upload PCM16 buffer data")
+            }
+        } finally {
+            MemoryUtil.memFree(pcm)
+        }
+
+        val soundBuffer = SoundBuffer(
+            id = bufferId,
+            sampleRate = sampleRate,
+            channels = channels,
+            sampleCount = pcm16.size / channels,
+            samples16 = pcm16,
+            engine = this,
+        )
+        buffers.add(bufferId)
+        bufferById[bufferId] = soundBuffer
+        if (key != null) {
+            bufferByName[key] = soundBuffer
+            bufferNameById[bufferId] = key
+        }
+        return soundBuffer
+    }
+
+    /**
+     * Decode a subclip from an arbitrary audio file into an OpenAL buffer.
+     * Uses FFmpeg-backed AudioDecoder, so compressed formats such as mp3 are supported.
+     */
+    fun loadAudioSubclip(
+        subclip: Sound2VecAudioSubclip,
+        name: String? = null,
+        outputSampleRate: Int = subclip.sampleRate.takeIf { it > 0 } ?: 44100,
+        outputChannels: Int = 2,
+    ): SoundBuffer {
+        requireInitialized()
+        val key = name ?: "${subclip.filePath}#${subclip.startSec}-${subclip.endSec}"
+        bufferByName[key]?.let { return it }
+
+        val decoder = AudioDecoder(subclip.filePath)
+        check(decoder.open(outputSampleRate = outputSampleRate, outputChannels = outputChannels)) {
+            "OpenAL: Failed to open audio decoder for ${subclip.filePath}"
+        }
+
+        try {
+            if (subclip.startSec > 0.0) {
+                check(decoder.seek(subclip.startSec)) {
+                    "OpenAL: Failed to seek to ${subclip.startSec} in ${subclip.filePath}"
+                }
+            }
+
+            val pcm16 = decodeSubclipPcm16(decoder, subclip, outputChannels)
+            return loadPcm16(
+                pcm16 = pcm16,
+                sampleRate = outputSampleRate,
+                channels = outputChannels,
+                name = key,
+            )
+        } finally {
+            decoder.close()
+        }
+    }
+
+    /**
+     * Decode and play a subclip immediately as a non-looping source.
+     */
+    fun playAudioSubclip(
+        subclip: Sound2VecAudioSubclip,
+        gain: Float = 1.0f,
+        position: Vec3 = vec(0, 0, 0),
+        name: String? = null,
+    ): SoundSource {
+        val buffer = loadAudioSubclip(subclip, name = name)
+        return createSource(buffer = buffer, looping = false, name = name).also {
+            it.gain = gain
+            it.setPosition(position)
+            it.play()
+        }
+    }
+
+    /**
      * Create an OpenAL source (optionally with a buffer attached).
      *
      * If name is provided (or derived from the buffer name), an existing source with that name is returned
@@ -662,6 +774,58 @@ class SimpleSpatialAudioEngine(
 
     private fun requireInitialized() {
         check(initialized) { "SimpleSpatialAudioEngine is not initialized" }
+    }
+
+    private fun decodeSubclipPcm16(
+        decoder: AudioDecoder,
+        subclip: Sound2VecAudioSubclip,
+        outputChannels: Int,
+    ): ShortArray {
+        val bytes = ByteArrayOutputStream()
+        val targetStart = subclip.startSec
+        val targetEnd = max(subclip.endSec, subclip.startSec)
+
+        while (true) {
+            val frame = decoder.decodeFrame() ?: break
+            val frameStart = frame.timestamp
+            val frameDuration = frame.samples.toDouble() / frame.sampleRate.toDouble()
+            val frameEnd = frameStart + frameDuration
+
+            if (frameEnd <= targetStart) continue
+            if (frameStart >= targetEnd) break
+
+            val startSample = if (targetStart <= frameStart) 0 else ((targetStart - frameStart) * frame.sampleRate).toInt()
+            val endSampleExclusive = if (targetEnd >= frameEnd) frame.samples else ((targetEnd - frameStart) * frame.sampleRate).toInt()
+            val clippedStart = startSample.coerceIn(0, frame.samples)
+            val clippedEnd = endSampleExclusive.coerceIn(clippedStart, frame.samples)
+            if (clippedEnd <= clippedStart) continue
+
+            val frameShorts = frame.data.duplicate().order(ByteOrder.nativeOrder()).asShortBuffer()
+            writeInterleavedSamples(bytes, frameShorts, clippedStart, clippedEnd, outputChannels)
+        }
+
+        val payload = bytes.toByteArray()
+        val shortBuffer = ByteBuffer.wrap(payload).order(ByteOrder.nativeOrder()).asShortBuffer()
+        val out = ShortArray(shortBuffer.remaining())
+        shortBuffer.get(out)
+        return out
+    }
+
+    private fun writeInterleavedSamples(
+        out: ByteArrayOutputStream,
+        frameShorts: ShortBuffer,
+        startSample: Int,
+        endSampleExclusive: Int,
+        channels: Int,
+    ) {
+        for (sampleIndex in startSample until endSampleExclusive) {
+            val base = sampleIndex * channels
+            for (channel in 0 until channels) {
+                val sample = frameShorts.get(base + channel).toInt()
+                out.write(sample and 0xFF)
+                out.write((sample ushr 8) and 0xFF)
+            }
+        }
     }
 }
 

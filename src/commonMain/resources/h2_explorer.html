@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>H2 Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        @import url("/iosevka.css");
+
+        :root{
+            --bg:#050505;
+            --panel:#0d0d0d;
+            --fg:#d8d8d8;
+            --muted:#8a8a8a;
+            --line:#1f1f1f;
+            --accent:#8ecbff;
+            --row-h:22px;
+            --font: "Iosevka Web", monospace;
+        }
+
+        *{ box-sizing:border-box; font-family:var(--font); }
+        html,body{ margin:0; width:100%; height:100%; background:var(--bg); color:var(--fg); overflow:hidden; }
+
+        #root{
+            display:flex;
+            flex-direction:column;
+            width:100%;
+            height:100%;
+            background:var(--bg);
+        }
+
+        #toolbar{
+            flex:0 0 auto;
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:6px 8px;
+            border-bottom:1px solid var(--line);
+            background:var(--panel);
+            font-size:12px;
+        }
+
+        #summary{ color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:40%; }
+        #meta{ color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        .tool{
+            display:flex;
+            align-items:center;
+            gap:6px;
+            color:var(--muted);
+        }
+        input[type="number"]{
+            width:64px;
+            background:#111;
+            color:var(--fg);
+            border:1px solid #2d2d2d;
+            border-radius:4px;
+            padding:2px 4px;
+            font-size:12px;
+        }
+        label{
+            display:flex;
+            align-items:center;
+            gap:4px;
+            user-select:none;
+        }
+
+        #viewport{
+            flex:1 1 auto;
+            overflow:auto;
+            background:var(--bg);
+            overflow-anchor:none;
+            scroll-behavior:auto;
+        }
+
+        #header, .row{
+            display:grid;
+            align-items:center;
+            gap:0;
+            min-height:var(--row-h);
+            font-size:12px;
+            line-height:1.2;
+        }
+        #header{
+            position:sticky;
+            top:0;
+            z-index:3;
+            background:#0a0a0a;
+            border-bottom:1px solid var(--line);
+            color:var(--muted);
+        }
+
+        #rows{ background:var(--bg); }
+        .row{ border-bottom:1px solid #121212; }
+        .row:nth-child(2n){ background:#070707; }
+
+        .cell{
+            padding:3px 10px 3px 8px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            border-right:1px solid #111;
+        }
+        .head-cell{
+            position:relative;
+            padding-right:14px;
+            user-select:none;
+        }
+        .col-resizer{
+            position:absolute;
+            top:0;
+            right:-4px;
+            width:8px;
+            height:100%;
+            cursor:col-resize;
+            z-index:4;
+        }
+        .col-resizer::after{
+            content:"";
+            position:absolute;
+            top:5px;
+            bottom:5px;
+            right:3px;
+            width:1px;
+            background:#222;
+        }
+        .head-cell:hover .col-resizer::after{
+            background:#3a3a3a;
+        }
+        .idx{ color:#a0a0a0; text-align:right; }
+        .key{ color:#b9e29d; font-style:italic; }
+        .num{ color:#9dd1ff; text-align:left; }
+        .num.band-mid{ color:#9dd1ff; }
+        .num.band-high{ color:#ffd27d; }
+        .num.band-vhigh{ color:#ff8f8f; }
+        .num.band-low{ color:#8cc8ff; }
+        .num.band-vlow{ color:#9ba6ff; }
+        .value{ color:var(--fg); }
+
+        .num-align{
+            display:grid;
+            grid-template-columns: calc(var(--na-int, 1) * 1ch) 1ch calc(var(--na-frac, 0) * 1ch);
+            width:max-content;
+            max-width:100%;
+            align-items:center;
+        }
+        .na-int, .na-frac{ white-space:pre; }
+        .na-dot{ color:#6e8ca3; text-align:center; }
+
+        #status{
+            padding:8px;
+            color:var(--muted);
+            font-size:12px;
+        }
+
+        #spacerTop, #spacerBottom{
+            width:100%;
+            pointer-events:none;
+        }
+
+        html[data-afield-output-iframe="true"],
+        html[data-afield-output-iframe="true"] body{
+            width:auto;
+            height:auto;
+        }
+    </style>
+</head>
+<body>
+<div id="root">
+    <div id="toolbar">
+        <div id="summary">loading...</div>
+        <div id="meta"></div>
+        <div class="tool" id="strideTool" style="display:none;">
+            <label>stride <input id="strideInput" type="number" min="1" max="16" value="1" /></label>
+        </div>
+        <div class="tool" id="keyTool" style="display:none;">
+            <label><input id="showKeys" type="checkbox" checked /> keys</label>
+        </div>
+    </div>
+    <div id="viewport">
+        <div id="header"></div>
+        <div id="status">connecting...</div>
+        <div id="spacerTop"></div>
+        <div id="rows"></div>
+        <div id="spacerBottom"></div>
+    </div>
+</div>
+
+<script src="/iframe_autosize.js"></script>
+<script>
+    const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
+    const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+    const CHANNEL = "__h2_explorer__";
+    const ROW_H = 22;
+    const WINDOW_ROWS = 320;
+
+    const summaryEl = document.getElementById('summary');
+    const metaEl = document.getElementById('meta');
+    const statusEl = document.getElementById('status');
+    const viewportEl = document.getElementById('viewport');
+    const headerEl = document.getElementById('header');
+    const rowsEl = document.getElementById('rows');
+    const spacerTopEl = document.getElementById('spacerTop');
+    const spacerBottomEl = document.getElementById('spacerBottom');
+
+    const strideToolEl = document.getElementById('strideTool');
+    const strideInputEl = document.getElementById('strideInput');
+    const keyToolEl = document.getElementById('keyTool');
+    const showKeysEl = document.getElementById('showKeys');
+
+    let ws = null;
+    let reqSeq = 1;
+    const pending = new Map();
+    let connected = false;
+
+    let openInfo = null;
+    let stride = 1;
+    let showKeys = true;
+    let windowData = { start: 0, rows: [], totalRows: 0, columnNames: [], hasKeys: false, kind: "unknown" };
+    const pageCache = new Map(); // key => rows
+    let inflightWindowKey = null;
+    let lastRequestedStart = -1;
+    let widthOverrides = Object.create(null);
+    let currentColumnDefs = [];
+    let rowHeightPx = ROW_H;
+    let suppressScrollEventsUntilMs = 0;
+    let pendingScrollWindowStart = null;
+
+    function sendReq(op, payload = {}) {
+        const reqId = String(reqSeq++);
+        const msg = { channel: CHANNEL, reqId, op, ...payload };
+        return new Promise((resolve, reject) => {
+            if (!ws || ws.readyState !== 1) {
+                reject(new Error("socket not connected"));
+                return;
+            }
+            pending.set(reqId, { resolve, reject });
+            ws.send(JSON.stringify(msg));
+        });
+    }
+
+    function connect() {
+        ws = new WebSocket(WS_URL);
+        statusEl.textContent = "connecting...";
+
+        ws.onopen = async () => {
+            connected = true;
+            statusEl.textContent = "loading...";
+            try {
+                await openRoot();
+            } catch (e) {
+                statusEl.textContent = `failed: ${e.message || e}`;
+            }
+        };
+
+        ws.onmessage = (ev) => {
+            let msg;
+            try { msg = JSON.parse(ev.data); } catch { return; }
+            if (!msg || !msg.reqId) return;
+            const p = pending.get(String(msg.reqId));
+            if (!p) return;
+            pending.delete(String(msg.reqId));
+            if (msg.ok === false) p.reject(new Error(msg.error || "request failed"));
+            else p.resolve(msg);
+        };
+
+        ws.onclose = () => {
+            connected = false;
+            for (const [, p] of pending.entries()) p.reject(new Error("socket closed"));
+            pending.clear();
+            statusEl.textContent = "disconnected";
+            setTimeout(connect, 1200);
+        };
+
+        ws.onerror = () => {
+            statusEl.textContent = "socket error";
+        };
+    }
+
+    function getColumnDefs(hasKeys, columnNames, totalRows = 0) {
+        const idxDigits = String(Math.max(0, totalRows - 1)).length;
+        const idxDefaultPx = Math.max(38, idxDigits * 8 + 20);
+        const defs = [
+            { key: "__idx", label: "#", minPx: 34, defaultWidth: `${idxDefaultPx}px`, className: "idx" }
+        ];
+        if (hasKeys && showKeys) {
+            defs.push({ key: "__key", label: "key", minPx: 110, defaultWidth: "minmax(120px, 1.2fr)", className: "key" });
+        }
+        for (let i = 0; i < columnNames.length; i++) {
+            defs.push({ key: `c${i}`, label: columnNames[i], minPx: 80, defaultWidth: "minmax(90px, 1fr)", className: "num" });
+        }
+        return defs;
+    }
+
+    function buildGridTemplateFromDefs(defs) {
+        return defs.map((def) => {
+            const width = widthOverrides[def.key];
+            if (typeof width === "number" && Number.isFinite(width)) {
+                return `${Math.max(def.minPx, width)}px`;
+            }
+            return def.defaultWidth;
+        }).join(" ");
+    }
+
+    function applyGridTemplateToRenderedRows() {
+        if (!currentColumnDefs.length) return;
+        const template = buildGridTemplateFromDefs(currentColumnDefs);
+        headerEl.style.gridTemplateColumns = template;
+        rowsEl.querySelectorAll(".row").forEach((row) => {
+            row.style.gridTemplateColumns = template;
+        });
+    }
+
+    function startColumnResize(event, key) {
+        event.preventDefault();
+        event.stopPropagation();
+        const def = currentColumnDefs.find((d) => d.key === key);
+        if (!def) return;
+
+        const cell = headerEl.querySelector(`.head-cell[data-col-key="${key}"]`);
+        const measured = cell ? cell.getBoundingClientRect().width : def.minPx;
+        const initial = widthOverrides[key] ?? measured;
+        const startX = event.clientX;
+
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        const onMove = (moveEvent) => {
+            const next = Math.max(def.minPx, initial + (moveEvent.clientX - startX));
+            widthOverrides[key] = next;
+            applyGridTemplateToRenderedRows();
+        };
+        const onUp = () => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+    }
+
+    const NUMERIC_RE = /^[-+]?(\d+(\.\d+)?([eE][-+]?\d+)?|Infinity|-Infinity|NaN)$/;
+    const DECIMAL_RE = /^([+-]?\d+)(?:\.(\d+))?$/;
+
+    function computeNumericColumnMetrics(rows, columnCount) {
+        const maxInt = new Array(columnCount).fill(1);
+        const maxFrac = new Array(columnCount).fill(0);
+        rows.forEach((row) => {
+            const cells = row.cells || [];
+            for (let i = 0; i < columnCount; i++) {
+                const raw = String(cells[i] ?? "");
+                if (!raw || /[eE]/.test(raw)) continue;
+                const m = DECIMAL_RE.exec(raw);
+                if (!m) continue;
+                const intLen = (m[1] || "").length;
+                const fracLen = (m[2] || "").length;
+                if (intLen > maxInt[i]) maxInt[i] = intLen;
+                if (fracLen > maxFrac[i]) maxFrac[i] = fracLen;
+            }
+        });
+        return { maxInt, maxFrac };
+    }
+
+    function computeNumericColumnStats(rows, columnCount) {
+        const accum = Array.from({ length: columnCount }, () => ({ count: 0, mean: 0, m2: 0 }));
+        rows.forEach((row) => {
+            const cells = row.cells || [];
+            for (let i = 0; i < columnCount; i++) {
+                const raw = String(cells[i] ?? "");
+                if (!raw || !NUMERIC_RE.test(raw)) continue;
+                const value = Number(raw);
+                if (!Number.isFinite(value)) continue;
+                const a = accum[i];
+                a.count += 1;
+                const d1 = value - a.mean;
+                a.mean += d1 / a.count;
+                const d2 = value - a.mean;
+                a.m2 += d1 * d2;
+            }
+        });
+
+        return accum.map((a) => {
+            const variance = a.count > 1 ? (a.m2 / (a.count - 1)) : 0;
+            const std = Math.sqrt(Math.max(0, variance));
+            return { count: a.count, mean: a.mean, std };
+        });
+    }
+
+    function bandForNumeric(raw, stat) {
+        const value = Number(raw);
+        if (value === Infinity) return "band-vhigh";
+        if (value === -Infinity) return "band-vlow";
+        if (!Number.isFinite(value)) return "band-mid";
+        if (!stat || stat.count < 4 || !Number.isFinite(stat.std) || stat.std < 1e-9) return "band-mid";
+
+        const z = (value - stat.mean) / stat.std;
+        if (z >= 1.5) return "band-vhigh";
+        if (z >= 0.5) return "band-high";
+        if (z <= -1.5) return "band-vlow";
+        if (z <= -0.5) return "band-low";
+        return "band-mid";
+    }
+
+    function makeAlignedNumberNode(raw, intWidth, fracWidth) {
+        if (!raw || /[eE]/.test(raw)) return null;
+        const m = DECIMAL_RE.exec(raw);
+        if (!m) return null;
+
+        const intPart = m[1] || "";
+        const fracPart = m[2] || "";
+        const resolvedIntWidth = Math.max(1, intWidth | 0);
+        const resolvedFracWidth = Math.max(0, fracWidth | 0);
+
+        const wrap = document.createElement("span");
+        wrap.className = "num-align";
+        wrap.style.setProperty("--na-int", String(resolvedIntWidth));
+        wrap.style.setProperty("--na-frac", String(resolvedFracWidth));
+
+        const intEl = document.createElement("span");
+        intEl.className = "na-int";
+        intEl.textContent = intPart.padStart(resolvedIntWidth, " ");
+        wrap.appendChild(intEl);
+
+        const dotEl = document.createElement("span");
+        dotEl.className = "na-dot";
+        dotEl.textContent = resolvedFracWidth > 0 ? "." : "";
+        wrap.appendChild(dotEl);
+
+        const fracEl = document.createElement("span");
+        fracEl.className = "na-frac";
+        fracEl.textContent = resolvedFracWidth > 0 ? fracPart.padEnd(resolvedFracWidth, "0") : "";
+        wrap.appendChild(fracEl);
+
+        return wrap;
+    }
+
+    function renderHeader(columnNames, hasKeys) {
+        headerEl.innerHTML = "";
+        currentColumnDefs = getColumnDefs(hasKeys, columnNames, windowData.totalRows || 0);
+        const template = buildGridTemplateFromDefs(currentColumnDefs);
+        headerEl.style.gridTemplateColumns = template;
+
+        currentColumnDefs.forEach((def, index) => {
+            const c = document.createElement("div");
+            c.className = `cell head-cell ${def.className || ""}`;
+            c.dataset.colKey = def.key;
+            c.textContent = def.label;
+
+            if (index < currentColumnDefs.length - 1) {
+                const handle = document.createElement("div");
+                handle.className = "col-resizer";
+                handle.addEventListener("mousedown", (e) => startColumnResize(e, def.key));
+                c.appendChild(handle);
+            }
+
+            headerEl.appendChild(c);
+        });
+        return template;
+    }
+
+    function renderRows() {
+        const { rows, start, totalRows, columnNames, hasKeys } = windowData;
+        suppressScrollEventsUntilMs = performance.now() + 120;
+        const rowTemplate = renderHeader(columnNames, hasKeys);
+
+        spacerTopEl.style.height = `${Math.max(0, start) * rowHeightPx}px`;
+        const end = start + rows.length;
+        spacerBottomEl.style.height = `${Math.max(0, totalRows - end) * rowHeightPx}px`;
+
+        rowsEl.innerHTML = "";
+        const numericMetrics = computeNumericColumnMetrics(rows, columnNames.length);
+        const numericStats = computeNumericColumnStats(rows, columnNames.length);
+
+        rows.forEach((row) => {
+            const rowEl = document.createElement("div");
+            rowEl.className = "row";
+            rowEl.style.gridTemplateColumns = rowTemplate;
+
+            const idx = document.createElement("div");
+            idx.className = "cell idx";
+            idx.textContent = row.index;
+            rowEl.appendChild(idx);
+
+            if (hasKeys && showKeys) {
+                const key = document.createElement("div");
+                key.className = "cell key";
+                key.textContent = row.key ?? "";
+                rowEl.appendChild(key);
+            }
+
+            const cells = row.cells || [];
+            for (let i = 0; i < columnNames.length; i++) {
+                const v = cells[i] ?? "";
+                const c = document.createElement("div");
+                const raw = String(v);
+                const looksNumeric = raw !== "" && NUMERIC_RE.test(raw);
+                if (looksNumeric) {
+                    c.className = `cell num ${bandForNumeric(raw, numericStats[i])}`;
+                } else {
+                    c.className = "cell value";
+                }
+                if (looksNumeric) {
+                    const aligned = makeAlignedNumberNode(
+                        raw,
+                        numericMetrics.maxInt[i],
+                        numericMetrics.maxFrac[i]
+                    );
+                    if (aligned) c.appendChild(aligned);
+                    else c.textContent = raw;
+                } else {
+                    c.textContent = raw;
+                }
+                rowEl.appendChild(c);
+            }
+            rowsEl.appendChild(rowEl);
+        });
+
+        const firstRow = rowsEl.querySelector(".row");
+        if (firstRow) {
+            const measured = firstRow.getBoundingClientRect().height;
+            if (Number.isFinite(measured) && measured > 8 && Math.abs(measured - rowHeightPx) > 0.25) {
+                rowHeightPx = measured;
+                spacerTopEl.style.height = `${Math.max(0, start) * rowHeightPx}px`;
+                spacerBottomEl.style.height = `${Math.max(0, totalRows - end) * rowHeightPx}px`;
+            }
+        }
+
+        requestAnimationFrame(() => {
+            suppressScrollEventsUntilMs = performance.now() + 40;
+        });
+    }
+
+    function cacheKey(start, strideValue) {
+        return `${strideValue}:${start}`;
+    }
+
+    function computeWantedStart(startHint, totalRows, windowSize) {
+        const safeWindow = Math.max(40, windowSize | 0);
+        const maxStart = Math.max(0, totalRows - safeWindow);
+        const wantedStart = Math.max(0, Math.min(maxStart, startHint | 0));
+        return { safeWindow, maxStart, wantedStart };
+    }
+
+    async function loadWindow(startHint) {
+        if (!openInfo || !connected) return;
+        const totalRows = Math.max(0, openInfo.totalRows || 0);
+        const { safeWindow, wantedStart } = computeWantedStart(startHint, totalRows, WINDOW_ROWS);
+
+        // Avoid request/render loops when scrolling logic asks for the currently loaded page.
+        if (windowData.rows.length > 0 && wantedStart === (windowData.start | 0)) {
+            statusEl.textContent = "";
+            return;
+        }
+
+        const key = cacheKey(wantedStart, stride);
+
+        lastRequestedStart = wantedStart;
+        if (pageCache.has(key)) {
+            const cached = pageCache.get(key);
+            if ((windowData.start | 0) !== (cached.start | 0) || windowData.rows.length === 0) {
+                windowData = cached;
+                renderRows();
+            }
+            statusEl.textContent = "";
+            return;
+        }
+
+        if (inflightWindowKey === key) return;
+        inflightWindowKey = key;
+        statusEl.textContent = "loading...";
+
+        try {
+            const resp = await sendReq("window", {
+                root: ROOT_TOKEN,
+                start: wantedStart,
+                count: safeWindow,
+                stride
+            });
+
+            const data = {
+                start: resp.start || 0,
+                rows: resp.rows || [],
+                totalRows: resp.totalRows || 0,
+                columnNames: resp.columnNames || [],
+                hasKeys: !!resp.hasKeys,
+                kind: resp.kind || openInfo.kind
+            };
+            openInfo.totalRows = data.totalRows;
+            openInfo.columnNames = data.columnNames;
+            pageCache.set(key, data);
+            if (lastRequestedStart === wantedStart) {
+                windowData = data;
+                renderRows();
+                statusEl.textContent = "";
+                metaEl.textContent = `${openInfo.kind} | ${data.totalRows} rows`;
+            }
+        } catch (e) {
+            statusEl.textContent = `window failed: ${e.message || e}`;
+        } finally {
+            inflightWindowKey = null;
+        }
+    }
+
+    async function openRoot() {
+        if (!ROOT_TOKEN) {
+            statusEl.textContent = "missing root token";
+            return;
+        }
+        const resp = await sendReq("open", { root: ROOT_TOKEN });
+        openInfo = resp;
+        stride = resp.defaultStride || 1;
+        showKeys = true;
+        pageCache.clear();
+
+        summaryEl.textContent = resp.title || "h2";
+        metaEl.textContent = `${resp.kind} | ${resp.totalRows} rows`;
+
+        const canStride = (resp.maxStride || 1) > 1;
+        strideToolEl.style.display = canStride ? "flex" : "none";
+        strideInputEl.min = String(resp.minStride || 1);
+        strideInputEl.max = String(resp.maxStride || 1);
+        strideInputEl.value = String(stride);
+
+        keyToolEl.style.display = resp.hasKeys ? "flex" : "none";
+        showKeysEl.checked = true;
+
+        windowData = {
+            start: 0,
+            rows: [],
+            totalRows: resp.totalRows || 0,
+            columnNames: resp.columnNames || [],
+            hasKeys: !!resp.hasKeys,
+            kind: resp.kind || "unknown"
+        };
+        renderRows();
+        await loadWindow(0);
+    }
+
+    strideInputEl.addEventListener("change", async () => {
+        if (!openInfo) return;
+        const min = Number(strideInputEl.min || "1");
+        const max = Number(strideInputEl.max || "16");
+        const next = Math.max(min, Math.min(max, Number(strideInputEl.value || stride)));
+        if (!Number.isFinite(next) || next === stride) return;
+        stride = next;
+        strideInputEl.value = String(next);
+        pageCache.clear();
+        viewportEl.scrollTop = 0;
+        await loadWindow(0);
+    });
+
+    showKeysEl.addEventListener("change", () => {
+        showKeys = !!showKeysEl.checked;
+        renderRows();
+    });
+
+    let scrollTimer = null;
+    viewportEl.addEventListener("scroll", () => {
+        if (!openInfo) return;
+        if (performance.now() < suppressScrollEventsUntilMs) return;
+        if (scrollTimer) clearTimeout(scrollTimer);
+        const denom = Math.max(1, rowHeightPx);
+        const firstVisible = Math.floor(viewportEl.scrollTop / denom);
+        const nearTop = firstVisible < windowData.start + 40;
+        const nearBottom = firstVisible > (windowData.start + windowData.rows.length - 140);
+        if (!(nearTop || nearBottom || windowData.rows.length === 0)) return;
+
+        const totalRows = Math.max(0, openInfo.totalRows || 0);
+        const { wantedStart } = computeWantedStart(firstVisible - 80, totalRows, WINDOW_ROWS);
+        pendingScrollWindowStart = wantedStart;
+
+        scrollTimer = setTimeout(() => {
+            if (performance.now() < suppressScrollEventsUntilMs) return;
+            const wanted = pendingScrollWindowStart;
+            pendingScrollWindowStart = null;
+            if (wanted == null) return;
+            if ((windowData.start | 0) === (wanted | 0) && windowData.rows.length > 0) return;
+            loadWindow(wanted);
+        }, 140);
+    });
+
+    connect();
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ package afield.four.buffers
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.modules.computeMemoryBarrier
+import afield.four.modules.graphicsMemoryBarrier
 import afield.four.modules.fromContext
 import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
@@ -59,6 +60,20 @@ val HasBuffer.barrier: HasBuffer
             override fun getBuffer(): Long = inside.getBuffer()
             override fun getGPUAddress(cmd: CommandBuffer): Long {
                 computeMemoryBarrier(cmd, inside.getBuffer())
+                return inside.getGPUAddress(cmd)
+            }
+        }
+    }
+
+val HasBuffer.graphicsBarrier: HasBuffer
+    get() {
+        val inside = this
+        return object : HasBuffer {
+            override fun getBuffer(): Long = inside.getBuffer()
+            override fun getGPUAddress(cmd: CommandBuffer): Long {
+                if (!cmd.inRenderPassInstance) {
+                    graphicsMemoryBarrier(cmd, inside.getBuffer())
+                }
                 return inside.getGPUAddress(cmd)
             }
         }

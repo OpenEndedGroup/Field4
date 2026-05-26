@@ -1,12 +1,16 @@
 package afield.four.modules
 
+import afield.four.Target
+import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
+import afield.four.buffers.VulkanBuffer
 import afield.four.buffers.buffer
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Module.*
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
@@ -69,6 +73,24 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         (m.second as? ComputeMesh)?.let { it.inside = this }
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
+    fun zeroBefore(name: String, buffer: FrameBufferGroup) {
+        current.zeroBefore[name] = buffer
+    }
+
+    fun zeroBefore(name: String, buffer: VulkanBuffer) {
+        current.zeroBefore[name] = FrameBufferGroup(buffer.renderer, n = 1, buffers = mutableListOf(buffer))
+    }
+
     fun enable() {
         current.enable()
     }
@@ -84,15 +106,23 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
 
-    val meshes = mutableMapOf<String, ComputeTask>()
+    val meshes = linkedMapOf<String, ComputeTask>()
+    val before = linkedMapOf<String, Target>()
+    val zeroBefore = linkedMapOf<String, FrameBufferGroup>()
+    val after = linkedMapOf<String, Target>()
 
-    val ci = Introspection(parameters.compute, ShaderKind.COMPUTE_SHADER, errorHandler = parameters.errorHandler)
+    val ci = parameters.computeIntrospection
+        ?: Introspection(
+            parameters.compute,
+            ShaderKind.COMPUTE_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.computeSourceName,
+            includeResolver = parameters.computeIncludeResolver
+        )
 
-    var csm: Long = createShaderModule(ci.code.bytecode()!!).also {
-        parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")
-    }
+    var csm: Long = 0L
 
-    val pushConstantSize = (ci.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = ci.pushConstants.maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -104,6 +134,10 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     init {
         try {
             if (!ci.valid) throw IllegalStateException("Can't make a module without valid programs")
+
+            csm = createShaderModule(ci.code.bytecode()!!).also {
+                parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS")
+            }
 
             // Build per-module sets for all shader-declared sets (including set 0)
             val setsNeeded = mutableMapOf<Int, MutableList<Int>>()
@@ -335,35 +369,77 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             )
             command.beginLabel(parameters.name, labelColor)
 
-            val cmd = command.vkCommandBuffer
-            VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline)
+            try {
+                val cmd = command.vkCommandBuffer
+                val frameIndex = parameters.renderer.currentImage
+                val profiler = parameters.renderer.getProfiler()
+                val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
 
-            val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+                val marks = if (profiler != null) afield.four.Renderer.ModuleMarks(parameters.name) else null
+                var psScope: GpuProfiler.PipeStatScope? = null
+                var perfScope: GpuProfiler.PerfScope? = null
 
-            liveUniformStructures.forEach { (name, structure) ->
-                val target = (uniforms[name] as Uniform).buffer
-                structure.proxying = target
-                if (structure.dirty || structure.bindings.size>0) {
-                    target.get().mapAndWrite_bytes {
-                        structure.writeToBuffer(this, command) {
-                            throw MissingRefException("risk of GPU null ref `$it`")
+                if (profiler != null) {
+                    marks!!.tsBegin = profiler.writeTimestamp2(cmd, frameIndex, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT)
+                    psScope = profiler.beginPipelineStats(cmd, frameIndex)
+                    perfScope = profiler.beginPerfCounters(cmd, frameIndex)
+                }
+
+                fieldProbe?.beforeShaderUse(parameters.renderer, frameIndex)
+
+                before.values.forEach { target ->
+                    target.render(command, parameters.renderer.currentImage)
+                }
+
+                zeroBefore.values.forEach { buffer ->
+                    buffer.get(write = true).zero(command)
+                }
+
+                VK10.vkCmdBindPipeline(cmd, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline)
+
+                val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
+
+                liveUniformStructures.forEach { (name, structure) ->
+                    val target = (uniforms[name] as Uniform).buffer
+                    structure.proxying = target
+                    if (structure.dirty || structure.bindings.size>0) {
+                        target.get().mapAndWrite_bytes {
+                            structure.writeToBuffer(this, command) {
+                                throw MissingRefException("risk of GPU null ref `$it`")
+                            }
                         }
                     }
+                    target.get().clean(false, command)
                 }
-                target.get().clean(false, command)
+
+                uniforms.values.forEach { upd ->
+                    upd.pushDescriptorSet(command, pipelineLayout, VK10.VK_PIPELINE_BIND_POINT_COMPUTE)
+                }
+
+                meshes.values.forEach { mesh ->
+                    mesh.compute(this, command, pushConstantBuffer)
+                }
+
+                after.values.forEach { target ->
+                    target.render(command, parameters.renderer.currentImage)
+                }
+
+                fieldProbe?.let {
+                    hostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
+                    it.afterShaderUse(parameters.renderer, frameIndex)
+                }
+
+                if (profiler != null) {
+                    profiler.endPipelineStats(cmd, psScope)
+                    profiler.endPerfCounters(cmd, frameIndex, perfScope)
+                    marks!!.tsEnd = profiler.writeTimestamp2(cmd, frameIndex, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT)
+                    psScope?.let { marks.pipeStatsIndex = it.index }
+                    perfScope?.let { marks.perfIndex = it.index }
+                    parameters.renderer.registerModuleMarks(frameIndex, marks)
+                }
+            } finally {
+                command.endLabel()
             }
-
-            uniforms.values.forEach { upd ->
-                upd.pushDescriptorSet(command, pipelineLayout, VK10.VK_PIPELINE_BIND_POINT_COMPUTE)
-            }
-
-            meshes.values.forEach { mesh ->
-                mesh.compute(this, command, pushConstantBuffer)
-            }
-
-
-
-            command.endLabel()
         }
     }
 
@@ -381,6 +457,9 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             (it.value as? ComputeMesh)?.let { cm -> cm.inside = this.pointer() }
             true
         }
+        before.putAll(old.before)
+        zeroBefore.putAll(old.zeroBefore)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
@@ -412,5 +491,13 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             )
             return lp[0]
         }
+    }
+
+    fun zeroBefore(name: String, buffer: FrameBufferGroup) {
+        zeroBefore[name] = buffer
+    }
+
+    fun zeroBefore(name: String, buffer: VulkanBuffer) {
+        zeroBefore[name] = FrameBufferGroup(buffer.renderer, n = 1, buffers = mutableListOf(buffer))
     }
 }

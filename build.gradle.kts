@@ -1,26 +1,21 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalDistributionDsl::class)
 
-import java.net.URL
-import java.io.InputStream
-import java.io.PrintStream
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
+import java.io.InputStream
+import java.io.PrintStream
+import java.net.URL
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.*
 
-val lwjglVersion = "3.4.0-SNAPSHOT"
+val lwjglVersion = "3.4.0"
 val jomlVersion = "1.10.7"
 val `joml-primitivesVersion` = "1.10.0"
 
@@ -43,19 +38,38 @@ val lwjglNatives = when {
 val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
-val kotlinVersion = "2.3.0"
+
+val kotlinVersion = "2.4.20"
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
 val imguiVersion = "1.90.0"
 val smileVersion = "5.0.1"
 val javaToolchainVersion = 25
+val graalvmVersion = "25.0.2"
 
 // Bytedeco FFmpeg for video support
-val ffmpegVersion = "7.1-1.5.11"
-val javacppVersion = "1.5.11"
+val ffmpegVersion = "6.1.1-1.5.10"
+val opencvVersion = "4.9.0-1.5.10"
+val openblasVersion = "0.3.26-1.5.10"
+val javacppVersion = "1.5.10"
+val javacvVersion = "1.5.10"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 val electronDir = layout.projectDirectory.dir("electron")
+val abletonLinkNative = layout.projectDirectory.file("libs/libabl_link_jvm.dylib")
+val ceresNative = layout.projectDirectory.file("lib/libken_ceres_jvm.dylib")
+val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
+    .map(String::toBoolean)
+    .orElse(true)
+val kotlinRuntimeModulesShadowedByLocalJars = listOf(
+    "kotlin-compiler-embeddable",
+    "kotlin-daemon-embeddable",
+    "kotlin-scripting-compiler-embeddable",
+    "kotlin-scripting-compiler-impl-embeddable",
+    "kotlin-scripting-jvm",
+    "kotlin-scripting-common",
+    "kotlin-script-runtime",
+)
 
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
@@ -65,6 +79,9 @@ fun requiredRunJvmArgs(): List<String> {
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
+        add("--enable-native-access=ALL-UNNAMED")
+        add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
+        add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
             add("-Djoml.format=false")
@@ -76,8 +93,22 @@ fun requiredRunJvmArgs(): List<String> {
     }
 }
 
+fun configuredJdwpArg(): String? {
+    val rawPort = System.getProperty("afield.jdwp.port")
+        ?: System.getenv("AFIELD_JDWP_PORT")
+        ?: return null
+    val port = rawPort.trim().takeIf { it.isNotEmpty() } ?: return null
+    val host = (System.getProperty("afield.jdwp.host")
+        ?: System.getenv("AFIELD_JDWP_HOST")
+        ?: "127.0.0.1").trim()
+    val suspendFlag = (System.getProperty("afield.jdwp.suspend")
+        ?: System.getenv("AFIELD_JDWP_SUSPEND")
+        ?: "false").trim().lowercase() in setOf("1", "true", "yes", "on")
+    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=$host:$port"
+}
+
 plugins {
-    kotlin("multiplatform") version "2.3.0"
+    kotlin("multiplatform") version "2.3.20"
     kotlin("plugin.serialization") version "2.3.0"
     id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
@@ -85,7 +116,7 @@ plugins {
 }
 
 jvmWrapper {
-    unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
+    unixJvmInstallDir = "${"$"}{HOME}/.field4/  gradle-jvm"
     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
     linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
     linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
@@ -98,9 +129,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaToolchainVersion)
         // Constrain vendor to avoid Foojay returning non-directly-downloadable builds (which can 4xx on /redirect).
-        vendor = JvmVendorSpec.ADOPTIUM
+//        vendor = JvmVendorSpec.ADOPTIUM
+        vendor = JvmVendorSpec.GRAAL_VM
     }
-}
+    }
 
 group = "afield"
 version = "1.1-SNAPSHOT"
@@ -110,6 +142,12 @@ node {
     version.set("20.12.2")
     npmVersion.set("10.5.0")
     nodeProjectDir.set(electronDir.asFile)
+}
+
+configurations.matching { it.name in setOf("jvmRuntimeClasspath", "jvmMainRuntimeClasspath") }.configureEach {
+    kotlinRuntimeModulesShadowedByLocalJars.forEach { moduleName ->
+        exclude(group = "org.jetbrains.kotlin", module = moduleName)
+    }
 }
 
 repositories {
@@ -142,6 +180,9 @@ kotlin {
 
                 args += "-Dorg.lwjgl.system.stackSize=257"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
+                args += "--enable-native-access=ALL-UNNAMED"
+                args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
+                args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
 
                 applicationDefaultJvmArgs.set(args)
             }
@@ -219,6 +260,8 @@ kotlin {
                 implementation("org.slf4j:slf4j-api:2.0.16")
                 runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
 
+                implementation("eu.sirotin.kotunil:kotunil-jvm:4.2.3")
+
                 implementation(project.dependencies.platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
 
                 implementation("org.lwjgl:lwjgl:$lwjglVersion")
@@ -294,45 +337,45 @@ kotlin {
                 // for parse tree rewriting — still useful for remote js
 //                implementation("org.openjdk.nashorn:nashorn-core:15.6")
                 implementation(files("libs/nashorn-core-15.6.jar"))
+                implementation(files("libs/ableton-link-ffm.jar"))
                 implementation("org.ow2.asm:asm:7.3.1")
                 implementation("org.ow2.asm:asm-commons:7.3.1")
                 implementation("org.ow2.asm:asm-tree:7.3.1")
                 implementation("org.ow2.asm:asm-util:7.3.1")
 
                 implementation("com.aallam.openai:openai-client:4.0.1")
-                implementation("com.openai:openai-java:4.13.0")
+                implementation("com.openai:openai-java:4.29.0")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
-                val kotlinScriptingVersion = "2.3.0"
+                val customKotlinVersion = "2.4.255-SNAPSHOT"
 
                 /*
                 gently customized versions of the kotlin scripting front-end to provide better completion and skip the history check on the repl evaluator to allow us to reused compiled fragments
                  */
-//                implementation(files("libs/kotlin-scripting-common-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-jvm-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-ide-services-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-ide-common-2.2.255-SNAPSHOT.jar"))
+                implementation(files("libs/analysis-api-$customKotlinVersion.jar"))
+                implementation(files("libs/analysis-api-fir-generator-$customKotlinVersion.jar"))
 
-                implementation(files("libs/jep-4.2.2.jar"))
+                implementation(files("libs/jep-4.3.1.jar"))
 
-
-                implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinScriptingVersion")
+                implementation(files("libs/kotlin-compiler-embeddable-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-compiler-impl-embeddable-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-compiler-embeddable-$customKotlinVersion.jar"))
                 implementation("com.facebook:ktfmt:0.54")
 
-                implementation(files("libs/kotlin-scripting-ide-services-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-common-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jsr223-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-host-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-ide-services-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-common-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jsr223-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-host-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-script-runtime-$customKotlinVersion.jar"))
+                implementation(files("libs/names-$customKotlinVersion.jar"))
 
-//                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven:$kotlinScriptingVersion")
+//                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$customKotlinVersion")
+                implementation(files("libs/kotlin-scripting-dependencies-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-dependencies-maven-$customKotlinVersion.jar"))
                 implementation("org.apache.maven.resolver:maven-resolver-api:2.0.7")
 
                 implementation("org.joml:joml-experimental:1.10.7")
@@ -366,39 +409,29 @@ kotlin {
                 implementation("compliment:compliment:0.5.5")
                 implementation("org.clojure:data.json:2.5.0")
 
-                // Processing support
-                val jogampVersion = "2.5.0"
-                val osName = System.getProperty("os.name").lowercase()
-                val osArch = System.getProperty("os.arch").lowercase()
-                val jogampClassifier = when {
-                    osName.contains("mac") -> "natives-macosx-universal"
-                    osName.contains("linux") -> if (osArch.contains("aarch64") || osArch.contains("arm64")) {
-                        "natives-linux-aarch64"
-                    } else {
-                        "natives-linux-amd64"
-                    }
-                    osName.contains("windows") -> "natives-windows-amd64"
-                    else -> null
-                }
-
-                implementation("org.processing:core:4.3.1")
-                implementation("org.jogamp.jogl:jogl-all:$jogampVersion")
-                implementation("org.jogamp.jogl:nativewindow:$jogampVersion")
-                implementation("org.jogamp.jogl:nativewindow-main:$jogampVersion")
-                implementation("org.jogamp.gluegen:gluegen-rt:$jogampVersion")
-                if (jogampClassifier != null) {
-                    runtimeOnly("org.jogamp.jogl:jogl-all:$jogampVersion:$jogampClassifier")
-                    runtimeOnly("org.jogamp.jogl:nativewindow:$jogampVersion:$jogampClassifier")
-                    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$jogampVersion:$jogampClassifier")
-                }
-
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
 
                 // Bytedeco FFmpeg for video texture support
                 implementation("org.bytedeco:javacpp:$javacppVersion")
+                implementation("org.bytedeco:javacv:$javacvVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$ffmpegPlatform")
+                implementation("org.bytedeco:opencv:$opencvVersion")
+                implementation("org.bytedeco:opencv:$opencvVersion:$ffmpegPlatform")
+                implementation("org.bytedeco:openblas:$openblasVersion:$ffmpegPlatform")
+
+                implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0")
+                implementation("com.github.stephengold:jolt-jni-Linux64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-Linux_ARM64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-MacOSX64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-MacOSX_ARM64:3.6.0:DebugSp")
+
+                implementation("org.graalvm.polyglot:polyglot:${graalvmVersion}")
+                implementation("org.graalvm.polyglot:wasm:${graalvmVersion}")
+                implementation("org.graalvm.polyglot:js:${graalvmVersion}")
+
             }
         }
 
@@ -411,6 +444,12 @@ kotlin {
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 implementation("io.ktor:ktor-client-websockets:$ktorVersion")
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-styled-next:1.2.4-pre.779")
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
 
@@ -446,6 +485,7 @@ tasks {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_24)
             languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2)
+            javaParameters.set(true)
             freeCompilerArgs.add("-Xannotations-in-metadata")
         }
     }
@@ -461,7 +501,38 @@ tasks.named<JavaExec>("runJvm").configure {
         requiredJvmArgs.forEach { arg ->
             if (!merged.contains(arg)) merged += arg
         }
+        configuredJdwpArg()?.let { jdwpArg ->
+            if (merged.none { it.startsWith("-agentlib:jdwp=") }) {
+                merged += jdwpArg
+            }
+        }
         setJvmArgs(merged)
+
+        if (printRunJvmClasspath.get()) {
+            val entries = classpath.files.map { it.absolutePath }
+            val reportFile = layout.buildDirectory.file("reports/runJvm-classpath.txt").get().asFile
+            reportFile.parentFile.mkdirs()
+            reportFile.writeText(entries.joinToString(separator = System.lineSeparator(), postfix = System.lineSeparator()))
+
+            val shadowedKotlinEntries = entries.filter { entry ->
+                entry.contains("/.gradle/caches/modules-2/") &&
+                    kotlinRuntimeModulesShadowedByLocalJars.any { moduleName ->
+                        entry.substringAfterLast('/').startsWith("$moduleName-")
+                    }
+            }
+
+            logger.lifecycle("runJvm runtime classpath (${entries.size} entries):")
+            entries.forEachIndexed { index, entry ->
+                logger.lifecycle("  ${index + 1}: $entry")
+            }
+            logger.lifecycle("runJvm runtime classpath written to ${reportFile.absolutePath}")
+            if (shadowedKotlinEntries.isNotEmpty()) {
+                logger.warn("runJvm runtime classpath still contains Kotlin compiler/scripting modules shadowed by local jars:")
+                shadowedKotlinEntries.forEach { entry ->
+                    logger.warn("  $entry")
+                }
+            }
+        }
     }
 
     dependsOn(tasks.named("jvmJar"))
@@ -625,11 +696,25 @@ tasks.register("runDesktop") {
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
 
+        val os = System.getProperty("os.name").lowercase()
+        val isWindows = os.contains("windows")
+
         val backendCommand = mutableListOf<String>()
         backendCommand += javaExecutable
         backendCommand += backendJvmArgs
-        backendCommand += "-cp"
-        backendCommand += runJvmTask.classpath.asPath
+
+        // On Windows, the classpath can exceed the ~32K command-line limit.
+        // Write it to a temporary argfile and use Java's @argfile syntax.
+        if (isWindows) {
+            val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
+            argFile.parentFile.mkdirs()
+            argFile.writeText("-cp\n${runJvmTask.classpath.asPath}\n")
+            backendCommand += "@${argFile.absolutePath}"
+        } else {
+            backendCommand += "-cp"
+            backendCommand += runJvmTask.classpath.asPath
+        }
+
         backendCommand += backendMain
         backendCommand += (runJvmTask.args ?: emptyList()).map { it.toString() }
 
@@ -642,9 +727,6 @@ tasks.register("runDesktop") {
             }
             .start()
         forwardProcessOutput(backendProcess)
-
-        val os = System.getProperty("os.name").lowercase()
-        val isWindows = os.contains("windows")
         val isMac = os.contains("mac")
         val electronCommand = if (isWindows) {
             listOf(electronDir.file("node_modules/.bin/electron.cmd").asFile.absolutePath, ".")
@@ -786,6 +868,51 @@ tasks.register("runDesktop") {
             throw GradleException("Electron exited with code ${electronExit}.")
         }
     }
+}
+
+fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String) {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "verification"
+    description = taskDescription
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set(entrypoint)
+    workingDir = projectDir
+    jvmArgs(requiredRunJvmArgs())
+    inputs.file(ceresNative)
+    doFirst {
+        if (!ceresNative.asFile.exists()) {
+            throw GradleException("Ceres native library not found at ${ceresNative.asFile.absolutePath}")
+        }
+    }
+}
+
+val smokeCeresGeometryPrimitives = tasks.register<JavaExec>("smokeCeresGeometryPrimitives") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresGeometryPrimitivesSmokeKt",
+        "Runs the Ceres FFM geometry primitive smoke example.",
+    )
+}
+
+val smokeCeresArchitecturalDsl = tasks.register<JavaExec>("smokeCeresArchitecturalDsl") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresArchitecturalDslSmokeKt",
+        "Runs the Ceres architectural DSL smoke example.",
+    )
+}
+
+val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteractionExamples") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresInteractionExamplesKt",
+        "Runs the Ceres interaction examples smoke suite.",
+    )
+}
+
+tasks.register("smokeCeres") {
+    group = "verification"
+    description = "Runs all Ceres FFM smoke examples."
+    dependsOn(smokeCeresGeometryPrimitives, smokeCeresArchitecturalDsl, smokeCeresInteractionExamples)
 }
 
 tasks.register<JavaExec>("runai") {

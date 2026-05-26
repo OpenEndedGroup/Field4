@@ -3,6 +3,7 @@ package afield.four.modules
 import afield.Named
 import afield.Rect
 import afield.four.Renderer
+import afield.four.Target
 import afield.four.buffers.*
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
@@ -14,7 +15,9 @@ import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.Options
+import afield.four.util.ShaderFieldProbe
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.Vec4
@@ -34,6 +37,45 @@ data class Parameters(
     var compute: String = "",
     var mesh: String = "",
     var task: String = "",
+    var raygen: String = "",
+    var miss: String = "",
+    var closesthit: String = "",
+    var anyhit: String = "",
+    var intersection: String = "",
+    var callable: String = "",
+    var vertexIntrospection: Introspection? = null,
+    var fragmentIntrospection: Introspection? = null,
+    var computeIntrospection: Introspection? = null,
+    var meshIntrospection: Introspection? = null,
+    var taskIntrospection: Introspection? = null,
+    var raygenIntrospection: Introspection? = null,
+    var missIntrospection: Introspection? = null,
+    var closesthitIntrospection: Introspection? = null,
+    var anyhitIntrospection: Introspection? = null,
+    var intersectionIntrospection: Introspection? = null,
+    var callableIntrospection: Introspection? = null,
+    var vertexSourceName: String = "vertex.glsl",
+    var fragmentSourceName: String = "fragment.glsl",
+    var computeSourceName: String = "compute.glsl",
+    var meshSourceName: String = "mesh.glsl",
+    var taskSourceName: String = "task.glsl",
+    var raygenSourceName: String = "raygen.rgen",
+    var missSourceName: String = "miss.rmiss",
+    var closesthitSourceName: String = "closesthit.rchit",
+    var anyhitSourceName: String = "anyhit.rahit",
+    var intersectionSourceName: String = "intersection.rint",
+    var callableSourceName: String = "callable.rcall",
+    var vertexIncludeResolver: ShaderIncludeResolver? = null,
+    var fragmentIncludeResolver: ShaderIncludeResolver? = null,
+    var computeIncludeResolver: ShaderIncludeResolver? = null,
+    var meshIncludeResolver: ShaderIncludeResolver? = null,
+    var taskIncludeResolver: ShaderIncludeResolver? = null,
+    var raygenIncludeResolver: ShaderIncludeResolver? = null,
+    var missIncludeResolver: ShaderIncludeResolver? = null,
+    var closesthitIncludeResolver: ShaderIncludeResolver? = null,
+    var anyhitIncludeResolver: ShaderIncludeResolver? = null,
+    var intersectionIncludeResolver: ShaderIncludeResolver? = null,
+    var callableIncludeResolver: ShaderIncludeResolver? = null,
     var color: Int = 1,
     var colorFormats: List<Int> = emptyList(),
     var depth: Int = 1,
@@ -57,6 +99,14 @@ data class Parameters(
 //        throw Exception("Cannot resolve image ${it.name}")
         null
     },
+    var accelerationStructureResolver: (Introspected.AccelerationStructure) -> HasAccelerationStructure? = {
+        val found = fromContextWithNameOrNull<HasAccelerationStructure>(it.name)
+        if (found == null) lprintln("warning,graphics", "Cannot resolve acceleration structure ${it.name}")
+        found
+    },
+    var rayTracingGroups: RayTracingGroups? = null,
+    var maxRayRecursionDepth: Int = 1,
+    var rayTracingPipelineFlags: Int = 0,
     var name: String = "unnamed module",
     var errorHandler: (String, Throwable?) -> Unit = { desc, it ->
         lprintln("error,graphics", "error $desc while creating Module: $it")
@@ -74,7 +124,8 @@ data class Parameters(
     var viewport: Rect? = null,
     var fillMode: Int = VK_POLYGON_MODE_FILL,
     var imageFormat: Int = renderer.swapChain.surfaceFormat.imageFormat,
-    val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f)
+    val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f),
+    var fieldProbe: ShaderFieldProbe? = null
 
 ) {
     val triangles = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
@@ -156,7 +207,15 @@ class ModulePointer(var current: Module) : Renderable {
         }
 
         val oSsboResolver = p.ssboResolver
-        p.ssboResolver = { oSsboResolver(it) }
+        p.ssboResolver = {
+            val prev = current.uniforms[it.name]
+            if (prev == null) oSsboResolver(it) else {
+                val prevSrc = prev.source
+                if (prevSrc == null) oSsboResolver(it)
+                else if (prevSrc.checkCompatibility(it) == false) oSsboResolver(it)
+                else oSsboResolver(prevSrc)
+            }
+        }
 
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
@@ -203,6 +262,26 @@ class ModulePointer(var current: Module) : Renderable {
         m.value.inside = this
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_namedTarget")
+    operator fun plusAssign(m: Named<Target>) {
+        current.after[m.name] = m.value
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
+    @JvmName("plusAssign_namedBeforeTarget")
+    operator fun plusAssign(m: Named<BeforeTarget>) {
+        current.before[m.name] = m.value.target
+    }
+
     fun enable() {
         current.enable()
     }
@@ -219,14 +298,29 @@ fun Module.pointer() = ModulePointer(this)
 class Module(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
-    var meshes = mutableMapOf<String, Mesh>()
+    var meshes = linkedMapOf<String, Mesh>()
+    var before = linkedMapOf<String, Target>()
+    var after = linkedMapOf<String, Target>()
 
-    val vi = Introspection(parameters.vertex, ShaderKind.VERTEX_SHADER, errorHandler = parameters.errorHandler)
-    val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
+    val vi = parameters.vertexIntrospection
+        ?: Introspection(
+            parameters.vertex,
+            ShaderKind.VERTEX_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.vertexSourceName,
+            includeResolver = parameters.vertexIncludeResolver
+        )
+    val fi = parameters.fragmentIntrospection
+        ?: Introspection(
+            parameters.fragment,
+            ShaderKind.FRAGMENT_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.fragmentSourceName,
+            includeResolver = parameters.fragmentIncludeResolver
+        )
 
     val namedInputs = vi.inputs.associateBy { it.name }
-    val pushConstantSize =
-        (vi.pushConstants.associateBy { it.name } + fi.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = (vi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -398,75 +492,77 @@ class Module(val parameters: Parameters) : Renderable {
             // Create layouts/sets for each set >= 1
             setsNeeded.entries.forEach { (set, bindingList) ->
                 var where = 0
-                val tag = mutableListOf<Introspected.Bindable>()
                 val kinds = mutableListOf<Int>()
                 val lens = mutableListOf<Int>()
 
                 bindingList.forEach { bind ->
                     var kind = 0
+                    var descriptorCount = 1
+
+                    fun noteBinding(stageFlag: Int, descriptorType: Int, count: Int = 1) {
+                        where = where or stageFlag
+                        if (kind == 0) kind = descriptorType
+                        else require(kind == descriptorType) {
+                            "binding $bind in set $set resolves to multiple descriptor types"
+                        }
+                        descriptorCount = maxOf(descriptorCount, count)
+                    }
 
                     vi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
                     fi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
 
                     vi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
                     fi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
 
                     vi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it); lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
                     fi.textures.forEach {                      // fix #1
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it); lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
 
                     vi.images.forEach {                        // fix #1
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
                     fi.images.forEach {                        // fix #1
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
 
                     if (kind == 0) throw IllegalArgumentException(" couldn't find binding $bind for set $set in $bindingList")
                     kinds.add(kind)
+                    lens.add(descriptorCount)
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
@@ -776,6 +872,9 @@ class Module(val parameters: Parameters) : Renderable {
             val renderer = parameters.renderer
             val frameIndex = renderer.currentImage
             val profiler = renderer.getProfiler()
+            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+
+            fieldProbe?.beforeShaderUse(renderer, frameIndex)
 
             // Begin label for the whole module render (if EXT_debug_utils is available)
             val labelColor = stack.floats(
@@ -809,7 +908,7 @@ class Module(val parameters: Parameters) : Renderable {
                     EXTExtendedDynamicState3.vkCmdSetDepthClampEnableEXT(cmd, false)
                 }
 
-                val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+                val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
 
                 uniforms.values.forEach { upd ->
                     upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)
@@ -829,6 +928,15 @@ class Module(val parameters: Parameters) : Renderable {
 
                 meshes.forEach { (_, mesh) ->
                     mesh.draw(this, command, pushConstantBuffer)
+                }
+
+                after.forEach { (_, target) ->
+                    target.render(command, renderer.currentImage)
+                }
+
+                fieldProbe?.let {
+                    graphicsHostReadBarrier(command, it.bufferForImage(renderer, frameIndex))
+                    it.afterShaderUse(renderer, frameIndex)
                 }
 
                 if (profiler != null) {
@@ -859,6 +967,8 @@ class Module(val parameters: Parameters) : Renderable {
             it.value.resize(it.value.numVert, it.value.numTriangle, inside = this.pointer())
             true
         }
+        before.putAll(old.before)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
@@ -900,7 +1010,24 @@ class Module(val parameters: Parameters) : Renderable {
         m.second.inside = this.pointer()
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        before[m.first] = m.second.target
+    }
+
 }
+
+@JvmInline
+value class BeforeTarget(val target: Target)
+
+fun before(a: (CommandBuffer, Int) -> Unit) = BeforeTarget(object : Target {
+    override fun render(command: CommandBuffer, index: Int) = a(command, index)
+})
 
 // ---------- helper (unchanged) ----------
 

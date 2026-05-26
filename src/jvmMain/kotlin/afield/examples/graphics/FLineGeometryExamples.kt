@@ -3,6 +3,7 @@ package afield.examples.graphics
 import afield.graphics.*
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
+import afield.stdlib.fline
 import afield.stdlib.pointed
 import afield.stdlib.vec
 import kotlin.math.PI
@@ -147,7 +148,7 @@ object FLineGeometryExamples {
      */
     fun morphingExample(steps: Int = 5): Map<String, List<FLine>> {
         // Create two shapes
-        val square = FLine().apply {
+        val square = fline {
             moveTo(-25f, -25f)
             lineTo(25f, -25f)
             lineTo(25f, 25f)
@@ -293,7 +294,7 @@ object FLineGeometryExamples {
     }
 
     private fun pointMarker(x: Float, y: Float, z: Float = 0f): FLine {
-        return FLine().apply {
+        return fline {
             moveTo(x, y, z)
             pointed = true
         }
@@ -310,7 +311,7 @@ object FLineGeometryExamples {
         val results = mutableMapOf<String, List<FLine>>()
 
         // 1. Create base shapes
-        val square = FLine().apply {
+        val square = fline {
             moveTo(0f, 0f)
             lineTo(50f, 0f)
             lineTo(50f, 50f)
@@ -329,7 +330,7 @@ object FLineGeometryExamples {
         results["offset_outer"] = listOf(square.byOffsetting( 5f))
 
         // 4. Create a wavy curve and analyze it
-        val wave = FLine().apply {
+        val wave = fline {
             moveTo(0f, 0f)
             for (i in 1..100) {
                 val x = i.toFloat()
@@ -339,7 +340,7 @@ object FLineGeometryExamples {
         }
         results["wave"] = listOf(wave)
         val waveCurvatures = wave.curvatureAnalysis( samples = 50)
-        val waveCurvaturePlot = FLine().apply {
+        val waveCurvaturePlot = fline {
             waveCurvatures.forEachIndexed { idx, (_, k) ->
                 val pt = vec(idx.toFloat(), k * 20f, 0f)
                 if (idx == 0) moveTo(pt) else lineTo(pt)
@@ -356,7 +357,7 @@ object FLineGeometryExamples {
 
         // 6. Geometric queries
         val centroid = square.centroid2D()
-        val centroidMark = FLine().apply {
+        val centroidMark = fline {
             moveTo(centroid.x, centroid.y)
             lineTo(centroid.x + 0.5f, centroid.y + 0.5f)
         }
@@ -622,7 +623,7 @@ object FLineGeometryExamples {
      * Example 16: 2D transformations around explicit pivots and axes
      */
     fun transformations2DExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             lineTo(60f, 0f)
             lineTo(60f, 30f)
@@ -633,7 +634,7 @@ object FLineGeometryExamples {
         val pivot = vec(30f, 15f)
         val mirrorA = vec(-10f, -10f)
         val mirrorB = vec(80f, 40f)
-        val mirrorAxis = FLine().apply {
+        val mirrorAxis = fline {
             moveTo(mirrorA)
             lineTo(mirrorB)
         }
@@ -653,7 +654,7 @@ object FLineGeometryExamples {
      * Example 17: Parallel curve generation
      */
     fun parallelCurvesExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             for (i in 1..80) {
                 val x = i.toFloat() * 2f
@@ -675,7 +676,7 @@ object FLineGeometryExamples {
      * Example 18: Intersections and self-intersections
      */
     fun intersectionsExample(): Map<String, List<FLine>> {
-        val selfIntersecting = FLine().apply {
+        val selfIntersecting = fline {
             moveTo(-40f, -20f)
             lineTo(40f, 20f)
             lineTo(-40f, 20f)
@@ -684,7 +685,7 @@ object FLineGeometryExamples {
         val selfIntersections = pointMarkers(selfIntersecting.findSelfIntersections(1f))
 
         val circle = createCircle(vec(0f, 0f), 35f, 64)
-        val line = FLine().apply {
+        val line = fline {
             moveTo(-60f, -10f)
             lineTo(60f, 10f)
         }
@@ -703,7 +704,7 @@ object FLineGeometryExamples {
      * Example 19: Curvature features and inflections
      */
     fun curvatureFeaturesExample(): Map<String, List<FLine>> {
-        val curve = FLine().apply {
+        val curve = fline {
             moveTo(0f, 0f)
             for (i in 1..120) {
                 val x = i.toFloat()
@@ -766,7 +767,7 @@ object FLineGeometryExamples {
      * Example 21: Geometric queries and point tests
      */
     fun geometricQueriesExample(): Map<String, List<FLine>> {
-        val square = FLine().apply {
+        val square = fline {
             moveTo(0f, 0f)
             lineTo(60f, 0f)
             lineTo(60f, 60f)
@@ -776,7 +777,7 @@ object FLineGeometryExamples {
 
         val probe = vec(80f, 20f, 0f)
         val (closest, _) = square.closestPoint(probe)
-        val closestLine = FLine().apply {
+        val closestLine = fline {
             moveTo(probe.x, probe.y, probe.z)
             lineTo(closest.x, closest.y, closest.z)
         }
@@ -791,25 +792,25 @@ object FLineGeometryExamples {
         val outsideWinding = square.windingNumber(outsidePoint2D)
         val signedArea = square.signedArea2D()
 
-        val insideIndicator = FLine().apply {
+        val insideIndicator = fline {
             val length = if (insideContains) 6f else 0f
             moveTo(insidePoint.x, insidePoint.y + 6f)
             lineTo(insidePoint.x + length, insidePoint.y + 6f)
         }
-        val outsideIndicator = FLine().apply {
+        val outsideIndicator = fline {
             val length = if (outsideContains) 6f else 0f
             moveTo(outsidePoint.x, outsidePoint.y + 6f)
             lineTo(outsidePoint.x + length, outsidePoint.y + 6f)
         }
-        val insideWindingBar = FLine().apply {
+        val insideWindingBar = fline {
             moveTo(insidePoint.x, insidePoint.y - 8f)
             lineTo(insidePoint.x + insideWinding.toFloat() * 6f, insidePoint.y - 8f)
         }
-        val outsideWindingBar = FLine().apply {
+        val outsideWindingBar = fline {
             moveTo(outsidePoint.x, outsidePoint.y - 8f)
             lineTo(outsidePoint.x + outsideWinding.toFloat() * 6f, outsidePoint.y - 8f)
         }
-        val areaBar = FLine().apply {
+        val areaBar = fline {
             moveTo(0f, -12f)
             lineTo(signedArea / 100f, -12f)
         }
@@ -835,7 +836,7 @@ object FLineGeometryExamples {
      * Example 22: Path operations (reverse, concatenate, extract)
      */
     fun pathOperationsExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             lineTo(40f, 20f)
             lineTo(80f, -10f)
@@ -881,7 +882,7 @@ object FLineGeometryExamples {
         val fittedCircle = createCircle(fitCenter, fitRadius, 64)
         
         // Line fitting in 2D
-        val noisyLine = FLine().apply {
+        val noisyLine = fline {
             moveTo(-50f, -20f)
             for (i in 1..20) {
                 val x = -50f + i * 5f
@@ -890,13 +891,13 @@ object FLineGeometryExamples {
             }
         }
         val (lineStart, lineEnd, lineError) = noisyLine.fitLine2D(samples = 20)
-        val fittedLine = FLine().apply {
+        val fittedLine = fline {
             moveTo(lineStart.x, lineStart.y)
             lineTo(lineEnd.x, lineEnd.y)
         }
         
         // Polynomial fitting
-        val curvedPath = FLine().apply {
+        val curvedPath = fline {
             moveTo(0f, 0f)
             for (i in 1..20) {
                 val x = i * 3f
@@ -905,7 +906,7 @@ object FLineGeometryExamples {
             }
         }
         val (polyCoeffs, polyError) = curvedPath.fitPolynomial(degree = 2, samples = 20)
-        val fittedPoly = FLine().apply {
+        val fittedPoly = fline {
             moveTo(0f, polyCoeffs[0])
             for (i in 1..60) {
                 val x = i.toFloat()
@@ -915,7 +916,7 @@ object FLineGeometryExamples {
         }
         
         // Ellipse fitting
-        val noisyEllipse = FLine().apply {
+        val noisyEllipse = fline {
             for (i in 0..40) {
                 val angle = i / 40f * 2 * PI.toFloat()
                 val x = 40f * kotlin.math.cos(angle) + (kotlin.random.Random.nextFloat() - 0.5f) * 3f
@@ -925,7 +926,7 @@ object FLineGeometryExamples {
         }
         val ellipseFit = noisyEllipse.fitEllipse(samples = 40)
         // Draw fitted ellipse
-        val fittedEllipse = FLine().apply {
+        val fittedEllipse = fline {
             for (i in 0..64) {
                 val angle = i / 64f * 2 * PI.toFloat()
                 val localX = ellipseFit.semiMajorAxis * kotlin.math.cos(angle)
@@ -940,7 +941,7 @@ object FLineGeometryExamples {
         }
         
         // Bezier curve fitting
-        val wavyPath = FLine().apply {
+        val wavyPath = fline {
             moveTo(0f, 50f)
             for (i in 1..10) {
                 val x = i * 12f
@@ -949,13 +950,13 @@ object FLineGeometryExamples {
             }
         }
         val (bezierPoints, bezierError) = wavyPath.fitBezierCubic(samples = 10)
-        val fittedBezier = FLine().apply {
+        val fittedBezier = fline {
             moveTo(bezierPoints[0])
             cubicTo(bezierPoints[1], bezierPoints[2], bezierPoints[3])
         }
         
         // Piecewise linear fitting
-        val complexCurve = FLine().apply {
+        val complexCurve = fline {
             moveTo(0f, 0f)
             for (i in 1..50) {
                 val x = i * 3f
@@ -984,7 +985,7 @@ object FLineGeometryExamples {
         val adaptiveFit = pointsToFLine(points, "adaptive")
         
         // Subdivide and arc-length parameterization
-        val polyline = FLine().apply {
+        val polyline = fline {
             moveTo(0f, 0f)
             for (i in 1..12) {
                 lineTo(i * 10f, kotlin.math.sin(i / 2f) * 15f)
@@ -1023,23 +1024,23 @@ object FLineGeometryExamples {
      * Example 24: Higher-order curves (quadratic, tangential arc, B-spline)
      */
     fun higherOrderCurvesExample(): Map<String, List<FLine>> {
-        val quad = FLine().apply { moveTo(0f, 0f) }
+        val quad = fline { moveTo(0f, 0f) }
         quad.byAppendingQuadratic(vec(50f, 80f, 0f), vec(100f, 0f, 0f))
         val quadControl = pointMarker(50f, 80f)
         val quadEnd = pointMarker(100f, 0f)
 
-        val arcByTangent = FLine().apply { moveTo(0f, 0f) }
+        val arcByTangent = fline { moveTo(0f, 0f) }
         arcByTangent.byAppendingArcByTangent(
             endPoint = vec(100f, 0f, 0f),
             startTangent = vec(1f, 1f, 0f),
             endTangent = vec(1f, -1f, 0f),
             segments = 32
         )
-        val startTangent = FLine().apply {
+        val startTangent = fline {
             moveTo(0f, 0f)
             lineTo(15f, 15f)
         }
-        val endTangent = FLine().apply {
+        val endTangent = fline {
             moveTo(100f, 0f)
             lineTo(115f, -15f)
         }
@@ -1051,7 +1052,7 @@ object FLineGeometryExamples {
             vec(110f, 20f, 0f),
             vec(140f, 50f, 0f)
         )
-        val controlPolyline = FLine().apply {
+        val controlPolyline = fline {
             moveTo(controls.first())
             controls.drop(1).forEach { lineTo(it) }
         }
@@ -1094,7 +1095,7 @@ object FLineGeometryExamples {
             samples = 120
         )
 
-        val base = FLine().apply { moveTo(start) }
+        val base = fline { moveTo(start) }
         val spiralTo = base.byEulerSpiralTo(
             endPoint = vec(120f, -20f, 0f),
             endDirection = vec(kotlin.math.cos(PI.toFloat() / 4f), kotlin.math.sin(PI.toFloat() / 4f), 0f),
@@ -1113,7 +1114,7 @@ object FLineGeometryExamples {
      * Example 26: Curvature-driven evolution (flow)
      */
     fun curvatureFlowExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             for (i in 1..90) {
                 val x = i.toFloat()
@@ -1140,7 +1141,7 @@ object FLineGeometryExamples {
      * Example 27: Gaussian Process interpolation
      */
     fun gaussianProcessExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             for (i in 1..40) {
                 val x = i.toFloat() * 3f
@@ -1169,7 +1170,7 @@ object FLineGeometryExamples {
      * Example 28: Smile cubic spline interpolation.
      */
     fun smileSplineExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             for (i in 1..36) {
                 val x = i.toFloat() * 3f
@@ -1194,7 +1195,7 @@ object FLineGeometryExamples {
      * Example 29: Smile Gaussian Process interpolation.
      */
     fun smileGaussianProcessExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             for (i in 1..48) {
                 val x = i.toFloat() * 2.5f
@@ -1221,7 +1222,7 @@ object FLineGeometryExamples {
      * Example 30: Custom Akima interpolation.
      */
     fun akimaInterpolationExample(): Map<String, List<FLine>> {
-        val base = FLine().apply {
+        val base = fline {
             moveTo(0f, 0f)
             for (i in 1..32) {
                 val x = i.toFloat() * 3.5f
@@ -1246,7 +1247,7 @@ object FLineGeometryExamples {
      * Example 31: Filtering comparisons
      */
     fun filteringExample(): Map<String, List<FLine>> {
-        val jittery = FLine().apply {
+        val jittery = fline {
             moveTo(0f, 0f)
             for (i in 1..120) {
                 val x = i.toFloat()
@@ -1336,7 +1337,7 @@ object FLineGeometryExamples {
             println("    ✓ All examples passed")
 
             // ===== Create test lines for function testing =====
-            val testLine = FLine().apply {
+            val testLine = fline {
                 moveTo(0f, 0f)
                 for (i in 1..20) {
                     lineTo(i.toFloat() * 5f, kotlin.math.sin(i / 3f) * 10f)
@@ -1344,7 +1345,7 @@ object FLineGeometryExamples {
             }
 
             val testCircle = createCircle(vec(50f, 50f), 30f, 32)
-            val testSquare = FLine().apply {
+            val testSquare = fline {
                 moveTo(0f, 0f)
                 lineTo(50f, 0f)
                 lineTo(50f, 50f)
@@ -1477,9 +1478,9 @@ object FLineGeometryExamples {
             val arcLine = FLine()
             arcLine.byAppendingArc3D(vec(0f, 0f, 0f), 30f, 0f, PI.toFloat(), vec(0f, 0f, 1f), 32)
             arcThrough3Points(vec(0f, 0f, 0f), vec(50f, 50f, 0f), vec(100f, 0f, 0f), 32)
-            val quadLine = FLine().apply { moveTo(0f, 0f) }
+            val quadLine = fline { moveTo(0f, 0f) }
             quadLine.byAppendingQuadratic(vec(50f, 100f, 0f), vec(100f, 0f, 0f))
-            val tangentLine = FLine().apply { moveTo(0f, 0f) }
+            val tangentLine = fline { moveTo(0f, 0f) }
             tangentLine.byAppendingArcByTangent(vec(100f, 0f, 0f), vec(1f, 1f, 0f), vec(1f, -1f, 0f), 32)
             println("    ✓ Arcs and higher-order curves passed")
 
@@ -1492,11 +1493,11 @@ object FLineGeometryExamples {
 
             // ===== Curve Combination =====
             println("  Testing curve combination...")
-            val curve1 = FLine().apply {
+            val curve1 = fline {
                 moveTo(0f, 0f)
                 for (i in 1..50) lineTo(i.toFloat(), kotlin.math.sin(i / 5f) * 10f)
             }
-            val curve2 = FLine().apply {
+            val curve2 = fline {
                 moveTo(0f, 0f)
                 for (i in 1..50) lineTo(i.toFloat(), kotlin.math.cos(i / 4f) * 8f)
             }
@@ -1511,7 +1512,7 @@ object FLineGeometryExamples {
             println("  Testing parameterization system...")
             val constantParam = ConstantParameter(10f)
             val linearParam = LinearParameter(5f, 20f)
-            val controlCurve = FLine().apply {
+            val controlCurve = fline {
                 moveTo(0f, 5f)
                 lineTo(50f, 15f)
                 lineTo(100f, 5f)

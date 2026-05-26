@@ -4,17 +4,18 @@ package afield
 
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.completion.Ai4KotlinAutocomplete
+import afield.debug.RuntimeDebugProbeService
 import afield.four.util.Options
+import afield.graphics.getFLineEditSession
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
+import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
 import com.aallam.openai.api.BetaOpenAI
-import com.microsoft.playwright.Browser
-import com.microsoft.playwright.BrowserType
-import com.microsoft.playwright.Page
-import com.microsoft.playwright.Playwright
+import com.microsoft.playwright.*
 import com.microsoft.playwright.options.LoadState
+import com.microsoft.playwright.options.WaitUntilState
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -31,23 +32,27 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import io.ktor.websocket.Frame
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
+import org.joml.Vector3f
 import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
-import java.io.FileNotFoundException
+import java.net.BindException
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.file.Paths
 import java.security.KeyStore
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -57,11 +62,13 @@ import kotlin.time.Duration.Companion.seconds
 
 class SessionInformation(
     val filename: String,
+    val documentName: String = filename,
     var boxes: ConcurrentHashMap<String, Box> = ConcurrentHashMap<String, Box>(),
     var root: Box,
     var sessions: MutableSet<WebSocketSession> = mutableSetOf<WebSocketSession>(),
     var topologyGeneration: Int = 0,
-    var autorunTriggered: Boolean = false
+    var autorunTriggered: Boolean = false,
+    val ephemeral: Boolean = false
 ) {
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
@@ -70,12 +77,19 @@ class SessionInformation(
     var visibleLayers: MutableSet<String> = mutableSetOf("default")
     var activeLayer: String? = null
 
-    val fileWatchManager: FileWatchManager by lazy {
-        FileWatchManager(this).also { it.start() }
-    }
+    private var _fileWatchManager: FileWatchManager? = null
+
+    val fileWatchManager: FileWatchManager
+        get() {
+            return _fileWatchManager ?: FileWatchManager(this).also {
+                it.start()
+                _fileWatchManager = it
+            }
+        }
 
     fun cleanup() {
-        fileWatchManager.stop()
+        _fileWatchManager?.stop()
+        _fileWatchManager = null
     }
 }
 
@@ -128,26 +142,60 @@ var min_frame_delay = 1L
 /**
  * Tracks per-session back pressure for output messages.
  * When the frontend is slow to acknowledge outputs, the pending count rises.
- * Once it reaches [maxPending], new outputs are skipped and counted.
- * The accumulated skip count is delivered with the next successfully sent output.
+ * Once it reaches [maxPending], new outputs are held in a rolling buffer of size [bufferSize].
+ * Messages that overflow the buffer are counted as truly skipped.
+ * When pressure eases, the buffered messages are flushed after the skip notification —
+ * they are never counted as skipped.
  */
-class OutputBackPressure(val maxPending: Int = 32) {
+class OutputBackPressure(val maxPending: Int = 32, val bufferSize: Int = 8) {
     private val pending = java.util.concurrent.atomic.AtomicInteger(0)
     private val skipped = java.util.concurrent.atomic.AtomicInteger(0)
+    private val buffer = ArrayDeque<String>()   // guarded by synchronized(this)
 
     /**
      * Try to acquire a send slot.
-     * Returns the number of previously skipped messages (≥ 0) if sending is allowed,
-     * or -1 if this message should be skipped due to back pressure.
+     * Returns the number of previously *truly* skipped messages (≥ 0) if a slot is available,
+     * or -1 if the caller should buffer the message instead (back-pressured).
      */
     fun tryAcquire(): Int {
         // Atomically increment only if below the limit, avoiding a TOCTOU race.
         val prev = pending.getAndUpdate { current -> if (current >= maxPending) current else current + 1 }
-        if (prev >= maxPending) {
-            skipped.incrementAndGet()
-            return -1
-        }
+        if (prev >= maxPending) return -1
         return skipped.getAndSet(0)
+    }
+
+    /**
+     * Buffer a message for later delivery (call when [tryAcquire] returns -1).
+     * The rolling buffer holds the last [bufferSize] messages; older entries are evicted and
+     * their count is added to [skipped] so the frontend knows how many were truly dropped.
+     */
+    fun bufferMessage(message: String) {
+        synchronized(this) {
+            if (buffer.size >= bufferSize) {
+                buffer.removeFirst()
+                skipped.incrementAndGet()   // evicted from buffer — truly skipped
+            }
+            buffer.addLast(message)
+        }
+    }
+
+    /**
+     * Drain the rolling buffer, acquiring a pending slot for each recoverable message.
+     * Returns messages that were successfully acquired; any that couldn't be acquired
+     * (back pressure has re-triggered) are discarded.
+     */
+    fun drainBuffer(): List<String> {
+        val candidates = synchronized(this) {
+            val items = buffer.toList()
+            buffer.clear()
+            items
+        }
+        val result = mutableListOf<String>()
+        for (msg in candidates) {
+            val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
+            if (prev < maxPending) result.add(msg) else break
+        }
+        return result
     }
 
     /** Release a pending slot — call when the frontend acknowledges receipt. */
@@ -165,6 +213,8 @@ val app = option("app") { File(".").absolutePath }
 
 val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
     ?: System.getProperty("afield.systemBrowser") ?: "true").lowercase() != "false"
+val visibleBackdoorPlaywright: Boolean = (System.getenv("AFIELD_PLAYWRIGHT_VISIBLE")
+    ?: System.getProperty("afield.playwright.visible") ?: "false").lowercase() == "true"
 
 @OptIn(DelicateCoroutinesApi::class)
 actual fun _send(message: Message) {
@@ -183,19 +233,29 @@ fun _send(message: Message, document: String = ".*") {
             // Apply per-session back pressure for output messages.
             val bp = sessionOutputPressure.getOrPut(session) { OutputBackPressure() }
             val skipCount = bp.tryAcquire()
-            if (skipCount < 0) return@forEach  // back-pressured: skip this output
+            if (skipCount < 0) {
+                // Back-pressured: hold in rolling buffer instead of dropping outright.
+                bp.bufferMessage(m)
+                return@forEach
+            }
+            // Drain any buffered messages now that a slot is available.
+            val buffered = if (skipCount > 0) bp.drainBuffer() else emptyList()
             GlobalScope.launch {
                 try {
                     if (skipCount > 0) {
-                        // Notify the client about outputs that were skipped before this one.
+                        // Notify the client about outputs that were truly skipped (buffer overflow).
                         session.send(Json.encodeToString(
                             Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
                         ))
+                        // Re-deliver buffered (not-skipped) messages after the notification.
+                        for (bufferedMsg in buffered) {
+                            session.send(bufferedMsg)
+                        }
                     }
                     session.send(m)
                 } catch (_: Exception) {
-                    // On send failure no ACK will arrive; release the slot now.
-                    bp.release()
+                    // On send failure no ACKs will arrive; release all acquired slots.
+                    repeat(1 + buffered.size) { bp.release() }
                 }
             }
         } else {
@@ -210,7 +270,7 @@ fun _send(message: Message, document: String = ".*") {
 var lastFn by PersistentString { "welcome" }
 var recentFns by PersistentString { "" }
 
-private fun recordRecentDocument(documentName: String) {
+internal fun recordRecentDocument(documentName: String) {
     recentFns = updateRecentDocuments(recentFns, documentName)
 }
 
@@ -226,6 +286,22 @@ fun _send(session: WebSocketSession?, message: Message) {
     }
 }
 
+@OptIn(DelicateCoroutinesApi::class)
+internal fun _sendToPeerSessions(
+    message: Message,
+    sessionInfo: SessionInformation? = thisSessionInfo.get(),
+    current: WebSocketSession? = thisSession.get()
+) {
+    val info = sessionInfo ?: return
+    val encoded = Json.encodeToString(message)
+    info.sessions.forEach { session ->
+        if (session == current) return@forEach
+        GlobalScope.launch {
+            session.send(encoded)
+        }
+    }
+}
+
 
 @OptIn(DelicateCoroutinesApi::class)
 fun notify(text: String, category: String = "") {
@@ -236,7 +312,260 @@ fun notify(text: String, category: String = "") {
 
 val thisSession = ThreadLocal<WebSocketSession>()
 val thisSessionInfo = ThreadLocal<SessionInformation>()
+var globalPlaywright: Playwright? = null
+var globalPlaywrightBrowser: Browser? = null
+var globalPlaywrightBrowserContext: BrowserContext? = null
 var globalPlaywriteContext: Page? = null
+var globalServerPort: Int = 9092
+private const val PLAYWRIGHT_NAVIGATION_TIMEOUT_MS = 12_000.0
+private const val PLAYWRIGHT_READY_TIMEOUT_MS = 45_000.0
+private const val PLAYWRIGHT_ATTACH_ATTEMPTS = 3
+private const val PLAYWRIGHT_VIEWPORT_WIDTH = 2200
+private const val PLAYWRIGHT_VIEWPORT_HEIGHT = 2800
+private const val PLAYWRIGHT_DEVICE_SCALE_FACTOR = 2.0
+private val playwrightExecutor = Executors.newSingleThreadExecutor { runnable ->
+    Thread(runnable, "afield-playwright").apply {
+        isDaemon = true
+    }
+}
+internal val playwrightScope = CoroutineScope(SupervisorJob() + playwrightExecutor.asCoroutineDispatcher())
+private val workspaceSearchDispatcher = Executors.newFixedThreadPool(
+    (System.getenv("AFIELD_WORKSPACE_SEARCH_THREADS")?.trim()?.toIntOrNull() ?: 2).coerceIn(1, 4)
+) { runnable ->
+    Thread(runnable, "afield-workspace-search").apply {
+        isDaemon = true
+    }
+}.asCoroutineDispatcher()
+
+private data class PlaywrightPageHandle(
+    val page: Page,
+    val createdBrowser: Boolean,
+    val createdContext: Boolean,
+    val createdPage: Boolean
+)
+
+private fun jsonStringLiteral(value: String?): String = if (value == null) "null" else Json.encodeToString(value)
+
+private fun closeGlobalPlaywrightPageState() {
+    runCatching { globalPlaywrightBrowserContext?.close() }
+    globalPlaywrightBrowserContext = null
+    globalPlaywriteContext = null
+}
+
+private fun resetGlobalPlaywrightState() {
+    closeGlobalPlaywrightPageState()
+    runCatching { globalPlaywrightBrowser?.close() }
+    runCatching { globalPlaywright?.close() }
+    globalPlaywrightBrowser = null
+    globalPlaywright = null
+}
+
+internal fun buildPlaywrightDocumentUrl(info: SessionInformation, port: Int = globalServerPort): String {
+    val params = mutableListOf(
+        "file=${URLEncoder.encode(info.documentName, "UTF-8")}",
+        "user=playwright"
+    )
+    if (info.ephemeral) {
+        params += "scratch=1"
+        params += "sessionKey=${URLEncoder.encode(info.filename, "UTF-8")}"
+    }
+    return "https://localhost:${port}/index.html?${params.joinToString("&")}"
+}
+
+private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
+    var createdBrowser = false
+    var createdContext = false
+    var createdPage = false
+
+    val browser = globalPlaywrightBrowser ?: run {
+        val pw = globalPlaywright ?: Playwright.create().also { globalPlaywright = it }
+        createdBrowser = true
+        pw.chromium().launch(
+            BrowserType.LaunchOptions()
+                .setHeadless(!visibleBackdoorPlaywright)
+                .setArgs(
+                    listOf(
+                        "--disable-background-timer-throttling",
+                        "--disable-backgrounding-occluded-windows",
+                        "--disable-renderer-backgrounding",
+                        "--disable-frame-rate-limit"
+                    )
+                )
+        ).also { globalPlaywrightBrowser = it }
+    }
+
+    val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
+    if (currentPage != null) {
+        return PlaywrightPageHandle(
+            page = currentPage,
+            createdBrowser = createdBrowser,
+            createdContext = false,
+            createdPage = false
+        )
+    }
+
+    closeGlobalPlaywrightPageState()
+    val context = browser.newContext(
+        Browser.NewContextOptions()
+            .setViewportSize(PLAYWRIGHT_VIEWPORT_WIDTH, PLAYWRIGHT_VIEWPORT_HEIGHT)
+            .setScreenSize(PLAYWRIGHT_VIEWPORT_WIDTH, PLAYWRIGHT_VIEWPORT_HEIGHT)
+            .setDeviceScaleFactor(PLAYWRIGHT_DEVICE_SCALE_FACTOR)
+            .setIgnoreHTTPSErrors(true)
+    )
+    globalPlaywrightBrowserContext = context
+    createdContext = true
+
+    val page = context.newPage()
+    globalPlaywriteContext = page
+    createdPage = true
+
+    return PlaywrightPageHandle(
+        page = page,
+        createdBrowser = createdBrowser,
+        createdContext = createdContext,
+        createdPage = createdPage
+    )
+}
+
+private fun ensurePlaywrightPage(targetUrl: String): PlaywrightPageHandle =
+    runCatching {
+        ensurePlaywrightPageOnce(targetUrl)
+    }.getOrElse { firstFailure ->
+        lprintln("warning,server", "resetting Playwright after failure: ${firstFailure.message}")
+        resetGlobalPlaywrightState()
+        ensurePlaywrightPageOnce(targetUrl)
+    }
+
+private fun playwrightSessionReadyScript(info: SessionInformation) = """
+    () => {
+      const overlay = document.getElementById("overlaycanvas");
+      const currentUrl = String(window.location && window.location.href ? window.location.href : "");
+      return !!document.body &&
+        !!overlay &&
+        !currentUrl.startsWith("about:") &&
+        window.fieldClientOpen === true &&
+        window.fieldBackdoorDisconnectedOverlayActive !== true &&
+        window.fieldBackdoorUiReady === true &&
+        typeof window.fieldBackdoorPrepareWindowScreenshot === "function" &&
+        typeof window.fieldBackdoorPrepareBoxScreenshot === "function" &&
+        window.currentDocumentFilename === ${jsonStringLiteral(info.documentName)} &&
+        window.currentDocumentSessionKey === ${jsonStringLiteral(if (info.ephemeral) info.filename else null)} &&
+        window.currentDocumentScratch === ${if (info.ephemeral) "true" else "false"};
+    }
+""".trimIndent()
+
+private fun playwrightSessionStatus(page: Page): String =
+    runCatching {
+        page.evaluate(
+            """
+            () => JSON.stringify({
+              href: String(window.location && window.location.href ? window.location.href : ""),
+              readyState: String(document.readyState || ""),
+              hasBody: !!document.body,
+              hasOverlay: !!document.getElementById("overlaycanvas"),
+              fieldClientOpen: window.fieldClientOpen === true,
+              disconnectedOverlayActive: window.fieldBackdoorDisconnectedOverlayActive === true,
+              uiReady: window.fieldBackdoorUiReady === true,
+              currentDocumentFilename: window.currentDocumentFilename ?? null,
+              currentDocumentSessionKey: window.currentDocumentSessionKey ?? null,
+              currentDocumentScratch: window.currentDocumentScratch ?? null,
+              boxCount: document.querySelectorAll(".box").length
+            })
+            """.trimIndent()
+        ) as? String
+    }.getOrNull() ?: "<unavailable>"
+
+private fun isPlaywrightSessionHealthy(page: Page, info: SessionInformation): Boolean =
+    runCatching {
+        page.evaluate(playwrightSessionReadyScript(info)) as? Boolean
+    }.getOrDefault(false) == true
+
+private fun ensurePlaywrightForSessionOnce(info: SessionInformation): AgentOpenPlaywrightResponse {
+    val targetUrl = buildPlaywrightDocumentUrl(info)
+    val handle = ensurePlaywrightPage(targetUrl)
+    val page = handle.page
+    val currentUrl = runCatching { page.url() }.getOrDefault("")
+    val navigated = handle.createdPage || currentUrl != targetUrl || !isPlaywrightSessionHealthy(page, info)
+    if (navigated) {
+        page.navigate(
+            targetUrl,
+            Page.NavigateOptions()
+                .setTimeout(PLAYWRIGHT_NAVIGATION_TIMEOUT_MS)
+                .setWaitUntil(WaitUntilState.COMMIT)
+        )
+    }
+    // After the first committed response, rely on explicit Field-side readiness markers
+    // instead of Playwright's own load-state heuristics.
+    runCatching {
+        page.waitForFunction(
+            playwrightSessionReadyScript(info),
+            null,
+            Page.WaitForFunctionOptions()
+                .setTimeout(PLAYWRIGHT_READY_TIMEOUT_MS)
+        )
+    }.getOrElse { failure ->
+        lprintln(
+            "warning,server",
+            "Playwright readiness wait failed for ${info.documentName} (${info.filename}) at ${page.url()}: ${failure.message}; status=${playwrightSessionStatus(page)}"
+        )
+        throw failure
+    }
+    if (visibleBackdoorPlaywright) {
+        runCatching { page.bringToFront() }
+    }
+
+    return AgentOpenPlaywrightResponse(
+        ok = true,
+        documentName = info.documentName,
+        scratch = info.ephemeral,
+        sessionKey = info.filename,
+        url = page.url(),
+        createdBrowser = handle.createdBrowser,
+        createdContext = handle.createdContext,
+        createdPage = handle.createdPage,
+        navigated = navigated,
+        ready = true
+    )
+}
+
+@Synchronized
+internal fun ensurePlaywrightForSession(info: SessionInformation): AgentOpenPlaywrightResponse {
+    var lastFailure: Throwable? = null
+    repeat(PLAYWRIGHT_ATTACH_ATTEMPTS) { attempt ->
+        runCatching {
+            return ensurePlaywrightForSessionOnce(info)
+        }.onFailure { failure ->
+            lastFailure = failure
+            lprintln(
+                "warning,server",
+                "resetting Playwright after session attach failure ${attempt + 1}/$PLAYWRIGHT_ATTACH_ATTEMPTS for ${info.documentName}: ${failure.message}"
+            )
+            resetGlobalPlaywrightState()
+        }
+    }
+    throw lastFailure ?: IllegalStateException("Playwright session attach failed without an exception")
+}
+
+internal fun ensurePlaywrightForSessionIfNeeded(info: SessionInformation): AgentOpenPlaywrightResponse {
+    val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
+    val targetUrl = buildPlaywrightDocumentUrl(info)
+    val currentUrl = currentPage?.let { runCatching { it.url() }.getOrNull() }
+    if (currentPage != null && currentUrl == targetUrl) {
+        return AgentOpenPlaywrightResponse(
+            ok = true,
+            documentName = info.documentName,
+            scratch = info.ephemeral,
+            sessionKey = info.filename,
+            url = currentUrl,
+            createdBrowser = false,
+            createdContext = false,
+            createdPage = false,
+            navigated = false,
+            ready = true
+        )
+    }
+    return ensurePlaywrightForSession(info)
+}
 
 class Server {
     companion object {
@@ -315,6 +644,22 @@ class Server {
             return target
         }
 
+        private fun isPortBindException(error: Throwable): Boolean {
+            val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+            val queue = ArrayDeque<Throwable>()
+            queue.add(error)
+
+            while (queue.isNotEmpty()) {
+                val current = queue.removeFirst()
+                if (!seen.add(current)) continue
+                if (current is BindException) return true
+
+                current.cause?.let { queue.add(it) }
+                current.suppressed.forEach { queue.add(it) }
+            }
+            return false
+        }
+
         @OptIn(DelicateCoroutinesApi::class, BetaOpenAI::class)
         fun server() {
             Options.doVulkanSDK()
@@ -338,20 +683,21 @@ class Server {
                         }
 
                         documents.forEach { _, info ->
+                            if (info.ephemeral) return@forEach
                             // Only persist when we know sidecar-bearing properties changed.
-                            if (info.pendingSidecarSaves.isEmpty()) return@forEach
-
+                            if (info.pendingSidecarSaves.isNotEmpty()) {
 //                            lblock(" saving to ${info.filename}")
-                            run {
-                                try {
-                                    // Include root box in saved boxes to persist root properties like bookmarks
-                                    val allBoxes = info.boxes.values.toMutableSet()
-                                    allBoxes.add(info.root)
-                                    SavingContext().save(info.filename, allBoxes)
-                                    info.pendingSidecarSaves.clear()
-                                } catch (ex: Exception) {
-                                    lprintln("error,server", "trouble saving")
-                                    ex.printStackTrace()
+                                run {
+                                    try {
+                                        // Include root box in saved boxes to persist root properties like bookmarks
+                                        val allBoxes = info.boxes.values.toMutableSet()
+                                        allBoxes.add(info.root)
+                                        SavingContext().save(info.filename, allBoxes)
+                                        info.pendingSidecarSaves.clear()
+                                    } catch (ex: Exception) {
+                                        lprintln("error,server", "trouble saving")
+                                        ex.printStackTrace()
+                                    }
                                 }
                             }
                         }
@@ -384,85 +730,13 @@ class Server {
             handlers["hello"] = mutableSetOf({ message, reply ->
                 val hello = Json.decodeFromJsonElement<Hello>(message.payload!!)
                 lprintln("info,server", "adding a session for $hello to ${thisSession.get()}")
-
-                fun String.isHttpUrl(): Boolean =
-                    startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
-
-                File(home).mkdirs()
-
-                if (hello.filename.isHttpUrl()) {
-                    // there are two options.
-                    // take a clone into a fresh dir
-                    // or, pull from remote repo
-                    // TODO
-                } else {
-
-                }
-
-                val fn = home + "/" + hello.filename
-
-                lastFn = hello.filename
-                if (!hello.filename.isHttpUrl()) {
-                    recordRecentDocument(hello.filename)
-                }
-
-                val found = documents[fn]
-
-                if (found == null) {
-                    val root = Box("root")
-                    root.name = "root"
-                    root.visible = false
-
-                    runAll(newRoot, root)
-
-                    val si = SessionInformation(filename = fn, root = root)
-                    root.inside = si
-                    documents[fn] = si
-                    sessions.put(thisSession.get(), si)
-                    thisSessionInfo.set(si)
-                    si.sessions.add(thisSession.get())
-
-                    try {
-                        val boxes = SavingContext().load(fn)
-                        lprintln("info,server", "loaded boxes from $fn")
-                        boxes.forEach {
-                            lprintln("debug,server", "${it.id} ${it.frame} ${it.properties.get("_tombstone")}")
-                        }
-
-                        boxes.forEach {
-                            it.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
-                            it.parents.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
-                        }
-
-                        root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
-
-                        root.children.forEach {
-                            it.ki
-                        } // kick off stdlib load
-
-                        si.topologyGeneration++
-
-                        // Initialize the file watch manager
-                        si.fileWatchManager
-                        si.scheduleAutorunBoxes()
-                    } catch (fnf: FileNotFoundException) {
-                        lprintln("warning,server", "file '$fn' not found; will be created on first save")
-                    }
-
-                } else {
-                    sessions.put(thisSession.get(), found)
-                    thisSessionInfo.set(found)
-                    found.sessions.add(thisSession.get())
-
-                    found.boxes.values.forEach {
-                        lprintln("info,server", "resync all")
-                        it.resyncAll()
-                    }
-                    found.topologyGeneration++
-                    found.scheduleAutorunBoxes()
-                }
-
-
+                attachDocumentSession(
+                    session = thisSession.get(),
+                    documentName = hello.filename,
+                    username = hello.username,
+                    scratch = hello.scratch,
+                    sessionKey = hello.sessionKey
+                )
 
                 Handled.yes
             })
@@ -470,15 +744,19 @@ class Server {
             handlers["set-string"] = mutableSetOf({ message, reply ->
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
+                val isEditorStateProperty = set.property.endsWith("_editorState")
 
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     box(set.uid).name = set.value
-                } else
-                    box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
+                } else {
+                    // Monaco view/cursor state should persist with the document, but live rebroadcast
+                    // makes multiple clients on the same box fight over their local editor position.
+                    box(set.uid).setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
+                }
 
                 // If this is a sidecar-backed property, mark it for persistence.
-                if (Box.ioSeparateProperties.containsKey(set.property)) {
+                if (Box.ioSeparateProperties.containsKey(set.property) && !thisSessionInfo.get().ephemeral) {
                     thisSessionInfo.get().pendingSidecarSaves += set.uid to set.property
                 }
 
@@ -582,6 +860,51 @@ class Server {
                 Handled.yes
             })
 
+            handlers["symbol-context"] = mutableSetOf({ message, reply ->
+                val exec = Json.decodeFromJsonElement<SymbolContextRequest>(message.payload!!)
+                val box = box(exec.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    val result = (box.ke as? KotlinExecution)
+                        ?.describeSymbolContext(box, exec)
+                        ?: SymbolContextResponse()
+                    reply(Message("symbol-context").payload(result))
+                }
+
+                Handled.yes
+            })
+
+            handlers["debug-probe"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<DebugProbeRequest>(message.payload!!)
+                val box = box(request.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    val execution = box.ke as? KotlinExecution
+                    if (execution == null) {
+                        reply(
+                            Message("debug-probe-event").payload(
+                                DebugProbeEvent(
+                                    requestId = request.requestId,
+                                    uid = request.uid,
+                                    phase = "error",
+                                    symbol = request.symbol,
+                                    line = request.line,
+                                    html = "Debug probes are only available for Kotlin boxes.",
+                                    channel = "debug probe",
+                                    annotation = "<i>debug</i>",
+                                    done = true
+                                )
+                            )
+                        )
+                        return@launch
+                    }
+
+                    RuntimeDebugProbeService.startProbe(box, request, execution, reply)
+                }
+
+                Handled.yes
+            })
+
             handlers["complete-kotlin-ai"] = mutableSetOf({ message, reply ->
                 val exec = Json.decodeFromJsonElement<CompletionRequest>(message.payload!!)
                 val box = box(exec.uid)
@@ -597,8 +920,8 @@ class Server {
                     notify("Kotlin AI completion… <<spinner>>", "ai_completions")
                 }
                 val bounds = runCatching {
-                    KotlinInterface.getTokenBounds(exec.allCode, exec.position)
-                }.getOrElse { KotlinInterface.Companion.CompletionTokenBounds(exec.position, exec.position) }
+                    getTokenBounds(exec.allCode, exec.position)
+                }.getOrElse { CompletionTokenBounds(exec.position, exec.position) }
 
                 if (box.ke !is KotlinExecution) {
                     lprintln("info,ai_completions", "kotlin-ai skip: box is not KotlinExecution (uid=${exec.uid})")
@@ -745,12 +1068,18 @@ class Server {
                 val info = thisSessionInfo.get()
                 val usedIds = info.boxes.keys
                 val ctx = SavingContext()
-                val allowedRefIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet() + "root"
+                val transferIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet()
+                // Keep refs to boxes that already exist in this document, but only remap ids that belong to
+                // the pasted payload itself.
+                val allowedRefIds = transferIds + usedIds + "root"
                 val idMap = mutableMapOf<String, String>()
                 val filter: (String) -> String = { source ->
-                    idMap.getOrPut(source) {
-                        if (source == "root") return@getOrPut "root"
-                        if (usedIds.contains(source)) UUID.randomUUID().toString() else source
+                    when {
+                        source == "root" -> "root"
+                        source !in transferIds -> source
+                        else -> idMap.getOrPut(source) {
+                            if (usedIds.contains(source)) UUID.randomUUID().toString() else source
+                        }
                     }
                 }
 
@@ -876,6 +1205,176 @@ class Server {
                 Handled.yes
             })
 
+            handlers["fline-click"] = mutableSetOf({ message, reply ->
+                val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
+                lprintln("debug,fline", "Received FLine click: ${click.callbackId}")
+
+                val callback = getFLineClickCallback(click.callbackId)
+                if (callback != null) {
+                    val intersection = FLineIntersection(
+                        closestVertexIndex = click.closestVertexIndex,
+                        position = Vector3f(click.x.toFloat(), click.y.toFloat(), click.z.toFloat())
+                    )
+                    GlobalScope.launch {
+                        try {
+                            callback(intersection)
+                        } catch (e: Exception) {
+                            lprintln("error,fline", "Error in FLine click callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    lprintln("warning,fline", "No callback registered for FLine: ${click.callbackId}")
+                }
+
+                Handled.yes
+            })
+
+            handlers["custom-marking-request"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<CustomMarkingRequest>(message.payload!!)
+                val info = thisSessionInfo.get()
+                val box = info.boxes[request.uid]
+                if (box != null) {
+                    val entries = prepareCustomMarkingEntries(box)
+                    val response = CustomMarkingResponse(request.uid, entries)
+                    reply(Message(message.replyTo ?: "custom-marking-response").payload(response))
+                }
+                Handled.yes
+            })
+
+            handlers["custom-marking-fire"] = mutableSetOf({ message, reply ->
+                val fire = Json.decodeFromJsonElement<CustomMarkingFire>(message.payload!!)
+                GlobalScope.launch {
+                    try {
+                        fireCustomMarkingCallback(fire.callbackId)
+                    } catch (e: Exception) {
+                        lprintln("error,custom-marking", "Error in custom marking callback: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+                Handled.yes
+            })
+
+            handlers["fline-edit-translate"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineTranslatePoints>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.translate(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-add-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineAddLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.addLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error adding FLine to edit session: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-begin-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineBeginLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.beginLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error beginning live FLine stroke: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-append-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineAppendLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.appendLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error appending live FLine stroke: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-end-line"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineEndLine>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.endLine(update)
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error ending live FLine stroke: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
+            handlers["fline-edit-clear"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FLineClearSession>(message.payload!!)
+                val session = getFLineEditSession(update.sessionId)
+                if (session == null) {
+                    lprintln("warning,fline", "No edit session registered for FLine session: ${update.sessionId}")
+                    return@mutableSetOf Handled.yes
+                }
+
+                GlobalScope.launch {
+                    try {
+                        session.clear()
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error clearing FLine edit session: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                Handled.yes
+            })
+
             handlers["string-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")
@@ -892,6 +1391,29 @@ class Server {
                     }
                 } else {
                     lprintln("warning,controls", "No callback registered for string: ${update.controlId}")
+                }
+
+                Handled.yes
+            })
+
+            handlers["file-upload-update"] = mutableSetOf({ message, reply ->
+                val update = Json.decodeFromJsonElement<FileUploadUpdate>(message.payload!!)
+                lprintln("debug,controls", "Received file upload: ${update.controlId} with ${update.files.size} file(s)")
+
+                // Always store for polling (Python widgets read via getFileUploadData)
+                storeFileUploadData(update.controlId, update.files)
+
+                // Also call explicit callback if registered (Kotlin widgets)
+                val callback = getFileUploadCallback(update.controlId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(update.files)
+                        } catch (e: Exception) {
+                            lprintln("error,controls", "Error in file upload callback: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
                 }
 
                 Handled.yes
@@ -952,45 +1474,51 @@ class Server {
                 lprintln("debug,layers", "Setting active layer: ${update.layer}, animated: ${update.animated}")
                 val oldActiveLayer = thisSessionInfo.get().activeLayer
 
-                // When leaving an active layer, save current positions to that layer's frames
-                if (oldActiveLayer != null) {
-                    thisSessionInfo.get().boxes.values.forEach { box ->
-                        // Only save if box is visible in the old layer
-                        val boxLayers = parseLayersList(box.layers)
-                        if (boxLayers.contains(oldActiveLayer)) {
-                            box.layerFrames[oldActiveLayer] = box.frame
-                            lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
-                        }
-                    }
-                }
+                // No-op if the active layer is unchanged.
+                if (update.layer == oldActiveLayer) {
+                    Handled.yes
+                } else {
 
-                thisSessionInfo.get().activeLayer = update.layer
-
-                // Apply frame overrides for the new active layer
-                if (update.layer != null) {
-                    thisSessionInfo.get().boxes.values.forEach { box ->
-                        val layerFrame = box.layerFrames[update.layer]
-                        if (layerFrame != null) {
-                            box.frame = layerFrame
-                            lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
-
-                            // Send animated rect if animation is requested
-                            if (update.animated) {
-                                val animMessage = Message("set-animated-rect").payload(
-                                    Set_animated_rect(box.id, "frame", layerFrame, update.duration)
-                                )
-                                box.inside.sessions.forEach { _send(it, animMessage) }
+                    // When leaving an active layer, save current positions to that layer's frames
+                    if (oldActiveLayer != null) {
+                        thisSessionInfo.get().boxes.values.forEach { box ->
+                            // Only save if box is visible in the old layer
+                            val boxLayers = parseLayersList(box.layers)
+                            if (boxLayers.contains(oldActiveLayer)) {
+                                box.layerFrames[oldActiveLayer] = box.frame
+                                lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
                             }
                         }
                     }
-                }
 
-                // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
-                if (!update.animated) {
-                    doResync()
-                }
+                    thisSessionInfo.get().activeLayer = update.layer
 
-                Handled.yes
+                    // Apply frame overrides for the new active layer
+                    if (update.layer != null) {
+                        thisSessionInfo.get().boxes.values.forEach { box ->
+                            val layerFrame = box.layerFrames[update.layer]
+                            if (layerFrame != null) {
+                                box.frame = layerFrame
+                                lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
+
+                                // Send animated rect if animation is requested
+                                if (update.animated) {
+                                    val animMessage = Message("set-animated-rect").payload(
+                                        Set_animated_rect(box.id, "frame", layerFrame, update.duration)
+                                    )
+                                    box.inside.sessions.forEach { _send(it, animMessage) }
+                                }
+                            }
+                        }
+                    }
+
+                    // Do regular resync if not animated (for non-frame properties and boxes without layer frames)
+                    if (!update.animated) {
+                        doResync()
+                    }
+
+                    Handled.yes
+                }
             })
 
             handlers["get-all-layers"] = mutableSetOf({ message, reply ->
@@ -1016,7 +1544,9 @@ class Server {
 
             registerTemplate(home)
 
-            val port = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
+            val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
+            val portFallbackCount = System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
+            var port = preferredPort
             val httpsHost = "0.0.0.0"
             val keystorePath = System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
             val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
@@ -1026,17 +1556,18 @@ class Server {
                 load(keystoreFile.inputStream(), keystorePassword.toCharArray())
             }
 
-            ourServer = embeddedServer(Netty, configure = {
-                sslConnector(
-                    keyStore = keyStore,
-                    keyAlias = keystoreAlias,
-                    keyStorePassword = { keystorePassword.toCharArray() },
-                    privateKeyPassword = { keystorePassword.toCharArray() }
-                ) {
-                    this.host = httpsHost
-                    this.port = port
-                }
-            }) {
+            fun createServer(bindPort: Int): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
+                return embeddedServer(Netty, configure = {
+                    sslConnector(
+                        keyStore = keyStore,
+                        keyAlias = keystoreAlias,
+                        keyStorePassword = { keystorePassword.toCharArray() },
+                        privateKeyPassword = { keystorePassword.toCharArray() }
+                    ) {
+                        this.host = httpsHost
+                        this.port = bindPort
+                    }
+                }) {
                 install(ContentNegotiation) {
                     json()
                 }
@@ -1047,6 +1578,14 @@ class Server {
                     allowMethod(HttpMethod.Post)
                     allowMethod(HttpMethod.Delete)
                     anyHost()
+                }
+
+                intercept(ApplicationCallPipeline.Setup) {
+                    if (call.request.path() == "/api/import-offline-doc") {
+                        call.response.headers.append("Access-Control-Allow-Private-Network", "true")
+                        call.response.headers.append(HttpHeaders.Vary, "Origin")
+                        call.response.headers.append(HttpHeaders.Vary, "Access-Control-Request-Private-Network")
+                    }
                 }
 
                 install(Compression) {
@@ -1078,6 +1617,30 @@ class Server {
                         val fallback = lastFn ?: "welcome"
                         val defaultDocument = docs.firstOrNull()?.filename ?: fallback
                         call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument))
+                    }
+
+                    get("/api/workspace-search") {
+                        val query = call.request.queryParameters["q"].orEmpty()
+                        val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
+                        val maxMatchesPerDocument =
+                            call.request.queryParameters["maxMatchesPerDocument"]?.toIntOrNull() ?: 5
+                        val maxScanMillis =
+                            call.request.queryParameters["maxScanMillis"]?.toLongOrNull() ?: 3_000L
+
+                        val response = withContext(workspaceSearchDispatcher) {
+                            val requestJob = coroutineContext.job
+                            searchWorkspace(
+                                base = home,
+                                rawQuery = query,
+                                maxDocuments = maxDocuments,
+                                maxMatchesPerDocument = maxMatchesPerDocument,
+                                maxScanMillis = maxScanMillis,
+                                cancellationCheck = {
+                                    if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
+                                }
+                            )
+                        }
+                        call.respond(response)
                     }
 
                     route("/welcome") {
@@ -1125,6 +1688,25 @@ class Server {
                         }
                     }
 
+                    post("/api/shutdown-instance") {
+                        call.respond(HttpStatusCode.OK, "Shutting down this Field instance")
+
+                        thread(name = "field-instance-shutdown", isDaemon = true) {
+                            try {
+                                Thread.sleep(150)
+                            } catch (_: InterruptedException) {
+                            }
+
+                            runCatching {
+                                if (this@Companion::ourServer.isInitialized) {
+                                    ourServer.stop(500, 2000)
+                                }
+                            }
+
+                            exitProcess(0)
+                        }
+                    }
+
                     webSocket("/ws") {
                         val ts = this
                         thisSession.set(ts)
@@ -1134,11 +1716,7 @@ class Server {
                                     val text = frame.readText()
                                     sessions.entries.removeIf { (session, info) ->
                                         if (session.outgoing.isClosedForSend) {
-                                            info.sessions.remove(session)
-                                            // Stop file watcher if this was the last session for this document
-                                            if (info.sessions.isEmpty()) {
-                                                info.cleanup()
-                                            }
+                                            detachDocumentSession(session, info)
                                             true
                                         } else false
                                     }
@@ -1184,14 +1762,7 @@ class Server {
                                 }
                             }
                         } finally {
-                            val info = sessions.remove(ts)
-                            if (info != null) {
-                                info.sessions.remove(ts)
-                                // Stop file watcher if this was the last session for this document
-                                if (info.sessions.isEmpty()) {
-                                    info.cleanup()
-                                }
-                            }
+                            detachDocumentSession(ts)
                             // Clean up back pressure state for this session.
                             sessionOutputPressure.remove(ts)
                         }
@@ -1216,6 +1787,35 @@ class Server {
                             val originalContent = File("./src/commonMain/resources/tree.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/h2-explorer") {
+                        handle {
+                            val originalContent =
+                                File("./src/commonMain/resources/h2_explorer.html").readText(Charsets.UTF_8)
+                            val modifiedContent = filter(originalContent)
+                            call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+                    route("/lazy-value-fragment") {
+                        handle {
+                            val root = call.request.queryParameters["root"]
+                            val kind = call.request.queryParameters["kind"]
+                            val offset = call.request.queryParameters["offset"]?.toIntOrNull()
+                            val depth = call.request.queryParameters["depth"]?.toIntOrNull() ?: 0
+
+                            if (root.isNullOrBlank() || kind.isNullOrBlank() || offset == null) {
+                                call.respond(HttpStatusCode.BadRequest, "missing or invalid lazy value fragment parameters")
+                                return@handle
+                            }
+
+                            val html = ValueVisualizer.renderLazyFragment(root, kind, offset, depth)
+                            if (html == null) {
+                                call.respond(HttpStatusCode.NotFound, "unknown or expired lazy value token")
+                                return@handle
+                            }
+
+                            call.respondText(html, ContentType.Text.Html)
                         }
                     }
                     route("/inspect") {
@@ -1265,6 +1865,7 @@ class Server {
                     files("./src/jsMain/resources/")
                     files("./src/jsMain/resources/monaco")
                     files("./src/commonMain/kotlin/resources/")
+                    files("./src/commonMain/resources/")
 
                     route("/chat") {
                         handle {
@@ -1354,49 +1955,78 @@ class Server {
                     }
                 }
 
-                val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
-                lprintln("info,server", asciiWelcome)
-                lprintln("info,server", "welcome to Field, ß-032")
-                lprintln("info,server", "last document: $initialURL")
-                lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
-                lprintln("info,server", "---")
-
-                if (preferSystemBrowser) {
-//                    thread { openSystemBrowser(initialURL) }
-                }
-                else {
-                    thread {
-                        Playwright.create().let { pw ->
-                            val browser = pw.chromium().launch(
-                                BrowserType.LaunchOptions()
-                                    .setHeadless(false)
-                                    .setArgs(
-                                        listOf(
-                                            "--app=${initialURL}",
-                                        )
-                                    )
-                            )
-                            val ctx = browser.newContext(
-                                Browser.NewContextOptions()
-                                    .setViewportSize(null)
-                                    .setIgnoreHTTPSErrors(true)
-                            )
-                            val page = ctx.newPage()
-                            page.navigate(initialURL)
-                            page.waitForLoadState(LoadState.NETWORKIDLE)
-                            lprintln("info,server", "network idle")
-
-                            globalPlaywriteContext = page
-                        }
-                    }
                 }
             }
 
-            ourServer.start(wait = true)
+            var started = false
+            var bindFailure: Throwable? = null
+            for (offset in 0 until portFallbackCount) {
+                val candidatePort = preferredPort + offset
+                port = candidatePort
+                try {
+                    ourServer = createServer(candidatePort)
+                    ourServer.start(wait = false)
+                    started = true
+                    if (offset > 0) {
+                        lprintln("warning,server", "Requested port ${preferredPort} was unavailable; using fallback port ${candidatePort}")
+                    }
+                    break
+                } catch (t: Throwable) {
+                    if (!isPortBindException(t)) throw t
+                    bindFailure = t
+                    lprintln("warning,server", "Port ${candidatePort} is already in use; trying next port")
+                }
+            }
+
+            if (!started) {
+                throw bindFailure ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
+            }
+
+            globalServerPort = port
+            val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
+            lprintln("info,server", asciiWelcome)
+            lprintln("info,server", "welcome to Field, ß-033")
+            lprintln("info,server", "last document: $initialURL")
+            lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
+            lprintln("info,server", "---")
+
+            if (preferSystemBrowser) {
+//                    thread { openSystemBrowser(initialURL) }
+            }
+            else {
+                thread {
+                    Playwright.create().let { pw ->
+                        globalPlaywright = pw
+                        val browser = pw.chromium().launch(
+                            BrowserType.LaunchOptions()
+                                .setHeadless(false)
+                                .setArgs(
+                                    listOf(
+                                        "--app=${initialURL}",
+                                    )
+                                )
+                        )
+                        globalPlaywrightBrowser = browser
+                        val ctx = browser.newContext(
+                            Browser.NewContextOptions()
+                                .setViewportSize(null)
+                                .setIgnoreHTTPSErrors(true)
+                        )
+                        globalPlaywrightBrowserContext = ctx
+                        val page = ctx.newPage()
+                        page.navigate(initialURL)
+                        page.waitForLoadState(LoadState.NETWORKIDLE)
+                        lprintln("info,server", "network idle")
+
+                        globalPlaywriteContext = page
+                    }
+                }
+            }
         }
 
 
-        fun stop(box: Box) {
+        fun stop(box: Box, entrypoint: String = "server.stop") {
+            FlightRecorder.recordStopEntrypoint(entrypoint, box)
             box.ke.stop(box)
         }
 
@@ -1416,13 +2046,6 @@ class Server {
 //                    lprintln("warn,server", "AWT init failed: ${e.message}")
 //                }
 //            }
-
-//            val bootProcessing = System.getenv("AFIELD_PROCESSING_BOOT")?.lowercase() in listOf("1", "true", "yes")
-//            if (bootProcessing) {
-//                lprintln("info,server", "Booting Processing on main thread")
-////                getSharedHost().getApplet()
-//            }
-//
 //            val logEawt = System.getenv("AFIELD_LOG_EAWT")?.lowercase() in listOf("1", "true", "yes")
 //            if (logEawt) {
 //                val loader = Thread.currentThread().contextClassLoader
@@ -1453,9 +2076,27 @@ fun languageNameForProperty(box: Box, property: String): String {
     else return when (property) {
         "vertex" -> "GLSL (vertex)"
         "fragment" -> "GLSL (fragment)"
+        "vertex_fragment" -> "Slang (vertex+fragment)"
         "compute" -> "GLSL (compute)"
         "mesh" -> "GLSL (mesh)"
         "task" -> "GLSL (task)"
+        "raygen" -> "GLSL (ray generation)"
+        "miss" -> "GLSL (miss)"
+        "closesthit" -> "GLSL (closest hit)"
+        "anyhit" -> "GLSL (any hit)"
+        "intersection" -> "GLSL (intersection)"
+        "callable" -> "GLSL (callable)"
+        "vertex_s" -> "Slang (vertex)"
+        "fragment_s" -> "Slang (fragment)"
+        "compute_s" -> "Slang (compute)"
+        "mesh_s" -> "Slang (mesh)"
+        "task_s" -> "Slang (task)"
+        "raygen_s" -> "Slang (ray generation)"
+        "miss_s" -> "Slang (miss)"
+        "closesthit_s" -> "Slang (closest hit)"
+        "anyhit_s" -> "Slang (any hit)"
+        "intersection_s" -> "Slang (intersection)"
+        "callable_s" -> "Slang (callable)"
         else -> "Kotlin"
     }
 }

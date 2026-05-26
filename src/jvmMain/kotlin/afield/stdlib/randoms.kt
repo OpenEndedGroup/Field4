@@ -4,7 +4,7 @@ import afield.Box
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
-import java.util.Random
+import java.util.*
 import kotlin.random.Random as KotlinRandom
 
 // Box-scoped RNG so stdlib random/noise are repeatable per execution.

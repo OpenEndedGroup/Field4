@@ -84,6 +84,11 @@
         #log::-webkit-scrollbar{ width: var(--sb-size); height: var(--sb-size); }
         #log::-webkit-scrollbar-thumb{ background-color: var(--sb-thumb); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
         #log::-webkit-scrollbar-thumb:hover{ background-color: var(--sb-thumb-hover); }
+
+        html[data-afield-output-iframe="true"] #log{
+            max-height: none;
+            overflow: visible;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +96,7 @@
     <div id="filters"></div>
     <div id="log" aria-live="polite"></div>
 </div>
+<script src="/iframe_autosize.js"></script>
 <script>
 (function(){
     const qs = new URLSearchParams(location.search);

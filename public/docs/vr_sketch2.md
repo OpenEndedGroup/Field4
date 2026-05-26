@@ -1,29 +1,30 @@
-
 # VR Production Sketch 2, in Field·4
 
-This page will take you into making your first steps in Field·4's XR graphics system for drawing — with a basic template for getting OpenXR working with Field's graphics system to the point that you'll be able to draw with the VR controller. This is part step-by-step (hopefully) boredom-inducing tutorial, and part introductory cook-book to a fabulously new kitchen.
+This is the first XR drawing exercise for Field. It starts from the `field.sketch2` template, opens the OpenXR graphics path, and gets one controller drawing an `FLine` in space.
+
+The goal is modest: get a line on the headset display, understand the loop that produces it, then change one thing.
 
 ## Getting to XR "hello world"
 
-The first step is to [run field](survivalGuide.md). Field's prompt will suggest that you open whatever file was last opened:
+Start by [running Field](survivalGuide.md). The server prompt usually offers a link to the last opened document:
 
 ![](assets/screenshot_22.png)
 
-You can click on that link to open that document, or you can start afresh with any URL of the form:
+You can open that document, or start a new one with a URL of this form:
 
 ```diffstatic {data-lang=text}
 https://localhost:9092/index.html?file=MY_AWESOME_NEW_FILE
 ```
 
-If you start afresh you'll be greeted with an empty screen:
+A new document starts as an empty canvas:
 
 ![](assets/screenshot_23.png)
 
-To open the sketch2 template, you'll want to press `F1` to bring up the menu and start typing:
+Press `F1`, start typing the template name, and insert `field.sketch2`:
 
 ![](assets/insertTemplate.apng)
 
-The template you want for Sketch2 is called `field.sketch2` and, once you insert it you'll see something _very_ like this read-only preview of the document.
+After insertion, the document should look close to this read-only preview:
 
 <iframe
   src="/offline.html?file=/field.sketch2.edn"
@@ -33,15 +34,15 @@ The template you want for Sketch2 is called `field.sketch2` and, once you insert
   allowfullscreen>
 </iframe>
 
-In fact, like all of these live previews, _if_ you are running field and click that "open in Field4" button, you'll get taken to a fresh document, with that template inserted. 
+If Field is running, the preview's "Open in Field4" button opens a fresh document with the template inserted.
 
 ## Running it
 
-Once you have that document loaded you are two steps away from having something on "the screen". Firstly, run the box that's called "run me!". You can do that by alt/option-clicking on the box and holding. It will go stripey green to let you know that it's working. Give it a good 10 seconds or so — it's opening a lot of VR and graphics resources.
+Once the template is loaded, run the box named `run me!`. Alt/option-click and hold on the box. It should turn striped green while it starts. Give it a few seconds; the box is opening the XR and graphics resources.
 
-Then the real action is going to be in that box "YOUR CODE". That's where your code goes. 
+The box named `YOUR CODE` is where the drawing code goes.
 
-This starting place, with line-by-line documentation, looks like:
+The starter loop is short enough to read line by line:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -71,33 +72,33 @@ loop { // do this forever (or until we stop this box)
 }
 ```
 
-You'll see in the [survival guide](survivalGuide.md) you can "launch" this code — start it running and let it loop forever — with `alt-up` in the text editor or an `alt-swipe-up` with the mouse. You can stop the code with `alt-down`. 
+Launch this code with `alt-up` in the editor, or with an `alt-swipe-up` on the box. Stop it with `alt-down`.
 
-# Sketch 2, then:
+## Sketch 2, then
 
-The assignment here is to understand what's happening in the code above and to make an intervention in it — extend it in some way, add something to it. Ideas that have come up during lab time, in order of increasing complexity, include:
+The exercise is to make one intervention in the loop. Good first changes, roughly from easiest to more open-ended:
 
-* Multiple lines — can we draw more than one line ?
+* Multiple lines: draw more than one line.
 
-* Color — can we set the color of a line, can we set the color of _part_ of a line.
+* Color: set the color of a line, or part of a line.
 
-* Place — can we draw somewhere else? can we draw a mirror image?
+* Place: draw somewhere else, or draw a mirrored copy.
 
-* Texture — can we draw something that's got more texture than a thin line
+* Texture: make the mark thicker, rougher, or more tangled.
 
-* Drawing dynamics — can we smooth the line as we draw it? can we make it spiky?
+* Drawing dynamics: smooth the line as it is drawn, or make it spiky.
 
-* Animation dynamics — can the lines animate after we've finished drawing them?
+* Animation dynamics: keep the line moving after drawing stops.
 
-Each of these things (except perhaps for the first) is *parametric* — that is they need a 'number' or two to make some aspect of the idea concrete. A Color needs, say, 4 numbers — the amount of red, green, blue light and it's opacity; Spikiness needs a number — how smooth? Texture might need a number (how 'tangled'). So another, almost independent axis of question is: where can we get these numbers from? Two broad classes:
+Most of those changes need parameters. A color needs red, green, blue, and opacity. Spikiness needs a strength. Texture needs density or scale. The useful question is where those numbers come from.
 
-* Other, direct sensed things. We already have 3 coordinates for the position sensing of the controller. We also have a single number (the squeeze of the trigger). 3 more: the orientation of the controller, and then a full 7 more: the _other_ controller. And then, finally, 6 more still — the position and orientation of the head.
+* Direct sensed values: controller position, trigger squeeze, controller orientation, the other controller, and the head pose.
 
-* Things computed from direct sensed properties: velocity of the hand, distance between the hands, the hand and the head and so on. Is one hand pointing at another? etc.
+* Computed values: hand velocity, distance between hands, distance from hand to head, whether one hand is pointing at the other, and so on.
 
-So, a fully fleshed out "idea" might be — can change opacity from speed and have lines fall to the ground while I'm not drawing them, but also still move in the direction and speed I drew them? Can I mirror a drawing along an axis between the hands? Can the speed of one hand control the thickness of the other? etc. An input, and an output.
+One complete sketch might be: opacity comes from drawing speed, finished lines fall toward the floor, and each line keeps some of the direction it had while being drawn. Another might mirror strokes around the axis between the two hands. Another might use the speed of one hand to set the thickness of the other.
 
-The cookbook then, looks like this document here:
+The example cookbook is this document:
 
 <iframe
   src="/offline.html?file=/field.sketch2_examples.edn"
@@ -107,7 +108,7 @@ The cookbook then, looks like this document here:
   allowfullscreen>
 </iframe>
 
-Which has lots of examples (of outputs) and lots examples of computing speed and so on. If you are on a machine that doesn't support XR (for example all Mac's or Windows / Linux machines without headset), you'll want this example here:
+It includes output examples and small computations such as speed. On a machine without XR support, use the no-XR version instead:
 
 <iframe
   src="/offline.html?file=/field.sketch2_examples_noXR.edn"
@@ -116,4 +117,3 @@ Which has lots of examples (of outputs) and lots examples of computing speed and
   loading="lazy"
   allowfullscreen>
 </iframe>
-

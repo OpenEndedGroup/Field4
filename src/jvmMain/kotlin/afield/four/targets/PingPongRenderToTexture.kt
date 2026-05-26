@@ -23,11 +23,10 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D_ARRAY
 import org.lwjgl.vulkan.VK10.vkCmdClearColorImage
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_READ_BIT
+import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_TRANSFER_WRITE_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
 import org.lwjgl.vulkan.VkClearColorValue
 import org.lwjgl.vulkan.VkImageSubresourceRange
@@ -173,7 +172,7 @@ class PingPongRenderToTexture(
 
                 val (dstStage, dstAccess) =
                     if (finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                        sampledReadStageMask to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     else
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
 
@@ -191,7 +190,7 @@ class PingPongRenderToTexture(
             } else {
                 val (dstStage, dstAccess) =
                     if (finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                        sampledReadStageMask to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     else
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
 
