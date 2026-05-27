@@ -145,7 +145,7 @@ private fun monacoInstallCommandLinkDetector(editor: dynamic, monaco: dynamic) {
     opener.id = "afield-command-link-opener"
     opener.open = open@{ uri: dynamic, _: dynamic ->
         val raw = when {
-            js("typeof uri === 'string'") as Boolean -> uri as String
+            js("typeof uri === 'string'") as Boolean -> uri
             (js("uri && uri.scheme === 'command'") as Boolean) -> {
                 val pathPart = try {
                     uri.path as? String
@@ -154,7 +154,7 @@ private fun monacoInstallCommandLinkDetector(editor: dynamic, monaco: dynamic) {
                 }
                 "command:" + (pathPart ?: "")
             }
-            else -> uri?.toString() as? String ?: ""
+            else -> uri?.toString() ?: ""
         }
         if (!raw.startsWith("command:")) return@open false
         val encoded = raw.removePrefix("command:").trimStart('/')
@@ -599,6 +599,7 @@ private fun shaderReloadActionForProperty(property: String): String? = when (pro
 private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
     val w = js("window")
     val property = (w.currentSelectedProperty as? String)?.trim()?.lowercase()
+    if (property == "contents") return
     val actionId = property?.let(::shaderReloadActionForProperty)
     if (actionId == null) {
         monacoRunExecuteFragment(editor)
@@ -612,7 +613,7 @@ private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
     val uid = selected.uid as? String ?: return
 
     val model = editor.getModel()
-    if (model != null && model != undefined && property != null) {
+    if (model != null && model != undefined) {
         val value = model.getValue() as? String ?: ""
         selected[property] = value
         val payload = js("{}")

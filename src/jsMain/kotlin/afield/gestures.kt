@@ -1,5 +1,3 @@
-@file:JsExport
-
 import afield.*
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -306,7 +304,7 @@ private fun ensureFrontConnectionLayer(): SVGSVGElement {
 
     val front = document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement
     front.id = FRONT_CONNECTION_LAYER_ID
-    front.setAttribute("style", "position: absolute; top:0; bottom:0; left:0; right:0; z-index: 18; pointer-events: none")
+    front.classList.add("front-connection-layer")
     front.setAttribute("height", "100%")
     front.setAttribute("width", "100%")
     document.body?.appendChild(front)
@@ -1085,7 +1083,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             )
             val disclosure = nestedDisclosureElement(parentBox)
             val isOpen = disclosure?.classList?.contains("open") == true
-            if (!isOpen || disclosure == null) {
+            if (!isOpen) {
                 return@getOrPut NestedDisclosureSnapshot(
                     isOpen = false,
                     viewportWorldRect = null

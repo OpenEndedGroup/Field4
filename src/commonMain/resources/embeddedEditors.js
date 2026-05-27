@@ -369,13 +369,14 @@ function registerEmbeddedActions(editor, uid, property) {
 		id: "execute-fragment",
 		label: "Run Line / Selection",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Enter)],
-		contextMenuGroupId: "execution",
-		contextMenuOrder: 1.5,
-		run: (ed) => {
-			const reloadAction = shaderReloadAction(property);
-			if (reloadAction) {
-				const value = ed.getModel().getValue();
-				send("set-string", { uid, property, value });
+			contextMenuGroupId: "execution",
+			contextMenuOrder: 1.5,
+			run: (ed) => {
+				if (property === "contents") return;
+				const reloadAction = shaderReloadAction(property);
+				if (reloadAction) {
+					const value = ed.getModel().getValue();
+					send("set-string", { uid, property, value });
 				send("perform-action", { uid_currentSelection: [uid], uid_action: reloadAction });
 				return;
 			}

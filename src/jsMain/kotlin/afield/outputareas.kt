@@ -165,15 +165,15 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         cursor = "grab"
     }
 
-    val stage = document.createElementNS("http://www.w3.org/2000/svg", "svg") as Element
+    val stage = document.createElementNS("http://www.w3.org/2000/svg", "svg")
     stage.setAttribute("width", "100%")
     stage.setAttribute("height", "100%")
     stage.setAttribute("preserveAspectRatio", "none")
     stage.setAttribute("shape-rendering", "geometricPrecision")
     stage.setAttribute("text-rendering", "geometricPrecision")
-    stage.setAttribute("style", "display:block;overflow:hidden;background:transparent;")
+    stage.setAttribute("class", "nested-svg-stage")
 
-    val stageGroup = document.createElementNS("http://www.w3.org/2000/svg", "g") as Element
+    val stageGroup = document.createElementNS("http://www.w3.org/2000/svg", "g")
     stageGroup.setAttribute("vector-effect", "non-scaling-stroke")
     stage.appendChild(stageGroup)
     viewport.appendChild(stage)
@@ -284,7 +284,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     }
 
     viewport.onpointermove = { event ->
-        if ((view.panPointerId as? Number)?.toInt() != event.pointerId.toInt()) {
+        if ((view.panPointerId as? Number)?.toInt() != event.pointerId) {
             null
         } else {
             val dx = event.clientX - (view.panLastX as Double)
@@ -299,7 +299,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     }
 
     viewport.onpointerup = { event ->
-        if ((view.panPointerId as? Number)?.toInt() == event.pointerId.toInt()) endPan()
+        if ((view.panPointerId as? Number)?.toInt() == event.pointerId) endPan()
         null
     }
 
@@ -397,7 +397,7 @@ private fun applySubpixelStrokeFade(root: Element, scale: Double) {
 
 private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: String): Boolean {
     val wrapper = parseLinesWrapper(htmlString) ?: return false
-    val sourceSvg = wrapper.querySelector("svg") as? Element ?: return false
+    val sourceSvg = wrapper.querySelector("svg") ?: return false
     val view = ensureLinesOutputView(contentRoot)
     val stageGroup = view.stageGroup as Element
 
@@ -668,7 +668,7 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
     val title = if (set.channel == "ai-chat") "AI Chat" else set.channel
     val preserveExistingContent = isPersistentThreeOutput(set.value)
     val initialContent = if (preserveExistingContent) PRESERVE_DISCLOSURE_CONTENT else ""
-    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(
+    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> HTMLElement).invoke(
         channelId,
         title,
         initialContent
@@ -680,11 +680,11 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
         aiChatUpdate(contentRoot, set.uid, set.value)
         (inter.open as (String) -> Unit).invoke(channelId)
     } else if (isLayersChannel) {
-        renderLayersPalette(contentRoot as HTMLElement)
+        renderLayersPalette(contentRoot)
         (inter.open as (String) -> Unit).invoke(channelId)
-    } else if (updatePersistentThreeOutput(contentRoot as HTMLElement, set.value)) {
+    } else if (updatePersistentThreeOutput(contentRoot, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)
-    } else if (updatePersistentLinesOutput(contentRoot as HTMLElement, set.value)) {
+    } else if (updatePersistentLinesOutput(contentRoot, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else {
         insertHTMLWithScripts(contentRoot, set.value)
@@ -812,9 +812,9 @@ fun openEditorInOutput(uid: String, property: String) {
     // which Monaco inherits for gutter measurements. Set it to match the
     // editor's configured fontSize so line numbers and controls are sized
     // correctly.
-    (contentRoot as HTMLElement).style.fontSize = "13px"
-    (contentRoot as HTMLElement).style.padding = "0px"
-    (contentRoot as HTMLElement).style.background = "#000000"
+    contentRoot.style.fontSize = "13px"
+    contentRoot.style.padding = "0px"
+    contentRoot.style.background = "#000000"
 
     // Create the embedded editor
     val editorId = (emb.create as Function<*>).asDynamic().call(emb, editorContainer, uid, property, language, currentValue) as? String
@@ -823,7 +823,7 @@ fun openEditorInOutput(uid: String, property: String) {
         // The embeddedEditors.js module tags the container with data-embeddedEditorId
         // which the disclosure remove() hook reads for cleanup.
         // Also tag the disclosure content wrapper (contentRoot) so the remove hook can find it
-        (contentRoot as HTMLElement).asDynamic().dataset.embeddedEditorId = editorId
+        contentRoot.asDynamic().dataset.embeddedEditorId = editorId
     }
 
     // Open the disclosure

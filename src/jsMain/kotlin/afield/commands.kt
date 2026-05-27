@@ -139,8 +139,9 @@ private fun downloadEdnFile(filename: String, edn: String) {
 
 fun registerMouseBug() {
     document.addEventListener("mousemove", { event ->
-        val x = (event as MouseEvent).pageX - (mainCanvas.unsafeCast<dynamic>().data_x as Double)
-        val y = (event as MouseEvent).pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)
+        val mouseEvent = event as MouseEvent
+        val x = mouseEvent.pageX - (mainCanvas.unsafeCast<dynamic>().data_x as Double)
+        val y = mouseEvent.pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)
         lastMouse = x to y
     })
 }
@@ -844,7 +845,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         val rawLabel = if (pipeIndex >= 0) fullDesc.substring(0, pipeIndex).trim() else fullDesc
         val label = escapeJsString(rawLabel)
         val kbSpec = if (pipeIndex >= 0) fullDesc.substring(pipeIndex + 1) else ""
-        val detail = (it.value.detail ?: "").ifBlank { "" }
+        val detail = it.value.detail.ifBlank { "" }
         val detailEscaped = escapeJsString(detail)
 
         val kbExpr = parseKeybindingSpec(kbSpec.trim())
@@ -923,7 +924,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             all.push(a)
         }
     }
-    fun jsStringLiteral(value: String): String = JSON.stringify(value) ?: "\"\""
+    fun jsStringLiteral(value: String): String = JSON.stringify(value)
 
     if (boxes.size >= 2) {
         val sourceName = (boxes.first().unsafeCast<dynamic>().name as? String)?.trim().orEmpty()
@@ -1126,6 +1127,7 @@ fun registerBuiltinCommands() {
     w.soloNextLayer = ::soloNextLayer
     w.soloPreviousLayer = ::soloPreviousLayer
     w.refreshLayerShortcutActions = ::refreshLayerShortcutActions
+    w.openUserThemeProxyBox = ::openUserThemeProxyBox
 
     allActions.builtin = eval(
         """
@@ -1212,6 +1214,14 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => (event.key=='t') && (event.ctrlKey || event.metaKey),
             run: () => {
                 insertFromWorkspace()
+            }
+        },{
+            id:'open-user-theme',
+            label:"Open User Theme",
+            detail:"Open ~/.afield/theme.css as an absolute file proxy",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                window.openUserThemeProxyBox()
             }
         },{
             id:'search-docs-and-code',

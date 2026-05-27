@@ -50,42 +50,7 @@
     let listenersAttached = false;
 
     function installStyles() {
-        if (document.getElementById("keycast-style")) return;
-        const style = document.createElement("style");
-        style.id = "keycast-style";
-        style.textContent = `
-      #keycast-overlay {
-        position: fixed;
-        left: 0;
-        bottom: 12%;
-        display: flex;
-        justify-content: center;
-        pointer-events: none;
-        z-index: 9000;
-        padding: 0 12px;
-      }
-      #keycast-overlay .keycast-text {
-        min-width: 160px;
-        max-width: 100%;
-        text-align: center;
-        padding: 12px 18px;
-        font-family: "Iosevka Web", system-ui, monospace;
-        font-size: 36px;
-        font-weight: 480;
-        letter-spacing: 0.8px;
-        color: #e8f7ff;
-        background: rgba(0, 0, 0, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-        backdrop-filter: blur(6px) saturate(1.05);
-        opacity: 0;
-        transition: opacity ${fadeDurationMs}ms linear;
-        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-        user-select: none;
-      }
-    `;
-        document.head.appendChild(style);
+        // Keycast chrome lives in field.css.
     }
 
     function ensureElements() {

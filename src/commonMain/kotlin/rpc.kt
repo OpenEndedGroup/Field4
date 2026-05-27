@@ -142,6 +142,13 @@ data class DocumentLoadStatus(
 )
 
 @Serializable
+data class UserTheme(
+    val css: String,
+    val path: String,
+    val lastModified: Long = 0L
+)
+
+@Serializable
 data class IsRunning(
     val uid: String,
     val isRunning: Boolean,
@@ -318,6 +325,27 @@ data class AgentCreateBox(
     val name: String = "Untitled",
     val frame: Rect = Rect(0.0, 0.0, 100.0, 100.0),
     val properties: Map<String, JsonElement> = emptyMap()
+)
+
+@Serializable
+data class CreateFileProxyBox(
+    val mode: String,
+    val path: String? = null,
+    val fileName: String,
+    val contentsBase64: String? = null,
+    val mimeType: String? = null,
+    val x: Double = 0.0,
+    val y: Double = 0.0
+)
+
+@Serializable
+data class CreateFileProxyBoxResponse(
+    val ok: Boolean,
+    val uid: String? = null,
+    val message: String = "",
+    val mode: String = "",
+    val path: String = "",
+    val defaultProperty: String = "contents"
 )
 
 @Serializable

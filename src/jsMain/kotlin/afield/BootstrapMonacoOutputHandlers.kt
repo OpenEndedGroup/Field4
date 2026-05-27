@@ -281,8 +281,6 @@ fun monacoSetStatus(uid: String, good: Boolean, text: String) {
     tooltip.innerHTML = text
 }
 
-@OptIn(ExperimentalJsExport::class)
-@JsExport
 fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
     val uid = uidOverride.ifBlank { payload.uid }
     if (uid.isBlank()) return true

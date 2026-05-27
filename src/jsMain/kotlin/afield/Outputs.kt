@@ -702,6 +702,7 @@ fun afieldToggleLazyOutput(buttonLike: dynamic) {
 
     if (isOpen) {
         panel.style.display = "none"
+        panel.classList.remove("is-open")
         ds.afieldBrowseOpen = "0"
         button.textContent = originalLabel
         scheduleKnownOutputRecompute(wrapper)
@@ -713,42 +714,32 @@ fun afieldToggleLazyOutput(buttonLike: dynamic) {
         val iframeHeight = (panel.dataset.asDynamic().afieldBrowseHeight as? String)?.toIntOrNull() ?: 264
 
         val header = document.createElement("div") as HTMLElement
-        header.style.display = "flex"
-        header.style.justifyContent = "flex-end"
-        header.style.marginBottom = "6px"
+        header.classList.add("afield-lazy-output-header")
 
         val link = document.createElement("a") as HTMLElement
         link.setAttribute("href", src)
         link.setAttribute("target", "_blank")
         link.setAttribute("rel", "noopener noreferrer")
         link.textContent = "open inspector"
-        link.style.color = "#8cf"
-        link.style.fontSize = "11px"
-        link.style.textDecoration = "none"
+        link.classList.add("afield-lazy-output-link")
         header.appendChild(link)
 
         val iframe = document.createElement("iframe") as HTMLElement
         iframe.setAttribute("src", src)
         iframe.setAttribute("loading", "lazy")
         iframe.setAttribute("data-afield-autosize", "off")
-        iframe.style.width = "100%"
+        iframe.classList.add("afield-lazy-output-frame")
         iframe.style.height = "${iframeHeight}px"
-        iframe.style.border = "1px solid rgba(255,255,255,0.14)"
-        iframe.style.borderRadius = "6px"
-        iframe.style.background = "rgba(0,0,0,0.72)"
-        iframe.style.display = "block"
         iframe.addEventListener("load", { _: dynamic ->
             scheduleKnownOutputRecompute(wrapper)
         })
 
-        panel.style.paddingTop = "6px"
-        panel.style.marginTop = "8px"
-        panel.style.borderTop = "1px solid rgba(255,255,255,0.1)"
-        panel.style.display = "block"
+        panel.classList.add("is-open")
         panel.appendChild(header)
         panel.appendChild(iframe)
         ds.afieldBrowseLoaded = "1"
     } else {
+        panel.classList.add("is-open")
         panel.style.display = "block"
     }
 
@@ -813,9 +804,9 @@ private fun upsertLazyValueViewer(boxUid: String, title: String, src: String) {
     val channelId = "__lazy_view__$normalized"
     val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(channelId, title, "") as HTMLElement
     contentRoot.innerHTML = """
-        <div class="value-viz-output-viewer" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="value-viz-output-viewer">
             <iframe data-afield-autosize="off" src="${src}" loading="lazy"
-                style="width:100%;height:320px;border:1px solid rgba(255,255,255,0.14);border-radius:4px;background:#000;display:block;"></iframe>
+                class="value-viz-output-viewer-frame"></iframe>
         </div>
     """.trimIndent()
     (inter.open as (String) -> Unit).invoke(channelId)
@@ -1108,33 +1099,7 @@ fun addPromptBox(editor: dynamic, belowLine: Int, acceptCallback: dynamic) {
               rows="1"
               placeholder=">"
               id="promptBox_$addPromptBoxUid"
-              style="
-                box-sizing: border-box;
-                height: 30px;
-                padding: 8px;
-                margin: 3px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-                resize: vertical;
-                overflow: hidden;
-                font-style: inherit;
-                font-variant: inherit;
-                font-weight: inherit;
-                font-stretch: inherit;
-                line-height: inherit;
-                font-family: inherit;
-                font-optical-sizing: inherit;
-                font-size-adjust: inherit;
-                font-kerning: inherit;
-                font-feature-settings: inherit;
-                font-variation-settings: inherit;
-                font-size: 70%;
-                font-style: italic;
-                width: calc(100% - 20px);
-                outline: none;
-                color: white;
-                background: rgba(0,0,0,0.7);
-                  "
+              class="afield-prompt-box"
               oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';"
               onfocus="this.style.height='auto';this.style.height=this.scrollHeight+'px';"
               onkeydown="return window.chatKeyboardCallback(event, $addPromptBoxUid, this);"
@@ -1421,10 +1386,10 @@ fun addOutput(
 private fun getInsetClientRectByMargin(el: dynamic): dynamic {
     val rect = el.getBoundingClientRect()
     val style = window.getComputedStyle(el)
-    val top = (style.marginTop as? String)?.toDoubleOrNull() ?: 0.0
-    val right = (style.marginRight as? String)?.toDoubleOrNull() ?: 0.0
-    val bottom = (style.marginBottom as? String)?.toDoubleOrNull() ?: 0.0
-    val left = (style.marginLeft as? String)?.toDoubleOrNull() ?: 0.0
+    val top = style.marginTop.toDoubleOrNull() ?: 0.0
+    val right = style.marginRight.toDoubleOrNull() ?: 0.0
+    val bottom = style.marginBottom.toDoubleOrNull() ?: 0.0
+    val left = style.marginLeft.toDoubleOrNull() ?: 0.0
 
     val inset = js("{}")
     inset.top = rect.top + top

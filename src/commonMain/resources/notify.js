@@ -52,30 +52,6 @@ function stopNotifySpinnersForCategory(cat, exceptNode) {
 }
 
 var notify = (text, cat = "") => {
-        if (!document.getElementById("notify-spinner-style")) {
-                const style = document.createElement("style");
-                style.id = "notify-spinner-style";
-                style.textContent = `
-.notify-spinner {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        margin-left: 6px;
-        border-radius: 50%;
-        background: #f3a24f;
-        box-shadow: 0 0 6px rgba(243, 162, 79, 0.9);
-        animation: notifyPulse 1s ease-in-out infinite;
-        vertical-align: middle;
-}
-@keyframes notifyPulse {
-        0% { transform: scale(0.7); opacity: 0.4; }
-        80% { transform: scale(1.2); opacity: 1; }
-        100% { transform: scale(0.7); opacity: 0.4; }
-}
-                `;
-                document.head.appendChild(style);
-        }
-
         const htmlText = text
                 .replace(/<<spinner>>/g, '<span class="notify-spinner"></span>')
                 .replace(/<<timeago:(\d+)>>/g, '<span class="notify-timeago" data-time="$1"></span>');

@@ -244,8 +244,6 @@ var launchNumber = 0
 external fun launchAll(uid: String, code: String)
 external fun continueAll(uid: String, code: String)
 
-@JsExport
-@JsName("canvasGestures")
 var canvasGestures = CanvasGestures(launcher = {
     it.forEach { launchAll(it.unsafeCast<dynamic>().uid as String, it.unsafeCast<dynamic>().code as String) }
 }).also {
@@ -333,6 +331,20 @@ private fun findBoxElementByUid(uid: String): HTMLElement? {
     } as? HTMLElement
 }
 
+private fun uidForBoxElement(box: HTMLElement): String? =
+    (box.asDynamic().uid as? String)
+        ?: box.getAttribute("uid")
+        ?: box.getAttribute("data-uid")
+
+private fun findAbsoluteFileProxyBox(path: String): HTMLElement? {
+    val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
+    return boxes.firstOrNull {
+        val box = it.asDynamic()
+        (box.file_proxy_mode as? String) == "absolute" &&
+            (box.file_proxy_path as? String) == path
+    } as? HTMLElement
+}
+
 private var actorArcCounter = 0
 private const val ACTOR_ARC_LAYER_ID = "actor-arc-layer"
 private const val ACTOR_ARC_DURATION_MS = 150
@@ -351,7 +363,7 @@ private fun ensureActorArcLayer(): SVGSVGElement {
     val svgNs = "http://www.w3.org/2000/svg"
     val layer = document.createElementNS(svgNs, "svg") as SVGSVGElement
     layer.id = ACTOR_ARC_LAYER_ID
-    layer.setAttribute("style", "position: absolute; top:0; bottom:0; left:0; right:0; z-index: 19; pointer-events: none")
+    layer.classList.add("actor-arc-layer")
     layer.setAttribute("height", "100%")
     layer.setAttribute("width", "100%")
     document.body?.appendChild(layer)
@@ -485,9 +497,6 @@ private fun domRectToRect(r: dynamic): Rect {
         (r.height as Number).toDouble()
     )
 }
-
-private val Rect.right: Double get() = x + w
-private val Rect.bottom: Double get() = y + h
 
 private fun Rect.expand(padding: Double) = Rect(x - padding, y - padding, w + padding * 2.0, h + padding * 2.0)
 private fun Rect.translate(dx: Double, dy: Double) = Rect(x + dx, y + dy, w, h)
@@ -630,13 +639,13 @@ private fun disclosureTitleClientRect(disclosure: HTMLElement): Rect? {
     return Rect(disclosureRect.x, disclosureRect.y, targetWidth, targetHeight)
 }
 
-private fun cssPixelsOrZero(raw: String?): Double =
-    raw?.removeSuffix("px")?.trim()?.toDoubleOrNull() ?: 0.0
+private fun cssPixelsOrZero(raw: String): Double =
+    raw.removeSuffix("px").trim().toDoubleOrNull() ?: 0.0
 
 private fun hasStyledBox(element: HTMLElement): Boolean {
     val style = window.getComputedStyle(element)
-    val background = style.backgroundColor?.trim()?.lowercase()
-    val hasBackground = background != null &&
+    val background = style.backgroundColor.trim().lowercase()
+    val hasBackground =
         background != "transparent" &&
         background != "rgba(0, 0, 0, 0)" &&
         background != "rgba(0,0,0,0)"
@@ -755,8 +764,8 @@ private fun visibleMonacoContainer(): HTMLElement? {
 }
 
 private fun currentViewportRect() = Rect(
-    window.scrollX.toDouble(),
-    window.scrollY.toDouble(),
+    window.scrollX,
+    window.scrollY,
     window.innerWidth.toDouble(),
     window.innerHeight.toDouble()
 )
@@ -776,7 +785,7 @@ private fun clipForPageRect(pageRect: Rect): Rect? {
 private fun clipForVisibleElement(element: HTMLElement, padding: Double): Rect? {
     val pageRect = domRectToRect(element.getBoundingClientRect())
         .expand(max(0.0, padding))
-        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+        .translate(window.scrollX, window.scrollY)
     return clipForPageRect(pageRect)
 }
 
@@ -792,14 +801,14 @@ private fun clipForVisibleDocsIframe(padding: Double): Rect? {
     val maxHeight = 1120.0
     val pageRect = domRectToRect(element.getBoundingClientRect())
         .expand(max(0.0, padding))
-        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+        .translate(window.scrollX, window.scrollY)
     val clippedHeight = min(pageRect.h, maxHeight)
     return clipForPageRect(Rect(pageRect.x, pageRect.y, pageRect.w, clippedHeight))
 }
 
 private fun pageRectForElement(element: HTMLElement): Rect =
     domRectToRect(element.getBoundingClientRect())
-        .translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+        .translate(window.scrollX, window.scrollY)
 
 private fun visibleSlideNoteOverlay(): HTMLElement? {
     val overlay = document.getElementById("slide-note-overlay") as? HTMLElement ?: return null
@@ -919,7 +928,7 @@ private fun clipForRenderedEditorContent(padding: Double): Rect? {
         containerRect.top,
         trimmedWidth,
         trimmedHeight
-    ).expand(max(0.0, padding)).translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    ).expand(max(0.0, padding)).translate(window.scrollX, window.scrollY)
     return clipForPageRect(pageRect)
 }
 
@@ -1007,11 +1016,11 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
     val maxContentWidth = outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
         .map { content ->
-            val scrollW = (content.scrollWidth as? Number)?.toDouble() ?: 0.0
+            val scrollW = content.scrollWidth.toDouble()
             val contentRect = content.getBoundingClientRect()
             val childW = content.children.asList()
                 .mapNotNull { child ->
-                    val element = child as? Element ?: return@mapNotNull null
+                    val element = child
                     if (!isOverlayVisible(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
@@ -1227,10 +1236,10 @@ private fun syncEditorToBoxForScreenshot(box: HTMLElement, property: String): Bo
     w.currentSelectedProperty = property
     w.selectedProperty = property
 
-    val language = if (property == "code") {
-        (box.asDynamic().code_language as? String) ?: monacoFindLanguageForPropertyName(property)
-    } else {
-        monacoFindLanguageForPropertyName(property)
+    val language = when (property) {
+        "code" -> (box.asDynamic().code_language as? String) ?: monacoFindLanguageForPropertyName(property)
+        "contents" -> (box.asDynamic().contents_language as? String) ?: monacoFindLanguageForPropertyName(property)
+        else -> monacoFindLanguageForPropertyName(property)
     }
 
     runCatching { w.clear(editor) }
@@ -1364,7 +1373,7 @@ private fun editorHasRenderableContentFor(box: HTMLElement, property: String): B
     val editorDomText = runCatching {
         val container = visibleMonacoContainer() ?: return@runCatching null
         val lines = container.querySelector(".view-lines") ?: return@runCatching null
-        (lines.textContent as? String)?.replace('\u00A0', ' ')
+        lines.textContent?.replace('\u00A0', ' ')
     }.getOrNull()
     val editorFirst = editorDomText
         ?.lineSequence()
@@ -1381,7 +1390,7 @@ private fun editorSyncDebug(box: HTMLElement, property: String): String {
     val domText = runCatching {
         val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return@runCatching null
         val lines = container.querySelector(".view-lines") ?: return@runCatching null
-        (lines.textContent as? String)?.replace('\u00A0', ' ')
+        lines.textContent?.replace('\u00A0', ' ')
     }.getOrNull()
     val expectedFirst = expected?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
     val actualFirst = actual?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
@@ -1654,10 +1663,10 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
     val guideAwareRect = unionRects(listOf(targetRect) + collectGuideScreenshotRects(box)) ?: targetRect
 
     val padded = guideAwareRect.expand(req.padding)
-    val clip = padded.translate(window.scrollX.toDouble(), window.scrollY.toDouble())
+    val clip = padded.translate(window.scrollX, window.scrollY)
     val viewport = Rect(
-        window.scrollX.toDouble(),
-        window.scrollY.toDouble(),
+        window.scrollX,
+        window.scrollY,
         window.innerWidth.toDouble(),
         window.innerHeight.toDouble()
     )
@@ -1698,7 +1707,7 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
     hideNotificationsForScreenshot()
 
     if (req.showEditor && box != null) {
-        if (!switchSelectionToProperty(req.uid!!, req.property, syncEditor = true, applyScreenshotLayout = true)) {
+        if (!switchSelectionToProperty(req.uid, req.property, syncEditor = true, applyScreenshotLayout = true)) {
             return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet")
         }
     } else {
@@ -2003,7 +2012,7 @@ fun initializeBackgroundGrid(host: HTMLElement) {
 private fun isEditorFocused(): Boolean {
     val active = document.activeElement ?: return false
     val className = active.asDynamic().className?.toString() ?: ""
-    val inMonacoTextArea = active.classList?.contains("monaco-mouse-cursor-text") == true
+    val inMonacoTextArea = active.classList.contains("monaco-mouse-cursor-text")
     val closestMonaco = try {
         active.asDynamic().closest?.call(active, ".monaco-editor") != null
     } catch (e: dynamic) {
@@ -2113,11 +2122,8 @@ private fun createChatWidget(
     chatContainer.setAttribute("data-chat-widget-id", widgetId)
     chatContainer.setAttribute("data-chat-slideshow", slideshowId)
     chatContainer.setAttribute("data-chat-slide", slideNumber.toString())
-    chatContainer.style.apply {
-        marginTop = if (showHeader) "15px" else "8px"
-        borderTop = if (showHeader) "1px solid rgba(255, 255, 255, 0.1)" else "none"
-        paddingTop = if (showHeader) "10px" else "0px"
-    }
+    chatContainer.classList.add("slide-chat-widget")
+    if (!showHeader) chatContainer.classList.add("slide-chat-widget--embedded")
 
     val chatContent = document.createElement("div") as HTMLElement
     chatContent.id = "chat-content-$widgetId"
@@ -2129,42 +2135,15 @@ private fun createChatWidget(
 
     val messagesArea = document.createElement("div") as HTMLElement
     messagesArea.id = "chat-messages-$widgetId"
-    messagesArea.style.apply {
-        maxHeight = "200px"
-        overflowY = "auto"
-        marginBottom = "10px"
-        padding = "8px"
-        backgroundColor = "rgba(0, 0, 0, 0.3)"
-        borderRadius = "4px"
-        fontSize = "12px"
-    }
+    messagesArea.classList.add("slide-chat-messages")
 
     val inputArea = document.createElement("div") as HTMLElement
-    inputArea.style.apply {
-        display = "flex"
-        marginTop = "8px"
-        backgroundColor = "rgba(0, 0, 0, 0.3)"
-        border = "1px solid rgba(255, 255, 255, 0.08)"
-        borderRadius = "4px"
-        padding = "6px"
-    }
+    inputArea.classList.add("slide-chat-input-area")
 
     val messageInput = document.createElement("textarea") as HTMLTextAreaElement
     messageInput.id = "chat-input-$widgetId"
     messageInput.setAttribute("placeholder", "Add a comment + return")
-    messageInput.style.apply {
-        flex = "1"
-        minHeight = "60px"
-        padding = "6px"
-        backgroundColor = "rgba(0, 0, 0, 0.3)"
-        color = "#e6e6e6"
-        border = "1px solid rgba(255, 255, 255, 0.08)"
-        borderRadius = "4px"
-        fontSize = "12px"
-        fontFamily = "inherit"
-        resize = "vertical"
-        outline = "1px solid #6fe6ff"
-    }
+    messageInput.classList.add("slide-chat-input")
 
     fun sendCurrentMessage() {
         val message = messageInput.value.trim()
@@ -2175,7 +2154,7 @@ private fun createChatWidget(
     }
 
     messageInput.onkeydown = { event ->
-        val keyboardEvent = event as KeyboardEvent
+        val keyboardEvent = event
         if (keyboardEvent.key == "Enter" && !keyboardEvent.shiftKey) {
             keyboardEvent.preventDefault()
             sendCurrentMessage()
@@ -2184,13 +2163,7 @@ private fun createChatWidget(
 
     if (showHeader) {
         val chatHeader = document.createElement("div") as HTMLElement
-        chatHeader.style.apply {
-            cursor = "pointer"
-            fontWeight = "bold"
-            fontSize = "12px"
-            marginBottom = "8px"
-            color = "#a0a0a0"
-        }
+        chatHeader.classList.add("slide-chat-header")
         chatHeader.innerHTML = if (expanded) "▾ Discussion" else "▸ Discussion"
 
         var isExpanded = expanded
@@ -2253,11 +2226,7 @@ fun displayChatMessages(target: HTMLElement, messages: List<ChatMessage>) {
 
     if (messages.isEmpty()) {
         val emptyMsg = document.createElement("div") as HTMLElement
-        emptyMsg.style.apply {
-            color = "#888"
-            fontStyle = "italic"
-            fontSize = "11px"
-        }
+        emptyMsg.classList.add("slide-chat-empty")
         emptyMsg.innerHTML = "No messages yet"
         messagesArea.appendChild(emptyMsg)
     } else {
@@ -2294,35 +2263,21 @@ fun displayChatMessages(target: HTMLElement, messages: List<ChatMessage>) {
 
         messages.forEach { msg ->
             val msgDiv = document.createElement("div") as HTMLElement
-            msgDiv.style.apply {
-                marginBottom = "8px"
-                paddingBottom = "8px"
-                borderBottom = "1px solid rgba(255, 255, 255, 0.05)"
-            }
+            msgDiv.classList.add("slide-chat-message")
 
             val header = document.createElement("div") as HTMLElement
-            header.style.apply {
-                fontSize = "11px"
-                color = "#999"
-                marginBottom = "4px"
-                cssFloat = "right"
-            }
+            header.classList.add("slide-chat-message-header")
 
             val timestamp = formatTimestamp(msg.timestamp)
 
             header.innerHTML = if (timestamp.isNotEmpty()) {
-                "<strong>${msg.username}</strong> <span style='opacity: 0.6'>$timestamp</span>"
+                "<strong>${msg.username}</strong> <span class='slide-chat-message-time'>$timestamp</span>"
             } else {
                 "<strong>${msg.username}</strong>"
             }
 
             val content = document.createElement("div") as HTMLElement
-            content.style.apply {
-                fontSize = "12px"
-                color = "#e6e6e6"
-                whiteSpace = "pre-wrap"
-                wordWrap = "break-word"
-            }
+            content.classList.add("slide-chat-message-content")
             content.textContent = msg.message
 
             msgDiv.appendChild(header)
@@ -3052,7 +3007,7 @@ private fun bringBoxToFront(it: HTMLElement) {
         if (z > maxZ) {
             maxZ = z
             maxCount = 1
-            maxBox = box as HTMLElement
+            maxBox = box.unsafeCast<HTMLElement>()
         } else if (z == maxZ) {
             maxCount++
         }
@@ -3060,7 +3015,7 @@ private fun bringBoxToFront(it: HTMLElement) {
     val selectedZ = it.style.zIndex.toIntOrNull() ?: 0
     if (maxBox == null) return
     if (maxCount == 1 && maxBox != it) {
-        maxBox!!.style.zIndex = selectedZ.toString()
+            maxBox.style.zIndex = selectedZ.toString()
         it.style.zIndex = maxZ.toString()
     } else {
         it.style.zIndex = (maxZ + 1).toString()
@@ -3072,6 +3027,14 @@ fun selectBox(it: HTMLElement) {
     it.unsafeCast<dynamic>().selected = true
     if (!selected.contains(it)) {
         selected.add(it)
+        if (selected.size == 1) {
+            val defaultProperty = it.unsafeCast<dynamic>().default_property as? String
+            if (!defaultProperty.isNullOrBlank()) {
+                selectedProperty = defaultProperty
+            } else if (selectedProperty == "contents") {
+                selectedProperty = "code"
+            }
+        }
 
 //        val p = it.parentNode!!
 //        if (p.lastChild != it) {
@@ -3093,6 +3056,296 @@ fun selectBox(it: HTMLElement) {
     selectionContextChanged()
 }
 
+private const val FILE_PROXY_MENU_BOX_OFFSET_X = 120.0
+private const val FILE_PROXY_MENU_BOX_OFFSET_Y = 45.0
+private const val DESKTOP_DROP_PATH_HINT = "Run Field in the full Desktop client to use drag-and-drop with full file paths."
+
+private data class DroppedFileProxy(
+    val file: dynamic,
+    val fileName: String,
+    val path: String?,
+    val mimeType: String?
+)
+
+private fun decodeFileUri(raw: String?): String? {
+    val line = raw
+        ?.lines()
+        ?.map { it.trim() }
+        ?.firstOrNull { it.isNotEmpty() && !it.startsWith("#") && it.startsWith("file://") }
+        ?: return null
+    var path = line.removePrefix("file://")
+    if (path.startsWith("localhost/")) path = path.removePrefix("localhost")
+    if (!path.startsWith("/")) path = "/$path"
+    return runCatching { js("decodeURIComponent")(path) as String }.getOrElse { path }
+}
+
+private fun extractDroppedFilePath(file: dynamic, dataTransfer: dynamic): String? {
+    val direct = file.path as? String
+    if (!direct.isNullOrBlank()) return direct
+
+    val uri = runCatching { dataTransfer.getData("text/uri-list") as? String }.getOrNull()
+    decodeFileUri(uri)?.let { return it }
+
+    val plain = runCatching { dataTransfer.getData("text/plain") as? String }.getOrNull()
+    decodeFileUri(plain)?.let { return it }
+    if (!plain.isNullOrBlank() && plain.startsWith("/")) return plain
+
+    val webkit = file.webkitRelativePath as? String
+    if (!webkit.isNullOrBlank() && webkit.startsWith("/")) return webkit
+    return null
+}
+
+private fun readDroppedFileBase64(file: dynamic, callback: (String?) -> Unit) {
+    val reader = js("new FileReader()")
+    reader.onload = { loadEvent: dynamic ->
+        val result = loadEvent.target.result as? String
+        callback(result?.substringAfter(",", missingDelimiterValue = result))
+    }
+    reader.onerror = {
+        callback(null)
+    }
+    reader.readAsDataURL(file)
+}
+
+private fun sendCreateFileProxyBox(request: CreateFileProxyBox) {
+    val callbackName = "create-file-proxy-box-${Uuid.random()}"
+    sendWithReply(
+        Message("create-file-proxy-box").payload(request),
+        callbackName
+    ) { message, _ ->
+        val response = Json.decodeFromJsonElement<CreateFileProxyBoxResponse>(message.payload!!)
+        if (response.ok) {
+            notify(response.message.ifBlank { "Created file proxy" }, "file")
+            response.uid?.let { uid ->
+                switchSelectionToProperty(uid, response.defaultProperty.ifBlank { "contents" }, syncEditor = true)
+            }
+        } else {
+            notify(response.message.ifBlank { "Could not create file proxy" }, "error")
+        }
+        Handled.yes_remove
+    }
+}
+
+private fun copyDroppedPathToClipboard(dropped: DroppedFileProxy) {
+    val path = dropped.path?.takeIf { it.isNotBlank() } ?: dropped.fileName
+    val clipboard = window.navigator.asDynamic().clipboard
+    if (clipboard != null) {
+        clipboard.writeText(path).then({
+            val message = if (dropped.path.isNullOrBlank()) {
+                "Copied file name only; this browser did not expose a full path. $DESKTOP_DROP_PATH_HINT"
+            } else {
+                "Copied path to clipboard"
+            }
+            notify(message, "file")
+        }).catch({ _: dynamic ->
+            val fallback = document.createElement("textarea") as HTMLTextAreaElement
+            fallback.value = path
+            fallback.setAttribute("readonly", "readonly")
+            fallback.style.position = "fixed"
+            fallback.style.left = "-10000px"
+            document.body?.appendChild(fallback)
+            fallback.select()
+            val copied = runCatching { document.asDynamic().execCommand("copy") as? Boolean ?: false }.getOrDefault(false)
+            fallback.parentElement?.removeChild(fallback)
+            notify(
+                if (copied) "Copied to clipboard" else "Could not write to clipboard. $DESKTOP_DROP_PATH_HINT",
+                if (copied) "file" else "error"
+            )
+        })
+    } else {
+        val fallback = document.createElement("textarea") as HTMLTextAreaElement
+        fallback.value = path
+        fallback.setAttribute("readonly", "readonly")
+        fallback.style.position = "fixed"
+        fallback.style.left = "-10000px"
+        document.body?.appendChild(fallback)
+        fallback.select()
+        val copied = runCatching { document.asDynamic().execCommand("copy") as? Boolean ?: false }.getOrDefault(false)
+        fallback.parentElement?.removeChild(fallback)
+        notify(
+            if (copied) "Copied to clipboard" else "Clipboard API is unavailable. $DESKTOP_DROP_PATH_HINT",
+            if (copied) "file" else "error"
+        )
+    }
+}
+
+private fun createAbsoluteProxyForDrop(dropped: DroppedFileProxy, x: Double, y: Double) {
+    val defaultPath = dropped.path ?: ""
+    val path = if (defaultPath.isNotBlank()) {
+        defaultPath
+    } else {
+        (window.asDynamic().prompt("Absolute path to proxy", dropped.fileName) as? String)
+            ?.trim()
+            .orEmpty()
+    }
+    if (path.isBlank()) {
+        notify("Absolute proxy needs a filesystem path. $DESKTOP_DROP_PATH_HINT", "error")
+        return
+    }
+    sendCreateFileProxyBox(
+        CreateFileProxyBox(
+            mode = "absolute",
+            path = path,
+            fileName = dropped.fileName,
+            mimeType = dropped.mimeType,
+            x = x,
+            y = y
+        )
+    )
+}
+
+fun openUserThemeProxyBox() {
+    val path = (window.asDynamic().fieldUserThemePath as? String)?.trim().orEmpty()
+    if (path.isBlank()) {
+        notify("Theme path is not available yet", "error")
+        return
+    }
+
+    findAbsoluteFileProxyBox(path)?.let { box ->
+        val uid = uidForBoxElement(box)
+        if (uid != null && switchSelectionToProperty(uid, "contents", syncEditor = true)) {
+            notify("Opened user theme proxy", "file")
+            return
+        }
+    }
+
+    val canvasDyn = mainCanvas.unsafeCast<dynamic>()
+    val x = window.innerWidth.toDouble() / 2.0 -
+        ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
+        FILE_PROXY_MENU_BOX_OFFSET_X
+    val y = window.innerHeight.toDouble() / 2.0 -
+        ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
+        FILE_PROXY_MENU_BOX_OFFSET_Y
+
+    sendCreateFileProxyBox(
+        CreateFileProxyBox(
+            mode = "absolute",
+            path = path,
+            fileName = "theme.css",
+            mimeType = "text/css",
+            x = x,
+            y = y
+        )
+    )
+}
+
+private fun createDocumentCopyProxyForDrop(dropped: DroppedFileProxy, x: Double, y: Double) {
+    readDroppedFileBase64(dropped.file) { contentsBase64 ->
+        if (contentsBase64 == null) {
+            notify("Could not read dropped file", "error")
+            return@readDroppedFileBase64
+        }
+        sendCreateFileProxyBox(
+            CreateFileProxyBox(
+                mode = "document-copy",
+                path = dropped.path,
+                fileName = dropped.fileName,
+                contentsBase64 = contentsBase64,
+                mimeType = dropped.mimeType,
+                x = x,
+                y = y
+            )
+        )
+    }
+}
+
+private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) {
+    var fired = false
+    fun once(action: () -> Unit) {
+        if (fired) return
+        fired = true
+        action()
+    }
+
+    val canvasDyn = mainCanvas.unsafeCast<dynamic>()
+    val x = ((event.pageX as? Number)?.toDouble() ?: 0.0) -
+        ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
+        FILE_PROXY_MENU_BOX_OFFSET_X
+    val y = ((event.pageY as? Number)?.toDouble() ?: 0.0) -
+        ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
+        FILE_PROXY_MENU_BOX_OFFSET_Y
+    val menus = arrayOf(
+        json(
+            "text" to "Copy path to clipboard",
+            "callback" to { _: dynamic -> once { copyDroppedPathToClipboard(dropped) } },
+            "radius" to 1.0,
+            "angle" to 270.0
+        ),
+        json(
+            "text" to "Create absolute proxy box",
+            "callback" to { _: dynamic -> once { createAbsoluteProxyForDrop(dropped, x, y) } },
+            "radius" to 1.0,
+            "angle" to 90.0
+        ),
+        json(
+            "text" to "Create proxy for copy in document folder",
+            "callback" to { _: dynamic -> once { createDocumentCopyProxyForDrop(dropped, x, y) } },
+            "radius" to 1.0,
+            "angle" to 0.0
+        )
+    )
+    goMarkingMenu(
+        (event.clientX as? Number)?.toDouble() ?: 0.0,
+        (event.clientY as? Number)?.toDouble() ?: 0.0,
+        menus.asJsObject(),
+        event,
+        {}
+    )
+}
+
+private fun applyFileProxyErrorStatus(box: HTMLElement, message: String) {
+    val status = box.querySelector(".statusArea") as? HTMLElement ?: return
+    val tooltip = box.querySelector(".tooltiptext") as? HTMLElement ?: return
+    val clean = message.trim()
+    box.unsafeCast<dynamic>().file_proxy_error = clean
+    if (clean.isNotEmpty()) {
+        status.setAttribute("data-file-proxy-error", "true")
+        status.classList.remove("status-good")
+        status.classList.add("status-error")
+        status.classList.remove("flash-inverted")
+        window.requestAnimationFrame {
+            status.classList.add("flash-inverted")
+        }
+        tooltip.textContent = clean
+    } else if (status.getAttribute("data-file-proxy-error") == "true") {
+        status.removeAttribute("data-file-proxy-error")
+        status.classList.remove("status-error")
+        status.classList.remove("flash-inverted")
+        tooltip.textContent = ""
+    }
+}
+
+private fun fileProxyDisplayPath(box: HTMLElement): String {
+    val mode = (box.unsafeCast<dynamic>().file_proxy_mode as? String).orEmpty()
+    val path = (box.unsafeCast<dynamic>().file_proxy_path as? String).orEmpty()
+    if (path.isBlank()) return ""
+    return when (mode) {
+        "absolute" -> path
+        "workspace" -> "workspace:$path"
+        "document" -> "document:$path"
+        else -> path
+    }
+}
+
+private fun applyFileProxyPresentation(box: HTMLElement) {
+    val pathText = fileProxyDisplayPath(box)
+    if (pathText.isBlank()) return
+    box.classList.add("file-proxy-box")
+    box.style.backgroundColor = "var(--field-bg)"
+
+    val titleStack = box.querySelector(".box-title-stack") as? HTMLElement
+        ?: (box.querySelector(".doubleClickToEdit")?.parentElement as? HTMLElement)
+        ?: return
+    val path = titleStack.querySelector(".file-proxy-path") as? HTMLElement ?: run {
+        val created = document.createElement("div") as HTMLElement
+        created.classList.add("file-proxy-path")
+        titleStack.appendChild(created)
+        created
+    }
+    path.textContent = pathText
+    path.title = pathText
+}
+
 var styles = CssBuilder().apply {
     body {
         maxWidth = 100.vw
@@ -3108,6 +3361,30 @@ var styles = CssBuilder().apply {
         userSelect = UserSelect.none
     }
 
+}
+
+private fun normalizeUserThemeCss(css: String): String {
+    val trimmed = css.trim()
+    if (trimmed.isBlank()) return ""
+    return if (trimmed.contains("{")) {
+        trimmed
+    } else {
+        ".field-user-theme {\n$trimmed\n}\n"
+    }
+}
+
+private fun applyUserTheme(theme: UserTheme) {
+    val styleId = "field-user-theme"
+    val existing = document.getElementById(styleId) as? HTMLStyleElement
+    val style = existing ?: (document.createElement("style") as HTMLStyleElement).also {
+        it.id = styleId
+        document.head!!.appendChild(it)
+    }
+    document.documentElement?.classList?.add("field-user-theme")
+    style.textContent = normalizeUserThemeCss(theme.css)
+    style.setAttribute("data-path", theme.path)
+    style.setAttribute("data-last-modified", theme.lastModified.toString())
+    window.asDynamic().fieldUserThemePath = theme.path
 }
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -3230,6 +3507,12 @@ suspend fun main() {
     handlers.put("document-load-status") { message, _ ->
         val status = Json.decodeFromJsonElement<DocumentLoadStatus>(message.payload!!)
         LoadingTracker.documentLoadStatus(status)
+        Handled.yes
+    }
+
+    handlers.put("set-user-theme") { message, _ ->
+        val theme = Json.decodeFromJsonElement<UserTheme>(message.payload!!)
+        applyUserTheme(theme)
         Handled.yes
     }
 
@@ -3406,17 +3689,18 @@ suspend fun main() {
                     }
                 }
                 target?.let { boxEl ->
+                    val box = boxEl.unsafeCast<HTMLElement>()
                     if (set.number) {
-                        (boxEl as HTMLElement).style.display = "none"
-                        (boxEl as HTMLElement).classList.add("tombstoned")
-                        boxEl.asDynamic().tombstoned = true
-                        if (selected.contains(boxEl)) {
-                            deselectBox(boxEl)
+                        box.style.display = "none"
+                        box.classList.add("tombstoned")
+                        box.asDynamic().tombstoned = true
+                        if (selected.contains(box)) {
+                            deselectBox(box)
                         }
                     } else {
-                        boxEl.classList.remove("tombstoned")
-                        boxEl.asDynamic().tombstoned = false
-                        applyBoxVisibilityImmediate(boxEl as HTMLElement)
+                        box.classList.remove("tombstoned")
+                        box.asDynamic().tombstoned = false
+                        applyBoxVisibilityImmediate(box)
                     }
                     canvasGestures.rebuildConnectionGroup()
                 }
@@ -3471,10 +3755,10 @@ suspend fun main() {
         var found = boxes.firstOrNull { it.unsafeCast<dynamic>().uid == u } as HTMLElement?
         if (found != null) {
             if (u == "root") {
-                found!!.style.display = "none"
-                found!!.style.visibility = "hidden"
+                found.style.display = "none"
+                found.style.visibility = "hidden"
             }
-            return found!!
+            return found
         }
 
         mainCanvas.append {
@@ -3507,7 +3791,7 @@ suspend fun main() {
             "nested",
             "nested",
             ""
-        ) as HTMLElement
+        )
         val nestedRoot = disclosureContent.querySelector(".nested-root") as? HTMLElement ?: run {
             val host = document.createElement("div") as HTMLElement
             host.classList.add("nested-root")
@@ -3659,7 +3943,7 @@ suspend fun main() {
 
         when (set.property) {
             "outputarea" -> {
-                handleOutputAreaRequest(found as HTMLElement, set)
+        handleOutputAreaRequest(found, set)
             }
         }
         // Acknowledge receipt so the backend can release a back pressure slot.
@@ -3671,7 +3955,7 @@ suspend fun main() {
         val control = Json.decodeFromJsonElement<OutputControl>(message.payload!!)
         val u = control.uid
         val found = defaultCreate(u)
-        handleOutputAreaControl(found as HTMLElement, control)
+        handleOutputAreaControl(found, control)
         Handled.yes
     }
 
@@ -3698,13 +3982,7 @@ suspend fun main() {
 
         when {
             set.property == "name" -> {
-                if (found === null) {
-                    mainCanvas.append {
-                        createBox(set.value, frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
-                    }
-                } else {
-                    found!!.getElementsByClassName("doubleClickToEdit").asList()[0].innerHTML = set.value
-                }
+                found.getElementsByClassName("doubleClickToEdit").asList()[0].innerHTML = set.value
                 found.unsafeCast<dynamic>().name = set.value
             }
 
@@ -3734,6 +4012,33 @@ suspend fun main() {
                     found.unsafeCast<dynamic>().code_language = set.value
                     notifyPotentialEditedPropertyHasHadLanguageChanged(u, "code", set.value)
                 }
+            }
+
+            set.property == "contents" -> {
+                found.unsafeCast<dynamic>().contents = set.value
+                notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, "contents", set.value)
+                notifyEmbeddedEditorOfRemoteUpdate(u, "contents", set.value)
+            }
+
+            set.property == "contents_language" -> {
+                if (set.value != found.unsafeCast<dynamic>().contents_language) {
+                    found.unsafeCast<dynamic>().contents_language = set.value
+                    notifyPotentialEditedPropertyHasHadLanguageChanged(u, "contents", set.value)
+                }
+            }
+
+            set.property == "file_proxy_error" -> {
+                applyFileProxyErrorStatus(found, set.value)
+            }
+
+            set.property == "file_proxy_mode" -> {
+                found.unsafeCast<dynamic>().file_proxy_mode = set.value
+                applyFileProxyPresentation(found)
+            }
+
+            set.property == "file_proxy_path" -> {
+                found.unsafeCast<dynamic>().file_proxy_path = set.value
+                applyFileProxyPresentation(found)
             }
 
             else -> when (set.property) {
@@ -3873,7 +4178,7 @@ suspend fun main() {
                 }
 
                 "customization" -> {
-                    handleCustomizationRequest(found as HTMLElement, set)
+                    handleCustomizationRequest(found, set)
                 }
 
                 "layers" -> {
@@ -3898,6 +4203,10 @@ suspend fun main() {
                     } catch (e: Exception) {
                         console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
                     }
+                }
+
+                else -> {
+                    found.unsafeCast<dynamic>()[set.property] = set.value
                 }
             }
         }
@@ -4219,9 +4528,7 @@ suspend fun main() {
     mainCanvas.unsafeCast<dynamic>().data_y = 0
     updateBackgroundGrid(0.0, 0.0, panning = false)
 
-    // File drop handler for importing metadata.edn files into the current document
-    // This allows users to drag and drop .edn files onto the page to import boxes
-    // All imported boxes get new UUIDs to avoid ID conflicts (similar to copy/paste)
+    // File drop handler: metadata.edn imports boxes; other files open a file-proxy marking menu.
     body.ondragover = { event ->
         event.preventDefault()
         null
@@ -4232,7 +4539,7 @@ suspend fun main() {
         val files = event.asDynamic().dataTransfer.files
         if (files.length > 0) {
             val file = files[0]
-            if (file.name == "metadata.edn" || file.name.endsWith(".edn")) {
+            if (file.name == "metadata.edn") {
                 val reader = js("new FileReader()")
                 reader.onload = { loadEvent: dynamic ->
                     val ednText = loadEvent.target.result as String
@@ -4242,7 +4549,16 @@ suspend fun main() {
                 }
                 reader.readAsText(file)
             } else {
-                notify("Please drop a metadata.edn file", "error")
+                val dataTransfer = event.asDynamic().dataTransfer
+                showDroppedFileProxyMenu(
+                    event.asDynamic(),
+                    DroppedFileProxy(
+                        file = file,
+                        fileName = (file.name as? String)?.ifBlank { "dropped-file" } ?: "dropped-file",
+                        path = extractDroppedFilePath(file, dataTransfer),
+                        mimeType = file.type as? String
+                    )
+                )
             }
         }
         null
@@ -4322,7 +4638,7 @@ suspend fun main() {
         val currentWidth = (dyn.data_w as? Number)?.toDouble() ?: rect.width
         val maxWidth = max(monacoMinWidthPx, window.innerWidth.toDouble() - rightMargin - monacoViewportGutterPx)
         val width = min(max(currentWidth, monacoMinWidthPx), maxWidth)
-        val left = window.scrollX.toDouble() + window.innerWidth.toDouble() - rightMargin - width
+        val left = window.scrollX + window.innerWidth - rightMargin - width
 
         el.style.transform = "translate(0px, 0px)"
         el.style.left = "${left}px"
@@ -4794,7 +5110,7 @@ suspend fun main() {
     forever(::serviceEvents, 30)
 
     onSelectedChange.put("server") {
-        val ids = selected.map { it.id as String }
+        val ids = selected.map { it.id }
         true
     }
 
@@ -4852,7 +5168,7 @@ fun TagConsumer<HTMLElement>.createBox(
             height = frame.h.px
             visible = frame.w > 0 || frame.h > 0
         }.toString()
-        div {
+        div(classes = "box-title-stack") {
             span(classes = "doubleClickToEdit") {
                 +name
             }
@@ -4934,7 +5250,7 @@ fun reorient(it: dynamic): dynamic {
     if (it.unsafeCast<HTMLElement>().hasClass("box")) return it
     return it.unsafeCast<HTMLElement>().parentElement?.let { parent ->
         reorient(parent)
-    } ?: null
+    }
 }
 
 

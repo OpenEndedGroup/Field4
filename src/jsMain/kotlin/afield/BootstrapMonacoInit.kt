@@ -30,7 +30,8 @@ internal val monacoPropertyNames = arrayOf(
     "preamble",
     "introduction",
     "attic",
-    "metadata"
+    "metadata",
+    "contents"
 )
 internal val monacoPropertyDescriptions = arrayOf(
     "Kotlin (main)",
@@ -60,7 +61,8 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Kotlin (preamble)",
     "Kotlin (introduction)",
     "Kotlin (attic)",
-    "Metadata about this box"
+    "Metadata about this box",
+    "File contents"
 )
 internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
@@ -90,7 +92,8 @@ internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
     "kotlin",
     "kotlin",
-    "yaml"
+    "yaml",
+    "plaintext"
 )
 
 private fun propertyIndexOf(name: String?): Int {
@@ -197,6 +200,12 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
         currentSelectedCode[0].code_language != null
     ) {
         lang = currentSelectedCode[0].code_language as String
+    } else if (property == "contents" &&
+        currentSelectedCode != null &&
+        (currentSelectedCode.length as? Number)?.toInt() ?: 0 > 0 &&
+        currentSelectedCode[0].contents_language != null
+    ) {
+        lang = currentSelectedCode[0].contents_language as String
     }
 
     val globalEditor = w.globalEditor ?: editor

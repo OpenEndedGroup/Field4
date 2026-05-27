@@ -10,6 +10,8 @@ import afield.graphics.getFLineEditSession
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
+import afield.server.refreshFileProxyBoxes
+import afield.server.writeFileProxyContents
 import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
 import com.aallam.openai.api.BetaOpenAI
@@ -783,6 +785,7 @@ class Server {
 
             runAll(plugins)
             runAll(installHandlers)
+            UserThemeManager.start()
 
             inMain {
                 while (true) {
@@ -795,6 +798,7 @@ class Server {
                         }
 
                         documents.forEach { _, info ->
+                            refreshFileProxyBoxes(info, notifyMissing = false)
                             if (info.ephemeral) return@forEach
                             // Only persist when we know sidecar-bearing properties changed.
                             if (info.pendingSidecarSaves.isNotEmpty()) {
@@ -857,14 +861,22 @@ class Server {
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
                 val isEditorStateProperty = set.property.endsWith("_editorState")
+                val targetBox = box(set.uid)
 
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
-                    box(set.uid).name = set.value
+                    targetBox.name = set.value
                 } else {
+                    if (set.property == "contents") {
+                        try {
+                            writeFileProxyContents(targetBox, set.value)
+                        } catch (e: Exception) {
+                            notify(e.message ?: "Could not write file proxy contents", "error")
+                        }
+                    }
                     // Monaco view/cursor state should persist with the document, but live rebroadcast
                     // makes multiple clients on the same box fight over their local editor position.
-                    box(set.uid).setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
+                    targetBox.setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
                 }
 
                 // If this is a sidecar-backed property, mark it for persistence.

@@ -6,6 +6,7 @@ import afield.four.synth.patClock
 import afield.four.util.Window
 import afield.four.util.lastWindowToOpen
 import afield.logger.lprintln
+import afield.server.refreshFileProxyBoxes
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +78,7 @@ private fun registerDocumentSession(session: WebSocketSession, info: SessionInfo
     }
     thisSessionInfo.set(info)
     info.sessions.add(session)
+    UserThemeManager.sendTo(session)
 }
 
 private fun resolveDocumentTarget(documentName: String?, scratch: Boolean, sessionKey: String? = null): DocumentTarget {
@@ -159,6 +161,7 @@ internal fun attachDocumentSession(
             completed = 0
         )
         found.boxes.values.forEach { it.resyncAll() }
+        refreshFileProxyBoxes(found, notifyMissing = true)
         sendDocumentLoadStatus(
             session,
             phase = "resync-queued",
@@ -189,6 +192,7 @@ internal fun attachDocumentSession(
                 it.children.removeIf { child -> child.getPropertyRaw("_tombstone").isTrue() }
                 it.parents.removeIf { parent -> parent.getPropertyRaw("_tombstone").isTrue() }
             }
+            refreshFileProxyBoxes(info, notifyMissing = true)
 
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
             val count = countLoadableBoxes(info)

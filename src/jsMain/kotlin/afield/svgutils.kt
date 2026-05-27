@@ -85,11 +85,14 @@ interface HasPath {
 class Attribution<T>(val defaultValue: () -> T) {
     var value: T? = null
     operator fun getValue(f: HasPath, property: KProperty<*>): T {
-        if (value == null) {
-            value = defaultValue()
-            f.path.setAttribute(property.name, value.toString())
+        var current = value
+        if (current == null) {
+            current = defaultValue()
+            value = current
+            f.path.setAttribute(property.name, current.toString())
         }
-        return value as T
+        @Suppress("UNCHECKED_CAST")
+        return current as T
     }
 
     operator fun setValue(f: HasPath, property: KProperty<*>, v: T) {
@@ -123,7 +126,7 @@ open class BaseBuilder(override val path: SVGElement) : HasPath {
 
     //todo: unpack easing etc.
     fun animate(property: String, to: Any, over: Double) {
-        animate(path as Element, obj {
+        animate(path.unsafeCast<Element>(), obj {
             this[property] = to
             this[duration] = over
         })
@@ -163,6 +166,7 @@ class PathBuilder(override val path: SVGPathElement, val isNew: Boolean = false)
 
 }
 
+@Suppress("UNCHECKED_CAST")
 fun <T> svgElement(kind: String, parent: SVGElement? = null, named: String? = null): Pair<T, Boolean> {
     return if (named != null && parent != null) {
         val e = parent.querySelector("#$named")
