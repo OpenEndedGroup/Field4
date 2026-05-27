@@ -1,0 +1,346 @@
+[
+    {
+        "id": "9bc3b106-7518-4bba-a816-ee802bcc4a7c",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 192.90625,
+                    "y": 294.3125,
+                    "w": 228.59375,
+                    "h": 55.34765625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "An image in space"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "9bc3b106-7518-4bba-a816-ee802bcc4a7c_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "9bc3b106-7518-4bba-a816-ee802bcc4a7c_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "c04566d0-6d97-442e-ba39-c02de8105b05",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 20.76953125,
+                    "y": 65.27734375,
+                    "w": 182.0390625,
+                    "h": 89.2109375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "remote_js"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "c04566d0-6d97-442e-ba39-c02de8105b05_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": "import afield.remotejs.isRemoteJSRoot\nisRemoteJSRoot = true"
+            },
+            "children": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "106c3723-6013-4be5-821c-718e4f7468ae"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "9bc3b106-7518-4bba-a816-ee802bcc4a7c"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "524edb27-df0f-4ab8-a660-ecfd6bda6846"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0"
+                    }
+                ]
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "id": "106c3723-6013-4be5-821c-718e4f7468ae",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 314.5234375,
+                    "y": 83.3671875,
+                    "w": 174.875,
+                    "h": 106.171875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "hello world"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "106c3723-6013-4be5-821c-718e4f7468ae_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "106c3723-6013-4be5-821c-718e4f7468ae_fragment_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "106c3723-6013-4be5-821c-718e4f7468ae_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "524edb27-df0f-4ab8-a660-ecfd6bda6846",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 293.24609375,
+                    "y": 205.625,
+                    "w": 172.90625,
+                    "h": 71.28515625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Just stick a plane there"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "524edb27-df0f-4ab8-a660-ecfd6bda6846_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "524edb27-df0f-4ab8-a660-ecfd6bda6846_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "ce6b23e5-c1c7-4508-a288-08aeb333da37",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 248.0,
+                    "y": 520.0,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "ce6b23e5-c1c7-4508-a288-08aeb333da37_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": []
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 84.91796875,
+                    "y": 375.546875,
+                    "w": 176.8359375,
+                    "h": 70.8359375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "A line in space"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "878ddf03-296f-465a-97e7-33b267ec4f0b",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 481.39453125,
+                    "y": 732.70703125,
+                    "w": 188.0,
+                    "h": 60.34375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "878ddf03-296f-465a-97e7-33b267ec4f0b_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": []
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "878ddf03-296f-465a-97e7-33b267ec4f0b_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    }
+]

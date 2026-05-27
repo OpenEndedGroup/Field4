@@ -1,0 +1,117 @@
+package paths.physics
+
+import kotlin.math.sqrt
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+/*
+ * This file was moved out of src/jvmTest during public-release cleanup.
+ *
+ * It is kept as a disabled example/spec because the implementation types it
+ * references (`FallingPointTracer`, `Plane`, `Sphere`, `QVec3`, `Q`, etc.) are
+ * not present in the current main source tree. Rename this file to `.kt` once
+ * that physics prototype is restored or ported into afield examples.
+ */
+class FallingPointTracerTest {
+    @Test
+    fun planeBounceKeepsExactCollisionTime() {
+        val tracer = FallingPointTracer(
+            surfaces = listOf(Plane(QVec3.ZERO, QVec3(Q.ZERO, Q.ONE, Q.ZERO))),
+            acceleration = QVec3.ZERO,
+        )
+
+        val trace = tracer.trace(
+            Particle(position = QVec3.of(0.0, 2.0), velocity = QVec3.of(0.0, -1.0)),
+            duration = 2.q,
+        )
+
+        assertEquals(1, trace.events.size)
+        assertEquals(Q.ONE, trace.events.single().hit.time)
+        assertEquals(1.0, trace.finalParticle.position.y.toDouble(), 1e-12)
+        assertEquals(1.0, trace.finalParticle.velocity.y.toDouble(), 1e-12)
+    }
+
+    @Test
+    fun fallingPointReboundsInsideSphere() {
+        val tracer = FallingPointTracer(
+            surfaces = listOf(Sphere(QVec3.ZERO, Q.ONE)),
+            acceleration = QVec3.of(0.0, -2.0),
+        )
+
+        val trace = tracer.trace(
+            Particle(position = QVec3.ZERO, velocity = QVec3.ZERO),
+            duration = 1.q,
+        )
+
+        assertEquals(1, trace.events.size)
+        assertEquals(Q.ONE, trace.events.single().hit.time)
+        assertEquals(-1.0, trace.events.single().hit.position.y.toDouble(), 1e-12)
+        assertEquals(2.0, trace.finalParticle.velocity.y.toDouble(), 1e-12)
+        assertEquals(1, trace.segments.size)
+        assertEquals(Q.ZERO, trace.segments.single().startTime)
+        assertEquals(Q.ONE, trace.segments.single().endTime)
+    }
+
+    @Test
+    fun parabolicConicWallIntersectsParabolicMotion() {
+        val surface = Quadric.parabolaYEqualsXSquared()
+        val path = ParabolicPath(
+            position = QVec3.of(1.0, 3.0),
+            velocity = QVec3.ZERO,
+            acceleration = QVec3.of(0.0, -2.0),
+        )
+
+        val roots = surface.intersectionPolynomial(path).rootsIn(Q.ZERO, 2.q)
+
+        assertEquals(1, roots.size)
+        assertEquals(sqrt(2.0), roots.single().toDouble(), 1e-12)
+        assertTrue(surface.valueAt(path.at(roots.single())).abs() <= Q("1e-36"))
+    }
+
+    @Test
+    fun traceCanReconstructPositionsBetweenBounces() {
+        val tracer = FallingPointTracer(
+            surfaces = listOf(Plane(QVec3.ZERO, QVec3(Q.ZERO, Q.ONE, Q.ZERO))),
+            acceleration = QVec3.ZERO,
+        )
+
+        val trace = tracer.trace(
+            Particle(position = QVec3.of(0.0, 1.0), velocity = QVec3.of(0.0, -1.0)),
+            duration = 2.q,
+        )
+
+        assertEquals(2, trace.segments.size)
+        assertEquals(0.5, trace.positionAt(0.5)?.y?.toDouble() ?: Double.NaN, 1e-12)
+        assertEquals(0.5, trace.positionAt(1.5)?.y?.toDouble() ?: Double.NaN, 1e-12)
+        assertEquals(1.0, trace.positionAt(2.0)?.y ?: Double.NaN, 1e-12)
+
+        val sampled = trace.sampleSegments(samplesPerSegment = 3)
+        assertEquals(2, sampled.size)
+        assertEquals(listOf(1.0, 0.5, 0.0), sampled[0].points.map { it.y })
+        assertEquals(listOf(0.0, 0.5, 1.0), sampled[1].points.map { it.y })
+
+        val polyline = trace.samplePolyline(samplesPerSegment = 3)
+        assertEquals(listOf(1.0, 0.5, 0.0, 0.5, 1.0), polyline.map { it.y })
+    }
+
+    @Test
+    fun denseLineParticlesCanFallAsACluster() {
+        val tracer = FallingPointTracer(
+            surfaces = emptyList(),
+            acceleration = QVec3.of(0.0, -2.0, 0.0),
+        )
+
+        val line = tracer.traceLine(
+            a = QVec3.of(-1.0, 2.0, 0.0),
+            b = QVec3.of(1.0, 2.0, 0.0),
+            count = 5,
+            duration = 1.q,
+        )
+
+        assertEquals(5, line.particles.size)
+        assertEquals(listOf(-1.0, -0.5, 0.0, 0.5, 1.0), line.particles.map { it.position.x.toDouble() })
+        assertEquals(listOf(1.0, 1.0, 1.0, 1.0, 1.0), line.positionsAt(1.0).map { it?.y })
+        assertEquals(5, line.samplePolylines(samplesPerSegment = 4).size)
+    }
+}

@@ -1,0 +1,2454 @@
+[
+    {
+        "id": "b8a8e517-91e3-4958-928d-a2143d326ae2",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -209.06640625,
+                    "y": 74.5,
+                    "w": 192.4453125,
+                    "h": 116.5859375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "custom shader"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "b8a8e517-91e3-4958-928d-a2143d326ae2_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "b8a8e517-91e3-4958-928d-a2143d326ae2_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "b8a8e517-91e3-4958-928d-a2143d326ae2_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "b8a8e517-91e3-4958-928d-a2143d326ae2_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "08d7d257-dbda-4386-bd2f-ed3bafd11938",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 46.203125,
+                    "y": 888.0,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "stenciled world"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "08d7d257-dbda-4386-bd2f-ed3bafd11938_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "08d7d257-dbda-4386-bd2f-ed3bafd11938_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "08d7d257-dbda-4386-bd2f-ed3bafd11938_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "8f448a7e-ed41-4f74-9ad2-6e1bc41c1299",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -190.23828125,
+                    "y": 309.359375,
+                    "w": 110.0,
+                    "h": 110.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "some geometry"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "8f448a7e-ed41-4f74-9ad2-6e1bc41c1299_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "8f448a7e-ed41-4f74-9ad2-6e1bc41c1299_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "8f448a7e-ed41-4f74-9ad2-6e1bc41c1299_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "8f448a7e-ed41-4f74-9ad2-6e1bc41c1299_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "8dbddc58-cb00-4ba7-9031-df7db8bd3c77",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1127.9609375,
+                    "y": 201.18359375,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Bad Fern"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "8dbddc58-cb00-4ba7-9031-df7db8bd3c77_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "8dbddc58-cb00-4ba7-9031-df7db8bd3c77_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "718c7d7a-85ee-4108-86c8-17bc17d8b558",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 708.953125,
+                    "y": 608.078125,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "geometry hit_test"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "718c7d7a-85ee-4108-86c8-17bc17d8b558_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "718c7d7a-85ee-4108-86c8-17bc17d8b558_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "f0af036a-d709-42bf-b4cb-27c132e582a4",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1012.1953125,
+                    "y": -27.70703125,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "mountain 1"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "f0af036a-d709-42bf-b4cb-27c132e582a4_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "f0af036a-d709-42bf-b4cb-27c132e582a4_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "b1f868c8-8d19-41e0-abdd-11d7f04cce67",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1131.70703125,
+                    "y": -30.1875,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "mountain 2"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "b1f868c8-8d19-41e0-abdd-11d7f04cce67_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "b1f868c8-8d19-41e0-abdd-11d7f04cce67_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "d4bb327c-edff-410d-ad3c-889a79259091",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 454.8046875,
+                    "y": 789.14453125,
+                    "w": 174.5625,
+                    "h": 103.2265625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "A falling fresh line, multiple"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "d4bb327c-edff-410d-ad3c-889a79259091_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "d4bb327c-edff-410d-ad3c-889a79259091_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "490f6f6b-1587-4cab-b3b9-c7cdf9842fe6",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 730.0,
+                    "y": 186.0,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Newtons cradle"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "490f6f6b-1587-4cab-b3b9-c7cdf9842fe6_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "490f6f6b-1587-4cab-b3b9-c7cdf9842fe6_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "ce6b23e5-c1c7-4508-a288-08aeb333da37",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 248.0,
+                    "y": 520.0,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "ce6b23e5-c1c7-4508-a288-08aeb333da37_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": []
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "9ba229df-ae20-4deb-a57e-71c56ff2143a",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 135.83093100934,
+                    "y": 587.2594089783901,
+                    "w": 180.65625,
+                    "h": 109.15625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Multiplayer"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "9ba229df-ae20-4deb-a57e-71c56ff2143a_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "9ba229df-ae20-4deb-a57e-71c56ff2143a_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "89b3bb47-f863-4200-b457-30ee2352199a",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -99.41796875,
+                    "y": 622.4453125,
+                    "w": 104.1875,
+                    "h": 86.90234375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "load_point_cloud"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "89b3bb47-f863-4200-b457-30ee2352199a_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "89b3bb47-f863-4200-b457-30ee2352199a_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "89b3bb47-f863-4200-b457-30ee2352199a_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "89b3bb47-f863-4200-b457-30ee2352199a_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "1bd9b004-0103-48c9-a345-09d78a0a82c8",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -230.7578125,
+                    "y": 777.08203125,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "animate_pc_custom_shader"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "1bd9b004-0103-48c9-a345-09d78a0a82c8_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "1bd9b004-0103-48c9-a345-09d78a0a82c8_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "9bc3b106-7518-4bba-a816-ee802bcc4a7c",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 363.68359375,
+                    "y": 380.1171875,
+                    "w": 202.65625,
+                    "h": 66.11328125
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "An image in space"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "9bc3b106-7518-4bba-a816-ee802bcc4a7c_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "9bc3b106-7518-4bba-a816-ee802bcc4a7c_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "9fdbc137-c0f2-4aa9-ba8b-55b510f67e56",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -93.92578125,
+                    "y": 837.1328125,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "animation"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "9fdbc137-c0f2-4aa9-ba8b-55b510f67e56_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Kotlin"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "e3fe297a-36b5-450a-8343-116e105de4ee"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "9fdbc137-c0f2-4aa9-ba8b-55b510f67e56_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "c04566d0-6d97-442e-ba39-c02de8105b05",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 118.01953125,
+                    "y": 112.05078125,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "remote_js (run me once)"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "c04566d0-6d97-442e-ba39-c02de8105b05_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": "import afield.remotejs.isRemoteJSRoot\nisRemoteJSRoot = true"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "c04566d0-6d97-442e-ba39-c02de8105b05_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "106c3723-6013-4be5-821c-718e4f7468ae"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "9bc3b106-7518-4bba-a816-ee802bcc4a7c"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "524edb27-df0f-4ab8-a660-ecfd6bda6846"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "ed108572-e0eb-4188-b73b-b7d8dd3e192d"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "6fb96672-171d-48e1-a037-1ccd42abb921"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "9ba229df-ae20-4deb-a57e-71c56ff2143a"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "5e84a430-7ee6-4c6d-8390-aafe04dd1d46"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "b8a8e517-91e3-4958-928d-a2143d326ae2"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "6edeb56c-773a-493f-ba45-0f53e67d0739"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "cd47f7f9-499d-4507-95ce-6a956dfce27d"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "d4bb327c-edff-410d-ad3c-889a79259091"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "fc06d3bc-13c7-4316-8074-7265f9d1fd9f"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "ba8d4f90-f57b-4425-ac17-eb13a5485fe2"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c0b5ddcd-32fc-42ea-ab42-3da56a5b882f"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "8f448a7e-ed41-4f74-9ad2-6e1bc41c1299"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "48175964-ffa4-444a-908e-f692b295b0f8"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "f9a29eef-cf25-4dca-bead-cad57a1c245a"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "490f6f6b-1587-4cab-b3b9-c7cdf9842fe6"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "718c7d7a-85ee-4108-86c8-17bc17d8b558"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "ae666be3-1739-4797-a5e0-19112c03f3e9"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "89b3bb47-f863-4200-b457-30ee2352199a"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "e3fe297a-36b5-450a-8343-116e105de4ee"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "9fdbc137-c0f2-4aa9-ba8b-55b510f67e56"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "b4b7e3b5-cdd8-4a15-b900-c48216a25476"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "1bd9b004-0103-48c9-a345-09d78a0a82c8"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "cea912ef-e903-40d1-87e9-69f37f1a12fb"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "08d7d257-dbda-4386-bd2f-ed3bafd11938"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "1869b645-4420-4c17-8baf-415870e9da9c"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "e454c98d-14b4-45c7-9a27-b40e862ece7a"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "04126e01-8cb2-4da5-904a-2a35c2f320a9"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "8dbddc58-cb00-4ba7-9031-df7db8bd3c77"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "b8638b00-bc61-4d68-b0f1-6eac5d8f93c4"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "f0af036a-d709-42bf-b4cb-27c132e582a4"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "b1f868c8-8d19-41e0-abdd-11d7f04cce67"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c3aa785f-aa5b-4b84-adfb-952c4359e937"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "ddc0307e-5774-443d-9b6d-8c4ead6fa493"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "30fabe96-d9de-4ec7-9b85-9d6f2cc0d1f0"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "1e9cabb3-e842-4be1-a768-1510d0a3c88e"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "8b78e419-cd1e-4111-96ab-899eb3ed47d1"
+                    }
+                ]
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    }
+                ]
+            },
+            "isRemoteJSRoot": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "94f15e77-0d57-498c-a573-b7af7ac70a07",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1123.89453125,
+                    "y": 81.75390625,
+                    "w": 104.0,
+                    "h": 103.234375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Others"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "94f15e77-0d57-498c-a573-b7af7ac70a07_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "id": "1869b645-4420-4c17-8baf-415870e9da9c",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -125.0,
+                    "y": 1018.0,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "1869b645-4420-4c17-8baf-415870e9da9c_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "1869b645-4420-4c17-8baf-415870e9da9c_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "1869b645-4420-4c17-8baf-415870e9da9c_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "1869b645-4420-4c17-8baf-415870e9da9c_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "6edeb56c-773a-493f-ba45-0f53e67d0739",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 456.0,
+                    "y": 592.0,
+                    "w": 157.2109375,
+                    "h": 79.8671875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "A falling line in space random color"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "6edeb56c-773a-493f-ba45-0f53e67d0739_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "6edeb56c-773a-493f-ba45-0f53e67d0739_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "1e9cabb3-e842-4be1-a768-1510d0a3c88e",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -102.4296875,
+                    "y": -113.15234375,
+                    "w": 106.7109375,
+                    "h": 77.2890625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "a video in space"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "1e9cabb3-e842-4be1-a768-1510d0a3c88e_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "1e9cabb3-e842-4be1-a768-1510d0a3c88e_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "fc06d3bc-13c7-4316-8074-7265f9d1fd9f",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 653.9921875,
+                    "y": 794.6875,
+                    "w": 205.5546875,
+                    "h": 101.453125
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "A falling fresh line, multiple 2"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "fc06d3bc-13c7-4316-8074-7265f9d1fd9f_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "fc06d3bc-13c7-4316-8074-7265f9d1fd9f_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "106c3723-6013-4be5-821c-718e4f7468ae",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 473.54296875,
+                    "y": 188.6171875,
+                    "w": 180.65625,
+                    "h": 109.15625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "hello world"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "106c3723-6013-4be5-821c-718e4f7468ae_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "106c3723-6013-4be5-821c-718e4f7468ae_fragment_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "106c3723-6013-4be5-821c-718e4f7468ae_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "5e84a430-7ee6-4c6d-8390-aafe04dd1d46",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -201.3870649022506,
+                    "y": 470.88847592645425,
+                    "w": 139.24005126953125,
+                    "h": 75.71380615234375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "custom shader"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "5e84a430-7ee6-4c6d-8390-aafe04dd1d46_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "5e84a430-7ee6-4c6d-8390-aafe04dd1d46_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "5e84a430-7ee6-4c6d-8390-aafe04dd1d46_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "e3fe297a-36b5-450a-8343-116e105de4ee",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -230.38671875,
+                    "y": 653.390625,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "point_cloud_custom_shader"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "e3fe297a-36b5-450a-8343-116e105de4ee_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "e3fe297a-36b5-450a-8343-116e105de4ee_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "e3fe297a-36b5-450a-8343-116e105de4ee_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "9fdbc137-c0f2-4aa9-ba8b-55b510f67e56"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "b4b7e3b5-cdd8-4a15-b900-c48216a25476"
+                    }
+                ]
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "e3fe297a-36b5-450a-8343-116e105de4ee_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 243.9375,
+                    "y": 480.796875,
+                    "w": 180.65625,
+                    "h": 109.15625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "A line in space"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "65f8484f-2b1e-4398-9c5b-66ba1c461ae0_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "878ddf03-296f-465a-97e7-33b267ec4f0b",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 481.39453125,
+                    "y": 732.70703125,
+                    "w": 188.0,
+                    "h": 60.34375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "878ddf03-296f-465a-97e7-33b267ec4f0b_code_.kt"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": []
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "878ddf03-296f-465a-97e7-33b267ec4f0b_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "ae666be3-1739-4797-a5e0-19112c03f3e9",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 76.0,
+                    "y": 763.0,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "sydney"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "ae666be3-1739-4797-a5e0-19112c03f3e9_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "ae666be3-1739-4797-a5e0-19112c03f3e9_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "c3aa785f-aa5b-4b84-adfb-952c4359e937",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1248.78515625,
+                    "y": -27.7421875,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Mountain 3D"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "c3aa785f-aa5b-4b84-adfb-952c4359e937_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "c3aa785f-aa5b-4b84-adfb-952c4359e937_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "ddc0307e-5774-443d-9b6d-8c4ead6fa493",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 897.65625,
+                    "y": 380.89453125,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Turing"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "ddc0307e-5774-443d-9b6d-8c4ead6fa493_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "ddc0307e-5774-443d-9b6d-8c4ead6fa493_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "cea912ef-e903-40d1-87e9-69f37f1a12fb",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -90.4140625,
+                    "y": 840.3359375,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "camera example"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "cea912ef-e903-40d1-87e9-69f37f1a12fb_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "cea912ef-e903-40d1-87e9-69f37f1a12fb_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "524edb27-df0f-4ab8-a660-ecfd6bda6846",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 457.17578125,
+                    "y": 314.43359375,
+                    "w": 180.65625,
+                    "h": 109.15625
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Just stick a plane there"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "524edb27-df0f-4ab8-a660-ecfd6bda6846_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "524edb27-df0f-4ab8-a660-ecfd6bda6846_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "cd47f7f9-499d-4507-95ce-6a956dfce27d",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 454.95703125,
+                    "y": 692.62890625,
+                    "w": 169.7578125,
+                    "h": 81.8828125
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "A falling fresh line"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "cd47f7f9-499d-4507-95ce-6a956dfce27d_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "cd47f7f9-499d-4507-95ce-6a956dfce27d_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "e454c98d-14b4-45c7-9a27-b40e862ece7a",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1013.83984375,
+                    "y": 87.7734375,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "L-System"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "e454c98d-14b4-45c7-9a27-b40e862ece7a_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "e454c98d-14b4-45c7-9a27-b40e862ece7a_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "30fabe96-d9de-4ec7-9b85-9d6f2cc0d1f0",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 296.12890625,
+                    "y": -102.73046875,
+                    "w": 115.9453125,
+                    "h": 102.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "pinch_zoom"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "30fabe96-d9de-4ec7-9b85-9d6f2cc0d1f0_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "30fabe96-d9de-4ec7-9b85-9d6f2cc0d1f0_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "f9a29eef-cf25-4dca-bead-cad57a1c245a",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 446.49609375,
+                    "y": -14.875,
+                    "w": 110.0,
+                    "h": 110.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Theramin"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "f9a29eef-cf25-4dca-bead-cad57a1c245a_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "f9a29eef-cf25-4dca-bead-cad57a1c245a_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "ed108572-e0eb-4188-b73b-b7d8dd3e192d",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -823.0696220397949,
+                    "y": -8397.23046040535,
+                    "w": 159.95738220214844,
+                    "h": 113.80682373046875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "ed108572-e0eb-4188-b73b-b7d8dd3e192d_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "ed108572-e0eb-4188-b73b-b7d8dd3e192d_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "48175964-ffa4-444a-908e-f692b295b0f8",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -181.0,
+                    "y": 454.01171875,
+                    "w": 102.0,
+                    "h": 102.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "some geometry where I click"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "48175964-ffa4-444a-908e-f692b295b0f8_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "48175964-ffa4-444a-908e-f692b295b0f8_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "48175964-ffa4-444a-908e-f692b295b0f8_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "48175964-ffa4-444a-908e-f692b295b0f8_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "04126e01-8cb2-4da5-904a-2a35c2f320a9",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1016.6953125,
+                    "y": 200.83984375,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Fern"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "04126e01-8cb2-4da5-904a-2a35c2f320a9_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "04126e01-8cb2-4da5-904a-2a35c2f320a9_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "6fb96672-171d-48e1-a037-1ccd42abb921",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 59.74112452357275,
+                    "y": 412.02386858443583,
+                    "w": 157.9296875,
+                    "h": 75.1484375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "box of rain"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "6fb96672-171d-48e1-a037-1ccd42abb921_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "6fb96672-171d-48e1-a037-1ccd42abb921_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "b4b7e3b5-cdd8-4a15-b900-c48216a25476",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -100.48046875,
+                    "y": 852.2109375,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Untitled"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "b4b7e3b5-cdd8-4a15-b900-c48216a25476_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Kotlin"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "e3fe297a-36b5-450a-8343-116e105de4ee"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "b4b7e3b5-cdd8-4a15-b900-c48216a25476_customization_.js"
+            },
+            "_tombstone": {
+                "first": "Boolean",
+                "second": true
+            }
+        }
+    },
+    {
+        "id": "b8638b00-bc61-4d68-b0f1-6eac5d8f93c4",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 1243.69921875,
+                    "y": 198.84765625,
+                    "w": 102.0,
+                    "h": 101.2421875
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "Sierpiński"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "b8638b00-bc61-4d68-b0f1-6eac5d8f93c4_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "b8638b00-bc61-4d68-b0f1-6eac5d8f93c4_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "ba8d4f90-f57b-4425-ac17-eb13a5485fe2",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 238.05859375,
+                    "y": 785.0,
+                    "w": 164.46875,
+                    "h": 72.74609375
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "error_checking"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "ba8d4f90-f57b-4425-ac17-eb13a5485fe2_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "ba8d4f90-f57b-4425-ac17-eb13a5485fe2_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "c0b5ddcd-32fc-42ea-ab42-3da56a5b882f",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 707.90625,
+                    "y": 483.65625,
+                    "w": 100.0,
+                    "h": 100.0
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "floor hit_test"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "c0b5ddcd-32fc-42ea-ab42-3da56a5b882f_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "c0b5ddcd-32fc-42ea-ab42-3da56a5b882f_customization_.js"
+            }
+        }
+    },
+    {
+        "id": "8b78e419-cd1e-4111-96ab-899eb3ed47d1",
+        "properties": {
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": -12.37109375,
+                    "y": -71.27734375,
+                    "w": 164.9140625,
+                    "h": 95.9453125
+                }
+            },
+            "name": {
+                "first": "String",
+                "second": "a video in space with a custom shader"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "8b78e419-cd1e-4111-96ab-899eb3ed47d1_code_.kt"
+            },
+            "code_language": {
+                "first": "String",
+                "second": "Javascript"
+            },
+            "preamble": {
+                "first": "String",
+                "second": ""
+            },
+            "fragment": {
+                "first": "__file__",
+                "second": "8b78e419-cd1e-4111-96ab-899eb3ed47d1_fragment_.glsl"
+            },
+            "vertex": {
+                "first": "__file__",
+                "second": "8b78e419-cd1e-4111-96ab-899eb3ed47d1_vertex_.glsl"
+            },
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    },
+                    {
+                        "first": "Box",
+                        "second": "c04566d0-6d97-442e-ba39-c02de8105b05"
+                    }
+                ]
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "8b78e419-cd1e-4111-96ab-899eb3ed47d1_customization_.js"
+            }
+        }
+    }
+]

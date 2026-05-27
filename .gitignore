@@ -118,6 +118,8 @@ hs_err_pid*
 
 ### Gradle template
 .gradle
+.kotlin/
+kotlin-js-store/
 
 # Note that you may need to exclude by hand other folders
 # named build if necessary (e.g., in src/)
@@ -156,12 +158,48 @@ server/__pycache__/
 
 .DS_Store
 
+### Local editor/tool state
+.clj-kondo/
+.field/
+.field_aside/
+.lsp/
+.playwright-mcp/
+.vscode/
+public/.clj-kondo/
+public/.lsp/
+public/.vscode/
+src/.clj-kondo/
+src/.lsp/
+src/.vscode/
+
+### Generated docs / distributions
+dist/
+public/field4/
+public/docs/generated/
+public/.field-docs-runner-cache.json
+
+### JVM / Kotlin generated resources
+bin/jvmMain/
+
+### Local scratch/debug artifacts
+tmp/
+tmp_*
+field-css-bug.png
+ide.png
+history.csv
+history2.py
+two_timescale_bandit_toy*.txt
+
+### Field template backup snapshots
+templates/*/backup/
+
 ### Test files
 test_kdoc_*.kt
 test_kdoc_*.kts
 
 ### Personal workspace files
 src/personal/
+field-user-dir/
 
 ### Electron wrapper
 electron/node_modules/

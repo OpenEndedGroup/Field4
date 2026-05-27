@@ -302,5 +302,5 @@ object CeresNativeLibrary {
             ?: System.getenv("AFIELD_CERES_LIBRARY")
                 ?.takeIf { it.isNotBlank() }
                 ?.let(Path::of)
-            ?: Path.of("lib", "libken_ceres_jvm.dylib")
+            ?: Path.of("libs", "libken_ceres_jvm.dylib")
 }

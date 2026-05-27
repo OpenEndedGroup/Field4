@@ -57,7 +57,7 @@ val javacvVersion = "1.5.10"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 val electronDir = layout.projectDirectory.dir("electron")
 val abletonLinkNative = layout.projectDirectory.file("libs/libabl_link_jvm.dylib")
-val ceresNative = layout.projectDirectory.file("lib/libken_ceres_jvm.dylib")
+val ceresNative = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
 val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
     .map(String::toBoolean)
     .orElse(true)
