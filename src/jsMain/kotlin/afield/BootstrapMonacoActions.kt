@@ -57,6 +57,9 @@ private val shaderTopLevelInterfacePattern = Regex(
     RegexOption.IGNORE_CASE
 )
 private val shaderInstancePattern = Regex("""}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?""")
+private const val shaderNoMatchScore = -1_000_000
+private const val shaderNavigationSelectionDelayMs = 90
+private const val shaderNavigationRetryDelayMs = 180
 
 private fun shaderRelatedProperties(property: String): List<String> {
     val current = property.lowercase()
@@ -244,7 +247,7 @@ private fun shaderScoreTarget(
     candidate: ShaderDeclaration,
     relationIndex: Int
 ): Int {
-    var score = Int.MIN_VALUE / 4
+    var score = shaderNoMatchScore
     val symbolMatches = candidate.symbol == symbol
 
     if (currentDeclaration == null) {
@@ -254,7 +257,7 @@ private fun shaderScoreTarget(
         val matchedByLocation = currentDeclaration.locationKey != null && currentDeclaration.locationKey == candidate.locationKey
         val matchedBySemantic = currentDeclaration.semanticKey != null && currentDeclaration.semanticKey == candidate.semanticKey
         if (!symbolMatches && !matchedByLocation && !matchedBySemantic) {
-            return Int.MIN_VALUE / 4
+            return shaderNoMatchScore
         }
 
         score = 0
@@ -311,7 +314,7 @@ private fun shaderFindLinkedDefinition(
 
         for (candidate in shaderParseDeclarations(targetSource)) {
             val score = shaderScoreTarget(symbol, currentDeclaration, candidate, relationIndex)
-            if (score > (best?.score ?: Int.MIN_VALUE)) {
+            if (score > (best?.score ?: shaderNoMatchScore)) {
                 best = ShaderNavigationTarget(
                     property = property,
                     lineNumber = candidate.lineNumber,
@@ -365,8 +368,8 @@ private fun shaderNavigateToTarget(target: ShaderNavigationTarget) {
         }
     }
 
-    w.setTimeout({ applySelection() }, 90)
-    w.setTimeout({ applySelection() }, 180)
+    w.setTimeout({ applySelection() }, shaderNavigationSelectionDelayMs)
+    w.setTimeout({ applySelection() }, shaderNavigationRetryDelayMs)
 }
 
 private fun monacoRunShaderLinkedDefinition(editor: dynamic, position: dynamic = editor.getPosition()): Boolean {
