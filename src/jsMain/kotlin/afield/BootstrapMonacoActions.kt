@@ -57,7 +57,7 @@ private val shaderTopLevelInterfacePattern = Regex(
     RegexOption.IGNORE_CASE
 )
 private val shaderInstancePattern = Regex("""}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?""")
-private const val shaderNoMatchScore = -1_000_000
+private const val shaderNoMatchScore = -1000000
 private const val shaderNavigationSelectionDelayMs = 90
 private const val shaderNavigationRetryDelayMs = 180
 
@@ -237,7 +237,7 @@ private fun shaderCurrentDeclaration(
     return declarations
         .asSequence()
         .filter { it.symbol == symbol }
-        .sortedWith(compareBy<ShaderDeclaration>({ abs(it.lineNumber - cursorLineNumber) }, { it.startColumn }))
+        .sortedWith(compareBy<ShaderDeclaration>({ abs(it.lineNumber - cursorLineNumber) }, { it.startColumn }, { it.endColumn }))
         .firstOrNull()
 }
 
@@ -254,8 +254,12 @@ private fun shaderScoreTarget(
         if (!symbolMatches) return score
         score = 70
     } else {
-        val matchedByLocation = currentDeclaration.locationKey != null && currentDeclaration.locationKey == candidate.locationKey
-        val matchedBySemantic = currentDeclaration.semanticKey != null && currentDeclaration.semanticKey == candidate.semanticKey
+        val matchedByLocation = !symbolMatches &&
+            currentDeclaration.locationKey != null &&
+            currentDeclaration.locationKey == candidate.locationKey
+        val matchedBySemantic = !symbolMatches &&
+            currentDeclaration.semanticKey != null &&
+            currentDeclaration.semanticKey == candidate.semanticKey
         if (!symbolMatches && !matchedByLocation && !matchedBySemantic) {
             return shaderNoMatchScore
         }
@@ -368,6 +372,8 @@ private fun shaderNavigateToTarget(target: ShaderNavigationTarget) {
         }
     }
 
+    // Selection is applied twice because property switching is asynchronous and the
+    // first attempt can race Monaco model replacement.
     w.setTimeout({ applySelection() }, shaderNavigationSelectionDelayMs)
     w.setTimeout({ applySelection() }, shaderNavigationRetryDelayMs)
 }
@@ -598,34 +604,6 @@ private fun monacoInstallCommandLinkDetector(editor: dynamic, monaco: dynamic) {
     window.commandLinkProviderDisposables = registered.toTypedArray()
 }
 
-private fun monacoInstallShaderDefinitionProvider(editor: dynamic, monaco: dynamic) {
-    val installed = (editor.shaderDefinitionProviderInstalled as? Boolean) == true
-    if (installed) return
-    editor.shaderDefinitionProviderInstalled = true
-
-    val window = js("window")
-    val registered = mutableListOf<dynamic>()
-    listOf("glsl", "slang").forEach { langId ->
-        val provider = js("{}")
-        provider.provideDefinition = fun(model: dynamic, position: dynamic, _: dynamic): dynamic {
-            val target = shaderFindLinkedDefinition(editor, position, model) ?: return null
-            shaderNavigateToTarget(target)
-
-            val location = js("{}")
-            location.uri = model.uri
-            val range = js("{}")
-            range.startLineNumber = target.lineNumber
-            range.startColumn = target.startColumn
-            range.endLineNumber = target.lineNumber
-            range.endColumn = target.endColumn
-            location.range = range
-            return arrayOf(location)
-        }
-        registered.add(monaco.languages.registerDefinitionProvider(langId, provider))
-    }
-    window.shaderDefinitionProviderDisposables = registered.toTypedArray()
-}
-
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoRunAiAssist(editor: dynamic) {
@@ -720,6 +698,8 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "paired-shader-definition"
         action.label = "Go to Paired Shader Definition"
+        // Intentionally front F12 so paired shader navigation runs before Monaco's
+        // ordinary same-file definition lookup, then fall back when no cross-property match exists.
         action.keybindings = arrayOf(keybinding(monaco.KeyCode.F12))
         action.precondition = undefined
         action.keybindingContext = undefined
@@ -968,7 +948,6 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
     }
 
     monacoInstallCommandLinkDetector(editor, monaco)
-    monacoInstallShaderDefinitionProvider(editor, monaco)
 }
 
 @OptIn(ExperimentalJsExport::class)
