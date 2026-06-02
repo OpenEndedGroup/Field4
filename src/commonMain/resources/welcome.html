@@ -51,7 +51,7 @@
             margin: 18px auto;
             padding: 14px;
             display: grid;
-            grid-template-rows: auto auto minmax(220px, 1fr);
+            grid-template-rows: auto auto auto minmax(220px, 1fr);
             gap: 12px;
             height: calc(100vh - 36px);
         }
@@ -215,6 +215,78 @@
             overflow: hidden;
         }
 
+        .running-panel {
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .running-panel[hidden] {
+            display: none;
+        }
+
+        .running-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            color: var(--field-text-soft);
+            font-size: 12px;
+            padding: 2px 0 0;
+        }
+
+        #running-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .running-entry {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.32);
+            border: 1px solid rgba(72, 201, 255, 0.18);
+            color: var(--field-text);
+        }
+
+        .running-entry:hover {
+            border-color: var(--field-border-strong);
+        }
+
+        .running-entry-name {
+            font-size: 12px;
+            color: var(--field-cyan);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 20px;
+            padding: 4px 7px;
+            border-radius: 999px;
+            background: rgba(72, 201, 255, 0.12);
+            border: 1px solid rgba(72, 201, 255, 0.28);
+            color: var(--field-cyan);
+            font-size: 10px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .status-badge.running {
+            background: rgba(72, 255, 146, 0.1);
+            border-color: rgba(72, 255, 146, 0.25);
+            color: rgba(167, 255, 197, 0.98);
+        }
+
+        .status-badge.scratch {
+            background: rgba(255, 220, 72, 0.1);
+            border-color: rgba(255, 220, 72, 0.24);
+            color: rgba(255, 231, 155, 0.98);
+        }
+
         .list-header {
             display: none;
             justify-content: space-between;
@@ -268,6 +340,14 @@
             color: var(--field-text);
             line-height: 1.25;
             word-break: break-word;
+        }
+
+        .doc-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex-wrap: wrap;
         }
 
         .doc-meta {
@@ -530,7 +610,7 @@
 
         @media (max-width: 900px) {
             #welcome-root {
-                grid-template-rows: auto auto minmax(240px, 1fr);
+                grid-template-rows: auto auto auto minmax(240px, 1fr);
                 margin: 10px auto;
                 height: calc(100vh - 20px);
             }
@@ -642,6 +722,14 @@
         <div id="create-status" aria-live="polite"></div>
     </section>
 
+    <section class="panel running-panel" id="running-panel" hidden>
+        <div class="running-header">
+            <span>Running now</span>
+            <span id="running-count">0</span>
+        </div>
+        <div id="running-list"></div>
+    </section>
+
     <section class="panel list-panel">
         <div class="search-row">
             <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search workspace text or document name">
@@ -660,6 +748,7 @@
 <script>
     const state = {
         documents: [],
+        runningDocuments: [],
         searchQuery: "",
         searchResults: [],
         searchTruncated: false,
@@ -674,6 +763,8 @@
     };
     let searchController = null;
     let searchDebounceTimer = null;
+    let welcomeRefreshTimer = null;
+    const WELCOME_REFRESH_MS = 10000;
 
     function escapeHtml(text) {
         return String(text)
@@ -716,7 +807,7 @@
         return `${rounded} ${units[index]}`;
     }
 
-    function openDocument(name) {
+    function openDocument(name, options = {}) {
         if (searchController) {
             searchController.abort();
             searchController = null;
@@ -725,8 +816,14 @@
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = null;
         }
-        const target = encodeURIComponent(name);
-        window.location.href = `/index.html?file=${target}`;
+        if (options.url) {
+            window.location.href = options.url;
+            return;
+        }
+        const params = new URLSearchParams({ file: name });
+        if (options.sessionKey) params.set("sessionKey", options.sessionKey);
+        if (options.scratch) params.set("scratch", "1");
+        window.location.href = `/index.html?${params.toString()}`;
     }
 
     function setCreateStatus(text, isError = false) {
@@ -979,6 +1076,43 @@
         return state.documents[0] || null;
     }
 
+    function runningBadge(count) {
+        if (!count) return "";
+        const label = count === 1 ? "running" : `${count} live`;
+        return `<span class="status-badge running">${escapeHtml(label)}</span>`;
+    }
+
+    function renderRunningDocuments() {
+        const panel = document.getElementById("running-panel");
+        const listNode = document.getElementById("running-list");
+        const countNode = document.getElementById("running-count");
+        const docs = state.runningDocuments;
+
+        if (!panel || !listNode || !countNode) return;
+        panel.hidden = docs.length === 0;
+        countNode.textContent = docs.length === 1 ? "1 extra live document" : `${docs.length} extra live documents`;
+
+        if (!docs.length) {
+            listNode.innerHTML = "";
+            return;
+        }
+
+        listNode.innerHTML = docs.map((doc) => `
+            <button type="button" class="running-entry" data-running-open="${escapeHtml(doc.openUrl)}">
+                <span class="running-entry-name">${escapeHtml(doc.documentName)}</span>
+                <span class="status-badge running">${escapeHtml(doc.sessionCount === 1 ? "1 session" : `${doc.sessionCount} sessions`)}</span>
+                ${doc.ephemeral ? '<span class="status-badge scratch">scratch</span>' : ""}
+            </button>
+        `).join("");
+
+        listNode.querySelectorAll("[data-running-open]").forEach((entry) => {
+            entry.addEventListener("click", () => {
+                const url = entry.getAttribute("data-running-open");
+                if (url) openDocument("", { url });
+            });
+        });
+    }
+
     function renderRecentDocuments() {
         const listNode = document.getElementById("recent-list");
         const countNode = document.getElementById("doc-count");
@@ -1003,7 +1137,10 @@
             return `
                 <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
                     <div class="doc-body">
-                        <span class="doc-name">${escapeHtml(doc.filename)}</span>
+                        <div class="doc-title">
+                            <span class="doc-name">${escapeHtml(doc.filename)}</span>
+                            ${runningBadge(doc.runningSessionCount)}
+                        </div>
                     </div>
                     <div class="doc-side">
                         ${state.editingDocument === doc.filename ? renderTagEditor(doc) : renderTags(doc)}
@@ -1056,7 +1193,10 @@
             return `
                 <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
                     <div class="doc-body">
-                        <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
+                        <div class="doc-title">
+                            <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
+                            ${runningBadge(doc.runningSessionCount)}
+                        </div>
                         <div class="search-match-list">${matchHtml}</div>
                     </div>
                     <div class="doc-side">
@@ -1077,6 +1217,7 @@
     }
 
     function renderList() {
+        renderRunningDocuments();
         if (state.searchQuery.trim()) {
             renderSearchResults();
         } else {
@@ -1095,6 +1236,7 @@
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const payload = await response.json();
             state.documents = Array.isArray(payload.documents) ? payload.documents : [];
+            state.runningDocuments = Array.isArray(payload.runningDocuments) ? payload.runningDocuments : [];
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
@@ -1102,9 +1244,18 @@
         } catch (error) {
             console.error("Failed to load welcome docs", error);
             state.documents = [];
+            state.runningDocuments = [];
             renderList();
             setCreateStatus("Could not load workspace documents.", true);
         }
+    }
+
+    function startWelcomePolling() {
+        if (welcomeRefreshTimer) return;
+        welcomeRefreshTimer = setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            loadWelcomeDocs();
+        }, WELCOME_REFRESH_MS);
     }
 
     async function runWorkspaceSearch(query) {
@@ -1521,6 +1672,7 @@
 
     installHandlers();
     loadWelcomeDocs();
+    startWelcomePolling();
     runSplashAnimation();
 </script>
 

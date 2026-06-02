@@ -1738,11 +1738,44 @@ class Server {
 
                     get("/api/welcome-docs") {
                         val recentDocuments = parseRecentDocuments(recentFns)
-                        val docs = welcomeDir(home, recentDocuments)
+                        val liveSessions = documents.values
+                            .asSequence()
+                            .filter { it.sessions.isNotEmpty() }
+                            .toList()
+                        val liveWorkspaceCounts = liveSessions
+                            .filter { !it.ephemeral }
+                            .groupingBy { it.documentName }
+                            .fold(0) { count, info -> count + info.sessions.size }
+                        val docs = welcomeDir(home, recentDocuments).map {
+                            it.copy(runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0)
+                        }
                         val fallback = lastFn ?: "welcome"
                         val defaultDocument = docs.firstOrNull()?.filename ?: fallback
                         val allTags = docs.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
-                        call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument, allTags))
+                        val workspaceDocumentNames = docs.mapTo(linkedSetOf()) { it.filename }
+                        val runningDocuments = liveSessions
+                            .filter { it.documentName !in workspaceDocumentNames }
+                            .sortedWith(
+                                compareByDescending<SessionInformation> { it.sessions.size }
+                                    .thenBy { it.documentName.lowercase() }
+                                    .thenBy { it.filename.lowercase() }
+                            )
+                            .map { info ->
+                                val params = mutableListOf(
+                                    "file=${URLEncoder.encode(info.documentName, "UTF-8")}",
+                                    "sessionKey=${URLEncoder.encode(info.filename, "UTF-8")}"
+                                )
+                                if (info.ephemeral) {
+                                    params += "scratch=1"
+                                }
+                                RunningDocumentEntry(
+                                    documentName = info.documentName,
+                                    sessionCount = info.sessions.size,
+                                    ephemeral = info.ephemeral,
+                                    openUrl = "/index.html?${params.joinToString("&")}"
+                                )
+                            }
+                        call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument, allTags, runningDocuments))
                     }
 
                     put("/api/document-tags") {

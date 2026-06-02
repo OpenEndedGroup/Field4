@@ -29,7 +29,16 @@ data class WelcomeEntry(
     val sizeBytes: Long,
     val lastModifiedEpochMs: Long,
     val lastModifiedAgoMs: Long,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val runningSessionCount: Int = 0
+)
+
+@Serializable
+data class RunningDocumentEntry(
+    val documentName: String,
+    val sessionCount: Int,
+    val ephemeral: Boolean = false,
+    val openUrl: String
 )
 
 @Serializable
@@ -37,7 +46,8 @@ data class WelcomeDocsResponse(
     val documents: List<WelcomeEntry>,
     val lastOpened: String,
     val defaultDocument: String,
-    val allTags: List<String> = emptyList()
+    val allTags: List<String> = emptyList(),
+    val runningDocuments: List<RunningDocumentEntry> = emptyList()
 )
 
 @Serializable
