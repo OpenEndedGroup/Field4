@@ -29,7 +29,7 @@ val f1 = fline {
 
     filled = true
     stroked = true
-    thickness = 3.0
+    thickness = 1.0
     color = vec(1.0, 1.0, 1.0, 0.25)
 }
 
@@ -41,7 +41,7 @@ f3.lineTo(120, 120)
 f3.close()
 f3.filled = true
 f3.stroked = true
-f3.thickness = 3.0
+f3.thickness = 1.0
 f3.color = vec(1.0, 1.0, 1.0, 0.25)
 
 // Show they really are the same geometry (offset so you can see them).
@@ -81,7 +81,7 @@ val wave = fline {
     moveTo(40, 170)
     cubicTo(120, 40, 180, 40, 250, 170)
     cubicTo(320, 300, 380, 300, 460, 170)
-    thickness = 5.0
+    thickness = 2.0
     color = vec(0.98, 0.88, 0.28, 1.0)
 }
 
@@ -119,14 +119,14 @@ val petal = fline {
     close()
     filled = true
     stroked = true
-    thickness = 2.5
+    thickness = 1.0
     color = vec(0.95, 0.42, 0.6, 0.34)
 }
 
 val stem = fline {
     moveTo(0, 120)
     cubicTo(10, 180, -20, 230, 0, 300)
-    thickness = 5.0
+    thickness = 1.0
     color = vec(0.45, 0.95, 0.62, 1.0)
 }
 
@@ -256,7 +256,7 @@ val triangle = fline {
     close()
     filled = true
     stroked = true
-    thickness = 2.5
+    thickness = 1.5
     color = vec(1.0, 0.63, 0.24, 0.30)
     hoverColor = vec(1.0, 0.82, 0.42, 0.92)
     onClick = { hit -> status("triangle @ ${hit.closestVertexIndex}") }
@@ -269,7 +269,7 @@ val blob = fline {
     close()
     filled = true
     stroked = true
-    thickness = 2.5
+    thickness = 1.5
     color = vec(0.34, 0.88, 1.0, 0.24)
     hoverColor = vec(0.48, 1.0, 1.0, 0.92)
     onClick = { hit -> status("blob @ ${hit.closestVertexIndex}") }
@@ -302,7 +302,7 @@ fun ring(radius: Double, z: Double, color: Vec4, hover: Vec4, name: String): FLi
         if (i == 0) moveTo(p) else lineTo(p)
     }
     close()
-    thickness = 3.0
+    thickness = 1.0
     this.color = color
     hoverColor = hover
     onClick = { hit -> status("$name @ ${hit.closestVertexIndex}") }
@@ -352,7 +352,7 @@ val shape = fline {
 val strokedOnly = shape.copy().apply {
     stroked = true
     filled = false
-    thickness = 6.0
+    thickness = 1.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
@@ -398,7 +398,7 @@ val f = fline {
     moveTo(a)          // Vec2
     lineTo(b.x, b.y)   // Numbers
 
-    thickness = 6.0
+    thickness = 1.0
     color = vec(0.9, 0.9, 1.0, 1.0)
 }
 
@@ -545,7 +545,7 @@ val f = fline {
     lineTo(50, 200)    // starts a new subpath
     lineTo(350, 200)
 
-    thickness = 6.0
+    thickness = 1.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
@@ -881,14 +881,14 @@ val f1 = fline {
     moveTo(a)
     // Headings are in radians in the current drawing plane
     biarcTo(b, startHeading = 0.0f, endHeading = (-1.2f), join = 0.55f, bulge = 0.08f, segments = 40)
-    thickness = 6.0
+    thickness = 1.0
     color = vec(1.0, 0.7, 0.2, 0.9)
 }
 
 val f2 = fline {
     moveTo(a.x, a.y - 60)
     biarcTo(vec(b.x, b.y - 60), startHeading = 0.2f, endHeading = (-1.0f), join = 0.35f, bulge = -0.10f, segments = 40)
-    thickness = 6.0
+    thickness = 1.0
     color = vec(0.4, 1.0, 0.6, 0.9)
 }
 
@@ -926,7 +926,7 @@ val rounded = fline {
     arcTo(vec(60, 60), vec(360, 60), radius = 40, segments = 32)
     lineTo(360, 200)
 
-    thickness = 6.0
+    thickness = 1.0
     color = vec(1.0, 0.9, 0.5, 1.0)
 }
 
@@ -1227,7 +1227,7 @@ val smooth = noisy.byGaussianSmoothing(sigma = 2.0f, samples = 120).apply {
 }
 
 val simple = smooth.bySimplifying(epsilon = 2.0f).apply {
-    thickness = 6.0
+    thickness = 1.0
     color = vec(1.0, 0.4, 0.4, 0.75)
 }
 
@@ -1580,13 +1580,13 @@ Breaks a path into multiple `FLine`s representing dash segments.
 val f = fline {
     moveTo(50, 180)
     cubicTo(120, 20, 300, 280, 350, 120)
-    thickness = 6.0
+    thickness = 1.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
 val dashes = f.byDashing(dashLength = 18f, gapLength = 10f).mapIndexed { i, seg ->
     seg.apply {
-        thickness = 6.0
+        thickness = 1.0
         color = if (i % 2 == 0) vec(1.0, 0.7, 0.2, 1.0) else vec(0.4, 1.0, 0.6, 1.0)
     }
 }
@@ -1852,19 +1852,19 @@ fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine
 val a = fline {
     moveTo(60, 190)
     cubicTo(120, 20, 260, 280, 360, 120)
-    thickness = 4.0
+    thickness = 2.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
 val b = a.byReversing().apply { color = vec(1.0, 0.4, 0.4, 0.65) }
 
 val mid = a.byBlendingWith(b, t = 0.5f).apply {
-    thickness = 6.0
+    thickness = 1.0
     color = vec(0.4, 1.0, 0.6, 0.7)
 }
 
 val snippet = a.byExtracting(tStart = 0.8f, tEnd = 1.9f).apply {
-    thickness = 8.0
+    thickness = 2.0
     color = vec(1.0, 0.7, 0.2, 0.8)
 }
 
@@ -2182,7 +2182,7 @@ val f = fline {
         samples = 160,
         iterations = 6
     )
-    thickness = 5.0
+    thickness = 2.0
     color = vec(1.0, 0.7, 0.2, 1.0)
 }
 
@@ -2250,7 +2250,7 @@ Finds the closest point on the curve to a query position. Returns `(closestPoint
 val curve = fline {
     moveTo(50, 180)
     cubicTo(120, 20, 300, 280, 350, 120)
-    thickness = 5.0
+    thickness = 2.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 

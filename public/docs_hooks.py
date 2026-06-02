@@ -1376,6 +1376,31 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
     if not results:
         return None
 
+    shader_clear_properties = {
+        "vertex",
+        "fragment",
+        "compute",
+        "task",
+        "mesh",
+        "raygen",
+        "miss",
+        "closesthit",
+        "anyhit",
+        "intersection",
+        "callable",
+        "vertex_fragment",
+        "vertex_s",
+        "fragment_s",
+        "compute_s",
+        "task_s",
+        "mesh_s",
+        "raygen_s",
+        "miss_s",
+        "closesthit_s",
+        "anyhit_s",
+        "intersection_s",
+        "callable_s",
+    }
     problems: list[str] = []
     for result in results:
         command = str(result.get("command", "<unknown command>"))
@@ -1399,13 +1424,6 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
         events = result.get("events")
         if not isinstance(events, list):
             continue
-        has_success_output = any(
-            isinstance(event, dict)
-            and (event.get("name") or event.get("messageName")) in {"output", "peer-output"}
-            and isinstance(event.get("payload"), dict)
-            and event["payload"].get("kind") not in {"error", "err"}
-            for event in events
-        )
         for event in events:
             if not isinstance(event, dict):
                 continue
@@ -1420,11 +1438,7 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
                 line_suffix = f" line {line}" if line is not None else ""
                 html = str(payload.get("html", "")).replace("\n", " ").strip()
                 property_name = str(payload.get("property", ""))
-                if (
-                    has_success_output
-                    and not html
-                    and property_name in {"vertex", "fragment", "compute", "vertex_fragment", "vertex_s", "fragment_s", "compute_s"}
-                ):
+                if not html and property_name in shader_clear_properties:
                     continue
                 problems.append(f"{command}{line_suffix}: {html or 'execution error'}")
                 continue

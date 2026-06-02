@@ -10,7 +10,7 @@ _Field·4_ has and will continue to have enthusiastic support for AI-forward cod
 
 ## Starting places
 
-If you aren't reading this documentation inside *Field·4* itself, then you'll want to read the [Installation instructions](installation.md) or perhaps [Take a tour](funFeatures.md).
+If you aren't reading this documentation inside *Field·4* itself, then you'll want to read the [Installation instructions](installation.md) or perhaps [take a tour](funFeatures.md).
 
 Alternatively, the [Survival Guide](survivalGuide.md) is a good cheat-sheet.
 
