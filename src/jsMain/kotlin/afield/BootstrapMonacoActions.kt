@@ -78,6 +78,14 @@ private fun shaderRelatedProperties(property: String): List<String> {
     }
 }
 
+private fun shaderPropertyIndexOf(name: String?): Int {
+    if (name == null) return -1
+    for (i in monacoPropertyNames.indices) {
+        if (monacoPropertyNames[i] == name) return i
+    }
+    return -1
+}
+
 private fun shaderKindFamily(kind: String): String = when {
     kind.startsWith("push") || kind.startsWith("buffer") -> "push"
     kind.startsWith("interface") -> "interface"
@@ -330,13 +338,13 @@ private fun shaderNavigateToTarget(target: ShaderNavigationTarget) {
         if (navigateToBoxProperty != null && navigateToBoxProperty != undefined) {
             navigateToBoxProperty(uid, target.property, target.lineNumber, target.lineNumber)
         } else {
-            val targetIndex = propertyIndexOf(target.property)
+            val targetIndex = shaderPropertyIndexOf(target.property)
             if (targetIndex >= 0) {
                 monacoApplyPropertySelection(w.globalMonaco, w.globalEditor, targetIndex)
             }
         }
     } catch (_: dynamic) {
-        val targetIndex = propertyIndexOf(target.property)
+        val targetIndex = shaderPropertyIndexOf(target.property)
         if (targetIndex >= 0) {
             monacoApplyPropertySelection(w.globalMonaco, w.globalEditor, targetIndex)
         }
