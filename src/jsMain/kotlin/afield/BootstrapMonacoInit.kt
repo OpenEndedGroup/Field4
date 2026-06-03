@@ -138,6 +138,9 @@ private fun disposePropertySwitchActions(previous: dynamic) {
 }
 
 internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
+    if ((ed.afieldPropertySwitchActionsInstalled as? Boolean) == true) return
+    ed.afieldPropertySwitchActionsInstalled = true
+
     val w = js("window")
     disposePropertySwitchActions(w.propertyActionDisposables)
 
@@ -159,7 +162,7 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
 
         val action = js("{}")
         action.id = actionId
-        action.label = computePropertyActionLabel(w, baseLabel, propName)
+        action.label = baseLabel
         action.contextMenuGroupId = "navigation"
         action.contextMenuOrder = 2.0
 

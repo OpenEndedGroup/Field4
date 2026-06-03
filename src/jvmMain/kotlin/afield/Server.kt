@@ -53,6 +53,7 @@ import java.security.KeyStore
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
@@ -92,6 +93,46 @@ class SessionInformation(
     fun cleanup() {
         _fileWatchManager?.stop()
         _fileWatchManager = null
+    }
+}
+
+private fun readWelcomeChangelog(limit: Int = 30): WelcomeChangelogResponse {
+    return try {
+        val process = ProcessBuilder(
+            "git",
+            "log",
+            "--pretty=format:%h%x09%ct%x09%s",
+            "-n",
+            limit.coerceIn(1, 100).toString()
+        )
+            .directory(File("."))
+            .redirectErrorStream(true)
+            .start()
+
+        if (!process.waitFor(2, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            return WelcomeChangelogResponse(emptyList())
+        }
+
+        if (process.exitValue() != 0) {
+            return WelcomeChangelogResponse(emptyList())
+        }
+
+        val entries = process.inputStream.bufferedReader().useLines { lines ->
+            lines.mapNotNull { line ->
+                val parts = line.split('\t', limit = 3)
+                if (parts.size != 3) return@mapNotNull null
+                val committedEpochMs = (parts[1].toLongOrNull() ?: return@mapNotNull null) * 1000L
+                WelcomeChangelogEntry(
+                    hash = parts[0],
+                    committedEpochMs = committedEpochMs,
+                    summary = parts[2]
+                )
+            }.toList()
+        }
+        WelcomeChangelogResponse(entries)
+    } catch (_: Exception) {
+        WelcomeChangelogResponse(emptyList())
     }
 }
 
@@ -137,6 +178,7 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
+private val welcomeEventSessions = ConcurrentHashMap.newKeySet<WebSocketSession>()
 private val aiKotlinNotifyThrottle = ConcurrentHashMap<String, Long>()
 
 var min_frame_delay = 1L
@@ -381,6 +423,21 @@ fun _send(message: Message, document: String = ".*") {
     sessions.forEach { (session, info) ->
         if (!info.filename.matches(documentRegex)) return@forEach
         sendWithOutputBackPressure(session, message, m)
+    }
+    if (message.name == "is-running") {
+        broadcastWelcomeEvent("running")
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+internal fun broadcastWelcomeEvent(reason: String) {
+    val event = """{"type":"welcome-refresh","reason":${Json.encodeToString(reason)}}"""
+    welcomeEventSessions.removeIf { session ->
+        if (session.outgoing.isClosedForSend) return@removeIf true
+        GlobalScope.launch {
+            runCatching { session.send(event) }
+        }
+        false
     }
 }
 
@@ -1746,8 +1803,23 @@ class Server {
                             .filter { !it.ephemeral }
                             .groupingBy { it.documentName }
                             .fold(0) { count, info -> count + info.sessions.size }
+                        val runningExecutionCounts = documents.values
+                            .asSequence()
+                            .filter { !it.ephemeral }
+                            .map { info ->
+                                info.documentName to info.boxes.values.count { box ->
+                                    box.currentRunningStates.isNotEmpty() ||
+                                        box.jobs.any { job -> !job.isCancelled && job.isActive }
+                                }
+                            }
+                            .filter { (_, count) -> count > 0 }
+                            .groupBy({ it.first }, { it.second })
+                            .mapValues { (_, counts) -> counts.sum() }
                         val docs = welcomeDir(home, recentDocuments).map {
-                            it.copy(runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0)
+                            it.copy(
+                                runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0,
+                                runningExecutionCount = runningExecutionCounts[it.filename] ?: 0
+                            )
                         }
                         val fallback = lastFn ?: "welcome"
                         val defaultDocument = docs.firstOrNull()?.filename ?: fallback
@@ -1776,6 +1848,14 @@ class Server {
                                 )
                             }
                         call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument, allTags, runningDocuments))
+                    }
+
+                    get("/api/welcome-changelog") {
+                        val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 30
+                        val response = withContext(workspaceSearchDispatcher) {
+                            readWelcomeChangelog(limit)
+                        }
+                        call.respond(response)
                     }
 
                     put("/api/document-tags") {
@@ -1905,6 +1985,18 @@ class Server {
                             }
 
                             exitProcess(0)
+                        }
+                    }
+
+                    webSocket("/welcome-events") {
+                        welcomeEventSessions.add(this)
+                        runCatching { send("""{"type":"welcome-refresh","reason":"connected"}""") }
+                        try {
+                            for (frame in incoming) {
+                                if (frame is Frame.Close) break
+                            }
+                        } finally {
+                            welcomeEventSessions.remove(this)
                         }
                     }
 
@@ -2229,6 +2321,7 @@ class Server {
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
             box.ke.stop(box)
+            broadcastWelcomeEvent("running")
         }
 
         @JvmStatic

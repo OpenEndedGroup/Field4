@@ -67,6 +67,7 @@ internal fun detachDocumentSession(session: WebSocketSession, info: SessionInfor
     detachSpreadsheetClient(session)
     target.sessions.remove(session)
     cleanupDetachedSession(target)
+    broadcastWelcomeEvent("session-detached")
     return target
 }
 
@@ -79,6 +80,7 @@ private fun registerDocumentSession(session: WebSocketSession, info: SessionInfo
     thisSessionInfo.set(info)
     info.sessions.add(session)
     UserThemeManager.sendTo(session)
+    broadcastWelcomeEvent("session-attached")
 }
 
 private fun resolveDocumentTarget(documentName: String?, scratch: Boolean, sessionKey: String? = null): DocumentTarget {

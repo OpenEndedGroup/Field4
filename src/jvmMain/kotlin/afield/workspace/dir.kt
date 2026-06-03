@@ -30,7 +30,8 @@ data class WelcomeEntry(
     val lastModifiedEpochMs: Long,
     val lastModifiedAgoMs: Long,
     val tags: List<String> = emptyList(),
-    val runningSessionCount: Int = 0
+    val runningSessionCount: Int = 0,
+    val runningExecutionCount: Int = 0
 )
 
 @Serializable
@@ -48,6 +49,18 @@ data class WelcomeDocsResponse(
     val defaultDocument: String,
     val allTags: List<String> = emptyList(),
     val runningDocuments: List<RunningDocumentEntry> = emptyList()
+)
+
+@Serializable
+data class WelcomeChangelogEntry(
+    val hash: String,
+    val summary: String,
+    val committedEpochMs: Long
+)
+
+@Serializable
+data class WelcomeChangelogResponse(
+    val entries: List<WelcomeChangelogEntry>
 )
 
 @Serializable

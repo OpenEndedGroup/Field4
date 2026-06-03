@@ -50,13 +50,15 @@
             width: min(1100px, 96vw);
             margin: 18px auto;
             padding: 14px;
-            display: grid;
-            grid-template-rows: auto auto auto minmax(220px, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 12px;
             height: calc(100vh - 36px);
+            min-height: 0;
         }
 
         .panel {
+            flex: 0 0 auto;
             border: 5px solid black;
             border-radius: var(--radius);
             background: #222;
@@ -206,7 +208,87 @@
             color: var(--field-danger);
         }
 
+        .changelog-panel {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .changelog-panel details {
+            display: grid;
+        }
+
+        .changelog-panel summary {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            cursor: pointer;
+            color: var(--field-text);
+            font-size: 13px;
+            list-style: none;
+        }
+
+        .changelog-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .changelog-panel summary::after {
+            content: "+";
+            color: var(--field-cyan);
+            font-size: 14px;
+        }
+
+        .changelog-panel details[open] summary::after {
+            content: "-";
+        }
+
+        .changelog-count {
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        #changelog-list {
+            max-height: min(260px, 32vh);
+            overflow: auto;
+            margin: 0;
+            padding: 0 12px 12px;
+            display: grid;
+            gap: 4px;
+            list-style: none;
+        }
+
+        .changelog-entry {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 10px;
+            align-items: baseline;
+            padding: 5px 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.62);
+            font-size: 12px;
+        }
+
+        .changelog-hash {
+            color: var(--field-cyan);
+            font-size: 11px;
+        }
+
+        .changelog-summary {
+            color: var(--field-text);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .changelog-date {
+            color: var(--field-text-soft);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
         .list-panel {
+            flex: 1 1 220px;
             padding: 10px;
             display: grid;
             grid-template-rows: auto auto minmax(0, 1fr);
@@ -610,7 +692,6 @@
 
         @media (max-width: 900px) {
             #welcome-root {
-                grid-template-rows: auto auto auto minmax(240px, 1fr);
                 margin: 10px auto;
                 height: calc(100vh - 20px);
             }
@@ -668,6 +749,14 @@
             .doc-meta {
                 text-align: left;
             }
+
+            .changelog-entry {
+                grid-template-columns: auto 1fr;
+            }
+
+            .changelog-date {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -722,6 +811,16 @@
         <div id="create-status" aria-live="polite"></div>
     </section>
 
+    <section class="panel changelog-panel">
+        <details id="welcome-changelog">
+            <summary>
+                <span>Changelog</span>
+                <span id="changelog-count" class="changelog-count">loading</span>
+            </summary>
+            <ol id="changelog-list"></ol>
+        </details>
+    </section>
+
     <section class="panel running-panel" id="running-panel" hidden>
         <div class="running-header">
             <span>Running now</span>
@@ -759,12 +858,18 @@
         savingTags: null,
         contextMenu: null,
         duplicatePrompt: null,
-        contextError: ""
+        contextError: "",
+        changelog: []
     };
     let searchController = null;
     let searchDebounceTimer = null;
     let welcomeRefreshTimer = null;
+    let welcomeEventSocket = null;
+    let welcomeEventReconnectTimer = null;
+    let welcomeEventRefreshTimer = null;
     const WELCOME_REFRESH_MS = 10000;
+    const WELCOME_EVENT_REFRESH_MS = 120;
+    const WELCOME_EVENT_RECONNECT_MS = 1500;
 
     function escapeHtml(text) {
         return String(text)
@@ -807,6 +912,12 @@
         return `${rounded} ${units[index]}`;
     }
 
+    function formatCommitDate(epochMs) {
+        const value = Number(epochMs) || 0;
+        if (!value) return "";
+        return formatDuration(Date.now() - value);
+    }
+
     function openDocument(name, options = {}) {
         if (searchController) {
             searchController.abort();
@@ -824,6 +935,11 @@
         if (options.sessionKey) params.set("sessionKey", options.sessionKey);
         if (options.scratch) params.set("scratch", "1");
         window.location.href = `/index.html?${params.toString()}`;
+    }
+
+    function welcomeEventsUrl() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${window.location.host}/welcome-events`;
     }
 
     function setCreateStatus(text, isError = false) {
@@ -1076,9 +1192,16 @@
         return state.documents[0] || null;
     }
 
-    function runningBadge(count) {
-        if (!count) return "";
-        const label = count === 1 ? "running" : `${count} live`;
+    function runningBadge(doc) {
+        const runningCount = Number(doc.runningExecutionCount) || 0;
+        if (runningCount) {
+            const label = runningCount === 1 ? "running" : `${runningCount} running`;
+            return `<span class="status-badge running">${escapeHtml(label)}</span>`;
+        }
+
+        const sessionCount = Number(doc.runningSessionCount) || 0;
+        if (!sessionCount) return "";
+        const label = sessionCount === 1 ? "live" : `${sessionCount} live`;
         return `<span class="status-badge running">${escapeHtml(label)}</span>`;
     }
 
@@ -1139,7 +1262,7 @@
                     <div class="doc-body">
                         <div class="doc-title">
                             <span class="doc-name">${escapeHtml(doc.filename)}</span>
-                            ${runningBadge(doc.runningSessionCount)}
+                            ${runningBadge(doc)}
                         </div>
                     </div>
                     <div class="doc-side">
@@ -1195,7 +1318,7 @@
                     <div class="doc-body">
                         <div class="doc-title">
                             <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
-                            ${runningBadge(doc.runningSessionCount)}
+                            ${runningBadge(doc)}
                         </div>
                         <div class="search-match-list">${matchHtml}</div>
                     </div>
@@ -1230,6 +1353,33 @@
         }
     }
 
+    function renderChangelog() {
+        const listNode = document.getElementById("changelog-list");
+        const countNode = document.getElementById("changelog-count");
+        if (!listNode || !countNode) return;
+
+        const entries = state.changelog;
+        countNode.textContent = entries.length === 1 ? "1 change" : `${entries.length} changes`;
+
+        if (!entries.length) {
+            listNode.innerHTML = `
+                <li class="empty-state">
+                    Changelog entries are unavailable for this checkout.
+                </li>
+            `;
+            countNode.textContent = "unavailable";
+            return;
+        }
+
+        listNode.innerHTML = entries.map((entry) => `
+            <li class="changelog-entry">
+                <span class="changelog-hash">${escapeHtml(entry.hash || "")}</span>
+                <span class="changelog-summary">${escapeHtml(entry.summary || "")}</span>
+                <span class="changelog-date">${escapeHtml(formatCommitDate(entry.committedEpochMs))}</span>
+            </li>
+        `).join("");
+    }
+
     async function loadWelcomeDocs() {
         try {
             const response = await fetch("/api/welcome-docs", { cache: "no-store" });
@@ -1250,12 +1400,68 @@
         }
     }
 
+    function queueWelcomeDocsRefresh() {
+        clearTimeout(welcomeEventRefreshTimer);
+        welcomeEventRefreshTimer = setTimeout(() => {
+            if (document.visibilityState !== "visible") return;
+            loadWelcomeDocs();
+        }, WELCOME_EVENT_REFRESH_MS);
+    }
+
+    async function loadWelcomeChangelog() {
+        try {
+            const response = await fetch("/api/welcome-changelog?limit=30", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.changelog = Array.isArray(payload.entries) ? payload.entries : [];
+            renderChangelog();
+        } catch (error) {
+            console.error("Failed to load welcome changelog", error);
+            state.changelog = [];
+            renderChangelog();
+        }
+    }
+
     function startWelcomePolling() {
         if (welcomeRefreshTimer) return;
         welcomeRefreshTimer = setInterval(() => {
             if (document.visibilityState !== "visible") return;
             loadWelcomeDocs();
         }, WELCOME_REFRESH_MS);
+    }
+
+    function connectWelcomeEvents() {
+        if (welcomeEventSocket && (
+            welcomeEventSocket.readyState === WebSocket.OPEN ||
+            welcomeEventSocket.readyState === WebSocket.CONNECTING
+        )) return;
+
+        clearTimeout(welcomeEventReconnectTimer);
+        welcomeEventReconnectTimer = null;
+
+        try {
+            welcomeEventSocket = new WebSocket(welcomeEventsUrl());
+        } catch (error) {
+            welcomeEventReconnectTimer = setTimeout(connectWelcomeEvents, WELCOME_EVENT_RECONNECT_MS);
+            return;
+        }
+
+        welcomeEventSocket.addEventListener("message", () => {
+            queueWelcomeDocsRefresh();
+        });
+
+        welcomeEventSocket.addEventListener("close", () => {
+            welcomeEventSocket = null;
+            clearTimeout(welcomeEventReconnectTimer);
+            welcomeEventReconnectTimer = setTimeout(connectWelcomeEvents, WELCOME_EVENT_RECONNECT_MS);
+        });
+
+        welcomeEventSocket.addEventListener("error", () => {
+            try {
+                welcomeEventSocket?.close();
+            } catch (_) {
+            }
+        });
     }
 
     async function runWorkspaceSearch(query) {
@@ -1672,6 +1878,8 @@
 
     installHandlers();
     loadWelcomeDocs();
+    loadWelcomeChangelog();
+    connectWelcomeEvents();
     startWelcomePolling();
     runSplashAnimation();
 </script>

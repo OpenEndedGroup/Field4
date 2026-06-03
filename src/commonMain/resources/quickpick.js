@@ -40,6 +40,16 @@ window.allActions = allActions
 
 let lastActions = []
 window.lastActions = lastActions
+let monacoActionDisposers = new Map()
+
+function normalizeActionsById(actions) {
+        const byId = new Map()
+        for (const action of actions || []) {
+                if (!action || !action.id) continue
+                byId.set(action.id, action)
+        }
+        return [...byId.values()]
+}
 
 function updateActions() {
         ensureBuiltinKeybindings();
@@ -54,6 +64,7 @@ function updateActions() {
 }
 
 function setActions(actions) {
+        actions = normalizeActionsById(actions)
 
         let add = []
         let remove = []
@@ -72,16 +83,23 @@ function setActions(actions) {
         }
 
         for (let a of remove) {
-                if (a.disposer) {
-                        a.disposer.dispose()
+                const disposer = monacoActionDisposers.get(a.id) || a.disposer
+                if (disposer) {
+                        disposer.dispose()
                 }
+                monacoActionDisposers.delete(a.id)
+                delete a.disposer
         }
 
         if (window.globalEditor) for (let a of add) {
+                const existing = monacoActionDisposers.get(a.id)
+                if (existing) existing.dispose()
                 a.disposer = globalEditor.addAction(a)
+                monacoActionDisposers.set(a.id, a.disposer)
         }
 
         lastActions = actions
+        window.lastActions = lastActions
 }
 window.updateActions = updateActions
 window.setActions = setActions

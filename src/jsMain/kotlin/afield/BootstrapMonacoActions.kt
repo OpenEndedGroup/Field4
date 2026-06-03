@@ -645,6 +645,9 @@ fun monacoRunAiAssist(editor: dynamic) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
+    if ((editor.afieldCoreActionsRegistered as? Boolean) == true) return
+    editor.afieldCoreActionsRegistered = true
+
     fun keycode(value: dynamic): Int {
         return (value as Number).toInt()
     }
@@ -656,8 +659,10 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         return result
     }
 
+    val disposables = mutableListOf<dynamic>()
     fun addAction(action: dynamic) {
-        editor.addAction(action)
+        val handle = editor.addAction(action)
+        disposables.add(handle)
     }
 
     run {
@@ -728,15 +733,19 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         addAction(action)
     }
 
-    val hover = document.createElement("div")
-    hover.className = "hoverlay"
-    hover.textContent = ".code"
-    editor._domElement.appendChild(hover)
+    if (editor._domElement.querySelector(".hoverlay") == null) {
+        val hover = document.createElement("div")
+        hover.className = "hoverlay"
+        hover.textContent = ".code"
+        editor._domElement.appendChild(hover)
+    }
 
-    val context = document.createElement("div")
-    context.className = "hoverlay-left"
-    context.innerHTML = ""
-    editor._domElement.appendChild(context)
+    if (editor._domElement.querySelector(".hoverlay-left") == null) {
+        val context = document.createElement("div")
+        context.className = "hoverlay-left"
+        context.innerHTML = ""
+        editor._domElement.appendChild(context)
+    }
 
     run {
         val action = js("{}")
@@ -946,6 +955,8 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         }
         addAction(action)
     }
+
+    editor.afieldCoreActionDisposables = disposables.toTypedArray()
 
     monacoInstallCommandLinkDetector(editor, monaco)
 }
