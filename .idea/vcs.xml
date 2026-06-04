@@ -4,6 +4,5 @@
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/public/docs/assets/canonical_graphics" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/templates/note" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/templates/timeSlider" vcs="Git" />
   </component>
 </project>

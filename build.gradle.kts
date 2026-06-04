@@ -1040,28 +1040,3 @@ tasks.named("jvmDistZip") {
 }
 
 
-
-dokka {
-    // HTML documentation (Dokka Gradle plugin v2)
-    dokkaPublications.html {
-        outputDirectory.set(layout.buildDirectory.dir("dokka/html"))
-
-        dokkaSourceSets.configureEach {
-            perPackageOption {
-                matchingRegex.set(".*")
-                suppress.set(true)
-            }
-
-            perPackageOption {
-                matchingRegex.set("""afield\.four(\..*)?""")
-                suppress.set(false)
-            }
-            perPackageOption {
-                matchingRegex.set("""afield\.stdlib(\..*)?""")
-                suppress.set(false)
-            }
-
-            skipEmptyPackages.set(true)
-        }
-    }
-}
