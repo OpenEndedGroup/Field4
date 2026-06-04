@@ -3,836 +3,1119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
     <title>Document History</title>
     <style>
         @import url("/iosevka.css");
 
         :root {
-            --bg: #1e1e1e;
-            --fg: #ddd;
-            --fg-dim: #999;
-            --border: #444;
-            --accent: var(--field-cyan, #25c0ff);
-            --accent-dim: rgba(37, 192, 255, 0.3);
-            --current: #80ff80;
-            --restored: #ff9944;
-            --transition: rgba(255, 255, 255, 0.2);
-            --pos: #7ed87e;
-            --neg: #ff7a7a;
+            --bg: #050505;
+            --panel: #0b0b0b;
+            --panel-2: #121212;
+            --fg: #e8e8e8;
+            --muted: #8d8d8d;
+            --dim: #5e5e5e;
+            --line: #242424;
+            --line-2: #383838;
+            --accent: #f4f4f4;
+            --good: #8ee38e;
+            --bad: #ff8585;
+            --warn: #e7b36a;
+            --info: #8bbdff;
         }
 
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: "Iosevka Web", system-ui, sans-serif;
+            font-family: "Iosevka Web", "Iosevka", monospace;
         }
 
         body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
             background: var(--bg);
             color: var(--fg);
-            font-size: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        header {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border);
-            background: rgba(0, 0, 0, 0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        h1 {
             font-size: 12px;
-            font-weight: 400;
-            color: var(--fg);
-            font-family: "Iosevka Web", system-ui, sans-serif;
         }
 
-        .status {
-            font-size: 9px;
-            color: var(--fg-dim);
-            padding: 2px 5px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .status.connected {
-            color: var(--current);
-        }
-
-        main {
-            flex: 1;
-            overflow: auto;
-            padding: 10px 10px 10px 6px;
-            display: flex;
-            justify-content: flex-start;
-        }
-
-        #timeline-container {
-            width: 1200px;
-            min-width: 1200px;
-        }
-
-        svg {
-            width: 1200px;
-            height: auto;
-        }
-
-        .version-node {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .version-node:hover .version-circle {
-            stroke-width: 3;
-            r: 12;
-        }
-
-        .version-node:hover .version-label {
-            font-weight: 400;
-        }
-
-        .version-circle {
-            fill: var(--accent);
-            stroke: var(--accent-dim);
-            stroke-width: 2;
-            transition: all 0.2s ease;
-        }
-
-        .version-circle.current {
-            fill: var(--current);
-            stroke: var(--current);
-            stroke-width: 3;
-        }
-
-        .version-circle.restored {
-            fill: var(--restored);
-            stroke: var(--restored);
-        }
-
-        .version-label {
-            fill: var(--fg);
-            font-size: 14px;
-            user-select: none;
-        }
-
-        .version-meta {
-            fill: var(--fg-dim);
-            font-size: 10px;
-            user-select: none;
-        }
-
-        .pos-text {
-            fill: var(--pos);
-        }
-
-        .neg-text {
-            fill: var(--neg);
-        }
-
-        .tag-inverted {
-            color: #000;
-            background: #fff;
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-
-        .timeline-line {
-            stroke: var(--border);
-            stroke-width: 2;
-        }
-
-        .transition-line {
-            stroke: var(--transition);
-            stroke-width: 1.5;
-            stroke-dasharray: 4 4;
-            fill: none;
-        }
-
-        .transition-arrow {
-            fill: var(--transition);
-        }
-
-        .info-panel {
-            position: fixed;
-            right: 18px;
-            top: 70px;
-            width: 300px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 12px;
-            display: none;
-            backdrop-filter: blur(10px);
-        }
-
-        .info-panel.show {
-            display: block;
-        }
-
-        .info-panel h2 {
-            font-size: 11px;
-            margin-bottom: 10px;
-            color: var(--accent);
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 6px 0;
-            font-size: 10px;
-        }
-
-        .info-label {
-            color: var(--fg-dim);
-        }
-
-        .info-value {
-            color: var(--fg);
-            font-weight: 400;
-        }
-
-        .info-section {
-            margin: 10px 0 4px 0;
-            font-size: 10px;
-        }
-
-        .info-section-title {
-            color: var(--fg-dim);
-            margin-bottom: 5px;
-        }
-
-        .changed-code-list {
-            color: var(--fg);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 6px;
-            max-height: 120px;
-            overflow: auto;
-            list-style: none;
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .changed-code-list li {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.4;
-        }
-
-        .changed-code-list.empty {
-            color: var(--fg-dim);
+        button,
+        input {
+            font: inherit;
         }
 
         button {
-            background: var(--accent);
-            color: #000;
-            border: none;
-            padding: 6px 12px;
+            color: var(--fg);
+            background: #111;
+            border: 1px solid var(--line-2);
             border-radius: 4px;
+            padding: 5px 9px;
             cursor: pointer;
-            font-size: 10px;
-            font-weight: 400;
-            margin-top: 10px;
-            width: 100%;
-            transition: all 0.2s ease;
-            font-family: "Iosevka Web", system-ui, sans-serif;
         }
 
         button:hover {
-            background: #5ab0ff;
-            transform: translateY(-1px);
-        }
-
-        button:active {
-            transform: translateY(0);
+            border-color: var(--fg);
+            background: #181818;
         }
 
         button:disabled {
-            background: var(--border);
-            cursor: not-allowed;
-            transform: none;
+            color: var(--dim);
+            border-color: var(--line);
+            cursor: default;
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 36px 18px;
-            color: var(--fg-dim);
-        }
-
-        .empty-state svg {
-            width: 64px;
-            height: 64px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        }
-
-        /* Tooltip */
-        .tooltip {
-            position: fixed;
-            background: rgba(0, 0, 0, 0.9);
-            color: var(--fg);
-            padding: 8px 12px;
+        input[type="text"] {
+            background: #070707;
+            border: 1px solid var(--line-2);
             border-radius: 4px;
-            font-size: 11px;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-            white-space: nowrap;
-            border: 1px solid var(--border);
+            color: var(--fg);
+            padding: 5px 7px;
+            min-width: 0;
         }
 
-        .tooltip.show {
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--fg);
+        }
+
+        .app {
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            height: 100vh;
+            min-width: 720px;
+            border-top: 1px solid var(--line-2);
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            background: var(--panel);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0;
+            white-space: nowrap;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        .status {
+            color: var(--muted);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 4px 7px;
+            white-space: nowrap;
+        }
+
+        .status.connected {
+            color: var(--good);
+            border-color: #315831;
+        }
+
+        .timeline {
+            padding: 8px 10px 10px;
+            border-bottom: 1px solid var(--line);
+            background: #070707;
+        }
+
+        .timeline-top {
+            display: grid;
+            grid-template-columns: minmax(160px, 1fr) minmax(240px, 420px) auto;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .target-title {
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+            min-width: 0;
+        }
+
+        .target-title strong {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .target-title span {
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .name-edit {
+            display: flex;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .name-edit input {
+            flex: 1;
+        }
+
+        .rail-shell {
+            position: relative;
+            height: 34px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border: 1px solid var(--line);
+            background: #030303;
+        }
+
+        .rail {
+            position: relative;
+            height: 32px;
+            min-width: 100%;
+        }
+
+        .rail-line {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            top: 16px;
+            height: 1px;
+            background: var(--line-2);
+        }
+
+        .dot {
+            position: absolute;
+            top: 16px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #7a7a7a;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+
+        .dot.named {
+            width: 11px;
+            height: 11px;
+            background: var(--fg);
+        }
+
+        .dot.current {
+            width: 13px;
+            height: 13px;
+            border: 1px solid var(--fg);
+            background: #000;
+        }
+
+        .dot.active {
+            outline: 2px solid var(--fg);
+            outline-offset: 3px;
+        }
+
+        .dot-label {
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+            color: var(--muted);
+            font-size: 10px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .content {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 300px minmax(0, 1fr);
+            background: var(--bg);
+        }
+
+        aside {
+            border-right: 1px solid var(--line);
+            background: var(--panel);
+            min-height: 0;
+            overflow: auto;
+            padding: 10px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .metric {
+            border: 1px solid var(--line);
+            background: #080808;
+            padding: 8px;
+            min-height: 48px;
+        }
+
+        .metric label {
             display: block;
+            color: var(--muted);
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+
+        .metric strong {
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        .section-title {
+            margin: 12px 0 6px;
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .named-list,
+        .transition-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .named-item,
+        .transition-item {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 6px;
+            align-items: center;
+            border: 1px solid var(--line);
+            background: #080808;
+            padding: 5px 6px;
+            cursor: pointer;
+        }
+
+        .named-item:hover,
+        .transition-item:hover {
+            border-color: var(--line-2);
+        }
+
+        .named-item span,
+        .transition-item span {
+            color: var(--muted);
+        }
+
+        .named-item strong,
+        .transition-item strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 400;
+        }
+
+        .changes {
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .change-toolbar {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            background: #090909;
+        }
+
+        .change-toolbar .small {
+            color: var(--muted);
+        }
+
+        .change-list {
+            min-height: 0;
+            overflow: auto;
+            padding: 10px;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 18px;
+            border: 1px solid var(--line);
+            background: #080808;
+        }
+
+        .box-card {
+            border: 1px solid var(--line-2);
+            background: var(--panel-2);
+            margin-bottom: 8px;
+        }
+
+        .box-card.target-only {
+            border-color: #315831;
+        }
+
+        .box-card.present-only {
+            border-color: #633232;
+        }
+
+        .box-head {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .box-title {
+            min-width: 0;
+        }
+
+        .box-title strong {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .box-title span {
+            display: block;
+            color: var(--muted);
+            font-size: 10px;
+        }
+
+        .pill {
+            border: 1px solid var(--line-2);
+            border-radius: 4px;
+            color: var(--muted);
+            padding: 3px 5px;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .pill.target-only {
+            color: var(--good);
+            border-color: #315831;
+        }
+
+        .pill.present-only {
+            color: var(--bad);
+            border-color: #633232;
+        }
+
+        .props {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .prop-row {
+            display: grid;
+            grid-template-columns: auto 108px 76px 120px minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            padding: 6px 8px;
+            border-top: 1px solid #1a1a1a;
+        }
+
+        .prop-row:first-child {
+            border-top: 0;
+        }
+
+        .prop-name {
+            color: var(--fg);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .prop-kind,
+        .prop-status,
+        .line-stats {
+            color: var(--muted);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .preview {
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .plus {
+            color: var(--good);
+        }
+
+        .minus {
+            color: var(--bad);
+        }
+
+        .move {
+            color: var(--info);
+        }
+
+        .changed {
+            color: var(--warn);
+        }
+
+        .busy {
+            opacity: 0.55;
         }
     </style>
     <script src="/notify.js"></script>
 </head>
 <body>
+<div class="app">
     <header>
         <h1>Document History</h1>
         <div class="status" id="status">Disconnected</div>
+        <button id="refresh-btn">Refresh</button>
+        <button id="selected-filter-btn">Whole Document</button>
+        <div class="spacer"></div>
+        <button id="full-restore-btn">Full Restore</button>
+        <button id="close-btn">Close</button>
     </header>
 
-    <main>
-        <div id="timeline-container">
-            <div class="empty-state" id="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                </svg>
-                <p>Loading document history...</p>
+    <section class="timeline">
+        <div class="timeline-top">
+            <div class="target-title">
+                <strong id="target-version">#0</strong>
+                <span id="target-meta">Loading...</span>
             </div>
-            <svg id="timeline-svg" style="display: none;"></svg>
+            <div class="name-edit">
+                <input id="name-input" type="text" placeholder="name this version">
+                <button id="name-save-btn">Name</button>
+            </div>
+            <span class="status" id="diff-status">Idle</span>
         </div>
-    </main>
+        <input id="scrubber" type="range" min="0" max="0" value="0">
+        <div class="rail-shell">
+            <div class="rail" id="rail">
+                <div class="rail-line"></div>
+            </div>
+        </div>
+    </section>
 
-    <div class="info-panel" id="info-panel">
-        <h2>Version Details</h2>
-        <div class="info-row">
-            <span class="info-label">Version:</span>
-            <span class="info-value" id="info-version">#0</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Timestamp:</span>
-            <span class="info-value" id="info-timestamp">—</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Box Count:</span>
-            <span class="info-value" id="info-boxes">0</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">File:</span>
-            <span class="info-value" id="info-filename">—</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Name:</span>
-            <input id="info-name-input" type="text" value="" placeholder="(unnamed)"
-                   style="background: transparent; color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; width: 170px; font-family: inherit; font-size: 10px;">
-        </div>
-        <div class="info-section">
-            <div class="info-section-title">Boxes with edited code:</div>
-            <ul class="changed-code-list empty" id="info-changed-code">
-                <li>—</li>
-            </ul>
-        </div>
-        <button id="restore-btn">Restore This Version</button>
-    </div>
+    <section class="content">
+        <aside>
+            <div class="summary-grid">
+                <div class="metric"><label>Boxes</label><strong id="metric-boxes">0</strong></div>
+                <div class="metric"><label>Properties</label><strong id="metric-props">0</strong></div>
+                <div class="metric"><label>Lines</label><strong id="metric-lines">0</strong></div>
+                <div class="metric"><label>Selected</label><strong id="metric-selected">0</strong></div>
+            </div>
+            <div class="section-title">Named Versions</div>
+            <div class="named-list" id="named-list"></div>
+            <div class="section-title">Version Jumps</div>
+            <div class="transition-list" id="transition-list"></div>
+        </aside>
 
-    <div class="tooltip" id="tooltip"></div>
+        <section class="changes">
+            <div class="change-toolbar">
+                <button id="select-all-btn">Select Boxes</button>
+                <button id="clear-selection-btn">Clear</button>
+                <button id="cherry-pick-btn" disabled>Cherry Pick</button>
+                <span class="small" id="change-caption">No diff loaded</span>
+            </div>
+            <div class="change-list" id="change-list">
+                <div class="empty">Loading document history...</div>
+            </div>
+        </section>
+    </section>
+</div>
 
-    <script>
-        const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${document.location.host}/ws`;
-        const statusEl = document.getElementById('status');
-        const emptyStateEl = document.getElementById('empty-state');
-        const timelineSvg = document.getElementById('timeline-svg');
-        const infoPanelEl = document.getElementById('info-panel');
-        const tooltipEl = document.getElementById('tooltip');
+<script>
+    const WS_URL = `${location.protocol === "https:" ? "wss" : "ws"}://${document.location.host}/ws`;
+    const statusEl = document.getElementById("status");
+    const diffStatusEl = document.getElementById("diff-status");
+    const scrubberEl = document.getElementById("scrubber");
+    const railEl = document.getElementById("rail");
+    const nameInput = document.getElementById("name-input");
+    const changeListEl = document.getElementById("change-list");
 
-        let ws = null;
-        let versions = [];
+    const urlParams = new URLSearchParams(window.location.search);
+    const filename = urlParams.get("file") || "default";
+    const username = urlParams.get("user") || "viewer";
+
+    let ws = null;
+    let versions = [];
     let transitions = [];
-    let selectedVersion = null;
+    let selectedIndex = 0;
+    let currentDiff = null;
+    let selectedOnly = false;
     let sessionEstablished = false;
+    let diffTimer = null;
     let namingInFlight = false;
-    let reloadScheduled = false;
-        const nameInput = document.getElementById('info-name-input');
+    let cherryInFlight = false;
+    const selectedBoxes = new Set();
+    const selectedProps = new Map();
 
-        function isZeroDiff(stats) {
-            const s = normalizeDiffStats(stats);
-            if (!s) return false;
-            return s.totalAdded === 0 &&
-                s.totalRemoved === 0 &&
-                s.fromNew === 0 &&
-                s.fromDeleted === 0 &&
-                s.fromChangesAdd === 0 &&
-                s.fromChangesDel === 0 &&
-                s.boxesAdded === 0 &&
-                s.boxesDeleted === 0;
-        }
-
-        // Get document name from URL, fallback to 'default'
-        const urlParams = new URLSearchParams(window.location.search);
-        const filename = urlParams.get('file') || 'default';
-        const username = urlParams.get('user') || 'viewer';
-
-        // WebSocket connection
-        function connect() {
-            ws = new WebSocket(WS_URL);
-
-            ws.onopen = () => {
-                statusEl.textContent = 'Connecting...';
-
-                // First establish session with hello message
-                send({
-                    name: 'hello',
-                    payload: {
-                        filename: filename,
-                        username: username
-                    }
-                });
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    handleMessage(message);
-                } catch (e) {
-                    console.error('Failed to parse message:', e);
-                }
-            };
-
-            ws.onclose = () => {
-                statusEl.textContent = 'Disconnected';
-                statusEl.classList.remove('connected');
-                sessionEstablished = false;
-                setTimeout(connect, 2000);
-            };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-        }
-
-        function send(message) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(message));
+    function connect() {
+        ws = new WebSocket(WS_URL);
+        ws.onopen = () => {
+            statusEl.textContent = "Connecting...";
+            send({ name: "hello", payload: { filename, username } });
+        };
+        ws.onmessage = (event) => {
+            try {
+                handleMessage(JSON.parse(event.data));
+            } catch (error) {
+                console.error("history message parse failed", error);
             }
+        };
+        ws.onclose = () => {
+            statusEl.textContent = "Disconnected";
+            statusEl.classList.remove("connected");
+            sessionEstablished = false;
+            clearParentHighlights();
+            setTimeout(connect, 1500);
+        };
+    }
+
+    function send(message) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(message));
+        }
+    }
+
+    function handleMessage(message) {
+        if (!sessionEstablished && message.name !== "history-versions-list") {
+            sessionEstablished = true;
+            statusEl.textContent = "Connected";
+            statusEl.classList.add("connected");
+            requestHistory();
         }
 
-        function handleMessage(message) {
-            console.log('Received message:', message);
+        if (message.name === "history-versions-list") {
+            versions = message.payload?.versions || [];
+            transitions = message.payload?.transitions || [];
+            selectedIndex = Math.max(0, versions.length - 1);
+            selectedBoxes.clear();
+            selectedProps.clear();
+            renderVersions();
+            requestDiffNow();
+            return;
+        }
 
-            // Check for hello acknowledgment or any successful response
-            if (!sessionEstablished && message.name !== 'history-versions-list') {
-                sessionEstablished = true;
-                statusEl.textContent = 'Connected';
-                statusEl.classList.add('connected');
+        if (message.name === "history-version-diff") {
+            currentDiff = message.payload;
+            diffStatusEl.textContent = "Ready";
+            renderDiff();
+            highlightParentDiff();
+            return;
+        }
 
-                // Now request history data
-                send({
-                    name: 'list-history-versions',
-                    payload: {}
-                });
+        if (message.name === "history-version-diff-error") {
+            diffStatusEl.textContent = "Error";
+            notify(message.payload?.error || "Diff failed", "history");
+            return;
+        }
+
+        if (message.name === "name-history-version-success") {
+            namingInFlight = false;
+            nameInput.disabled = false;
+            requestHistory();
+            return;
+        }
+
+        if (message.name === "name-history-version-error") {
+            namingInFlight = false;
+            nameInput.disabled = false;
+            notify(message.payload?.error || "Naming failed", "history");
+            return;
+        }
+
+        if (message.name === "cherry-pick-history-success") {
+            cherryInFlight = false;
+            notify("Cherry-pick saved as a new current version", "history");
+            selectedBoxes.clear();
+            selectedProps.clear();
+            requestHistory();
+            return;
+        }
+
+        if (message.name === "cherry-pick-history-error") {
+            cherryInFlight = false;
+            notify(message.payload?.error || "Cherry-pick failed", "history");
+            updateSelectionMetrics();
+        }
+
+        if (message.name === "restore-version-success") {
+            notify("Version restored", "history");
+            requestHistory();
+        }
+    }
+
+    function requestHistory() {
+        send({ name: "list-history-versions", payload: {} });
+    }
+
+    function selectedParentUids() {
+        if (!selectedOnly) return [];
+        try {
+            const list = Array.from(window.parent?.selectedList || []);
+            return list.map((box) => box?.uid).filter(Boolean);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function requestDiffSoon() {
+        clearTimeout(diffTimer);
+        diffStatusEl.textContent = "Scrubbing...";
+        diffTimer = setTimeout(requestDiffNow, 110);
+    }
+
+    function requestDiffNow() {
+        if (!versions.length) return;
+        diffStatusEl.textContent = "Diffing...";
+        currentDiff = null;
+        renderDiff();
+        send({
+            name: "diff-history-version",
+            payload: {
+                versionIndex: selectedIndex,
+                boxIds: selectedParentUids()
             }
+        });
+    }
 
-            if (message.name === 'history-versions-list') {
-                const payload = message.payload;
-                versions = payload.versions || [];
-                transitions = payload.transitions || [];
-                renderTimeline();
-            } else if (message.name === 'restore-version-success') {
-                notify('Version restored. Resyncing the document…', 'history');
-                // Reload history to show the new state
-                send({
-                    name: 'list-history-versions',
-                    payload: {}
-                });
-                scheduleDocumentReload();
-            } else if (message.name === 'restore-version-error') {
-                const error = message.payload.error || 'Unknown error';
-                notify('Failed to restore version: ' + error, 'error');
-            } else if (message.name === 'name-history-version-success') {
-                namingInFlight = false;
-                nameInput.disabled = false;
-                send({
-                    name: 'list-history-versions',
-                    payload: {}
-                });
-            } else if (message.name === 'name-history-version-error') {
-                namingInFlight = false;
-                nameInput.disabled = false;
-                const error = message.payload?.error || 'Unknown error';
-                notify('Failed to name version: ' + error, 'error');
+    function versionLabel(version) {
+        const name = (version.message || "").trim();
+        if (name && name !== "Current") return name;
+        if (version.index === versions.length - 1) return "Current";
+        return `Version #${version.index}`;
+    }
+
+    function formatTime(timestamp) {
+        return new Date(timestamp).toLocaleString();
+    }
+
+    function formatRelative(timestamp) {
+        const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        if (days) return `${days}d ago`;
+        if (hours) return `${hours}h ago`;
+        if (minutes) return `${minutes}m ago`;
+        return `${seconds}s ago`;
+    }
+
+    function renderVersions() {
+        scrubberEl.max = Math.max(0, versions.length - 1);
+        scrubberEl.value = selectedIndex;
+        updateTargetMeta();
+        renderRail();
+        renderNamedVersions();
+        renderTransitions();
+    }
+
+    function updateTargetMeta() {
+        const version = versions[selectedIndex];
+        document.getElementById("target-version").textContent = version ? `#${version.index}` : "#0";
+        document.getElementById("target-meta").textContent = version
+            ? `${versionLabel(version)} | ${version.boxCount} boxes | ${formatTime(version.timestamp)}`
+            : "No versions";
+        nameInput.value = version?.message && version.message !== "Current" ? version.message : "";
+        document.getElementById("full-restore-btn").disabled = !version || selectedIndex === versions.length - 1;
+    }
+
+    function renderRail() {
+        railEl.querySelectorAll(".dot,.dot-label").forEach((node) => node.remove());
+        const count = Math.max(1, versions.length);
+        const width = Math.max(680, count * 13);
+        railEl.style.width = `${width}px`;
+
+        versions.forEach((version, i) => {
+            const left = count === 1 ? 16 : 10 + (i / (count - 1)) * (width - 20);
+            const dot = document.createElement("button");
+            dot.className = "dot";
+            dot.type = "button";
+            dot.style.left = `${left}px`;
+            dot.title = `${versionLabel(version)} | ${formatTime(version.timestamp)}`;
+            if (version.message && version.message !== "Current") dot.classList.add("named");
+            if (i === versions.length - 1) dot.classList.add("current");
+            if (i === selectedIndex) dot.classList.add("active");
+            dot.addEventListener("click", () => selectVersion(i));
+            railEl.appendChild(dot);
+
+            if ((version.message && version.message !== "Current") || i === versions.length - 1) {
+                const label = document.createElement("div");
+                label.className = "dot-label";
+                label.style.left = `${left}px`;
+                label.textContent = version.message && version.message !== "Current" ? version.message : "current";
+                railEl.appendChild(label);
             }
+        });
+    }
+
+    function renderNamedVersions() {
+        const list = document.getElementById("named-list");
+        list.innerHTML = "";
+        const named = versions.filter((v) => v.message && v.message !== "Current");
+        if (!named.length) {
+            list.innerHTML = `<div class="empty">No named versions yet.</div>`;
+            return;
+        }
+        named.forEach((version) => {
+            const row = document.createElement("div");
+            row.className = "named-item";
+            row.innerHTML = `<span>#${version.index}</span><strong></strong>`;
+            row.querySelector("strong").textContent = version.message;
+            row.addEventListener("click", () => selectVersion(version.index));
+            list.appendChild(row);
+        });
+    }
+
+    function renderTransitions() {
+        const list = document.getElementById("transition-list");
+        list.innerHTML = "";
+        if (!transitions.length) {
+            list.innerHTML = `<div class="empty">No restore jumps recorded.</div>`;
+            return;
+        }
+        transitions.slice(-12).reverse().forEach((transition) => {
+            const row = document.createElement("div");
+            row.className = "transition-item";
+            row.innerHTML = `<span>#${transition.fromIndex}</span><strong>#${transition.toIndex} | ${formatRelative(transition.timestamp)}</strong>`;
+            row.addEventListener("click", () => selectVersion(transition.toIndex));
+            list.appendChild(row);
+        });
+    }
+
+    function selectVersion(index) {
+        selectedIndex = Math.max(0, Math.min(index, versions.length - 1));
+        selectedBoxes.clear();
+        selectedProps.clear();
+        renderVersions();
+        requestDiffSoon();
+    }
+
+    function lineStatsText(stats) {
+        const s = stats || {};
+        const parts = [];
+        if (s.added) parts.push(`<span class="plus">+${s.added}</span>`);
+        if (s.removed) parts.push(`<span class="minus">-${s.removed}</span>`);
+        if (s.moved) parts.push(`<span class="move">${s.moved} moved</span>`);
+        if (s.changed) parts.push(`<span class="changed">${s.changed} changed</span>`);
+        return parts.length ? parts.join(" ") : "0";
+    }
+
+    function renderDiff() {
+        if (!currentDiff) {
+            changeListEl.innerHTML = `<div class="empty">Diffing...</div>`;
+            document.getElementById("metric-boxes").textContent = "0";
+            document.getElementById("metric-props").textContent = "0";
+            document.getElementById("metric-lines").textContent = "0";
+            document.getElementById("change-caption").textContent = "No diff loaded";
+            updateSelectionMetrics();
+            return;
         }
 
-        function scheduleDocumentReload() {
-            if (reloadScheduled) return;
-            reloadScheduled = true;
-            setTimeout(() => {
-                try {
-                    if (window.opener && !window.opener.closed) {
-                        window.opener.location.reload();
-                        return;
-                    }
-                    if (window.parent && window.parent !== window) {
-                        window.parent.location.reload();
-                        return;
-                    }
-                } catch (e) {
-                    console.warn('Unable to reload parent window after restore:', e);
-                }
-                window.location.reload();
-            }, 300);
+        const boxes = currentDiff.boxes || [];
+        document.getElementById("metric-boxes").textContent = currentDiff.changedBoxCount ?? boxes.length;
+        document.getElementById("metric-props").textContent = currentDiff.propertyChangeCount ?? 0;
+        document.getElementById("metric-lines").innerHTML = lineStatsText(currentDiff.lineStats);
+        document.getElementById("change-caption").textContent = `${boxes.length} boxes differ from the live document`;
+
+        if (!boxes.length) {
+            changeListEl.innerHTML = `<div class="empty">No changes at this scrub point.</div>`;
+            updateSelectionMetrics();
+            return;
         }
 
-        function formatTimestamp(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleString();
+        changeListEl.innerHTML = "";
+        boxes.forEach((box) => changeListEl.appendChild(renderBoxChange(box)));
+        updateSelectionMetrics();
+    }
+
+    function renderBoxChange(box) {
+        const card = document.createElement("div");
+        card.className = `box-card ${box.status}`;
+        card.dataset.uid = box.uid;
+
+        const head = document.createElement("div");
+        head.className = "box-head";
+        head.innerHTML = `
+            <input type="checkbox" class="box-check">
+            <div class="box-title"><strong></strong><span>${box.uid}</span></div>
+            <span class="pill ${box.status}">${statusLabel(box.status)}</span>
+            <button class="inspect-btn">Inspect</button>
+        `;
+        head.querySelector("strong").textContent = box.name || box.uid;
+        const boxCheck = head.querySelector(".box-check");
+        boxCheck.checked = selectedBoxes.has(box.uid);
+        boxCheck.addEventListener("change", () => {
+            if (boxCheck.checked) {
+                selectedBoxes.add(box.uid);
+                selectedProps.delete(box.uid);
+            } else {
+                selectedBoxes.delete(box.uid);
+            }
+            renderDiff();
+        });
+        head.querySelector(".inspect-btn").addEventListener("click", () => inspectBox(box.uid, firstTextProperty(box)));
+        head.addEventListener("mouseenter", () => highlightParentDiff(box.uid));
+        card.appendChild(head);
+
+        const props = document.createElement("div");
+        props.className = "props";
+        (box.properties || []).forEach((prop) => props.appendChild(renderPropertyRow(box, prop)));
+        card.appendChild(props);
+        return card;
+    }
+
+    function renderPropertyRow(box, prop) {
+        const row = document.createElement("div");
+        row.className = "prop-row";
+        const checked = selectedBoxes.has(box.uid) || (selectedProps.get(box.uid)?.has(prop.property) ?? false);
+        row.innerHTML = `
+            <input type="checkbox" class="prop-check">
+            <div class="prop-name"></div>
+            <div class="prop-kind">${prop.kind}</div>
+            <div class="line-stats">${lineStatsText(prop.lineStats)}</div>
+            <div class="preview"></div>
+            <button class="prop-inspect">Open</button>
+        `;
+        row.querySelector(".prop-name").textContent = prop.property;
+        row.querySelector(".preview").textContent = `${prop.currentPreview || "(missing)"} -> ${prop.targetPreview || "(missing)"}`;
+        const check = row.querySelector(".prop-check");
+        check.checked = checked;
+        check.disabled = selectedBoxes.has(box.uid);
+        check.addEventListener("change", () => {
+            const set = selectedProps.get(box.uid) || new Set();
+            if (check.checked) set.add(prop.property);
+            else set.delete(prop.property);
+            if (set.size) selectedProps.set(box.uid, set);
+            else selectedProps.delete(box.uid);
+            updateSelectionMetrics();
+        });
+        row.querySelector(".prop-inspect").addEventListener("click", () => inspectBox(box.uid, prop.property));
+        row.addEventListener("mouseenter", () => highlightParentDiff(box.uid));
+        return row;
+    }
+
+    function statusLabel(status) {
+        if (status === "target-only") return "missing now";
+        if (status === "present-only") return "new since then";
+        return "changed";
+    }
+
+    function firstTextProperty(box) {
+        const prop = (box.properties || []).find((p) => p.kind === "text");
+        return prop ? prop.property : "code";
+    }
+
+    function inspectBox(uid, property) {
+        try {
+            if (window.parent && typeof window.parent.navigateToBoxProperty === "function") {
+                window.parent.navigateToBoxProperty(uid, property || "code", null, null);
+            }
+        } catch (error) {
+            console.warn("Unable to inspect parent box", error);
         }
+    }
 
-        function formatRelativeTime(timestamp) {
-            const now = Date.now();
-            const diff = now - timestamp;
-            const seconds = Math.floor(diff / 1000);
-            const minutes = Math.floor(seconds / 60);
-            const hours = Math.floor(minutes / 60);
-            const days = Math.floor(hours / 24);
+    function updateSelectionMetrics() {
+        let count = selectedBoxes.size;
+        selectedProps.forEach((set, uid) => {
+            if (!selectedBoxes.has(uid)) count += set.size;
+        });
+        document.getElementById("metric-selected").textContent = count;
+        document.getElementById("cherry-pick-btn").disabled = count === 0 || cherryInFlight;
+    }
 
-            if (days > 0) return `${days}d ago`;
-            if (hours > 0) return `${hours}h ago`;
-            if (minutes > 0) return `${minutes}m ago`;
-            return `${seconds}s ago`;
+    function selectionPayload() {
+        const payload = [];
+        selectedBoxes.forEach((uid) => payload.push({ uid, properties: [] }));
+        selectedProps.forEach((props, uid) => {
+            if (!selectedBoxes.has(uid) && props.size) {
+                payload.push({ uid, properties: Array.from(props).sort() });
+            }
+        });
+        return payload;
+    }
+
+    function findParentBox(uid) {
+        try {
+            const boxes = Array.from(window.parent.document.body.getElementsByClassName("box"));
+            return boxes.find((box) => box && box.uid === uid) || null;
+        } catch (_) {
+            return null;
         }
+    }
 
-        function normalizeDiffStats(stats) {
-            if (!stats) return null;
+    function ensureParentOverlay() {
+        try {
+            const doc = window.parent.document;
+            let root = doc.getElementById("field-history-highlight-layer");
+            if (!root) {
+                root = doc.createElement("div");
+                root.id = "field-history-highlight-layer";
+                root.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:17";
+                doc.body.appendChild(root);
+            }
+            return root;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function clearParentHighlights() {
+        try {
+            const root = window.parent.document.getElementById("field-history-highlight-layer");
+            if (root) root.innerHTML = "";
+        } catch (_) {}
+    }
+
+    function highlightParentDiff(onlyUid = null) {
+        clearParentHighlights();
+        if (!currentDiff) return;
+        const root = ensureParentOverlay();
+        if (!root) return;
+
+        const doc = window.parent.document;
+        const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", "100%");
+        svg.setAttribute("height", "100%");
+        svg.setAttribute("viewBox", `0 0 ${window.parent.innerWidth} ${window.parent.innerHeight}`);
+        root.appendChild(svg);
+
+        const boxes = (currentDiff.boxes || []).filter((box) => !onlyUid || box.uid === onlyUid).slice(0, 180);
+        boxes.forEach((box) => drawBoxHighlight(svg, box));
+    }
+
+    function drawBoxHighlight(svg, box) {
+        const currentEl = findParentBox(box.uid);
+        const currentRect = currentEl ? currentEl.getBoundingClientRect() : null;
+        const targetRect = targetScreenRect(box, currentRect);
+        if (currentRect) drawRect(svg, currentRect, box.status === "present-only" ? "#ff8585" : "#e8e8e8", false);
+        if (targetRect) drawRect(svg, targetRect, box.status === "target-only" ? "#8ee38e" : "#8bbdff", true);
+        if (currentRect && targetRect && (Math.abs(currentRect.left - targetRect.left) > 2 || Math.abs(currentRect.top - targetRect.top) > 2)) {
+            drawLine(svg, currentRect, targetRect);
+        }
+    }
+
+    function targetScreenRect(box, currentRect) {
+        if (!box.targetFrame) return null;
+        if (currentRect && box.currentFrame) {
             return {
-                totalAdded: stats.totalLinesAdded ?? 0,
-                totalRemoved: stats.totalLinesRemoved ?? 0,
-                fromNew: stats.linesAddedFromNew ?? 0,
-                fromDeleted: stats.linesRemovedFromDeleted ?? 0,
-                fromChangesAdd: stats.linesAddedFromChanges ?? 0,
-                fromChangesDel: stats.linesRemovedFromChanges ?? 0,
-                boxesAdded: stats.boxesAdded ?? 0,
-                boxesDeleted: stats.boxesDeleted ?? 0
+                left: currentRect.left + (box.targetFrame.x - box.currentFrame.x),
+                top: currentRect.top + (box.targetFrame.y - box.currentFrame.y),
+                width: box.targetFrame.w,
+                height: box.targetFrame.h
             };
         }
-
-        function renderDiffLine(textEl, stats) {
-            const normalized = normalizeDiffStats(stats);
-            if (!normalized) {
-                textEl.textContent = '—';
-                return;
-            }
-
-            const tspan = (text, cls) => {
-                const el = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                if (cls) el.setAttribute('class', cls);
-                el.textContent = text;
-                textEl.appendChild(el);
+        try {
+            const anyBox = window.parent.document.body.querySelector(".box");
+            const container = anyBox?.parentElement;
+            const cr = container?.getBoundingClientRect();
+            if (!cr) return null;
+            return {
+                left: cr.left + box.targetFrame.x,
+                top: cr.top + box.targetFrame.y,
+                width: box.targetFrame.w,
+                height: box.targetFrame.h
             };
-            const tspanNum = (value, prefix, cls) => {
-                const useClass = value !== 0 ? cls : null;
-                tspan(`${prefix}${value}`, useClass);
-            };
-
-            const {
-                totalAdded,
-                totalRemoved,
-                fromNew,
-                fromDeleted,
-                fromChangesAdd,
-                fromChangesDel,
-                boxesAdded,
-                boxesDeleted
-            } = normalized;
-
-            tspanNum(totalAdded, '+', 'pos-text');
-            tspan(' / ');
-            tspanNum(totalRemoved, '-', 'neg-text');
-            tspan(' lines (');
-            tspan('new ');
-            tspanNum(fromNew, '+', 'pos-text');
-            tspan(', del ');
-            tspanNum(fromDeleted, '-', 'neg-text');
-            tspan(', Δ ');
-            tspanNum(fromChangesAdd, '+', 'pos-text');
-            tspan('/');
-            tspanNum(fromChangesDel, '-', 'neg-text');
-            tspan(', boxes ');
-            tspanNum(boxesAdded, '+', 'pos-text');
-            tspan('/');
-            tspanNum(boxesDeleted, '-', 'neg-text');
-            tspan(')');
+        } catch (_) {
+            return null;
         }
+    }
 
-        function renderTimeline() {
-            const currentVersionIndex = versions.length - 1;
-            let visibleVersions = versions.filter((v, index) =>
-                index === 0 || index === currentVersionIndex || !isZeroDiff(v.diffStats)
-            );
-            if (visibleVersions.length === 0) {
-                visibleVersions = versions;
+    function drawRect(svg, rect, color, dashed) {
+        const r = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "rect");
+        r.setAttribute("x", rect.left);
+        r.setAttribute("y", rect.top);
+        r.setAttribute("width", Math.max(4, rect.width));
+        r.setAttribute("height", Math.max(4, rect.height));
+        r.setAttribute("fill", "none");
+        r.setAttribute("stroke", color);
+        r.setAttribute("stroke-width", dashed ? "1.5" : "2");
+        if (dashed) r.setAttribute("stroke-dasharray", "6 4");
+        svg.appendChild(r);
+    }
+
+    function drawLine(svg, from, to) {
+        const line = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", from.left + from.width / 2);
+        line.setAttribute("y1", from.top + from.height / 2);
+        line.setAttribute("x2", to.left + to.width / 2);
+        line.setAttribute("y2", to.top + to.height / 2);
+        line.setAttribute("stroke", "#8bbdff");
+        line.setAttribute("stroke-width", "1");
+        line.setAttribute("stroke-dasharray", "4 4");
+        svg.appendChild(line);
+    }
+
+    scrubberEl.addEventListener("input", () => selectVersion(Number(scrubberEl.value)));
+    document.getElementById("refresh-btn").addEventListener("click", requestHistory);
+    document.getElementById("selected-filter-btn").addEventListener("click", () => {
+        selectedOnly = !selectedOnly;
+        document.getElementById("selected-filter-btn").textContent = selectedOnly ? "Selected Boxes" : "Whole Document";
+        requestDiffNow();
+    });
+    document.getElementById("select-all-btn").addEventListener("click", () => {
+        (currentDiff?.boxes || []).forEach((box) => selectedBoxes.add(box.uid));
+        selectedProps.clear();
+        renderDiff();
+    });
+    document.getElementById("clear-selection-btn").addEventListener("click", () => {
+        selectedBoxes.clear();
+        selectedProps.clear();
+        renderDiff();
+    });
+    document.getElementById("name-save-btn").addEventListener("click", () => {
+        if (namingInFlight || !versions[selectedIndex]) return;
+        namingInFlight = true;
+        nameInput.disabled = true;
+        send({
+            name: "name-history-version",
+            payload: {
+                versionIndex: selectedIndex,
+                name: nameInput.value.trim()
             }
-
-            if (visibleVersions.length === 0) {
-                emptyStateEl.style.display = 'block';
-                emptyStateEl.querySelector('p').textContent = 'No version history available yet.';
-                timelineSvg.style.display = 'none';
-                return;
-            }
-
-            emptyStateEl.style.display = 'none';
-            timelineSvg.style.display = 'block';
-
-            const width = 1200;
-            const nodeRadius = 8;
-            const nodeSpacing = 70;
-            const leftMargin = 70;
-            const topMargin = 30;
-            const labelOffset = 80;
-
-            const height = topMargin + (visibleVersions.length - 1) * nodeSpacing + 100;
-            
-            // Clear existing content
-            timelineSvg.innerHTML = '';
-            timelineSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-
-            const visibleIndexMap = new Map();
-            visibleVersions.forEach((v, idx) => visibleIndexMap.set(v.index ?? idx, idx));
-            const visibleCurrentIndex = visibleIndexMap.get(currentVersionIndex) ?? (visibleVersions.length - 1);
-            const visibleOrigIndices = visibleVersions.map(v => v.index ?? 0);
-
-            const mapToVisible = (origIdx) => {
-                const direct = visibleIndexMap.get(origIdx);
-                if (direct !== undefined) return direct;
-                // fallback: nearest visible index by original order
-                let nearest = 0;
-                let bestDelta = Number.MAX_SAFE_INTEGER;
-                visibleOrigIndices.forEach((orig, i) => {
-                    const delta = Math.abs(orig - origIdx);
-                    if (delta < bestDelta) {
-                        bestDelta = delta;
-                        nearest = i;
-                    }
-                });
-                return nearest;
-            };
-
-            // Draw main timeline segments (independent lines so we can cut specific spans)
-            for (let i = 0; i < visibleVersions.length - 1; i++) {
-                const seg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                seg.setAttribute('id', `segment-${i + 1}`); // segment leading into index i+1
-                seg.setAttribute('x1', leftMargin);
-                seg.setAttribute('y1', topMargin + i * nodeSpacing);
-                seg.setAttribute('x2', leftMargin);
-                seg.setAttribute('y2', topMargin + (i + 1) * nodeSpacing);
-                seg.setAttribute('class', 'timeline-line');
-                timelineSvg.appendChild(seg);
-            }
-
-            // Draw transition curves
-            transitions.forEach(trans => {
-                const fromIdx = mapToVisible(trans.fromIndex);
-                const toIdx = mapToVisible(trans.toIndex);
-                if (trans.fromIndex >= 0 && trans.toIndex >= 0 && 
-                    trans.fromIndex < versions.length && trans.toIndex < versions.length) {
-
-                    // Cut straight line segments along the arc span
-                    const cutStraightLine = (idx) => {
-                        const original = document.getElementById(`segment-${idx}`);
-                        if (original) {
-                            timelineSvg.removeChild(original);
-                        }
-                    }
-
-                    const fromY = topMargin + fromIdx * nodeSpacing;
-                    const toY = topMargin + toIdx * nodeSpacing;
-                    const curveOffset = 60;
-                    
-                    // Draw a curved line showing the transition
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    const d = `M ${leftMargin} ${fromY} 
-                               C ${leftMargin + curveOffset} ${fromY}, 
-                                 ${leftMargin + curveOffset} ${toY}, 
-                                 ${leftMargin} ${toY}`;
-                    path.setAttribute('d', d);
-                    path.setAttribute('class', 'transition-line');
-                    timelineSvg.appendChild(path);
-                    
-                    // Add arrow at the end
-                    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                    const arrowSize = 5;
-                    arrow.setAttribute('points', 
-                        `${leftMargin},${toY} 
-                         ${leftMargin + arrowSize},${toY - arrowSize} 
-                         ${leftMargin + arrowSize},${toY + arrowSize}`);
-                    arrow.setAttribute('class', 'transition-arrow');
-                    timelineSvg.appendChild(arrow);
-
-                    // If this jump skips over linear history, cut the straight segment leading into the target
-                    if (Math.abs(toIdx - fromIdx) > 1) {
-                        // Cut the straight segment that would have connected into the target
-                        cutStraightLine(Math.max(fromIdx, toIdx));
-                    }
-                }
-            });
-
-            // Draw version nodes
-            visibleVersions.forEach((version, displayIndex) => {
-                const originalIndex = version.index ?? displayIndex;
-                const y = topMargin + displayIndex * nodeSpacing;
-                
-                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                group.setAttribute('class', 'version-node');
-                group.setAttribute('data-index', originalIndex);
-                
-                // Circle
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', leftMargin);
-                circle.setAttribute('cy', y);
-                circle.setAttribute('r', nodeRadius);
-                circle.setAttribute('class', 'version-circle' + 
-                    (originalIndex === currentVersionIndex ? ' current' : ''));
-                group.appendChild(circle);
-
-                // Label and metadata on one line
-                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                label.setAttribute('x', leftMargin + labelOffset);
-                label.setAttribute('y', y + 4);
-                label.setAttribute('class', 'version-label');
-                const labelTitle = (version.message && version.message.trim())
-                    ? version.message.trim()
-                    : `Version #${originalIndex}`;
-                const parts = [labelTitle, '•', `${version.boxCount} boxes`, '•', formatRelativeTime(version.timestamp)];
-                label.textContent = parts.join(' ');
-                group.appendChild(label);
-
-                const diffLine = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                diffLine.setAttribute('x', leftMargin + labelOffset);
-                diffLine.setAttribute('y', y + 26);
-                diffLine.setAttribute('class', 'version-meta');
-                renderDiffLine(diffLine, version.diffStats);
-                group.appendChild(diffLine);
-
-                // Click handler
-                group.addEventListener('click', () => selectVersion(originalIndex));
-
-                // Hover handlers for tooltip
-                group.addEventListener('mouseenter', (e) => {
-                    tooltipEl.textContent = formatTimestamp(version.timestamp);
-                    tooltipEl.classList.add('show');
-                });
-
-                group.addEventListener('mousemove', (e) => {
-                    tooltipEl.style.left = (e.clientX + 15) + 'px';
-                    tooltipEl.style.top = (e.clientY + 15) + 'px';
-                });
-
-                group.addEventListener('mouseleave', () => {
-                    tooltipEl.classList.remove('show');
-                });
-
-                timelineSvg.appendChild(group);
-            });
-        }
-
-        function selectVersion(index) {
-            if (index < 0 || index >= versions.length) return;
-            
-            selectedVersion = versions[index];
-            
-            // Update info panel
-            document.getElementById('info-version').textContent = `#${index}`;
-            document.getElementById('info-timestamp').textContent = formatTimestamp(selectedVersion.timestamp);
-            document.getElementById('info-boxes').textContent = selectedVersion.boxCount;
-            document.getElementById('info-filename').textContent = selectedVersion.filename;
-            nameInput.value = selectedVersion.message || '';
-            renderChangedCodeBoxes(selectedVersion.diffStats?.changedCodeBoxes || []);
-
-            // Show/hide restore button
-            const restoreBtn = document.getElementById('restore-btn');
-            const isCurrentVersion = index === versions.length - 1;
-            restoreBtn.disabled = isCurrentVersion;
-            restoreBtn.textContent = isCurrentVersion ? 'Current Version' : 'Restore This Version';
-
-            infoPanelEl.classList.add('show');
-
-            // Highlight selected node
-            document.querySelectorAll('.version-node').forEach(node => {
-                const nodeIndex = parseInt(node.getAttribute('data-index'));
-                const circle = node.querySelector('.version-circle');
-                if (nodeIndex === index) {
-                    circle.setAttribute('stroke-width', '4');
-                } else if (nodeIndex === versions.length - 1) {
-                    circle.setAttribute('stroke-width', '3');
-                } else {
-                    circle.setAttribute('stroke-width', '2');
-                }
-            });
-        }
-
-        function renderChangedCodeBoxes(boxNames) {
-            const list = document.getElementById('info-changed-code');
-            list.innerHTML = '';
-
-            if (!boxNames || boxNames.length === 0) {
-                list.classList.add('empty');
-                const item = document.createElement('li');
-                item.textContent = '—';
-                list.appendChild(item);
-                return;
-            }
-
-            list.classList.remove('empty');
-            boxNames.forEach(name => {
-                const item = document.createElement('li');
-                item.textContent = name;
-                item.title = name;
-                list.appendChild(item);
-            });
-        }
-
-        // Restore button handler
-        document.getElementById('restore-btn').addEventListener('click', () => {
-            if (!selectedVersion || document.getElementById('restore-btn').disabled) return;
-
-            const index = versions.indexOf(selectedVersion);
-            send({
-                name: 'restore-history-version',
-                payload: {
-                    versionIndex: index
-                }
-            });
         });
-
-        // Name input handler (on Enter)
-        nameInput.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter') return;
-            if (!selectedVersion || namingInFlight) return;
-            const index = versions.indexOf(selectedVersion);
-            const name = nameInput.value.trim();
-            namingInFlight = true;
-            nameInput.disabled = true;
-            send({
-                name: 'name-history-version',
-                payload: {
-                    versionIndex: index,
-                    name: name
-                }
-            });
+    });
+    nameInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") document.getElementById("name-save-btn").click();
+    });
+    document.getElementById("cherry-pick-btn").addEventListener("click", () => {
+        const selections = selectionPayload();
+        if (!selections.length || cherryInFlight) return;
+        const ok = window.confirm(`Cherry-pick ${selections.length} selection(s) from version #${selectedIndex}?`);
+        if (!ok) return;
+        cherryInFlight = true;
+        updateSelectionMetrics();
+        send({
+            name: "cherry-pick-history-version",
+            payload: {
+                versionIndex: selectedIndex,
+                selections,
+                includeTopology: true
+            }
         });
+    });
+    document.getElementById("full-restore-btn").addEventListener("click", () => {
+        if (selectedIndex === versions.length - 1) return;
+        const ok = window.confirm(`Restore the whole document to version #${selectedIndex}?`);
+        if (!ok) return;
+        send({ name: "restore-history-version", payload: { versionIndex: selectedIndex } });
+    });
+    document.getElementById("close-btn").addEventListener("click", () => {
+        clearParentHighlights();
+        try {
+            if (window.parent && typeof window.parent.hideHistoryIframe === "function") {
+                window.parent.hideHistoryIframe();
+                return;
+            }
+        } catch (_) {}
+        window.close();
+    });
+    window.addEventListener("beforeunload", clearParentHighlights);
 
-        // Initialize
-        connect();
-    </script>
+    connect();
+</script>
 </body>
 </html>

@@ -1112,6 +1112,46 @@ const historyUrlForFile = (filename) => {
 	return `${historyBaseUrl}?file=${filePart}`
 }
 
+const getHistoryIframeElement = () => {
+	return document.getElementById('history-iframe')
+}
+
+const setHistoryIframeContent = (url) => {
+	const iframe = getHistoryIframeElement()
+	if (!iframe) return
+	const normalizedUrl = normalizeIframeUrl(url)
+	if (!normalizedUrl) return
+	const currentSrc = normalizeIframeUrl(iframe.getAttribute("src") || "") || ""
+	if (normalizedUrl !== currentSrc) {
+		iframe.src = normalizedUrl
+	}
+}
+
+const showHistoryIframe = () => {
+	const container = document.querySelector('.history-iframe-container')
+	if (!container) return
+	container.style.visibility = "visible"
+	container.style.opacity = "1"
+}
+
+const hideHistoryIframe = () => {
+	const container = document.querySelector('.history-iframe-container')
+	if (!container) return
+	container.style.opacity = "0"
+	setTimeout(() => {
+		if (container.style.opacity === "0") {
+			container.style.visibility = "hidden"
+		}
+	}, 140)
+	try {
+		const iframe = getHistoryIframeElement()
+		const win = iframe && iframe.contentWindow
+		if (win && typeof win.clearParentHighlights === "function") {
+			win.clearParentHighlights()
+		}
+	} catch (_) {}
+}
+
 const ensureDocsIframeHasContent = () => {
 	const iframe = document.getElementById('docs-iframe')
 	if (!iframe) return
@@ -1207,11 +1247,16 @@ const switchToDefaultDocs = () => {
 
 const switchToHistoryForFile = (filename) => {
 	const url = historyUrlForFile(filename)
-	switchToDocsIframe(url)
+	setHistoryIframeContent(url)
+	showHistoryIframe()
 }
 
 window.showDocsIframe = showDocsIframe
 window.hideDocsIframe = hideDocsIframe
+window.showHistoryIframe = showHistoryIframe
+window.hideHistoryIframe = hideHistoryIframe
+window.setHistoryIframeContent = setHistoryIframeContent
+window.getHistoryIframeElement = getHistoryIframeElement
 window.setDocsIframeContent = setDocsIframeContent
 window.getDocsIframeElement = getDocsIframeElement
 window.switchToMonaco = switchToMonaco

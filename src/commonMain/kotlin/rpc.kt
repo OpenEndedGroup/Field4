@@ -946,6 +946,82 @@ data class NameHistoryVersion(val versionIndex: Int, val name: String)
 data class RestoreVersion(val versionIndex: Int)
 
 @Serializable
+data class HistoryDiffRequest(
+    val versionIndex: Int,
+    val boxIds: List<String> = emptyList()
+)
+
+@Serializable
+data class HistoryLineStats(
+    @EncodeDefault
+    val added: Int = 0,
+    @EncodeDefault
+    val removed: Int = 0,
+    @EncodeDefault
+    val moved: Int = 0,
+    @EncodeDefault
+    val changed: Int = 0
+)
+
+@Serializable
+data class HistoryPropertyChange(
+    val property: String,
+    val status: String,
+    val kind: String,
+    val currentPreview: String = "",
+    val targetPreview: String = "",
+    val lineStats: HistoryLineStats = HistoryLineStats()
+)
+
+@Serializable
+data class HistoryBoxChange(
+    val uid: String,
+    val name: String,
+    val status: String,
+    val properties: List<HistoryPropertyChange> = emptyList(),
+    val currentFrame: Rect? = null,
+    val targetFrame: Rect? = null,
+    val currentChildren: List<String> = emptyList(),
+    val targetChildren: List<String> = emptyList(),
+    val currentParents: List<String> = emptyList(),
+    val targetParents: List<String> = emptyList(),
+    val lineStats: HistoryLineStats = HistoryLineStats()
+)
+
+@Serializable
+data class HistoryVersionDiff(
+    val versionIndex: Int,
+    val currentIndex: Int,
+    val generatedAt: Long,
+    val boxFilter: List<String> = emptyList(),
+    val boxes: List<HistoryBoxChange> = emptyList(),
+    val changedBoxCount: Int = 0,
+    val propertyChangeCount: Int = 0,
+    val lineStats: HistoryLineStats = HistoryLineStats()
+)
+
+@Serializable
+data class HistoryCherryPickSelection(
+    val uid: String,
+    val properties: List<String> = emptyList()
+)
+
+@Serializable
+data class CherryPickHistoryRequest(
+    val versionIndex: Int,
+    val selections: List<HistoryCherryPickSelection>,
+    val includeTopology: Boolean = true
+)
+
+@Serializable
+data class CherryPickHistoryResult(
+    val versionIndex: Int,
+    val boxesTouched: Int,
+    val propertiesTouched: Int,
+    val tombstonedBoxes: Int
+)
+
+@Serializable
 data class ActorArc(
     val senderUid: String?,
     val targetUid: String,

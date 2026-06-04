@@ -40,7 +40,7 @@ private data class ShaderBlockState(
 private val shaderLocationPattern = Regex("""\blocation\s*=\s*(\d+)""", RegexOption.IGNORE_CASE)
 private val shaderSemanticPattern = Regex(""":\s*([A-Za-z_][A-Za-z0-9_]*)""")
 private val shaderFieldPattern = Regex(
-    """\b([A-Za-z_][A-Za-z0-9_]*)\b\s*(?:\[[^\]]*])?\s*(?::\s*([A-Za-z_][A-Za-z0-9_]*))?\s*;"""
+    """\b([A-Za-z_][A-Za-z0-9_]*)\b\s*(?:\[[^\]]*\])?\s*(?::\s*([A-Za-z_][A-Za-z0-9_]*))?\s*;"""
 )
 private val shaderPushConstantStartPattern = Regex(
     """layout\s*\([^)]*push_constant[^)]*\)\s*uniform\b.*\{""",
@@ -56,7 +56,7 @@ private val shaderTopLevelInterfacePattern = Regex(
     """(?:layout\s*\([^)]*\)\s*)?\b(in|out)\b[^;{]*\b([A-Za-z_][A-Za-z0-9_]*)\s*;""",
     RegexOption.IGNORE_CASE
 )
-private val shaderInstancePattern = Regex("""}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?""")
+private val shaderInstancePattern = Regex("""\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?""")
 private const val shaderNoMatchScore = -1000000
 private const val shaderNavigationSelectionDelayMs = 90
 private const val shaderNavigationRetryDelayMs = 180

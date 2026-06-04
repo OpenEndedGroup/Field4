@@ -17,4 +17,10 @@ contextBridge.exposeInMainWorld('fieldTabs', {
   openWelcomeTab() {
     ipcRenderer.send('field4-tabs-open-welcome');
   },
+  revealTabs() {
+    ipcRenderer.send('field4-tabs-reveal');
+  },
+  hideTabs() {
+    ipcRenderer.send('field4-tabs-hide');
+  },
 });
