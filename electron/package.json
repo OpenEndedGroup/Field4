@@ -10,5 +10,10 @@
   },
   "devDependencies": {
     "electron": "^42.3.3"
+  },
+  "overrides": {
+    "electron": {
+      "@electron/get": "3.1.0"
+    }
   }
 }

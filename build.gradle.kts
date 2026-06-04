@@ -137,10 +137,49 @@ java {
 group = "afield"
 version = "1.1-SNAPSHOT"
 
+val managedNodeVersion = "22.12.0"
+val managedNpmVersion = "10.9.0"
+val managedNodePlatform = when {
+    osName.lowercase().contains("windows") -> "win"
+    osName.lowercase().contains("mac") || osName.lowercase().contains("darwin") -> "darwin"
+    osName.lowercase().contains("linux") -> "linux"
+    else -> throw GradleException("Unsupported Node platform for Electron wrapper: $osName")
+}
+val managedNodeArch = when (osArch.lowercase()) {
+    "amd64", "x86_64" -> "x64"
+    "aarch64", "arm64" -> "arm64"
+    else -> throw GradleException("Unsupported Node architecture for Electron wrapper: $osArch")
+}
+
+fun managedNodeExecutable(): File {
+    val nodeDir = layout.projectDirectory
+        .dir(".gradle/nodejs/node-v${managedNodeVersion}-${managedNodePlatform}-${managedNodeArch}")
+        .asFile
+    return if (managedNodePlatform == "win") File(nodeDir, "node.exe") else File(nodeDir, "bin/node")
+}
+
+fun electronHostBinary(): File {
+    val distDir = electronDir.file("node_modules/electron/dist").asFile
+    return when (managedNodePlatform) {
+        "win" -> File(distDir, "electron.exe")
+        "darwin" -> {
+            val field4 = File(distDir, "Field4.app/Contents/MacOS/Field4")
+            val electronAlias = File(distDir, "Electron.app/Contents/MacOS/Field4")
+            val electron = File(distDir, "Electron.app/Contents/MacOS/Electron")
+            when {
+                field4.exists() -> field4
+                electronAlias.exists() -> electronAlias
+                else -> electron
+            }
+        }
+        else -> File(distDir, "electron")
+    }
+}
+
 node {
     download.set(true)
-    version.set("20.12.2")
-    npmVersion.set("10.5.0")
+    version.set(managedNodeVersion)
+    npmVersion.set(managedNpmVersion)
     nodeProjectDir.set(electronDir.asFile)
 }
 
@@ -550,6 +589,28 @@ val electronInstall = tasks.register("electronInstall") {
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")
+
+        val hostBinary = electronHostBinary()
+        if (!hostBinary.exists()) {
+            val nodeExe = managedNodeExecutable()
+            val installScript = electronDir.file("node_modules/electron/install.js").asFile
+            if (!nodeExe.exists()) {
+                throw GradleException("Managed Node not found at ${nodeExe.absolutePath}; run ./gradlew nodeSetup")
+            }
+            if (!installScript.exists()) {
+                throw GradleException("Electron installer not found at ${installScript.absolutePath}; run ./gradlew npmInstall")
+            }
+            logger.lifecycle("Installing Electron binary with managed Node ${managedNodeVersion}.")
+            val exit = ProcessBuilder(nodeExe.absolutePath, installScript.absolutePath)
+                .directory(project.projectDir)
+                .inheritIO()
+                .start()
+                .waitFor()
+            if (exit != 0 || !hostBinary.exists()) {
+                throw GradleException("Electron binary install failed; expected ${hostBinary.absolutePath}")
+            }
+        }
+
         if (!isMac) return@doLast
 
         val distDir = electronDir.file("node_modules/electron/dist").asFile
@@ -729,19 +790,11 @@ tasks.register("runDesktop") {
         forwardProcessOutput(backendProcess)
         val isMac = os.contains("mac")
         val electronCommand = if (isWindows) {
-            listOf(electronDir.file("node_modules/.bin/electron.cmd").asFile.absolutePath, ".")
+            listOf(electronHostBinary().absolutePath, ".")
         } else if (isMac) {
-            val field4Primary = electronDir.file("node_modules/electron/dist/Field4.app/Contents/MacOS/Field4").asFile
-            val field4Fallback = electronDir.file("node_modules/electron/dist/Electron.app/Contents/MacOS/Field4").asFile
-            val electronFallback = electronDir.file("node_modules/electron/dist/Electron.app/Contents/MacOS/Electron").asFile
-            val binary = when {
-                field4Primary.exists() -> field4Primary
-                field4Fallback.exists() -> field4Fallback
-                else -> electronFallback
-            }
-            listOf(binary.absolutePath, ".")
+            listOf(electronHostBinary().absolutePath, ".")
         } else {
-            listOf(electronDir.file("node_modules/.bin/electron").asFile.absolutePath, ".")
+            listOf(electronHostBinary().absolutePath, ".")
         }
         val electronBinary = File(electronCommand.first())
         if (!electronBinary.exists()) {
