@@ -73,6 +73,9 @@ class SessionInformation(
     var autorunTriggered: Boolean = false,
     val ephemeral: Boolean = false
 ) {
+    @Volatile
+    var loading: Boolean = false
+
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
 
@@ -854,11 +857,12 @@ class Server {
                             syncExecutionStatus()
                         }
 
-                        documents.forEach { _, info ->
-                            refreshFileProxyBoxes(info, notifyMissing = false)
-                            if (info.ephemeral) return@forEach
-                            // Only persist when we know sidecar-bearing properties changed.
-                            if (info.pendingSidecarSaves.isNotEmpty()) {
+	                        documents.forEach { _, info ->
+	                            if (info.ephemeral) return@forEach
+	                            if (info.loading) return@forEach
+	                            refreshFileProxyBoxes(info, notifyMissing = false)
+	                            // Only persist when we know sidecar-bearing properties changed.
+	                            if (info.pendingSidecarSaves.isNotEmpty()) {
 //                            lblock(" saving to ${info.filename}")
                                 run {
                                     try {
@@ -2149,6 +2153,47 @@ class Server {
                                 File("./src/commonMain/resources/history.html").readText(Charsets.UTF_8)
                             val modifiedContent = filter(originalContent)
                             call.respondText(modifiedContent, ContentType.Text.Html)
+                        }
+                    }
+
+                    route("/history-screenshot") {
+                        get {
+                            val document = call.request.queryParameters["file"]?.takeIf { it.isNotBlank() }
+                            val relativePath = call.request.queryParameters["path"]?.takeIf { it.isNotBlank() }
+                            if (document == null || relativePath == null) {
+                                call.respond(HttpStatusCode.BadRequest, "missing file or path")
+                                return@get
+                            }
+
+                            val workspaceRoot = File(home).canonicalFile
+                            val liveDocument = documents[document]
+                                ?: documents.values.firstOrNull {
+                                    it.documentName == document ||
+                                        it.filename == document ||
+                                        File(it.filename).name == document
+                                }
+                            val documentDir = if (liveDocument != null) {
+                                File(liveDocument.filename).canonicalFile
+                            } else {
+                                val requested = File(document)
+                                if (requested.isAbsolute) requested.canonicalFile else File(workspaceRoot, document).canonicalFile
+                            }
+                            val screenshotRoot = File(documentDir, "history_screenshots").canonicalFile
+                            val file = File(documentDir, relativePath).canonicalFile
+                            val insideWorkspace = documentDir == workspaceRoot ||
+                                documentDir.path.startsWith(workspaceRoot.path + File.separator)
+                            val liveDocumentAllowed = liveDocument != null && documentDir == File(liveDocument.filename).canonicalFile
+                            if ((!insideWorkspace && !liveDocumentAllowed) ||
+                                !file.path.startsWith(screenshotRoot.path + File.separator) ||
+                                file.extension.lowercase() != "png" ||
+                                !file.isFile ||
+                                file.length() <= 8
+                            ) {
+                                call.respond(HttpStatusCode.NotFound, "history screenshot not found")
+                                return@get
+                            }
+
+                            call.respondFile(file)
                         }
                     }
 

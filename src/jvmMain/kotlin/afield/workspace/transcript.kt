@@ -61,6 +61,21 @@ private val launchedPropertyChangeProperties = setOf(
 
 object FlightRecorder {
 
+    data class BoxActivitySummary(
+        val uid: String,
+        val name: String,
+        val executions: Int,
+        val launches: Int
+    )
+
+    data class ActivitySummary(
+        val fieldLaunchId: String,
+        val fieldLaunchStartedAt: Long,
+        val executions: Int,
+        val launches: Int,
+        val perBox: List<BoxActivitySummary>
+    )
+
     private data class DocumentState(
         val documentPath: String,
         val lock: Any = Any(),
@@ -71,6 +86,12 @@ object FlightRecorder {
     )
 
     private val states = ConcurrentHashMap<String, DocumentState>()
+    private val fieldLaunchStartedAt = System.currentTimeMillis()
+    private val fieldLaunchId = buildString {
+        append(Instant.ofEpochMilli(fieldLaunchStartedAt).toString())
+        append("#")
+        append(runCatching { ProcessHandle.current().pid().toString() }.getOrDefault("process"))
+    }
 
     fun recordExecuteEntrypoint(entrypoint: String, box: Box, execute: Execute) {
         val documentPath = documentPathFor(box) ?: return
@@ -213,6 +234,59 @@ object FlightRecorder {
             }
         }
         return readEntriesFromDisk(normalizedDocumentPath)
+    }
+
+    fun activitySummaryForDocument(
+        documentPath: String,
+        untilMillis: Long = Long.MAX_VALUE
+    ): ActivitySummary {
+        val entries = entriesForDocument(documentPath)
+            .filter { (it["timestampMillis"] as? Number)?.toLong()?.let { ts -> ts <= untilMillis } ?: true }
+
+        var executions = 0
+        var launches = 0
+        data class MutableBoxActivity(
+            var name: String = "",
+            var executions: Int = 0,
+            var launches: Int = 0
+        )
+        val perBox = linkedMapOf<String, MutableBoxActivity>()
+
+        entries.forEach { entry ->
+            val event = entry["event"]?.toString().orEmpty()
+            if (event != "execute" && event != "execute-symbol" && event != "launch") return@forEach
+            val box = mapOfStringAny(entry["box"]) ?: return@forEach
+            val uid = box["id"]?.toString()?.takeIf { it.isNotBlank() } ?: return@forEach
+            val name = box["name"]?.toString().orEmpty()
+            val activity = perBox.getOrPut(uid) { MutableBoxActivity(name = name) }
+            if (name.isNotBlank()) activity.name = name
+
+            if (event == "launch") {
+                launches++
+                activity.launches++
+            } else {
+                executions++
+                activity.executions++
+            }
+        }
+
+        return ActivitySummary(
+            fieldLaunchId = fieldLaunchId,
+            fieldLaunchStartedAt = fieldLaunchStartedAt,
+            executions = executions,
+            launches = launches,
+            perBox = perBox.map { (uid, activity) ->
+                BoxActivitySummary(
+                    uid = uid,
+                    name = activity.name,
+                    executions = activity.executions,
+                    launches = activity.launches
+                )
+            }.sortedWith(
+                compareByDescending<BoxActivitySummary> { it.executions + it.launches }
+                    .thenBy { it.name.ifBlank { it.uid }.lowercase() }
+            )
+        )
     }
 
     @JvmStatic
@@ -564,6 +638,8 @@ object FlightRecorder {
             "event" to event,
             "entrypoint" to entrypoint,
             "document" to state.documentPath,
+            "fieldLaunchId" to fieldLaunchId,
+            "fieldLaunchStartedAt" to fieldLaunchStartedAt,
             "box" to boxDescriptor(box),
             "language" to box.ke.languageName
         )

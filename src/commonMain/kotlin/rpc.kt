@@ -900,8 +900,50 @@ data class HistoryVersion(
     val filename: String,
     val timestamp: Long,
     val boxCount: Int,
+    val byteSize: Long = 0,
+    val boxIds: List<String> = emptyList(),
     val message: String = "",
-    val diffStats: HistoryDiffStats? = null
+    val diffStats: HistoryDiffStats? = null,
+    val activityStats: HistoryActivityStats? = null
+)
+
+@Serializable
+data class HistoryBoxActivity(
+    val uid: String,
+    val name: String = "",
+    val executions: Int = 0,
+    val launches: Int = 0,
+    val executionDelta: Int = 0,
+    val launchDelta: Int = 0
+)
+
+@Serializable
+data class HistoryScreenshotRef(
+    val channel: String,
+    val path: String,
+    val timestamp: Long = 0L,
+    val width: Int = 0,
+    val height: Int = 0
+)
+
+@Serializable
+data class HistoryScreenshotAdded(
+    val versionIndex: Int,
+    val ref: HistoryScreenshotRef
+)
+
+@Serializable
+data class HistoryActivityStats(
+    val fieldLaunchId: String = "",
+    val fieldLaunchStartedAt: Long = 0L,
+    val executions: Int = 0,
+    val launches: Int = 0,
+    val executionDelta: Int = 0,
+    val launchDelta: Int = 0,
+    val editedBoxes: Int = 0,
+    val movedBoxes: Int = 0,
+    val perBox: List<HistoryBoxActivity> = emptyList(),
+    val screenshots: List<HistoryScreenshotRef> = emptyList()
 )
 
 @Serializable
@@ -912,11 +954,28 @@ data class VersionTransition(
 )
 
 @Serializable
+data class HistoryBoxLineStats(
+    val uid: String,
+    @EncodeDefault
+    val added: Int = 0,
+    @EncodeDefault
+    val removed: Int = 0,
+    @EncodeDefault
+    val moved: Int = 0,
+    @EncodeDefault
+    val changed: Int = 0
+)
+
+@Serializable
 data class HistoryDiffStats(
     @EncodeDefault
     val boxesAdded: Int = 0,
     @EncodeDefault
     val boxesDeleted: Int = 0,
+    @EncodeDefault
+    val boxesEdited: Int = 0,
+    @EncodeDefault
+    val boxesMoved: Int = 0,
     @EncodeDefault
     val linesAddedFromNew: Int = 0,
     @EncodeDefault
@@ -930,13 +989,98 @@ data class HistoryDiffStats(
     @EncodeDefault
     val totalLinesRemoved: Int = 0,
     @EncodeDefault
-    val changedCodeBoxes: List<String> = emptyList()
+    val totalLinesChanged: Int = 0,
+    @EncodeDefault
+    val changedCodeBoxes: List<String> = emptyList(),
+    @EncodeDefault
+    val changedBoxIds: List<String> = emptyList(),
+    @EncodeDefault
+    val boxLineStats: List<HistoryBoxLineStats> = emptyList()
 )
 
 @Serializable
 data class HistoryVersionsList(
     val versions: List<HistoryVersion>,
     val transitions: List<VersionTransition> = emptyList()
+)
+
+@Serializable
+data class HistoryChanged(
+    val filename: String,
+    val timestamp: Long,
+    val versionIndex: Int = -1,
+    val boxCount: Int = 0,
+    val byteSize: Long = 0,
+    val boxIds: List<String> = emptyList()
+)
+
+@Serializable
+data class HistorySearchRequest(
+    val query: String,
+    val basis: String = "previous"
+)
+
+@Serializable
+data class HistorySearchResult(
+    val query: String,
+    val basis: String = "previous",
+    val versionIndexes: List<Int> = emptyList()
+)
+
+@Serializable
+data class HistoryLineBlameRequest(
+    val uid: String,
+    val property: String,
+    val lineNumber: Int,
+    val lineText: String = "",
+    val propertyText: String = ""
+)
+
+@Serializable
+data class HistoryLineBlameResult(
+    val uid: String,
+    val property: String,
+    val lineNumber: Int,
+    val lineText: String = "",
+    val versionIndexes: List<Int> = emptyList()
+)
+
+@Serializable
+data class HistoryVersionStatsProgress(
+    val versionIndex: Int,
+    val completed: Int,
+    val total: Int,
+    val diffStats: HistoryDiffStats? = null,
+    val boxCount: Int? = null,
+    val boxIds: List<String> = emptyList(),
+    val done: Boolean = false
+)
+
+@Serializable
+data class HistoryRailLineStatsRequest(
+    val basis: String = "current",
+    val boxIds: List<String> = emptyList(),
+    val versionIndexes: List<Int> = emptyList()
+)
+
+@Serializable
+data class HistoryRailLineStatsProgress(
+    val basis: String = "current",
+    val versionIndex: Int,
+    val completed: Int,
+    val total: Int,
+    val boxFilter: List<String> = emptyList(),
+    val lineStats: HistoryLineStats = HistoryLineStats(),
+    val done: Boolean = false
+)
+
+@Serializable
+data class HistoryScreenshotStoreRequest(
+    val channel: String,
+    val dataUrl: String,
+    val versionIndex: Int = -1,
+    val width: Int = 0,
+    val height: Int = 0
 )
 
 @Serializable
@@ -948,7 +1092,8 @@ data class RestoreVersion(val versionIndex: Int)
 @Serializable
 data class HistoryDiffRequest(
     val versionIndex: Int,
-    val boxIds: List<String> = emptyList()
+    val boxIds: List<String> = emptyList(),
+    val basis: String = "current"
 )
 
 @Serializable
@@ -970,6 +1115,8 @@ data class HistoryPropertyChange(
     val kind: String,
     val currentPreview: String = "",
     val targetPreview: String = "",
+    val currentText: String = "",
+    val targetText: String = "",
     val lineStats: HistoryLineStats = HistoryLineStats()
 )
 
@@ -993,6 +1140,8 @@ data class HistoryVersionDiff(
     val versionIndex: Int,
     val currentIndex: Int,
     val generatedAt: Long,
+    val basis: String = "current",
+    val baselineIndex: Int = -1,
     val boxFilter: List<String> = emptyList(),
     val boxes: List<HistoryBoxChange> = emptyList(),
     val changedBoxCount: Int = 0,

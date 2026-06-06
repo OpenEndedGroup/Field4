@@ -16,6 +16,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 import java.io.FileNotFoundException
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.max
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -31,6 +33,13 @@ private data class FileInline(val path: String, val inline: String)
 class SavingContext {
 
     private object SkipRef
+
+    private data class PartialSaveBlock(
+        val existingCount: Int,
+        val snapshotCount: Int,
+        val missingCount: Int,
+        val missingPreview: String
+    )
 
     private data class MarkdownBlockProperty(
         val name: String,
@@ -296,85 +305,122 @@ class SavingContext {
         // Launch on background thread pool - using the project's standard miscPool
         GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             try {
-                var altered = false
-                val touched = mutableListOf<String>()
-                val alteredFiles = mutableListOf<String>()
                 val root = ensureDirectory(fn)
-                ensureRepository(fn)
+                val lock = saveLocks.computeIfAbsent(File(root).canonicalPath) { Any() }
+                synchronized(lock) {
+                    suspiciousPartialAutosave(root, snapshot, message)?.let { blocked ->
+                        val detail =
+                            "doc=$fn boxes=${blocked.snapshotCount}/${blocked.existingCount} missing=${blocked.missingCount} missingPreview=${blocked.missingPreview}"
+                        SaveReloadLog.log("save-blocked-partial", detail)
+                        lprintln("error,save", "Blocked suspicious partial autosave: $detail")
+                        _send(
+                            Message("notify").payload(
+                                Notify(
+                                    "Blocked suspicious partial autosave: ${blocked.snapshotCount}/${blocked.existingCount} boxes. metadata.edn was left untouched.",
+                                    "save"
+                                )
+                            ),
+                            document = Regex.escape(fn)
+                        )
+                        return@launch
+                    }
 
-                // Write all files based on the snapshot
-                snapshot.transfers.forEach { transfer ->
-                    transfer.properties.forEach { (name, value) ->
-                        if (value is FileInline) {
-                            val target = File(root, value.path).path
-                            touched.add(target)
-                            val cd = checkDifference(target, value.inline)
-                            altered = altered || cd
-                            if (cd) alteredFiles.add(target)
+                    var altered = false
+                    val touched = mutableListOf<String>()
+                    val alteredFiles = mutableListOf<String>()
+                    ensureRepository(fn)
+
+                    // Write all files based on the snapshot
+                    snapshot.transfers.forEach { transfer ->
+                        transfer.properties.forEach { (name, value) ->
+                            if (value is FileInline) {
+                                val target = File(root, value.path).path
+                                touched.add(target)
+                                val cd = checkDifference(target, value.inline)
+                                altered = altered || cd
+                                if (cd) alteredFiles.add(target)
+                            }
                         }
                     }
-                }
 
-                // Build and write the EDN metadata
-                val payloadBoxes = snapshot.transfers.map { transfer ->
-                    linkedMapOf<String, Any?>(
-                        "id" to transfer.id,
-                        "properties" to transfer.properties
+                    // Build and write the EDN metadata
+                    val payloadBoxes = snapshot.transfers.map { transfer ->
+                        linkedMapOf<String, Any?>(
+                            "id" to transfer.id,
+                            "properties" to transfer.properties
+                        )
+                    }
+                    val payload = linkedMapOf<String, Any?>(
+                        "version" to 2,
+                        "boxes" to payloadBoxes,
+                        "persistentProperties" to snapshot.persistentProperties
                     )
-                }
-                val payload = linkedMapOf<String, Any?>(
-                    "version" to 2,
-                    "boxes" to payloadBoxes,
-                    "persistentProperties" to snapshot.persistentProperties
-                )
-                val ednText = Edn.write(payload, ednCustom)
-                val metadataPath = File(root, METADATA_EDN).path
-                touched.add(metadataPath)
-                val metadataChanged = checkDifference(metadataPath, ednText)
-                altered = altered || metadataChanged
-                if (metadataChanged) alteredFiles.add(metadataPath)
+                    val ednText = Edn.write(payload, ednCustom)
+                    val metadataPath = File(root, METADATA_EDN).path
+                    touched.add(metadataPath)
+                    val metadataChanged = checkDifference(metadataPath, ednText)
+                    altered = altered || metadataChanged
+                    if (metadataChanged) alteredFiles.add(metadataPath)
 
-                val markdownText = buildDocumentMarkdown(snapshot, File(root).name)
-                val markdownPath = File(root, DOCUMENT_MARKDOWN).path
-                touched.add(markdownPath)
-                val markdownChanged = checkDifference(markdownPath, markdownText)
-                altered = altered || markdownChanged
-                if (markdownChanged) alteredFiles.add(markdownPath)
+                    val markdownText = buildDocumentMarkdown(snapshot, File(root).name)
+                    val markdownPath = File(root, DOCUMENT_MARKDOWN).path
+                    touched.add(markdownPath)
+                    val markdownChanged = checkDifference(markdownPath, markdownText)
+                    altered = altered || markdownChanged
+                    if (markdownChanged) alteredFiles.add(markdownPath)
 
-                if (metadataChanged) {
-                    FlightRecorder.checkpointOnMetadataChange(fn)
-                }
+                    if (metadataChanged) {
+                        FlightRecorder.checkpointOnMetadataChange(fn)
+                    }
 
-                SaveReloadLog.log(
-                    "save",
-                    "doc=$fn altered=$altered touched=${touched.size} changed=${alteredFiles.size} message=${message ?: ""} files=[${touched.joinToString(",")}], changed=[${alteredFiles.joinToString(",")}]"
-                )
+                    SaveReloadLog.log(
+                        "save",
+                        "doc=$fn altered=$altered touched=${touched.size} changed=${alteredFiles.size} message=${message ?: ""} files=[${touched.joinToString(",")}], changed=[${alteredFiles.joinToString(",")}]"
+                    )
 
-                if (altered) {
-                    // Notify history manager about the new version
-                    val boxIds = snapshot.transfers.map { it.id }.toSet()
-                    HistoryManager.onVersionSaved(fn, boxIds)
-                    
-                    // Git operations in background
-                    commit(fn, message)
-                    
-                    // Mark saved sidecar files - needs to be done in main thread
-                    inMain {
-                        notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
-                        
-                        val watchManager = snapshot.fileWatchManager
-                        if (watchManager == null) {
-                            SaveReloadLog.log("save-warning", "doc=$fn missing-watch-manager")
-                        }
-                        watchManager?.let {
-                            val metadataFile = File(root, METADATA_EDN)
-                            if (metadataFile.exists()) {
-                                it.markInternalSave(metadataFile)
+                    if (altered) {
+                        // Notify history manager about the new version
+                        val savedAt = System.currentTimeMillis()
+                        val boxIds = snapshot.transfers.map { it.id }.toSet()
+                        HistoryManager.onVersionSaved(fn, boxIds, savedAt)
+                        HistoryMetrics.recordCurrentSave(fn, savedAt)
+                        val versionIndex = HistoryMetrics.currentVersionIndex(fn)
+                        HistoryScreenshotCapture.captureFourWindowsOnSave(fn, versionIndex, savedAt)
+                        _send(
+                            Message("history-changed").payload(
+                                HistoryChanged(
+                                    filename = fn,
+                                    timestamp = savedAt,
+                                    versionIndex = versionIndex,
+                                    boxCount = boxIds.size,
+                                    byteSize = File(root, METADATA_EDN).length(),
+                                    boxIds = boxIds.toList().sorted()
+                                )
+                            ),
+                            document = Regex.escape(fn)
+                        )
+
+                        // Git operations in background
+                        commit(fn, message)
+
+                        // Mark saved sidecar files - needs to be done in main thread
+                        inMain {
+                            notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
+
+                            val watchManager = snapshot.fileWatchManager
+                            if (watchManager == null) {
+                                SaveReloadLog.log("save-warning", "doc=$fn missing-watch-manager")
                             }
-                            File(root).listFiles()?.forEach { file ->
-                                if (file.isFile && file.name.contains("_") &&
-                                    Box.ioSeparateProperties.values.contains(file.extension)) {
-                                    it.markInternalSave(file)
+                            watchManager?.let {
+                                val metadataFile = File(root, METADATA_EDN)
+                                if (metadataFile.exists()) {
+                                    it.markInternalSave(metadataFile)
+                                }
+                                File(root).listFiles()?.forEach { file ->
+                                    if (file.isFile && file.name.contains("_") &&
+                                        Box.ioSeparateProperties.values.contains(file.extension)) {
+                                        it.markInternalSave(file)
+                                    }
                                 }
                             }
                         }
@@ -396,6 +442,34 @@ class SavingContext {
         val persistentProperties: List<String>,
         val fileWatchManager: FileWatchManager?
     )
+
+    private fun suspiciousPartialAutosave(root: String, snapshot: SaveSnapshot, message: String?): PartialSaveBlock? {
+        if (!message.isNullOrBlank()) return null
+
+        val metadataFile = File(root, METADATA_EDN)
+        if (!metadataFile.isFile) return null
+
+        val existingIds = try {
+            readEdnTransfers(root).map { it.id }.toSet()
+        } catch (e: Exception) {
+            SaveReloadLog.log("save-guard-warning", "doc=$root could-not-read-existing-metadata error=${e.message}")
+            return null
+        }
+        val snapshotIds = snapshot.transfers.map { it.id }.toSet()
+        if (existingIds.size < 4 || snapshotIds.isEmpty()) return null
+        if (snapshotIds.size >= existingIds.size) return null
+
+        val missing = existingIds - snapshotIds
+        val missingThreshold = max(4, (existingIds.size + 3) / 4)
+        if (missing.size < missingThreshold) return null
+
+        return PartialSaveBlock(
+            existingCount = existingIds.size,
+            snapshotCount = snapshotIds.size,
+            missingCount = missing.size,
+            missingPreview = missing.take(8).joinToString(",")
+        )
+    }
 
     private fun buildDocumentMarkdown(snapshot: SaveSnapshot, documentName: String): String {
         val ordered = parentFirst(snapshot.transfers)
@@ -1215,6 +1289,8 @@ class SavingContext {
         const val METADATA_JSON = "metadata.json"
         const val DOCUMENT_MARKDOWN = "document.md"
         const val TRANSCRIPT_EDN = "transcript.edn"
+
+        private val saveLocks = ConcurrentHashMap<String, Any>()
 
         private val ednCustom = Edn.CustomTypes().apply {
             registerEdn(Rect::class, "afield/rect", { rect ->

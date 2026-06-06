@@ -21,6 +21,12 @@ import java.util.*
 
 var lastWindowToOpen: Window? = null
 
+private val openWindowsLock = Any()
+private val openWindows = linkedSetOf<Window>()
+
+fun openWindowsSnapshot(): List<Window> =
+    synchronized(openWindowsLock) { openWindows.toList() }
+
 class Window(val title : String, val fullscreen : Boolean = false, initialDimensions : Rect? = null) {
     @JvmField
     val windowHandle: Long
@@ -113,6 +119,9 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         GLFW.glfwSetInputMode(windowHandle, GLFW.GLFW_STICKY_MOUSE_BUTTONS, GLFW.GLFW_TRUE)
 
         lastWindowToOpen = this
+        synchronized(openWindowsLock) {
+            openWindows += this
+        }
     }
 
     fun size() : Rect {
@@ -134,6 +143,12 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     }
 
     fun cleanup() {
+        synchronized(openWindowsLock) {
+            openWindows -= this
+            if (lastWindowToOpen === this) {
+                lastWindowToOpen = openWindows.lastOrNull()
+            }
+        }
         Callbacks.glfwFreeCallbacks(windowHandle)
         GLFW.glfwDestroyWindow(windowHandle)
         GLFW.glfwTerminate()

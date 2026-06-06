@@ -177,12 +177,13 @@ internal fun attachDocumentSession(
         return found
     }
 
-    val info = createSessionInformation(target)
-    documents[target.sessionKey] = info
-    registerDocumentSession(session, info)
+	val info = createSessionInformation(target)
+	info.loading = !target.scratch
+	documents[target.sessionKey] = info
+	registerDocumentSession(session, info)
 
-    if (!target.scratch) {
-        try {
+	if (!target.scratch) {
+		try {
             sendDocumentLoadStatus(
                 session,
                 phase = "metadata-loading",
@@ -248,10 +249,10 @@ internal fun attachDocumentSession(
                     terminal = true
                 )
             }
-            info.topologyGeneration++
-            info.fileWatchManager
-            info.scheduleAutorunBoxes()
-        } catch (fnf: FileNotFoundException) {
+			info.topologyGeneration++
+			info.fileWatchManager
+			info.scheduleAutorunBoxes()
+		} catch (fnf: FileNotFoundException) {
             lprintln("warning,agent_backdoor", "file '${target.sessionKey}' not found; will be created on first save")
             sendExpectedBoxCount(session, info)
             sendDocumentLoadStatus(
@@ -260,11 +261,14 @@ internal fun attachDocumentSession(
                 message = "new document",
                 count = 0,
                 completed = 0,
-                terminal = true
-            )
-        }
-    } else {
-        sendExpectedBoxCount(session, info)
+				terminal = true
+			)
+		} finally {
+			info.loading = false
+		}
+	} else {
+		info.loading = false
+		sendExpectedBoxCount(session, info)
         sendDocumentLoadStatus(
             session,
             phase = "empty",

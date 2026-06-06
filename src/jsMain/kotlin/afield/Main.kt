@@ -96,7 +96,7 @@ object LoadingTracker {
     fun setExpectedCount(count: Int) {
         if (finished) return
         expectedBoxes = count
-        if (count == 0) {
+        if (isComplete()) {
             finish()
         } else {
             updateNotification()
@@ -123,7 +123,7 @@ object LoadingTracker {
             status.phase.isNotBlank() -> status.phase.replace("-", " ")
             else -> "loading document"
         }
-        if (expectedBoxes == 0 && status.terminal) {
+        if (isComplete()) {
             finish()
         } else {
             updateNotification()
@@ -142,12 +142,21 @@ object LoadingTracker {
     /** A box transitioned from offline to online. */
     fun boxOnline(uid: String) {
         if (finished) return
+        arrivedBoxIds.add(uid)
         onlineBoxIds.add(uid)
-        updateNotification()
-        resetTimeout()
-        if (expectedBoxes > 0 && onlineBoxIds.size >= expectedBoxes) {
+        if (isComplete()) {
             finish()
+        } else {
+            updateNotification()
+            resetTimeout()
         }
+    }
+
+    private fun isComplete(): Boolean {
+        if (expectedBoxes == 0) return true
+        if (expectedBoxes > 0 && onlineBoxIds.size >= expectedBoxes) return true
+        if (expectedBoxes > 0 && arrivedBoxIds.size >= expectedBoxes && !backendLoading) return true
+        return false
     }
 
     private fun updateNotification() {
@@ -169,6 +178,10 @@ object LoadingTracker {
 
     private fun handleIdleTimeout() {
         if (finished) return
+        if (isComplete()) {
+            finish()
+            return
+        }
         if (backendLoading) {
             updateNotification()
             resetTimeout()
@@ -306,6 +319,7 @@ fun layerDebugLog(event: String, payload: dynamic = null) {
 }
 
 fun selectionContextChanged() {
+    js("window.dispatchEvent(new CustomEvent('field-selection-changed'))")
     if (currentAnnotations.isNotEmpty()) {
         redrawSlideAnnotations()
         scheduleSlideAnnotationRedraw(10)

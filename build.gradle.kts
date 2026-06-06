@@ -635,7 +635,24 @@ val electronInstall = tasks.register("electronInstall") {
 
         fun replacePlistString(source: String, key: String, value: String): String {
             val pattern = Regex("""(<key>$key</key>\s*<string>)([^<]*)(</string>)""")
-            return source.replace(pattern, "$1$value$3")
+            val replaced = source.replace(pattern, "$1$value$3")
+            if (replaced != source) return replaced
+
+            val insertion = """
+                |	<key>$key</key>
+                |	<string>$value</string>
+                |""".trimMargin()
+            return source.replaceFirst("</dict>", "$insertion\n</dict>")
+        }
+
+        val iconSource = electronDir.file("Field4.icns").asFile
+        if (iconSource.exists()) {
+            val resourcesDir = File(appBundle, "Contents/Resources")
+            resourcesDir.mkdirs()
+            iconSource.copyTo(File(resourcesDir, "Field4.icns"), overwrite = true)
+            logger.lifecycle("Installed macOS app icon from ${iconSource.absolutePath}.")
+        } else {
+            logger.warn("macOS app icon not found at ${iconSource.absolutePath}; skipping bundle icon patch.")
         }
 
         val original = plistFile.readText()
@@ -644,6 +661,7 @@ val electronInstall = tasks.register("electronInstall") {
         updated = replacePlistString(updated, "CFBundleName", "Field4")
         updated = replacePlistString(updated, "CFBundleExecutable", "Field4")
         updated = replacePlistString(updated, "CFBundleIdentifier", "com.field4.desktop")
+        updated = replacePlistString(updated, "CFBundleIconFile", "Field4.icns")
 
         if (updated != original) {
             plistFile.writeText(updated)

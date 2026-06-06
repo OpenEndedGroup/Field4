@@ -1137,19 +1137,29 @@ const showHistoryIframe = () => {
 const hideHistoryIframe = () => {
 	const container = document.querySelector('.history-iframe-container')
 	if (!container) return
+	try {
+		const iframe = getHistoryIframeElement()
+		const win = iframe && iframe.contentWindow
+		if (win && typeof win.disposeHistoryBrowser === "function") {
+			win.disposeHistoryBrowser()
+		} else {
+			if (win && typeof win.clearParentHighlights === "function") {
+				win.clearParentHighlights(true)
+			}
+			if (win && typeof win.clearParentEditorPreview === "function") {
+				win.clearParentEditorPreview()
+			}
+		}
+		if (iframe) {
+			iframe.removeAttribute("src")
+		}
+	} catch (_) {}
 	container.style.opacity = "0"
 	setTimeout(() => {
 		if (container.style.opacity === "0") {
 			container.style.visibility = "hidden"
 		}
 	}, 140)
-	try {
-		const iframe = getHistoryIframeElement()
-		const win = iframe && iframe.contentWindow
-		if (win && typeof win.clearParentHighlights === "function") {
-			win.clearParentHighlights()
-		}
-	} catch (_) {}
 }
 
 const ensureDocsIframeHasContent = () => {

@@ -2,6 +2,10 @@
 
 Field aims to be full of unexpectedly fun features that help you interact with code. This page is going to be a long list of things that delight, things that you didn't think you'd need, and things that help when you are puzzled.
 
+## AI support
+
+This is such a big and important topic, it gets its [own page](aiFeatures.md).
+
 ## Running things
 
 You can run code in Field the following ways (from the commonplace to the rare)

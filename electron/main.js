@@ -12,6 +12,7 @@ const {
 const APP_NAME = "Field4";
 const APP_ICON_1024 = path.join(__dirname, "icon-1024.png");
 const TAB_STRIP_PRELOAD = path.join(__dirname, "tabstrip-preload.js");
+const FIELD_PRELOAD = path.join(__dirname, "field-preload.js");
 const TAB_STRIP_HEIGHT = 44;
 const TAB_STRIP_REVEAL_ZONE_HEIGHT = 6;
 const TAB_TRAFFIC_LIGHT_INSET = process.platform === "darwin" ? 88 : 12;
@@ -617,6 +618,7 @@ function createMainWindow() {
       devtoolsOpened: false,
       view: new WebContentsView({
         webPreferences: {
+          preload: FIELD_PRELOAD,
           contextIsolation: true,
           sandbox: false,
         },
@@ -711,6 +713,33 @@ function createMainWindow() {
   );
   const onRevealTabs = onlyFromChrome(() => revealTabs());
   const onHideTabs = onlyFromChrome(() => hideTabs());
+  const screenshotPayload = (image) => {
+    if (!image || image.isEmpty()) return null;
+    const size = image.getSize();
+    if (!size.width || !size.height) return null;
+    const png = image.toPNG();
+    if (!png || png.length < 8) return null;
+    return {
+      dataUrl: `data:image/png;base64,${png.toString("base64")}`,
+      width: size.width,
+      height: size.height,
+    };
+  };
+  const captureScreenshotPayload = async (capture) => {
+    try {
+      return screenshotPayload(await capture());
+    } catch (_) {
+      return null;
+    }
+  };
+  const onHistoryCaptureWindow = async (event) => {
+    const tab = activeTab();
+    if (!tab || event.sender !== tab.view.webContents) return null;
+    return (
+      (await captureScreenshotPayload(() => tab.view.webContents.capturePage())) ||
+      (await captureScreenshotPayload(() => win.capturePage()))
+    );
+  };
 
   ipcMain.on("field4-tabs-ready", onTabsReady);
   ipcMain.on("field4-tabs-activate", onTabActivate);
@@ -718,6 +747,8 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-open-welcome", onOpenWelcomeTab);
   ipcMain.on("field4-tabs-reveal", onRevealTabs);
   ipcMain.on("field4-tabs-hide", onHideTabs);
+  ipcMain.removeHandler("field4-history-capture-window");
+  ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
 
   const relayout = () => applyLayout();
   const enterFullScreen = () => {
@@ -741,6 +772,7 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-open-welcome", onOpenWelcomeTab);
     ipcMain.removeListener("field4-tabs-reveal", onRevealTabs);
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
+    ipcMain.removeHandler("field4-history-capture-window");
   });
 
   openTab(initialUrl, { activate: true });

@@ -31,6 +31,7 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.lang.Runnable
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -775,8 +776,9 @@ class Renderer(
             return emptyList()
         }
 
-        val byteCount = width.toLong() * height.toLong() * 4L
         val format = ctx.swapChain.surfaceFormat.imageFormat
+        val bytesPerPixel = swapchainCaptureBytesPerPixel(format)
+        val byteCount = width.toLong() * height.toLong() * bytesPerPixel.toLong()
         val captures = requests.map { request ->
             RecordedWindowCapture(
                 request = request,
@@ -853,11 +855,54 @@ class Renderer(
         return captures
     }
 
+    private fun swapchainCaptureBytesPerPixel(format: Int): Int = when (format) {
+        VK10.VK_FORMAT_R8G8B8A8_UNORM,
+        VK10.VK_FORMAT_R8G8B8A8_SRGB,
+        VK10.VK_FORMAT_B8G8R8A8_UNORM,
+        VK10.VK_FORMAT_B8G8R8A8_SRGB -> 4
+        VK10.VK_FORMAT_R16G16B16A16_SFLOAT -> 8
+        VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> 16
+        else -> 4
+    }
+
+    private fun halfFloatToFloat(raw: Short): Float {
+        val h = raw.toInt() and 0xffff
+        val sign = (h and 0x8000) shl 16
+        val exponent = (h ushr 10) and 0x1f
+        val mantissa = h and 0x03ff
+        val bits = when (exponent) {
+            0 -> {
+                if (mantissa == 0) {
+                    sign
+                } else {
+                    var m = mantissa
+                    var e = -14
+                    while ((m and 0x0400) == 0) {
+                        m = m shl 1
+                        e--
+                    }
+                    m = m and 0x03ff
+                    sign or ((e + 127) shl 23) or (m shl 13)
+                }
+            }
+            0x1f -> sign or 0x7f800000 or (mantissa shl 13)
+            else -> sign or ((exponent - 15 + 127) shl 23) or (mantissa shl 13)
+        }
+        return Float.fromBits(bits)
+    }
+
+    private fun floatChannelToByte(value: Float): Byte {
+        if (!value.isFinite() || value <= 0f) return 0
+        if (value >= 1f) return 255.toByte()
+        return (value * 255f + 0.5f).toInt().toByte()
+    }
+
     private fun completeWindowCapture(capture: RecordedWindowCapture) {
         try {
             val rgba = ByteBuffer.allocate(capture.width * capture.height * 4)
             capture.stagingBuffer.mapAndRead_bytes {
                 rewind()
+                order(ByteOrder.LITTLE_ENDIAN)
                 when (capture.format) {
                     VK10.VK_FORMAT_B8G8R8A8_UNORM,
                     VK10.VK_FORMAT_B8G8R8A8_SRGB -> {
@@ -874,6 +919,24 @@ class Renderer(
                     VK10.VK_FORMAT_R8G8B8A8_SRGB -> {
                         while (hasRemaining()) {
                             rgba.put(get())
+                        }
+                    }
+
+                    VK10.VK_FORMAT_R16G16B16A16_SFLOAT -> {
+                        while (remaining() >= 8) {
+                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
+                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
+                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
+                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
+                        }
+                    }
+
+                    VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> {
+                        while (remaining() >= 16) {
+                            rgba.put(floatChannelToByte(getFloat()))
+                            rgba.put(floatChannelToByte(getFloat()))
+                            rgba.put(floatChannelToByte(getFloat()))
+                            rgba.put(floatChannelToByte(getFloat()))
                         }
                     }
 
