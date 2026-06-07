@@ -39,7 +39,11 @@ val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
 
-val kotlinVersion = "2.4.20"
+val kotlinVersion = "2.4.0"
+val kotlinExperimentalCompilerArgs = listOf(
+    "-Xcollection-literals",
+    "-Xname-based-destructuring=only-syntax",
+)
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
@@ -108,8 +112,8 @@ fun configuredJdwpArg(): String? {
 }
 
 plugins {
-    kotlin("multiplatform") version "2.3.20"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("multiplatform") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.0"
     id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
     id("com.github.node-gradle.node") version "7.1.0"
@@ -245,6 +249,7 @@ kotlin {
     tasks.withType<KotlinJsCompile>().configureEach {
         compilerOptions {
             target = "es2015"
+            freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
         }
     }
 
@@ -523,9 +528,9 @@ tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_24)
-            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2)
+            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_4)
             javaParameters.set(true)
-            freeCompilerArgs.add("-Xannotations-in-metadata")
+            freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
         }
     }
 }
@@ -1109,5 +1114,3 @@ tasks.named("jvmDistTar") {
 tasks.named("jvmDistZip") {
     enabled = false
 }
-
-

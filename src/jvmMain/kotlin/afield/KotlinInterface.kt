@@ -107,8 +107,8 @@ class KotlinInterface(
 
             jvm {
                 jvmTarget.put("24")
-                _languageVersion.put("2.2")
-                compilerOptions.put(listOf("-jvm-target", "24"))
+                _languageVersion.put(fieldKotlinLanguageVersion)
+                compilerOptions.put(fieldKotlinJvmCompilerOptions)
 
                 dependenciesFromClassloader(
                     classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true

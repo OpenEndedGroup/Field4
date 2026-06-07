@@ -311,14 +311,15 @@ open class RenderToTexture(
     data class ColorGrade(
         var exposure: Vec4 = vec(1f, 1f, 1f, 1f),
         var gamma: Vec4 = vec(1f, 1f, 1f, 1f),
-        var offset: Vec4 = vec(0f, 0f, 0f, 0f)
+        var offset: Vec4 = vec(0f, 0f, 0f, 0f),
+        var sampleWeight: Float = 1f
     )
 
     /**
      * Simple on-screen blit of a color attachment from this RTT. Generates a fullscreen triangle
      * mesh internally (no vertex inputs) and wires a small grading push-constant block.
      */
-    fun blitToScreen(
+    open fun blitToScreen(
         renderer: Renderer = this.renderer,
         target: RenderTarget = renderer.renderList,
         attachment: Int = 0,
@@ -334,7 +335,17 @@ open class RenderToTexture(
         }
 
         val grade = ColorGrade().apply(configure)
-        val sampler = afield.four.texture.TextureSampler(renderer, imageViewArray[attachment].imageView.imageViewData.mipLevels, true)
+        val sampler = afield.four.texture.TextureSampler(
+            renderer,
+            imageViewArray[attachment].imageView.imageViewData.mipLevels,
+            true,
+            VK_FILTER_NEAREST,
+            VK_SAMPLER_MIPMAP_MODE_NEAREST
+        )
+        val sourceProvider = object : HasImageViewArray {
+            override val imageViewArray: List<HasImageView>
+                get() = listOf(this@RenderToTexture.imageViewArray[attachment])
+        }
 
         val module = Module(afield.four.modules.parameters(renderer) {
             this.name = name
@@ -351,7 +362,7 @@ open class RenderToTexture(
             vertex = blitVertexShader
             fragment = blitFragmentShader
             textureResolver = { tex ->
-                if (tex.name == "sourceTex") afield.stdlib.fromViews(listOf(imageViewArray[attachment]), tex.name, sampler) else null
+                if (tex.name == "sourceTex") sourceProvider to sampler else null
             }
         }).pointer()
 
@@ -363,6 +374,7 @@ open class RenderToTexture(
         mesh.push["offset"] = grade.offset
         val src = sourceRect ?: Rect(0.0, 0.0, 1.0, 1.0)
         mesh.push["srcRect"] = vec(src.x.f, src.y.f, src.w.f, src.h.f)
+        mesh.push["sampleWeight"] = grade.sampleWeight
         module.current.meshes[name] = mesh
 
         target += name to module
@@ -394,12 +406,18 @@ open class RenderToTexture(
                 vec4 gamma;
                 vec4 offset;
                 vec4 srcRect; // xy = offset, zw = size in UV space
+                float sampleWeight;
             } push;
             
             void main() {
                 vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
-                vec4 color = texture(sourceTex, uv);
-                color.rgb = pow(color.rgb * push.exposure.rgb + push.offset.rgb, push.gamma.rgb);
+                vec4 sampled = push.sampleWeight == 0.0 ? vec4(0.0, 0.0, 0.0, 1.0) : texture(sourceTex, uv);
+                if (any(isnan(sampled)) || any(isinf(sampled))) {
+                    sampled = vec4(0.0, 0.0, 0.0, 1.0);
+                }
+                vec4 color = sampled * push.sampleWeight;
+                vec3 graded = color.rgb * push.exposure.rgb + push.offset.rgb;
+                color.rgb = pow(max(graded, vec3(0.0)), push.gamma.rgb);
                 outColor = color;
             }
         """.trimIndent()
@@ -717,10 +735,14 @@ open class RenderToTexture(
     }
 
     private fun validateModule(module: Module) {
-        val moduleColorCount = if (module.parameters.colorFormats.isNotEmpty())
-            module.parameters.colorFormats.size else module.parameters.color
+        val moduleFormats = if (module.parameters.colorFormats.isNotEmpty())
+            module.parameters.colorFormats else List(module.parameters.color) { module.parameters.imageFormat }
+        val moduleColorCount = moduleFormats.size
         require(moduleColorCount == colorImageHandles.size) {
             "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
+        }
+        require(moduleFormats == colorFormats) {
+            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Call target.apply() inside module parameters."
         }
     }
 

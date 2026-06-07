@@ -131,7 +131,8 @@ data class ThreeInteractiveObject(
     val hoverColor: FloatArray? = null,
     val lines: ThreeGeometryData? = null,
     val fills: ThreeGeometryData? = null,
-    val points: ThreeGeometryData? = null
+    val points: ThreeGeometryData? = null,
+    val vertices: List<ThreeInteractiveVertex> = emptyList()
 ) {
     override fun toString(): String = prettySummary(
         "ThreeInteractiveObject",
@@ -139,9 +140,16 @@ data class ThreeInteractiveObject(
         "hoverColor" to hoverColor?.contentToString(),
         "lines" to (lines != null),
         "fills" to (fills != null),
-        "points" to (points != null)
+        "points" to (points != null),
+        "vertices" to vertices.size
     )
 }
+
+@Serializable
+data class ThreeInteractiveVertex(
+    val index: Int,
+    val position: FloatArray
+)
 
 @Serializable
 data class ThreeGeometryPayload(
@@ -428,23 +436,105 @@ private fun buildThreeGeometryPayload(
 ): ThreeGeometryPayload {
     val sourceLines = lines.toList()
     val editSession = if (editable) registerFLineEditSession(sourceLines, null) else null
+    val samples = samplesPerCubic.coerceAtLeast(2)
+    val callbackIds = sourceLines.map { line ->
+        line.onClick?.let { cb ->
+            val id = "fline-${UUID.randomUUID()}"
+            registerFLineClickCallback(id, cb)
+            id
+        } ?: ""
+    }
+    val hoverColors = sourceLines.map { line ->
+        line.hoverColor?.let { c -> floatArrayOf(c.x, c.y, c.z, c.w) }
+    }
+
+    val linePositions = ArrayList<Float>()
+    val lineColors = ArrayList<Float>()
+    val lineAlphas = ArrayList<Float>()
+    val meshPositions = ArrayList<Float>()
+    val meshColors = ArrayList<Float>()
+    val meshAlphas = ArrayList<Float>()
+    val meshIndices = ArrayList<Int>()
+    val pointPositions = ArrayList<Float>()
+    val pointColors = ArrayList<Float>()
+    val pointAlphas = ArrayList<Float>()
+    val pointSizes = ArrayList<Float>()
+    val geometryBounds = BoundsTracker()
+    val interactiveObjects = ArrayList<ThreeInteractiveObject>()
+
+    if (!editable) {
+        sourceLines.forEachIndexed { lineIndex, f ->
+            val callbackId = callbackIds[lineIndex]
+            val hoverColor = hoverColors[lineIndex]
+            if (callbackId.isNotEmpty() || hoverColor != null) {
+                val localLinePositions = ArrayList<Float>()
+                val localLineColors = ArrayList<Float>()
+                val localLineAlphas = ArrayList<Float>()
+                val localMeshPositions = ArrayList<Float>()
+                val localMeshColors = ArrayList<Float>()
+                val localMeshAlphas = ArrayList<Float>()
+                val localMeshIndices = ArrayList<Int>()
+                val localPointPositions = ArrayList<Float>()
+                val localPointColors = ArrayList<Float>()
+                val localPointAlphas = ArrayList<Float>()
+                val localPointSizes = ArrayList<Float>()
+
+                appendFLineGeometry(
+                    f = f,
+                    samplesPerCubic = samples,
+                    linePositions = localLinePositions,
+                    lineColors = localLineColors,
+                    lineAlphas = localLineAlphas,
+                    meshPositions = localMeshPositions,
+                    meshColors = localMeshColors,
+                    meshAlphas = localMeshAlphas,
+                    meshIndices = localMeshIndices,
+                    pointPositions = localPointPositions,
+                    pointColors = localPointColors,
+                    pointAlphas = localPointAlphas,
+                    pointSizes = localPointSizes,
+                    bounds = geometryBounds
+                )
+
+                interactiveObjects += ThreeInteractiveObject(
+                    callbackId = callbackId,
+                    hoverColor = hoverColor,
+                    lines = lineGeometryOrNull(localLinePositions, localLineColors, localLineAlphas),
+                    fills = fillGeometryOrNull(localMeshPositions, localMeshColors, localMeshAlphas, localMeshIndices),
+                    points = pointGeometryOrNull(localPointPositions, localPointColors, localPointAlphas, localPointSizes),
+                    vertices = interactiveVertices(f)
+                )
+            } else {
+                appendFLineGeometry(
+                    f = f,
+                    samplesPerCubic = samples,
+                    linePositions = linePositions,
+                    lineColors = lineColors,
+                    lineAlphas = lineAlphas,
+                    meshPositions = meshPositions,
+                    meshColors = meshColors,
+                    meshAlphas = meshAlphas,
+                    meshIndices = meshIndices,
+                    pointPositions = pointPositions,
+                    pointColors = pointColors,
+                    pointAlphas = pointAlphas,
+                    pointSizes = pointSizes,
+                    bounds = geometryBounds
+                )
+            }
+        }
+    }
+
     val sceneBounds = BoundsTracker()
     var sceneLineSegments = 0
     var sceneTriangles = 0
     var scenePoints = 0
 
-    val scene = ThreeEditableScene(
+    val scene = if (editable) ThreeEditableScene(
         sessionId = editSession?.sessionId ?: "",
         lines = sourceLines.mapIndexed { lineIndex, line ->
             var boundaryPoints = 0
-            val callbackId = line.onClick?.let { cb ->
-                val id = "fline-${UUID.randomUUID()}"
-                registerFLineClickCallback(id, cb)
-                id
-            } ?: ""
-            val hoverColor = line.hoverColor?.let { c ->
-                floatArrayOf(c.x, c.y, c.z, c.w)
-            }
+            var openBoundaryPoints = 0
 
             ThreeEditableLine(
                 lineIndex = lineIndex,
@@ -454,13 +544,17 @@ private fun buildThreeGeometryPayload(
                 filled = line.filled,
                 pointed = line.pointed,
                 pointSize = line.pointSize.toFloat(),
-                callbackId = callbackId,
-                hoverColor = hoverColor,
+                callbackId = callbackIds[lineIndex],
+                hoverColor = hoverColors[lineIndex],
                 nodes = line.nodes.mapIndexed { nodeIndex, node ->
                     when (node) {
                         is FLine.MoveTo -> {
+                            if (line.filled && openBoundaryPoints >= 3) {
+                                sceneTriangles += (openBoundaryPoints - 2)
+                            }
                             scenePoints += 1
                             boundaryPoints = 1
+                            openBoundaryPoints = 1
                             sceneBounds.include(node.to)
                             ThreeEditableNode(
                                 nodeIndex = nodeIndex,
@@ -471,8 +565,9 @@ private fun buildThreeGeometryPayload(
 
                         is FLine.LineTo -> {
                             scenePoints += 1
-                            sceneLineSegments += 1
+                            if (boundaryPoints > 0) sceneLineSegments += 1
                             boundaryPoints += 1
+                            openBoundaryPoints = boundaryPoints
                             sceneBounds.include(node.to)
                             ThreeEditableNode(
                                 nodeIndex = nodeIndex,
@@ -483,8 +578,9 @@ private fun buildThreeGeometryPayload(
 
                         is FLine.CubicTo -> {
                             scenePoints += 1
-                            sceneLineSegments += samplesPerCubic.coerceAtLeast(2)
-                            boundaryPoints += samplesPerCubic.coerceAtLeast(2)
+                            if (boundaryPoints > 0) sceneLineSegments += samples
+                            boundaryPoints += samples
+                            openBoundaryPoints = boundaryPoints
                             sceneBounds.include(node.to)
                             sceneBounds.include(node.c1)
                             sceneBounds.include(node.c2)
@@ -498,11 +594,12 @@ private fun buildThreeGeometryPayload(
                         }
 
                         is FLine.Close -> {
-                            sceneLineSegments += 1
+                            if (boundaryPoints > 1) sceneLineSegments += 1
                             if (line.filled && boundaryPoints >= 3) {
                                 sceneTriangles += (boundaryPoints - 2)
                             }
                             boundaryPoints = 0
+                            openBoundaryPoints = 0
                             ThreeEditableNode(
                                 nodeIndex = nodeIndex,
                                 kind = "close"
@@ -512,24 +609,136 @@ private fun buildThreeGeometryPayload(
                 }
             )
         }
-    )
+    ).also {
+        if (editable) {
+            sourceLines.forEach { line ->
+                val openCount = countOpenBoundaryPoints(line, samples)
+                if (line.filled && openCount >= 3) {
+                    sceneTriangles += (openCount - 2)
+                }
+            }
+        }
+    } else null
+
+    val lineGeom = lineGeometryOrNull(linePositions, lineColors, lineAlphas)
+    val fillGeom = fillGeometryOrNull(meshPositions, meshColors, meshAlphas, meshIndices)
+    val pointGeom = pointGeometryOrNull(pointPositions, pointColors, pointAlphas, pointSizes)
 
     return ThreeGeometryPayload(
         uid = uid,
-        lines = null,
-        fills = null,
-        points = null,
-        bounds = sceneBounds.toBounds(),
+        lines = lineGeom,
+        fills = fillGeom,
+        points = pointGeom,
+        bounds = if (editable) sceneBounds.toBounds() else geometryBounds.toBounds(),
         meta = ThreeMeta(
-            lineSegments = sceneLineSegments,
-            triangles = sceneTriangles,
-            points = scenePoints
+            lineSegments = if (editable) sceneLineSegments else linePositions.size / 6 + interactiveObjects.sumOf { it.lines?.attributes?.get("position")?.array?.size?.div(6) ?: 0 },
+            triangles = if (editable) sceneTriangles else meshIndices.size / 3 + interactiveObjects.sumOf { it.fills?.index?.array?.size?.div(3) ?: 0 },
+            points = if (editable) scenePoints else pointPositions.size / 3 + interactiveObjects.sumOf { it.points?.attributes?.get("position")?.array?.size?.div(3) ?: 0 }
         ),
         autoFrame = autoFrame,
-        interactive = emptyList(),
+        interactive = interactiveObjects,
         scene = scene,
         editableEnabled = editable
     )
+}
+
+private fun lineGeometryOrNull(
+    positions: List<Float>,
+    colors: List<Float>,
+    alphas: List<Float>
+): ThreeGeometryData? = if (positions.isNotEmpty()) {
+    buildGeometryData(
+        positions = positions.toFloatArray(),
+        colors = colors.toFloatArray(),
+        alphas = alphas.toFloatArray(),
+        sizes = null,
+        indices = null
+    )
+} else null
+
+private fun fillGeometryOrNull(
+    positions: List<Float>,
+    colors: List<Float>,
+    alphas: List<Float>,
+    indices: List<Int>
+): ThreeGeometryData? = if (positions.isNotEmpty()) {
+    buildGeometryData(
+        positions = positions.toFloatArray(),
+        colors = colors.toFloatArray(),
+        alphas = alphas.toFloatArray(),
+        sizes = null,
+        indices = indices.toIntArray()
+    )
+} else null
+
+private fun pointGeometryOrNull(
+    positions: List<Float>,
+    colors: List<Float>,
+    alphas: List<Float>,
+    sizes: List<Float>
+): ThreeGeometryData? = if (positions.isNotEmpty()) {
+    buildGeometryData(
+        positions = positions.toFloatArray(),
+        colors = colors.toFloatArray(),
+        alphas = alphas.toFloatArray(),
+        sizes = sizes.toFloatArray(),
+        indices = null
+    )
+} else null
+
+private fun appendFLineGeometry(
+    f: FLine,
+    samplesPerCubic: Int,
+    linePositions: MutableList<Float>,
+    lineColors: MutableList<Float>,
+    lineAlphas: MutableList<Float>,
+    meshPositions: MutableList<Float>,
+    meshColors: MutableList<Float>,
+    meshAlphas: MutableList<Float>,
+    meshIndices: MutableList<Int>,
+    pointPositions: MutableList<Float>,
+    pointColors: MutableList<Float>,
+    pointAlphas: MutableList<Float>,
+    pointSizes: MutableList<Float>,
+    bounds: BoundsTracker
+) {
+    val color = f.color
+    if (f.stroked) {
+        appendLineSegments(f, samplesPerCubic, color, linePositions, lineColors, lineAlphas, bounds)
+    }
+    if (f.filled) {
+        appendFilledMesh(f, samplesPerCubic, color, meshPositions, meshColors, meshAlphas, meshIndices, bounds)
+    }
+    if (f.pointed) {
+        appendPoints(f, color, pointPositions, pointColors, pointAlphas, pointSizes, bounds)
+    }
+}
+
+private fun interactiveVertices(f: FLine): List<ThreeInteractiveVertex> =
+    f.nodes.mapIndexedNotNull { index, node ->
+        if (node is FLine.Close) null
+        else ThreeInteractiveVertex(index, floatArrayOf(node.to.x, node.to.y, node.to.z))
+    }
+
+private fun countOpenBoundaryPoints(f: FLine, samplesPerCubic: Int): Int {
+    var current = 0
+    f.nodes.forEach { node ->
+        when (node) {
+            is FLine.MoveTo -> {
+                current = 1
+            }
+            is FLine.LineTo -> {
+                current += 1
+            }
+            is FLine.CubicTo -> {
+                current += samplesPerCubic
+            }
+            is FLine.Close -> {
+                current = 0
+            }
+        }
+    }
+    return current
 }
 
 private fun buildGeometryData(

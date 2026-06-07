@@ -7,9 +7,16 @@ import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.util.AutoDisposer
 import afield.four.util.vkCheck
+import kotlin.math.max
 
 
-class TextureSampler(val renderer: Renderer = fromContext(null), mipLevels: Int, anisotropyEnable: Boolean) {
+class TextureSampler(
+    val renderer: Renderer = fromContext(null),
+    mipLevels: Int,
+    anisotropyEnable: Boolean,
+    filter: Int = VK10.VK_FILTER_LINEAR,
+    mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST
+) {
     var vkSampler: Long = 0
     private val autoDisposeToken = AutoDisposer.register(this, "TextureSampler(mips=$mipLevels)") { /* set after init */ }
 
@@ -18,8 +25,8 @@ class TextureSampler(val renderer: Renderer = fromContext(null), mipLevels: Int,
         MemoryStack.stackPush().use { stack ->
             val samplerInfo = VkSamplerCreateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
-                .magFilter(VK10.VK_FILTER_LINEAR)
-                .minFilter(VK10.VK_FILTER_LINEAR)
+                .magFilter(filter)
+                .minFilter(filter)
                 .addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
                 .addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
                 .addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
@@ -27,9 +34,9 @@ class TextureSampler(val renderer: Renderer = fromContext(null), mipLevels: Int,
                 .unnormalizedCoordinates(false)
                 .compareEnable(false)
                 .compareOp(VK10.VK_COMPARE_OP_ALWAYS)
-                .mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR)
+                .mipmapMode(mipmapMode)
                 .minLod(0.0f)
-                .maxLod(mipLevels.toFloat())
+                .maxLod(max(0, mipLevels - 1).toFloat())
                 .mipLodBias(0.0f)
 
                 samplerInfo

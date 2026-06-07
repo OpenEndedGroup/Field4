@@ -328,14 +328,15 @@ We can start sending messages around. Messages propagate upwards until they find
 ## Document History
 
 Field keeps document backups as you work. The history view lets you inspect those saved versions and restore an earlier state.
-![](assets/screenshot_58.png)
 
 You can open history in two ways:
 
 - run `Show Document History` from the command palette
 - or open `/history?file=<document-name>` directly on the Field server
 
-The history view opens in the documentation iframe area rather than inside a normal box. You'll get a visualization of what's changed and when in your code, and the ability to roll back (and forward!). Don't be afraid to change your mind. 
+![](assets/screenshot_58.png)
+
+The UI for history here is very dense. In addition to affordences for scrubbing and visualizing edit and execution history both with respect to the current document and adjecent versions, you'll find options for filtering based on content and cherry picking rollbacks (and roll-forwards) to individual and groups of boxes. Once history is open you'll also be able to filter based on editor cursor position (a kind of more deeply penetrating git blame).
 
 ## Documentation browser
 

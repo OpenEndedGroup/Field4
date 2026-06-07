@@ -174,6 +174,14 @@ fun parameters(renderer: Renderer = fromContext(), build: Parameters.() -> Unit)
     return p
 }
 
+internal fun Renderer.formatSupportsColorAttachmentBlend(format: Int): Boolean {
+    MemoryStack.stackPush().use { stack ->
+        val props = VkFormatProperties.calloc(stack)
+        VK10.vkGetPhysicalDeviceFormatProperties(device.physicalDevice.vkPhysicalDevice, format, props)
+        return (props.optimalTilingFeatures() and VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) != 0
+    }
+}
+
 interface Renderable {
     fun render(command: CommandBuffer, bounds: Rectanglef)
 }
@@ -744,9 +752,11 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
                 for (i in 0 until colorCount) {
+                    val attachmentBlend = parameters.blend &&
+                            parameters.renderer.formatSupportsColorAttachmentBlend(colorFormats[i])
                     blendAtt[i].colorWriteMask(
                             (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
-                        ).blendEnable(parameters.blend).srcColorBlendFactor(parameters.srcColor)
+                        ).blendEnable(attachmentBlend).srcColorBlendFactor(parameters.srcColor)
                         .dstColorBlendFactor(parameters.dstColor).colorBlendOp(parameters.colorBlendOp)
                         .srcAlphaBlendFactor(parameters.srcAlpha).dstAlphaBlendFactor(parameters.dstAlpha)   // fix #3
                         .alphaBlendOp(parameters.alphaBlendOp)

@@ -535,7 +535,7 @@ function buildEditorItems(sceneData) {
         });
 
         pieces.forEach((piece) => {
-            if (!piece.closed || piece.boundary.length < 3) return;
+            if ((!piece.closed && !line.filled) || piece.boundary.length < 3) return;
             const faceItem = {
                 kind: 'face',
                 key: itemKey('face', [line.lineIndex, piece.pieceIndex]),
@@ -1362,6 +1362,8 @@ function renderEditableBaseGeometry() {
                     previous = node.to;
                 } else if (node.kind === 'line' && previous) {
                     positions.push(previous[0], previous[1], previous[2], node.to[0], node.to[1], node.to[2]);
+                    previous = node.to;
+                } else if (node.kind === 'line') {
                     previous = node.to;
                 } else if (node.kind === 'cubic' && previous) {
                     const samples = sampleCubic(previous, node.c1, node.c2, node.to);

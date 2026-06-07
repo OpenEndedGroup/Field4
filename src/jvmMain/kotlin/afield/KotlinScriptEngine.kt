@@ -8,6 +8,13 @@ import java.util.*
 import kotlin.reflect.*
 import kotlin.script.experimental.api.*
 
+internal const val fieldKotlinLanguageVersion = "2.4"
+internal val fieldKotlinExperimentalCompilerOptions = listOf(
+    "-Xcollection-literals",
+    "-Xname-based-destructuring=only-syntax",
+)
+internal val fieldKotlinJvmCompilerOptions = listOf("-jvm-target", "24") + fieldKotlinExperimentalCompilerOptions
+
 /**
  * Common interface for Kotlin scripting engines used by Field4.
  *

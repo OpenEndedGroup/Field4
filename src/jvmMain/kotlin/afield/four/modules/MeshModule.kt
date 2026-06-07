@@ -483,6 +483,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
                 val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
                 for (i in 0 until colorCount) {
+                    val attachmentBlend = parameters.blend &&
+                            parameters.renderer.formatSupportsColorAttachmentBlend(colorFormats[i])
                     blendAtt[i]
                         .colorWriteMask(
                             (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or
@@ -490,7 +492,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                                     (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or
                                     (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
                         )
-                        .blendEnable(parameters.blend)
+                        .blendEnable(attachmentBlend)
                         .srcColorBlendFactor(parameters.srcColor)
                         .dstColorBlendFactor(parameters.dstColor)
                         .colorBlendOp(parameters.colorBlendOp)

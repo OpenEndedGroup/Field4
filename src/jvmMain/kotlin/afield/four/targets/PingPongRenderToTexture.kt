@@ -1,7 +1,9 @@
 package afield.four.targets
 
+import afield.Rect
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
+import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.texture.HasImageView
 import afield.four.texture.Image
@@ -86,6 +88,8 @@ class PingPongRenderToTexture(
             .usage(
                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
                         (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
+                        (if (this.parameters.colorTransferSrc) VK_IMAGE_USAGE_TRANSFER_SRC_BIT else 0) or
+                        (if (this.parameters.colorTransferDst || this.parameters.colorSampled) VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0) or
                         (if (needsTransfer) VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)
             )
             .format(colorFormats.first())
@@ -213,6 +217,32 @@ class PingPongRenderToTexture(
         if (!idleImageInitPending) return
         recordIdleImageInitialization(command, idleImageToInitialize, idleImageFinalLayout)
         idleImageInitPending = false
+    }
+
+    override fun blitToScreen(
+        renderer: Renderer,
+        target: RenderTarget,
+        attachment: Int,
+        name: String,
+        viewport: Rect?,
+        sourceRect: Rect?,
+        blend: Boolean,
+        additive: Boolean,
+        configure: ColorGrade.() -> Unit
+    ): ModulePointer {
+        target.preTargets["$name-source"] = this
+        target.others.entries.removeIf { it.value === this }
+        return super.blitToScreen(
+            renderer = renderer,
+            target = target,
+            attachment = attachment,
+            name = name,
+            viewport = viewport,
+            sourceRect = sourceRect,
+            blend = blend,
+            additive = additive,
+            configure = configure
+        )
     }
 
     override fun beforeRender(index: Int) {
