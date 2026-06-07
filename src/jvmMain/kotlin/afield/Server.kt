@@ -54,6 +54,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
@@ -183,6 +184,7 @@ var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
 private val welcomeEventSessions = ConcurrentHashMap.newKeySet<WebSocketSession>()
 private val aiKotlinNotifyThrottle = ConcurrentHashMap<String, Long>()
+private val aiKotlinCompletionsInFlight = AtomicInteger(0)
 
 var min_frame_delay = 1L
 
@@ -1097,13 +1099,6 @@ class Server {
                     "info,ai_completions",
                     "kotlin-ai request uid=${exec.uid} prop=${exec.property} line=${exec.line} col=${exec.column} pos=${exec.position} len=${exec.allCode.length}"
                 )
-                val throttleKey = "${exec.uid}:${exec.property}"
-                val now = System.currentTimeMillis()
-                val last = aiKotlinNotifyThrottle[throttleKey] ?: 0L
-                if (now - last > 1500) {
-                    aiKotlinNotifyThrottle[throttleKey] = now
-                    notify("Kotlin AI completion… <<spinner>>", "ai_completions")
-                }
                 val bounds = runCatching {
                     getTokenBounds(exec.allCode, exec.position)
                 }.getOrElse { CompletionTokenBounds(exec.position, exec.position) }
@@ -1122,63 +1117,80 @@ class Server {
                     return@mutableSetOf Handled.yes
                 }
 
+                val activeAiCompletions = aiKotlinCompletionsInFlight.incrementAndGet()
+                val throttleKey = "${exec.uid}:${exec.property}"
+                val now = System.currentTimeMillis()
+                val last = aiKotlinNotifyThrottle[throttleKey] ?: 0L
+                if (activeAiCompletions == 1 || now - last > 1500) {
+                    aiKotlinNotifyThrottle[throttleKey] = now
+                    notify("Kotlin AI completion… <<spinner>>", "*ai_completions")
+                }
+
                 val docName = File(thisSessionInfo.get().filename).name
                 val fileKey = "afield://$docName/${exec.uid}/${exec.property}"
 
                 GlobalScope.launch(Dispatchers.IO) {
-                    val t0 = System.nanoTime()
-                    val candidates = runCatching {
-                        Ai4KotlinAutocomplete.complete(
-                            fileKey = fileKey,
-                            code = exec.allCode,
-                            line = exec.line,
-                            column = exec.column,
-                            position = exec.position
-                        )
-                    }.onFailure {
-                        lprintln("warning,ai_completions", "kotlin-ai failed uid=${exec.uid}: ${it.javaClass.simpleName}: ${it.message}")
-                    }.getOrElse { emptyList() }
-                    val ms = (System.nanoTime() - t0) / 1_000_000
-                    lblock(
-                        "info, ai_completions", "responses are"
+                    try {
+                        val t0 = System.nanoTime()
+                        val candidates = runCatching {
+                            Ai4KotlinAutocomplete.complete(
+                                fileKey = fileKey,
+                                code = exec.allCode,
+                                line = exec.line,
+                                column = exec.column,
+                                position = exec.position
+                            )
+                        }.onFailure {
+                            lprintln("warning,ai_completions", "kotlin-ai failed uid=${exec.uid}: ${it.javaClass.simpleName}: ${it.message}")
+                        }.getOrElse { emptyList() }
+                        val ms = (System.nanoTime() - t0) / 1_000_000
+                        lblock(
+                            "info, ai_completions", "responses are"
 
-                    ) {
-                        lprint("info, ai_completions", "kotlin-ai response uid=${exec.uid} prop=${exec.property} candidates=${candidates.size} in ${ms}ms")
-                        candidates.forEach {
-                            lprint("info, ai_completions", "${it.text} ${it.documentation}")
-                        }
-                    }
-
-                    val metadata = candidates.take(3).mapIndexed { idx, candidate ->
-                        val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
-                        val doc = buildString {
-                            val notes = candidate.documentation.ifBlank { "GPT-5.1-codex-mini" }
-                            append(notes.trim())
-                            if (candidate.text.isNotBlank()) {
-                                append("\n\n```kotlin\n")
-                                append(candidate.text.trimEnd())
-                                append("\n```")
+                        ) {
+                            lprint("info, ai_completions", "kotlin-ai response uid=${exec.uid} prop=${exec.property} candidates=${candidates.size} in ${ms}ms")
+                            candidates.forEach {
+                                lprint("info, ai_completions", "${it.text} ${it.documentation}")
                             }
-                        }.trimEnd()
+                        }
 
-                        Metadata(
-                            icon = "keyword",
-                            tail = "AI ${idx + 1}",
-                            text = candidate.text,
-                            displayText = if (display.isNotEmpty()) display else "AI completion ${idx + 1}",
-                            documentation = doc
-                        )
-                    }
+                        val metadata = candidates.take(3).mapIndexed { idx, candidate ->
+                            val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
+                            val doc = buildString {
+                                val notes = candidate.documentation.ifBlank { "GPT-5.1-codex-mini" }
+                                append(notes.trim())
+                                if (candidate.text.isNotBlank()) {
+                                    append("\n\n```kotlin\n")
+                                    append(candidate.text.trimEnd())
+                                    append("\n```")
+                                }
+                            }.trimEnd()
 
-                    reply(
-                        Message("complete-kotlin-ai").payload(
-                            Completion(
-                                boundsStart = bounds.start,
-                                boundsEnd = bounds.end,
-                                metadata = metadata
+                            Metadata(
+                                icon = "keyword",
+                                tail = "AI ${idx + 1}",
+                                text = candidate.text,
+                                displayText = if (display.isNotEmpty()) display else "AI completion ${idx + 1}",
+                                documentation = doc
+                            )
+                        }
+
+                        reply(
+                            Message("complete-kotlin-ai").payload(
+                                Completion(
+                                    boundsStart = bounds.start,
+                                    boundsEnd = bounds.end,
+                                    metadata = metadata
+                                )
                             )
                         )
-                    )
+                    } finally {
+                        val remaining = aiKotlinCompletionsInFlight.decrementAndGet()
+                        if (remaining <= 0) {
+                            aiKotlinCompletionsInFlight.set(0)
+                            notify("Kotlin AI completion finished", "*ai_completions")
+                        }
+                    }
                 }
 
                 Handled.yes

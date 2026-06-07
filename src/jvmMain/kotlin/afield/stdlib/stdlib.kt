@@ -219,12 +219,12 @@ fun start(a: suspend () -> Unit): Frames {
 /**
  * Creates an animation loop from a lambda.
  * The lambda will be executed every frame when this function is launched.
- * 
+ *
  * Usage:
  * ```
  * foo()
  * bar(10.0)
- * 
+ *
  * animate {
  *     gux()
  * }
@@ -442,3 +442,11 @@ fun ByteBuffer.putf16(value: Float): ByteBuffer {
 data class Vec2h(val v: Vector2f)
 data class Vec3h(val v: Vector3f)
 data class Vec4h(val v: Vector4f)
+
+
+val <T> List<T>.m : MutableList<T>
+    get() = this.toMutableList()
+
+val <T> List<T>.s : Set<T>
+    get() = this.toSet()
+
