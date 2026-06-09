@@ -867,6 +867,7 @@ object RayTracingDocsHarness {
         layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
 
         void main() {
+            const float rayEpsilon = 0.001;
             ivec2 px = ivec2(gl_LaunchIDEXT.xy);
             vec2 uv = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
             vec2 ndc = uv * 2.0 - 1.0;
@@ -881,7 +882,7 @@ object RayTracingDocsHarness {
                         gl_RayFlagsOpaqueEXT,
                         0xFF,
                         0, 0, 0,
-                        origin, 0.001, dir, 100.0,
+                        origin, rayEpsilon, dir, 100.0,
                         0);
 
             vec3 color = pow(clamp(payload.color, vec3(0.0), vec3(1.0)), vec3(0.95));
@@ -946,9 +947,11 @@ object RayTracingDocsHarness {
         hitAttributeEXT vec3 sphereNormal;
 
         void main() {
+            const float rayEpsilon = 0.001;
             vec3 origin = gl_ObjectRayOriginEXT;
             vec3 dir = gl_ObjectRayDirectionEXT;
 
+            // Solve a*t^2 + b*t + c = 0 for a ray against a unit sphere at the origin.
             float a = dot(dir, dir);
             float b = 2.0 * dot(origin, dir);
             float c = dot(origin, origin) - 1.0;
@@ -960,8 +963,8 @@ object RayTracingDocsHarness {
             float t0 = (-b - rootDisc) * invDenom;
             float t1 = (-b + rootDisc) * invDenom;
             float t = t0;
-            if (t <= 0.001) t = t1;
-            if (t <= 0.001) return;
+            if (t <= rayEpsilon) t = t1;
+            if (t <= rayEpsilon) return;
 
             vec3 hit = origin + t * dir;
             sphereNormal = normalize(hit);
@@ -984,6 +987,7 @@ object RayTracingDocsHarness {
         hitAttributeEXT vec3 sphereNormal;
 
         void main() {
+            const float rayEpsilon = 0.001;
             vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
             vec3 normal = normalize(vec3(gl_ObjectToWorldEXT * vec4(sphereNormal, 0.0)));
             vec3 viewDir = normalize(-gl_WorldRayDirectionEXT);
@@ -1007,7 +1011,7 @@ object RayTracingDocsHarness {
                         0xFF,
                         0, 0, 0,
                         worldHit + normal * 0.01,
-                        0.001,
+                        rayEpsilon,
                         reflected,
                         100.0,
                         0);
