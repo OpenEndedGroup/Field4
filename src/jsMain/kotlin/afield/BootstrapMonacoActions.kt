@@ -720,6 +720,23 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     run {
         val action = js("{}")
+        action.id = "history-lens-selection"
+        action.label = "Show History Lens for Line / Selection"
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 1.45
+        action.run = { ed: dynamic ->
+            val lens = js("window").HistoryLens
+            if (lens != null && lens != undefined) {
+                lens.open(ed, monaco)
+            }
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
         action.id = "ai-assist"
         action.label = "Apply Intelligence"
         action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.KeyO))

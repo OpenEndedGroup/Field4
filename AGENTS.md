@@ -248,6 +248,20 @@ When adding a new RPC:
 2. Add a server handler in `src/jvmMain/kotlin/afield/Server.kt` (or in `src/jvmMain/kotlin/afield/server/*`).
 3. Add a frontend sender/receiver in `src/jsMain/kotlin/afield/*` (or JS resources if it’s not in Kotlin/JS).
 
+### Kotlin/JS ↔ plain JS interop
+
+Kotlin/JS `@JsExport` functions from `src/jsMain/kotlin/afield/*` are emitted as exports of the generated `afield.mjs` module. They are **not** safe to assume as bare globals inside `type="module"` scripts in `src/commonMain/resources`.
+
+When a resource JS file is loaded as an ES module, import Kotlin/JS helpers explicitly:
+
+```js
+import { send, sendWithReply } from "./afield.mjs";
+```
+
+Good examples: `src/commonMain/resources/bootstrapMonaco.js`, `embeddedEditors.js`, `outputareas2.js`, and `outputs.js`.
+
+Do not write module code that calls `send(...)`, `sendWithReply(...)`, `monacoHandleOutput(...)`, etc. as unqualified identifiers unless that file imports them from `./afield.mjs`. Non-module legacy scripts may still rely on globals exposed through `window`, but new module scripts should use imports.
+
 ### Runloop vs Audio Loop
 
 Field has more than one “main loop”, and bugs get hard fast when these are conflated:

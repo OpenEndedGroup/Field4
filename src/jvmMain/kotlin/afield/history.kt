@@ -409,7 +409,8 @@ object HistoryManager {
         documentPath: String,
         sessionInfo: SessionInformation,
         targetVersionIndex: Int,
-        boxFilter: Set<String> = emptySet()
+        boxFilter: Set<String> = emptySet(),
+        propertyFilter: Set<String> = emptySet()
     ): HistoryVersionDiff? {
         val versions = listVersions(documentPath)
         if (targetVersionIndex < 0 || targetVersionIndex >= versions.size) {
@@ -432,7 +433,7 @@ object HistoryManager {
             val boxChanges = ids.mapNotNull { uid ->
                 val current = currentStates[uid]
                 val target = targetStates[uid]
-                boxDiff(uid, current, target)
+                boxDiff(uid, current, target, propertyFilter)
             }.sortedWith(
                 compareByDescending<HistoryBoxChange> { boxChangeWeight(it) }
                     .thenBy { it.name.lowercase() }
@@ -445,6 +446,7 @@ object HistoryManager {
                 basis = "current",
                 baselineIndex = versions.lastOrNull()?.index ?: -1,
                 boxFilter = boxFilter.toList().sorted(),
+                properties = propertyFilter.toList().sorted(),
                 boxes = boxChanges,
                 changedBoxCount = boxChanges.size,
                 propertyChangeCount = boxChanges.sumOf { it.properties.size },
@@ -460,7 +462,8 @@ object HistoryManager {
     fun diffVersionAgainstPrevious(
         documentPath: String,
         targetVersionIndex: Int,
-        boxFilter: Set<String> = emptySet()
+        boxFilter: Set<String> = emptySet(),
+        propertyFilter: Set<String> = emptySet()
     ): HistoryVersionDiff? {
         val versions = listVersions(documentPath)
         if (targetVersionIndex < 0 || targetVersionIndex >= versions.size) {
@@ -475,7 +478,8 @@ object HistoryManager {
                 generatedAt = System.currentTimeMillis(),
                 basis = "previous",
                 baselineIndex = -1,
-                boxFilter = boxFilter.toList().sorted()
+                boxFilter = boxFilter.toList().sorted(),
+                properties = propertyFilter.toList().sorted()
             )
         }
 
@@ -494,7 +498,7 @@ object HistoryManager {
             val boxChanges = ids.mapNotNull { uid ->
                 val previous = previousStates[uid]
                 val target = targetStates[uid]
-                boxDiff(uid, previous, target)
+                boxDiff(uid, previous, target, propertyFilter)
             }.sortedWith(
                 compareByDescending<HistoryBoxChange> { boxChangeWeight(it) }
                     .thenBy { it.name.lowercase() }
@@ -507,6 +511,7 @@ object HistoryManager {
                 basis = "previous",
                 baselineIndex = versions[targetVersionIndex - 1].index,
                 boxFilter = boxFilter.toList().sorted(),
+                properties = propertyFilter.toList().sorted(),
                 boxes = boxChanges,
                 changedBoxCount = boxChanges.size,
                 propertyChangeCount = boxChanges.sumOf { it.properties.size },
@@ -532,6 +537,7 @@ object HistoryManager {
 	        sessionInfo: SessionInformation,
 	        targetVersionIndex: Int,
 	        boxFilter: Set<String> = emptySet(),
+	        propertyFilter: Set<String> = emptySet(),
 	        savingContext: SavingContext = SavingContext(),
 	        currentStates: Map<String, HistoryBoxState>? = null
 	    ): HistoryLineStats? {
@@ -548,7 +554,7 @@ object HistoryManager {
 	                .toSet()
 	            sumLineStats(
 	                ids.mapNotNull { uid ->
-	                    boxDiff(uid, liveStates[uid], targetStates[uid])?.lineStats
+	                    boxDiff(uid, liveStates[uid], targetStates[uid], propertyFilter)?.lineStats
 	                }
 	            )
 	        } catch (e: Exception) {
@@ -562,6 +568,7 @@ object HistoryManager {
 	        sessionInfo: SessionInformation,
 	        targetVersionIndexes: List<Int>,
 	        boxFilter: Set<String> = emptySet(),
+	        propertyFilter: Set<String> = emptySet(),
 	        shouldContinue: () -> Boolean = { true },
 	        emit: (Int, HistoryLineStats) -> Unit
 	    ) {
@@ -574,6 +581,7 @@ object HistoryManager {
 	                sessionInfo,
 	                versionIndex,
 	                boxFilter,
+	                propertyFilter,
 	                savingContext,
 	                currentStates
 	            ) ?: HistoryLineStats()
@@ -767,9 +775,11 @@ object HistoryManager {
     private fun boxDiff(
         uid: String,
         current: HistoryBoxState?,
-        target: HistoryBoxState?
+        target: HistoryBoxState?,
+        propertyFilter: Set<String> = emptySet()
     ): HistoryBoxChange? {
         if (current == null && target == null) return null
+        fun propertyAllowed(property: String) = propertyFilter.isEmpty() || property in propertyFilter
 
         val status = when {
             current == null -> "target-only"
@@ -779,14 +789,17 @@ object HistoryManager {
         val name = target?.name ?: current?.name ?: uid.take(8)
         val properties = when {
             current == null -> target!!.properties.keys.mapNotNull {
+                if (!propertyAllowed(it)) return@mapNotNull null
                 propertyChange(it, false, null, true, target.properties[it])
             }
             target == null -> current.properties.keys.mapNotNull {
+                if (!propertyAllowed(it)) return@mapNotNull null
                 propertyChange(it, true, current.properties[it], false, null)
             }
             else -> {
                 val names = (current.properties.keys + target.properties.keys).toSortedSet()
                 names.mapNotNull { property ->
+                    if (!propertyAllowed(property)) return@mapNotNull null
                     val hasCurrent = current.properties.containsKey(property)
                     val hasTarget = target.properties.containsKey(property)
                     val currentValue = current.properties[property]
@@ -1428,6 +1441,75 @@ object HistoryManager {
         return matches.asReversed()
     }
 
+    fun selectionChangeVersions(
+        documentPath: String,
+        uid: String,
+        property: String,
+        startLine: Int,
+        endLine: Int,
+        selectedText: String = "",
+        propertyText: String = ""
+    ): List<Int> {
+        val versions = listVersions(documentPath)
+        if (versions.size < 2 || uid.isBlank() || property.isBlank() || isScrubInternalProperty(property)) {
+            return emptyList()
+        }
+
+        val needles = selectionNeedles(
+            selectedText = selectedText,
+            propertyText = propertyText,
+            startLine = startLine,
+            endLine = endLine
+        )
+        if (needles.isEmpty()) return emptyList()
+
+        val matches = mutableListOf<Int>()
+        for (i in 1 until versions.size) {
+            try {
+                val previousText = loadBoxPropertyText(versions[i - 1], documentPath, uid, property)
+                val currentText = loadBoxPropertyText(versions[i], documentPath, uid, property)
+                if (previousText != currentText && changedLinesContainAny(previousText, currentText, needles)) {
+                    matches += versions[i].index
+                }
+            } catch (e: Exception) {
+                lprintln("warning,history", "Failed to inspect selection history for version ${versions[i].index}: ${e.message}")
+            }
+        }
+        return matches
+    }
+
+    fun propertyTextAtVersion(
+        documentPath: String,
+        versionIndex: Int,
+        uid: String,
+        property: String
+    ): String? {
+        val version = listVersions(documentPath).firstOrNull { it.index == versionIndex } ?: return null
+        return loadBoxPropertyText(version, documentPath, uid, property)
+    }
+
+    private fun selectionNeedles(
+        selectedText: String,
+        propertyText: String,
+        startLine: Int,
+        endLine: Int
+    ): List<String> {
+        val explicit = splitHistoryLines(selectedText.replace("\r\n", "\n").replace("\r", "\n"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+        if (explicit.isNotEmpty()) return explicit
+
+        val lines = splitHistoryLines(propertyText.replace("\r\n", "\n").replace("\r", "\n"))
+        if (lines.isEmpty()) return emptyList()
+        val first = (minOf(startLine, endLine) - 1).coerceIn(0, lines.lastIndex)
+        val last = (maxOf(startLine, endLine) - 1).coerceIn(first, lines.lastIndex)
+        return lines.subList(first, last + 1)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+    }
+
     private data class LineTrace(val previousLine: Int?, val touched: Boolean)
 
     private fun splitHistoryLines(text: String): List<String> =
@@ -1603,6 +1685,12 @@ object HistoryManager {
         val oldLines = oldText.split('\n')
         val newLines = newText.split('\n')
         return unmatchedLinesContain(newLines, oldLines) || unmatchedLinesContain(oldLines, newLines)
+    }
+
+    private fun changedLinesContainAny(oldText: String, newText: String, needles: List<String>): Boolean {
+        val normalizedNeedles = needles.map { it.lowercase() }.filter { it.isNotBlank() }
+        if (normalizedNeedles.isEmpty()) return false
+        return normalizedNeedles.any { changedLinesContain(oldText, newText, it) }
     }
 
     private fun computeVersionDiff(
@@ -1873,6 +1961,26 @@ object HistoryManager {
 private val historyStatsJobs = ConcurrentHashMap<String, Job>()
 private val historyRailStatsJobs = ConcurrentHashMap<String, Job>()
 
+private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null): List<HistoryVersion> {
+    val names = HistoryManager.getVersionNames(documentPath)
+    val activityByVersion = HistoryMetrics.activityByVersion(documentPath)
+    return HistoryManager.listVersions(documentPath)
+        .filter { indexes == null || it.index in indexes }
+        .map { v ->
+            HistoryVersion(
+                index = v.index,
+                filename = v.file.name,
+                timestamp = v.timestamp,
+                boxCount = v.boxCount,
+                byteSize = v.byteSize,
+                boxIds = v.boxIds.toList().sorted(),
+                message = names[v.index] ?: if (v.file.name == "metadata.edn") "Current" else "",
+                diffStats = null,
+                activityStats = activityByVersion[v.index]
+            )
+        }
+}
+
 /**
  * Install RPC handlers for document history operations
  */
@@ -2030,14 +2138,16 @@ fun installHistoryHandlers() {
             HistoryManager.diffVersionAgainstPrevious(
                 info.filename,
                 req.versionIndex,
-                req.boxIds.toSet()
+                req.boxIds.toSet(),
+                req.properties.toSet()
             )
         } else {
             HistoryManager.diffVersionAgainstLive(
                 info.filename,
                 info,
                 req.versionIndex,
-                req.boxIds.toSet()
+                req.boxIds.toSet(),
+                req.properties.toSet()
             )
         }
 
@@ -2060,6 +2170,8 @@ fun installHistoryHandlers() {
 	        val orderedIndexes = versions.map { it.index }.filter { it in validIndexes }
 	        val boxFilter = req.boxIds.toSet()
 	        val sortedFilter = boxFilter.toList().sorted()
+	        val propertyFilter = req.properties.toSet()
+	        val sortedProperties = propertyFilter.toList().sorted()
 	        val total = orderedIndexes.size
 	        val basis = if (req.basis == "previous") "previous" else "current"
 	        val statsKey = "${System.identityHashCode(thisSession.get())}:$documentPath:rail"
@@ -2074,6 +2186,7 @@ fun installHistoryHandlers() {
 	                        completed = 0,
 	                        total = 0,
 	                        boxFilter = sortedFilter,
+	                        properties = sortedProperties,
 	                        done = true
 	                    )
 	                )
@@ -2089,6 +2202,7 @@ fun installHistoryHandlers() {
 	                    completed = 0,
 	                    total = total,
 	                    boxFilter = sortedFilter,
+	                    properties = sortedProperties,
 	                    done = false
 	                )
 	            )
@@ -2103,6 +2217,7 @@ fun installHistoryHandlers() {
 	                        info,
 	                        orderedIndexes,
 	                        boxFilter,
+	                        propertyFilter,
 	                        shouldContinue = { isActive }
 	                    ) { versionIndex, stats ->
 	                        completed++
@@ -2114,6 +2229,7 @@ fun installHistoryHandlers() {
 	                                    completed = completed,
 	                                    total = total,
 	                                    boxFilter = sortedFilter,
+	                                    properties = sortedProperties,
 	                                    lineStats = stats,
 	                                    done = completed == total
 	                                )
@@ -2126,7 +2242,8 @@ fun installHistoryHandlers() {
 	                        val stats = HistoryManager.diffVersionAgainstPrevious(
 	                            documentPath,
 	                            versionIndex,
-	                            boxFilter
+	                            boxFilter,
+	                            propertyFilter
 	                        )?.lineStats ?: HistoryLineStats()
 	                        completed++
 	                        reply(
@@ -2137,6 +2254,7 @@ fun installHistoryHandlers() {
 	                                    completed = completed,
 	                                    total = total,
 	                                    boxFilter = sortedFilter,
+	                                    properties = sortedProperties,
 	                                    lineStats = stats,
 	                                    done = completed == total
 	                                )
@@ -2156,6 +2274,7 @@ fun installHistoryHandlers() {
 	                            completed = total,
 	                            total = total,
 	                            boxFilter = sortedFilter,
+	                            properties = sortedProperties,
 	                            done = true
 	                        )
 	                    )
@@ -2256,6 +2375,58 @@ fun installHistoryHandlers() {
                     lineNumber = req.lineNumber,
                     lineText = req.lineText,
                     versionIndexes = matches
+                )
+            )
+        )
+
+        Handled.yes
+    })
+
+    handlers["history-selection-versions"] = mutableSetOf({ message, reply ->
+        val req = Json.decodeFromJsonElement<HistorySelectionVersionsRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val matches = HistoryManager.selectionChangeVersions(
+            info.filename,
+            req.uid,
+            req.property,
+            req.startLine,
+            req.endLine,
+            req.selectedText,
+            req.propertyText
+        ).toSet()
+        reply(
+            Message("history-selection-versions-result").payload(
+                HistorySelectionVersionsResult(
+                    uid = req.uid,
+                    property = req.property,
+                    startLine = req.startLine,
+                    endLine = req.endLine,
+                    versions = historyVersionDtos(info.filename, matches)
+                )
+            )
+        )
+
+        Handled.yes
+    })
+
+    handlers["history-property-version"] = mutableSetOf({ message, reply ->
+        val req = Json.decodeFromJsonElement<HistoryPropertyVersionRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val version = historyVersionDtos(info.filename, setOf(req.versionIndex)).firstOrNull()
+        val value = HistoryManager.propertyTextAtVersion(
+            info.filename,
+            req.versionIndex,
+            req.uid,
+            req.property
+        ) ?: ""
+        reply(
+            Message("history-property-version-result").payload(
+                HistoryPropertyVersionResult(
+                    uid = req.uid,
+                    property = req.property,
+                    versionIndex = req.versionIndex,
+                    version = version,
+                    value = value
                 )
             )
         )

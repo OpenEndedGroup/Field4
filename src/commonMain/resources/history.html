@@ -763,6 +763,7 @@
                 background: var(--panel-2);
                 color: var(--text);
                 text-decoration: none;
+                cursor: zoom-in;
             }
 
             .screenshot-thumb img {
@@ -786,6 +787,66 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            .screenshot-preview {
+                position: fixed;
+                inset: 0;
+                z-index: 50;
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr);
+                padding: 12px;
+                background: rgba(0, 0, 0, 0.82);
+                backdrop-filter: blur(6px);
+            }
+
+            .screenshot-preview[hidden] {
+                display: none;
+            }
+
+            .screenshot-preview-chrome {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--gap);
+                min-width: 0;
+                padding: 0 0 8px;
+                color: var(--muted);
+            }
+
+            .screenshot-preview-title {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 11px;
+            }
+
+            .screenshot-preview-close {
+                width: 28px;
+                height: 28px;
+                padding: 0;
+                font-size: 17px;
+                border-radius: var(--radius-control);
+            }
+
+            .screenshot-preview-stage {
+                min-width: 0;
+                min-height: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                border: 4px solid var(--shell);
+                border-radius: var(--radius-panel);
+                background: var(--panel);
+            }
+
+            .screenshot-preview-stage img {
+                display: block;
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
             }
 
             .empty {
@@ -1235,6 +1296,7 @@
             let selectedIndex = 0;
             let currentDiff = null;
             let selectedOnly = false;
+            let historyScopeMode = "document";
             let diffBasis = "current";
             let sessionEstablished = false;
             let diffTimer = null;
@@ -1267,6 +1329,7 @@
             let historyRefreshPending = false;
             let pendingDiffAfterStats = false;
             let historyStatsRenderRaf = null;
+            let screenshotPreviewEl = null;
             let diffPlaceholderText = "Diffing...";
             let lastParentSelectionSignature = "";
             let parentSelectionPoll = null;
@@ -1430,6 +1493,7 @@
                     basis: "current",
                     baselineIndex: latestVersionNumber(),
                     boxFilter: selectedParentUids(),
+                    properties: selectedScopeProperties(),
                     boxes: [],
                     changedBoxCount: 0,
                     propertyChangeCount: 0,
@@ -1503,7 +1567,7 @@
                 }
             }
 
-            function displayedVersions() {
+            function displayedVersions(options = {}) {
                 let items = versions;
                 if (historySearchQuery.trim() && historySearchMatches != null) {
                     items = items.filter((version) =>
@@ -1517,6 +1581,7 @@
                 }
                 if (selectedOnly) {
                     const selectedCanvasUids = new Set(readParentSelectedUids());
+                    const selectedProperties = selectedScopeProperties();
                     const hasIncrementalStats = items.some(
                         (version) => version.diffStats,
                     );
@@ -1527,6 +1592,25 @@
                                 selectedCanvasUids,
                             ),
                         );
+                    }
+                    if (
+                        selectedPropertyScopeActive() &&
+                        selectedProperties.length &&
+                        !options.skipExactPropertyFilter
+                    ) {
+                        const exactBasis = diffBasis;
+                        items = items.filter((version) => {
+                            const exact = exactLineDeltaCache.get(
+                                lineDeltaCacheKey(
+                                    version.index,
+                                    exactBasis,
+                                    selectedCanvasUids,
+                                    selectedProperties,
+                                ),
+                            );
+                            if (!exact) return true;
+                            return (exact.added || 0) || (exact.removed || 0);
+                        });
                     }
                 }
                 return items;
@@ -1653,11 +1737,19 @@
                     const actualFilter = Array.isArray(diff.boxFilter)
                         ? diff.boxFilter.slice().sort()
                         : [];
+                    const expectedProperties = selectedScopeProperties()
+                        .slice()
+                        .sort();
+                    const actualProperties = Array.isArray(diff.properties)
+                        ? diff.properties.slice().sort()
+                        : [];
                     if (
                         diff.versionIndex !== selectedVersionNumber() ||
                         (diff.basis || "current") !== diffBasis ||
                         expectedFilter.join("\u0000") !==
-                            actualFilter.join("\u0000")
+                            actualFilter.join("\u0000") ||
+                        expectedProperties.join("\u0000") !==
+                            actualProperties.join("\u0000")
                     ) {
                         return;
 	                    }
@@ -1800,6 +1892,45 @@
                 return readParentSelectedUids();
             }
 
+            function selectedPropertyScopeActive() {
+                return historyScopeMode === "property";
+            }
+
+            function currentParentEditorProperty() {
+                try {
+                    return (
+                        window.parent?.currentSelectedProperty ||
+                        window.parent?.selectedProperty ||
+                        "code"
+                    );
+                } catch (_) {
+                    return "code";
+                }
+            }
+
+            function selectedScopeProperties() {
+                if (!selectedPropertyScopeActive()) return [];
+                const property = String(currentParentEditorProperty() || "").trim();
+                return property ? [property] : [];
+            }
+
+            function scopeLabel() {
+                if (historyScopeMode === "property") {
+                    const property = selectedScopeProperties()[0] || "property";
+                    return `Selected Property · ${property}`;
+                }
+                return selectedOnly ? "Selected Boxes" : "Whole Document";
+            }
+
+            function updateScopeButton() {
+                const button = document.getElementById("selected-filter-btn");
+                button.textContent = scopeLabel();
+                button.setAttribute(
+                    "aria-pressed",
+                    selectedOnly ? "true" : "false",
+                );
+            }
+
             function readParentSelectedUids() {
                 try {
                     const list = Array.from(window.parent?.selectedList || []);
@@ -1810,17 +1941,11 @@
             }
 
             function parentSelectionSignature() {
-                let property = "code";
-                try {
-                    property =
-                        window.parent?.currentSelectedProperty ||
-                        window.parent?.selectedProperty ||
-                        "code";
-                } catch (_) {}
+                let property = currentParentEditorProperty();
                 const blame = lineBlameActive
                     ? `::${lineBlameContextSignature(currentEditorLineContext())}`
                     : "";
-                return `${readParentSelectedUids().join("|")}::${property}${blame}`;
+                return `${historyScopeMode}::${readParentSelectedUids().join("|")}::${property}${blame}`;
             }
 
             function syncParentSelectionChanged() {
@@ -1834,6 +1959,7 @@
                     lineBlameRequestSignature = "";
                     requestLineBlameSoon();
                 }
+                updateScopeButton();
 	                renderRail();
                 if (selectedOnly) {
                     selectedBoxes.clear();
@@ -1879,6 +2005,7 @@
                     payload: {
                         versionIndex: selectedVersionNumber(),
                         boxIds: selectedParentUids(),
+                        properties: selectedScopeProperties(),
                         basis: diffBasis,
                     },
                 });
@@ -2279,11 +2406,15 @@
 	                versionIndex,
 	                basis = diffBasis,
 	                selectedCanvasUids = null,
+	                selectedProperties = null,
 	            ) {
 	                const uids = selectedCanvasUids?.size
 	                    ? Array.from(selectedCanvasUids).sort()
 	                    : [];
-	                return `${basis}\u0000${versionIndex}\u0000${uids.join("|")}`;
+	                const props = selectedProperties?.length
+	                    ? selectedProperties.slice().sort()
+	                    : [];
+	                return `${basis}\u0000${versionIndex}\u0000${uids.join("|")}\u0000${props.join("|")}`;
 	            }
 
 	            function cacheExactLineDelta(diff) {
@@ -2291,8 +2422,11 @@
 	                const uids = Array.isArray(diff.boxFilter)
 	                    ? diff.boxFilter.slice().sort()
 	                    : [];
+	                const props = Array.isArray(diff.properties)
+	                    ? diff.properties.slice().sort()
+	                    : [];
 	                exactLineDeltaCache.set(
-	                    `${diff.basis || "current"}\u0000${diff.versionIndex}\u0000${uids.join("|")}`,
+	                    `${diff.basis || "current"}\u0000${diff.versionIndex}\u0000${uids.join("|")}\u0000${props.join("|")}`,
 	                    statsToChartDelta(diff.lineStats || {}),
 	                );
 	            }
@@ -2303,8 +2437,11 @@
 	                const uids = Array.isArray(payload.boxFilter)
 	                    ? payload.boxFilter.slice().sort()
 	                    : [];
+	                const props = Array.isArray(payload.properties)
+	                    ? payload.properties.slice().sort()
+	                    : [];
 	                exactLineDeltaCache.set(
-	                    `${payload.basis || "current"}\u0000${payload.versionIndex}\u0000${uids.join("|")}`,
+	                    `${payload.basis || "current"}\u0000${payload.versionIndex}\u0000${uids.join("|")}\u0000${props.join("|")}`,
 	                    statsToChartDelta(payload.lineStats || {}),
 	                );
 	            }
@@ -2313,11 +2450,14 @@
 	                if (!selectedOnly) return "";
 	                const boxIds = selectedParentUids().slice().sort();
 	                if (!boxIds.length) return "";
-	                const versionIndexes = displayedVersions().map(
+	                const properties = selectedScopeProperties().slice().sort();
+	                const versionIndexes = displayedVersions({
+	                    skipExactPropertyFilter: true,
+	                }).map(
 	                    (version) => version.index,
 	                );
 	                if (!versionIndexes.length) return "";
-	                return `${diffBasis}\u0000${boxIds.join("|")}\u0000${versionIndexes.join("|")}`;
+	                return `${diffBasis}\u0000${boxIds.join("|")}\u0000${properties.join("|")}\u0000${versionIndexes.join("|")}`;
 	            }
 
 	            function requestSelectedRailLineStatsNow() {
@@ -2331,14 +2471,17 @@
 	                const parts = signature.split("\u0000");
 	                const basis = parts[0] || diffBasis;
 	                const boxIds = (parts[1] || "").split("|").filter(Boolean);
-	                const versionIndexes = (parts[2] || "")
+	                const properties = (parts[2] || "")
+	                    .split("|")
+	                    .filter(Boolean);
+	                const versionIndexes = (parts[3] || "")
 	                    .split("|")
 	                    .filter(Boolean)
 	                    .map((item) => Number(item))
 	                    .filter((item) => Number.isFinite(item));
 	                send({
 	                    name: "history-rail-line-stats",
-	                    payload: { basis, boxIds, versionIndexes },
+	                    payload: { basis, boxIds, properties, versionIndexes },
 	                });
 	            }
 
@@ -2357,9 +2500,17 @@
 	                const actual = Array.isArray(payload.boxFilter)
 	                    ? payload.boxFilter.slice().sort()
 	                    : [];
+	                const expectedProperties = selectedScopeProperties()
+	                    .slice()
+	                    .sort();
+	                const actualProperties = Array.isArray(payload.properties)
+	                    ? payload.properties.slice().sort()
+	                    : [];
 	                return (
 	                    expected.length > 0 &&
-	                    expected.join("\u0000") === actual.join("\u0000")
+	                    expected.join("\u0000") === actual.join("\u0000") &&
+	                    expectedProperties.join("\u0000") ===
+	                        actualProperties.join("\u0000")
 	                );
 	            }
 
@@ -2378,12 +2529,17 @@
 	                return statsToChartDelta(total);
 	            }
 
-	            function incrementalLineDelta(version, selectedCanvasUids = null) {
+	            function incrementalLineDelta(
+	                version,
+	                selectedCanvasUids = null,
+	                selectedProperties = null,
+	            ) {
 	                const exact = exactLineDeltaCache.get(
 	                    lineDeltaCacheKey(
 	                        version?.index,
 	                        "previous",
 	                        selectedCanvasUids,
+	                        selectedProperties,
 	                    ),
 	                );
 	                if (exact) return exact;
@@ -2402,7 +2558,10 @@
                 };
             }
 
-	            function currentLineDeltaMap(selectedCanvasUids = null) {
+	            function currentLineDeltaMap(
+	                selectedCanvasUids = null,
+	                selectedProperties = null,
+	            ) {
 	                const deltas = new Map();
 	                let added = 0;
 	                let removed = 0;
@@ -2413,6 +2572,7 @@
 	                            version.index,
 	                            "current",
 	                            selectedCanvasUids,
+	                            selectedProperties,
 	                        ),
 	                    );
 	                    deltas.set(version.index, exact || { added, removed });
@@ -2420,6 +2580,7 @@
 	                        const step = incrementalLineDelta(
 	                            version,
 	                            selectedCanvasUids,
+	                            selectedProperties,
 	                        );
 	                        added += step.added || 0;
 	                        removed += step.removed || 0;
@@ -2432,6 +2593,7 @@
 	                version,
 	                currentDeltas = null,
 	                selectedCanvasUids = null,
+	                selectedProperties = null,
 	            ) {
 	                if (diffBasis === "current") {
 	                    return (
@@ -2441,7 +2603,11 @@
                         }
 	                    );
 	                }
-	                return incrementalLineDelta(version, selectedCanvasUids);
+	                return incrementalLineDelta(
+	                    version,
+	                    selectedCanvasUids,
+	                    selectedProperties,
+	                );
 	            }
 
 	            function versionActivityDelta(version, selectedCanvasUids = null) {
@@ -3318,9 +3484,15 @@
 	                    selectedOnly && selectedCanvasUids.size
 	                        ? selectedCanvasUids
 	                        : null;
+	                const lineDeltaProperties = selectedPropertyScopeActive()
+	                    ? selectedScopeProperties()
+	                    : null;
 	                const currentDeltas =
 	                    diffBasis === "current"
-	                        ? currentLineDeltaMap(lineDeltaSelection)
+	                        ? currentLineDeltaMap(
+	                              lineDeltaSelection,
+	                              lineDeltaProperties,
+	                          )
 	                        : null;
                 const positionsByIndex = new Map(
                     versions.map((version, index) => [version.index, index]),
@@ -3334,6 +3506,7 @@
 	                        version,
 	                        currentDeltas,
 	                        lineDeltaSelection,
+	                        lineDeltaProperties,
 	                    ),
 	                );
 
@@ -3376,16 +3549,18 @@
                         dot.title = `${dot.title} · +${delta.added} -${delta.removed}`;
                     const activity = activityTitle(version, selectedCanvasUids);
                     if (activity) dot.title = `${dot.title} · ${activity}`;
-                    const touchesSelected = versionTouchesSelected(
+                    let touchesSelected = versionTouchesSelected(
                         version,
                         selectedCanvasUids,
                         latestSelectionChanges,
                         positionsByIndex,
                     );
-                    const activityTouchesSelected = selectedActivityTouches(
-                        version,
-                        selectedCanvasUids,
-                    );
+                    const activityTouchesSelected =
+                        !selectedPropertyScopeActive() &&
+                        selectedActivityTouches(version, selectedCanvasUids);
+                    if (selectedPropertyScopeActive()) {
+                        touchesSelected = !!(delta.added || delta.removed);
+                    }
                     if (touchesSelected || activityTouchesSelected) {
                         dot.classList.add("selection-change");
                         dot.title = `${dot.title} · selected box ${
@@ -3643,6 +3818,15 @@
 
             function handleHistoryKeydown(event) {
                 if (
+                    screenshotPreviewOpen() &&
+                    (event.key === "Escape" || event.key === "Esc")
+                ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeScreenshotPreview();
+                    return;
+                }
+                if (
                     disposed ||
                     event.defaultPrevented ||
                     event.metaKey ||
@@ -3663,6 +3847,30 @@
                     event.preventDefault();
                     event.stopPropagation();
                 }
+            }
+
+            function addParentHistoryKeydownListener() {
+                try {
+                    if (window.parent && window.parent !== window) {
+                        window.parent.addEventListener(
+                            "keydown",
+                            handleHistoryKeydown,
+                            { capture: true },
+                        );
+                    }
+                } catch (_) {}
+            }
+
+            function removeParentHistoryKeydownListener() {
+                try {
+                    if (window.parent && window.parent !== window) {
+                        window.parent.removeEventListener(
+                            "keydown",
+                            handleHistoryKeydown,
+                            { capture: true },
+                        );
+                    }
+                } catch (_) {}
             }
 
             function lineStatsText(stats) {
@@ -3702,6 +3910,61 @@
                 return `/history-screenshot?file=${encodeURIComponent(filename)}&path=${encodeURIComponent(ref.path || "")}`;
             }
 
+            function ensureScreenshotPreview() {
+                if (screenshotPreviewEl) return screenshotPreviewEl;
+                const preview = document.createElement("div");
+                preview.className = "screenshot-preview";
+                preview.hidden = true;
+                preview.innerHTML = `
+                    <div class="screenshot-preview-chrome">
+                        <div class="screenshot-preview-title"></div>
+                        <button class="screenshot-preview-close" type="button" aria-label="Close screenshot preview">×</button>
+                    </div>
+                    <div class="screenshot-preview-stage">
+                        <img alt="" />
+                    </div>
+                `;
+                preview.addEventListener("click", (event) => {
+                    if (event.target === preview) closeScreenshotPreview();
+                });
+                preview
+                    .querySelector(".screenshot-preview-stage")
+                    ?.addEventListener("click", (event) => {
+                        if (event.target === event.currentTarget) {
+                            closeScreenshotPreview();
+                        }
+                    });
+                preview
+                    .querySelector(".screenshot-preview-close")
+                    ?.addEventListener("click", closeScreenshotPreview);
+                document.body.appendChild(preview);
+                screenshotPreviewEl = preview;
+                return preview;
+            }
+
+            function openScreenshotPreview(ref) {
+                if (!ref?.path) return;
+                const preview = ensureScreenshotPreview();
+                const img = preview.querySelector("img");
+                const title = preview.querySelector(".screenshot-preview-title");
+                const url = screenshotUrl(ref);
+                img.src = url;
+                img.alt = ref.channel || "history screenshot";
+                title.textContent = `${ref.channel || "screenshot"} · ${ref.width || "?"}×${ref.height || "?"}`;
+                preview.hidden = false;
+            }
+
+            function closeScreenshotPreview() {
+                if (!screenshotPreviewEl) return;
+                screenshotPreviewEl.hidden = true;
+                const img = screenshotPreviewEl.querySelector("img");
+                if (img) img.removeAttribute("src");
+            }
+
+            function screenshotPreviewOpen() {
+                return !!screenshotPreviewEl && !screenshotPreviewEl.hidden;
+            }
+
             function renderScreenshotStrip(refs) {
                 const unique = [];
                 const seen = new Set();
@@ -3722,6 +3985,10 @@
                     link.target = "_blank";
                     link.rel = "noreferrer";
                     link.title = `${ref.channel} · ${ref.width || "?"}×${ref.height || "?"}`;
+                    link.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        openScreenshotPreview(ref);
+                    });
 
                     const img = document.createElement("img");
                     img.loading = "lazy";
@@ -3769,6 +4036,10 @@
                 document.getElementById("change-caption").textContent =
                     beforeCreation && versions[floor]
                         ? `Selected boxes first all exist at version #${versions[floor].index}`
+                        : selectedPropertyScopeActive()
+                          ? diffBasis === "previous"
+                              ? `${boxes.length} boxes changed in ${selectedScopeProperties()[0] || "property"} since the previous version`
+                              : `${boxes.length} boxes differ in ${selectedScopeProperties()[0] || "property"} from the live document`
                         : diffBasis === "previous"
                           ? `${boxes.length} boxes changed since the previous version`
                           : `${boxes.length} boxes differ from the live document`;
@@ -4324,6 +4595,10 @@
                 document.removeEventListener("keydown", handleHistoryKeydown, {
                     capture: true,
                 });
+                removeParentHistoryKeydownListener();
+                closeScreenshotPreview();
+                screenshotPreviewEl?.remove();
+                screenshotPreviewEl = null;
                 clearParentHighlights(true);
                 clearParentEditorPreview();
                 try {
@@ -4712,6 +4987,7 @@
             document.addEventListener("keydown", handleHistoryKeydown, {
                 capture: true,
             });
+            addParentHistoryKeydownListener();
             railShellEl.addEventListener("pointermove", (event) => {
                 lastRailClientX = event.clientX;
             });
@@ -4740,15 +5016,14 @@
             document
                 .getElementById("selected-filter-btn")
                 .addEventListener("click", () => {
-                    selectedOnly = !selectedOnly;
-                    document.getElementById("selected-filter-btn").textContent =
-                        selectedOnly ? "Selected Boxes" : "Whole Document";
-                    document
-                        .getElementById("selected-filter-btn")
-                        .setAttribute(
-                            "aria-pressed",
-                            selectedOnly ? "true" : "false",
-                        );
+                    historyScopeMode =
+                        historyScopeMode === "document"
+                            ? "boxes"
+                            : historyScopeMode === "boxes"
+                              ? "property"
+                              : "document";
+                    selectedOnly = historyScopeMode !== "document";
+                    updateScopeButton();
 	                    lastParentSelectionSignature = parentSelectionSignature();
 	                    exactLineDeltaCache.clear();
 	                    railLineStatsRequestSignature = "";

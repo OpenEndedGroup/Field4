@@ -188,6 +188,9 @@ private fun monitorSelection() {
         val currentGen = (w.currentEditorGeneration as? Number)?.toInt() ?: 0
         w.currentEditorGeneration = currentGen + 1
 
+        if (w.HistoryLens != null && w.HistoryLens != undefined) {
+            w.HistoryLens.close(globalEditor)
+        }
         w.clear(globalEditor)
         if (w.setEditorContextBadge != null) {
             w.setEditorContextBadge(globalEditor, "")

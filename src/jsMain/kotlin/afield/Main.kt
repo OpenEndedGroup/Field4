@@ -285,6 +285,10 @@ var selected = mutableSetOf<HTMLElement>()
 var selectedList = eval("[]")
 var selectedProperty = "code"
 
+private val monacoRemoteTextProperties = monacoPropertyNames
+    .filterNot { it == "code" || it == "contents" }
+    .toSet()
+
 var onSelectedChange = mutableMapOf<String, () -> Boolean>()
 
 var events = HashMap<String, () -> Boolean>()
@@ -4239,6 +4243,10 @@ suspend fun main() {
             }
         }
 
+        if (set.property in monacoRemoteTextProperties) {
+            notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, set.value)
+        }
+
         Handled.yes
     }
 
@@ -4763,6 +4771,45 @@ suspend fun main() {
             dims.height = event.rect.height
             editor.layout(dims)
         }
+    }
+
+    val historyResizing = interact(".history-iframe-container")
+    historyResizing.resizable(
+        json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
+    ).on("resizemove") { event: dynamic ->
+        val target: dynamic = event.target
+        val targetElement = target as HTMLElement
+        ensureAbsolutePosition(targetElement)
+
+        val minWidth = 760.0
+        val minHeight = 220.0
+        val viewportGutter = 10.0
+        val maxWidth = max(minWidth, window.innerWidth.toDouble() - viewportGutter * 2)
+        val maxHeight = max(minHeight, window.innerHeight.toDouble() - viewportGutter * 2)
+        val width = min(max((event.rect.width as Number).toDouble(), minWidth), maxWidth)
+        val height = min(max((event.rect.height as Number).toDouble(), minHeight), maxHeight)
+        val x = min(
+            max(((target.data_x ?: 0.0) as Number).toDouble() + (event.deltaRect.left as Number).toDouble(), viewportGutter),
+            max(viewportGutter, window.innerWidth.toDouble() - width - viewportGutter)
+        )
+        val y = min(
+            max(((target.data_y ?: 0.0) as Number).toDouble() + (event.deltaRect.top as Number).toDouble(), viewportGutter),
+            max(viewportGutter, window.innerHeight.toDouble() - height - viewportGutter)
+        )
+
+        targetElement.style.transform = "translate(0px, 0px)"
+        targetElement.style.left = "${x}px"
+        targetElement.style.top = "${y}px"
+        targetElement.style.right = "auto"
+        targetElement.style.bottom = "auto"
+        targetElement.style.width = "${width}px"
+        targetElement.style.height = "${height}px"
+
+        target.data_x = x
+        target.data_y = y
+        target.data_w = width
+        target.data_h = height
+        updateRightMarginData(targetElement)
     }
 
     val interactable = interact(".box")

@@ -1051,6 +1051,41 @@ data class HistoryLineBlameResult(
 )
 
 @Serializable
+data class HistorySelectionVersionsRequest(
+    val uid: String,
+    val property: String,
+    val startLine: Int,
+    val endLine: Int,
+    val selectedText: String = "",
+    val propertyText: String = ""
+)
+
+@Serializable
+data class HistorySelectionVersionsResult(
+    val uid: String,
+    val property: String,
+    val startLine: Int,
+    val endLine: Int,
+    val versions: List<HistoryVersion> = emptyList()
+)
+
+@Serializable
+data class HistoryPropertyVersionRequest(
+    val uid: String,
+    val property: String,
+    val versionIndex: Int
+)
+
+@Serializable
+data class HistoryPropertyVersionResult(
+    val uid: String,
+    val property: String,
+    val versionIndex: Int,
+    val version: HistoryVersion? = null,
+    val value: String = ""
+)
+
+@Serializable
 data class HistoryVersionStatsProgress(
     val versionIndex: Int,
     val completed: Int,
@@ -1065,6 +1100,7 @@ data class HistoryVersionStatsProgress(
 data class HistoryRailLineStatsRequest(
     val basis: String = "current",
     val boxIds: List<String> = emptyList(),
+    val properties: List<String> = emptyList(),
     val versionIndexes: List<Int> = emptyList()
 )
 
@@ -1075,6 +1111,7 @@ data class HistoryRailLineStatsProgress(
     val completed: Int,
     val total: Int,
     val boxFilter: List<String> = emptyList(),
+    val properties: List<String> = emptyList(),
     val lineStats: HistoryLineStats = HistoryLineStats(),
     val done: Boolean = false
 )
@@ -1098,6 +1135,7 @@ data class RestoreVersion(val versionIndex: Int)
 data class HistoryDiffRequest(
     val versionIndex: Int,
     val boxIds: List<String> = emptyList(),
+    val properties: List<String> = emptyList(),
     val basis: String = "current"
 )
 
@@ -1148,6 +1186,7 @@ data class HistoryVersionDiff(
     val basis: String = "current",
     val baselineIndex: Int = -1,
     val boxFilter: List<String> = emptyList(),
+    val properties: List<String> = emptyList(),
     val boxes: List<HistoryBoxChange> = emptyList(),
     val changedBoxCount: Int = 0,
     val propertyChangeCount: Int = 0,
