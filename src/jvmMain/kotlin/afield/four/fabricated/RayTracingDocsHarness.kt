@@ -352,6 +352,7 @@ object RayTracingDocsHarness {
 
         val floorY = -0.62f
         val sphereScale = 0.34f
+        val sphereY = floorY + sphereScale
         val instances = listOf(
             RayTracingInstance(
                 accelerationStructure = floorBlas,
@@ -359,17 +360,17 @@ object RayTracingDocsHarness {
             ),
             RayTracingInstance(
                 accelerationStructure = sphereBlas,
-                transform = scaleTranslateTransform(sphereScale, 0.0f, floorY + sphereScale, 2.35f),
+                transform = scaleTranslateTransform(sphereScale, 0.0f, sphereY, 2.35f),
                 shaderBindingTableRecordOffset = 1
             ),
             RayTracingInstance(
                 accelerationStructure = sphereBlas,
-                transform = scaleTranslateTransform(sphereScale, -0.78f, floorY + sphereScale, 1.72f),
+                transform = scaleTranslateTransform(sphereScale, -0.78f, sphereY, 1.72f),
                 shaderBindingTableRecordOffset = 1
             ),
             RayTracingInstance(
                 accelerationStructure = sphereBlas,
-                transform = scaleTranslateTransform(sphereScale, 0.78f, floorY + sphereScale, 1.72f),
+                transform = scaleTranslateTransform(sphereScale, 0.78f, sphereY, 1.72f),
                 shaderBindingTableRecordOffset = 1
             )
         )
@@ -924,14 +925,15 @@ object RayTracingDocsHarness {
 
         void main() {
             vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
-            float checker = mod(floor(worldHit.x * 2.3) + floor(worldHit.z * 2.3), 2.0);
+            const float checkerFrequency = 2.3;
+            float checker = mod(floor(worldHit.x * checkerFrequency) + floor(worldHit.z * checkerFrequency), 2.0);
 
             vec3 lightTile = vec3(0.80, 0.80, 0.84);
             vec3 darkTile = vec3(0.11, 0.11, 0.13);
             vec3 tileColor = mix(lightTile, darkTile, checker);
 
             float distanceFade = clamp(1.15 - 0.12 * length(worldHit.xz - vec2(0.0, 2.0)), 0.48, 1.0);
-            float stripe = 0.85 + 0.15 * smoothstep(0.0, 0.04, abs(fract(worldHit.x * 2.3) - 0.5));
+            float stripe = 0.85 + 0.15 * smoothstep(0.0, 0.04, abs(fract(worldHit.x * checkerFrequency) - 0.5));
             payload.color = tileColor * distanceFade * stripe;
         }
     """.trimIndent()
@@ -983,9 +985,9 @@ object RayTracingDocsHarness {
 
         void main() {
             vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
-            vec3 normal = normalize(gl_ObjectToWorldEXT * vec4(sphereNormal, 0.0)).xyz;
+            vec3 normal = normalize(vec3(gl_ObjectToWorldEXT * vec4(sphereNormal, 0.0)));
             vec3 viewDir = normalize(-gl_WorldRayDirectionEXT);
-            vec3 reflected = normalize(reflect(gl_WorldRayDirectionEXT, normal));
+            vec3 reflected = reflect(gl_WorldRayDirectionEXT, normal);
 
             vec3 skyTint = mix(vec3(0.16, 0.18, 0.22), vec3(0.55, 0.57, 0.62), clamp(0.5 + 0.5 * reflected.y, 0.0, 1.0));
             float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
