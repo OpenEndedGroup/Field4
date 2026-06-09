@@ -1274,11 +1274,15 @@
 	            let disposed = false;
 	            let electronScreenshotInFlight = false;
 	            let electronScreenshotPendingVersion = null;
+	            let electronScreenshotTimer = null;
+	            let electronScreenshotLastCaptureAt = 0;
 	            let railLineStatsRequestSignature = "";
 	            let railLineStatsTimer = null;
 	            const selectedBoxes = new Set();
 	            const selectedProps = new Map();
 	            const exactLineDeltaCache = new Map();
+            const ELECTRON_SCREENSHOT_IDLE_DELAY_MS = 1200;
+            const ELECTRON_SCREENSHOT_MIN_INTERVAL_MS = 10000;
 
             function connect() {
                 if (disposed) return;
@@ -1331,15 +1335,35 @@
                 return null;
             }
 
+            function scheduleElectronHistoryScreenshot(versionIndex = -1) {
+                if (disposed) return;
+                electronScreenshotPendingVersion = versionIndex;
+                if (electronScreenshotInFlight || electronScreenshotTimer != null) {
+                    return;
+                }
+                const elapsed = Date.now() - electronScreenshotLastCaptureAt;
+                const wait = Math.max(
+                    ELECTRON_SCREENSHOT_IDLE_DELAY_MS,
+                    ELECTRON_SCREENSHOT_MIN_INTERVAL_MS - elapsed,
+                );
+                electronScreenshotTimer = setTimeout(() => {
+                    electronScreenshotTimer = null;
+                    const pendingVersion = electronScreenshotPendingVersion;
+                    electronScreenshotPendingVersion = null;
+                    captureElectronHistoryScreenshot(pendingVersion);
+                }, wait);
+            }
+
             async function captureElectronHistoryScreenshot(versionIndex = -1) {
                 const api = electronCaptureApi();
                 if (!api || disposed) return;
                 if (electronScreenshotInFlight) {
-                    electronScreenshotPendingVersion = versionIndex;
+                    scheduleElectronHistoryScreenshot(versionIndex);
                     return;
                 }
                 electronScreenshotInFlight = true;
                 try {
+                    electronScreenshotLastCaptureAt = Date.now();
                     const shot = await api.captureHistoryScreenshot();
                     if (!disposed && shot?.dataUrl) {
                         send({
@@ -1360,10 +1384,7 @@
                     const pendingVersion = electronScreenshotPendingVersion;
                     electronScreenshotPendingVersion = null;
                     if (pendingVersion != null && !disposed) {
-                        setTimeout(
-                            () => captureElectronHistoryScreenshot(pendingVersion),
-                            250,
-                        );
+                        scheduleElectronHistoryScreenshot(pendingVersion);
                     }
                 }
             }
@@ -1609,7 +1630,7 @@
 	                    railLineStatsRequestSignature = "";
                     lineBlameMatches = null;
                     lineBlameRequestSignature = "";
-	                    captureElectronHistoryScreenshot(
+	                    scheduleElectronHistoryScreenshot(
                         Number(message.payload?.versionIndex ?? -1),
                     );
                     if (!applyHistoryChanged(message.payload)) {
@@ -4271,6 +4292,8 @@
                 clearTimeout(historyRefreshTimer);
                 clearTimeout(reconnectTimer);
                 clearTimeout(lineBlameTimer);
+                clearTimeout(electronScreenshotTimer);
+                electronScreenshotTimer = null;
                 if (parentSelectionPoll != null) {
                     clearInterval(parentSelectionPoll);
                     parentSelectionPoll = null;

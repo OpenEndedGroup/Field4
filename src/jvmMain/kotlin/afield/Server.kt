@@ -2197,7 +2197,7 @@ class Server {
                             val liveDocumentAllowed = liveDocument != null && documentDir == File(liveDocument.filename).canonicalFile
                             if ((!insideWorkspace && !liveDocumentAllowed) ||
                                 !file.path.startsWith(screenshotRoot.path + File.separator) ||
-                                file.extension.lowercase() != "png" ||
+                                file.extension.lowercase() !in setOf("png", "jpg", "jpeg") ||
                                 !file.isFile ||
                                 file.length() <= 8
                             ) {

@@ -6,15 +6,22 @@ import afield.ai.shaderSpecForProperty
 import afield.four.synth.AudioPatchSpec
 import afield.four.synth.InlineAudioSummaryTarget
 import afield.logger.lprintln
+import afield.macros.checkAtticAndExecute
+import afield.macros.checkIntroductionAndExecute
+import afield.macros.checkPreambleAndExecute
 import afield.macros.gatherPreambleUpwards
 import afield.macros.standardExecutionPractice
 import afield.stdlib.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
@@ -762,9 +769,467 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
 
 @Suppress("UnstableApiUsage")
 class KotlinExecution : BoxExecution {
+    companion object {
+        private const val PENDING_LAUNCH_MODE = "launching"
+        private const val ACTIVE_LAUNCH_MODE = "launch"
+
+        private data class BatchLaunchRequest(
+            val box: Box,
+            val exec: Execute,
+            val normalizedCode: String,
+            val strand: String,
+            val pendingWatermark: Int,
+            val originSession: WebSocketSession?
+        )
+
+        private data class PreparedBatchLaunch(
+            val request: BatchLaunchRequest,
+            val snippets: List<PreparedSnippet>
+        )
+
+        fun launchBatch(requests: List<Pair<Box, Execute>>, reply: (Message) -> Unit) {
+            if (requests.isEmpty()) return
+
+            val originSession = thisSession.get()
+            val pending = requests.map { (box, exec) ->
+                val strand = exec.strand
+                val normalizedCode = normalizedLaunchCodeFor(exec)
+
+                box.preamble = ""
+                box.properties.remove("_attic")
+
+                val watermark = box.runGeneration.incrementAndGet(strand)
+                box.currentRunningStates[strand] = RunningState(watermark, PENDING_LAUNCH_MODE)
+                send(
+                    Message("is-running").payload(
+                        IsRunning(exec.uid, true, watermark, strand, PENDING_LAUNCH_MODE)
+                    )
+                )
+
+                BatchLaunchRequest(box, exec, normalizedCode, strand, watermark, originSession)
+            }
+
+            GlobalScope.launch(Dispatchers.Default) {
+                val prepared = pending.map { request ->
+                    async {
+                        prepareBatchLaunch(request, reply)
+                    }
+                }.awaitAll()
+
+                inMain {
+                    var evaluatedAny = false
+                    prepared.forEach { launch ->
+                        if (launch.snippets.isEmpty()) {
+                            clearPendingLaunch(launch.request)
+                            return@forEach
+                        }
+
+                        if (evaluatedAny) yield()
+                        evaluatedAny = true
+
+                        evaluatePreparedBatchLaunch(launch, reply)
+                    }
+                }
+            }
+        }
+
+        private fun normalizedLaunchCodeFor(exec: Execute): String {
+            val leadingLines = exec.line.coerceAtLeast(0)
+            return "\n".repeat(leadingLines) + exec.code.trimEnd()
+        }
+
+        private suspend fun prepareBatchLaunch(
+            request: BatchLaunchRequest,
+            reply: (Message) -> Unit
+        ): PreparedBatchLaunch {
+            val box = request.box
+            val snippets = mutableListOf<PreparedSnippet>()
+            var compileFailed = false
+
+            Box.withBoxContext(box) {
+                configureOutputProxies(box, reply, request.originSession)
+                val lines = request.normalizedCode.lines()
+                val breaks = lines.mapIndexedNotNull { index, line ->
+                    if (line.trim().startsWith("//%-")) {
+                        index
+                    } else if (line.trim().startsWith("/*%-*/")) {
+                        index
+                    } else null
+                } + lines.size
+
+                var at = 0
+                var lineCounter = 0
+                for (breakIndex in breaks) {
+                    val source = lines.subList(at, breakIndex).joinToString("\n")
+                    val expanded = if (KotlinEngineConfig.offloadCompilation) {
+                        withContext(box.ki.compilationDispatcher) { box.ki.applyMacros(box, source) }
+                    } else {
+                        box.ki.applyMacros(box, source)
+                    }
+                    val compiledSource = expanded.split("\n").map { line ->
+                        lineCounter++
+                        line.replace("__line__", "${lineCounter - 1}")
+                    }.joinToString("\n")
+
+                    withContext(Runloop.runLoop.main) {
+                        runLaunchSetupBlocks(box)
+                    }
+
+                    val snippet = box.ki.compileSnippet(
+                        compiledSource,
+                        implicits = listOf(box),
+                        onCompileError = { diagnostics ->
+                            reportCompileDiagnostics(
+                                box = box,
+                                reply = reply,
+                                originSession = request.originSession,
+                                code = request.normalizedCode,
+                                diagnostics = diagnostics,
+                                fallbackLine = request.exec.line + request.normalizedCode.lines().size
+                            )
+                        }
+                    )
+                    if (snippet == null) {
+                        compileFailed = true
+                        snippets.clear()
+                        return@withBoxContext
+                    }
+                    snippets += snippet
+                    at = breakIndex
+                }
+            }
+
+            return PreparedBatchLaunch(request, if (compileFailed) emptyList() else snippets)
+        }
+
+        private suspend fun runLaunchSetupBlocks(box: Box) {
+            val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
+            }
+            val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
+            }
+            val setupEvalException: (Throwable) -> Unit = { throwable ->
+                lprintln("error,macros", "setup exception: ${throwable.message}")
+            }
+            checkPreambleAndExecute(box, setupCompileError, setupEvalError, setupEvalException)
+            checkIntroductionAndExecute(box, setupCompileError, setupEvalError, setupEvalException)
+            checkAtticAndExecute(box, setupCompileError, setupEvalError, setupEvalException)
+        }
+
+        private suspend fun evaluatePreparedBatchLaunch(
+            prepared: PreparedBatchLaunch,
+            reply: (Message) -> Unit
+        ) {
+            val request = prepared.request
+            val box = request.box
+            clearPendingLaunch(request)
+
+            Box.withBoxContext(box) {
+                box.resetStdlibRandom()
+                box.preamble = ""
+                configureOutputProxies(box, reply, request.originSession)
+
+                var hasError = false
+                val output = mutableListOf("")
+
+                box.output.proxy = { content, nl, line ->
+                    val rendered = renderPrintedOutput(content)
+                    output[output.size - 1] = output[output.size - 1] + rendered
+                    if (nl) output.add("")
+                    if (!routePrintedHtmlToOutputAreaIfNeeded(box, content, rendered, nl)) {
+                        dispatchExecutionOutput(
+                            box,
+                            reply,
+                            Output(
+                                uid = box.id,
+                                line = line.i,
+                                kind = "normal",
+                                html = rendered.trim() + (if (nl) "\n" else ""),
+                                frame = Runloop.runLoop.frame.toInt()
+                            ),
+                            originSession = request.originSession
+                        )
+                    }
+                }
+                box.output.errorProxy = { content, property, line ->
+                    hasError = hasError || content != null
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = line.i,
+                            kind = "error",
+                            property = property,
+                            html = escapeForHtml(content?.toString()),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = request.originSession
+                    )
+                }
+                box.output.displayProxy = { channel, content ->
+                    send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
+                }
+
+                val results = prepared.snippets.map { snippet ->
+                    snippet.eval(
+                        implicits = listOf(box),
+                        onEvalError = { diagnostics ->
+                            hasError = true
+                            diagnostics.forEach {
+                                lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
+                            }
+                        },
+                        onEvalException = { throwable ->
+                            hasError = true
+                            reportEvalException(box, reply, request.originSession, throwable, request.exec.line)
+                        }
+                    )
+                }
+
+                if (!hasError) {
+                    val printedSize = output.sumOf { it.trim().length }
+                    results.forEach { returnValue ->
+                        reportReturnValueAndLaunch(
+                            box = box,
+                            reply = reply,
+                            originSession = request.originSession,
+                            returnValue = returnValue,
+                            printedSize = printedSize,
+                            line = request.exec.line + request.normalizedCode.lines().size,
+                            code = request.normalizedCode,
+                            strand = request.strand
+                        )
+                    }
+                } else {
+                    lprintln("error,execution", "batch launch eval finished with errors")
+                }
+            }
+        }
+
+        private fun clearPendingLaunch(request: BatchLaunchRequest) {
+            val box = request.box
+            if (box.currentRunningStates[request.strand]?.watermark == request.pendingWatermark) {
+                box.currentRunningStates.remove(request.strand)
+            }
+            send(
+                Message("is-running").payload(
+                    IsRunning(request.exec.uid, false, request.pendingWatermark, request.strand, PENDING_LAUNCH_MODE)
+                )
+            )
+        }
+
+        private fun reportCompileDiagnostics(
+            box: Box,
+            reply: ((Message) -> Unit)?,
+            originSession: WebSocketSession?,
+            code: String,
+            diagnostics: List<ScriptDiagnostic>,
+            fallbackLine: Int
+        ) {
+            lprintln("error,execution", "compiler error")
+            var first = true
+            diagnostics.forEach {
+                lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
+                it.location?.start?.line?.let { lineNumber ->
+                    val sourceLine = code.lines().getOrNull(lineNumber - 1)
+                    if (sourceLine != null) {
+                        lprintln("debug,execution", "compile error source line $lineNumber: $sourceLine")
+                    }
+                }
+                if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
+                    first = false
+                    val message = improveMessage(box, it.message)
+                    val location = it.location
+                    val output = if (location != null) {
+                        Output(
+                            uid = box.id,
+                            line = location.start.line,
+                            startColumn = location.start.col,
+                            endLine = location.end?.line ?: -1,
+                            endColumn = location.end?.col ?: -1,
+                            kind = "error",
+                            html = escapeForHtml(message),
+                            frame = Runloop.runLoop.frame.toInt()
+                        )
+                    } else {
+                        Output(
+                            uid = box.id,
+                            line = fallbackLine,
+                            kind = "error",
+                            html = escapeForHtml(message),
+                            frame = Runloop.runLoop.frame.toInt()
+                        )
+                    }
+                    dispatchExecutionOutput(box, reply, output, originSession = originSession)
+                }
+            }
+        }
+
+        private fun reportEvalException(
+            box: Box,
+            reply: ((Message) -> Unit)?,
+            originSession: WebSocketSession?,
+            throwable: Throwable,
+            lineOffset: Int
+        ) {
+            lprintln("error,execution", "exception thrown in batch launch inside box $box")
+            lprintln("error,execution", throwable.stackTraceToString())
+
+            var fallbackFirstLine = -1
+            var firstLineInThisBox = -1
+            throwable.stackTrace.forEach { e ->
+                if (fallbackFirstLine == -1) fallbackFirstLine = e.lineNumber
+                if (e.fileName?.contains(box.id) == true && firstLineInThisBox == -1) {
+                    firstLineInThisBox = e.lineNumber
+                }
+            }
+
+            val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = if (firstLine >= 0) firstLine else lineOffset,
+                    kind = "error",
+                    html = escapeForHtml(throwable.message ?: throwable.javaClass.name),
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
+            )
+        }
+
+        private fun reportReturnValueAndLaunch(
+            box: Box,
+            reply: (Message) -> Unit,
+            originSession: WebSocketSession?,
+            returnValue: ResultValue?,
+            printedSize: Int,
+            line: Int,
+            code: String,
+            strand: String
+        ) {
+            when (returnValue) {
+                is ResultValue.Unit -> {
+                    if (printedSize == 0) reportOk(box, reply, originSession, line)
+                    launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                }
+
+                is ResultValue.NotEvaluated -> {}
+
+                is ResultValue.Error -> {
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = line,
+                            kind = "error",
+                            html = escapeForHtml(returnValue.error.message ?: returnValue.error.javaClass.name),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
+                    )
+                    launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                }
+
+                is ResultValue.Value -> {
+                    val audioPatch = returnValue.value as? AudioPatchSpec
+                    if (printedSize == 0) {
+                        if (returnValue.value == null) {
+                            reportOk(box, reply, originSession, line)
+                            launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                            return
+                        }
+                        val type = simplifyTypeForOutput(returnValue.type)
+                        val annotation = "<i>${returnValue.name}=</i>${type}"
+                        audioPatch?.inlineSummaryTarget = InlineAudioSummaryTarget(line = line, annotation = annotation)
+                        val value = returnValue.value.h
+                        if (value.isNotEmpty()) {
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = line,
+                                    kind = "normal",
+                                    html = value,
+                                    annotation = annotation,
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
+                            )
+                        } else {
+                            reportOk(box, reply, originSession, line)
+                        }
+                    } else {
+                        audioPatch?.inlineSummaryTarget = null
+                    }
+
+                    launchPreparedReturnValue(box, returnValue.value, strand, code, reply, originSession)
+                }
+
+                null -> {
+                    if (printedSize == 0) reportOk(box, reply, originSession, line)
+                    launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                }
+            }
+        }
+
+        private fun reportOk(
+            box: Box,
+            reply: (Message) -> Unit,
+            originSession: WebSocketSession?,
+            line: Int
+        ) {
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = line,
+                    kind = "ok",
+                    html = "ok",
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
+            )
+        }
+
+        private fun launchPreparedReturnValue(
+            box: Box,
+            returnValue: Any?,
+            strand: String,
+            code: String,
+            reply: (Message) -> Unit,
+            originSession: WebSocketSession?
+        ) {
+            if (returnValue == null) {
+                box.cachedLaunchReturns.remove(strand)
+            } else {
+                box.cachedLaunchReturns[strand] = CachedLaunchReturn(code, returnValue)
+            }
+
+            configureOutputProxies(box, reply, originSession)
+            ReturnValueRegistry.launch(box, returnValue, strand) { isRunning, notifiedStrand, watermark ->
+                if (isRunning) {
+                    box.currentRunningStates[notifiedStrand] = RunningState(watermark, ACTIVE_LAUNCH_MODE)
+                } else if (box.currentRunningStates[notifiedStrand]?.watermark == watermark) {
+                    box.currentRunningStates.remove(notifiedStrand)
+                }
+                send(
+                    Message("is-running").payload(
+                        IsRunning(box.id, isRunning, watermark, notifiedStrand, ACTIVE_LAUNCH_MODE)
+                    )
+                )
+            }
+        }
+    }
+
     private fun normalizedLaunchCode(exec: Execute): String {
-        val leadingLines = exec.line.coerceAtLeast(0)
-        return "\n".repeat(leadingLines) + exec.code.trimEnd()
+        return normalizedLaunchCodeFor(exec)
     }
 
     private fun cacheLaunchReturnValue(box: Box, strand: String, code: String, returnValue: Any?) {
@@ -843,12 +1308,13 @@ class KotlinExecution : BoxExecution {
         box.properties.remove("_attic") //?
 
         val normalizedCode = normalizedLaunchCode(exec)
-        val launchMode = "launch"
+        val pendingLaunchMode = PENDING_LAUNCH_MODE
+        val launchMode = ACTIVE_LAUNCH_MODE
         val pendingWatermark = box.runGeneration.incrementAndGet(strand)
-        box.currentRunningStates[strand] = RunningState(pendingWatermark, launchMode)
+        box.currentRunningStates[strand] = RunningState(pendingWatermark, pendingLaunchMode)
         send(
             Message("is-running").payload(
-                IsRunning(exec.uid, true, pendingWatermark, strand, launchMode)
+                IsRunning(exec.uid, true, pendingWatermark, strand, pendingLaunchMode)
             )
         )
 
@@ -873,11 +1339,19 @@ class KotlinExecution : BoxExecution {
                     }
                     send(
                         Message("is-running").payload(
-                            IsRunning(exec.uid, false, pendingWatermark, strand, launchMode)
+                            IsRunning(exec.uid, false, pendingWatermark, strand, pendingLaunchMode)
                         )
                     )
                 }
             ) { returnValue ->
+                if (box.currentRunningStates[strand]?.watermark == pendingWatermark) {
+                    box.currentRunningStates.remove(strand)
+                    send(
+                        Message("is-running").payload(
+                            IsRunning(exec.uid, false, pendingWatermark, strand, pendingLaunchMode)
+                        )
+                    )
+                }
                 cacheLaunchReturnValue(box, strand, normalizedCode, returnValue)
                 configureOutputProxies(box, reply, originSession)
 

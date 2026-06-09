@@ -88,6 +88,11 @@ fun requiredRunJvmArgs(): List<String> {
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
+            add("-Xdock:name=Field4")
+            val dockIcon = electronDir.file("icon-1024.png").asFile
+            if (dockIcon.exists()) {
+                add("-Xdock:icon=${dockIcon.absolutePath}")
+            }
             add("-Djoml.format=false")
             add("-Dorg.lwjgl.util.Debug=true")
             add("-Dorg.lwjgl.util.DebugLoader=true")
@@ -438,8 +443,6 @@ kotlin {
                 implementation("org.locationtech.jts:jts-core:1.20.0")
 
                 implementation("io.github.classgraph:classgraph:4.8.179")
-
-                implementation("com.github.sya-ri:kgit:1.1.0")
 
                 implementation("com.illposed.osc:javaosc-core:0.9")
 

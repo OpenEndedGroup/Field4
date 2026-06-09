@@ -299,7 +299,7 @@ class SavingContext {
     
     /**
      * Phase 2: Perform all I/O operations in a background thread.
-     * This includes file writing, backups, and git operations.
+     * This includes file writing and backups.
      */
     private fun saveInBackground(snapshot: SaveSnapshot, fn: String, message: String?) {
         // Launch on background thread pool - using the project's standard miscPool
@@ -328,8 +328,6 @@ class SavingContext {
                     var altered = false
                     val touched = mutableListOf<String>()
                     val alteredFiles = mutableListOf<String>()
-                    ensureRepository(fn)
-
                     // Write all files based on the snapshot
                     snapshot.transfers.forEach { transfer ->
                         transfer.properties.forEach { (name, value) ->
@@ -399,9 +397,6 @@ class SavingContext {
                             ),
                             document = Regex.escape(fn)
                         )
-
-                        // Git operations in background
-                        commit(fn, message)
 
                         // Mark saved sidecar files - needs to be done in main thread
                         inMain {

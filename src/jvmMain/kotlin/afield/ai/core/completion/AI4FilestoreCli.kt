@@ -1,5 +1,6 @@
 package afield.ai
 
+import afield.ai.core.Ai4ModelDefaults
 import afield.ai.core.LogEvent
 import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -450,7 +451,7 @@ fun main(args: Array<String>) {
         }
     } else null
 
-    val bridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = TputLog())
+    val bridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = TputLog())
     val indexForTools = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
     val instructions = buildString {
         appendLine(OpenAiIdeCodexBridge.defaultChatThreadInstructions.trim())

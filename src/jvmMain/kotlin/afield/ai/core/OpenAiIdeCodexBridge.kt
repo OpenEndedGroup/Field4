@@ -19,7 +19,7 @@ import java.util.*
 
 class OpenAiIdeCodexBridge(
     private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
-    model: String = "gpt-5.3-codex",
+    model: String = Ai4ModelDefaults.FLAGSHIP_MODEL,
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {

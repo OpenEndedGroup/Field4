@@ -1,6 +1,7 @@
 package afield.ai.core.completion
 
 import afield.ai.core.OpenAiIdeCodexBridge
+import afield.ai.core.Ai4ModelDefaults
 import afield.ai.core.KOTLIN_SCRIPT
 import afield.ai.core.SilentLog
 import com.openai.models.ReasoningEffort
@@ -117,7 +118,7 @@ private fun parseCandidateDocs(commentary: String, count: Int): List<String> {
 object Ai4KotlinAutocomplete {
     private val bridge: OpenAiIdeCodexBridge by lazy {
         val fastModel = System.getenv("AFIELD_KOTLIN_AUTOCOMPLETE_MODEL")
-            ?: "gpt-5.1-codex-mini"
+            ?: Ai4ModelDefaults.FAST_MODEL
         OpenAiIdeCodexBridge(
             model = fastModel,
             log = SilentLog,

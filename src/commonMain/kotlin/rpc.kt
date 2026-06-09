@@ -100,6 +100,11 @@ data class Execute(
 )
 
 @Serializable
+data class ExecuteBatch(
+    val executions: List<Execute>
+)
+
+@Serializable
 data class ExecuteSymbol(
     val uid: String,
     val symbol: String,

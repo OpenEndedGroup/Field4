@@ -104,7 +104,7 @@ fun installAi4() {
 
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
-            chatBridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = uiLog)
+            chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = uiLog)
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
 
@@ -636,7 +636,7 @@ fun installAi4() {
         
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
-            chatBridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = uiLog)
+            chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = uiLog)
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
         

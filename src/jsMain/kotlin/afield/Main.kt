@@ -258,7 +258,21 @@ external fun launchAll(uid: String, code: String)
 external fun continueAll(uid: String, code: String)
 
 var canvasGestures = CanvasGestures(launcher = {
-    it.forEach { launchAll(it.unsafeCast<dynamic>().uid as String, it.unsafeCast<dynamic>().code as String) }
+    if (it.size == 1) {
+        launchAll(it[0].unsafeCast<dynamic>().uid as String, it[0].unsafeCast<dynamic>().code as String)
+    } else if (it.isNotEmpty()) {
+        val items = it.map { box ->
+            val payload = js("{}")
+            payload.uid = box.unsafeCast<dynamic>().uid as String
+            payload.type = "launch"
+            payload.line = 0
+            payload.code = box.unsafeCast<dynamic>().code as String
+            payload.singleLine = false
+            payload.strand = "default"
+            payload
+        }.toTypedArray()
+        monacoLaunchBatch(items)
+    }
 }).also {
     val w = window.asDynamic()
     w.canvasGestures = it

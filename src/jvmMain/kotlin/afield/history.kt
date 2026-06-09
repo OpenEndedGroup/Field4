@@ -2198,18 +2198,21 @@ fun installHistoryHandlers() {
         } else {
             HistoryMetrics.currentVersionIndex(info.filename)
         }
-        val ref = HistoryMetrics.storeScreenshotDataUrl(
-            documentPath = info.filename,
-            channel = req.channel,
-            dataUrl = req.dataUrl,
-            versionIndex = versionIndex,
-            width = req.width,
-            height = req.height
-        )
-        if (ref != null) {
-            reply(Message("store-history-screenshot-success").payload(HistoryScreenshotAdded(versionIndex, ref)))
-        } else {
-            reply(Message("store-history-screenshot-error").payload(mapOf("error" to "Failed to store screenshot")))
+        val documentPath = info.filename
+        GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
+            val ref = HistoryMetrics.storeScreenshotDataUrl(
+                documentPath = documentPath,
+                channel = req.channel,
+                dataUrl = req.dataUrl,
+                versionIndex = versionIndex,
+                width = req.width,
+                height = req.height
+            )
+            if (ref != null) {
+                reply(Message("store-history-screenshot-success").payload(HistoryScreenshotAdded(versionIndex, ref)))
+            } else {
+                reply(Message("store-history-screenshot-error").payload(mapOf("error" to "Failed to store screenshot")))
+            }
         }
         Handled.yes
     })

@@ -9,15 +9,18 @@ import afield.stdlib.vec
 import afield.util.PngEncoder
 import org.lwjgl.glfw.Callbacks
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFWImage
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.text.SimpleDateFormat
 import java.util.*
+import javax.imageio.ImageIO
 
 var lastWindowToOpen: Window? = null
 
@@ -26,6 +29,72 @@ private val openWindows = linkedSetOf<Window>()
 
 fun openWindowsSnapshot(): List<Window> =
     synchronized(openWindowsLock) { openWindows.toList() }
+
+private object FieldWindowIcon {
+    private val isMacOs = System.getProperty("os.name", "").lowercase(Locale.ROOT).contains("mac")
+    private val image: BufferedImage? by lazy { loadImage() }
+
+    fun install(windowHandle: Long) {
+        if (isMacOs) return
+        installGlfwWindowIcon(windowHandle)
+    }
+
+    private fun installGlfwWindowIcon(windowHandle: Long) {
+        val icon = image ?: return
+        val pixels = MemoryUtil.memAlloc(icon.width * icon.height * 4)
+        try {
+            writeRgba(icon, pixels)
+            GLFWImage.malloc(1).use { icons ->
+                icons
+                    .width(icon.width)
+                    .height(icon.height)
+                    .pixels(pixels)
+                GLFW.glfwSetWindowIcon(windowHandle, icons)
+            }
+        } finally {
+            MemoryUtil.memFree(pixels)
+        }
+    }
+
+    private fun writeRgba(icon: BufferedImage, pixels: ByteBuffer) {
+        for (y in 0 until icon.height) {
+            for (x in 0 until icon.width) {
+                val argb = icon.getRGB(x, y)
+                pixels.put(((argb ushr 16) and 0xff).toByte())
+                pixels.put(((argb ushr 8) and 0xff).toByte())
+                pixels.put((argb and 0xff).toByte())
+                pixels.put(((argb ushr 24) and 0xff).toByte())
+            }
+        }
+        pixels.flip()
+    }
+
+    private fun loadImage(): BufferedImage? {
+        val explicit = listOfNotNull(
+            System.getProperty("afield.icon.path")?.trim()?.takeIf { it.isNotEmpty() },
+            System.getenv("AFIELD_ICON_PATH")?.trim()?.takeIf { it.isNotEmpty() },
+        ).map(::File)
+
+        val projectRelative = sequence {
+            var dir: File? = File(System.getProperty("user.dir")).absoluteFile
+            while (dir != null) {
+                yield(File(dir, "electron/icon-1024.png"))
+                dir = dir.parentFile
+            }
+        }
+
+        (explicit.asSequence() + projectRelative)
+            .firstOrNull { it.isFile }
+            ?.let { return runCatching { ImageIO.read(it) }.getOrNull() }
+
+        return listOf("/field4-icon.png", "/icon-1024.png", "/electron/icon-1024.png")
+            .firstNotNullOfOrNull { resource ->
+                Window::class.java.getResourceAsStream(resource)?.use { stream ->
+                    runCatching { ImageIO.read(stream) }.getOrNull()
+                }
+            }
+    }
+}
 
 class Window(val title : String, val fullscreen : Boolean = false, initialDimensions : Rect? = null) {
     @JvmField
@@ -83,6 +152,7 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         if (windowHandle == MemoryUtil.NULL) {
             throw RuntimeException("Failed to create the GLFW window")
         }
+        FieldWindowIcon.install(windowHandle)
 
         initialDimensions?.let {
             GLFW.glfwSetWindowPos(windowHandle, it.x.i, it.y.i)

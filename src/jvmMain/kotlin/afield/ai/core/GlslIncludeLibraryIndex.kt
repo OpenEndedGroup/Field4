@@ -8,13 +8,13 @@ import afield.ai.Sha256
 import afield.early
 import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import org.eclipse.jgit.api.Git
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.io.path.invariantSeparatorsPathString
 import kotlin.io.path.isDirectory
@@ -363,19 +363,12 @@ object GlslIncludeLibraryIndex {
             Files.createDirectories(root.parent)
             if (!Files.exists(root.resolve(".git"))) {
                 lprintln("info,glsl.includes", "cloning ${spec.name} from $gitUrl to $root")
-                Git.cloneRepository()
-                    .setURI(gitUrl)
-                    .setDirectory(root.toFile())
-                    .setBranch(spec.gitRef)
-                    .call()
-                    .close()
+                runGitCommand(null, "clone", "--branch", spec.gitRef, gitUrl, root.toString())
                 touchRefreshStamp(root)
             } else if (shouldRefresh(root)) {
                 lprintln("info,glsl.includes", "refreshing managed GLSL include repo ${spec.name}")
-                Git.open(root.toFile()).use { git ->
-                    runCatching { git.fetch().setRemote("origin").call() }
-                    runCatching { git.pull().call() }
-                }
+                runCatching { runGitCommand(root, "fetch", "origin") }
+                runCatching { runGitCommand(root, "pull", "--ff-only") }
                 touchRefreshStamp(root)
             }
             root
@@ -400,10 +393,30 @@ object GlslIncludeLibraryIndex {
 
     private fun revisionFor(root: Path): String? =
         runCatching {
-            Git.open(root.toFile()).use { git ->
-                git.repository.resolve("HEAD")?.name()
-            }
+            if (!Files.exists(root.resolve(".git"))) return@runCatching null
+            runGitCommand(root, "rev-parse", "HEAD").trim().takeIf { it.isNotEmpty() }
         }.getOrNull()
+
+    private fun runGitCommand(cwd: Path?, vararg args: String): String {
+        val command = listOf("git") + args
+        val process = ProcessBuilder(command)
+            .apply {
+                cwd?.let { directory(it.toFile()) }
+                redirectErrorStream(true)
+            }
+            .start()
+        val output = process.inputStream.bufferedReader().readText().trim()
+        if (!process.waitFor(10, TimeUnit.MINUTES)) {
+            process.destroyForcibly()
+            throw IllegalStateException("git command timed out: ${command.joinToString(" ")}")
+        }
+        if (process.exitValue() != 0) {
+            throw IllegalStateException(
+                "git command failed (${process.exitValue()}): ${command.joinToString(" ")}\n$output"
+            )
+        }
+        return output
+    }
 
     private fun collectIncludeFiles(root: Path, includePrefix: String): List<GlslIncludeFileRecord> {
         if (!Files.exists(root)) return emptyList()

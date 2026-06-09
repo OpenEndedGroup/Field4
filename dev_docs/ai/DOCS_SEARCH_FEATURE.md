@@ -150,11 +150,11 @@ This provides the AI with:
 
 ### AI Model Configuration
 
-By default, the feature uses GPT-5.2 for optimal results:
+By default, the feature uses GPT-5.5 for optimal results, with GPT-5.4 as the fallback model if the preferred model is unavailable:
 
 ```kotlin
 class DocsSearchBridge(
-    model: String = ChatModel.GPT_5_2.toString()
+    model: String = Ai4ModelDefaults.FLAGSHIP_MODEL
 )
 ```
 

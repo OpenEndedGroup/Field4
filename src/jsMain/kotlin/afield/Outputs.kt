@@ -49,6 +49,7 @@ private val htmlBreakRegex = Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)
 
 private fun executionMarkerStateClass(mode: String): String {
     return when (mode) {
+        "launching" -> "running-launching"
         "continue" -> "running-continued"
         "ending" -> "running-ending"
         else -> "running"

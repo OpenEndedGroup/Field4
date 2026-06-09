@@ -144,13 +144,14 @@ object HistoryMetrics {
             lprintln("warning,history", "Failed to decode screenshot for $documentPath: ${it.message}")
             return null
         }
-        if (!looksLikePng(bytes)) {
+        val extension = screenshotExtension(dataUrl, bytes)
+        if (extension == null) {
             lprintln("warning,history", "Ignoring empty or invalid screenshot for $documentPath channel $safeChannel")
             return null
         }
         val root = File(documentPath, "history_screenshots/$safeChannel")
         root.mkdirs()
-        val file = File(root, "v%05d_%d.png".format(versionIndex, timestamp))
+        val file = File(root, "v%05d_%d.$extension".format(versionIndex, timestamp))
         return runCatching {
             file.writeBytes(bytes)
             val ref = HistoryScreenshotRef(
@@ -174,13 +175,15 @@ object HistoryMetrics {
         channel: String,
         timestamp: Long = System.currentTimeMillis(),
         width: Int = 0,
-        height: Int = 0
+        height: Int = 0,
+        extension: String = "png"
     ): Pair<File, HistoryScreenshotRef>? {
         if (versionIndex < 0) return null
         val safeChannel = sanitizeChannel(channel)
+        val safeExtension = sanitizeScreenshotExtension(extension)
         val root = File(documentPath, "history_screenshots/$safeChannel")
         root.mkdirs()
-        val file = File(root, "v%05d_%d.png".format(versionIndex, timestamp))
+        val file = File(root, "v%05d_%d.$safeExtension".format(versionIndex, timestamp))
         val ref = HistoryScreenshotRef(
             channel = safeChannel,
             path = file.relativeTo(File(documentPath)).path,
@@ -238,6 +241,38 @@ object HistoryMetrics {
             bytes[5] == 0x0A.toByte() &&
             bytes[6] == 0x1A.toByte() &&
             bytes[7] == 0x0A.toByte()
+
+    private fun looksLikeJpeg(bytes: ByteArray): Boolean =
+        bytes.size >= 3 &&
+            bytes[0] == 0xFF.toByte() &&
+            bytes[1] == 0xD8.toByte() &&
+            bytes[2] == 0xFF.toByte()
+
+    private fun looksLikeScreenshot(bytes: ByteArray): Boolean =
+        looksLikePng(bytes) || looksLikeJpeg(bytes)
+
+    private fun screenshotExtension(dataUrl: String, bytes: ByteArray): String? {
+        val prefix = dataUrl.substringBefore(",", "").lowercase()
+        return when {
+            prefix.contains("image/png") && looksLikePng(bytes) -> "png"
+            prefix.contains("image/jpeg") && looksLikeJpeg(bytes) -> "jpg"
+            prefix.contains("image/jpg") && looksLikeJpeg(bytes) -> "jpg"
+            looksLikePng(bytes) -> "png"
+            looksLikeJpeg(bytes) -> "jpg"
+            else -> null
+        }
+    }
+
+    private fun sanitizeScreenshotExtension(extension: String): String =
+        when (extension.lowercase().trimStart('.')) {
+            "jpg", "jpeg" -> "jpg"
+            else -> "png"
+        }
+
+    private fun supportedScreenshotExtension(extension: String): Boolean =
+        extension.lowercase() == "png" ||
+            extension.lowercase() == "jpg" ||
+            extension.lowercase() == "jpeg"
 
     private fun metricsFile(documentPath: String): File =
         File(documentPath, METRICS_EDN)
@@ -369,13 +404,13 @@ object HistoryMetrics {
                     file.length() > 8 &&
                     file.inputStream().use { input ->
                         val header = ByteArray(8)
-                        input.read(header) == 8 && looksLikePng(header)
+                        input.read(header) == 8 && looksLikeScreenshot(header)
                     }
             }.getOrDefault(false)
         }
     }
 
-    private val screenshotFilePattern = Regex("""^v(\d+)_(\d+)\.png$""")
+    private val screenshotFilePattern = Regex("""^v(\d+)_(\d+)\.(png|jpg|jpeg)$""", RegexOption.IGNORE_CASE)
 
     private fun diskScreenshotRefsByVersion(documentPath: String): Map<Int, List<HistoryScreenshotRef>> {
         val docDir = File(documentPath)
@@ -384,7 +419,7 @@ object HistoryMetrics {
 
         val refs = linkedMapOf<Int, MutableList<HistoryScreenshotRef>>()
         root.listFiles { file -> file.isDirectory }.orEmpty().forEach { channelDir ->
-            channelDir.listFiles { file -> file.isFile && file.extension.lowercase() == "png" }.orEmpty()
+            channelDir.listFiles { file -> file.isFile && supportedScreenshotExtension(file.extension) }.orEmpty()
                 .forEach { file ->
                     val match = screenshotFilePattern.matchEntire(file.name) ?: return@forEach
                     val versionIndex = match.groupValues[1].toIntOrNull() ?: return@forEach
@@ -414,10 +449,11 @@ object HistoryMetrics {
             val canonicalFile = file.canonicalFile
             canonicalFile.path.startsWith(canonicalRoot.path + File.separator) &&
                 canonicalFile.isFile &&
+                supportedScreenshotExtension(canonicalFile.extension) &&
                 canonicalFile.length() > 8 &&
                 canonicalFile.inputStream().use { input ->
                     val header = ByteArray(8)
-                    input.read(header) == 8 && looksLikePng(header)
+                    input.read(header) == 8 && looksLikeScreenshot(header)
                 }
         }.getOrDefault(false)
     }
@@ -431,7 +467,7 @@ object HistoryMetrics {
         if (!root.exists()) return emptyList()
         return root.listFiles { file -> file.isDirectory }.orEmpty().flatMap { channelDir ->
             channelDir.listFiles { file ->
-                file.isFile && file.extension.lowercase() == "png" &&
+                file.isFile && supportedScreenshotExtension(file.extension) &&
                     file.name.startsWith(String.format("v%05d_", versionIndex))
             }.orEmpty().map { file ->
                 HistoryScreenshotRef(

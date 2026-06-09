@@ -73,6 +73,28 @@ fun executing() {
             Handled.yes
         })
 
+    handlers["launch-batch"] = mutableSetOf(
+        { message, reply: (Message) -> Unit ->
+
+            val batch = Json.decodeFromJsonElement<ExecuteBatch>(message.payload!!)
+            val requests = batch.executions.map { exec ->
+                val box = box(exec.uid)
+                FlightRecorder.recordLaunchEntrypoint("launch-batch", box, exec, strand = exec.strand)
+                box to exec
+            }
+
+            val kotlinRequests = requests.filter { it.first.ke is KotlinExecution }
+            if (kotlinRequests.size == requests.size) {
+                KotlinExecution.launchBatch(kotlinRequests, reply)
+            } else {
+                requests.forEach { (box, exec) ->
+                    box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
+                }
+            }
+
+            Handled.yes
+        })
+
     handlers["continue-all"] = mutableSetOf(
         { message, reply: (Message) -> Unit ->
 

@@ -1390,6 +1390,17 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
         rects!!.filter { (element, rect) ->
             lineIntersectsDOMRect(e.x, e.y, start.first, start.second, rect)
+        }.sortedBy { (_, rect) ->
+            val dx = e.x - start.first
+            val dy = e.y - start.second
+            val lengthSquared = dx * dx + dy * dy
+            if (lengthSquared <= 1e-9) {
+                0.0
+            } else {
+                val centerX = rect.x + rect.width / 2.0
+                val centerY = rect.y + rect.height / 2.0
+                ((centerX - start.first) * dx + (centerY - start.second) * dy) / lengthSquared
+            }
         }.let {
             launcher(it.map { it.first })
         }

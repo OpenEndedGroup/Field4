@@ -405,6 +405,22 @@ fun monacoLaunchAll(uid: String, code: String) {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
+fun monacoLaunchBatch(items: Array<dynamic>) {
+    if (items.isEmpty()) return
+
+    val payload = js("{}")
+    payload.executions = items
+    val callbackName = "exec_batch_" + js("Date.now()").toString()
+
+    sendWithReply("launch-batch", payload, callbackName) { message: dynamic, response: dynamic ->
+        val outputUid = response.uid as? String ?: message.uid as? String ?: ""
+        monacoHandleOutput(response, message, outputUid)
+        Handled.yes
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun monacoContinueAll(uid: String, code: String) {
     val payload = js("{}")
     payload.uid = uid

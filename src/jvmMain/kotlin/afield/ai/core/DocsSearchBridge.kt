@@ -20,12 +20,12 @@ import java.util.*
  */
 class DocsSearchBridge(
     private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
-    model: String = System.getenv("AFIELD_DOCS_SEARCH_MODEL")?.takeIf { it.isNotBlank() } ?: ChatModel.GPT_5_2.toString(),
+    model: String = Ai4ModelDefaults.envOrDefault("AFIELD_DOCS_SEARCH_MODEL", Ai4ModelDefaults.FLAGSHIP_MODEL),
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
     private val fallbackModel: ChatModel = ChatModel.of(
-        System.getenv("AFIELD_DOCS_SEARCH_FALLBACK_MODEL")?.takeIf { it.isNotBlank() } ?: ChatModel.GPT_5_2.toString()
+        Ai4ModelDefaults.envOrDefault("AFIELD_DOCS_SEARCH_FALLBACK_MODEL", Ai4ModelDefaults.FRONTIER_FALLBACK_MODEL)
     )
     @Volatile
     private var activeModel: ChatModel = ChatModel.of(model)

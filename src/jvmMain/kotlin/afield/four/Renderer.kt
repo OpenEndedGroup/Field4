@@ -26,6 +26,7 @@ import afield.logTime_
 import afield.logger.lprintln
 import kotlinx.coroutines.*
 import org.joml.primitives.Rectanglef
+import org.lwjgl.stb.STBImageWrite.stbi_write_jpg
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
@@ -181,6 +182,13 @@ class Renderer(
         val width: Int,
         val height: Int,
         val format: Int
+    )
+
+    private data class WindowCapturePixels(
+        val request: WindowCaptureRequest,
+        val rgba: ByteArray,
+        val width: Int,
+        val height: Int
     )
 
     data class ProfilerState(
@@ -898,8 +906,23 @@ class Renderer(
     }
 
     private fun completeWindowCapture(capture: RecordedWindowCapture) {
+        val pixels = readWindowCapturePixels(capture) ?: return
+        GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
+            encodeWindowCapture(pixels)
+        }
+    }
+
+    private fun readWindowCapturePixels(capture: RecordedWindowCapture): WindowCapturePixels? {
         try {
-            val rgba = ByteBuffer.allocate(capture.width * capture.height * 4)
+            val rgba = ByteArray(capture.width * capture.height * 4)
+            var dst = 0
+            fun put(r: Byte, g: Byte, b: Byte, a: Byte) {
+                rgba[dst++] = r
+                rgba[dst++] = g
+                rgba[dst++] = b
+                rgba[dst++] = a
+            }
+
             capture.stagingBuffer.mapAndRead_bytes {
                 rewind()
                 order(ByteOrder.LITTLE_ENDIAN)
@@ -911,32 +934,40 @@ class Renderer(
                             val g = get()
                             val r = get()
                             val a = get()
-                            rgba.put(r).put(g).put(b).put(a)
+                            put(r, g, b, a)
                         }
                     }
 
                     VK10.VK_FORMAT_R8G8B8A8_UNORM,
                     VK10.VK_FORMAT_R8G8B8A8_SRGB -> {
-                        while (hasRemaining()) {
-                            rgba.put(get())
+                        while (remaining() >= 4) {
+                            val r = get()
+                            val g = get()
+                            val b = get()
+                            val a = get()
+                            put(r, g, b, a)
                         }
                     }
 
                     VK10.VK_FORMAT_R16G16B16A16_SFLOAT -> {
                         while (remaining() >= 8) {
-                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
-                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
-                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
-                            rgba.put(floatChannelToByte(halfFloatToFloat(getShort())))
+                            put(
+                                floatChannelToByte(halfFloatToFloat(getShort())),
+                                floatChannelToByte(halfFloatToFloat(getShort())),
+                                floatChannelToByte(halfFloatToFloat(getShort())),
+                                floatChannelToByte(halfFloatToFloat(getShort()))
+                            )
                         }
                     }
 
                     VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> {
                         while (remaining() >= 16) {
-                            rgba.put(floatChannelToByte(getFloat()))
-                            rgba.put(floatChannelToByte(getFloat()))
-                            rgba.put(floatChannelToByte(getFloat()))
-                            rgba.put(floatChannelToByte(getFloat()))
+                            put(
+                                floatChannelToByte(getFloat()),
+                                floatChannelToByte(getFloat()),
+                                floatChannelToByte(getFloat()),
+                                floatChannelToByte(getFloat())
+                            )
                         }
                     }
 
@@ -945,22 +976,73 @@ class Renderer(
                     }
                 }
             }
-            rgba.flip()
-            val pngBytes = PngEncoder.encodeFromBuffer(rgba, capture.width, capture.height)
-            Files.write(
-                Path.of(capture.request.outputPath),
-                pngBytes,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
-            )
-            capture.request.completion.complete(capture.request.outputPath)
+            return WindowCapturePixels(capture.request, rgba, capture.width, capture.height)
         } catch (t: Throwable) {
             capture.request.completion.completeExceptionally(t)
-            lprintln("warning,graphics", "direct window capture failed: ${t.message}")
+            lprintln("warning,graphics", "direct window capture readback failed: ${t.message}")
+            return null
         } finally {
             capture.stagingBuffer.cleanup()
         }
+    }
+
+    private fun encodeWindowCapture(capture: WindowCapturePixels) {
+        try {
+            val extension = Path.of(capture.request.outputPath).fileName.toString()
+                .substringAfterLast('.', "")
+                .lowercase(Locale.getDefault())
+            if (extension == "jpg" || extension == "jpeg") {
+                writeWindowCaptureJpeg(capture)
+            } else {
+                writeWindowCapturePng(capture)
+            }
+            capture.request.completion.complete(capture.request.outputPath)
+        } catch (t: Throwable) {
+            capture.request.completion.completeExceptionally(t)
+            lprintln("warning,graphics", "direct window capture encode failed: ${t.message}")
+        }
+    }
+
+    private fun writeWindowCapturePng(capture: WindowCapturePixels) {
+        val pngBytes = PngEncoder.encodeFromBuffer(ByteBuffer.wrap(capture.rgba), capture.width, capture.height)
+        Files.write(
+            Path.of(capture.request.outputPath),
+            pngBytes,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.WRITE
+        )
+    }
+
+    private fun writeWindowCaptureJpeg(capture: WindowCapturePixels) {
+        val rgb = ByteBuffer.allocateDirect(capture.width * capture.height * 3)
+        for (y in capture.height - 1 downTo 0) {
+            var src = y * capture.width * 4
+            repeat(capture.width) {
+                rgb.put(capture.rgba[src])
+                rgb.put(capture.rgba[src + 1])
+                rgb.put(capture.rgba[src + 2])
+                src += 4
+            }
+        }
+        rgb.flip()
+        val ok = stbi_write_jpg(
+            capture.request.outputPath,
+            capture.width,
+            capture.height,
+            3,
+            rgb,
+            windowCaptureJpegQuality()
+        )
+        if (!ok) {
+            throw IllegalStateException("stbi_write_jpg failed")
+        }
+    }
+
+    private fun windowCaptureJpegQuality(): Int {
+        val configured = System.getProperty("afield.history.screenshotJpegQuality")
+            ?: System.getenv("AFIELD_HISTORY_SCREENSHOT_JPEG_QUALITY")
+        return configured?.toIntOrNull()?.coerceIn(1, 100) ?: 82
     }
 
     fun render() {
