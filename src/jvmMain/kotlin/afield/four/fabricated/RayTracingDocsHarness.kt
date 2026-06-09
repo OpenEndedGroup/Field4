@@ -8,10 +8,15 @@ import afield.four.device.CommandBuffer
 import afield.four.device.CommandPool
 import afield.four.device.Fence
 import afield.four.modules.AccelerationStructure
+import afield.four.modules.AccelerationStructureAabbs
 import afield.four.modules.AccelerationStructureTriangles
 import afield.four.modules.Parameters
 import afield.four.modules.RayTracingDispatch
+import afield.four.modules.RayTracingGroups
+import afield.four.modules.RayTracingHitGroup
 import afield.four.modules.RayTracingInstance
+import afield.four.modules.RayTracingShaderStage
+import afield.four.modules.ShaderKind
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
 import afield.four.texture.Image
@@ -300,6 +305,159 @@ object RayTracingDocsHarness {
         }
     }
 
+    /**
+     * Renders an Amiga Juggler-inspired scene: three reflective spheres above a
+     * checkerboard floor.
+     *
+     * The floor uses a triangle hit group while the spheres are a procedural
+     * AABB BLAS resolved by an intersection shader. Sphere instances select
+     * their mirror-material hit group through SBT record offsets.
+     *
+     * Returns a placeholder PNG when ray tracing is not supported.
+     */
+    suspend fun renderMirrorBallsScene(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        if (!renderer.device.supportsRayTracing) {
+            lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
+            return writeNotSupportedPlaceholder(outputPath, "Mirror Balls (RT not available)")
+        }
+
+        val (image, imageView) = createRtOutputImage(renderer)
+        transitionImageToGeneral(renderer, image)
+
+        val floorVertexBuffer = buildMirrorFloorVertexBuffer(renderer)
+        val sphereAabbBuffer = buildSphereAabbBuffer(renderer)
+
+        val floorBlas = AccelerationStructure(renderer, "rt-docs-mirror-floor-blas")
+            .buildBottomLevelNow(
+                triangles = listOf(
+                    AccelerationStructureTriangles(
+                        vertexBuffer = floorVertexBuffer,
+                        maxVertex = 5,
+                        primitiveCount = 2
+                    )
+                )
+            )
+        val sphereBlas = AccelerationStructure(renderer, "rt-docs-mirror-sphere-blas")
+            .buildBottomLevelNow(
+                aabbs = listOf(
+                    AccelerationStructureAabbs(
+                        aabbBuffer = sphereAabbBuffer,
+                        primitiveCount = 1
+                    )
+                )
+            )
+
+        val floorY = -0.62f
+        val sphereScale = 0.34f
+        val instances = listOf(
+            RayTracingInstance(
+                accelerationStructure = floorBlas,
+                shaderBindingTableRecordOffset = 0
+            ),
+            RayTracingInstance(
+                accelerationStructure = sphereBlas,
+                transform = scaleTranslateTransform(sphereScale, 0.0f, floorY + sphereScale, 2.35f),
+                shaderBindingTableRecordOffset = 1
+            ),
+            RayTracingInstance(
+                accelerationStructure = sphereBlas,
+                transform = scaleTranslateTransform(sphereScale, -0.78f, floorY + sphereScale, 1.72f),
+                shaderBindingTableRecordOffset = 1
+            ),
+            RayTracingInstance(
+                accelerationStructure = sphereBlas,
+                transform = scaleTranslateTransform(sphereScale, 0.78f, floorY + sphereScale, 1.72f),
+                shaderBindingTableRecordOffset = 1
+            )
+        )
+
+        val tlas = AccelerationStructure(renderer, "rt-docs-mirror-balls-tlas")
+            .buildTopLevelNow(instances = instances)
+
+        val rtName = "rt-docs-mirror-balls-${System.nanoTime()}"
+        val errors = mutableListOf<String>()
+
+        val groups = RayTracingGroups(
+            raygen = RayTracingShaderStage("raygen", ShaderKind.RAYGEN_SHADER, MIRROR_BALLS_RAYGEN, sourceName = "mirror_balls.rgen"),
+            miss = mutableListOf(
+                RayTracingShaderStage("miss", ShaderKind.MISS_SHADER, MIRROR_BALLS_MISS, sourceName = "mirror_balls.rmiss")
+            ),
+            hit = mutableListOf(
+                RayTracingHitGroup(
+                    name = "checker-floor",
+                    closestHit = RayTracingShaderStage(
+                        "floorClosestHit",
+                        ShaderKind.CLOSEST_HIT_SHADER,
+                        MIRROR_BALLS_FLOOR_CLOSESTHIT,
+                        sourceName = "mirror_balls_floor.rchit"
+                    )
+                ),
+                RayTracingHitGroup(
+                    name = "mirror-spheres",
+                    closestHit = RayTracingShaderStage(
+                        "sphereClosestHit",
+                        ShaderKind.CLOSEST_HIT_SHADER,
+                        MIRROR_BALLS_SPHERE_CLOSESTHIT,
+                        sourceName = "mirror_balls_sphere.rchit"
+                    ),
+                    intersection = RayTracingShaderStage(
+                        "sphereIntersection",
+                        ShaderKind.INTERSECTION_SHADER,
+                        MIRROR_BALLS_SPHERE_INTERSECTION,
+                        sourceName = "mirror_balls_sphere.rint"
+                    )
+                )
+            )
+        )
+
+        val p = Parameters(
+            renderer = renderer,
+            rayTracingGroups = groups,
+            maxRayRecursionDepth = 2,
+            name = rtName,
+            imageResolver = { imageView },
+            accelerationStructureResolver = { tlas },
+            errorHandler = { msg, _ -> errors += msg }
+        )
+
+        val rtModule = try {
+            afield.four.modules.RayTracingModule(p)
+        } catch (e: Exception) {
+            lprintln("error,doc", "ray tracing module build failed: ${e.message}")
+            image.cleanup(); imageView.cleanup()
+            floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
+            floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
+            return writeNotSupportedPlaceholder(outputPath, "Mirror Balls (build failed: ${e.message?.take(60)})")
+        }
+
+        if (!rtModule.valid || errors.isNotEmpty()) {
+            lprintln("error,doc", "ray tracing module invalid: $errors")
+            image.cleanup(); imageView.cleanup()
+            floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
+            floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
+            return writeNotSupportedPlaceholder(outputPath, "Mirror Balls (${summarizeShaderErrors(errors)})")
+        }
+
+        val pointer = rtModule.pointer()
+        val dispatch = RayTracingDispatch(pointer, OUTPUT_WIDTH, OUTPUT_HEIGHT)
+        pointer += "dispatch" to dispatch
+
+        renderer += rtName to pointer
+        try {
+            waitForRendererFrames(renderer)
+            return captureRtImage(renderer, image, outputPath)
+        } finally {
+            pointer.disable()
+            renderer.computeList.rayTracingModules.remove(rtName)
+            image.cleanup(); imageView.cleanup()
+            floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
+            floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
+        }
+    }
+
     /** Wraps a captured PNG as an HTML block suitable for display(...). */
     fun htmlForImage(imageFile: File, caption: String? = null): String {
         val encoded = Base64.getEncoder().encodeToString(imageFile.readBytes())
@@ -409,6 +567,55 @@ object RayTracingDocsHarness {
         buffer.mapAndWrite_bytes { asFloatBuffer().put(floats) }
         return buffer
     }
+
+    private fun buildMirrorFloorVertexBuffer(renderer: Renderer): VulkanBuffer {
+        val half = 2.7f
+        val y = -0.62f
+        val zNear = 0.2f
+        val zFar = 4.8f
+        val floats = floatArrayOf(
+            -half, y, zNear,
+             half, y, zNear,
+             half, y, zFar,
+
+            -half, y, zNear,
+             half, y, zFar,
+            -half, y, zFar
+        )
+        val buffer = VulkanBuffer(
+            renderer = renderer,
+            requestedSize = floats.size * 4L,
+            usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR or
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            reqMask = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            needsDeviceAddress = true
+        )
+        buffer.mapAndWrite_bytes { asFloatBuffer().put(floats) }
+        return buffer
+    }
+
+    private fun buildSphereAabbBuffer(renderer: Renderer): VulkanBuffer {
+        val floats = floatArrayOf(
+            -1f, -1f, -1f,
+             1f,  1f,  1f
+        )
+        val buffer = VulkanBuffer(
+            renderer = renderer,
+            requestedSize = floats.size * 4L,
+            usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR or
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            reqMask = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            needsDeviceAddress = true
+        )
+        buffer.mapAndWrite_bytes { asFloatBuffer().put(floats) }
+        return buffer
+    }
+
+    private fun scaleTranslateTransform(scale: Float, tx: Float, ty: Float, tz: Float): FloatArray = floatArrayOf(
+        scale, 0f, 0f, tx,
+        0f, scale, 0f, ty,
+        0f, 0f, scale, tz
+    )
 
     private suspend fun captureRtImage(renderer: Renderer, image: Image, outputPath: String): File {
         val targetFile = File(outputPath)
@@ -641,6 +848,170 @@ object RayTracingDocsHarness {
 
             float vignette = clamp(1.0 - 0.13 * length(worldHit.xz), 0.6, 1.0);
             payload = tileColor * vignette;
+        }
+    """.trimIndent()
+
+    /** Raygen for the mirror-balls scene: traces one primary ray per pixel. */
+    val MIRROR_BALLS_RAYGEN = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        struct Payload {
+            vec3 color;
+            int bouncesLeft;
+        };
+
+        layout(location = 0) rayPayloadEXT Payload payload;
+        layout(set = 0, binding = 0, rgba8) uniform image2D outputImage;
+        layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
+
+        void main() {
+            ivec2 px = ivec2(gl_LaunchIDEXT.xy);
+            vec2 uv = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
+            vec2 ndc = uv * 2.0 - 1.0;
+
+            vec3 origin = vec3(0.0, 0.18, -3.45);
+            vec3 dir = normalize(vec3(ndc.x * 1.05, -ndc.y * 0.78 + 0.08, 1.0));
+
+            payload.color = vec3(0.02, 0.03, 0.05);
+            payload.bouncesLeft = 1;
+
+            traceRayEXT(topLevelAS,
+                        gl_RayFlagsOpaqueEXT,
+                        0xFF,
+                        0, 0, 0,
+                        origin, 0.001, dir, 100.0,
+                        0);
+
+            vec3 color = pow(clamp(payload.color, vec3(0.0), vec3(1.0)), vec3(0.95));
+            imageStore(outputImage, px, vec4(color, 1.0));
+        }
+    """.trimIndent()
+
+    /** Miss shader for the mirror-balls scene. */
+    val MIRROR_BALLS_MISS = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        struct Payload {
+            vec3 color;
+            int bouncesLeft;
+        };
+
+        layout(location = 0) rayPayloadInEXT Payload payload;
+
+        void main() {
+            vec3 d = normalize(gl_WorldRayDirectionEXT);
+            float horizon = clamp(0.5 + 0.5 * d.y, 0.0, 1.0);
+            vec3 skyLow = vec3(0.06, 0.07, 0.10);
+            vec3 skyHigh = vec3(0.22, 0.24, 0.30);
+            payload.color = mix(skyLow, skyHigh, pow(horizon, 0.8));
+        }
+    """.trimIndent()
+
+    /** Closest-hit shader for the checkerboard floor. */
+    val MIRROR_BALLS_FLOOR_CLOSESTHIT = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        struct Payload {
+            vec3 color;
+            int bouncesLeft;
+        };
+
+        layout(location = 0) rayPayloadInEXT Payload payload;
+        hitAttributeEXT vec2 baryCoord;
+
+        void main() {
+            vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
+            float checker = mod(floor(worldHit.x * 2.3) + floor(worldHit.z * 2.3), 2.0);
+
+            vec3 lightTile = vec3(0.80, 0.80, 0.84);
+            vec3 darkTile = vec3(0.11, 0.11, 0.13);
+            vec3 tileColor = mix(lightTile, darkTile, checker);
+
+            float distanceFade = clamp(1.15 - 0.12 * length(worldHit.xz - vec2(0.0, 2.0)), 0.48, 1.0);
+            float stripe = 0.85 + 0.15 * smoothstep(0.0, 0.04, abs(fract(worldHit.x * 2.3) - 0.5));
+            payload.color = tileColor * distanceFade * stripe;
+        }
+    """.trimIndent()
+
+    /** Analytic intersection shader for a unit sphere inside the procedural AABB BLAS. */
+    val MIRROR_BALLS_SPHERE_INTERSECTION = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        hitAttributeEXT vec3 sphereNormal;
+
+        void main() {
+            vec3 origin = gl_ObjectRayOriginEXT;
+            vec3 dir = gl_ObjectRayDirectionEXT;
+
+            float a = dot(dir, dir);
+            float b = 2.0 * dot(origin, dir);
+            float c = dot(origin, origin) - 1.0;
+            float disc = b * b - 4.0 * a * c;
+            if (disc < 0.0) return;
+
+            float rootDisc = sqrt(disc);
+            float invDenom = 0.5 / a;
+            float t0 = (-b - rootDisc) * invDenom;
+            float t1 = (-b + rootDisc) * invDenom;
+            float t = t0;
+            if (t <= 0.001) t = t1;
+            if (t <= 0.001) return;
+
+            vec3 hit = origin + t * dir;
+            sphereNormal = normalize(hit);
+            reportIntersectionEXT(t, 0);
+        }
+    """.trimIndent()
+
+    /** Closest-hit shader for reflective spheres. */
+    val MIRROR_BALLS_SPHERE_CLOSESTHIT = """
+        #version 460
+        #extension GL_EXT_ray_tracing : require
+
+        struct Payload {
+            vec3 color;
+            int bouncesLeft;
+        };
+
+        layout(location = 0) rayPayloadInEXT Payload payload;
+        layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
+        hitAttributeEXT vec3 sphereNormal;
+
+        void main() {
+            vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
+            vec3 normal = normalize(gl_ObjectToWorldEXT * vec4(sphereNormal, 0.0)).xyz;
+            vec3 viewDir = normalize(-gl_WorldRayDirectionEXT);
+            vec3 reflected = normalize(reflect(gl_WorldRayDirectionEXT, normal));
+
+            vec3 skyTint = mix(vec3(0.16, 0.18, 0.22), vec3(0.55, 0.57, 0.62), clamp(0.5 + 0.5 * reflected.y, 0.0, 1.0));
+            float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+            vec3 baseMetal = vec3(0.72, 0.74, 0.78);
+            vec3 fallback = mix(baseMetal, skyTint, 0.75);
+
+            if (payload.bouncesLeft <= 0) {
+                payload.color = fallback;
+                return;
+            }
+
+            payload.bouncesLeft -= 1;
+            payload.color = fallback;
+
+            traceRayEXT(topLevelAS,
+                        gl_RayFlagsOpaqueEXT,
+                        0xFF,
+                        0, 0, 0,
+                        worldHit + normal * 0.01,
+                        0.001,
+                        reflected,
+                        100.0,
+                        0);
+
+            vec3 reflectedColor = payload.color;
+            payload.color = mix(baseMetal * 0.55, reflectedColor, 0.88 + 0.12 * fresnel);
         }
     """.trimIndent()
 }

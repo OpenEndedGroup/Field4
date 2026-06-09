@@ -126,3 +126,38 @@ val captureScene: suspend () -> Unit = {
 }
 start(captureScene)
 ```
+
+## Mirror Balls (procedural spheres + reflections)
+
+An Amiga Juggler-inspired scene: three reflective spheres sit above a checkerboard floor. The floor is regular triangle geometry, but the spheres are procedural — a single AABB BLAS is instanced three times and resolved by an intersection shader. This example exercises multiple hit groups, TLAS instance SBT offsets, recursive reflection, and procedural ray tracing geometry all at once.
+
+<!--
+FIELD_TEST
+id: docs.raytracing.mirror-balls
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, raytracing, graphics, spheres, reflection, intersection, sbt]
+timeoutSec: 180
+withPlaywright: true
+execution: launch
+waitSec: 20.0
+expect:
+  allowMissingOutput: true
+  allowExecutionErrors: true
+  outputContains:
+    - "ray tracing example ready"
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-mirror-balls.png" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="rt-mirror-balls"}
+:::static
+import afield.four.fabricated.RayTracingDocsHarness
+
+val captureScene: suspend () -> Unit = {
+    val image = RayTracingDocsHarness.renderMirrorBallsScene("/tmp/docs-rt-mirror-balls.png")
+    display("render", RayTracingDocsHarness.htmlForImage(image, "Three reflective procedural spheres over a traced checker floor"))
+    println("ray tracing example ready")
+}
+start(captureScene)
+```
