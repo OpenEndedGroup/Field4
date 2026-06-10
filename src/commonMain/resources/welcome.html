@@ -208,13 +208,79 @@
             color: var(--field-danger);
         }
 
+        .workspace-header {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            align-items: baseline;
+            font-size: 12px;
+        }
+
+        .workspace-label {
+            color: var(--field-text-soft);
+        }
+
+        #current-workspace {
+            min-width: 0;
+            color: var(--field-cyan);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .workspace-controls {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #workspace-path {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 8px 10px;
+            font: inherit;
+        }
+
+        #workspace-path::placeholder {
+            font-size: 12px;
+            color: rgba(164, 193, 210, 0.8);
+        }
+
+        #workspace-path:focus {
+            outline: none;
+            border-color: var(--field-cyan);
+            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
+        }
+
+        #workspace-status {
+            min-height: 1.2em;
+            font-size: 12px;
+            color: var(--field-text-soft);
+        }
+
+        #workspace-status.error {
+            color: var(--field-danger);
+        }
+
         .changelog-panel {
             padding: 0;
             overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 0.65fr);
         }
 
         .changelog-panel details {
             display: grid;
+            min-width: 0;
+            align-content: start;
+        }
+
+        .changelog-panel details + details {
+            border-left: 1px solid rgba(0, 0, 0, 0.62);
         }
 
         .changelog-panel summary {
@@ -246,6 +312,12 @@
         .changelog-count {
             color: var(--field-text-soft);
             font-size: 11px;
+        }
+
+        .workspace-details-body {
+            padding: 0 12px 12px;
+            display: grid;
+            gap: 8px;
         }
 
         #changelog-list {
@@ -713,6 +785,25 @@
                 grid-template-columns: 1fr;
             }
 
+            .changelog-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .changelog-panel details + details {
+                border-left: none;
+                border-top: 1px solid rgba(0, 0, 0, 0.62);
+            }
+
+            .workspace-header,
+            .workspace-controls {
+                grid-template-columns: 1fr;
+            }
+
+            #current-workspace {
+                white-space: normal;
+                word-break: break-all;
+            }
+
             #create-status {
                 text-align: left;
             }
@@ -818,6 +909,25 @@
             </summary>
             <ol id="changelog-list"></ol>
         </details>
+        <details id="workspace-details">
+            <summary>
+                <span>Workspace</span>
+                <span class="changelog-count">advanced</span>
+            </summary>
+            <div class="workspace-details-body">
+                <div class="workspace-header">
+                    <span class="workspace-label">Current</span>
+                    <span id="current-workspace">loading</span>
+                </div>
+                <div class="workspace-controls">
+                    <input id="workspace-path" type="text" autocomplete="off" list="workspace-options" placeholder="~/Documents/AFieldWorkspace">
+                    <datalist id="workspace-options"></datalist>
+                    <button id="default-workspace" type="button">Default</button>
+                    <button id="open-workspace" type="button">Open</button>
+                </div>
+                <div id="workspace-status" aria-live="polite"></div>
+            </div>
+        </details>
     </section>
 
     <section class="panel running-panel" id="running-panel" hidden>
@@ -858,7 +968,11 @@
         contextMenu: null,
         duplicatePrompt: null,
         contextError: "",
-        changelog: []
+        changelog: [],
+        currentWorkspace: "",
+        defaultWorkspace: "",
+        recentWorkspaces: [],
+        workspaceSwitching: false
     };
     let searchController = null;
     let searchDebounceTimer = null;
@@ -869,6 +983,7 @@
     const WELCOME_REFRESH_MS = 10000;
     const WELCOME_EVENT_REFRESH_MS = 120;
     const WELCOME_EVENT_RECONNECT_MS = 1500;
+    const RECENT_WORKSPACES_KEY = "field4.recentWorkspaces";
 
     function escapeHtml(text) {
         return String(text)
@@ -915,6 +1030,53 @@
         const value = Number(epochMs) || 0;
         if (!value) return "";
         return formatDuration(Date.now() - value);
+    }
+
+    function getStoredWorkspaces() {
+        try {
+            const raw = window.localStorage.getItem(RECENT_WORKSPACES_KEY);
+            const parsed = JSON.parse(raw || "[]");
+            return Array.isArray(parsed) ? parsed.filter((path) => typeof path === "string" && path.trim()) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function rememberWorkspace(path) {
+        const clean = String(path || "").trim();
+        if (!clean) return;
+        const current = [clean, ...getStoredWorkspaces().filter((other) => other !== clean)].slice(0, 12);
+        state.recentWorkspaces = current;
+        try {
+            window.localStorage.setItem(RECENT_WORKSPACES_KEY, JSON.stringify(current));
+        } catch (_) {
+        }
+        renderWorkspaceControls();
+    }
+
+    function renderWorkspaceControls() {
+        const currentNode = document.getElementById("current-workspace");
+        const input = document.getElementById("workspace-path");
+        const options = document.getElementById("workspace-options");
+        const paths = [
+            state.currentWorkspace,
+            state.defaultWorkspace,
+            ...state.recentWorkspaces
+        ].filter(Boolean);
+        const uniquePaths = Array.from(new Set(paths));
+
+        if (currentNode) currentNode.textContent = state.currentWorkspace || "unknown";
+        if (input && !input.value.trim()) input.value = state.currentWorkspace || state.defaultWorkspace || "";
+        if (options) {
+            options.innerHTML = uniquePaths.map((path) => `<option value="${escapeHtml(path)}"></option>`).join("");
+        }
+    }
+
+    function setWorkspaceStatus(text, isError = false) {
+        const node = document.getElementById("workspace-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
     }
 
     function openDocument(name, options = {}) {
@@ -1389,11 +1551,16 @@
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
+            state.currentWorkspace = payload.currentWorkspace || state.currentWorkspace || "";
+            state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
+            rememberWorkspace(state.currentWorkspace);
+            renderWorkspaceControls();
             renderList();
         } catch (error) {
             console.error("Failed to load welcome docs", error);
             state.documents = [];
             state.runningDocuments = [];
+            renderWorkspaceControls();
             renderList();
             setCreateStatus("Could not load workspace documents.", true);
         }
@@ -1557,6 +1724,80 @@
         }
     }
 
+    function setWorkspaceInputsDisabled(disabled) {
+        ["workspace-path", "default-workspace", "open-workspace"].forEach((id) => {
+            const node = document.getElementById(id);
+            if (node) node.disabled = !!disabled;
+        });
+    }
+
+    async function waitForWorkspaceRestart(targetWorkspace) {
+        const deadline = Date.now() + 45000;
+        await new Promise((resolve) => setTimeout(resolve, 1400));
+
+        while (Date.now() < deadline) {
+            try {
+                const response = await fetch("/api/welcome-docs", { cache: "no-store" });
+                if (response.ok) {
+                    const payload = await response.json();
+                    if (payload.currentWorkspace === targetWorkspace) {
+                        window.location.href = "/welcome";
+                        return;
+                    }
+                }
+            } catch (_) {
+            }
+            await new Promise((resolve) => setTimeout(resolve, 900));
+        }
+
+        state.workspaceSwitching = false;
+        setWorkspaceInputsDisabled(false);
+        setWorkspaceStatus("Field did not come back on that workspace yet. Refresh once the server is ready.", true);
+    }
+
+    async function switchWorkspace(path) {
+        const target = String(path || "").trim();
+        if (!target) {
+            setWorkspaceStatus("Enter a workspace path.", true);
+            return;
+        }
+
+        state.workspaceSwitching = true;
+        setWorkspaceInputsDisabled(true);
+        setWorkspaceStatus("Preparing workspace switch...");
+
+        try {
+            const response = await fetch("/api/workspace-switch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ path: target })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            rememberWorkspace(payload.workspace || target);
+            if (payload.current) {
+                state.workspaceSwitching = false;
+                setWorkspaceInputsDisabled(false);
+                state.currentWorkspace = payload.workspace || state.currentWorkspace;
+                renderWorkspaceControls();
+                setWorkspaceStatus(payload.message || "Already using this workspace.");
+                return;
+            }
+
+            setWorkspaceStatus(payload.message || "Restarting Field...");
+            waitForWorkspaceRestart(payload.workspace || target);
+        } catch (error) {
+            console.error("Failed to switch workspace", error);
+            state.workspaceSwitching = false;
+            setWorkspaceInputsDisabled(false);
+            setWorkspaceStatus(error?.message || "Could not switch workspace.", true);
+        }
+    }
+
     function installDocumentListHandlers(listNode) {
         listNode.querySelectorAll(".doc-entry").forEach((entry) => {
             entry.addEventListener("click", (event) => {
@@ -1632,6 +1873,9 @@
         const nameInput = document.getElementById("new-doc-name");
         const searchInput = document.getElementById("recent-search");
         const shutdownButton = document.getElementById("shutdown-instance");
+        const workspaceInput = document.getElementById("workspace-path");
+        const defaultWorkspaceButton = document.getElementById("default-workspace");
+        const openWorkspaceButton = document.getElementById("open-workspace");
 
         const runCreate = () => {
             const name = nameInput.value.trim();
@@ -1665,6 +1909,26 @@
                 openDocument(first.filename);
                 return;
             }
+        });
+
+        openWorkspaceButton?.addEventListener("click", () => {
+            switchWorkspace(workspaceInput?.value || "");
+        });
+
+        defaultWorkspaceButton?.addEventListener("click", () => {
+            const path = state.defaultWorkspace || "~/Documents/AFieldWorkspace";
+            if (workspaceInput) workspaceInput.value = path;
+            switchWorkspace(path);
+        });
+
+        workspaceInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            switchWorkspace(workspaceInput.value);
+        });
+
+        workspaceInput?.addEventListener("input", () => {
+            if (!state.workspaceSwitching) setWorkspaceStatus("");
         });
 
         shutdownButton?.addEventListener("click", async () => {
@@ -1875,6 +2139,8 @@
         }
     }
 
+    state.recentWorkspaces = getStoredWorkspaces();
+    renderWorkspaceControls();
     installHandlers();
     loadWelcomeDocs();
     loadWelcomeChangelog();

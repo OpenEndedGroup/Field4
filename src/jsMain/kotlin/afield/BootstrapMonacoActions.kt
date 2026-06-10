@@ -629,6 +629,7 @@ fun monacoRunAiAssist(editor: dynamic) {
     }
 
     val uid = w.currentSelectedCode[0].uid as String
+    openAiChatPanelForUid(w, uid)
     val kind = if (startOffset != endOffset) "rewrite" else "cursor"
     val startLine = ((startPosition.lineNumber as Number).toInt() - 1).coerceAtLeast(0)
 
@@ -640,6 +641,13 @@ fun monacoRunAiAssist(editor: dynamic) {
     payload.property = w.currentSelectedProperty
     payload.kind = kind
     send("ai-assist", payload)
+}
+
+private fun openAiChatPanelForUid(w: dynamic, uid: String) {
+    val opener = w.openAiChatForBox
+    if (opener != null) {
+        opener(uid, w.currentSelectedProperty)
+    }
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -1002,6 +1010,7 @@ fun monacoRunAiAssistError(editor: dynamic) {
         fullText.substring(offset)
 
     val uid = w.currentSelectedCode[0].uid as String
+    openAiChatPanelForUid(w, uid)
     val payload = js("{}")
     payload.uid = uid
     payload.prompt = allText
@@ -1162,9 +1171,11 @@ fun monacoRunAiChatInline(editor: dynamic) {
     val selection = editor.getSelection()
     val start = (selection.startLineNumber as Number).toInt() - 1
     val uid = w.currentSelectedCode[0].uid as String
+    openAiChatPanelForUid(w, uid)
     val fullText = editor.getModel().getValue() as String
     val addPromptBox = w.addPromptBox
     val callback: (dynamic) -> Unit = { v ->
+        openAiChatPanelForUid(w, uid)
         val payload = js("{}")
         payload.uid = uid
         payload.prompt = fullText
@@ -1184,10 +1195,7 @@ fun monacoRunAiChatPanel() {
     val current = w.currentSelectedCode
     if (current == null || (current.length as? Number)?.toInt() != 1) return
     val uid = current[0].uid as? String ?: return
-    val opener = w.openAiChatForBox
-    if (opener != null) {
-        opener(uid, w.currentSelectedProperty)
-    }
+    openAiChatPanelForUid(w, uid)
 }
 
 @OptIn(ExperimentalJsExport::class)

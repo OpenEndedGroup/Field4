@@ -34,7 +34,7 @@ RUNNER_FENCES = {"diffstatic_runner", "diff_runner"}
 DIFF_FENCES = {"diff", "diff_runner"}
 STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
-SCRIPT_VERSION = 11
+SCRIPT_VERSION = 12
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 20.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
@@ -106,6 +106,7 @@ class RunnerOptions:
     video: str | None  # path to .mp4 output; when set, records video instead of screenshot
     duration: float  # video duration in seconds (default 5.0)
     fps: int  # video frame rate (default 30)
+    hidden: bool
 
 
 @dataclass(frozen=True)
@@ -740,9 +741,11 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 if video_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
 
-        out.append(open_line.replace(fence_name, RUNNER_TARGETS[fence_name], 1))
-        out.extend(rewritten_body)
-        out.append(closing_line)
+        hide_source = fence_name in RUNNER_FENCES and options.hidden
+        if not hide_source:
+            out.append(open_line.replace(fence_name, RUNNER_TARGETS[fence_name], 1))
+            out.extend(rewritten_body)
+            out.append(closing_line)
         if fence_name in RUNNER_FENCES and options.embed:
             if options.screenshot and screenshot_succeeded:
                 out.append("\n")
@@ -759,12 +762,13 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 out.append(f'  <source src="{video_rel}" type="video/mp4">\n')
                 out.append(f'</video>\n')
 
-        previous_code_by_language[language_key] = extract_effective_code(
-            lines=rewritten_body,
-            fence_name=fence_name,
-            page_path=page_path,
-            line_number=start_line,
-        )
+        if not hide_source:
+            previous_code_by_language[language_key] = extract_effective_code(
+                lines=rewritten_body,
+                fence_name=fence_name,
+                page_path=page_path,
+                line_number=start_line,
+            )
         continue
 
     return "".join(out)
@@ -845,6 +849,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         video=video,
         duration=parse_float(first_attr(attrs, "duration"), default=5.0),
         fps=int(parse_float(first_attr(attrs, "fps"), default=30.0)),
+        hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
     )
 
 

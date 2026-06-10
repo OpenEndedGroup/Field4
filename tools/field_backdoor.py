@@ -41,6 +41,8 @@ LOG_STRING_PREVIEW = 512
 LOG_COLLECTION_PREVIEW = 32
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
+GRADLE_WRAPPER_JAR = REPO_ROOT / "gradle" / "wrapper" / "gradle-wrapper.jar"
+GRADLE_JVMARGS = "-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 
 
 class BackdoorError(RuntimeError):
@@ -75,6 +77,17 @@ def health_check(port: int, ssl_context: ssl.SSLContext, timeout: float = 1.5) -
         return body.strip().lower() == "ok"
     except (OSError, urllib.error.URLError, urllib.error.HTTPError):
         return False
+
+
+def gradle_command(*tasks_and_args: str) -> list[str]:
+    return [
+        "java",
+        f"-Dorg.gradle.jvmargs={GRADLE_JVMARGS}",
+        "-classpath",
+        str(GRADLE_WRAPPER_JAR),
+        "org.gradle.wrapper.GradleWrapperMain",
+        *tasks_and_args,
+    ]
 
 
 def command_result(command: str, ok: bool, data: Any = None, events: list[dict[str, Any]] | None = None, timed_out: bool = False) -> dict[str, Any]:
@@ -215,7 +228,7 @@ class FieldBackdoor:
         self.managed_log_path = self.logger.root / f"{self.session_id}.managed-server.log"
         self.managed_log_file = self.managed_log_path.open("w", encoding="utf-8")
 
-        cmd = ["./gradlew", "runJvm"]
+        cmd = gradle_command("runJvm")
         if self.workspace:
             quoted_workspace = shlex.quote(self.workspace)
             cmd.append(f"--args=--workspace {quoted_workspace}")

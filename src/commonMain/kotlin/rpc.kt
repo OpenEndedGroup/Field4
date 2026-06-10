@@ -123,6 +123,22 @@ data class AiAssist(
 )
 
 @Serializable
+data class AiChatScreenshotRequest(
+    val uid: String,
+    val target: String = ""
+)
+
+@Serializable
+data class AiChatScreenshotResponse(
+    val success: Boolean,
+    val dataUrl: String = "",
+    val message: String = "",
+    val title: String = "",
+    val width: Int = 0,
+    val height: Int = 0
+)
+
+@Serializable
 data class Chat_input(val value: String, val phase: Int, val images: List<String> = emptyList())
 
 @Serializable
@@ -1056,6 +1072,9 @@ data class HistorySelectionVersionsRequest(
     val property: String,
     val startLine: Int,
     val endLine: Int,
+    val startColumn: Int = 1,
+    val endColumn: Int = 1,
+    val emptySelection: Boolean = false,
     val selectedText: String = "",
     val propertyText: String = ""
 )

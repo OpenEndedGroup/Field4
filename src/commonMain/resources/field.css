@@ -521,6 +521,14 @@
     font-family: var(--field-font);
 }
 
+.afield-ref-link {
+    color: var(--field-code-accent);
+    font-family: var(--field-font);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
 .ai-chat-markdown img.ai-chat-inline-image {
     display: block;
     max-width: 100%;
@@ -670,6 +678,30 @@
     padding: 2px 6px;
 }
 
+.ai-chat-progress {
+    align-self: stretch;
+    box-sizing: border-box;
+    margin: 0 6px;
+    padding: 4px 6px;
+    border-left: 2px solid var(--field-border-medium);
+    background: var(--field-panel-medium);
+    color: var(--field-fg-muted);
+    font-size: 10px;
+}
+
+.ai-chat-progress summary {
+    cursor: pointer;
+    color: var(--field-fg);
+    font-family: var(--field-font);
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.ai-chat-progress .ai-chat-markdown {
+    margin-top: 4px;
+    color: var(--field-fg-muted);
+}
+
 .ai-chat-turn.ai {
     align-self: flex-start;
     text-align: left;
@@ -702,7 +734,7 @@
 }
 
 .ai-chat-turn.ai::before {
-    content: "GPT-5.2";
+    content: "GPT-5.5";
     text-align: left;
 }
 

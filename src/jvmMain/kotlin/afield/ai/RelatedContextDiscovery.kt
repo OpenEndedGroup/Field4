@@ -13,6 +13,8 @@ data class RelatedContextHints(
 )
 
 object RelatedContextDiscovery {
+    private const val AI4_CONNECTED_RENDER_EXAMPLE_REF = "afield://ai4-examples/connected-compute-render"
+
     private val repoRoot: Path = Paths.get(System.getProperty("user.dir")).normalize()
 
     @Volatile
@@ -23,7 +25,9 @@ object RelatedContextDiscovery {
 
     fun forPath(rawPath: String?): RelatedContextHints {
         val normalized = rawPath?.trim()?.replace('\\', '/')?.takeIf { it.isNotBlank() } ?: return RelatedContextHints()
-        if (normalized.startsWith("afield://")) return RelatedContextHints()
+        if (normalized.startsWith("afield://")) {
+            return RelatedContextHints(examples = listOf(AI4_CONNECTED_RENDER_EXAMPLE_REF))
+        }
 
         val sourcePath = normalized.removePrefix("./")
         val tokens = sourceTokens(sourcePath)

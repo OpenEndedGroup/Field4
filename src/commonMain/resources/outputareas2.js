@@ -1,4 +1,4 @@
-import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send } from "./afield.mjs";
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
 
 const DEFAULT_W = 480;
 const DEFAULT_H = 150;
@@ -848,6 +848,7 @@ function disclosureInterface(container) {
                         if (inline) {
                                 arr.textContent = inlineTitle(title);
                                 ttl.innerHTML = content || "";
+                                decorateAfieldLinks(ttl);
                         } else {
                                 ttl.textContent = title;
                         }
@@ -855,6 +856,7 @@ function disclosureInterface(container) {
                         const cw = document.createElement("div");
                         cw.className = "disclosure-content";
                         cw.innerHTML = content || "";
+                        decorateAfieldLinks(cw);
 
                         if (!inline) {
                                 const updateIndicators = (e) => {
@@ -912,11 +914,13 @@ function disclosureInterface(container) {
                                 arr.textContent = inlineTitle(title);
                                 if (content !== PRESERVE_CONTENT) {
                                         inlineValue.innerHTML = content || "";
+                                        decorateAfieldLinks(inlineValue);
                                 }
                         } else {
                                 hdr.querySelector(".title").textContent = title;
                                 if (content !== PRESERVE_CONTENT) {
                                         cw.innerHTML = content || "";
+                                        decorateAfieldLinks(cw);
                                 }
                         }
                 }
@@ -936,9 +940,11 @@ function disclosureInterface(container) {
                 if (!d) return;
                 if (d.inline) {
                         d.inlineValue.innerHTML = content || "";
+                        decorateAfieldLinks(d.inlineValue);
                         return;
                 }
                 d.cw.innerHTML = content || "";
+                decorateAfieldLinks(d.cw);
                 bindContentLoadEvents(id, d);
                 observeContentTargets(id, d);
                 markContentChanged(id, "set-content");
@@ -983,6 +989,111 @@ function findBoxByUid(uid) {
                 if (box.uid === uid) return box;
         }
         return null;
+}
+
+function parseAfieldRef(raw) {
+        if (typeof raw !== "string") return null;
+        const trimmed = raw.trim();
+        const match = trimmed.match(/^afield:\/\/([^/\s]+)\/([^/\s]+)\/([A-Za-z0-9_-]+)(?:[?#][^\s)\]}<>"']*)?$/);
+        if (!match) return null;
+        return {
+                document: match[1],
+                uid: match[2],
+                property: match[3]
+        };
+}
+
+function afieldRefHref(uid, property) {
+        const params = new URLSearchParams();
+        if (property) params.set("property", property);
+        const query = params.toString();
+        return `#box:${encodeURIComponent(uid)}${query ? "?" + query : ""}`;
+}
+
+function shortUid(uid) {
+        if (typeof uid !== "string") return "";
+        return uid.length > 8 ? uid.slice(0, 8) : uid;
+}
+
+function boxDisplayNameForAfieldRef(uid, documentName) {
+        const box = findBoxByUid(uid);
+        const dynamicName = box && typeof box.name === "string" ? box.name.trim() : "";
+        if (dynamicName) return dynamicName;
+        const attrName = box && typeof box.getAttribute === "function"
+                ? (box.getAttribute("data-name") || box.getAttribute("name") || "").trim()
+                : "";
+        if (attrName) return attrName;
+        return shortUid(uid) || documentName || "box";
+}
+
+function afieldRefLabel(ref) {
+        return `${boxDisplayNameForAfieldRef(ref.uid, ref.document)} / ${ref.property || "code"}`;
+}
+
+function configureAfieldRefLink(link, ref) {
+        if (!link || !ref || !ref.uid) return;
+        link.href = afieldRefHref(ref.uid, ref.property || "code");
+        link.dataset.boxUid = ref.uid;
+        link.dataset.boxProperty = ref.property || "code";
+        link.dataset.afieldDocument = ref.document || "";
+        link.dataset.afieldRef = `afield://${ref.document}/${ref.uid}/${ref.property}`;
+        link.classList.add("afield-ref-link");
+        link.title = link.dataset.afieldRef;
+        link.textContent = afieldRefLabel(ref);
+}
+
+function linkifyAfieldRefsInTextNode(textNode) {
+        const text = textNode.nodeValue || "";
+        const pattern = /afield:\/\/([^/\s]+)\/([^/\s]+)\/([A-Za-z0-9_-]+)(?:[?#][^\s)\]}<>"']*)?/g;
+        let match;
+        let cursor = 0;
+        const fragment = document.createDocumentFragment();
+        let changed = false;
+
+        while ((match = pattern.exec(text)) !== null) {
+                const raw = match[0];
+                const ref = parseAfieldRef(raw);
+                if (!ref) continue;
+                if (match.index > cursor) {
+                        fragment.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+                }
+                const link = document.createElement("a");
+                configureAfieldRefLink(link, ref);
+                fragment.appendChild(link);
+                cursor = match.index + raw.length;
+                changed = true;
+        }
+
+        if (!changed) return;
+        if (cursor < text.length) {
+                fragment.appendChild(document.createTextNode(text.slice(cursor)));
+        }
+        textNode.parentNode?.replaceChild(fragment, textNode);
+}
+
+function decorateAfieldLinks(root) {
+        if (!root) return;
+        const anchors = root.querySelectorAll("a[href^='afield://']");
+        anchors.forEach((link) => {
+                const ref = parseAfieldRef(link.getAttribute("href") || "");
+                if (ref) configureAfieldRefLink(link, ref);
+        });
+
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                        const parent = node.parentElement;
+                        if (!parent) return NodeFilter.FILTER_REJECT;
+                        if (parent.closest("a, pre, code, textarea, input, script, style")) {
+                                return NodeFilter.FILTER_REJECT;
+                        }
+                        return (node.nodeValue || "").includes("afield://")
+                                ? NodeFilter.FILTER_ACCEPT
+                                : NodeFilter.FILTER_REJECT;
+                }
+        });
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(linkifyAfieldRefsInTextNode);
 }
 
 function decodeBoxNavigationTarget(link) {
@@ -1106,6 +1217,8 @@ function ensureAiChat(container, uid, property) {
                 if (existing.root && container.contains(existing.root)) {
                         existing.uid = uid;
                         existing.property = property || existing.property;
+                        existing.root.dataset.uid = uid || existing.root.dataset.uid || "";
+                        existing.root.dataset.property = existing.property || "code";
                         return existing;
                 }
         }
@@ -1171,6 +1284,41 @@ function ensureAiChat(container, uid, property) {
 
         const attachments = [];
 
+        function currentSelectedUid() {
+                const selected = window.currentSelectedCode;
+                if (selected && selected.length === 1 && selected[0] && typeof selected[0].uid === "string") {
+                        return selected[0].uid;
+                }
+                return "";
+        }
+
+        function chatUid() {
+                return root.dataset.uid || container.__aiChat?.uid || uid || currentSelectedUid();
+        }
+
+        function chatProperty() {
+                return root.dataset.property || container.__aiChat?.property || property || window.currentSelectedProperty || "code";
+        }
+
+        function attachmentSrc(attachment) {
+                if (typeof attachment === "string") return attachment;
+                return attachment && typeof attachment.src === "string" ? attachment.src : "";
+        }
+
+        function renderMessages() {
+                messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory || "");
+                decorateAfieldLinks(messages);
+                applyCodeHighlight(messages);
+                messages.scrollTop = messages.scrollHeight;
+        }
+
+        function appendLocalChatTurn(role, markdown) {
+                const history = container.__aiChatHistory || "";
+                const prefix = history ? history + "\n" : "";
+                container.__aiChatHistory = prefix + (role === "you" ? "<<you>>" : "<<ai>>") + "\n" + markdown;
+                renderMessages();
+        }
+
         function renderPreview() {
                 preview.innerHTML = "";
                 if (attachments.length === 0) {
@@ -1178,7 +1326,9 @@ function ensureAiChat(container, uid, property) {
                         return;
                 }
                 preview.style.display = "flex";
-                attachments.forEach((src, idx) => {
+                attachments.forEach((attachment, idx) => {
+                        const src = attachmentSrc(attachment);
+                        if (!src) return;
                         const wrap = document.createElement("div");
                         wrap.className = "ai-chat-thumb";
                         wrap.style.position = "relative";
@@ -1217,34 +1367,157 @@ function ensureAiChat(container, uid, property) {
                 });
         }
 
+        function addDataUrlAttachment(src, options = {}) {
+                if (typeof src !== "string" || src.length === 0) return;
+                attachments.push({
+                        src,
+                        shownInHistory: !!options.shownInHistory
+                });
+                renderPreview();
+        }
+
         function addImageAttachment(file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                         const result = e.target?.result;
                         if (typeof result === "string") {
-                                attachments.push(result);
-                                renderPreview();
+                                addDataUrlAttachment(result);
                         }
                 };
                 reader.readAsDataURL(file);
         }
 
+        function setCommandBusy(isBusy) {
+                textarea.disabled = isBusy;
+                textarea.classList.toggle("ai-chat-command-busy", isBusy);
+                if (isBusy) {
+                        textarea.dataset.previousPlaceholder = textarea.placeholder;
+                        textarea.placeholder = "Running command...";
+                } else {
+                        textarea.placeholder = textarea.dataset.previousPlaceholder || "Ask about this box...";
+                        delete textarea.dataset.previousPlaceholder;
+                }
+        }
+
+        function commandHelpMarkdown() {
+                return [
+                        "**Commands**",
+                        "- `/help` show available commands",
+                        "- `/clear` clear this chat panel",
+                        "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
+                        "- `/box \"box name\"/property` reference a box property in the conversation",
+                        "",
+                        "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
+                ].join("\n");
+        }
+
+        function captureScreenshotCommand(target) {
+                const request = {
+                        uid: chatUid(),
+                        target: target || ""
+                };
+                const callbackName = `ai-chat-screenshot-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+                setCommandBusy(true);
+                appendLocalChatTurn("you", target ? `/screenshot ${target}` : "/screenshot");
+                appendLocalChatTurn("ai", "_Capturing screenshot..._");
+                let completed = false;
+                const timeout = window.setTimeout(() => {
+                        if (completed) return;
+                        completed = true;
+                        setCommandBusy(false);
+                        const historyBeforeCaptureStatus = container.__aiChatHistory || "";
+                        container.__aiChatHistory = historyBeforeCaptureStatus
+                                .replace(/\n?<<ai>>\n_Capturing screenshot\.\.\._\s*$/m, "");
+                        appendLocalChatTurn("ai", "_Screenshot capture timed out._");
+                        textarea.focus();
+                }, 20000);
+                sendWithReply("ai-chat-screenshot", request, callbackName, (_message, response) => {
+                        if (completed) return;
+                        completed = true;
+                        window.clearTimeout(timeout);
+                        setCommandBusy(false);
+                        const historyBeforeCaptureStatus = container.__aiChatHistory || "";
+                        container.__aiChatHistory = historyBeforeCaptureStatus
+                                .replace(/\n?<<ai>>\n_Capturing screenshot\.\.\._\s*$/m, "");
+                        if (response && response.success && typeof response.dataUrl === "string" && response.dataUrl.length > 0) {
+                                const title = response.title ? ` from ${response.title}` : "";
+                                const caption = response.message || `Captured screenshot${title}`;
+                                appendLocalChatTurn(
+                                        "ai",
+                                        `_${caption}_\n\n![screenshot${title}](${response.dataUrl})`
+                                );
+                                addDataUrlAttachment(response.dataUrl, {shownInHistory: true});
+                                if (typeof window.notify === "function") {
+                                        window.notify(response.message || "Attached screenshot", "AI4");
+                                }
+                                textarea.focus();
+                                return;
+                        }
+                        const message = response?.message || "Screenshot failed";
+                        appendLocalChatTurn("ai", `_${message}_`);
+                        textarea.focus();
+                });
+        }
+
+        function handleSlashCommand(rawText) {
+                const match = rawText.match(/^\/([?]|[A-Za-z][\w-]*)(?:\s+([\s\S]*))?$/);
+                if (!match) return false;
+                const command = match[1].toLowerCase();
+                const rest = (match[2] || "").trim();
+
+                if (command === "help" || command === "?") {
+                        textarea.value = "";
+                        appendLocalChatTurn("ai", commandHelpMarkdown());
+                        return true;
+                }
+
+                if (command === "clear") {
+                        textarea.value = "";
+                        container.__aiChatHistory = "";
+                        attachments.length = 0;
+                        renderPreview();
+                        messages.innerHTML = "";
+                        return true;
+                }
+
+                if (command === "screenshot" || command === "shot") {
+                        textarea.value = "";
+                        captureScreenshotCommand(rest);
+                        return true;
+                }
+
+                if (command === "box") {
+                        return false;
+                }
+
+                textarea.value = "";
+                appendLocalChatTurn("ai", `_Unknown command: /${command}. Type \`/help\` for available commands._`);
+                return true;
+        }
+
         function submitPrompt() {
                 const text = textarea.value.trim();
                 if (!text && attachments.length === 0) return;
+                if (text.startsWith("/")) {
+                        if (handleSlashCommand(text)) return;
+                }
                 textarea.value = "";
                 const history = container.__aiChatHistory || "";
                 const nextHistory = history ? history + "\n" : "";
-                const imageMarkdown = attachments.map((src, idx) => `![image ${idx + 1}](${src})`).join("\n");
+                const imageMarkdown = attachments
+                        .filter((attachment) => !attachment?.shownInHistory)
+                        .map((attachment, idx) => `![image ${idx + 1}](${attachmentSrc(attachment)})`)
+                        .filter((line) => !line.endsWith("]()"))
+                        .join("\n");
                 const withImages = imageMarkdown
                         ? [text, imageMarkdown].filter((part) => part && part.length > 0).join("\n")
                         : text;
-                container.__aiChatHistory = nextHistory + "<<you>>\n" + withImages;
-                messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory);
-                applyCodeHighlight(messages);
-                messages.scrollTop = messages.scrollHeight;
-                const images = attachments.slice();
-                sendAiChat(buildAiChatPayload(uid, root.dataset.property, text, images));
+                if (withImages.length > 0) {
+                        container.__aiChatHistory = nextHistory + "<<you>>\n" + withImages;
+                        renderMessages();
+                }
+                const images = attachments.map(attachmentSrc).filter((src) => src.length > 0);
+                sendAiChat(buildAiChatPayload(chatUid(), chatProperty(), text, images));
                 attachments.length = 0;
                 renderPreview();
         }
@@ -1300,6 +1573,7 @@ function aiChatUpdate(container, uid, markdown) {
         const chat = ensureAiChat(container, uid, container.__aiChat?.property || "code");
         container.__aiChatHistory = markdown || "";
         chat.messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory);
+        decorateAfieldLinks(chat.messages);
         applyCodeHighlight(chat.messages);
         chat.messages.scrollTop = chat.messages.scrollHeight;
 }

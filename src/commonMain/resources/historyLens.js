@@ -23,7 +23,8 @@ const HistoryLens = (() => {
 .history-lens-panel {
     box-sizing: border-box;
     height: 100%;
-    display: block;
+    display: flex;
+    flex-direction: column;
     width: calc(100% - 8px);
     margin-left: 3px;
     padding: 6px 6px 4px 6px;
@@ -110,6 +111,75 @@ const HistoryLens = (() => {
     cursor: pointer;
     pointer-events: auto;
 }
+.history-lens-variants {
+    box-sizing: border-box;
+    display: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 6px;
+    padding: 4px 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #232323;
+    border-radius: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #111 transparent;
+}
+.history-lens-variants.has-history {
+    display: block;
+}
+.history-lens-variants::-webkit-scrollbar {
+    width: 6px;
+}
+.history-lens-variants::-webkit-scrollbar-thumb {
+    background: #111;
+    border-radius: 6px;
+}
+.history-lens-variants::-webkit-scrollbar-track {
+    background: transparent;
+}
+.history-lens-variant {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(64px, auto) minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 3px 8px;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    color: #d8d8d8;
+}
+.history-lens-variant:hover {
+    background: #2a2a2a;
+}
+.history-lens-variant.active {
+    border-left-color: #65cdf2;
+    background: #1f3036;
+}
+.history-lens-variant-version {
+    color: #9da3a8;
+    white-space: nowrap;
+}
+.history-lens-variant-value {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: #f0f0f0;
+    font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+    max-height: 2.5em;
+}
+.history-lens-variant mark {
+    padding: 0 1px;
+    border-radius: 2px;
+    background: rgba(101, 205, 242, 0.28);
+    color: inherit;
+}
+.history-lens-empty-value {
+    color: #9da3a8;
+}
 `;
         document.head.appendChild(style);
     }
@@ -126,6 +196,14 @@ const HistoryLens = (() => {
     function splitLines(text) {
         const normalized = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
         return normalized ? normalized.split("\n") : [];
+    }
+
+    function escapeHtml(text) {
+        return String(text ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
     }
 
     function formatDuration(ms) {
@@ -186,11 +264,16 @@ const HistoryLens = (() => {
         const startLine = empty ? selection.positionLineNumber : Math.min(selection.startLineNumber, selection.endLineNumber);
         const endLine = empty ? selection.positionLineNumber : Math.max(selection.startLineNumber, selection.endLineNumber);
         const selectedText = empty ? model.getLineContent(startLine) : model.getValueInRange(selection);
+        const startColumn = empty ? 1 : selection.startColumn;
+        const endColumn = empty ? selectedText.length + 1 : selection.endColumn;
         return {
             uid,
             property,
             startLine,
             endLine,
+            startColumn,
+            endColumn,
+            emptySelection: empty,
             selectedText,
             propertyText: model.getValue()
         };
@@ -202,20 +285,20 @@ const HistoryLens = (() => {
             state = {
                 zoneId: null,
                 requestId: 0,
+                variantRequestId: 0,
                 versions: [],
                 cursor: 0,
+                variants: [],
+                variantScrollFrame: null,
+                suppressVariantReveal: false,
                 context: null,
+                zone: null,
                 dom: null,
                 marginDom: null
             };
             STATE.set(editor, state);
         }
         return state;
-    }
-
-    function setBody(state, text) {
-        const meta = state.dom?.querySelector(".history-lens-meta");
-        if (meta) meta.textContent = text;
     }
 
     function updateChrome(state) {
@@ -230,6 +313,142 @@ const HistoryLens = (() => {
         if (next) next.disabled = state.cursor >= state.versions.length - 1;
     }
 
+    function resizeLens(editor, state, lines) {
+        if (!state.zone || state.zoneId == null || state.zone.heightInLines === lines) return;
+        state.zone.heightInLines = lines;
+        editor.changeViewZones((accessor) => accessor.layoutZone(state.zoneId));
+    }
+
+    function extractSelectedRange(text, context) {
+        const lines = splitLines(text);
+        if (!lines.length || !context) return "";
+        const first = Math.max(0, Math.min(lines.length - 1, (Number(context.startLine) || 1) - 1));
+        const last = Math.max(first, Math.min(lines.length - 1, (Number(context.endLine) || Number(context.startLine) || 1) - 1));
+        const startColumn = Math.max(1, Number(context.startColumn) || 1);
+        const endColumn = Math.max(startColumn, Number(context.endColumn) || startColumn);
+        if (first === last) {
+            const line = lines[first] || "";
+            if (context.emptySelection) return line;
+            return line.slice(startColumn - 1, Math.max(startColumn - 1, endColumn - 1));
+        }
+        const out = [];
+        for (let lineIndex = first; lineIndex <= last; lineIndex += 1) {
+            const line = lines[lineIndex] || "";
+            if (lineIndex === first) out.push(line.slice(startColumn - 1));
+            else if (lineIndex === last) out.push(line.slice(0, Math.max(0, endColumn - 1)));
+            else out.push(line);
+        }
+        return out.join("\n");
+    }
+
+    function renderVariantText(value) {
+        const text = String(value ?? "");
+        return text.length ? escapeHtml(text) : "<span class=\"history-lens-empty-value\">∅</span>";
+    }
+
+    function variantRows(state) {
+        return Array.from(state.dom?.querySelectorAll(".history-lens-variant") || []);
+    }
+
+    function updateVariantActive(state) {
+        const version = state.versions[state.cursor] || null;
+        const activeVersionIndex = version ? Number(version.index) : null;
+        let activeRow = null;
+        for (const row of variantRows(state)) {
+            const active = Number(row.dataset.versionIndex) === activeVersionIndex;
+            row.classList.toggle("active", active);
+            if (active) activeRow = row;
+        }
+        if (activeRow && !state.suppressVariantReveal) {
+            activeRow.scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    function renderVariants(editor, state, loading = false) {
+        const body = state.dom?.querySelector(".history-lens-variants");
+        if (!body) return;
+        if (!state.versions.length) {
+            body.classList.remove("has-history");
+            body.innerHTML = "";
+            resizeLens(editor, state, 2);
+            return;
+        }
+        body.classList.add("has-history");
+        resizeLens(editor, state, 8);
+        if (loading) {
+            body.innerHTML = `<div class="history-lens-variant"><div class="history-lens-variant-version">...</div><pre class="history-lens-variant-value">loading values</pre></div>`;
+            return;
+        }
+        const variants = Array.isArray(state.variants) ? state.variants : [];
+        body.innerHTML = variants.length
+            ? variants.map((variant) => `
+                <div class="history-lens-variant" data-version-index="${Number(variant.version.index)}">
+                    <div class="history-lens-variant-version">${escapeHtml(versionLabel(variant.version))}</div>
+                    <pre class="history-lens-variant-value">${renderVariantText(variant.value)}</pre>
+                </div>
+            `).join("")
+            : `<div class="history-lens-variant"><div class="history-lens-variant-version">...</div><pre class="history-lens-variant-value">no distinct values</pre></div>`;
+        updateVariantActive(state);
+    }
+
+    async function loadVariants(editor, state) {
+        const variantRequestId = ++state.variantRequestId;
+        state.variants = [];
+        renderVariants(editor, state, true);
+        const variants = [];
+        const firstValue = Symbol("first");
+        let previousValue = firstValue;
+        for (let i = state.versions.length - 1; i >= 0; i -= 1) {
+            if (variantRequestId !== state.variantRequestId) return;
+            const version = state.versions[i];
+            const response = await rpc("history-property-version", {
+                uid: state.context.uid,
+                property: state.context.property,
+                versionIndex: version.index
+            });
+            if (variantRequestId !== state.variantRequestId) return;
+            const value = extractSelectedRange(response.value || "", state.context);
+            if (previousValue === firstValue || value !== previousValue) {
+                variants.push({ version, value });
+                previousValue = value;
+            }
+        }
+        state.variants = variants;
+        renderVariants(editor, state, false);
+    }
+
+    function setCursorToVersion(editor, state, versionIndex, suppressReveal = false) {
+        const target = state.versions.findIndex((version) => Number(version.index) === Number(versionIndex));
+        if (target < 0) return;
+        if (target === state.cursor) {
+            updateVariantActive(state);
+            return;
+        }
+        state.cursor = target;
+        state.suppressVariantReveal = suppressReveal;
+        Promise.resolve(showVersion(editor, state)).finally(() => {
+            state.suppressVariantReveal = false;
+        });
+    }
+
+    function selectVariantFromScroll(editor, state) {
+        const body = state.dom?.querySelector(".history-lens-variants");
+        if (!body) return;
+        const rows = variantRows(state).filter((row) => row.dataset.versionIndex);
+        if (!rows.length) return;
+        const top = body.scrollTop;
+        let best = rows[0];
+        let bestDistance = Math.abs(best.offsetTop - top);
+        for (const row of rows) {
+            const distance = Math.abs(row.offsetTop - top);
+            if (distance < bestDistance) {
+                best = row;
+                bestDistance = distance;
+            }
+        }
+        setCursorToVersion(editor, state, Number(best.dataset.versionIndex), true);
+    }
+
     function close(editor) {
         const state = STATE.get(editor);
         if (!state) return;
@@ -237,8 +456,10 @@ const HistoryLens = (() => {
             editor.changeViewZones((accessor) => accessor.removeZone(state.zoneId));
         }
         state.zoneId = null;
+        state.zone = null;
         state.dom = null;
         state.marginDom = null;
+        state.variantRequestId++;
         if (window.AIDiff) window.AIDiff.clear(editor);
     }
 
@@ -271,9 +492,10 @@ const HistoryLens = (() => {
     async function showVersion(editor, state) {
         const version = state.versions[state.cursor];
         updateChrome(state);
+        updateVariantActive(state);
         if (!version) {
             preserveLensScreenY(editor, state, () => {
-                setBody(state, "No versions changed this selection.");
+                renderVariants(editor, state, false);
                 if (window.AIDiff) window.AIDiff.clear(editor);
             });
             return;
@@ -288,6 +510,7 @@ const HistoryLens = (() => {
         if (requestId !== state.requestId) return;
         preserveLensScreenY(editor, state, () => {
             updateChrome(state);
+            updateVariantActive(state);
             if (window.AIDiff) {
                 window.AIDiff.apply(editor, response.value || "", {
                     monaco: window.globalMonaco,
@@ -336,6 +559,7 @@ const HistoryLens = (() => {
                     <button class="history-lens-button" data-action="box">Box</button>
                     <button class="history-lens-button" data-action="document">Document</button>
                 </div>
+                <div class="history-lens-variants"></div>
             </div>
         `;
         for (const eventName of ["pointerdown", "mousedown", "mouseup"]) {
@@ -356,6 +580,22 @@ const HistoryLens = (() => {
             else if (action === "box") rollback(editor, "box");
             else if (action === "document") rollback(editor, "document");
             else if (action === "close") close(editor);
+        });
+        const variants = root.querySelector(".history-lens-variants");
+        variants?.addEventListener("scroll", () => {
+            if (state.variantScrollFrame != null) return;
+            state.variantScrollFrame = requestAnimationFrame(() => {
+                state.variantScrollFrame = null;
+                selectVariantFromScroll(editor, state);
+            });
+        });
+        variants?.addEventListener("click", (event) => {
+            const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+            const row = target?.closest(".history-lens-variant[data-version-index]");
+            if (!row) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setCursorToVersion(editor, state, Number(row.dataset.versionIndex), false);
         });
         return root;
     }
@@ -390,19 +630,23 @@ const HistoryLens = (() => {
         const state = stateFor(editor);
         state.context = context;
         state.versions = [];
+        state.variants = [];
         state.cursor = 0;
+        state.zone = null;
         state.requestId++;
         state.dom = createDom(editor, state);
         state.marginDom = createMarginDom(editor);
 
         editor.changeViewZones((accessor) => {
-            state.zoneId = accessor.addZone({
+            const zone = {
                 afterLineNumber: context.endLine,
                 heightInLines: 2,
                 domNode: state.dom,
                 marginDomNode: state.marginDom,
                 suppressMouseDown: false
-            });
+            };
+            state.zone = zone;
+            state.zoneId = accessor.addZone(zone);
         });
         editor.revealLineInCenterIfOutsideViewport(context.endLine);
         updateChrome(state);
@@ -412,6 +656,10 @@ const HistoryLens = (() => {
         if (requestId !== state.requestId) return;
         state.versions = Array.isArray(result.versions) ? result.versions : [];
         state.cursor = Math.max(0, state.versions.length - 1);
+        renderVariants(editor, state, state.versions.length > 0);
+        if (state.versions.length > 0) {
+            loadVariants(editor, state);
+        }
         await showVersion(editor, state);
     }
 

@@ -102,6 +102,38 @@ fun requiredRunJvmArgs(): List<String> {
     }
 }
 
+fun configuredAi4TraceJvmArgs(): List<String> {
+    fun firstNonBlank(vararg values: String?): String? =
+        values.firstOrNull { !it.isNullOrBlank() }?.trim()
+
+    val trace = firstNonBlank(
+        providers.gradleProperty("ai4Trace").orNull,
+        providers.gradleProperty("ai4TracePath").orNull,
+        System.getProperty("afield.ai4.trace"),
+        System.getProperty("afield.ai4.trace.path"),
+        System.getenv("AFIELD_AI4_TRACE"),
+        System.getenv("AFIELD_AI4_TRACE_PATH")
+    )
+    val max = firstNonBlank(
+        providers.gradleProperty("ai4TraceMax").orNull,
+        System.getProperty("afield.ai4.trace.max"),
+        System.getenv("AFIELD_AI4_TRACE_MAX")
+    )
+
+    return buildList {
+        trace?.let { add("-Dafield.ai4.trace=$it") }
+        max?.let { add("-Dafield.ai4.trace.max=$it") }
+    }
+}
+
+fun MutableList<String>.addOrReplaceSystemProperties(args: List<String>) {
+    args.forEach { arg ->
+        val key = arg.substringBefore("=")
+        removeAll { it.substringBefore("=") == key }
+        add(arg)
+    }
+}
+
 fun configuredJdwpArg(): String? {
     val rawPort = System.getProperty("afield.jdwp.port")
         ?: System.getenv("AFIELD_JDWP_PORT")
@@ -538,6 +570,21 @@ tasks {
     }
 }
 
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
+tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
+    group = "application"
+    description = "Analyzes a WAV file with TrackingResonatorBank and writes three additive-resynthesis WAV variants."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.audio.TrackingResonatorResynthesisExampleKt")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
 
 
 tasks.named<JavaExec>("runJvm").configure {
@@ -553,6 +600,7 @@ tasks.named<JavaExec>("runJvm").configure {
                 merged += jdwpArg
             }
         }
+        merged.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
         setJvmArgs(merged)
 
         if (printRunJvmClasspath.get()) {
@@ -782,6 +830,7 @@ tasks.register("runDesktop") {
         requiredRunJvmArgs().forEach { arg ->
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
+        backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
 
         val os = System.getProperty("os.name").lowercase()
         val isWindows = os.contains("windows")

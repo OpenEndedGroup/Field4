@@ -9,13 +9,17 @@ class IdeChatHelpers(
     private fun attachmentContextNote(attachments: List<ContextAttachment>): String {
         if (attachments.isEmpty()) return ""
         val lines = attachments.joinToString("\n") { attachment ->
-            "- ${attachment.fileName} (${attachment.language})"
+            val description = attachment.description.trim()
+            "- ${attachment.fileName} (${attachment.language})" +
+                if (description.isNotBlank()) " - $description" else ""
         }
         return buildString {
             appendLine("Attached context files are available via AttachmentRequest:")
             append(lines)
             appendLine()
-            appendLine("If the current box includes sibling shader/code properties above, inspect them before claiming they are unavailable.")
+            appendLine("Some attached files can be graph-connected boxes, not just the current box.")
+            appendLine("If the current box exports data and a connected box renders it, inspect and edit the connected renderer's shaders for color/contrast requests.")
+            appendLine("Treat `Box.* by Inheritance...` preamble properties as graph handoff clues; treat shader-generated `Mesh`/`ComputeMesh`/`ModulePointer` bindings as shader I/O helpers unless the surrounding code shows a graph value flowing through them.")
         }.trim()
     }
 
@@ -36,9 +40,13 @@ class IdeChatHelpers(
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
+        reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
-        onTextDelta: ((String) -> Unit)? = null
+        onTextDelta: ((String) -> Unit)? = null,
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
     ): HighLevelResult {
         info("chatFile(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size}")
 
@@ -48,7 +56,10 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            compileKotlin = compileKotlin,
+            reloadShaders = reloadShaders,
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            visualVerificationEnabled = visualVerificationEnabled
         )
 
         val instructions = buildDynamicInstructions(
@@ -66,7 +77,8 @@ class IdeChatHelpers(
             "$instructions\n\n$userPrompt\n\n$wrapped",
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
-            onTextDelta = onTextDelta
+            onTextDelta = onTextDelta,
+            onProgress = onProgress
         )
         val unwrapped = lang.unwrap(result.text)
 
@@ -92,9 +104,13 @@ class IdeChatHelpers(
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
+        reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        visualVerificationEnabled: Boolean = imageUrls.isNotEmpty(),
         vectorStoreIds: List<String> = emptyList(),
-        onTextDelta: ((String) -> Unit)? = null
+        onTextDelta: ((String) -> Unit)? = null,
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
     ): OpenAiIdeCodexBridge.SendResult {
         info(
             "chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size} " +
@@ -107,7 +123,10 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            compileKotlin = compileKotlin,
+            reloadShaders = reloadShaders,
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            visualVerificationEnabled = visualVerificationEnabled || imageUrls.isNotEmpty()
         )
 
         val instructions = buildDynamicInstructions(
@@ -138,6 +157,7 @@ class IdeChatHelpers(
             vectorStoreIds = vectorStoreIds,
             imageDataUrls = imageUrls,
             onTextDelta = onTextDelta,
+            onProgress = onProgress,
             maxOutputTokens = 10000
         )
     }
@@ -153,9 +173,13 @@ class IdeChatHelpers(
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
+        reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
-        onTextDelta: ((String) -> Unit)? = null
+        onTextDelta: ((String) -> Unit)? = null,
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
     ): HighLevelResult {
         info("chatInline(): lang=${lang.name} line=$lineNumber codeChars=${code.length} attachments=${attachments.size}")
 
@@ -165,7 +189,10 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            compileKotlin = compileKotlin,
+            reloadShaders = reloadShaders,
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            visualVerificationEnabled = visualVerificationEnabled
         )
 
         val instructions = buildDynamicInstructions(
@@ -187,7 +214,8 @@ class IdeChatHelpers(
             "$instructions\n\n$withHelp",
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
-            onTextDelta = onTextDelta
+            onTextDelta = onTextDelta,
+            onProgress = onProgress
         )
         val unwrapped = lang.unwrap(result.text)
 
@@ -212,9 +240,13 @@ class IdeChatHelpers(
         listDefinitions: (() -> ListDefinitionsResult)? = null,
         listFileContents: (() -> ListContentsResult)? = null,
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+        compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
+        reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
-        onTextDelta: ((String) -> Unit)? = null
+        onTextDelta: ((String) -> Unit)? = null,
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
     ): HighLevelResult {
         info("chatError(): lang=${lang.name} error='${errorMessage.take(120)}' codeChars=${code.length}")
 
@@ -224,7 +256,10 @@ class IdeChatHelpers(
             listDefinitions = listDefinitions,
             listFileContents = listFileContents,
             editOtherFile = editOtherFile,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            compileKotlin = compileKotlin,
+            reloadShaders = reloadShaders,
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            visualVerificationEnabled = visualVerificationEnabled
         )
 
         val instructions = buildDynamicInstructions(
@@ -242,7 +277,8 @@ class IdeChatHelpers(
             "$instructions\n\n$wrapped",
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
-            onTextDelta = onTextDelta
+            onTextDelta = onTextDelta,
+            onProgress = onProgress
         )
         val unwrapped = lang.unwrap(result.text)
 

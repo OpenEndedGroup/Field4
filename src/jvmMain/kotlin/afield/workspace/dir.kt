@@ -48,7 +48,22 @@ data class WelcomeDocsResponse(
     val lastOpened: String,
     val defaultDocument: String,
     val allTags: List<String> = emptyList(),
-    val runningDocuments: List<RunningDocumentEntry> = emptyList()
+    val runningDocuments: List<RunningDocumentEntry> = emptyList(),
+    val currentWorkspace: String = "",
+    val defaultWorkspace: String = ""
+)
+
+@Serializable
+data class WorkspaceSwitchRequest(
+    val path: String
+)
+
+@Serializable
+data class WorkspaceSwitchResponse(
+    val workspace: String,
+    val current: Boolean,
+    val restarting: Boolean,
+    val message: String
 )
 
 @Serializable

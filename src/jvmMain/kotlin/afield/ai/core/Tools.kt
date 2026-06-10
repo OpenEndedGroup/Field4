@@ -1,4 +1,5 @@
 package afield.ai.core
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
@@ -18,7 +19,8 @@ data class Commentary(val text: String)
 data class ContextAttachment(
     val fileName: String,
     val language: String,
-    val code: String
+    val code: String,
+    val description: String = ""
 )
 
 /** Tool: list available attachment filenames (+ languages) for this request. */
@@ -26,7 +28,7 @@ data class ContextAttachment(
 data class ListAttachmentsRequest(val unused: Int = 0)
 
 data class ListAttachmentsResult(val attachments: List<AttachmentInfo>)
-data class AttachmentInfo(val file: String, val language: String)
+data class AttachmentInfo(val file: String, val language: String, val description: String = "")
 
 /** Tool: retrieve an attached file's contents by name. */
 @JsonClassDescription("Retrieve the code content of an attached file by its name. Responses may also include relatedGuides and relatedExamples paths.")
@@ -50,21 +52,36 @@ data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
 /** Tool: get full contents of text properties for the current box/file context. */
-@JsonClassDescription("Return full contents for available text properties (code and shaders) with file refs and languages.")
+@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers.")
 data class ListContentsRequest(val unused: Int = 0)
 
 data class ListContentsResult(
     val fileRef: String? = null,
     val content: String? = null,
     val language: String? = null,
-    val contents: List<ListContentEntry> = emptyList()
+    val contents: List<ListContentEntry> = emptyList(),
+    val preambleHints: List<PreamblePropertyHint> = emptyList()
+)
+
+data class PreamblePropertyHint(
+    val property: String,
+    val receiver: String,
+    val delegate: String,
+    val type: String = "",
+    val boxUid: String = "",
+    val boxName: String = "",
+    val relation: String = "current",
+    val graphRelevant: Boolean = false
 )
 
 data class ListContentEntry(
     val fileRef: String,
     val property: String,
     val language: String,
-    val content: String
+    val content: String,
+    val boxUid: String = "",
+    val boxName: String = "",
+    val relation: String = "current"
 )
 
 /** Tool: edit another file by name (your integration decides how to apply this). */
@@ -72,6 +89,67 @@ data class ListContentEntry(
 data class EditFileRequest(val file: String, val newContent: String)
 
 data class EditFileResponse(val success: Boolean, val message: String? = null)
+
+/** Agentic verification tools --------------------------------------------- */
+
+@JsonClassDescription("Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success.")
+data class CompileKotlinRequest(
+    val file: String = "",
+    val source: String? = null,
+    val runSetupBlocks: Boolean = true
+)
+
+data class CompileDiagnostic(
+    val severity: String,
+    val message: String,
+    val line: Int = -1,
+    val column: Int = -1,
+    val endLine: Int = -1,
+    val endColumn: Int = -1,
+    val code: String? = null
+)
+
+data class SetupPropertyChange(
+    val property: String,
+    val changed: Boolean,
+    val cacheChanged: Boolean,
+    val beforeChars: Int,
+    val afterChars: Int
+)
+
+data class CompileKotlinResult(
+    val success: Boolean,
+    val file: String,
+    val message: String,
+    val diagnostics: List<CompileDiagnostic> = emptyList(),
+    val setupChanges: List<SetupPropertyChange> = emptyList()
+)
+
+@JsonClassDescription("Reload shader modules for the current Field box or target box/file ref. Call this after editing GLSL/Slang shader properties and before finishing the turn; fix errors and rerun until success.")
+data class ReloadShadersRequest(
+    val target: String = "",
+    val mode: String = "auto",
+    val visualCheck: Boolean = true
+)
+
+data class ShaderReloadError(
+    val property: String,
+    val line: Int = -1,
+    val message: String
+)
+
+data class ReloadShadersResult(
+    val success: Boolean,
+    val target: String,
+    val mode: String,
+    val message: String,
+    val reloaded: List<String> = emptyList(),
+    val errors: List<ShaderReloadError> = emptyList(),
+    val visualCheckAttached: Boolean = false,
+    val visualCheckMessage: String = "",
+    @get:JsonIgnore
+    val visualDataUrl: String = ""
+)
 
 /** Example tool (optional) ------------------------------------------------- */
 @JsonClassDescription("Looks up symbols in the IDE workspace index. Results may include relatedGuides and relatedExamples paths.")
@@ -110,9 +188,12 @@ data class ToolExecutionContext(
     val listDefinitions: (() -> ListDefinitionsResult)? = null,
     val listFileContents: (() -> ListContentsResult)? = null,
     val editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
+    val compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
+    val reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
 
     // Optional extra tools
-    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null
+    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+    val visualVerificationEnabled: Boolean = false
 )
 
 fun virtualFilesToAttachments(files: List<afield.ai.VirtualTextFile>): List<ContextAttachment> =

@@ -209,25 +209,26 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
     val tokens = mutableListOf<String>()
     var idx = 0
     while (idx < text.length) {
-        val nextYou = text.indexOf("<<you>>", idx)
-        val nextAi = text.indexOf("<<ai>>", idx)
-        val next = when {
-            nextYou == -1 -> nextAi
-            nextAi == -1 -> nextYou
-            else -> minOf(nextYou, nextAi)
+        val markers = listOf(
+            "<<you>>",
+            "<<ai>>",
+            "<<progress>>",
+            "<<progress-open>>"
+        )
+        val hits = markers.mapNotNull { marker ->
+            val at = text.indexOf(marker, idx)
+            if (at == -1) null else at to marker
         }
+        val hit = hits.minByOrNull { it.first }
+        val next = hit?.first ?: -1
+        val marker = hit?.second
         if (next == -1) {
             tokens.add(text.substring(idx))
             break
         }
         if (next > idx) tokens.add(text.substring(idx, next))
-        if (next == nextYou) {
-            tokens.add("<<you>>")
-            idx = next + "<<you>>".length
-        } else {
-            tokens.add("<<ai>>")
-            idx = next + "<<ai>>".length
-        }
+        tokens.add(marker!!)
+        idx = next + marker.length
     }
 
     val turns = mutableListOf<ChatTurn>()
@@ -253,6 +254,14 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
                 flush()
                 currentRole = "ai"
             }
+            "<<progress>>" -> {
+                flush()
+                currentRole = "progress"
+            }
+            "<<progress-open>>" -> {
+                flush()
+                currentRole = "progress-open"
+            }
             else -> buffer.append(token)
         }
     }
@@ -276,7 +285,22 @@ fun aiChatHistoryToHtml(history: String?): String {
     val turns = parseChatHistory(history)
     if (turns.isEmpty()) return ""
     val html = turns.joinToString("") { turn ->
-        "<div class=\"ai-chat-turn ${turn.role}\">" + aiChatMarkdownToHtml(turn.content) + "</div>"
+        if (turn.role.startsWith("progress")) {
+            renderProgressTurn(turn)
+        } else {
+            "<div class=\"ai-chat-turn ${turn.role}\">" + aiChatMarkdownToHtml(turn.content) + "</div>"
+        }
     }
     return "<div class=\"ai-chat-thread\">$html</div>"
+}
+
+private fun renderProgressTurn(turn: ChatTurn): String {
+    val lines = turn.content.lines()
+    val title = lines.firstOrNull()?.trim()?.ifBlank { null } ?: "AI activity"
+    val body = lines.drop(1).joinToString("\n").trim().ifBlank { turn.content }
+    val open = if (turn.role == "progress-open") " open" else ""
+    return "<details class=\"ai-chat-progress\"$open>" +
+        "<summary>${escapeHtml(title)}</summary>" +
+        aiChatMarkdownToHtml(body) +
+        "</details>"
 }

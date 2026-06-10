@@ -2,11 +2,41 @@
 
 `StandardRenderer` is the quick path into the fabricated renderer. A new scene should be lit already. Metalness should visibly change the material. Shadows should land where objects touch the ground. Ambient occlusion should add contact darkening, not mystery noise.
 
-These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small renderer checklist.
+These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small renderer checklist. The runnable cells use `StandardRendererDocsHarness` to make deterministic captures, but each section includes the part you would normally edit in a Field box: scene settings, mesh registration, transforms, and material pushes.
+
+The common pattern is:
+
+```kotlin
+val bundle = StandardRenderer.build(renderer)
+bundle.attachTo(renderer)
+
+val mesh = bundle.registerTestTorus(name = "torus", slices = 64, stacks = 64, renderer = renderer)
+mesh.setModel(Matrix4f().translate(0f, -0.18f, 0f))
+mesh.gBuffer.mesh.push["baseColor"] = Vector4f(0.83f, 0.58f, 0.28f, 1f)
+mesh.gBuffer.mesh.push["metallic"] = 0.18f
+mesh.gBuffer.mesh.push["roughness"] = 0.36f
+
+bundle.present(renderer = renderer)
+```
 
 ## Default Scene
 
 The default scene is deliberately plain: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
+
+The scene is intentionally just mesh registration, transforms, and material pushes:
+
+```kotlin
+val left = bundle.registerTestTorus(name = "left", slices = 48, stacks = 48, renderer = renderer)
+left.setModel(Matrix4f().translate(-0.95f, 0f, 0f))
+left.gBuffer.mesh.push["baseColor"] = Vector4f(0.17f, 0.98f, 0.24f, 1f)
+
+val middle = bundle.registerTestTorus(name = "middle", slices = 48, stacks = 48, renderer = renderer)
+middle.gBuffer.mesh.push["baseColor"] = Vector4f(0.98f, 0.92f, 0.22f, 1f)
+
+val right = bundle.registerTestTorus(name = "right", slices = 48, stacks = 48, renderer = renderer)
+right.setModel(Matrix4f().translate(0.95f, 0f, 0f))
+right.gBuffer.mesh.push["baseColor"] = Vector4f(0.98f, 0.30f, 0.32f, 1f)
+```
 
 <!--
 FIELD_TEST
@@ -44,7 +74,39 @@ start(captureScene)
 
 ## Shiny Torii on Checkerboard Planes
 
-A compact “hero” scene: reflective torii over a checkerboard floor. This is a quick visual sanity check for specular highlights, floor contacts, and stable shading under denser geometry.
+A compact "hero" scene: reflective torii over a checkerboard floor. This is a quick visual sanity check for specular highlights, floor contacts, and stable shading under denser geometry.
+
+The checkerboard here is mesh-side: alternating tile geometry receives alternating material values. The harness packs the two parities into pulling meshes for fewer draw items; conceptually, the scene logic is this:
+
+```kotlin
+bundle.scene.camera.at.set(0f, 0.9f, -5.3f)
+bundle.scene.camera.target.set(0f, -0.25f, 0f)
+bundle.scene.lightDirection.set(Vector3f(-0.55f, -1.0f, -0.20f).normalize())
+bundle.scene.lightIntensity = 1.55f
+bundle.scene.shadowStrength = 1f
+bundle.scene.aoStrength = 1f
+
+for (row in 0 until 10) {
+    for (col in 0 until 10) {
+        val tile = bundle.registerCube(name = "tile-$row-$col", size = 1f, renderer = renderer)
+        tile.setModel(
+            Matrix4f()
+                .translate((col - 4.5f) * 0.52f, -1.0f, (row - 4.5f) * 0.52f)
+                .scale(0.26f, 0.02f, 0.26f)
+        )
+        val light = (row + col) % 2 == 0
+        tile.gBuffer.mesh.push["baseColor"] =
+            if (light) Vector4f(0.57f, 0.57f, 0.61f, 1f) else Vector4f(0.22f, 0.22f, 0.24f, 1f)
+        tile.gBuffer.mesh.push["roughness"] = 0.9f
+    }
+}
+
+val torus = bundle.registerTestTorus(name = "torus", slices = 72, stacks = 72, renderer = renderer)
+torus.setModel(Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.24f).rotateY(-0.25f))
+torus.gBuffer.mesh.push["baseColor"] = Vector4f(0.28f, 0.86f, 0.96f, 1f)
+torus.gBuffer.mesh.push["metallic"] = 1.0f
+torus.gBuffer.mesh.push["roughness"] = 0.07f
+```
 
 <!--
 FIELD_TEST
@@ -83,6 +145,18 @@ start(captureScene)
 ## Checkerboard Camera Depth Study
 
 This scene keeps geometry fixed and compares two camera framings over the same checkerboard setup to make near-versus-far depth layering obvious in a single capture.
+
+Nothing changes between the two halves except `camera.at` and `camera.target`:
+
+```kotlin
+bundle.scene.camera.at.set(-1.8f, 0.8f, -2.2f)
+bundle.scene.camera.target.set(-0.95f, -0.2f, 0.95f)
+// capture the near framing
+
+bundle.scene.camera.at.set(1.8f, 0.9f, -4.8f)
+bundle.scene.camera.target.set(0.95f, -0.15f, -1.35f)
+// capture the far framing
+```
 
 <!--
 FIELD_TEST
@@ -129,6 +203,22 @@ Limitations:
 - World-space scale dependency for checker density
 - Shader-only pattern can alias at grazing angles compared with textured/filtered approaches
 
+The mesh is one scaled cube. The checker controls are pushed into the g-buffer material:
+
+```kotlin
+val floor = bundle.registerCube(name = "shader-floor", size = 1f, renderer = renderer)
+floor.setModel(
+    Matrix4f()
+        .translate(0f, -1.0f, 0f)
+        .scale(3.2f, 0.02f, 3.2f)
+)
+floor.gBuffer.mesh.push["baseColor"] = Vector4f(0.58f, 0.58f, 0.62f, 1f)
+floor.gBuffer.mesh.push["roughness"] = 0.9f
+floor.gBuffer.mesh.push["checkerScale"] = 3.0f
+floor.gBuffer.mesh.push["checkerColor"] = Vector4f(0.20f, 0.20f, 0.22f, 1f)
+floor.gBuffer.mesh.push["checkerMix"] = 1f
+```
+
 <!--
 FIELD_TEST
 id: docs.fabricate.shader-generated-checkerboard
@@ -166,6 +256,18 @@ start(captureScene)
 ## Metalness
 
 The two torii use the same base color and roughness. The left one is dielectric; the right one is metallic. Keeping the geometry fixed makes the material response visible.
+
+`baseColor` and `roughness` stay fixed; only `metallic` changes:
+
+```kotlin
+left.gBuffer.mesh.push["baseColor"] = Vector4f(0.78f, 0.80f, 0.84f, 1f)
+left.gBuffer.mesh.push["metallic"] = 0.0f
+left.gBuffer.mesh.push["roughness"] = 0.16f
+
+right.gBuffer.mesh.push["baseColor"] = Vector4f(0.78f, 0.80f, 0.84f, 1f)
+right.gBuffer.mesh.push["metallic"] = 1.0f
+right.gBuffer.mesh.push["roughness"] = 0.16f
+```
 
 <!--
 FIELD_TEST
@@ -205,6 +307,20 @@ start(captureScene)
 
 The left side disables shadowing. The right side uses the default shadowed scene. Look for the contact shadow under the object, not for a dramatic lighting change.
 
+The comparison is a single scene captured twice:
+
+```kotlin
+bundle.scene.aoStrength = 0f
+bundle.scene.ambientColor.set(0.015f, 0.015f, 0.018f)
+bundle.scene.lightIntensity = 1.35f
+
+bundle.scene.shadowStrength = 0f
+// capture the unshadowed scene
+
+bundle.scene.shadowStrength = 1f
+// capture the shadowed scene
+```
+
 <!--
 FIELD_TEST
 id: docs.fabricate.shadows
@@ -242,6 +358,18 @@ start(captureScene)
 ## Ambient Occlusion
 
 The left side disables ambient occlusion. The right side uses the default AO setup. The useful difference is the small darkening where nearby surfaces crowd each other.
+
+AO is also just a scene parameter in this harness:
+
+```kotlin
+val originalAoStrength = bundle.scene.aoStrength
+
+bundle.scene.aoStrength = 0f
+// capture the AO-off scene
+
+bundle.scene.aoStrength = originalAoStrength
+// capture the AO-on scene
+```
 
 <!--
 FIELD_TEST

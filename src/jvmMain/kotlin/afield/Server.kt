@@ -283,8 +283,149 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
 /** Per-WebSocketSession back pressure state for output messages. */
 val sessionOutputPressure = ConcurrentHashMap<WebSocketSession, OutputBackPressure>()
 
-val home = option("workspace") { System.getProperty("user.home") + "/Documents/AFieldWorkspace" }
+private fun defaultWorkspacePath(): String =
+    File(System.getProperty("user.home"), "Documents/AFieldWorkspace").absolutePath
+
+private fun fieldUserConfigDir(): File {
+    val osName = System.getProperty("os.name").lowercase(Locale.US)
+    return if (osName.contains("windows")) {
+        val appData = System.getenv("APPDATA")?.takeIf { it.isNotBlank() }
+            ?: File(System.getProperty("user.home"), "AppData/Roaming").absolutePath
+        File(appData, "AField")
+    } else {
+        File(System.getProperty("user.home"), ".afield")
+    }
+}
+
+private fun workspacePreferenceFile(): File =
+    File(fieldUserConfigDir(), "last-workspace.txt")
+
+private fun workspaceRestartLogFile(): File =
+    File(fieldUserConfigDir(), "workspace-restart.log")
+
+private fun readPersistedWorkspacePath(): String? =
+    runCatching {
+        workspacePreferenceFile().takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
+    }.getOrNull()
+
+private fun persistWorkspacePath(path: String) {
+    runCatching {
+        val workspace = displayWorkspacePath(path)
+        val file = workspacePreferenceFile()
+        file.parentFile?.mkdirs()
+        file.writeText("$workspace\n", Charsets.UTF_8)
+    }.onFailure {
+        lprintln("warning,workspace", "could not persist last workspace: ${it.message}")
+    }
+}
+
+val home = option("workspace") { readPersistedWorkspacePath() ?: defaultWorkspacePath() }
 val app = option("app") { File(".").absolutePath }
+
+private fun expandWorkspacePath(path: String): String {
+    val trimmed = path.trim()
+    if (trimmed.isBlank()) throw IllegalArgumentException("workspace path is blank")
+    val userHome = System.getProperty("user.home")
+    return when {
+        trimmed == "~" -> userHome
+        trimmed.startsWith("~/") -> userHome + trimmed.removePrefix("~")
+        else -> trimmed
+    }
+}
+
+private fun canonicalWorkspaceFile(path: String): File {
+    val workspace = Paths.get(expandWorkspacePath(path)).toAbsolutePath().normalize().toFile()
+    if (workspace.exists() && !workspace.isDirectory) {
+        throw IllegalArgumentException("workspace path is not a directory")
+    }
+    if (!workspace.exists() && !workspace.mkdirs()) {
+        throw IllegalArgumentException("could not create workspace directory")
+    }
+    return workspace.canonicalFile
+}
+
+private fun displayWorkspacePath(path: String): String {
+    val workspace = Paths.get(expandWorkspacePath(path)).toAbsolutePath().normalize().toFile()
+    return if (workspace.exists()) workspace.canonicalFile.absolutePath else workspace.absolutePath
+}
+
+private fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
+    val updated = mutableListOf<String>()
+    var replaced = false
+    var index = 0
+    while (index < args.size) {
+        val arg = args[index]
+        when {
+            arg.equals("--workspace", ignoreCase = true) -> {
+                updated += arg
+                updated += workspace
+                replaced = true
+                index += if (index + 1 < args.size) 2 else 1
+            }
+
+            arg.startsWith("--workspace=", ignoreCase = true) -> {
+                updated += "--workspace"
+                updated += workspace
+                replaced = true
+                index += 1
+            }
+
+            else -> {
+                updated += arg
+                index += 1
+            }
+        }
+    }
+    if (!replaced) {
+        updated += "--workspace"
+        updated += workspace
+    }
+    return updated
+}
+
+private fun relaunchWithWorkspace(workspace: String) {
+    val projectDir = File(app).canonicalFile
+    val isWindows = System.getProperty("os.name").lowercase(Locale.US).contains("windows")
+    val wrapper = File(projectDir, if (isWindows) "gradlew.bat" else "gradlew")
+
+    if (wrapper.exists()) {
+        val logFile = workspaceRestartLogFile()
+        logFile.parentFile?.mkdirs()
+        val processBuilder = if (isWindows) {
+            ProcessBuilder("cmd", "/c", "start", "\"Field4\"", wrapper.absolutePath, "runDesktop")
+                .directory(projectDir)
+        } else {
+            ProcessBuilder(
+                "sh",
+                "-c",
+                "nohup ./gradlew runDesktop >> \"\$1\" 2>&1 < /dev/null &",
+                "field4-relaunch",
+                logFile.absolutePath
+            ).directory(projectDir)
+        }
+        processBuilder.start()
+        lprintln("info,server", "relaunching Field via ${wrapper.absolutePath}; restart log: ${logFile.absolutePath}")
+        return
+    }
+
+    val info = ProcessHandle.current().info()
+    val command = info.command().orElseThrow {
+        IllegalStateException("current Java command is unavailable")
+    }
+    val arguments = argsWithWorkspace(info.arguments().orElse(emptyArray()).toList(), workspace)
+    if (arguments.none { it == "-cp" || it.startsWith("@") } || arguments.none { it == "afield.Server" }) {
+        throw IllegalStateException("current Java command line is incomplete; no Gradle wrapper fallback is available")
+    }
+
+    val logFile = workspaceRestartLogFile()
+    logFile.parentFile?.mkdirs()
+    ProcessBuilder(listOf(command) + arguments)
+        .directory(projectDir)
+        .redirectOutput(ProcessBuilder.Redirect.appendTo(logFile))
+        .redirectError(ProcessBuilder.Redirect.appendTo(logFile))
+        .start()
+    lprintln("info,server", "relaunching Field via current Java command; restart log: ${logFile.absolutePath}")
+}
 
 val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
     ?: System.getProperty("afield.systemBrowser") ?: "true").lowercase() != "false"
@@ -1741,6 +1882,7 @@ class Server {
 
 
             registerTemplate(home)
+            persistWorkspacePath(home)
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
             val portFallbackCount = System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
@@ -1863,7 +2005,21 @@ class Server {
                                     openUrl = "/index.html?${params.joinToString("&")}"
                                 )
                             }
-                        call.respond(WelcomeDocsResponse(docs, fallback, defaultDocument, allTags, runningDocuments))
+                        val currentWorkspace = runCatching { File(home).canonicalFile.absolutePath }
+                            .getOrElse { File(home).absolutePath }
+                        val defaultWorkspace = runCatching { displayWorkspacePath(defaultWorkspacePath()) }
+                            .getOrElse { defaultWorkspacePath() }
+                        call.respond(
+                            WelcomeDocsResponse(
+                                docs,
+                                fallback,
+                                defaultDocument,
+                                allTags,
+                                runningDocuments,
+                                currentWorkspace,
+                                defaultWorkspace
+                            )
+                        )
                     }
 
                     get("/api/welcome-changelog") {
@@ -1872,6 +2028,67 @@ class Server {
                             readWelcomeChangelog(limit)
                         }
                         call.respond(response)
+                    }
+
+                    post("/api/workspace-switch") {
+                        try {
+                            val request = call.receive<WorkspaceSwitchRequest>()
+                            val target = canonicalWorkspaceFile(request.path)
+                            val current = runCatching { File(home).canonicalFile }
+                                .getOrElse { File(home).absoluteFile }
+
+                            if (target == current) {
+                                persistWorkspacePath(target.absolutePath)
+                                call.respond(
+                                    WorkspaceSwitchResponse(
+                                        workspace = target.absolutePath,
+                                        current = true,
+                                        restarting = false,
+                                        message = "Already using this workspace."
+                                    )
+                                )
+                                return@post
+                            }
+
+                            call.respond(
+                                WorkspaceSwitchResponse(
+                                    workspace = target.absolutePath,
+                                    current = false,
+                                    restarting = true,
+                                    message = "Restarting Field with the selected workspace."
+                                )
+                            )
+
+                            persistWorkspacePath(target.absolutePath)
+                            thread(name = "field-workspace-switch", isDaemon = false) {
+                                try {
+                                    Thread.sleep(200)
+                                } catch (_: InterruptedException) {
+                                }
+
+                                lprintln("info,server", "switching workspace from ${current.absolutePath} to ${target.absolutePath}")
+                                runCatching {
+                                    if (this@Companion::ourServer.isInitialized) {
+                                        ourServer.stop(500, 2000)
+                                    }
+                                }.onFailure {
+                                    lprintln("warning,server", "error while stopping server for workspace switch: ${it.message}")
+                                }
+
+                                runCatching {
+                                    relaunchWithWorkspace(target.absolutePath)
+                                }.onFailure {
+                                    lprintln("error,server", "failed to relaunch with workspace ${target.absolutePath}: ${it.message}")
+                                }
+
+                                exitProcess(0)
+                            }
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid workspace path")))
+                        } catch (e: Exception) {
+                            lprintln("error,server", "workspace switch failed: ${e.message}")
+                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "workspace switch failed"))
+                        }
                     }
 
                     put("/api/document-tags") {
