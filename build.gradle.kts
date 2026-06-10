@@ -236,8 +236,7 @@ repositories {
     maven("https://central.sonatype.com/repository/maven-snapshots")
     maven("https://repo.kotlin.link")
     maven(url = "https://repo.clojars.org/")
-    maven("https://jogamp.org/deployment/maven")
-
+//    maven("https://jogamp.org/deployment/maven")
 }
 
 
