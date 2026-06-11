@@ -1478,6 +1478,49 @@ object HistoryManager {
         return matches
     }
 
+    fun selectionTraceVersions(
+        documentPath: String,
+        uid: String,
+        property: String,
+        startLine: Int,
+        endLine: Int,
+        selectedText: String = "",
+        propertyText: String = ""
+    ): List<Int> {
+        if (uid.isBlank() || property.isBlank() || isScrubInternalProperty(property)) {
+            return emptyList()
+        }
+
+        val matches = linkedSetOf<Int>()
+        val lines = splitHistoryLines(propertyText.replace("\r\n", "\n").replace("\r", "\n"))
+        val first = (minOf(startLine, endLine) - 1).coerceAtLeast(0)
+        val last = (maxOf(startLine, endLine) - 1).coerceAtLeast(first)
+        if (lines.isNotEmpty()) {
+            for (lineIndex in first..minOf(last, lines.lastIndex)) {
+                matches += blameLineHistory(
+                    documentPath = documentPath,
+                    uid = uid,
+                    property = property,
+                    lineNumber = lineIndex + 1,
+                    lineText = lines.getOrNull(lineIndex) ?: "",
+                    propertyText = propertyText
+                )
+            }
+        }
+
+        matches += selectionChangeVersions(
+            documentPath = documentPath,
+            uid = uid,
+            property = property,
+            startLine = startLine,
+            endLine = endLine,
+            selectedText = selectedText,
+            propertyText = propertyText
+        )
+
+        return matches.sorted()
+    }
+
     fun propertyTextAtVersion(
         documentPath: String,
         versionIndex: Int,
@@ -2517,7 +2560,7 @@ fun installHistoryHandlers() {
     handlers["history-selection-versions"] = mutableSetOf({ message, reply ->
         val req = Json.decodeFromJsonElement<HistorySelectionVersionsRequest>(message.payload!!)
         val info = thisSessionInfo.get()
-        val matches = HistoryManager.selectionChangeVersions(
+        val matches = HistoryManager.selectionTraceVersions(
             info.filename,
             req.uid,
             req.property,
@@ -2526,6 +2569,10 @@ fun installHistoryHandlers() {
             req.selectedText,
             req.propertyText
         ).toSet()
+        lprintln(
+            "info,history",
+            "history-selection-versions ${req.uid}.${req.property} lines ${req.startLine}-${req.endLine} selected=${req.selectedText.length} matches=${matches.size}"
+        )
         reply(
             Message("history-selection-versions-result").payload(
                 HistorySelectionVersionsResult(

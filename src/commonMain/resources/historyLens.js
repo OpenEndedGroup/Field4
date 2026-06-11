@@ -144,7 +144,7 @@ const HistoryLens = (() => {
     grid-template-columns: minmax(64px, auto) minmax(0, 1fr);
     align-items: start;
     gap: 8px;
-    padding: 3px 8px;
+    padding: 5px 8px;
     border-left: 3px solid transparent;
     cursor: pointer;
     color: #d8d8d8;
@@ -163,22 +163,35 @@ const HistoryLens = (() => {
 .history-lens-variant-value {
     min-width: 0;
     margin: 0;
-    overflow: hidden;
+    overflow: visible;
     color: #f0f0f0;
     font: inherit;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     line-height: 1.25;
-    max-height: 2.5em;
-}
-.history-lens-variant mark {
-    padding: 0 1px;
-    border-radius: 2px;
-    background: rgba(101, 205, 242, 0.28);
-    color: inherit;
 }
 .history-lens-empty-value {
     color: #9da3a8;
+}
+.history-lens-token-keyword {
+    color: #6fb7e9;
+}
+.history-lens-token-number {
+    color: #d6c46f;
+}
+.history-lens-token-string {
+    color: #c79575;
+}
+.history-lens-token-comment {
+    color: #7d858b;
+}
+.history-lens-token-punctuation {
+    color: #d6d6d6;
+}
+.history-lens-changed {
+    border-radius: 2px;
+    background: rgba(101, 205, 242, 0.18);
+    box-shadow: 0 0 0 1px rgba(101, 205, 242, 0.08) inset;
 }
 `;
         document.head.appendChild(style);
@@ -204,6 +217,91 @@ const HistoryLens = (() => {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;");
+    }
+
+    const CODE_KEYWORDS = new Set([
+        "as", "break", "by", "catch", "class", "continue", "do", "else", "false", "finally",
+        "for", "fun", "if", "in", "interface", "is", "null", "object", "package", "return",
+        "super", "this", "throw", "true", "try", "typealias", "val", "var", "when", "while",
+        "loop", "import"
+    ]);
+
+    function changedMaskAgainst(value, compareValue) {
+        const text = String(value ?? "");
+        if (compareValue == null) return new Array(text.length).fill(false);
+        const compare = String(compareValue ?? "");
+        const mask = new Array(text.length).fill(false);
+        if (!text || text === compare) return mask;
+
+        let prefix = 0;
+        const prefixLimit = Math.min(text.length, compare.length);
+        while (prefix < prefixLimit && text[prefix] === compare[prefix]) {
+            prefix += 1;
+        }
+
+        let suffix = 0;
+        const suffixLimit = Math.min(text.length - prefix, compare.length - prefix);
+        while (
+            suffix < suffixLimit &&
+            text[text.length - 1 - suffix] === compare[compare.length - 1 - suffix]
+        ) {
+            suffix += 1;
+        }
+
+        for (let i = prefix; i < text.length - suffix; i += 1) {
+            mask[i] = true;
+        }
+        return mask;
+    }
+
+    function tokenClass(token) {
+        if (/^\/\/.*/.test(token)) return "history-lens-token-comment";
+        if (/^"(?:\\.|[^"\\])*"$/.test(token) || /^'(?:\\.|[^'\\])*'$/.test(token)) return "history-lens-token-string";
+        if (/^\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) return "history-lens-token-number";
+        if (/^[A-Za-z_]\w*$/.test(token)) return CODE_KEYWORDS.has(token) ? "history-lens-token-keyword" : "";
+        if (/^[{}()[\].,;:+\-*/%=<>!&|?]+$/.test(token)) return "history-lens-token-punctuation";
+        return "";
+    }
+
+    function emitHighlightedRun(text, cssClass, changed) {
+        if (!text) return "";
+        const classes = [cssClass, changed ? "history-lens-changed" : ""].filter(Boolean).join(" ");
+        const escaped = escapeHtml(text);
+        return classes ? `<span class="${classes}">${escaped}</span>` : escaped;
+    }
+
+    function emitHighlightedSegment(text, offset, cssClass, changedMask) {
+        if (!text) return "";
+        let html = "";
+        let start = 0;
+        let changed = Boolean(changedMask[offset]);
+        for (let i = 1; i <= text.length; i += 1) {
+            const nextChanged = i < text.length ? Boolean(changedMask[offset + i]) : !changed;
+            if (i === text.length || nextChanged !== changed) {
+                html += emitHighlightedRun(text.slice(start, i), cssClass, changed);
+                start = i;
+                changed = nextChanged;
+            }
+        }
+        return html;
+    }
+
+    function renderCodeValue(value, compareValue) {
+        const text = String(value ?? "");
+        if (!text.length) return "<span class=\"history-lens-empty-value\">∅</span>";
+        const changedMask = changedMaskAgainst(text, compareValue);
+        const tokenPattern = /\/\/.*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[A-Za-z_]\w*|[{}()[\].,;:+\-*/%=<>!&|?]+/g;
+        let html = "";
+        let lastIndex = 0;
+        for (const match of text.matchAll(tokenPattern)) {
+            const token = match[0];
+            const index = match.index || 0;
+            html += emitHighlightedSegment(text.slice(lastIndex, index), lastIndex, "", changedMask);
+            html += emitHighlightedSegment(token, index, tokenClass(token), changedMask);
+            lastIndex = index + token.length;
+        }
+        html += emitHighlightedSegment(text.slice(lastIndex), lastIndex, "", changedMask);
+        return html;
     }
 
     function formatDuration(ms) {
@@ -341,11 +439,6 @@ const HistoryLens = (() => {
         return out.join("\n");
     }
 
-    function renderVariantText(value) {
-        const text = String(value ?? "");
-        return text.length ? escapeHtml(text) : "<span class=\"history-lens-empty-value\">∅</span>";
-    }
-
     function variantRows(state) {
         return Array.from(state.dom?.querySelectorAll(".history-lens-variant") || []);
     }
@@ -381,12 +474,15 @@ const HistoryLens = (() => {
         }
         const variants = Array.isArray(state.variants) ? state.variants : [];
         body.innerHTML = variants.length
-            ? variants.map((variant) => `
+            ? variants.map((variant, index) => {
+                const compare = variants[index === 0 ? 1 : index - 1]?.value;
+                return `
                 <div class="history-lens-variant" data-version-index="${Number(variant.version.index)}">
                     <div class="history-lens-variant-version">${escapeHtml(versionLabel(variant.version))}</div>
-                    <pre class="history-lens-variant-value">${renderVariantText(variant.value)}</pre>
+                    <pre class="history-lens-variant-value">${renderCodeValue(variant.value, compare)}</pre>
                 </div>
-            `).join("")
+            `;
+            }).join("")
             : `<div class="history-lens-variant"><div class="history-lens-variant-version">...</div><pre class="history-lens-variant-value">no distinct values</pre></div>`;
         updateVariantActive(state);
     }
@@ -589,6 +685,14 @@ const HistoryLens = (() => {
                 selectVariantFromScroll(editor, state);
             });
         });
+        variants?.addEventListener("wheel", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            variants.scrollTop += event.deltaY;
+            if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+                variants.scrollLeft += event.deltaX;
+            }
+        }, { passive: false });
         variants?.addEventListener("click", (event) => {
             const target = event.target instanceof Element ? event.target : event.target?.parentElement;
             const row = target?.closest(".history-lens-variant[data-version-index]");
@@ -655,6 +759,13 @@ const HistoryLens = (() => {
         const result = await rpc("history-selection-versions", context);
         if (requestId !== state.requestId) return;
         state.versions = Array.isArray(result.versions) ? result.versions : [];
+        console.debug("[history-lens] selection versions", {
+            uid: context.uid,
+            property: context.property,
+            lines: `${context.startLine}-${context.endLine}`,
+            selectedLength: String(context.selectedText || "").length,
+            versions: state.versions.length
+        });
         state.cursor = Math.max(0, state.versions.length - 1);
         renderVariants(editor, state, state.versions.length > 0);
         if (state.versions.length > 0) {
