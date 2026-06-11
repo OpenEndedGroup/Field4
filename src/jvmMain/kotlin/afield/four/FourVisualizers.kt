@@ -361,7 +361,7 @@ object TexturePreviewCache {
                         this.put(off + 2, b)
                     }
                 }
-                val png = PngEncoder.encodeFromBuffer(this, thumbW, thumbH)
+                val png = PngEncoder.encodeFromBuffer(this, thumbW, thumbH, flipY = false)
                 result = Base64.getEncoder().encodeToString(png)
             }
 

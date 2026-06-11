@@ -210,7 +210,8 @@ class AccelerationStructure(
 
             val ranges = VkAccelerationStructureBuildRangeInfoKHR.calloc(1, stack)
             ranges[0].primitiveCount(instances.size).primitiveOffset(0).firstVertex(0).transformOffset(0)
-            val primitiveCounts = stack.ints(instances.size)
+            val primitiveCounts = stack.mallocInt(1)
+            primitiveCounts.put(0, instances.size)
 
             build(command, VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, flags, geometries, primitiveCounts, ranges)
         }
@@ -258,6 +259,7 @@ class AccelerationStructure(
             .type(buildType)
             .flags(flags)
             .mode(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR)
+            .geometryCount(geometries.remaining())
             .pGeometries(geometries)
 
         try {
@@ -302,8 +304,9 @@ class AccelerationStructure(
         storage = VulkanBuffer(
             renderer,
             size,
-            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            needsDeviceAddress = true
         )
         MemoryStack.stackPush().use { stack ->
             val createInfo = VkAccelerationStructureCreateInfoKHR.calloc(stack)

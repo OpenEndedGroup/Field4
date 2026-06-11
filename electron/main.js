@@ -7,9 +7,12 @@ const {
   Menu,
   WebContentsView,
   ipcMain,
+  screen,
 } = require("electron");
 
 const APP_NAME = "Field4";
+const APP_USER_MODEL_ID = "com.field4.desktop";
+const APP_ICON_ICO = path.join(__dirname, "Field4.ico");
 const APP_ICON_1024 = path.join(__dirname, "icon-1024.png");
 const TAB_STRIP_PRELOAD = path.join(__dirname, "tabstrip-preload.js");
 const FIELD_PRELOAD = path.join(__dirname, "field-preload.js");
@@ -27,8 +30,21 @@ const WITH_DEVTOOLS = ["1", "true", "yes", "on"].includes(
 );
 
 app.setName(APP_NAME);
+if (process.platform === "win32") {
+  app.setAppUserModelId(APP_USER_MODEL_ID);
+}
 process.title = APP_NAME;
 app.commandLine.appendSwitch("ignore-certificate-errors");
+
+function appIconPath() {
+  if (process.platform === "win32" && fs.existsSync(APP_ICON_ICO)) {
+    return APP_ICON_ICO;
+  }
+  if (fs.existsSync(APP_ICON_1024)) {
+    return APP_ICON_1024;
+  }
+  return undefined;
+}
 
 function normalizeUrl(target, base) {
   try {
@@ -394,15 +410,29 @@ function installDockIcon() {
   app.dock.setIcon(APP_ICON_1024);
 }
 
+function initialWindowBounds() {
+  const { x, y, width, height } = screen.getPrimaryDisplay().workArea;
+  const windowWidth = Math.floor(width * 0.8);
+  const windowHeight = Math.floor(height * 0.8);
+
+  return {
+    x: x + Math.floor((width - windowWidth) / 2),
+    y: y + Math.floor((height - windowHeight) / 2),
+    width: windowWidth,
+    height: windowHeight,
+  };
+}
+
 function createMainWindow() {
   const initialUrl = normalizeUrl(
     process.env.APP_URL || "https://localhost:9092/welcome",
   );
   const welcomeUrl = normalizeUrl("/welcome", initialUrl);
+  const windowBounds = initialWindowBounds();
   const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    ...windowBounds,
     title: titleForUrl(initialUrl),
+    icon: appIconPath(),
     backgroundColor: SHELL_BACKGROUND,
     autoHideMenuBar: true,
     titleBarStyle: "hidden",

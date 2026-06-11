@@ -7,12 +7,16 @@ import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 import java.io.InputStream
 import java.io.PrintStream
+import java.io.ByteArrayOutputStream
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.imageio.ImageIO
 import javax.net.ssl.*
 
 val lwjglVersion = "3.4.0"
@@ -214,6 +218,63 @@ fun electronHostBinary(): File {
             }
         }
         else -> File(distDir, "electron")
+    }
+}
+
+fun writeWindowsIconFromPng(sourcePng: File, targetIco: File) {
+    val source = ImageIO.read(sourcePng)
+        ?: throw GradleException("Could not decode Electron icon source at ${sourcePng.absolutePath}")
+    val sizes = listOf(16, 24, 32, 48, 64, 128, 256)
+    val pngEntries = sizes.map { size ->
+        val image = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+        val graphics = image.createGraphics()
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            graphics.drawImage(source, 0, 0, size, size, null)
+        } finally {
+            graphics.dispose()
+        }
+
+        ByteArrayOutputStream().use { bytes ->
+            ImageIO.write(image, "png", bytes)
+            size to bytes.toByteArray()
+        }
+    }
+
+    targetIco.parentFile.mkdirs()
+    targetIco.outputStream().use { out ->
+        fun writeShort(value: Int) {
+            out.write(value and 0xff)
+            out.write((value ushr 8) and 0xff)
+        }
+
+        fun writeInt(value: Int) {
+            out.write(value and 0xff)
+            out.write((value ushr 8) and 0xff)
+            out.write((value ushr 16) and 0xff)
+            out.write((value ushr 24) and 0xff)
+        }
+
+        writeShort(0) // reserved
+        writeShort(1) // icon
+        writeShort(pngEntries.size)
+
+        var imageOffset = 6 + (pngEntries.size * 16)
+        pngEntries.forEach { (size, pngBytes) ->
+            out.write(if (size == 256) 0 else size)
+            out.write(if (size == 256) 0 else size)
+            out.write(0) // colors
+            out.write(0) // reserved
+            writeShort(1) // color planes
+            writeShort(32) // bits per pixel
+            writeInt(pngBytes.size)
+            writeInt(imageOffset)
+            imageOffset += pngBytes.size
+        }
+
+        pngEntries.forEach { (_, pngBytes) -> out.write(pngBytes) }
     }
 }
 
@@ -644,6 +705,8 @@ val electronInstall = tasks.register("electronInstall") {
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")
+        val pngIcon = electronDir.file("icon-1024.png").asFile
+        val windowsIcon = electronDir.file("Field4.ico").asFile
 
         val hostBinary = electronHostBinary()
         if (!hostBinary.exists()) {
@@ -664,6 +727,13 @@ val electronInstall = tasks.register("electronInstall") {
             if (exit != 0 || !hostBinary.exists()) {
                 throw GradleException("Electron binary install failed; expected ${hostBinary.absolutePath}")
             }
+        }
+
+        if (pngIcon.exists() && (!windowsIcon.exists() || windowsIcon.lastModified() < pngIcon.lastModified())) {
+            writeWindowsIconFromPng(pngIcon, windowsIcon)
+            logger.lifecycle("Generated Windows app icon from ${pngIcon.absolutePath}.")
+        } else if (!pngIcon.exists()) {
+            logger.warn("Electron PNG icon not found at ${pngIcon.absolutePath}; skipping Windows icon generation.")
         }
 
         if (!isMac) return@doLast

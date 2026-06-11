@@ -2,6 +2,7 @@ package afield.four.fabricated
 
 import afield.Box
 import afield.four.Renderer
+import afield.four.Target
 import afield.four.TexturePreviewCache
 import afield.four.buffers.VulkanBuffer
 import afield.four.device.CommandBuffer
@@ -10,6 +11,8 @@ import afield.four.device.Fence
 import afield.four.modules.AccelerationStructure
 import afield.four.modules.AccelerationStructureAabbs
 import afield.four.modules.AccelerationStructureTriangles
+import afield.four.modules.Mesh
+import afield.four.modules.Module
 import afield.four.modules.Parameters
 import afield.four.modules.RayTracingDispatch
 import afield.four.modules.RayTracingGroups
@@ -18,26 +21,38 @@ import afield.four.modules.RayTracingInstance
 import afield.four.modules.RayTracingShaderStage
 import afield.four.modules.ShaderKind
 import afield.four.modules.fromContext
+import afield.four.modules.parameters
 import afield.four.modules.pointer
+import afield.four.texture.HasImageView
+import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.texture.TextureSampler
 import afield.four.texture.image_layout_transition
+import afield.four.util.Camera
+import afield.four.util.Options
 import afield.logger.lprintln
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
+import org.joml.Vector3f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRAccelerationStructure.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+import org.lwjgl.vulkan.VK10.VK_FILTER_NEAREST
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_GENERAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
+import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_STORAGE_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+import org.lwjgl.vulkan.VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST
 import org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_WRITE_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 import org.lwjgl.vulkan.VkImageSubresourceRange
@@ -49,6 +64,8 @@ import java.io.File
 import java.util.ArrayDeque
 import java.util.Base64
 import javax.imageio.ImageIO
+import kotlin.math.PI
+import kotlin.math.tan
 
 /**
  * Docs and smoke-test harness for ray tracing shader support.
@@ -73,6 +90,114 @@ object RayTracingDocsHarness {
     private const val OUTPUT_WIDTH = 512
     private const val OUTPUT_HEIGHT = 512
     private const val CAPTURE_MAX_DIM = 2048
+    private const val MIRROR_BALLS_REFLECTION_BOUNCES = 2
+    private val liveScenes = java.util.WeakHashMap<Renderer, MutableMap<String, LiveMirrorBallsScene>>()
+
+    class LiveMirrorBallsScene internal constructor(
+        val name: String,
+        private val renderer: Renderer,
+        private val image: Image,
+        private val imageView: ImageView,
+        private val floorVertexBuffer: VulkanBuffer,
+        private val sphereAabbBuffer: VulkanBuffer,
+        private val floorBlas: AccelerationStructure,
+        private val sphereBlas: AccelerationStructure,
+        private val tlas: AccelerationStructure,
+        private val rayTracingPointer: afield.four.modules.RayTracingModulePointer,
+        private val blitPointer: afield.four.modules.ModulePointer,
+        private val sampler: TextureSampler,
+        var camera: Camera,
+        private val spheres: MutableList<MirrorSphere>
+    ) {
+        data class MirrorSphere(
+            var x: Float,
+            var y: Float,
+            var z: Float,
+            var scale: Float
+        )
+
+        private var cleaned = false
+        private val sphereLock = Any()
+        private var revision = 0L
+        private var builtRevision = 0L
+        private val startedAtNanos = System.nanoTime()
+        @Volatile private var animator: ((Double, LiveMirrorBallsScene) -> Unit)? = null
+
+        val sphereCount: Int
+            get() = synchronized(sphereLock) { spheres.size }
+
+        fun sphere(index: Int): MirrorSphere = synchronized(sphereLock) {
+            require(index in spheres.indices) { "sphere index $index is out of range 0..${spheres.lastIndex}" }
+            spheres[index].copy()
+        }
+
+        fun setSphere(index: Int, x: Float, y: Float, z: Float): LiveMirrorBallsScene {
+            val scale = synchronized(sphereLock) {
+                require(index in spheres.indices) { "sphere index $index is out of range 0..${spheres.lastIndex}" }
+                spheres[index].scale
+            }
+            return setSphere(index, x, y, z, scale)
+        }
+
+        fun setSphere(index: Int, x: Float, y: Float, z: Float, scale: Float): LiveMirrorBallsScene {
+            synchronized(sphereLock) {
+                require(index in spheres.indices) { "sphere index $index is out of range 0..${spheres.lastIndex}" }
+                val s = spheres[index]
+                if (s.x == x && s.y == y && s.z == z && s.scale == scale) return this
+                s.x = x
+                s.y = y
+                s.z = z
+                s.scale = scale
+                revision++
+            }
+            return this
+        }
+
+        fun animate(block: (Double, LiveMirrorBallsScene) -> Unit): LiveMirrorBallsScene {
+            animator = block
+            return this
+        }
+
+        fun clearAnimation(): LiveMirrorBallsScene {
+            animator = null
+            return this
+        }
+
+        fun useCamera(camera: Camera): LiveMirrorBallsScene {
+            this.camera = camera
+            return this
+        }
+
+        internal fun updateTlas(command: CommandBuffer) {
+            animator?.invoke((System.nanoTime() - startedAtNanos) / 1_000_000_000.0, this)
+            val snapshot = synchronized(sphereLock) {
+                if (builtRevision == revision) return
+                builtRevision = revision
+                mirrorBallsInstances(floorBlas, sphereBlas, spheres)
+            }
+            tlas.buildTopLevel(command, snapshot)
+        }
+
+        fun cleanup() {
+            if (cleaned) return
+            cleaned = true
+            rayTracingPointer.disable()
+            blitPointer.disable()
+            renderer.computeList.rayTracingModules.remove(name)
+            renderer.renderList.modules.remove("$name-blit")
+            liveScenes[renderer]?.remove(name)
+            rayTracingPointer.current.cleanup()
+            blitPointer.current.cleanup()
+            sampler.cleanup()
+            imageView.cleanup()
+            image.cleanup()
+            floorVertexBuffer.cleanup()
+            sphereAabbBuffer.cleanup()
+            floorBlas.cleanup()
+            sphereBlas.cleanup()
+            tlas.cleanup()
+        }
+    }
 
     // ── Public render methods ─────────────────────────────────────────────────
 
@@ -317,7 +442,8 @@ object RayTracingDocsHarness {
      */
     suspend fun renderMirrorBallsScene(
         outputPath: String,
-        renderer: Renderer = rendererFromContextOrDocument()
+        renderer: Renderer = rendererFromContextOrDocument(),
+        camera: Camera = cameraFromContextOrDefault(renderer)
     ): File {
         if (!renderer.device.supportsRayTracing) {
             lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
@@ -417,7 +543,7 @@ object RayTracingDocsHarness {
         val p = Parameters(
             renderer = renderer,
             rayTracingGroups = groups,
-            maxRayRecursionDepth = 2,
+            maxRayRecursionDepth = MIRROR_BALLS_REFLECTION_BOUNCES + 1,
             name = rtName,
             imageResolver = { imageView },
             accelerationStructureResolver = { tlas },
@@ -443,6 +569,7 @@ object RayTracingDocsHarness {
         }
 
         val pointer = rtModule.pointer()
+        pointer.seedRayCameraUniforms({ camera }) { OUTPUT_WIDTH.toFloat() / OUTPUT_HEIGHT.toFloat() }
         val dispatch = RayTracingDispatch(pointer, OUTPUT_WIDTH, OUTPUT_HEIGHT)
         pointer += "dispatch" to dispatch
 
@@ -458,6 +585,166 @@ object RayTracingDocsHarness {
             floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
         }
     }
+
+    /**
+     * Installs the mirror-balls ray tracing scene into the renderer window.
+     *
+     * Unlike [renderMirrorBallsScene], this does not capture or save a PNG. It
+     * creates a persistent ray tracing storage image, dispatches the ray tracing
+     * pipeline every frame through [Renderer.computeList], then blits the result
+     * into the renderer's normal window render target. Call [LiveMirrorBallsScene.cleanup]
+     * to remove it.
+     */
+    fun installMirrorBallsSceneInWindow(
+        renderer: Renderer = rendererFromContextOrDocument(),
+        camera: Camera = cameraFromContextOrDefault(renderer),
+        name: String = "rt-live-mirror-balls",
+        width: Int = renderer.window.width.coerceAtLeast(1),
+        height: Int = renderer.window.height.coerceAtLeast(1)
+    ): LiveMirrorBallsScene {
+        require(renderer.device.supportsRayTracing) { "Device does not support VK_KHR_ray_tracing_pipeline." }
+
+        liveScenes.getOrPut(renderer) { mutableMapOf() }.remove(name)?.cleanup()
+
+        val (image, imageView) = createRtOutputImage(renderer, width, height)
+        transitionImageToGeneral(renderer, image)
+
+        val floorVertexBuffer = buildMirrorFloorVertexBuffer(renderer)
+        val sphereAabbBuffer = buildSphereAabbBuffer(renderer)
+
+        val floorBlas = AccelerationStructure(renderer, "$name-floor-blas")
+            .buildBottomLevelNow(
+                triangles = listOf(
+                    AccelerationStructureTriangles(
+                        vertexBuffer = floorVertexBuffer,
+                        maxVertex = 5,
+                        primitiveCount = 2
+                    )
+                )
+            )
+        val sphereBlas = AccelerationStructure(renderer, "$name-sphere-blas")
+            .buildBottomLevelNow(
+                aabbs = listOf(
+                    AccelerationStructureAabbs(
+                        aabbBuffer = sphereAabbBuffer,
+                        primitiveCount = 1
+                    )
+                )
+            )
+
+        val floorY = -0.62f
+        val sphereScale = 0.34f
+        val sphereY = floorY + sphereScale
+        val sphereStates = mutableListOf(
+            LiveMirrorBallsScene.MirrorSphere(0.0f, sphereY, 2.35f, sphereScale),
+            LiveMirrorBallsScene.MirrorSphere(-0.78f, sphereY, 1.72f, sphereScale),
+            LiveMirrorBallsScene.MirrorSphere(0.78f, sphereY, 1.72f, sphereScale)
+        )
+        val instances = mirrorBallsInstances(floorBlas, sphereBlas, sphereStates)
+
+        val tlas = AccelerationStructure(renderer, "$name-tlas")
+            .buildTopLevelNow(instances = instances)
+
+        val errors = mutableListOf<String>()
+        val p = Parameters(
+            renderer = renderer,
+            rayTracingGroups = mirrorBallsGroups(),
+            maxRayRecursionDepth = MIRROR_BALLS_REFLECTION_BOUNCES + 1,
+            name = name,
+            imageResolver = { imageView },
+            accelerationStructureResolver = { tlas },
+            errorHandler = { msg, throwable ->
+                errors += msg
+                throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
+            }
+        )
+
+        val rtModule = afield.four.modules.RayTracingModule(p)
+        if (!rtModule.valid || errors.isNotEmpty()) {
+            image.cleanup(); imageView.cleanup()
+            floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
+            floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
+            error("mirror-balls live ray tracing module invalid: ${summarizeShaderErrors(errors)}")
+        }
+
+        val layout = RtOutputLayoutTracker(image)
+        val rtPointer = rtModule.pointer()
+        rtPointer.current.before["$name-image-to-general"] = layout.transitionTarget(
+            VK_IMAGE_LAYOUT_GENERAL,
+            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+            VK_ACCESS_2_SHADER_WRITE_BIT
+        )
+        rtPointer.current.after["$name-image-to-sampled"] = layout.transitionTarget(
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+        )
+        rtPointer += "dispatch" to RayTracingDispatch(rtPointer, width, height)
+
+        val sampler = TextureSampler(
+            renderer,
+            imageView.mipLevels,
+            false,
+            VK_FILTER_NEAREST,
+            VK_SAMPLER_MIPMAP_MODE_NEAREST
+        )
+        val blitPointer = installImageBlitToWindow(renderer, imageView, sampler, "$name-blit")
+
+        val liveScene = LiveMirrorBallsScene(
+            name = name,
+            renderer = renderer,
+            image = image,
+            imageView = imageView,
+            floorVertexBuffer = floorVertexBuffer,
+            sphereAabbBuffer = sphereAabbBuffer,
+            floorBlas = floorBlas,
+            sphereBlas = sphereBlas,
+            tlas = tlas,
+            rayTracingPointer = rtPointer,
+            blitPointer = blitPointer,
+            sampler = sampler,
+            camera = camera,
+            spheres = sphereStates
+        )
+        rtPointer.seedRayCameraUniforms({ liveScene.camera }) { width.toFloat() / height.toFloat() }
+        rtPointer.current.before["$name-update-tlas"] = Target { command, _ ->
+            liveScene.updateTlas(command)
+        }
+
+        renderer += name to rtPointer
+
+        return liveScene.also {
+            liveScenes.getOrPut(renderer) { mutableMapOf() }[name] = it
+        }
+    }
+
+    fun installMirrorBallsSceneInWindow(
+        renderer: Renderer,
+        name: String,
+        width: Int = renderer.window.width.coerceAtLeast(1),
+        height: Int = renderer.window.height.coerceAtLeast(1)
+    ): LiveMirrorBallsScene = installMirrorBallsSceneInWindow(
+        renderer = renderer,
+        camera = cameraFromContextOrDefault(renderer),
+        name = name,
+        width = width,
+        height = height
+    )
+
+    fun renderMirrorBallsSceneInWindow(
+        renderer: Renderer = rendererFromContextOrDocument(),
+        camera: Camera = cameraFromContextOrDefault(renderer),
+        name: String = "rt-live-mirror-balls",
+        width: Int = renderer.window.width.coerceAtLeast(1),
+        height: Int = renderer.window.height.coerceAtLeast(1)
+    ): LiveMirrorBallsScene = installMirrorBallsSceneInWindow(renderer, camera, name, width, height)
+
+    fun renderMirrorBallsSceneInWindow(
+        renderer: Renderer,
+        name: String,
+        width: Int = renderer.window.width.coerceAtLeast(1),
+        height: Int = renderer.window.height.coerceAtLeast(1)
+    ): LiveMirrorBallsScene = installMirrorBallsSceneInWindow(renderer, name, width, height)
 
     /** Wraps a captured PNG as an HTML block suitable for display(...). */
     fun htmlForImage(imageFile: File, caption: String? = null): String {
@@ -479,16 +766,146 @@ object RayTracingDocsHarness {
 
     // ── Internal helpers ──────────────────────────────────────────────────────
 
-    private fun createRtOutputImage(renderer: Renderer): Pair<Image, ImageView> {
+    private fun createRtOutputImage(
+        renderer: Renderer,
+        width: Int = OUTPUT_WIDTH,
+        height: Int = OUTPUT_HEIGHT
+    ): Pair<Image, ImageView> {
         val data = ImageData()
-            .width(OUTPUT_WIDTH)
-            .height(OUTPUT_HEIGHT)
+            .width(width)
+            .height(height)
             .format(VK_FORMAT_R8G8B8A8_UNORM)
-            .usage(VK_IMAGE_USAGE_STORAGE_BIT or VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+            .usage(VK_IMAGE_USAGE_STORAGE_BIT or VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
         val image = Image(renderer.device, data)
         val viewData = ImageViewData().format(image.format).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
         val imageView = ImageView(renderer.device, image, viewData)
         return image to imageView
+    }
+
+    private class RtOutputLayoutTracker(
+        private val image: Image
+    ) {
+        private var currentLayout = VK_IMAGE_LAYOUT_GENERAL
+
+        fun transitionTarget(
+            nextLayout: Int,
+            srcAccess: Long,
+            dstAccess: Long
+        ): Target = object : Target {
+            override fun render(command: CommandBuffer, index: Int) {
+                if (currentLayout == nextLayout) return
+                MemoryStack.stackPush().use { stack ->
+                    val range = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0).levelCount(1).baseArrayLayer(0).layerCount(1)
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        image.vkImage,
+                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        srcAccess,
+                        dstAccess,
+                        currentLayout,
+                        nextLayout,
+                        range
+                    )
+                }
+                currentLayout = nextLayout
+            }
+        }
+    }
+
+    private fun installImageBlitToWindow(
+        renderer: Renderer,
+        imageView: ImageView,
+        sampler: TextureSampler,
+        name: String
+    ): afield.four.modules.ModulePointer {
+        val sourceProvider = object : HasImageViewArray {
+            override val imageViewArray: List<HasImageView>
+                get() = listOf(imageView)
+        }
+
+        val module = Module(parameters(renderer) {
+            this.name = name
+            color = 1
+            depth = 1
+            depthFormat = Options.defaultDepthFormat
+            depthTest = false
+            blend = false
+            vertex = RT_IMAGE_BLIT_VERTEX
+            fragment = RT_IMAGE_BLIT_FRAGMENT
+            textureResolver = { tex ->
+                if (tex.name == "sourceTex") sourceProvider to sampler else null
+            }
+        }).pointer()
+
+        val mesh = Mesh(renderer, module)
+        mesh.resize(3, 0, module)
+        module.current.meshes[name] = mesh
+        renderer += name to module
+        return module
+    }
+
+    private fun mirrorBallsGroups(): RayTracingGroups = RayTracingGroups(
+        raygen = RayTracingShaderStage("raygen", ShaderKind.RAYGEN_SHADER, MIRROR_BALLS_RAYGEN, sourceName = "mirror_balls.rgen"),
+        miss = mutableListOf(
+            RayTracingShaderStage("miss", ShaderKind.MISS_SHADER, MIRROR_BALLS_MISS, sourceName = "mirror_balls.rmiss")
+        ),
+        hit = mutableListOf(
+            RayTracingHitGroup(
+                name = "checker-floor",
+                closestHit = RayTracingShaderStage(
+                    "floorClosestHit",
+                    ShaderKind.CLOSEST_HIT_SHADER,
+                    MIRROR_BALLS_FLOOR_CLOSESTHIT,
+                    sourceName = "mirror_balls_floor.rchit"
+                )
+            ),
+            RayTracingHitGroup(
+                name = "mirror-spheres",
+                closestHit = RayTracingShaderStage(
+                    "sphereClosestHit",
+                    ShaderKind.CLOSEST_HIT_SHADER,
+                    MIRROR_BALLS_SPHERE_CLOSESTHIT,
+                    sourceName = "mirror_balls_sphere.rchit"
+                ),
+                intersection = RayTracingShaderStage(
+                    "sphereIntersection",
+                    ShaderKind.INTERSECTION_SHADER,
+                    MIRROR_BALLS_SPHERE_INTERSECTION,
+                    sourceName = "mirror_balls_sphere.rint"
+                )
+            )
+        )
+    )
+
+    private fun afield.four.modules.RayTracingModulePointer.seedRayCameraUniforms(
+        cameraProvider: () -> Camera,
+        aspectProvider: () -> Float
+    ) {
+        current.liveUniformStructures["RayCamera"]?.let { rayCamera ->
+            rayCamera.bind("origin") { Vector3f(cameraProvider().at) }
+            rayCamera.bind("right") { Vector3f(cameraProvider().right) }
+            rayCamera.bind("up") { rayCameraUp(cameraProvider()) }
+            rayCamera.bind("forward") { Vector3f(cameraProvider().forward) }
+            rayCamera.bind("tanHalfFovY") { tanHalfFovY(cameraProvider()) }
+            rayCamera.bind("aspect") { aspectProvider().coerceAtLeast(0.0001f) }
+        }
+    }
+
+    private fun rayCameraUp(camera: Camera): Vector3f {
+        val right = camera.right
+        val forward = camera.forward
+        val up = Vector3f(right).cross(forward)
+        if (up.lengthSquared() < 1e-12f) return Vector3f(0f, 1f, 0f)
+        return up.normalize()
+    }
+
+    private fun tanHalfFovY(camera: Camera): Float {
+        val configured = camera.p.fov
+        val radians = if (configured > PI) Math.toRadians(configured) else configured
+        return tan(0.5 * radians).toFloat()
     }
 
     private fun transitionImageToGeneral(renderer: Renderer, image: Image) {
@@ -618,6 +1035,28 @@ object RayTracingDocsHarness {
         0f, 0f, scale, tz
     )
 
+    private fun mirrorBallsInstances(
+        floorBlas: AccelerationStructure,
+        sphereBlas: AccelerationStructure,
+        spheres: List<LiveMirrorBallsScene.MirrorSphere>
+    ): List<RayTracingInstance> = buildList {
+        add(
+            RayTracingInstance(
+                accelerationStructure = floorBlas,
+                shaderBindingTableRecordOffset = 0
+            )
+        )
+        spheres.forEach { sphere ->
+            add(
+                RayTracingInstance(
+                    accelerationStructure = sphereBlas,
+                    transform = scaleTranslateTransform(sphere.scale, sphere.x, sphere.y, sphere.z),
+                    shaderBindingTableRecordOffset = 1
+                )
+            )
+        }
+    }
+
     private suspend fun captureRtImage(renderer: Renderer, image: Image, outputPath: String): File {
         val targetFile = File(outputPath)
         targetFile.parentFile?.mkdirs()
@@ -720,7 +1159,44 @@ object RayTracingDocsHarness {
         throw IllegalArgumentException("must pass in a value for context parameter ${Renderer::class.java.name}")
     }
 
+    private fun cameraFromContextOrDefault(renderer: Renderer): Camera {
+        try {
+            return fromContext()
+        } catch (_: IllegalArgumentException) {
+        }
+        return Camera(renderer).also {
+            it.lookAt(
+                Vector3f(0.0f, 0.18f, -3.45f),
+                Vector3f(0.0f, -0.05f, 2.1f),
+                Vector3f(0.0f, 1.0f, 0.0f)
+            )
+        }
+    }
+
     // ── GLSL shaders ──────────────────────────────────────────────────────────
+
+    private val RT_IMAGE_BLIT_VERTEX = """
+        #version 460
+        layout(location = 0) out vec2 fragUV;
+
+        void main() {
+            vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+            fragUV = pos;
+        }
+    """.trimIndent()
+
+    private val RT_IMAGE_BLIT_FRAGMENT = """
+        #version 460
+        layout(location = 0) in vec2 fragUV;
+        layout(location = 0) out vec4 outColor;
+
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+
+        void main() {
+            outColor = texture(sourceTex, fragUV);
+        }
+    """.trimIndent()
 
     /** Raygen that writes UV colours to a storage image (no traceRayEXT call). */
     val UV_GRADIENT_RAYGEN = """
@@ -749,8 +1225,10 @@ object RayTracingDocsHarness {
             ivec2 px  = ivec2(gl_LaunchIDEXT.xy);
             vec2  uv  = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
 
-            vec3 origin = vec3(0.0, 0.0, -2.0);
-            vec3 dir    = normalize(vec3((uv * 2.0 - 1.0) * vec2(1.0, -1.0), 1.0));
+            vec3 origin = vec3(0.0, 2.0, -2.0);
+            vec3 dir    = normalize(vec3(uv.x * 2.0 - 1.0,
+                                         -(uv.y * 2.0 - 1.0) - 0.75,
+                                          1.0));
 
             payload = vec3(0.05, 0.05, 0.12);
             traceRayEXT(topLevelAS,
@@ -865,6 +1343,16 @@ object RayTracingDocsHarness {
         layout(location = 0) rayPayloadEXT Payload payload;
         layout(set = 0, binding = 0, rgba8) uniform image2D outputImage;
         layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
+        layout(set = 0, binding = 2) uniform RayCamera {
+            vec3 origin;
+            float tanHalfFovY;
+            vec3 right;
+            float aspect;
+            vec3 up;
+            float _pad0;
+            vec3 forward;
+            float _pad1;
+        } rayCamera;
 
         void main() {
             const float rayEpsilon = 0.001;
@@ -872,11 +1360,13 @@ object RayTracingDocsHarness {
             vec2 uv = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
             vec2 ndc = uv * 2.0 - 1.0;
 
-            vec3 origin = vec3(0.0, 0.18, -3.45);
-            vec3 dir = normalize(vec3(ndc.x * 1.05, -ndc.y * 0.78 + 0.08, 1.0));
+            vec3 origin = rayCamera.origin;
+            vec3 dir = normalize(rayCamera.forward
+                               - ndc.x * rayCamera.aspect * rayCamera.tanHalfFovY * rayCamera.right
+                               - ndc.y * rayCamera.tanHalfFovY * rayCamera.up);
 
             payload.color = vec3(0.02, 0.03, 0.05);
-            payload.bouncesLeft = 1;
+            payload.bouncesLeft = $MIRROR_BALLS_REFLECTION_BOUNCES;
 
             traceRayEXT(topLevelAS,
                         gl_RayFlagsOpaqueEXT,
