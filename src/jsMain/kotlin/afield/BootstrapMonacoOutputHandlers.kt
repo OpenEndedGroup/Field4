@@ -295,6 +295,9 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
     val endColumn = payload.endColumn
     val property = payload.property
     val w = js("window")
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecution(payload)
+    }
     val selected = w.currentSelectedCode
     val isCurrent = selected != null &&
         (selected.length as? Number)?.toInt() == 1 &&

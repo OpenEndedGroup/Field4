@@ -1100,6 +1100,9 @@ fun monacoRunExecuteFragment(editor: dynamic) {
     val w = js("window")
     val (code, belowLine, singleLine) = extractSelectionOrScope(editor)
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
+    val topLine = belowLine + 1
+    val bottomLine = topLine + code.split("\n").size - 1
 
     val payload = js("{}")
     payload.uid = uid
@@ -1113,6 +1116,9 @@ fun monacoRunExecuteFragment(editor: dynamic) {
         handler(response, message, uid)
         true
     }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, topLine, bottomLine)
+    }
     sendWithReply("execute-fragment", payload, "exec_$uid", callback.asDynamic())
 }
 
@@ -1121,6 +1127,7 @@ fun monacoRunExecuteFragment(editor: dynamic) {
 fun monacoRunExecuteAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
     val model = editor.getModel()
     val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
 
@@ -1135,6 +1142,9 @@ fun monacoRunExecuteAll(editor: dynamic) {
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
         handler(response, message, uid)
         true
+    }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, 1, code.split("\n").size)
     }
     sendWithReply("execute-all", payload, "exec_$uid", callback.asDynamic())
 }
@@ -1283,6 +1293,7 @@ fun monacoRunLaunchFragment(editor: dynamic) {
     val selection = extractSelectionOrScopeForLaunch(editor)
     val className = w.addExecutionMarker(editor, selection.topLine, selection.bottomLine)
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
 
     val payload = js("{}")
     payload.uid = uid
@@ -1297,6 +1308,9 @@ fun monacoRunLaunchFragment(editor: dynamic) {
         handler(response, message, uid)
         true
     }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, selection.topLine, selection.bottomLine)
+    }
     sendWithReply("launch-fragment", payload, "exec_$uid", callback.asDynamic())
 }
 
@@ -1305,8 +1319,12 @@ fun monacoRunLaunchFragment(editor: dynamic) {
 fun monacoRunLaunchAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
     val model = editor.getModel()
     val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, 1, code.split("\n").size)
+    }
     w.launchAll(uid, code)
 }
 
@@ -1315,8 +1333,12 @@ fun monacoRunLaunchAll(editor: dynamic) {
 fun monacoRunContinueAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
     val model = editor.getModel()
     val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, 1, code.split("\n").size)
+    }
     w.continueAll(uid, code)
 }
 
@@ -1415,6 +1437,7 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
 fun monacoRunExecuteSymbol(editor: dynamic, symbol: String, lineNumber: Int) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
 
     val payload = js("{}")
     payload.uid = uid
@@ -1425,6 +1448,9 @@ fun monacoRunExecuteSymbol(editor: dynamic, symbol: String, lineNumber: Int) {
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
         handler(response, message, uid)
         true
+    }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, lineNumber + 1, lineNumber + 1)
     }
     sendWithReply("execute-symbol", payload, "exec_$uid", callback.asDynamic())
 }

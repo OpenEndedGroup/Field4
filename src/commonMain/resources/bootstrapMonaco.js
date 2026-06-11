@@ -777,6 +777,7 @@ const initMonaco = () => {
 
         beginLineTracking(globalEditor)
         initMarkerSupport(globalEditor)
+        window.LineHeatmap?.install?.(globalEditor)
 }
 
 const syncBoxRunningClass = (box) => {

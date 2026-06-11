@@ -33,6 +33,7 @@ Guidelines:
 - Respond in markdown (prose is OK).
 - Prefer grounding answers in the project's actual code: look up symbols/definitions and use their source.
 - Use tools (WorkspaceSymbolSearch, ListDefinitions, ListContents, EditFile, etc.) when identifiers or behaviors matter.
+- Use Scratchpad and Checklist for long-running work. The scratchpad is for durable notes/decisions; the checklist is for visible task state that can persist between turns.
 - If you edit Kotlin, shaders, or visual code, verify the change with the available compile/reload/visual tools before you say you are done.
 - EditFile creates a provisional proposal that the user can accept or reject. Compile/reload/visual tools may test that provisional proposal, but verification does not mean the proposal has been accepted into the document.
 - Do not paste full files unless explicitly asked.
@@ -75,6 +76,10 @@ fun buildDynamicInstructions(
 
     val toolAds = mutableListOf<String>()
     toolAds += "- Commentary: use this for non-code notes/questions/alternatives."
+    if (ctx.agentMemory != null) {
+        toolAds += "- ScratchpadReadRequest / ScratchpadUpdateRequest: read or update durable notes for this chat across turns."
+        toolAds += "- ChecklistReadRequest / ChecklistUpdateRequest: read or update the persistent task checklist. Checklist content can be shown at the end of an agent turn."
+    }
 
     if (ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null) {
         toolAds += "- ListAttachments: lists available attached context files."
@@ -128,6 +133,7 @@ fun buildDynamicInstructions(
     val guidance = if (mode == InstructionMode.Chat) {
         """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
+- For multi-step or long-running work, read the Checklist and Scratchpad early when they might contain prior context. Update the Scratchpad with durable constraints, decisions, and handoff notes. Update the Checklist as task status changes.
 - If a symbol or behavior is mentioned, use WorkspaceSymbolSearch to locate definitions and ground the answer.
 - If the current box may span multiple text properties (for example Kotlin plus shaders), call ListContents early so you can inspect them directly.
 - Field boxes form a graph. ListContents and attachments may include connected parent/child boxes. For visual requests, inspect connected boxes too: a compute box can export positions or buffers while a connected render box owns the vertex/fragment shader that actually draws the result.
@@ -147,6 +153,7 @@ $includeGuidance
     } else {
         """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
+- For multi-step or long-running work, read the Checklist and Scratchpad early when they might contain prior context. Update the Scratchpad with durable constraints, decisions, and handoff notes. Update the Checklist as task status changes.
 - Field boxes form a graph. ListContents and attachments may include connected parent/child boxes. For visual requests, inspect connected boxes too: a compute box can export positions or buffers while a connected render box owns the vertex/fragment shader that actually draws the result.
 - Read preamble hints carefully. `Box.foo by Inheritance...` or `Box.foo by InheritanceFromContext...` is a graph-relevant inherited Field property and is a strong reason to inspect parent/child boxes that mention `foo`; common setup/context properties are weaker clues than domain-specific names like `outputPositions`. Shader-generated `Mesh.foo`, `ComputeMesh.foo`, `MeshMesh.foo`, `ModulePointer.foo`, or `Structure.foo` bindings usually describe shader push constants/uniform helpers, not cross-box ownership by themselves.
 - Example: if the current box uses `ComputeMesh`, `computeModuleHere`, `outData`, or `prop<FrameBufferGroup>(outputPositions)`, speed may live in current Kotlin/compute shader, but color/contrast often lives in a connected box whose code says `m.inData = { outputPositions }` and whose `fragment` shader sets `uFragColor`. Edit both surfaces when the user asks for both motion and appearance.

@@ -3,6 +3,8 @@
 package afield
 
 import afield.ai.Ai4CompletionDoc
+import afield.ai.core.openAiCredentialStatus
+import afield.ai.core.saveOpenAiPlatformKey
 import afield.ai.core.completion.Ai4KotlinAutocomplete
 import afield.debug.RuntimeDebugProbeService
 import afield.four.util.Options
@@ -79,6 +81,7 @@ class SessionInformation(
 
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
+    private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
 
     // Layers system state
     var visibleLayers: MutableSet<String> = mutableSetOf("default")
@@ -93,6 +96,29 @@ class SessionInformation(
                 _fileWatchManager = it
             }
         }
+
+    fun markSidecarPending(uid: String, property: String) {
+        val key = uid to property
+        pendingSidecarSaves += key
+        pendingSidecarSaveVersions[key] = System.nanoTime()
+    }
+
+    fun hasPendingSidecarSave(uid: String, property: String): Boolean {
+        return pendingSidecarSaves.contains(uid to property)
+    }
+
+    fun pendingSidecarSnapshot(): Map<Pair<String, String>, Long> {
+        return pendingSidecarSaves.associateWith { pendingSidecarSaveVersions[it] ?: 0L }
+    }
+
+    fun clearSavedSidecars(snapshot: Map<Pair<String, String>, Long>) {
+        snapshot.forEach { (key, version) ->
+            if (pendingSidecarSaveVersions[key] == version) {
+                pendingSidecarSaves.remove(key)
+                pendingSidecarSaveVersions.remove(key)
+            }
+        }
+    }
 
     fun cleanup() {
         _fileWatchManager?.stop()
@@ -307,6 +333,15 @@ private fun readPersistedWorkspacePath(): String? =
     runCatching {
         workspacePreferenceFile().takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
     }.getOrNull()
+
+private fun currentAiSettingsStatus(): AiSettingsStatus {
+    val status = openAiCredentialStatus()
+    return AiSettingsStatus(
+        hasOpenAiPlatformKey = status.configured,
+        source = status.source,
+        configPath = status.configPath
+    )
+}
 
 private fun persistWorkspacePath(path: String) {
     runCatching {
@@ -1012,8 +1047,10 @@ class Server {
                                         // Include root box in saved boxes to persist root properties like bookmarks
                                         val allBoxes = info.boxes.values.toMutableSet()
                                         allBoxes.add(info.root)
-                                        SavingContext().save(info.filename, allBoxes)
-                                        info.pendingSidecarSaves.clear()
+                                        val pendingSnapshot = info.pendingSidecarSnapshot()
+                                        SavingContext().save(info.filename, allBoxes, onComplete = {
+                                            info.clearSavedSidecars(pendingSnapshot)
+                                        })
                                     } catch (ex: Exception) {
                                         lprintln("error,server", "trouble saving")
                                         ex.printStackTrace()
@@ -1085,7 +1122,7 @@ class Server {
 
                 // If this is a sidecar-backed property, mark it for persistence.
                 if (Box.ioSeparateProperties.containsKey(set.property) && !thisSessionInfo.get().ephemeral) {
-                    thisSessionInfo.get().pendingSidecarSaves += set.uid to set.property
+                    thisSessionInfo.get().markSidecarPending(set.uid, set.property)
                 }
 
                 Handled.yes
@@ -2017,7 +2054,8 @@ class Server {
                                 allTags,
                                 runningDocuments,
                                 currentWorkspace,
-                                defaultWorkspace
+                                defaultWorkspace,
+                                currentAiSettingsStatus()
                             )
                         )
                     }
@@ -2028,6 +2066,26 @@ class Server {
                             readWelcomeChangelog(limit)
                         }
                         call.respond(response)
+                    }
+
+                    post("/api/ai-settings") {
+                        try {
+                            val request = call.receive<AiSettingsUpdateRequest>()
+                            val status = saveOpenAiPlatformKey(request.openAiPlatformKey)
+                            call.respond(
+                                AiSettingsUpdateResponse(
+                                    hasOpenAiPlatformKey = status.configured,
+                                    source = status.source,
+                                    configPath = status.configPath,
+                                    message = "OpenAI Platform key saved."
+                                )
+                            )
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid OpenAI key")))
+                        } catch (e: Exception) {
+                            lprintln("error,server", "saving AI settings failed: ${e.message}")
+                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save AI settings"))
+                        }
                     }
 
                     post("/api/workspace-switch") {

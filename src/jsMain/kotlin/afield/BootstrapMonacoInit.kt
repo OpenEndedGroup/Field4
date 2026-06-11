@@ -250,6 +250,7 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.scrollBeyondLastLine = false
     options.lineNumbersMinChars = 2
     options.lineDecorationsWidth = 12
+    options.glyphMargin = false
     options.padding = js("{ top: 2, bottom: 2 }")
     options.cursorStyle = "block"
     options.cursorBlinking = "blink"

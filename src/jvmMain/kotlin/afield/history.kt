@@ -1488,6 +1488,138 @@ object HistoryManager {
         return loadBoxPropertyText(version, documentPath, uid, property)
     }
 
+    fun lineChurnForProperty(
+        documentPath: String,
+        uid: String,
+        property: String,
+        liveText: String,
+        maxVersions: Int = 160
+    ): HistoryLineChurnResult {
+        val versions = listVersions(documentPath)
+            .takeLast(maxVersions.coerceIn(2, 1000))
+        if (versions.size < 2) {
+            return HistoryLineChurnResult(uid = uid, property = property, versionCount = versions.size)
+        }
+
+        var previousLines = splitHistoryLines(loadBoxPropertyText(versions.first(), documentPath, uid, property) ?: "")
+        var scores = DoubleArray(previousLines.size)
+        var counts = IntArray(previousLines.size)
+        val transitions = versions.size - 1
+
+        for (i in 1 until versions.size) {
+            val currentLines = splitHistoryLines(loadBoxPropertyText(versions[i], documentPath, uid, property) ?: "")
+            val alignment = alignNewLinesToOld(previousLines, currentLines)
+            val nextScores = DoubleArray(currentLines.size)
+            val nextCounts = IntArray(currentLines.size)
+            val newerTransitions = transitions - i
+            val weight = 1.0 + 4.0 * kotlin.math.exp(-newerTransitions.toDouble() / 18.0)
+
+            for (lineIndex in currentLines.indices) {
+                val oldIndex = alignment[lineIndex]
+                if (oldIndex != null && oldIndex in scores.indices) {
+                    nextScores[lineIndex] = scores[oldIndex]
+                    nextCounts[lineIndex] = counts[oldIndex]
+                } else {
+                    nextScores[lineIndex] = weight
+                    nextCounts[lineIndex] = 1
+                }
+            }
+
+            previousLines = currentLines
+            scores = nextScores
+            counts = nextCounts
+        }
+
+        val liveLines = splitHistoryLines(liveText.replace("\r\n", "\n").replace("\r", "\n"))
+        if (liveLines != previousLines) {
+            val alignment = alignNewLinesToOld(previousLines, liveLines)
+            val projectedScores = DoubleArray(liveLines.size)
+            val projectedCounts = IntArray(liveLines.size)
+            for (lineIndex in liveLines.indices) {
+                val oldIndex = alignment[lineIndex]
+                if (oldIndex != null && oldIndex in scores.indices) {
+                    projectedScores[lineIndex] = scores[oldIndex]
+                    projectedCounts[lineIndex] = counts[oldIndex]
+                }
+            }
+            scores = projectedScores
+            counts = projectedCounts
+        }
+
+        val lines = scores.indices
+            .filter { scores[it] > 0.0 }
+            .map {
+                HistoryLineChurn(
+                    line = it + 1,
+                    score = scores[it],
+                    count = counts.getOrElse(it) { 0 }
+                )
+            }
+        return HistoryLineChurnResult(
+            uid = uid,
+            property = property,
+            versionCount = versions.size,
+            lines = lines
+        )
+    }
+
+    private fun alignNewLinesToOld(oldLines: List<String>, newLines: List<String>): Array<Int?> {
+        val mapped = arrayOfNulls<Int>(newLines.size)
+        if (oldLines.isEmpty() || newLines.isEmpty()) return mapped
+
+        val cellCount = oldLines.size * newLines.size
+        if (cellCount > 120000) {
+            var prefix = 0
+            while (
+                prefix < oldLines.size &&
+                prefix < newLines.size &&
+                oldLines[prefix] == newLines[prefix]
+            ) {
+                mapped[prefix] = prefix
+                prefix++
+            }
+
+            var oldSuffix = oldLines.lastIndex
+            var newSuffix = newLines.lastIndex
+            while (
+                oldSuffix >= prefix &&
+                newSuffix >= prefix &&
+                oldLines[oldSuffix] == newLines[newSuffix]
+            ) {
+                mapped[newSuffix] = oldSuffix
+                oldSuffix--
+                newSuffix--
+            }
+            return mapped
+        }
+
+        val dp = Array(oldLines.size + 1) { IntArray(newLines.size + 1) }
+        for (i in oldLines.indices.reversed()) {
+            for (j in newLines.indices.reversed()) {
+                dp[i][j] = if (oldLines[i] == newLines[j]) {
+                    dp[i + 1][j + 1] + 1
+                } else {
+                    maxOf(dp[i + 1][j], dp[i][j + 1])
+                }
+            }
+        }
+
+        var i = 0
+        var j = 0
+        while (i < oldLines.size && j < newLines.size) {
+            if (oldLines[i] == newLines[j]) {
+                mapped[j] = i
+                i++
+                j++
+            } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+                i++
+            } else {
+                j++
+            }
+        }
+        return mapped
+    }
+
     private fun selectionNeedles(
         selectedText: String,
         propertyText: String,
@@ -2430,6 +2562,36 @@ fun installHistoryHandlers() {
                 )
             )
         )
+
+        Handled.yes
+    })
+
+    handlers["history-line-churn"] = mutableSetOf({ message, reply ->
+        val req = Json.decodeFromJsonElement<HistoryLineChurnRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val result = HistoryManager.lineChurnForProperty(
+            info.filename,
+            req.uid,
+            req.property,
+            req.propertyText,
+            req.maxVersions
+        )
+        reply(Message("history-line-churn-result").payload(result))
+
+        Handled.yes
+    })
+
+    handlers["transcript-line-activity"] = mutableSetOf({ message, reply ->
+        val req = Json.decodeFromJsonElement<TranscriptLineActivityRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val result = FlightRecorder.lineActivityForDocument(
+            info.filename,
+            req.uid,
+            req.property,
+            req.propertyText,
+            req.maxEntries
+        )
+        reply(Message("transcript-line-activity-result").payload(result))
 
         Handled.yes
     })

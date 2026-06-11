@@ -50,12 +50,33 @@ data class WelcomeDocsResponse(
     val allTags: List<String> = emptyList(),
     val runningDocuments: List<RunningDocumentEntry> = emptyList(),
     val currentWorkspace: String = "",
-    val defaultWorkspace: String = ""
+    val defaultWorkspace: String = "",
+    val aiSettings: AiSettingsStatus = AiSettingsStatus()
 )
 
 @Serializable
 data class WorkspaceSwitchRequest(
     val path: String
+)
+
+@Serializable
+data class AiSettingsStatus(
+    val hasOpenAiPlatformKey: Boolean = false,
+    val source: String = "",
+    val configPath: String = ""
+)
+
+@Serializable
+data class AiSettingsUpdateRequest(
+    val openAiPlatformKey: String
+)
+
+@Serializable
+data class AiSettingsUpdateResponse(
+    val hasOpenAiPlatformKey: Boolean,
+    val source: String,
+    val configPath: String,
+    val message: String
 )
 
 @Serializable

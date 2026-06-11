@@ -42,6 +42,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
@@ -58,6 +59,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled
         )
@@ -106,6 +108,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = imageUrls.isNotEmpty(),
         vectorStoreIds: List<String> = emptyList(),
@@ -125,6 +128,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled || imageUrls.isNotEmpty()
         )
@@ -175,6 +179,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
@@ -191,6 +196,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled
         )
@@ -242,6 +248,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
@@ -258,6 +265,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled
         )

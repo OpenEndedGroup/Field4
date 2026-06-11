@@ -1926,7 +1926,7 @@ private fun writeStoredSpreadsheetState(box: Box, property: String, state: Sprea
     val normalizedState = normalizeStoredState(state)
     box.setPropertyRaw(normalizedProperty, encodeStoredSpreadsheetState(normalizedState), doResync = false)
     if (Box.ioSeparateProperties.containsKey(normalizedProperty) && box.isInsideInitialized() && !box.inside.ephemeral) {
-        box.inside.pendingSidecarSaves += box.id to normalizedProperty
+        box.inside.markSidecarPending(box.id, normalizedProperty)
     }
     return normalizedState
 }

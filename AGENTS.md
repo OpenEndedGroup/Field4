@@ -22,17 +22,14 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 
 ### Gradle hygiene for agents
 
-- Do not invoke `./gradlew` directly from agents unless you are specifically testing the generated wrapper script. This checkout's `gradlew` is patched by the Gradle JVM wrapper and forces Gradle itself through an old Azul/Zulu 11 install under `~/.field4/  gradle-jvm`, which fragments daemon reuse and can leave 512 MiB Gradle daemons spinning on a core for minutes.
-- Agents should bypass the patched shell script and invoke the standard Gradle wrapper jar with the ambient Java instead. Use this form for compile checks:
+- On Windows, agents should use the checked-in Gradle wrapper directly for compile checks:
 
-```bash
-java -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-  -classpath gradle/wrapper/gradle-wrapper.jar \
-  org.gradle.wrapper.GradleWrapperMain compileKotlinJvm
+```powershell
+.\gradlew compileKotlinJvm
 ```
 
-- Use the same wrapper-jar form for other Gradle tasks, replacing `compileKotlinJvm` with the task name, for example `runJvm`.
-- Human terminal workflows can still use `./gradlew` / `./field.sh` if desired; this warning is specifically for agent automation.
+- Use the same wrapper form for other Gradle tasks, replacing `compileKotlinJvm` with the task name, for example `.\gradlew runJvm`.
+- On Unix-like systems, use `./gradlew compileKotlinJvm` unless a task-specific note says otherwise.
 - If Gradle appears hung or reports a lock error, inspect the actual lock holder first (`ps`, `lsof .gradle/.../*.lock`) and clean up only the matching Gradle wrapper/daemon process tree for this checkout; do not use broad `killall java`.
 - Use an isolated `GRADLE_USER_HOME` / `--project-cache-dir` only as a fallback when there is a confirmed cache-lock conflict that cannot be cleared without disrupting the user's running work. The isolated path is expected to be much slower because it loses the warm project caches.
 
@@ -40,7 +37,7 @@ java -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMe
 
 - When you need to verify Field behavior by actually running code, prefer `python3 tools/field_backdoor.py` over driving the browser manually.
 - When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots.
-- The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the wrapper-jar Gradle command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
+- The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
 - Reuse the same custom port for one verification session, and pick a new custom port when you want a guaranteed fresh Field JVM. This avoids burning time and tokens debugging old code loaded in some unrelated existing server.
 - Use `--json` for agent automation. The result object includes `ok`, `data`, `events`, and `timedOut`.

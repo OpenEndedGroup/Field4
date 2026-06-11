@@ -1105,6 +1105,52 @@ data class HistoryPropertyVersionResult(
 )
 
 @Serializable
+data class HistoryLineChurnRequest(
+    val uid: String,
+    val property: String,
+    val propertyText: String = "",
+    val maxVersions: Int = 160
+)
+
+@Serializable
+data class HistoryLineChurn(
+    val line: Int,
+    val score: Double,
+    val count: Int = 0
+)
+
+@Serializable
+data class HistoryLineChurnResult(
+    val uid: String,
+    val property: String,
+    val versionCount: Int = 0,
+    val lines: List<HistoryLineChurn> = emptyList()
+)
+
+@Serializable
+data class TranscriptLineActivityRequest(
+    val uid: String,
+    val property: String,
+    val propertyText: String = "",
+    val maxEntries: Int = 4000
+)
+
+@Serializable
+data class TranscriptLineActivity(
+    val line: Int,
+    val score: Double,
+    val count: Int = 0
+)
+
+@Serializable
+data class TranscriptLineActivityResult(
+    val uid: String,
+    val property: String,
+    val entryCount: Int = 0,
+    val lines: List<TranscriptLineActivity> = emptyList()
+)
+
+@Serializable
 data class HistoryVersionStatsProgress(
     val versionIndex: Int,
     val completed: Int,

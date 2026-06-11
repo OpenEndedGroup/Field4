@@ -289,6 +289,50 @@ object FlightRecorder {
         )
     }
 
+    fun lineActivityForDocument(
+        documentPath: String,
+        uid: String,
+        property: String,
+        propertyText: String,
+        maxEntries: Int = 4000
+    ): TranscriptLineActivityResult {
+        val liveLines = splitTranscriptLines(propertyText)
+        val entries = archivedEntriesForDocument(documentPath)
+            .filter { entry ->
+                val event = entry["event"]?.toString().orEmpty()
+                event == "execute" || event == "execute-symbol" || event == "launch"
+            }
+            .filter { entry ->
+                val box = mapOfStringAny(entry["box"]) ?: return@filter false
+                box["id"]?.toString() == uid && transcriptActivityProperty(entry) == property
+            }
+            .takeLast(maxEntries.coerceIn(1, 20000))
+
+        val scores = linkedMapOf<Int, Pair<Double, Int>>()
+        entries.forEachIndexed { index, entry ->
+            val range = currentLineRangeForTranscriptEntry(entry, liveLines) ?: return@forEachIndexed
+            val age = (entries.lastIndex - index).coerceAtLeast(0)
+            val weight = 1.0 + 4.0 * kotlin.math.exp(-age.toDouble() / 60.0)
+            for (line in range.first..range.last) {
+                val existing = scores[line] ?: (0.0 to 0)
+                scores[line] = (existing.first + weight) to (existing.second + 1)
+            }
+        }
+
+        return TranscriptLineActivityResult(
+            uid = uid,
+            property = property,
+            entryCount = entries.size,
+            lines = scores.entries.map { (line, scoreCount) ->
+                TranscriptLineActivity(
+                    line = line,
+                    score = scoreCount.first,
+                    count = scoreCount.second
+                )
+            }
+        )
+    }
+
     @JvmStatic
     fun entriesFor(box: Box): List<LinkedHashMap<String, Any?>> {
         val documentPath = documentPathFor(box) ?: return emptyList()
@@ -364,6 +408,59 @@ object FlightRecorder {
     private fun readEntriesFromDisk(documentPath: String): List<LinkedHashMap<String, Any?>> {
         val file = transcriptFile(documentPath)
         if (!file.exists()) return emptyList()
+        return readEntriesFromFile(file, documentPath)
+    }
+
+    private fun archivedEntriesForDocument(documentPath: String): List<LinkedHashMap<String, Any?>> {
+        val normalizedDocumentPath = normalizeDocumentPath(documentPath)
+        val byKey = linkedMapOf<String, LinkedHashMap<String, Any?>>()
+        transcriptArchiveFiles(normalizedDocumentPath).forEach { file ->
+            readEntriesFromFile(file, normalizedDocumentPath).forEach { entry ->
+                byKey[transcriptEntryArchiveKey(entry)] = entry
+            }
+        }
+        val state = states[normalizedDocumentPath]
+        if (state != null) {
+            synchronized(state.lock) {
+                ensureLoaded(state)
+                state.entries.forEach { entry ->
+                    byKey[transcriptEntryArchiveKey(entry)] = LinkedHashMap(entry)
+                }
+            }
+        }
+        return byKey.values.sortedWith(
+            compareBy<LinkedHashMap<String, Any?>>(
+                { (it["timestampMillis"] as? Number)?.toLong() ?: Long.MIN_VALUE },
+                { (it["index"] as? Number)?.toInt() ?: -1 }
+            )
+        )
+    }
+
+    private fun transcriptArchiveFiles(documentPath: String): List<File> {
+        val current = transcriptFile(documentPath)
+        val backups = File(current.parentFile, "backups")
+            .listFiles()
+            ?.filter { it.isFile && it.name.startsWith("transcript_backup_") && it.name.endsWith(".edn") }
+            ?.sortedBy { it.name }
+            .orEmpty()
+        return backups + listOfNotNull(current.takeIf { it.exists() })
+    }
+
+    private fun transcriptEntryArchiveKey(entry: Map<String, Any?>): String {
+        val fieldLaunchId = entry["fieldLaunchId"]?.toString()
+        val index = entry["index"]?.toString()
+        if (!fieldLaunchId.isNullOrBlank() && !index.isNullOrBlank()) return "$fieldLaunchId#$index"
+        val box = mapOfStringAny(entry["box"])
+        return listOf(
+            entry["timestampMillis"]?.toString().orEmpty(),
+            entry["event"]?.toString().orEmpty(),
+            box?.get("id")?.toString().orEmpty(),
+            entry["line"]?.toString().orEmpty(),
+            entry["code"]?.toString()?.hashCode()?.toString().orEmpty()
+        ).joinToString("#")
+    }
+
+    private fun readEntriesFromFile(file: File, documentPathForLog: String): List<LinkedHashMap<String, Any?>> {
         return runCatching {
             val root = Edn.read(file.readText()) as? Map<*, *> ?: return@runCatching emptyList()
             val entries = root["entries"] as? List<*> ?: return@runCatching emptyList()
@@ -372,9 +469,60 @@ object FlightRecorder {
                 LinkedHashMap(map)
             }
         }.getOrElse {
-            lprintln("warning,transcript", "Failed to read transcript from $documentPath: ${it.message}")
+            lprintln("warning,transcript", "Failed to read transcript from $documentPathForLog (${file.name}): ${it.message}")
             emptyList()
         }
+    }
+
+    private fun currentLineRangeForTranscriptEntry(
+        entry: Map<String, Any?>,
+        liveLines: List<String>
+    ): IntRange? {
+        val code = entry["code"]?.toString().orEmpty()
+        val snippetLines = splitTranscriptLines(code).ifEmpty { listOf("") }
+        val recordedStart = ((entry["line"].asInt() ?: 0) + 1).coerceAtLeast(1)
+        val matchedStart = findSnippetStartLine(liveLines, snippetLines, recordedStart)
+        val start = matchedStart ?: recordedStart
+        val end = (start + snippetLines.size - 1).coerceAtLeast(start)
+        val boundedStart = start.coerceAtLeast(1)
+        val boundedEnd = if (liveLines.isEmpty()) end else end.coerceIn(boundedStart, liveLines.size)
+        return boundedStart..boundedEnd
+    }
+
+    private fun findSnippetStartLine(
+        liveLines: List<String>,
+        snippetLines: List<String>,
+        preferredStart: Int
+    ): Int? {
+        if (liveLines.isEmpty() || snippetLines.isEmpty()) return null
+        val normalizedSnippet = snippetLines.map { it.trimEnd() }
+        fun matchesAt(startIndex: Int): Boolean {
+            if (startIndex < 0 || startIndex + normalizedSnippet.size > liveLines.size) return false
+            return normalizedSnippet.indices.all { offset ->
+                liveLines[startIndex + offset].trimEnd() == normalizedSnippet[offset]
+            }
+        }
+
+        val preferredIndex = (preferredStart - 1).coerceAtLeast(0)
+        if (matchesAt(preferredIndex)) return preferredIndex + 1
+
+        var best: Int? = null
+        var bestDistance = Int.MAX_VALUE
+        val maxStart = liveLines.size - normalizedSnippet.size
+        for (candidate in 0..maxStart.coerceAtLeast(0)) {
+            if (!matchesAt(candidate)) continue
+            val distance = kotlin.math.abs(candidate - preferredIndex)
+            if (distance < bestDistance) {
+                best = candidate + 1
+                bestDistance = distance
+            }
+        }
+        return best
+    }
+
+    private fun splitTranscriptLines(text: String): List<String> {
+        val normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+        return if (normalized.isEmpty()) emptyList() else normalized.split('\n')
     }
 
     private fun renderTranscriptHtml(snapshot: List<LinkedHashMap<String, Any?>>): String {
@@ -548,6 +696,15 @@ object FlightRecorder {
             "raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s",
             "preamble", "introduction" -> type
             else -> null
+        }
+    }
+
+    private fun transcriptActivityProperty(entry: Map<String, Any?>): String {
+        val explicit = transcriptPrimaryProperty(entry)
+        if (!explicit.isNullOrBlank()) return explicit
+        return when (entry["type"]?.toString()) {
+            "fragment", "all", "launch" -> "code"
+            else -> "code"
         }
     }
 

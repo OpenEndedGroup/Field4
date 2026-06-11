@@ -412,7 +412,7 @@ private fun applyAgentProperty(box: Box, property: String, value: JsonElement) {
                 if (property == "name") box.name = value.content
                 else box.setPropertyRaw(property, value.content, doResync = true)
                 if (Box.ioSeparateProperties.containsKey(property) && !box.inside.ephemeral) {
-                    box.inside.pendingSidecarSaves += box.id to property
+                    box.inside.markSidecarPending(box.id, property)
                 }
             }
             value.booleanOrNull != null -> box.setPropertyRaw(property, value.booleanOrNull!!, doResync = true)

@@ -71,6 +71,7 @@ fun installAi4() {
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatHistoryByKey = ConcurrentHashMap<String, String>()
+    val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
 
     fun langSpecForName(name: String): LanguageSpec = when {
         name.equals("Kotlin", ignoreCase = true) -> KOTLIN_SCRIPT
@@ -117,6 +118,11 @@ fun installAi4() {
         ).also {
             chatThreadByKey[fileKey] = it
         }
+
+    fun aiSetupMessage(t: Throwable): String {
+        if (t is MissingOpenAiCredentialException) return t.message ?: "AI4 needs an OpenAI Platform key."
+        return "AI4 could not initialize OpenAI support: ${t.message ?: t::class.java.simpleName}"
+    }
 
     data class FileRef(val document: String, val uid: String, val property: String)
 
@@ -270,15 +276,29 @@ fun installAi4() {
 
         if (bridge == null) {
             val uiLog = NotifyLog()
-            bridge = OpenAiIdeCodexBridge(log = uiLog)
-            helpers = IdeChatHelpers(bridge!!, log = uiLog)
-            notify("Initializing AI support v4", "AI4")
+            try {
+                bridge = OpenAiIdeCodexBridge(log = uiLog)
+                helpers = IdeChatHelpers(bridge!!, log = uiLog)
+                notify("Initializing AI support v4", "AI4")
+            } catch (t: Throwable) {
+                val messageText = aiSetupMessage(t)
+                lprintln("warning,ai4", messageText)
+                notify(messageText, "AI4 setup")
+                return@mutableSetOf Handled.yes
+            }
         }
 
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
-            chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = uiLog)
-            chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
+            try {
+                chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = uiLog)
+                chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
+            } catch (t: Throwable) {
+                val messageText = aiSetupMessage(t)
+                lprintln("warning,ai4", messageText)
+                notify(messageText, "AI4 setup")
+                return@mutableSetOf Handled.yes
+            }
         }
 
         val sessionInfo = thisSessionInfo.get()
@@ -398,6 +418,7 @@ fun installAi4() {
         }
 
         val expandedExtraPrompt = expandBoxSlashRefs(exec.extraPrompt)
+        val agentMemory = agentMemoryByKey.computeIfAbsent(fileKey) { AgentMemoryState() }
 
         val preamblePropertyRegex =
             Regex("""(?:var|val)\s+([A-Za-z0-9_.$]+)\.([A-Za-z_][A-Za-z0-9_]*)\s+by\s+([A-Za-z0-9_.$]+)(?:\s*<\s*([^>\n]+)\s*>)?""")
@@ -1448,6 +1469,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
@@ -1503,6 +1525,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
@@ -1540,6 +1563,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
@@ -1561,6 +1585,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
@@ -1582,6 +1607,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
@@ -1640,8 +1666,16 @@ fun installAi4() {
                     val additions = chatResult.conversationAdditions
                         .filter { it.isNotBlank() }
                         .joinToString("\n") { it.trimEnd() }
+                    val checklistMarkdown = agentMemory.checklistMarkdown()
+                    val responseWithChecklist = buildString {
+                        append(trimmedResponse.ifEmpty { "_(no response)_" })
+                        if (checklistMarkdown.isNotBlank()) {
+                            append("\n\n")
+                            append(checklistMarkdown)
+                        }
+                    }
                     val next = renderLiveConversation(
-                        aiText = trimmedResponse.ifEmpty { "_(no response)_" },
+                        aiText = responseWithChecklist,
                         latestProgressOpen = false,
                         additions = additions
                     )
@@ -1660,6 +1694,11 @@ fun installAi4() {
                         if (commentary.isNotBlank()) {
                             append("\n\n")
                             append(commentary)
+                        }
+                        val checklistMarkdown = agentMemory.checklistMarkdown()
+                        if (checklistMarkdown.isNotBlank()) {
+                            append("\n\n")
+                            append(checklistMarkdown)
                         }
                     }
                     sendFinalVisibleAiPanel(finalMarkdown)
@@ -1690,6 +1729,7 @@ fun installAi4() {
         
         val fileKey = "chat:${documentName()}"
         val state = chatThreadFor(fileKey, "")
+        val agentMemory = agentMemoryByKey.computeIfAbsent(fileKey) { AgentMemoryState() }
         
         ai4Scope.launch {
             try {
@@ -1717,13 +1757,22 @@ fun installAi4() {
                     code = "",
                     lang = lang,
                     userPrompt = userMessage,
-                    imageUrls = input.images
+                    imageUrls = input.images,
+                    agentMemory = agentMemory
                 )
                 
                 chatThreadByKey[fileKey] = result.threadState
                 
                 // Format response with markdown
-                val formattedResponse = formatMarkdown(result.text)
+                val responseWithChecklist = buildString {
+                    append(result.text)
+                    val checklistMarkdown = agentMemory.checklistMarkdown()
+                    if (checklistMarkdown.isNotBlank()) {
+                        append("\n\n")
+                        append(checklistMarkdown)
+                    }
+                }
+                val formattedResponse = formatMarkdown(responseWithChecklist)
                 
                 // Send final response
                 inMain {

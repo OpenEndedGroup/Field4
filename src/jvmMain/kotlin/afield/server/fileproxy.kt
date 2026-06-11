@@ -271,7 +271,7 @@ fun fileProxyHandlers() {
             needsResync.add(created to "parents")
             needsResync.add(created to "actions")
             created.resyncAll()
-            info.pendingSidecarSaves += uid to "file_proxy_path"
+            info.markSidecarPending(uid, "file_proxy_path")
             info.topologyGeneration++
             doResync()
 

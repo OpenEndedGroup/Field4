@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.openai.client.OpenAIClient
-import com.openai.client.okhttp.OpenAIOkHttpClient
 import com.openai.core.JsonValue
 import com.openai.helpers.ResponseAccumulator
 import com.openai.models.ChatModel
@@ -18,7 +17,7 @@ import com.openai.models.responses.*
 import java.util.*
 
 class OpenAiIdeCodexBridge(
-    private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
+    private val client: OpenAIClient = openAiClientFromFieldConfig(),
     model: String = Ai4ModelDefaults.FLAGSHIP_MODEL,
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
@@ -700,6 +699,10 @@ class OpenAiIdeCodexBridge(
         is ReloadShadersResult ->
             "success=${toolResult.success} reloaded=${toolResult.reloaded.joinToString(",")} " +
                 "errors=${toolResult.errors.size} visual=${toolResult.visualCheckAttached}"
+        is ScratchpadResult ->
+            "success=${toolResult.success} chars=${toolResult.charCount} message=${truncate(toolResult.message, 120)}"
+        is ChecklistResult ->
+            "success=${toolResult.success} items=${toolResult.items.size} message=${truncate(toolResult.message, 120)}"
         is WorkspaceSymbolSearchResult -> {
             val preview = toolResult.matches.take(3).joinToString(" | ") { match ->
                 val guideHint = when {
@@ -798,6 +801,22 @@ class OpenAiIdeCodexBridge(
         tools.register(ReloadShadersRequest::class.java) { ctx, req ->
             ctx.reloadShaders?.invoke(req)
                 ?: throw IllegalStateException("ReloadShaders not available for this request.")
+        }
+        tools.register(ScratchpadReadRequest::class.java) { ctx, _ ->
+            ctx.agentMemory?.readScratchpad()
+                ?: throw IllegalStateException("Scratchpad not available for this request.")
+        }
+        tools.register(ScratchpadUpdateRequest::class.java) { ctx, req ->
+            ctx.agentMemory?.updateScratchpad(req)
+                ?: throw IllegalStateException("Scratchpad not available for this request.")
+        }
+        tools.register(ChecklistReadRequest::class.java) { ctx, _ ->
+            ctx.agentMemory?.readChecklist()
+                ?: throw IllegalStateException("Checklist not available for this request.")
+        }
+        tools.register(ChecklistUpdateRequest::class.java) { ctx, req ->
+            ctx.agentMemory?.updateChecklist(req)
+                ?: throw IllegalStateException("Checklist not available for this request.")
         }
 
         // Optional extra tool

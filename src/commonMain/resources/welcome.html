@@ -208,7 +208,8 @@
             color: var(--field-danger);
         }
 
-        .workspace-header {
+        .workspace-header,
+        .ai-settings-header {
             display: grid;
             grid-template-columns: auto 1fr;
             gap: 10px;
@@ -216,11 +217,14 @@
             font-size: 12px;
         }
 
-        .workspace-label {
+        .workspace-label,
+        .ai-settings-label {
             color: var(--field-text-soft);
         }
 
-        #current-workspace {
+        #current-workspace,
+        #ai-settings-state,
+        #ai-settings-path {
             min-width: 0;
             color: var(--field-cyan);
             overflow: hidden;
@@ -228,14 +232,20 @@
             white-space: nowrap;
         }
 
-        .workspace-controls {
+        .workspace-controls,
+        .ai-settings-controls {
             display: grid;
             grid-template-columns: 1fr auto auto;
             gap: 8px;
             align-items: center;
         }
 
-        #workspace-path {
+        .ai-settings-controls {
+            grid-template-columns: 1fr auto;
+        }
+
+        #workspace-path,
+        #openai-platform-key {
             width: 100%;
             background: rgba(0, 0, 0, 0.8);
             color: var(--field-cyan);
@@ -245,24 +255,28 @@
             font: inherit;
         }
 
-        #workspace-path::placeholder {
+        #workspace-path::placeholder,
+        #openai-platform-key::placeholder {
             font-size: 12px;
             color: rgba(164, 193, 210, 0.8);
         }
 
-        #workspace-path:focus {
+        #workspace-path:focus,
+        #openai-platform-key:focus {
             outline: none;
             border-color: var(--field-cyan);
             box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
         }
 
-        #workspace-status {
+        #workspace-status,
+        #ai-settings-status {
             min-height: 1.2em;
             font-size: 12px;
             color: var(--field-text-soft);
         }
 
-        #workspace-status.error {
+        #workspace-status.error,
+        #ai-settings-status.error {
             color: var(--field-danger);
         }
 
@@ -270,7 +284,7 @@
             padding: 0;
             overflow: hidden;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(280px, 0.65fr);
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 0.65fr) minmax(280px, 0.65fr);
         }
 
         .changelog-panel details {
@@ -314,7 +328,8 @@
             font-size: 11px;
         }
 
-        .workspace-details-body {
+        .workspace-details-body,
+        .ai-settings-body {
             padding: 0 12px 12px;
             display: grid;
             gap: 8px;
@@ -795,11 +810,15 @@
             }
 
             .workspace-header,
-            .workspace-controls {
+            .workspace-controls,
+            .ai-settings-header,
+            .ai-settings-controls {
                 grid-template-columns: 1fr;
             }
 
-            #current-workspace {
+            #current-workspace,
+            #ai-settings-state,
+            #ai-settings-path {
                 white-space: normal;
                 word-break: break-all;
             }
@@ -928,6 +947,27 @@
                 <div id="workspace-status" aria-live="polite"></div>
             </div>
         </details>
+        <details id="ai-settings-details">
+            <summary>
+                <span>AI</span>
+                <span id="ai-settings-summary" class="changelog-count">checking</span>
+            </summary>
+            <div class="ai-settings-body">
+                <div class="ai-settings-header">
+                    <span class="ai-settings-label">OpenAI</span>
+                    <span id="ai-settings-state">checking</span>
+                </div>
+                <div class="ai-settings-controls">
+                    <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
+                    <button id="save-openai-platform-key" type="button">Save</button>
+                </div>
+                <div class="ai-settings-header">
+                    <span class="ai-settings-label">Path</span>
+                    <span id="ai-settings-path"></span>
+                </div>
+                <div id="ai-settings-status" aria-live="polite"></div>
+            </div>
+        </details>
     </section>
 
     <section class="panel running-panel" id="running-panel" hidden>
@@ -972,7 +1012,13 @@
         currentWorkspace: "",
         defaultWorkspace: "",
         recentWorkspaces: [],
-        workspaceSwitching: false
+        workspaceSwitching: false,
+        aiSettings: {
+            hasOpenAiPlatformKey: false,
+            source: "",
+            configPath: ""
+        },
+        savingAiSettings: false
     };
     let searchController = null;
     let searchDebounceTimer = null;
@@ -1074,6 +1120,30 @@
 
     function setWorkspaceStatus(text, isError = false) {
         const node = document.getElementById("workspace-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderAiSettings() {
+        const summary = document.getElementById("ai-settings-summary");
+        const stateNode = document.getElementById("ai-settings-state");
+        const pathNode = document.getElementById("ai-settings-path");
+        const input = document.getElementById("openai-platform-key");
+        const button = document.getElementById("save-openai-platform-key");
+        const settings = state.aiSettings || {};
+        const configured = !!settings.hasOpenAiPlatformKey;
+        const source = settings.source || "";
+
+        if (summary) summary.textContent = configured ? "configured" : "missing key";
+        if (stateNode) stateNode.textContent = configured ? `configured${source ? ` (${source})` : ""}` : "missing OPENAI_PLATFORM_KEY";
+        if (pathNode) pathNode.textContent = settings.configPath || "";
+        if (input) input.disabled = state.savingAiSettings;
+        if (button) button.disabled = state.savingAiSettings;
+    }
+
+    function setAiSettingsStatus(text, isError = false) {
+        const node = document.getElementById("ai-settings-status");
         if (!node) return;
         node.textContent = text || "";
         node.classList.toggle("error", !!isError);
@@ -1553,14 +1623,17 @@
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
             state.currentWorkspace = payload.currentWorkspace || state.currentWorkspace || "";
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
+            state.aiSettings = payload.aiSettings || state.aiSettings;
             rememberWorkspace(state.currentWorkspace);
             renderWorkspaceControls();
+            renderAiSettings();
             renderList();
         } catch (error) {
             console.error("Failed to load welcome docs", error);
             state.documents = [];
             state.runningDocuments = [];
             renderWorkspaceControls();
+            renderAiSettings();
             renderList();
             setCreateStatus("Could not load workspace documents.", true);
         }
@@ -1798,6 +1871,46 @@
         }
     }
 
+    async function saveAiSettings() {
+        const input = document.getElementById("openai-platform-key");
+        const key = String(input?.value || "").trim();
+        if (!key) {
+            setAiSettingsStatus("Enter an OpenAI Platform key.", true);
+            return;
+        }
+
+        state.savingAiSettings = true;
+        renderAiSettings();
+        setAiSettingsStatus("Saving...");
+
+        try {
+            const response = await fetch("/api/ai-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ openAiPlatformKey: key })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            state.aiSettings = {
+                hasOpenAiPlatformKey: !!payload.hasOpenAiPlatformKey,
+                source: payload.source || "",
+                configPath: payload.configPath || state.aiSettings.configPath || ""
+            };
+            if (input) input.value = "";
+            setAiSettingsStatus(payload.message || "OpenAI Platform key saved.");
+        } catch (error) {
+            console.error("Failed to save AI settings", error);
+            setAiSettingsStatus(error?.message || "Could not save OpenAI Platform key.", true);
+        } finally {
+            state.savingAiSettings = false;
+            renderAiSettings();
+        }
+    }
+
     function installDocumentListHandlers(listNode) {
         listNode.querySelectorAll(".doc-entry").forEach((entry) => {
             entry.addEventListener("click", (event) => {
@@ -1876,6 +1989,8 @@
         const workspaceInput = document.getElementById("workspace-path");
         const defaultWorkspaceButton = document.getElementById("default-workspace");
         const openWorkspaceButton = document.getElementById("open-workspace");
+        const openAiKeyInput = document.getElementById("openai-platform-key");
+        const saveOpenAiKeyButton = document.getElementById("save-openai-platform-key");
 
         const runCreate = () => {
             const name = nameInput.value.trim();
@@ -1929,6 +2044,18 @@
 
         workspaceInput?.addEventListener("input", () => {
             if (!state.workspaceSwitching) setWorkspaceStatus("");
+        });
+
+        saveOpenAiKeyButton?.addEventListener("click", saveAiSettings);
+
+        openAiKeyInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            saveAiSettings();
+        });
+
+        openAiKeyInput?.addEventListener("input", () => {
+            setAiSettingsStatus("");
         });
 
         shutdownButton?.addEventListener("click", async () => {

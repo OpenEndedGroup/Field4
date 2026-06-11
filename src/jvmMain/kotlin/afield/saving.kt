@@ -2,6 +2,7 @@
 
 package afield
 
+import afield.ai.core.Ai4AutoBoxNamer
 import afield.logger.SaveReloadLog
 import afield.logger.lprintln
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -248,12 +249,12 @@ class SavingContext {
      * 
      * This approach prevents frame hiccups in VR by moving heavy I/O operations off the main thread.
      */
-    fun save(fn: String, boxes: Set<Box>, message: String? = null) {
+    fun save(fn: String, boxes: Set<Box>, message: String? = null, onComplete: (() -> Unit)? = null) {
         // Phase 1: Snapshot in main thread - capture all data we need
         val snapshot = snapshotBoxes(boxes, fn)
         
         // Phase 2: Perform I/O operations in background thread
-        saveInBackground(snapshot, fn, message)
+        saveInBackground(snapshot, fn, boxes, message, onComplete)
     }
     
     /**
@@ -301,7 +302,7 @@ class SavingContext {
      * Phase 2: Perform all I/O operations in a background thread.
      * This includes file writing and backups.
      */
-    private fun saveInBackground(snapshot: SaveSnapshot, fn: String, message: String?) {
+    private fun saveInBackground(snapshot: SaveSnapshot, fn: String, boxes: Set<Box>, message: String?, onComplete: (() -> Unit)?) {
         // Launch on background thread pool - using the project's standard miscPool
         GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             try {
@@ -418,6 +419,13 @@ class SavingContext {
                                     }
                                 }
                             }
+                            onComplete?.invoke()
+                            Ai4AutoBoxNamer.scheduleAfterSave(fn, boxes, message)
+                        }
+                    } else {
+                        inMain {
+                            onComplete?.invoke()
+                            Ai4AutoBoxNamer.scheduleAfterSave(fn, boxes, message)
                         }
                     }
                 }
@@ -1433,28 +1441,21 @@ fun File.safeSave(text: String): Boolean {
         // Read current file content
         val currentContent = file.readText()
         if (currentContent != text) {
-            // Only create the backup directory when a backup is needed
             val backupDir = File(file.parentFile, "backups")
-            if (!backupDir.exists()) {
-                backupDir.mkdirs()
-            }
+            val latestBackup = file.latestSafeSaveBackup(backupDir)
+            val currentAlreadyBackedUp = latestBackup?.let { backup ->
+                runCatching { backup.readText() == currentContent }.getOrDefault(false)
+            } ?: false
 
-            // Determine backup file name inside the backup directory
-            val baseName = file.nameWithoutExtension
-            val extension = file.extension
-            var backupIndex = 0
-            var backupFile: File
-            do {
-                val indexStr = String.format("%05d", backupIndex)
-                val backupFileName = if (extension.isNotEmpty())
-                    "${baseName}_backup_$indexStr.$extension"
-                else
-                    "${baseName}_backup_$indexStr"
-                backupFile = File(backupDir, backupFileName)
-                backupIndex++
-            } while (backupFile.exists())
-            // Rename the current file to the backup file name in the backup directory
-            file.renameTo(backupFile)
+            if (!currentAlreadyBackedUp) {
+                if (!backupDir.exists()) {
+                    backupDir.mkdirs()
+                }
+
+                val backupFile = file.nextSafeSaveBackup(backupDir)
+                // Rename the current file to the backup file name in the backup directory
+                file.renameTo(backupFile)
+            }
         } else {
             // If the content is the same, do nothing.
             return false
@@ -1463,4 +1464,45 @@ fun File.safeSave(text: String): Boolean {
     // Write the new text to the file
     file.writeText(text)
     return true
+}
+
+private fun File.safeSaveBackupPrefix(): String = "${nameWithoutExtension}_backup_"
+
+private fun File.safeSaveBackupName(index: Int): String {
+    val indexStr = String.format("%05d", index)
+    return if (extension.isNotEmpty()) {
+        "${safeSaveBackupPrefix()}$indexStr.$extension"
+    } else {
+        "${safeSaveBackupPrefix()}$indexStr"
+    }
+}
+
+private fun File.safeSaveBackupIndex(backup: File): Int? {
+    val prefix = safeSaveBackupPrefix()
+    val suffix = if (extension.isNotEmpty()) ".${extension}" else ""
+    val name = backup.name
+    if (!name.startsWith(prefix)) return null
+    if (suffix.isNotEmpty() && !name.endsWith(suffix)) return null
+    val index = name.removePrefix(prefix).let {
+        if (suffix.isNotEmpty()) it.removeSuffix(suffix) else it
+    }
+    return index.toIntOrNull()
+}
+
+private fun File.latestSafeSaveBackup(backupDir: File): File? {
+    if (!backupDir.isDirectory) return null
+    return backupDir.listFiles()
+        ?.mapNotNull { backup -> safeSaveBackupIndex(backup)?.let { it to backup } }
+        ?.maxByOrNull { it.first }
+        ?.second
+}
+
+private fun File.nextSafeSaveBackup(backupDir: File): File {
+    var backupIndex = 0
+    var backupFile: File
+    do {
+        backupFile = File(backupDir, safeSaveBackupName(backupIndex))
+        backupIndex++
+    } while (backupFile.exists())
+    return backupFile
 }

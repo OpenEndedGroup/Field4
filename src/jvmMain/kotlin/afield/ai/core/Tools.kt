@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
 /**
  * Commentary tool: model uses this for non-code notes/questions/alternatives.
@@ -151,6 +154,217 @@ data class ReloadShadersResult(
     val visualDataUrl: String = ""
 )
 
+/** Long-running task tools -------------------------------------------------- */
+
+@JsonClassDescription("Read the persistent scratchpad for this chat. Use it to recover durable notes, decisions, constraints, and handoff context from earlier turns.")
+data class ScratchpadReadRequest(val unused: Int = 0)
+
+@JsonClassDescription("Update the persistent scratchpad for this chat. Use append to add durable notes, replace to rewrite the whole scratchpad, or clear to erase it.")
+data class ScratchpadUpdateRequest(
+    val operation: String = "append",
+    val text: String = ""
+)
+
+data class ScratchpadResult(
+    val success: Boolean,
+    val message: String,
+    val text: String = "",
+    val charCount: Int = 0
+)
+
+@JsonClassDescription("Read the persistent checklist for this chat. Use it to track long-running tasks across turns.")
+data class ChecklistReadRequest(val unused: Int = 0)
+
+@JsonClassDescription("Update the persistent checklist for this chat. Use operation add, update, complete, reopen, remove, replace, or clear. For update/complete/reopen/remove, itemId identifies the item.")
+data class ChecklistUpdateRequest(
+    val operation: String,
+    val itemId: String = "",
+    val text: String = "",
+    val status: String = "pending",
+    val items: List<ChecklistItemInput> = emptyList()
+)
+
+data class ChecklistItemInput(
+    val text: String,
+    val status: String = "pending",
+    val id: String = ""
+)
+
+data class ChecklistItem(
+    val id: String,
+    val text: String,
+    val status: String = "pending"
+)
+
+data class ChecklistResult(
+    val success: Boolean,
+    val message: String,
+    val items: List<ChecklistItem> = emptyList()
+)
+
+class AgentMemoryState {
+    private val lock = ReentrantReadWriteLock()
+    private var scratchpad: String = ""
+    private val checklist = mutableListOf<ChecklistItem>()
+    private var nextChecklistId = 1
+
+    fun readScratchpad(): ScratchpadResult = lock.read {
+        ScratchpadResult(
+            success = true,
+            message = if (scratchpad.isBlank()) "Scratchpad is empty." else "Scratchpad loaded.",
+            text = scratchpad,
+            charCount = scratchpad.length
+        )
+    }
+
+    fun updateScratchpad(request: ScratchpadUpdateRequest): ScratchpadResult = lock.write {
+        when (request.operation.trim().lowercase()) {
+            "append" -> {
+                val addition = request.text.trim()
+                if (addition.isBlank()) {
+                    return@write ScratchpadResult(false, "Append requires non-empty text.", scratchpad, scratchpad.length)
+                }
+                scratchpad = buildString {
+                    append(scratchpad.trimEnd())
+                    if (isNotEmpty()) append("\n\n")
+                    append(addition)
+                }
+                ScratchpadResult(true, "Scratchpad appended.", scratchpad, scratchpad.length)
+            }
+            "replace", "set" -> {
+                scratchpad = request.text.trim()
+                ScratchpadResult(true, "Scratchpad replaced.", scratchpad, scratchpad.length)
+            }
+            "clear" -> {
+                scratchpad = ""
+                ScratchpadResult(true, "Scratchpad cleared.", scratchpad, 0)
+            }
+            else -> ScratchpadResult(
+                false,
+                "Unknown scratchpad operation '${request.operation}'. Use append, replace, or clear.",
+                scratchpad,
+                scratchpad.length
+            )
+        }
+    }
+
+    fun readChecklist(): ChecklistResult = lock.read {
+        ChecklistResult(
+            success = true,
+            message = if (checklist.isEmpty()) "Checklist is empty." else "Checklist loaded.",
+            items = checklist.toList()
+        )
+    }
+
+    fun updateChecklist(request: ChecklistUpdateRequest): ChecklistResult = lock.write {
+        fun normalizedStatus(raw: String): String = when (raw.trim().lowercase()) {
+            "done", "complete", "completed", "checked" -> "done"
+            "in_progress", "in-progress", "active", "doing" -> "in_progress"
+            else -> "pending"
+        }
+
+        fun findIndex(id: String): Int {
+            val trimmed = id.trim()
+            if (trimmed.isBlank()) return -1
+            checklist.indexOfFirst { it.id == trimmed }.takeIf { it >= 0 }?.let { return it }
+            val numeric = trimmed.toIntOrNull()
+            if (numeric != null && numeric in 1..checklist.size) return numeric - 1
+            return -1
+        }
+
+        fun nextId(): String = (nextChecklistId++).toString()
+
+        val op = request.operation.trim().lowercase()
+        val result = when (op) {
+            "add" -> {
+                val text = request.text.trim()
+                if (text.isBlank()) {
+                    ChecklistResult(false, "Add requires non-empty text.", checklist.toList())
+                } else {
+                    checklist += ChecklistItem(nextId(), text, normalizedStatus(request.status))
+                    ChecklistResult(true, "Checklist item added.", checklist.toList())
+                }
+            }
+            "update", "set" -> {
+                val idx = findIndex(request.itemId)
+                val text = request.text.trim()
+                if (idx < 0) {
+                    ChecklistResult(false, "Unknown checklist item '${request.itemId}'.", checklist.toList())
+                } else if (text.isBlank()) {
+                    ChecklistResult(false, "Update requires non-empty text.", checklist.toList())
+                } else {
+                    val old = checklist[idx]
+                    val status = if (request.status.isBlank()) old.status else normalizedStatus(request.status)
+                    checklist[idx] = old.copy(text = text, status = status)
+                    ChecklistResult(true, "Checklist item updated.", checklist.toList())
+                }
+            }
+            "complete", "done" -> {
+                val idx = findIndex(request.itemId)
+                if (idx < 0) {
+                    ChecklistResult(false, "Unknown checklist item '${request.itemId}'.", checklist.toList())
+                } else {
+                    checklist[idx] = checklist[idx].copy(status = "done")
+                    ChecklistResult(true, "Checklist item completed.", checklist.toList())
+                }
+            }
+            "reopen", "pending" -> {
+                val idx = findIndex(request.itemId)
+                if (idx < 0) {
+                    ChecklistResult(false, "Unknown checklist item '${request.itemId}'.", checklist.toList())
+                } else {
+                    checklist[idx] = checklist[idx].copy(status = "pending")
+                    ChecklistResult(true, "Checklist item reopened.", checklist.toList())
+                }
+            }
+            "remove", "delete" -> {
+                val idx = findIndex(request.itemId)
+                if (idx < 0) {
+                    ChecklistResult(false, "Unknown checklist item '${request.itemId}'.", checklist.toList())
+                } else {
+                    checklist.removeAt(idx)
+                    ChecklistResult(true, "Checklist item removed.", checklist.toList())
+                }
+            }
+            "replace" -> {
+                checklist.clear()
+                request.items.forEach { item ->
+                    val text = item.text.trim()
+                    if (text.isNotBlank()) {
+                        val id = item.id.trim().ifBlank { nextId() }
+                        checklist += ChecklistItem(id, text, normalizedStatus(item.status))
+                    }
+                }
+                ChecklistResult(true, "Checklist replaced.", checklist.toList())
+            }
+            "clear" -> {
+                checklist.clear()
+                ChecklistResult(true, "Checklist cleared.", emptyList())
+            }
+            else -> ChecklistResult(
+                false,
+                "Unknown checklist operation '${request.operation}'. Use add, update, complete, reopen, remove, replace, or clear.",
+                checklist.toList()
+            )
+        }
+        result
+    }
+
+    fun checklistMarkdown(): String = lock.read {
+        if (checklist.isEmpty()) return@read ""
+        buildString {
+            appendLine("**Checklist**")
+            checklist.forEach { item ->
+                append(if (item.status == "done") "- [x] " else "- [ ] ")
+                append(item.text)
+                append(" ")
+                append("`#${item.id}`")
+                appendLine()
+            }
+        }.trimEnd()
+    }
+}
+
 /** Example tool (optional) ------------------------------------------------- */
 @JsonClassDescription("Looks up symbols in the IDE workspace index. Results may include relatedGuides and relatedExamples paths.")
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25)
@@ -190,6 +404,8 @@ data class ToolExecutionContext(
     val editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
     val compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
     val reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+
+    val agentMemory: AgentMemoryState? = null,
 
     // Optional extra tools
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,

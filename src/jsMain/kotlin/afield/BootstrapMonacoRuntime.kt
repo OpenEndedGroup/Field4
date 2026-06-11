@@ -260,6 +260,9 @@ private fun monitorSelection() {
         if (monaco != null && monaco != undefined) {
             monacoInstallPropertySwitchActions(monaco, globalEditor)
         }
+        if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+            w.LineHeatmap.scheduleRefresh(globalEditor, true)
+        }
 
         updateProvisionalDiff()
     }
