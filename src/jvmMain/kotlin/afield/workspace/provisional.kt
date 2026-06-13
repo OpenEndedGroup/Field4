@@ -12,6 +12,7 @@ private val provisionalByDocument =
 private val shaderProvisionalProperties = setOf(
     "vertex",
     "fragment",
+    "stackSL",
     "vertex_fragment",
     "mesh",
     "task",

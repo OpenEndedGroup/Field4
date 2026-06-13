@@ -20,6 +20,7 @@ fun Device.nameObject(handle: Long, type: Int, name: String) {
 
 fun CommandBuffer.beginLabel(name: String, rgba: FloatBuffer) {
     if (!Options.validate) return
+    if (Options.isMac) return
     if (this.vkCommandBuffer.getCapabilitiesInstance().vkCmdBeginDebugUtilsLabelEXT == 0L) return
     MemoryStack.stackPush().use { stack ->
         val label = VkDebugUtilsLabelEXT.calloc(stack)
@@ -32,6 +33,7 @@ fun CommandBuffer.beginLabel(name: String, rgba: FloatBuffer) {
 
 fun CommandBuffer.endLabel() {
     if (!Options.validate) return
+    if (Options.isMac) return
     if (this.vkCommandBuffer.getCapabilitiesInstance().vkCmdEndDebugUtilsLabelEXT == 0L) return
     EXTDebugUtils.vkCmdEndDebugUtilsLabelEXT(this.vkCommandBuffer)
 }

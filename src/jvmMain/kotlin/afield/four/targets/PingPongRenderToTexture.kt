@@ -3,6 +3,7 @@ package afield.four.targets
 import afield.Rect
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
+import afield.four.device.Fence
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.texture.HasImageView
@@ -38,32 +39,42 @@ import org.lwjgl.vulkan.VkImageSubresourceRange
  * Each frame it renders into one image while exposing the other via [otherImageView]
  * so modules can sample the previous frame without managing two RTT instances.
  */
-class PingPongRenderToTexture(
+open class PingPongRenderToTexture(
     renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
 ) : RenderToTexture(renderer, parameters) {
 
     private val pingImages: List<Image>
-    private val pingImageViews: List<HasImageView>
+    protected val pingImageViews: List<HasImageView>
     private val pingAttachmentViews: List<ImageView>
     private val pingImageHandles: List<Long>
     private val pingLayouts = intArrayOf(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED)
     private val pingMipsInitialized = booleanArrayOf(false, false)
     private var writeIndex = 0
-    private var idleImageInitPending = false
-    private lateinit var idleImageToInitialize: Image
-    private var idleImageFinalLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
+    protected var latestIndex = 0
+        private set
+    protected var previousIndex = 1
+        private set
 
-    val otherImageView: HasImageView = object : HasImageView{
+    open val otherImageView: HasImageView = object : HasImageView{
         override val imageView: ImageView
             get() = pingImageViews[otherIndex].imageView
     }
 
-    val thisImageView: HasImageView = object : HasImageView{
+    open val thisImageView: HasImageView = object : HasImageView{
         override val imageView: ImageView
             get() = pingImageViews[writeIndex].imageView
     }
 
+    val latestImageView: HasImageView = object : HasImageView {
+        override val imageView: ImageView
+            get() = pingImageViews[latestIndex].imageView
+    }
+
+    val previousImageView: HasImageView = object : HasImageView {
+        override val imageView: ImageView
+            get() = pingImageViews[previousIndex].imageView
+    }
 
     private val otherIndex: Int
         get() = 1 - writeIndex
@@ -121,19 +132,18 @@ class PingPongRenderToTexture(
         val idleLayout =
             if (this.parameters.colorSampled) VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             else VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        idleImageToInitialize = pingImage
-        idleImageFinalLayout = idleLayout
-        idleImageInitPending = true
 
         pingImages = listOf(baseImage, pingImage)
         pingImageViews = listOf(mutableImageViewArray[0], pingView)
         pingAttachmentViews = listOf(attachmentImageViews[0], pingAttachmentView)
         pingImageHandles = listOf(colorImageHandles[0], pingImage.vkImage)
 
-        pingLayouts[0] = colorLayout.getOrElse(0) { VK_IMAGE_LAYOUT_UNDEFINED }
-        pingLayouts[1] = idleLayout
-        pingMipsInitialized[0] = colorMipsInitialized.getOrElse(0) { false }
-        pingMipsInitialized[1] = true
+        pingLayouts[0] = VK_IMAGE_LAYOUT_UNDEFINED
+        pingLayouts[1] = VK_IMAGE_LAYOUT_UNDEFINED
+        pingMipsInitialized[0] = false
+        pingMipsInitialized[1] = false
+
+        initializePingImagesNow(idleLayout)
     }
 
     private fun recordIdleImageInitialization(command: CommandBuffer, image: Image, finalLayout: Int) {
@@ -213,10 +223,32 @@ class PingPongRenderToTexture(
         }
     }
 
-    override fun prepareAdditionalResources(command: CommandBuffer, index: Int) {
-        if (!idleImageInitPending) return
-        recordIdleImageInitialization(command, idleImageToInitialize, idleImageFinalLayout)
-        idleImageInitPending = false
+    private fun initializePingImagesNow(finalLayout: Int) {
+        val command = CommandBuffer(renderer.commandPool, true, true)
+        val fence = Fence(renderer.device, true)
+        try {
+            command.beginRecording()
+            pingImages.forEach { image ->
+                recordIdleImageInitialization(command, image, finalLayout)
+            }
+            command.endRecording()
+
+            fence.reset()
+            MemoryStack.stackPush().use { stack ->
+                renderer.graphQueue.submit(stack.pointers(command.vkCommandBuffer), null, null, null, fence)
+            }
+            fence.fenceWait()
+
+            pingLayouts[0] = finalLayout
+            pingLayouts[1] = finalLayout
+            pingMipsInitialized[0] = true
+            pingMipsInitialized[1] = true
+            colorLayout[0] = finalLayout
+            colorMipsInitialized[0] = true
+        } finally {
+            fence.cleanup()
+            command.cleanup()
+        }
     }
 
     override fun blitToScreen(
@@ -257,8 +289,80 @@ class PingPongRenderToTexture(
 
     override fun afterRender(index: Int) {
         val write = writeIndex
+        val previous = otherIndex
         pingLayouts[write] = colorLayout[0]
         pingMipsInitialized[write] = colorMipsInitialized[0]
-        writeIndex = otherIndex
+        latestIndex = write
+        previousIndex = previous
+        writeIndex = previous
+    }
+}
+
+/**
+ * A [PingPongRenderToTexture] that only advances the ping-pong pair once every
+ * [framesPerPingPong] render calls. Between advances, [thisImageView] remains
+ * the latest completed texture and [otherImageView] remains the previous one,
+ * so downstream modules can crossfade from `other` to `this` with [crossfade].
+ */
+class FrameCadencedPingPongRenderToTexture(
+    renderer: Renderer = fromContext(),
+    framesPerPingPong: Int = 1,
+    parameters: RTTParameters.() -> Unit = {}
+) : PingPongRenderToTexture(renderer, parameters) {
+
+    var framesPerPingPong: Int = framesPerPingPong.coerceAtLeast(1)
+        set(value) {
+            val safeValue = value.coerceAtLeast(1)
+            field = safeValue
+            framesSincePingPong = framesSincePingPong.coerceAtMost(safeValue - 1)
+        }
+
+    var framesSincePingPong: Int = 0
+        private set
+
+    var pingPongCount: Long = 0
+        private set
+
+    val framesUntilPingPong: Int
+        get() = if (pingPongCount == 0L) 0 else (framesPerPingPong - 1 - framesSincePingPong).coerceAtLeast(0)
+
+    /**
+     * 0 immediately after a ping-pong render, 1 on the last held frame before
+     * the next one. Intended for `mix(other, this, crossfade)`.
+     */
+    val crossfade: Float
+        get() = if (framesPerPingPong <= 1) 1f
+        else framesSincePingPong.toFloat() / (framesPerPingPong - 1).toFloat()
+
+    /**
+     * Similar to [crossfade], but normalized by the whole cadence period and
+     * therefore stays below 1 before the next ping-pong.
+     */
+    val framePhase: Float
+        get() = framesSincePingPong.toFloat() / framesPerPingPong.toFloat()
+
+    override val thisImageView: HasImageView = object : HasImageView {
+        override val imageView: ImageView
+            get() = pingImageViews[latestIndex].imageView
+    }
+
+    override val otherImageView: HasImageView = object : HasImageView {
+        override val imageView: ImageView
+            get() = pingImageViews[previousIndex].imageView
+    }
+
+    override fun render(command: CommandBuffer, index: Int) {
+        val shouldPingPong = pingPongCount == 0L || framesSincePingPong >= framesPerPingPong - 1
+        if (shouldPingPong) {
+            super.render(command, index)
+            pingPongCount++
+            framesSincePingPong = 0
+        } else {
+            framesSincePingPong++
+        }
+    }
+
+    override fun toString(): String {
+        return "FrameCadencedPingPongRenderToTexture[${width}x${height}, every=$framesPerPingPong, crossfade=$crossfade]"
     }
 }

@@ -289,6 +289,33 @@ fun notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(uid: String, proper
     if (w.currentSelectedProperty != property) return
 }
 
+private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, editor: dynamic, property: String, value: String) {
+    val normalized = value.replace("\r\n", "\n")
+    if (w.AIDiff != null && w.AIDiff != undefined) {
+        w.AIDiff.clear(editor)
+    }
+
+    val selection = editor.getSelection()
+    if (w.pauseLineTracking != null && w.pauseLineTracking != undefined) {
+        w.pauseLineTracking()
+    }
+    editor.setValue(normalized)
+    editor.getModel().setEOL(0)
+    if (w.unpauseLineTracking != null && w.unpauseLineTracking != undefined) {
+        w.unpauseLineTracking()
+    }
+    runCatching {
+        if (selection != null && selection != undefined) {
+            editor.setSelection(selection)
+        }
+    }
+
+    selected[0][property] = normalized
+    currentValueAtOrigination = normalized
+    recentChangeCache.add(normalized)
+    if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
+}
+
 fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: String, value: String) {
     val w = js("window")
     val selected = w.currentSelectedCode
@@ -299,12 +326,18 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
 
     val editor = w.globalEditor ?: return
     val currentValue = editor.getValue() as String
-    if (currentValue == value || currentValueAtOrigination == value) return
-    if (recentChangeCache.contains(value)) return
+    val normalizedValue = value.replace("\r\n", "\n")
+    val historyRestoreIsAuthoritative = (w.__historyRestoreAuthoritative as? Boolean) == true
+    if (historyRestoreIsAuthoritative) {
+        forceEditedPropertyToRemoteValue(w, selected, editor, property, normalizedValue)
+        return
+    }
+    if (currentValue == normalizedValue || currentValueAtOrigination == normalizedValue) return
+    if (recentChangeCache.contains(normalizedValue)) return
 
     val a = currentValueAtOrigination.split("\n").toTypedArray()
     val b = currentValue.split("\n").toTypedArray()
-    val c = value.split("\n").toTypedArray()
+    val c = normalizedValue.split("\n").toTypedArray()
     val merged = w.diff.mergeDigIn(b, a, c)
     val result = (merged.result as Array<*>).joinToString("\n") { it?.toString() ?: "" }
     console.log(" testing to see if this change is actually a change ", result, currentValue)

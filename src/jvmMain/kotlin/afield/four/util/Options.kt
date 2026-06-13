@@ -25,6 +25,10 @@ object Options {
         "afield.four.profiling",
         System.getenv("AFIELD_FOUR_PROFILING") ?: "false"
     ).toBoolean()
+    var logShadercSource = System.getProperty(
+        "afield.four.logShadercSource",
+        System.getenv("AFIELD_FOUR_LOG_SHADERC_SOURCE") ?: "true"
+    ).toBoolean()
     var enableVR = true && !isMac
 
     fun doVulkanSDK() {

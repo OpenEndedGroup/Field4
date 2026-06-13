@@ -65,6 +65,8 @@ external fun setActions(actions: dynamic): dynamic
 external fun goMarkingMenu(x: Double, y: Double, menus: dynamic, event: dynamic, cancelCallback: dynamic): dynamic
 external fun provideMissingMouseup(event: dynamic): dynamic
 
+private const val AI4_AUTO_NAME_PROPERTY = "ai4_auto_name"
+
 external object Provisional {
     fun clear()
     fun set(uid: String, property: String, contents: String)
@@ -284,6 +286,7 @@ var canvasGestures = CanvasGestures(launcher = {
 var selected = mutableSetOf<HTMLElement>()
 var selectedList = eval("[]")
 var selectedProperty = "code"
+private var explicitPropertySelectionInProgress = false
 
 private val monacoRemoteTextProperties = monacoPropertyNames
     .filterNot { it == "code" || it == "contents" }
@@ -1308,7 +1311,12 @@ private fun switchSelectionToProperty(
     selectedProperty = property
     window.unsafeCast<dynamic>().selectedProperty = selectedProperty
     if (!selected.contains(box)) {
-        selectBox(box)
+        explicitPropertySelectionInProgress = true
+        try {
+            selectBox(box)
+        } finally {
+            explicitPropertySelectionInProgress = false
+        }
     } else {
         window.unsafeCast<dynamic>().selectedList = selectedList
         selectionContextChanged()
@@ -3061,9 +3069,11 @@ fun selectBox(it: HTMLElement) {
         selected.add(it)
         if (selected.size == 1) {
             val defaultProperty = it.unsafeCast<dynamic>().default_property as? String
-            if (!defaultProperty.isNullOrBlank()) {
+            if (explicitPropertySelectionInProgress) {
+                // Keep explicit property navigation from becoming a default for later box selections.
+            } else if (!defaultProperty.isNullOrBlank()) {
                 selectedProperty = defaultProperty
-            } else if (selectedProperty == "contents") {
+            } else {
                 selectedProperty = "code"
             }
         }
@@ -3376,6 +3386,12 @@ private fun applyFileProxyPresentation(box: HTMLElement) {
     }
     path.textContent = pathText
     path.title = pathText
+}
+
+private fun applyAi4AutoNameStyle(box: HTMLElement, generated: Boolean) {
+    box.asDynamic().ai4_auto_name = generated
+    val title = box.getElementsByClassName("doubleClickToEdit").asList().firstOrNull() as? HTMLElement ?: return
+    title.style.fontStyle = if (generated) "italic" else ""
 }
 
 var styles = CssBuilder().apply {
@@ -3713,6 +3729,11 @@ suspend fun main() {
                     }
                 }
             }
+            AI4_AUTO_NAME_PROPERTY -> {
+                found?.let {
+                    applyAi4AutoNameStyle(it.unsafeCast<HTMLElement>(), set.number)
+                }
+            }
             "_tombstone" -> {
                 var target = found
                 if (target == null) {
@@ -4000,9 +4021,39 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("history-restore-begin") { _, _ ->
+        js("window.__historyRestoreAuthoritative = true")
+        Handled.yes
+    }
+
+    handlers.put("history-restore-end") { _, _ ->
+        window.setTimeout({
+            js("window.__historyRestoreAuthoritative = false")
+        }, 0)
+        Handled.yes
+    }
+
     handlers.put("actor-arc") { message, _ ->
         val arc = Json.decodeFromJsonElement<ActorArc>(message.payload!!)
         drawActorArc(arc)
+        Handled.yes
+    }
+
+    handlers.put("set-null") { message, _ ->
+        val set = Json.decodeFromJsonElement<Set_null>(message.payload!!)
+        val u = set.uid
+        val found = defaultCreate(u)
+
+        found.unsafeCast<dynamic>()[set.property] = null
+        if (set.property == "name") {
+            found.getElementsByClassName("doubleClickToEdit").asList().firstOrNull()?.innerHTML = ""
+            applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
+        }
+        if (set.property in monacoRemoteTextProperties) {
+            notifyEmbeddedEditorOfRemoteUpdate(u, set.property, "")
+            notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, "")
+        }
+
         Handled.yes
     }
 
@@ -4016,6 +4067,7 @@ suspend fun main() {
             set.property == "name" -> {
                 found.getElementsByClassName("doubleClickToEdit").asList()[0].innerHTML = set.value
                 found.unsafeCast<dynamic>().name = set.value
+                applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
             }
 
             set.property == "code" -> {
@@ -4077,6 +4129,11 @@ suspend fun main() {
                 "fragment" -> {
                     found.unsafeCast<dynamic>().fragment = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "fragment", set.value)
+                }
+
+                "stackSL" -> {
+                    found.unsafeCast<dynamic>().stackSL = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "stackSL", set.value)
                 }
 
                 "vertex_fragment" -> {
@@ -5116,7 +5173,7 @@ suspend fun main() {
 
     interact(".doubleClickToEdit").on("doubletap") { event ->
         val t = event.target.unsafeCast<HTMLElement>()
-        val box = t.parentElement!!.parentElement
+        val box = t.parentElement!!.parentElement.unsafeCast<HTMLElement>()
 
         if (t.contentEditable != "true") {
             t.contentEditable = "true"
@@ -5124,6 +5181,7 @@ suspend fun main() {
             fun fireChange() {
                 box.unsafeCast<dynamic>().name = t.textContent
                 val uid = box.unsafeCast<dynamic>().uid as String
+                val wasAi4AutoNamed = box.asDynamic().ai4_auto_name == true
                 send(
                     Message("set-string").payload(
                         Set_string(
@@ -5131,6 +5189,9 @@ suspend fun main() {
                         )
                     )
                 )
+                if (wasAi4AutoNamed) {
+                    applyAi4AutoNameStyle(box, false)
+                }
             }
 
             t.onblur = {
@@ -5282,6 +5343,7 @@ fun TagConsumer<HTMLElement>.createBox(
     d1d.data_h = frame.h
     d1d.uid = uid
     d1d.name = name
+    d1d.ai4_auto_name = false
     d1d.server_visible = true
 
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement

@@ -164,6 +164,10 @@ object ShaderSPIRVUtils {
         }
 
         try {
+            if (Options.logShadercSource) {
+                logShadercSource(source, shaderKind)
+            }
+
             val result = Shaderc.shaderc_compile_into_spv(
                 compiler,
                 source.sourceText,
@@ -190,6 +194,35 @@ object ShaderSPIRVUtils {
             includeBridge?.free()
             Shaderc.shaderc_compile_options_release(opts)
             Shaderc.shaderc_compiler_release(compiler)
+        }
+    }
+
+    private fun logShadercSource(source: ShaderCompileSource, shaderKind: ShaderKind) {
+        lprintln("debug,graphics", buildString {
+            appendLine(
+                "GLSL source sent to shaderc: ${source.sourceName} " +
+                    "kind=${shaderKind.name} chars=${source.sourceText.length}"
+            )
+            appendLine("----- BEGIN GLSL ${source.sourceName} -----")
+            append(lineNumberedShaderSource(source.sourceText))
+            if (!endsWith('\n')) appendLine()
+            appendLine("----- END GLSL ${source.sourceName} -----")
+        })
+    }
+
+    private fun lineNumberedShaderSource(sourceText: String): String {
+        if (sourceText.isEmpty()) return "1 | "
+        val lines = sourceText.split('\n')
+        val renderedLineCount = if (sourceText.endsWith('\n')) lines.size - 1 else lines.size
+        val width = renderedLineCount.coerceAtLeast(1).toString().length
+        return buildString {
+            lines.forEachIndexed { index, line ->
+                if (index == lines.lastIndex && sourceText.endsWith('\n')) return@forEachIndexed
+                append((index + 1).toString().padStart(width))
+                append(" | ")
+                append(line)
+                if (index != lines.lastIndex || sourceText.endsWith('\n')) appendLine()
+            }
         }
     }
 

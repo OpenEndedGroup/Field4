@@ -161,6 +161,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "preamble",
             "attic",
             "fragment",
+            "stackSL",
             "vertex",
             "vertex_fragment",
             "mesh",
@@ -198,7 +199,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "bookmarks",
             "autorun",
             "layers",
-            "layerFrames"
+            "layerFrames",
+            "ai4_auto_name"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -217,6 +219,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "introduction",
             "attic",
             "fragment",
+            "stackSL",
             "vertex",
             "vertex_fragment",
             "task",
@@ -257,11 +260,14 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "slideShow",
             "autorun",
             "layers",
-            "layerFrames"
+            "layerFrames",
+            "ai4_auto_name",
+            "ai4_auto_name_signature"
         )
 
         var ioSeparateProperties = mutableMapOf(
             "fragment" to "glsl",
+            "stackSL" to "stacksl",
             "vertex" to "glsl",
             "vertex_fragment" to "slang",
             "compute" to "glsl",
@@ -497,7 +503,14 @@ fun doResync() {
         }
         if (box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
         val value = box.getPropertyRaw(name, null)
-        if (value == null) return@removeAll true
+        if (value == null) {
+            val message = Message("set-null").payload(Set_null(box.id, name))
+            lprintln("info,boxes", "resync $name -> $message (x${sessions.size} sessions)")
+            if (box.isInsideInitialized()) {
+                box.inside.sessions.forEach { _send(it, message) }
+            }
+            return@removeAll true
+        }
 
         var message: Message? = null
         when (name) {

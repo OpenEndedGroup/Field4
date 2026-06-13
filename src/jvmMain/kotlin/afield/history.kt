@@ -23,6 +23,11 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object HistoryManager {
 
+    private fun sendHistoryRestoreBoundary(sessionInfo: SessionInformation, begin: Boolean) {
+        val message = Message(if (begin) "history-restore-begin" else "history-restore-end")
+        sessionInfo.sessions.forEach { _send(it, message) }
+    }
+
     /**
      * Properties we consider when computing line diffs between versions.
      * These focus on textual code/content fields.
@@ -30,6 +35,7 @@ object HistoryManager {
     private val diffTextProperties = setOf(
         "code",
         "fragment",
+        "stackSL",
         "vertex",
         "vertex_fragment",
         "compute",
@@ -393,7 +399,12 @@ object HistoryManager {
             // 5. Update topology and notify in main thread
             inMain {
                 sessionInfo.topologyGeneration++
-                doResync()
+                sendHistoryRestoreBoundary(sessionInfo, begin = true)
+                try {
+                    doResync()
+                } finally {
+                    sendHistoryRestoreBoundary(sessionInfo, begin = false)
+                }
                 notify("Restored to version $targetVersionIndex (${targetVersion.boxCount} boxes)", "history")
             }
 
@@ -680,7 +691,12 @@ object HistoryManager {
 
             inMain {
                 sessionInfo.topologyGeneration++
-                doResync()
+                sendHistoryRestoreBoundary(sessionInfo, begin = true)
+                try {
+                    doResync()
+                } finally {
+                    sendHistoryRestoreBoundary(sessionInfo, begin = false)
+                }
                 notify(
                     "Cherry-picked $boxesTouched boxes from version $targetVersionIndex",
                     "history"

@@ -1230,6 +1230,44 @@ body {
     box-shadow: none;
 }
 
+.afield-stacksl-context {
+    font-family: "Iosevka", var(--field-font), monospace;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.afield-stacksl-context code {
+    color: var(--field-fg-strong);
+    background: rgba(255, 255, 255, 0.08);
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    padding: 0 3px;
+}
+
+.afield-stacksl-scope,
+.afield-stacksl-muted {
+    color: var(--field-fg-muted);
+}
+
+.afield-stacksl-signature {
+    color: var(--field-fg-strong);
+    font-weight: 600;
+}
+
+.afield-stacksl-warning {
+    color: #ffb8b8;
+}
+
+.afield-stacksl-warning code {
+    border-color: rgba(255, 125, 125, 0.44);
+    background: rgba(255, 80, 80, 0.12);
+}
+
+.afield-stacksl-warning-text {
+    color: #ff8f8f;
+    font-weight: 600;
+}
+
 .vec2-shell .vec2-tl,
 .vec2-shell .vec2-tr,
 .vec2-shell .vec2-angle,

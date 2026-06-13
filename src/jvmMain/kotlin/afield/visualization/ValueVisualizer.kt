@@ -618,6 +618,12 @@ object ValueVisualizer {
     private fun formatSizeSuffix(size: Int): String =
         """ <span style='color: #666;'>(</span>${formatNumberToken(size)}<span style='color: #666;'>)</span>"""
 
+    private fun isBlockVisualization(html: String): Boolean =
+        html.trimStart().startsWith("<div")
+
+    private fun shouldShowInlineSeparator(previousHtml: String, currentHtml: String): Boolean =
+        !isBlockVisualization(previousHtml) && !isBlockVisualization(currentHtml)
+
     private fun previewCountForListLike(size: Int): Int {
         if (size <= 0) return 0
         return if (size > LIST_INLINE_ELISION_THRESHOLD) MAX_LIST_PREVIEW else size
@@ -780,9 +786,14 @@ object ValueVisualizer {
             append("<span style='color: #aaa;'>[</span>")
 
             val preview = list.take(previewCount)
-            preview.forEachIndexed { i, item ->
-                if (i > 0) append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(item, depth + 1, visited, respectDepthLimit))
+            val renderedPreview = preview.map { item ->
+                visualizeValue(item, depth + 1, visited, respectDepthLimit)
+            }
+            renderedPreview.forEachIndexed { i, rendered ->
+                if (i > 0 && shouldShowInlineSeparator(renderedPreview[i - 1], rendered)) {
+                    append("<span style='color: #888;'>, </span>")
+                }
+                append(rendered)
             }
 
             if (size > previewCount) {
@@ -821,9 +832,14 @@ object ValueVisualizer {
             append("<span style='color: #aaa;'>{</span>")
 
             val preview = set.take(previewCount)
-            preview.forEachIndexed { i, item ->
-                if (i > 0) append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(item, depth + 1, visited, respectDepthLimit))
+            val renderedPreview = preview.map { item ->
+                visualizeValue(item, depth + 1, visited, respectDepthLimit)
+            }
+            renderedPreview.forEachIndexed { i, rendered ->
+                if (i > 0 && shouldShowInlineSeparator(renderedPreview[i - 1], rendered)) {
+                    append("<span style='color: #888;'>, </span>")
+                }
+                append(rendered)
             }
 
             if (size > previewCount) {
@@ -856,8 +872,7 @@ object ValueVisualizer {
             val entries = map.entries.take(MAX_MAP_ENTRIES).toList()
             val hasMore = size > MAX_MAP_ENTRIES
 
-            entries.forEachIndexed { i, (key, value) ->
-                val needsComma = i < entries.lastIndex || hasMore
+            entries.forEach { (key, value) ->
                 append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
                 append("<div>")
                 append(visualizeValue(key, depth + 1, visited, respectDepthLimit))
@@ -865,7 +880,6 @@ object ValueVisualizer {
                 append("<div style='color: #888; justify-self: center;'>→</div>")
                 append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
                 append(visualizeValue(value, depth + 1, visited, respectDepthLimit))
-                if (needsComma) append("<span style='color: #888;'>,</span>")
                 append("</div>")
                 append("</div>")
             }
@@ -1039,8 +1053,7 @@ object ValueVisualizer {
                 val entries = properties.toList()
                 val previewEntries = entries.take(MAX_OBJECT_FIELDS)
                 val hasMore = entries.size > previewEntries.size
-                previewEntries.forEachIndexed { i, prop ->
-                    val needsComma = i < previewEntries.lastIndex || hasMore
+                previewEntries.forEach { prop ->
                     val propValue = try {
                         prop.getter.call(obj)
                     } catch (e: Exception) {
@@ -1052,7 +1065,6 @@ object ValueVisualizer {
                     append("<div style='color: #888; justify-self: center;'>→</div>")
                     append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
                     append(visualizeValue(propValue, depth + 1, visited, respectDepthLimit))
-                    if (needsComma) append("<span style='color: #888;'>,</span>")
                     append("</div>")
                     append("</div>")
                 }
@@ -1151,9 +1163,17 @@ object ValueVisualizer {
         val title = valueTitle(value, "List")
 
         return buildString {
+            var previousRendered = if (safeStart > 0) {
+                visualizeValue(list[safeStart - 1], depth + 1, mutableSetOf(), respectDepthLimit = false)
+            } else null
             for (i in safeStart until nextEnd) {
-                append("<span style='color: #888;'>, </span>")
-                append(visualizeValue(list[i], depth + 1, visited, respectDepthLimit = false))
+                val rendered = visualizeValue(list[i], depth + 1, visited, respectDepthLimit = false)
+                val previous = previousRendered
+                if (previous != null && shouldShowInlineSeparator(previous, rendered)) {
+                    append("<span style='color: #888;'>, </span>")
+                }
+                append(rendered)
+                previousRendered = rendered
             }
             if (nextEnd < list.size) {
                 append(
@@ -1185,8 +1205,7 @@ object ValueVisualizer {
         val title = valueTitle(value, "Map")
 
         return buildString {
-            entries.subList(safeStart, nextEnd).forEachIndexed { index, (key, entryValue) ->
-                val needsComma = index < (nextEnd - safeStart - 1) || hasMore
+            entries.subList(safeStart, nextEnd).forEach { (key, entryValue) ->
                 append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
                 append("<div>")
                 append(visualizeValue(key, depth + 1, visited, respectDepthLimit = false))
@@ -1194,7 +1213,6 @@ object ValueVisualizer {
                 append("<div style='color: #888; justify-self: center;'>→</div>")
                 append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
                 append(visualizeValue(entryValue, depth + 1, visited, respectDepthLimit = false))
-                if (needsComma) append("<span style='color: #888;'>,</span>")
                 append("</div>")
                 append("</div>")
             }
@@ -1235,8 +1253,7 @@ object ValueVisualizer {
         val className = valueTitle(obj, "DataClass")
 
         return buildString {
-            entries.subList(safeStart, nextEnd).forEachIndexed { index, prop ->
-                val needsComma = index < (nextEnd - safeStart - 1) || hasMore
+            entries.subList(safeStart, nextEnd).forEach { prop ->
                 val propValue = try {
                     prop.getter.call(obj)
                 } catch (e: Exception) {
@@ -1248,7 +1265,6 @@ object ValueVisualizer {
                 append("<div style='color: #888; justify-self: center;'>→</div>")
                 append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
                 append(visualizeValue(propValue, depth + 1, visited, respectDepthLimit = false))
-                if (needsComma) append("<span style='color: #888;'>,</span>")
                 append("</div>")
                 append("</div>")
             }

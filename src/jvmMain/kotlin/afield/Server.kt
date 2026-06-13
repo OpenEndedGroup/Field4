@@ -3,6 +3,8 @@
 package afield
 
 import afield.ai.Ai4CompletionDoc
+import afield.ai.core.AI4_AUTO_NAME_PROPERTY
+import afield.ai.core.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.core.openAiCredentialStatus
 import afield.ai.core.saveOpenAiPlatformKey
 import afield.ai.core.completion.Ai4KotlinAutocomplete
@@ -1107,6 +1109,10 @@ class Server {
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     targetBox.name = set.value
+                    if (targetBox.getPropertyRaw(AI4_AUTO_NAME_PROPERTY).isTrue()) {
+                        targetBox.setPropertyRaw(AI4_AUTO_NAME_PROPERTY, false)
+                    }
+                    targetBox.setPropertyRaw(AI4_AUTO_NAME_SIGNATURE_PROPERTY, "", doResync = false)
                 } else {
                     if (set.property == "contents") {
                         try {

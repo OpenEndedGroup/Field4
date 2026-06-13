@@ -38,6 +38,7 @@ const PROPERTY_LANGUAGES = {
 	code:         "kotlin",
 	vertex:       "glsl",
 	fragment:     "glsl",
+	stackSL:      "stacksl",
 	vertex_fragment:"slang",
 	compute:      "glsl",
 	task:         "glsl",
