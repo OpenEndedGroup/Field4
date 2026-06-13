@@ -486,7 +486,7 @@ class KotlinInterface(
                         when (val e = r2.value.get().result) {
                             is ResultValue.Error -> {
                                 lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
-                                onEvalException(e.error)
+                                onEvalException(translateKotlinEvalException(e.error, s))
                                 e
                             }
 
@@ -563,7 +563,7 @@ class KotlinInterface(
                     when (val e = r.value.get().result) {
                         is ResultValue.Error -> {
                             lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
-                            onEvalException(e.error)
+                            onEvalException(translateKotlinEvalException(e.error))
                             e
                         }
 

@@ -2018,6 +2018,11 @@ class KotlinExecution : BoxExecution {
             return
         }
 
+        if (GlslCompletionSupport.isGlslProperty(property)) {
+            reply(Message("complete").payload(GlslCompletionSupport.complete(box, exec)))
+            return
+        }
+
         if (shaderSpecForProperty(property) != null) {
             val docName = File(thisSessionInfo.get().filename).name
             val fileKey = "afield://$docName/${box.id}/$property"

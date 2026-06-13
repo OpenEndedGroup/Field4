@@ -105,6 +105,39 @@ interface PreparedSnippet {
     ): ResultValue?
 }
 
+internal fun translateKotlinEvalException(throwable: Throwable, source: String? = null): Throwable {
+    val isMissingReplState = throwable.causeChain().any {
+        val message = it.message.orEmpty().replace('/', '.')
+        (it is NoClassDefFoundError || it is ClassNotFoundException) &&
+            (message == "ReplState" || message.endsWith(".ReplState"))
+    }
+    if (!isMissingReplState) return throwable
+
+    val packageDeclaration = source
+        ?.lineSequence()
+        ?.map { it.trim() }
+        ?.firstOrNull { it.startsWith("package ") }
+
+    val packageMessage = packageDeclaration?.let {
+        " Remove `$it`; use `import ...` lines instead."
+    } ?: " This usually means the snippet contains a `package ...` declaration; use `import ...` lines instead."
+
+    return IllegalArgumentException(
+        "Field code properties are evaluated as Kotlin REPL snippets, not standalone Kotlin source files." +
+            packageMessage,
+        throwable
+    )
+}
+
+private fun Throwable.causeChain(): Sequence<Throwable> = sequence {
+    val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+    var current: Throwable? = this@causeChain
+    while (current != null && seen.add(current)) {
+        yield(current)
+        current = current.cause
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Shared types previously duplicated in KotlinInterface and KotlinInterface2

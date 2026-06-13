@@ -11,9 +11,15 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.glfw.GLFW
@@ -27,6 +33,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import java.util.Locale
 
 // ------------------------------
@@ -1063,6 +1070,27 @@ private fun Char?.isShaderIdentifierPart(): Boolean =
  */
 private data class CompileResult(val introspection: Introspection?, val hadError: Boolean)
 
+private enum class ShaderReloadType {
+    GRAPHICS,
+    COMPUTE,
+    MESH,
+    RAY_TRACING
+}
+
+private data class ShaderReloadKey(
+    val boxIdentity: Int,
+    val type: ShaderReloadType
+)
+
+private val shaderReloadScope =
+    CoroutineScope(SupervisorJob() + Runloop.miscPool.asCoroutineDispatcher())
+
+private val shaderReloadGenerations = ConcurrentHashMap<ShaderReloadKey, AtomicLong>()
+private val shaderReloadErrorGate = ThreadLocal<(() -> Boolean)?>()
+
+private fun currentShaderReloadMayReport(): Boolean =
+    shaderReloadErrorGate.get()?.invoke() ?: true
+
 private data class PreparedShaderStage(
     val kind: ShaderKind,
     val baseProperty: String,
@@ -1155,7 +1183,9 @@ private fun reportShaderStageError(
     val trimmed = message.trim().ifBlank { throwable?.message ?: logLabel }
     lprintln("error,graphics", "error during $logLabel $trimmed")
     throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
-    box.error(trimmed, propertyForUI, numberFromErrorMessage(trimmed) ?: 0)
+    if (currentShaderReloadMayReport()) {
+        box.error(trimmed, propertyForUI, numberFromErrorMessage(trimmed) ?: 0)
+    }
 }
 
 private fun prepareShaderStage(
@@ -1248,7 +1278,9 @@ private fun compileStage(
         val throwableMsg = throwable.message?.let { " $it" } ?: ""
         lprintln("error,graphics", "error during ${stage.logLabel} compilation $message$throwableMsg")
         lprintln("error,graphics", throwable.stackTraceToString())
-        box.error(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
+        if (currentShaderReloadMayReport()) {
+            box.error(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
+        }
         hadError = true
     }
     val i = if (stage.spirv != null && stage.reflectionJson != null) {
@@ -1642,6 +1674,7 @@ fun applyInsertToPreamble(box: Box, e: Insert) {
 }
 
 private fun clearShaderErrors(box: Box, vararg properties: String) {
+    if (!currentShaderReloadMayReport()) return
     properties.forEach { property ->
         box.error(null, property, -1)
     }

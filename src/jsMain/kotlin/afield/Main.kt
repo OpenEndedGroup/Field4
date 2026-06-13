@@ -19,6 +19,8 @@ import kotlinx.css.*
 import kotlinx.dom.hasClass
 import kotlinx.html.*
 import kotlinx.html.dom.append
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.encodeToString
@@ -37,6 +39,7 @@ import kotlin.js.json
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -235,6 +238,9 @@ private const val axisAlphaIdle = 0.0
 private const val axisAlphaActive = 0.12
 private const val monacoMinWidthPx = 420.0
 private const val monacoViewportGutterPx = 10.0
+private const val monacoMinHeightPx = 120.0
+private const val editorLayoutStorageKey = "afield.editorOverlayLayouts.v1"
+private const val editorLayoutStorageMaxEntries = 80
 
 private var dotAlphaSmall = dotAlphaSmallIdle
 private var dotAlphaLarge = dotAlphaLargeIdle
@@ -251,6 +257,121 @@ private const val editorOpacityPanning = 0.5
 private const val editorOpacityIdle = 1.0
 private var navigationPanAnimationHandle: Int? = null
 private var navigationPanAnimationGeneration = 0
+
+@Serializable
+private data class EditorOverlayLayoutRecord(
+    val key: String,
+    val x: Double,
+    val y: Double,
+    val w: Double,
+    val h: Double
+)
+
+@Serializable
+private data class EditorOverlayLayoutStore(
+    val entries: List<EditorOverlayLayoutRecord> = emptyList()
+)
+
+private var editorOverlayLayoutRecords: MutableList<EditorOverlayLayoutRecord>? = null
+
+private fun editorOverlayViewportKey(): String =
+    "${window.innerWidth.toDouble().roundToInt()}x${window.innerHeight.toDouble().roundToInt()}"
+
+private fun EditorOverlayLayoutRecord.isUsable(): Boolean =
+    x.isFinite() && y.isFinite() && w.isFinite() && h.isFinite() && w > 0.0 && h > 0.0
+
+private fun readEditorOverlayLayoutRecords(): MutableList<EditorOverlayLayoutRecord> {
+    editorOverlayLayoutRecords?.let { return it }
+    val loaded = runCatching {
+        val raw = window.localStorage.getItem(editorLayoutStorageKey)
+        if (raw.isNullOrBlank()) {
+            mutableListOf()
+        } else {
+            Json.decodeFromString<EditorOverlayLayoutStore>(raw)
+                .entries
+                .filter { it.isUsable() }
+                .takeLast(editorLayoutStorageMaxEntries)
+                .toMutableList()
+        }
+    }.getOrElse {
+        mutableListOf()
+    }
+    editorOverlayLayoutRecords = loaded
+    return loaded
+}
+
+private fun saveEditorOverlayLayoutRecords(records: List<EditorOverlayLayoutRecord>) {
+    runCatching {
+        window.localStorage.setItem(
+            editorLayoutStorageKey,
+            Json.encodeToString(EditorOverlayLayoutStore(records.takeLast(editorLayoutStorageMaxEntries)))
+        )
+    }
+}
+
+private fun findEditorOverlayLayoutRecord(key: String): EditorOverlayLayoutRecord? =
+    readEditorOverlayLayoutRecords().lastOrNull { it.key == key && it.isUsable() }
+
+private fun rememberEditorOverlayLayout(record: EditorOverlayLayoutRecord) {
+    if (!record.isUsable()) return
+    val records = readEditorOverlayLayoutRecords()
+    val next = records.filterNot { it.key == record.key }.toMutableList()
+    next.add(record)
+    while (next.size > editorLayoutStorageMaxEntries) next.removeAt(0)
+    records.clear()
+    records.addAll(next)
+    saveEditorOverlayLayoutRecords(records)
+}
+
+private fun editorOverlayLayoutFromElement(key: String, el: HTMLElement): EditorOverlayLayoutRecord {
+    val rect = el.getBoundingClientRect()
+    return EditorOverlayLayoutRecord(
+        key = key,
+        x = rect.left + window.scrollX,
+        y = rect.top + window.scrollY,
+        w = rect.width,
+        h = rect.height
+    )
+}
+
+private fun clampEditorOverlayLayout(layout: EditorOverlayLayoutRecord): Rect {
+    val inset = monacoViewportGutterPx
+    val availableWidth = max(1.0, window.innerWidth.toDouble() - inset * 2.0)
+    val availableHeight = max(1.0, window.innerHeight.toDouble() - inset * 2.0)
+    val minWidth = min(monacoMinWidthPx, availableWidth)
+    val minHeight = min(monacoMinHeightPx, availableHeight)
+    val width = min(max(layout.w, minWidth), availableWidth)
+    val height = min(max(layout.h, minHeight), availableHeight)
+
+    val minX = window.scrollX + inset
+    val minY = window.scrollY + inset
+    val maxX = max(minX, window.scrollX + window.innerWidth.toDouble() - inset - width)
+    val maxY = max(minY, window.scrollY + window.innerHeight.toDouble() - inset - height)
+    val x = min(max(layout.x, minX), maxX)
+    val y = min(max(layout.y, minY), maxY)
+
+    return Rect(x, y, width, height)
+}
+
+private fun applyEditorOverlayLayout(el: HTMLElement, layout: EditorOverlayLayoutRecord): Rect {
+    val rect = clampEditorOverlayLayout(layout)
+    val dyn = el.asDynamic()
+    el.style.transform = "translate(0px, 0px)"
+    el.style.left = "${rect.x}px"
+    el.style.top = "${rect.y}px"
+    el.style.right = "auto"
+    el.style.bottom = "auto"
+    el.style.position = "absolute"
+    el.style.width = "${rect.w}px"
+    el.style.height = "${rect.h}px"
+    dyn.data_x = rect.x
+    dyn.data_y = rect.y
+    dyn.data_w = rect.w
+    dyn.data_h = rect.h
+    dyn.data_right_margin = max(0.0, window.scrollX + window.innerWidth.toDouble() - rect.right)
+    dyn.data_initialized = true
+    return rect
+}
 
 @JsExport
 @JsName("launchNumber")
@@ -4678,10 +4799,18 @@ suspend fun main() {
 //    }
 
     val moncaoResizing = interact(".monaco-editor-container")
+    var currentEditorOverlayViewportKey = editorOverlayViewportKey()
 
     fun ensureAbsolutePosition(el: HTMLElement) {
         val dyn = el.asDynamic()
         if (dyn.data_initialized == true) return
+        val isEditorOverlay = el.classList.contains("monaco-editor-container") ||
+            el.classList.contains("docs-iframe-container")
+        if (isEditorOverlay) {
+            applyEditorOverlayLayout(el, editorOverlayLayoutFromElement(currentEditorOverlayViewportKey, el))
+            return
+        }
+
         val rect = el.getBoundingClientRect()
         val left = rect.left + window.scrollX
         val top = rect.top + window.scrollY
@@ -4720,75 +4849,110 @@ suspend fun main() {
         targetDyn.data_w = sourceDyn.data_w
         targetDyn.data_h = sourceDyn.data_h
         targetDyn.data_right_margin = sourceDyn.data_right_margin
+        targetDyn.data_initialized = true
     }
 
-    fun anchorOverlayToRightEdge(el: HTMLElement) {
-        ensureAbsolutePosition(el)
+    fun rightAnchoredEditorOverlayLayout(viewportKey: String, el: HTMLElement): EditorOverlayLayoutRecord {
         val dyn = el.asDynamic()
         val rect = el.getBoundingClientRect()
-        val rightMargin = (dyn.data_right_margin as? Number)?.toDouble()
+        val inset = monacoViewportGutterPx
+        val availableWidth = max(1.0, window.innerWidth.toDouble() - inset * 2.0)
+        val availableHeight = max(1.0, window.innerHeight.toDouble() - inset * 2.0)
+        val minWidth = min(monacoMinWidthPx, availableWidth)
+        val minHeight = min(monacoMinHeightPx, availableHeight)
+        val maxRightMargin = max(inset, window.innerWidth.toDouble() - inset - minWidth)
+        val storedRightMargin = (dyn.data_right_margin as? Number)?.toDouble()
             ?: max(0.0, window.innerWidth.toDouble() - rect.right)
+        val rightMargin = min(max(storedRightMargin, inset), maxRightMargin)
+        val maxWidth = max(minWidth, window.innerWidth.toDouble() - rightMargin - inset)
         val currentWidth = (dyn.data_w as? Number)?.toDouble() ?: rect.width
-        val maxWidth = max(monacoMinWidthPx, window.innerWidth.toDouble() - rightMargin - monacoViewportGutterPx)
-        val width = min(max(currentWidth, monacoMinWidthPx), maxWidth)
-        val left = window.scrollX + window.innerWidth - rightMargin - width
+        val currentHeight = (dyn.data_h as? Number)?.toDouble() ?: rect.height
+        val width = min(max(currentWidth, minWidth), maxWidth)
+        val height = min(max(currentHeight, minHeight), availableHeight)
+        val x = window.scrollX + window.innerWidth.toDouble() - rightMargin - width
+        val y = run {
+            val currentY = (dyn.data_y as? Number)?.toDouble() ?: (rect.top + window.scrollY)
+            val minY = window.scrollY + inset
+            val maxY = max(minY, window.scrollY + window.innerHeight.toDouble() - inset - height)
+            min(max(currentY, minY), maxY)
+        }
 
-        el.style.transform = "translate(0px, 0px)"
-        el.style.left = "${left}px"
-        el.style.right = "auto"
-        el.style.width = "${width}px"
-        dyn.data_x = left
-        dyn.data_w = width
-        dyn.data_right_margin = rightMargin
+        return EditorOverlayLayoutRecord(viewportKey, x, y, width, height)
     }
 
-    fun anchorEditorOverlaysToRightEdge() {
+    fun anchorEditorOverlayToRightEdge(el: HTMLElement, viewportKey: String) {
+        ensureAbsolutePosition(el)
+        applyEditorOverlayLayout(el, rightAnchoredEditorOverlayLayout(viewportKey, el))
+    }
+
+    fun rememberEditorOverlayForCurrentViewport() {
+        val primary = (document.querySelector(".monaco-editor-container") as? HTMLElement)
+            ?: (document.querySelector(".docs-iframe-container") as? HTMLElement)
+            ?: return
+        ensureAbsolutePosition(primary)
+        rememberEditorOverlayLayout(editorOverlayLayoutFromElement(currentEditorOverlayViewportKey, primary))
+    }
+
+    fun restoreOrClampEditorOverlayForViewport(viewportKey: String) {
         val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
         val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
+        val primary = monacoContainer ?: docsContainer
 
-        if (monacoContainer != null) {
-            anchorOverlayToRightEdge(monacoContainer)
-            if (docsContainer != null) {
-                mirrorOverlayGeometry(monacoContainer, docsContainer)
+        if (primary != null) {
+            ensureAbsolutePosition(primary)
+            val stored = findEditorOverlayLayoutRecord(viewportKey)
+            if (stored != null) {
+                applyEditorOverlayLayout(primary, stored)
+            } else {
+                anchorEditorOverlayToRightEdge(primary, viewportKey)
             }
-        } else if (docsContainer != null) {
-            anchorOverlayToRightEdge(docsContainer)
+        }
+
+        if (monacoContainer != null && docsContainer != null) {
+            mirrorOverlayGeometry(monacoContainer, docsContainer)
         }
 
         layoutGlobalEditor()
     }
+
+    fun handleEditorOverlayViewportResize() {
+        val nextViewportKey = editorOverlayViewportKey()
+        rememberEditorOverlayForCurrentViewport()
+        currentEditorOverlayViewportKey = nextViewportKey
+        restoreOrClampEditorOverlayForViewport(nextViewportKey)
+    }
+
+    restoreOrClampEditorOverlayForViewport(currentEditorOverlayViewportKey)
 
     monacoResizeHandler = { event: dynamic ->
 
         val target: dynamic = event.target
         val targetElement = target as HTMLElement
         ensureAbsolutePosition(targetElement)
-        val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
-        val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
+        val x = ((target.data_x ?: 0.0) as Number).toDouble() + (event.deltaRect.left as Number).toDouble()
+        val y = ((target.data_y ?: 0.0) as Number).toDouble() + (event.deltaRect.top as Number).toDouble()
+        val w = (event.rect.width as Number).toDouble()
+        val h = (event.rect.height as Number).toDouble()
 
-        targetElement.style.transform = "translate(0px, 0px)"
-        target.style.left = "${x}px"
-        target.style.top = "${y}px"
-        target.style.width = event.rect.width + "px"
-        target.style.height = event.rect.height + "px"
-
-        target.data_x = x
-        target.data_y = y
-        target.data_w = event.rect.width
-        target.data_h = event.rect.height
-        updateRightMarginData(targetElement)
+        applyEditorOverlayLayout(
+            targetElement,
+            EditorOverlayLayoutRecord(currentEditorOverlayViewportKey, x, y, w, h)
+        )
 
         // Keep docs container in sync when Monaco is resized
         val docsContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
         if (docsContainer != null) {
             mirrorOverlayGeometry(targetElement, docsContainer)
         }
+        layoutGlobalEditor()
     }
 
     moncaoResizing.resizable(
         json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
     ).on("resizemove") { event: dynamic ->
         monacoResizeHandler(event)
+    }.on("resizeend") { _: dynamic ->
+        rememberEditorOverlayForCurrentViewport()
     }
 
     // Allow docs iframe container to be resized like Monaco, and propagate new size back to Monaco/editor
@@ -4799,20 +4963,15 @@ suspend fun main() {
         val target: dynamic = event.target
         val targetElement = target as HTMLElement
         ensureAbsolutePosition(targetElement)
-        val x: Number = (target.data_x ?: 0.0) + event.deltaRect.left
-        val y: Number = (target.data_y ?: 0.0) + event.deltaRect.top
+        val x = ((target.data_x ?: 0.0) as Number).toDouble() + (event.deltaRect.left as Number).toDouble()
+        val y = ((target.data_y ?: 0.0) as Number).toDouble() + (event.deltaRect.top as Number).toDouble()
+        val w = (event.rect.width as Number).toDouble()
+        val h = (event.rect.height as Number).toDouble()
 
-        target.style.transform = "translate(0px, 0px)"
-        target.style.left = "${x}px"
-        target.style.top = "${y}px"
-        target.style.width = event.rect.width + "px"
-        target.style.height = event.rect.height + "px"
-
-        target.data_x = x
-        target.data_y = y
-        target.data_w = event.rect.width
-        target.data_h = event.rect.height
-        updateRightMarginData(targetElement)
+        val appliedRect = applyEditorOverlayLayout(
+            targetElement,
+            EditorOverlayLayoutRecord(currentEditorOverlayViewportKey, x, y, w, h)
+        )
 
         // Mirror size back to Monaco container
         val monacoContainer = document.querySelector(".monaco-editor-container") as? HTMLElement
@@ -4824,10 +4983,12 @@ suspend fun main() {
         val editor = window.asDynamic().globalEditor
         if (editor != null && editor != undefined && editor.layout != undefined) {
             val dims = js("{}")
-            dims.width = event.rect.width
-            dims.height = event.rect.height
+            dims.width = appliedRect.w
+            dims.height = appliedRect.h
             editor.layout(dims)
         }
+    }.on("resizeend") { _: dynamic ->
+        rememberEditorOverlayForCurrentViewport()
     }
 
     val historyResizing = interact(".history-iframe-container")
@@ -5255,7 +5416,7 @@ suspend fun main() {
     registerMouseBug()
 
     window.addEventListener("resize", {
-        anchorEditorOverlaysToRightEdge()
+        handleEditorOverlayViewportResize()
         canvasGestures.rebuildConnectionGroup()
         repositionSlideNoteOverlayIfVisible()
         if (spatialNavActive) {

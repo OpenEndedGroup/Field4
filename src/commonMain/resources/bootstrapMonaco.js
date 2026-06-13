@@ -938,6 +938,46 @@ const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         }
 }
 
+const GLSL_CONTEXT_PROPERTIES = new Set([
+        "vertex", "fragment", "compute", "task", "mesh",
+        "raygen", "miss", "closesthit", "anyhit", "intersection", "callable"
+])
+
+const buildGlslContextRequest = (editor, resolveContext, options = {}) => {
+        const allowUnfocused = !!options.allowUnfocused
+        if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
+        const model = editor.getModel && editor.getModel()
+        if (!model || model.getLanguageId() !== "glsl") return null
+
+        const context = resolveContext ? resolveContext(editor) : null
+        if (!context || !context.uid || !context.property) return null
+        if (!GLSL_CONTEXT_PROPERTIES.has(String(context.property).toLowerCase())) return null
+
+        const position = editor.getPosition && editor.getPosition()
+        if (!position) return null
+
+        const allCode = model.getValue()
+        const offset = model.getOffsetAt(position)
+        const bounds = findIdentifierBounds(allCode, offset)
+        const boundsKey = bounds ? `${bounds.start}:${bounds.end}` : `cursor:${offset}`
+
+        return {
+                endpoint: "glsl-context",
+                replyName: "glsl-context",
+                key: `glsl::${context.uid}::${context.property}::${model.getVersionId()}::${boundsKey}`,
+                editor,
+                payload: {
+                        uid: context.uid,
+                        property: context.property,
+                        allCode,
+                        line: position.lineNumber,
+                        column: position.column,
+                        position: offset,
+                        forceRefresh: false,
+                },
+        }
+}
+
 const dispatchSymbolContextRequest = (request, options = {}) => {
         const state = ensureSymbolContextState()
         state.inFlight = request
@@ -947,7 +987,7 @@ const dispatchSymbolContextRequest = (request, options = {}) => {
                 forceRefresh: !!options.forceRefresh,
         }
 
-        sendWithReply("symbol-context", requestPayload, "symbol-context", (message, payload) => {
+        sendWithReply(request.endpoint || "symbol-context", requestPayload, request.replyName || "symbol-context", (message, payload) => {
                 const completed = state.inFlight
                 state.inFlight = null
 
@@ -1034,6 +1074,11 @@ const installSymbolContextMonitor = (editor, resolveContext) => {
                                 state.queued = null
                                 setEditorContextBadge(editor, localPayload)
                                 state.lastNotifiedKey = localPayload.key
+                                return
+                        }
+                        const glslRequest = buildGlslContextRequest(editor, resolveContext)
+                        if (glslRequest) {
+                                queueSymbolContextRequest(glslRequest)
                                 return
                         }
                         const request = buildSymbolContextRequest(editor, resolveContext)

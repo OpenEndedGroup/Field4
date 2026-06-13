@@ -59,6 +59,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
@@ -690,6 +691,7 @@ private val workspaceSearchDispatcher = Executors.newFixedThreadPool(
         isDaemon = true
     }
 }.asCoroutineDispatcher()
+private val workspaceSearchGeneration = AtomicLong(0)
 
 private data class PlaywrightPageHandle(
     val page: Page,
@@ -1240,6 +1242,17 @@ class Server {
                         ?.describeSymbolContext(box, exec)
                         ?: SymbolContextResponse()
                     reply(Message("symbol-context").payload(result))
+                }
+
+                Handled.yes
+            })
+
+            handlers["glsl-context"] = mutableSetOf({ message, reply ->
+                val exec = Json.decodeFromJsonElement<SymbolContextRequest>(message.payload!!)
+                val box = box(exec.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    reply(Message("glsl-context").payload(GlslCompletionSupport.describeContext(box, exec)))
                 }
 
                 Handled.yes
@@ -2016,7 +2029,10 @@ class Server {
                             .filter { (_, count) -> count > 0 }
                             .groupBy({ it.first }, { it.second })
                             .mapValues { (_, counts) -> counts.sum() }
-                        val docs = welcomeDir(home, recentDocuments).map {
+                        val workspaceDocs = withContext(workspaceSearchDispatcher) {
+                            welcomeDir(home, recentDocuments)
+                        }
+                        val docs = workspaceDocs.map {
                             it.copy(
                                 runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0,
                                 runningExecutionCount = runningExecutionCounts[it.filename] ?: 0
@@ -2205,17 +2221,32 @@ class Server {
                         val maxScanMillis =
                             call.request.queryParameters["maxScanMillis"]?.toLongOrNull() ?: 3_000L
 
-                        val response = withContext(workspaceSearchDispatcher) {
-                            val requestJob = coroutineContext.job
-                            searchWorkspace(
-                                base = home,
-                                rawQuery = query,
-                                maxDocuments = maxDocuments,
-                                maxMatchesPerDocument = maxMatchesPerDocument,
-                                maxScanMillis = maxScanMillis,
-                                cancellationCheck = {
-                                    if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
-                                }
+                        val searchGeneration = workspaceSearchGeneration.incrementAndGet()
+                        val response = try {
+                            withContext(workspaceSearchDispatcher) {
+                                val requestJob = coroutineContext.job
+                                searchWorkspace(
+                                    base = home,
+                                    rawQuery = query,
+                                    maxDocuments = maxDocuments,
+                                    maxMatchesPerDocument = maxMatchesPerDocument,
+                                    maxScanMillis = maxScanMillis,
+                                    cancellationCheck = {
+                                        if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
+                                        if (workspaceSearchGeneration.get() != searchGeneration) {
+                                            throw CancellationException("workspace search superseded")
+                                        }
+                                    }
+                                )
+                            }
+                        } catch (e: CancellationException) {
+                            if (workspaceSearchGeneration.get() == searchGeneration) throw e
+                            WorkspaceSearchResponse(
+                                query = query.trim(),
+                                documents = emptyList(),
+                                totalDocuments = 0,
+                                totalMatches = 0,
+                                truncated = true
                             )
                         }
                         call.respond(response)

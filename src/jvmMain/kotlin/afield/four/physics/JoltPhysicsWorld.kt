@@ -1,8 +1,12 @@
 package afield.four.physics
 
+import afield.RunsAt
+import afield.newRoot
+import afield.registerValuePrinter
 import afield.graphics.FLine
 import afield.stdlib.Quat
 import afield.stdlib.Vec3
+import afield.stdlib.vec
 import com.github.stephengold.joltjni.BodyCreationSettings
 import com.github.stephengold.joltjni.BodyInterface
 import com.github.stephengold.joltjni.BroadPhaseLayerInterfaceTable
@@ -44,22 +48,164 @@ sealed interface JoltShape {
 data class JoltBodyDef(
     val name: String,
     val shape: JoltShape,
-    val x: Double,
-    val y: Double,
-    val z: Double,
+    val position: Vec3 = Vec3(),
     val rotation: Quat = Quat(),
     val dynamic: Boolean = true,
     val friction: Double = 0.6,
     val restitution: Double = 0.0,
     val linearDamping: Double = 0.0,
     val angularDamping: Double = 0.0,
-    val vx: Double = 0.0,
-    val vy: Double = 0.0,
-    val vz: Double = 0.0,
-    val wx: Double = 0.0,
-    val wy: Double = 0.0,
-    val wz: Double = 0.0
-)
+    val linearVelocity: Vec3 = Vec3(),
+    val angularVelocity: Vec3 = Vec3()
+) {
+    @Deprecated("Use position", ReplaceWith("position.x.toDouble()"))
+    val x: Double get() = position.x.toDouble()
+
+    @Deprecated("Use position", ReplaceWith("position.y.toDouble()"))
+    val y: Double get() = position.y.toDouble()
+
+    @Deprecated("Use position", ReplaceWith("position.z.toDouble()"))
+    val z: Double get() = position.z.toDouble()
+
+    @Deprecated("Use linearVelocity", ReplaceWith("linearVelocity.x.toDouble()"))
+    val vx: Double get() = linearVelocity.x.toDouble()
+
+    @Deprecated("Use linearVelocity", ReplaceWith("linearVelocity.y.toDouble()"))
+    val vy: Double get() = linearVelocity.y.toDouble()
+
+    @Deprecated("Use linearVelocity", ReplaceWith("linearVelocity.z.toDouble()"))
+    val vz: Double get() = linearVelocity.z.toDouble()
+
+    @Deprecated("Use angularVelocity", ReplaceWith("angularVelocity.x.toDouble()"))
+    val wx: Double get() = angularVelocity.x.toDouble()
+
+    @Deprecated("Use angularVelocity", ReplaceWith("angularVelocity.y.toDouble()"))
+    val wy: Double get() = angularVelocity.y.toDouble()
+
+    @Deprecated("Use angularVelocity", ReplaceWith("angularVelocity.z.toDouble()"))
+    val wz: Double get() = angularVelocity.z.toDouble()
+
+    @Deprecated("Use Vector3f fields: position, linearVelocity, and angularVelocity.")
+    constructor(
+        name: String,
+        shape: JoltShape,
+        x: Double,
+        y: Double,
+        z: Double,
+        rotation: Quat = Quat(),
+        dynamic: Boolean = true,
+        friction: Double = 0.6,
+        restitution: Double = 0.0,
+        linearDamping: Double = 0.0,
+        angularDamping: Double = 0.0,
+        vx: Double = 0.0,
+        vy: Double = 0.0,
+        vz: Double = 0.0,
+        wx: Double = 0.0,
+        wy: Double = 0.0,
+        wz: Double = 0.0
+    ) : this(
+        name = name,
+        shape = shape,
+        position = vec(x, y, z),
+        rotation = rotation,
+        dynamic = dynamic,
+        friction = friction,
+        restitution = restitution,
+        linearDamping = linearDamping,
+        angularDamping = angularDamping,
+        linearVelocity = vec(vx, vy, vz),
+        angularVelocity = vec(wx, wy, wz)
+    )
+}
+
+class JoltBodyBuilder(
+    var name: String,
+    var shape: JoltShape? = null
+) {
+    var position: Vec3 = Vec3()
+    var rotation: Quat = Quat()
+    var dynamic: Boolean = true
+    var friction: Double = 0.6
+    var restitution: Double = 0.0
+    var linearDamping: Double = 0.0
+    var angularDamping: Double = 0.0
+    var velocity: Vec3 = Vec3()
+    var linearVelocity: Vec3
+        get() = velocity
+        set(value) {
+            velocity = Vec3(value)
+        }
+    var angularVelocity: Vec3 = Vec3()
+
+    fun position(x: Number, y: Number, z: Number) {
+        position = vec(x, y, z)
+    }
+
+    fun velocity(x: Number, y: Number, z: Number) {
+        velocity = vec(x, y, z)
+    }
+
+    fun linearVelocity(x: Number, y: Number, z: Number) {
+        velocity = vec(x, y, z)
+    }
+
+    fun angularVelocity(x: Number, y: Number, z: Number) {
+        angularVelocity = vec(x, y, z)
+    }
+
+    fun cuboid(width: Number, height: Number, depth: Number) {
+        shape = JoltShape.Cuboid(width.toDouble(), height.toDouble(), depth.toDouble())
+    }
+
+    fun sphere(radius: Number) {
+        shape = JoltShape.Sphere(radius.toDouble())
+    }
+
+    fun capsule(radius: Number, height: Number) {
+        shape = JoltShape.Capsule(radius.toDouble(), height.toDouble())
+    }
+
+    fun plane(
+        normal: Vec3 = vec(0, 1, 0),
+        constant: Number = 0.0
+    ) {
+        shape = JoltShape.Plane(
+            nx = normal.x.toDouble(),
+            ny = normal.y.toDouble(),
+            nz = normal.z.toDouble(),
+            constant = constant.toDouble()
+        )
+        dynamic = false
+    }
+
+    fun planeComponents(
+        nx: Number,
+        ny: Number,
+        nz: Number,
+        constant: Number = 0.0
+    ) {
+        shape = JoltShape.Plane(nx.toDouble(), ny.toDouble(), nz.toDouble(), constant.toDouble())
+        dynamic = false
+    }
+
+    fun build(): JoltBodyDef {
+        val resolvedShape = shape ?: error("Jolt body '$name' needs a shape. Call cuboid(...), sphere(...), capsule(...), plane(...), or set shape.")
+        return JoltBodyDef(
+            name = name,
+            shape = resolvedShape,
+            position = Vec3(position),
+            rotation = Quat(rotation),
+            dynamic = dynamic,
+            friction = friction,
+            restitution = restitution,
+            linearDamping = linearDamping,
+            angularDamping = angularDamping,
+            linearVelocity = Vec3(velocity),
+            angularVelocity = Vec3(angularVelocity)
+        )
+    }
+}
 
 data class JoltBodyState(
     val name: String,
@@ -127,7 +273,7 @@ class JoltPhysicsWorld(
     }
 
     fun createBody(def: JoltBodyDef): Int {
-        check(def.name !in bodyIdsByName) { "Body with name '${def.name}' already exists." }
+        removeBody(def.name)
 
         val isDynamic = def.dynamic && def.shape !is JoltShape.Plane
         val motionType = if (isDynamic) EMotionType.Dynamic else EMotionType.Static
@@ -138,14 +284,14 @@ class JoltPhysicsWorld(
             .setShape(shape)
             .setMotionType(motionType)
             .setObjectLayer(objectLayer)
-            .setPosition(def.x, def.y, def.z)
+            .setPosition(def.position.x.toDouble(), def.position.y.toDouble(), def.position.z.toDouble())
             .setRotation(def.rotation.toJoltQuat())
             .setFriction(def.friction.toFloat())
             .setRestitution(def.restitution.toFloat())
             .setLinearDamping(def.linearDamping.toFloat())
             .setAngularDamping(def.angularDamping.toFloat())
-            .setLinearVelocity(def.vx.toFloat(), def.vy.toFloat(), def.vz.toFloat())
-            .setAngularVelocity(def.wx.toFloat(), def.wy.toFloat(), def.wz.toFloat())
+            .setLinearVelocity(def.linearVelocity.x, def.linearVelocity.y, def.linearVelocity.z)
+            .setAngularVelocity(def.angularVelocity.x, def.angularVelocity.y, def.angularVelocity.z)
 
         val activation = if (isDynamic) EActivation.Activate else EActivation.DontActivate
         val bodyId = bodyInterface.createAndAddBody(settings, activation)
@@ -157,6 +303,61 @@ class JoltPhysicsWorld(
         nameByBodyId[bodyId] = def.name
 
         return bodyId
+    }
+
+    fun body(
+        name: String,
+        shape: JoltShape? = null,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): JoltBodyDef = JoltBodyBuilder(name, shape).apply(configure).build()
+
+    fun createBody(
+        name: String,
+        shape: JoltShape? = null,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): Int = createBody(body(name, shape, configure))
+
+    fun cuboid(
+        name: String,
+        width: Number,
+        height: Number,
+        depth: Number,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): Int = createBody(name, JoltShape.Cuboid(width.toDouble(), height.toDouble(), depth.toDouble()), configure)
+
+    fun sphere(
+        name: String,
+        radius: Number,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): Int = createBody(name, JoltShape.Sphere(radius.toDouble()), configure)
+
+    fun capsule(
+        name: String,
+        radius: Number,
+        height: Number,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): Int = createBody(name, JoltShape.Capsule(radius.toDouble(), height.toDouble()), configure)
+
+    fun plane(
+        name: String,
+        normal: Vec3 = vec(0, 1, 0),
+        constant: Number = 0.0,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): Int = createBody(name, JoltShape.Plane(normal.x.toDouble(), normal.y.toDouble(), normal.z.toDouble(), constant.toDouble())) {
+        dynamic = false
+        configure()
+    }
+
+    fun planeComponents(
+        name: String,
+        nx: Number,
+        ny: Number,
+        nz: Number,
+        constant: Number = 0.0,
+        configure: JoltBodyBuilder.() -> Unit = {}
+    ): Int = createBody(name, JoltShape.Plane(nx.toDouble(), ny.toDouble(), nz.toDouble(), constant.toDouble())) {
+        dynamic = false
+        configure()
     }
 
     fun removeBody(name: String): Boolean {
@@ -175,6 +376,8 @@ class JoltPhysicsWorld(
         bodyInterface.destroyBody(bodyId)
         return true
     }
+
+    fun isDynamic(name: String): Boolean = dynamicByName[name] == true
 
     fun clearBodies() {
         activeGrab = null
@@ -196,6 +399,10 @@ class JoltPhysicsWorld(
             "Jolt update failed with error code: $updateError"
         }
 
+        return states()
+    }
+
+    fun states(): List<JoltBodyState> {
         return bodyIdsByName.mapNotNull { (name, bodyId) ->
             if (!bodyInterface.isAdded(bodyId)) return@mapNotNull null
 
@@ -215,6 +422,10 @@ class JoltPhysicsWorld(
         }
     }
 
+    fun applyForce(name: String, force: Vec3) {
+        applyForce(name, force.x.toDouble(), force.y.toDouble(), force.z.toDouble())
+    }
+
     fun applyForce(name: String, fx: Double, fy: Double, fz: Double) {
         val bodyId = requireBodyId(name)
         bodyInterface.addForce(bodyId, JoltVec3(fx.toFloat(), fy.toFloat(), fz.toFloat()))
@@ -223,12 +434,20 @@ class JoltPhysicsWorld(
         }
     }
 
+    fun applyImpulse(name: String, impulse: Vec3) {
+        applyImpulse(name, impulse.x.toDouble(), impulse.y.toDouble(), impulse.z.toDouble())
+    }
+
     fun applyImpulse(name: String, ix: Double, iy: Double, iz: Double) {
         val bodyId = requireBodyId(name)
         bodyInterface.addImpulse(bodyId, JoltVec3(ix.toFloat(), iy.toFloat(), iz.toFloat()))
         if (dynamicByName[name] == true) {
             bodyInterface.activateBody(bodyId)
         }
+    }
+
+    fun applyTorque(name: String, torque: Vec3) {
+        applyTorque(name, torque.x.toDouble(), torque.y.toDouble(), torque.z.toDouble())
     }
 
     fun applyTorque(name: String, tx: Double, ty: Double, tz: Double) {
@@ -250,7 +469,7 @@ class JoltPhysicsWorld(
         )
     }
 
-    fun setBodyVelocity(name: String, linear: Vec3, angular: Vec3) {
+    fun setBodyVelocity(name: String, linear: Vec3, angular: Vec3 = Vec3()) {
         val bodyId = requireBodyId(name)
         bodyInterface.setLinearAndAngularVelocity(
             bodyId,
@@ -689,6 +908,72 @@ class JoltPhysicsWorld(
         const val MAX_BODY_PAIRS = 65_536
         const val MAX_CONTACTS = 20_480
     }
+}
+
+private fun JoltPhysicsWorld.summaryHtml(): String {
+    val states = states()
+    val dynamicCount = states.count { state -> isDynamic(state.name) }
+    val grabbed = grabbedBodyName
+    val sample = states.take(6).joinToString("") { state ->
+        "<tr>" +
+            "<td style='padding-right:8px;color:#8f8'>'${escHtml(state.name)}'</td>" +
+            "<td style='padding-right:8px;color:#8cf'>${fmtVec(state.position)}</td>" +
+            "<td style='color:#888'>v=${fmtVecPlain(state.linearVelocity)}</td>" +
+        "</tr>"
+    }
+    val overflow = if (states.size > 6) {
+        "<tr><td colspan='3' style='color:#666'>...${states.size - 6} more</td></tr>"
+    } else {
+        ""
+    }
+
+    return "<div style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.4'>" +
+        "<div><span style='color:#cc8'>JoltPhysicsWorld</span> " +
+        "<span style='color:#888'>${states.size} bodies, $dynamicCount dynamic</span>" +
+        (if (grabbed != null) " <span style='color:#fc8'>grabbed '${escHtml(grabbed)}'</span>" else "") +
+        "</div>" +
+        "<table style='border-collapse:collapse;margin-top:3px;font-size:11px'>$sample$overflow</table>" +
+        "</div>"
+}
+
+private fun JoltBodyState.summaryHtml(): String =
+    "<div style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.4'>" +
+        "<span style='color:#cc8'>JoltBodyState</span> <span style='color:#8f8'>'${escHtml(name)}'</span> " +
+        "<span style='color:#888'>id=$bodyId</span><br/>" +
+        "<span style='color:#888'>p=</span>${fmtVec(position)} " +
+        "<span style='color:#888'>v=</span>${fmtVec(linearVelocity)} " +
+        "<span style='color:#888'>w=</span>${fmtVec(angularVelocity)}" +
+    "</div>"
+
+private fun JoltBodyPick.summaryHtml(): String =
+    "<div style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.4'>" +
+        "<span style='color:#cc8'>JoltBodyPick</span> <span style='color:#8f8'>'${escHtml(name)}'</span> " +
+        "<span style='color:#888'>id=$bodyId d=${fmtNumber(signedDistanceToSurface)}</span><br/>" +
+        "<span style='color:#888'>query=</span>${fmtVec(queryPoint)} " +
+        "<span style='color:#888'>surface=</span>${fmtVec(surfacePoint)}" +
+    "</div>"
+
+private fun fmtVec(v: Vec3): String =
+    "<span style='color:#8cf'>(${fmtNumber(v.x.toDouble())}, ${fmtNumber(v.y.toDouble())}, ${fmtNumber(v.z.toDouble())})</span>"
+
+private fun fmtVecPlain(v: Vec3): String =
+    "(${fmtNumber(v.x.toDouble())}, ${fmtNumber(v.y.toDouble())}, ${fmtNumber(v.z.toDouble())})"
+
+private fun fmtNumber(value: Double): String =
+    "%.3f".format(java.util.Locale.US, value).trimEnd('0').trimEnd('.')
+
+private fun escHtml(text: String): String =
+    text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+
+@RunsAt(newRoot)
+fun registerJoltPhysicsVisualizers() {
+    registerValuePrinter<JoltPhysicsWorld> { it.summaryHtml() }
+    registerValuePrinter<JoltBodyState> { it.summaryHtml() }
+    registerValuePrinter<JoltBodyPick> { it.summaryHtml() }
 }
 
 private fun Vec3.toJoltVec3(): JoltVec3 = JoltVec3(x, y, z)

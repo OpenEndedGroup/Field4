@@ -1021,6 +1021,7 @@
         savingAiSettings: false
     };
     let searchController = null;
+    let searchRequestSerial = 0;
     let searchDebounceTimer = null;
     let welcomeRefreshTimer = null;
     let welcomeEventSocket = null;
@@ -1150,6 +1151,7 @@
     }
 
     function openDocument(name, options = {}) {
+        searchRequestSerial += 1;
         if (searchController) {
             searchController.abort();
             searchController = null;
@@ -1708,6 +1710,7 @@
             searchController.abort();
         }
 
+        const requestSerial = ++searchRequestSerial;
         searchController = new AbortController();
         const statusNode = document.getElementById("recent-search-status");
         statusNode.textContent = "searching…";
@@ -1726,11 +1729,13 @@
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const payload = await response.json();
+            if (requestSerial !== searchRequestSerial) return;
             state.searchResults = Array.isArray(payload.documents) ? payload.documents : [];
             state.searchTruncated = !!payload.truncated;
             renderList();
         } catch (error) {
             if (error?.name === "AbortError") return;
+            if (requestSerial !== searchRequestSerial) return;
             console.error("Workspace search failed", error);
             state.searchResults = [];
             state.searchTruncated = false;
@@ -1746,6 +1751,7 @@
 
         const trimmed = query.trim();
         if (!trimmed) {
+            searchRequestSerial += 1;
             if (searchController) {
                 searchController.abort();
                 searchController = null;

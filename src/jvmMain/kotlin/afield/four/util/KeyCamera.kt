@@ -85,7 +85,7 @@ class KeyCamera(
         val moveStep = baseDistance * movementSpeed
 
         // ---------- forward / back (UP / DOWN) ----------
-        if (window.isKeyPressed(GLFW.GLFW_KEY_UP)) {
+        if (window.isAnyKeyPressed(GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_W)) {
             enqueue(if (!shift) "up_target" else "up_at") { amount ->
                 val step = moveStep * amount
                 if (!shift) {
@@ -97,7 +97,7 @@ class KeyCamera(
                 }
             }
         }
-        if (window.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
+        if (window.isAnyKeyPressed(GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_S)) {
             enqueue(if (!shift) "down_target" else "down_at") { amount ->
                 val step = -moveStep * amount
                 if (!shift) {
@@ -105,6 +105,34 @@ class KeyCamera(
                 } else {
                     camera.moveLocal(forward = step, moveTarget = false)
                 }
+            }
+        }
+
+        // ---------- strafe left / right (A / D) ----------
+        if (window.isKeyPressed(GLFW.GLFW_KEY_A)) {
+            enqueue(if (!shift) "strafe_left_target" else "strafe_left_at") { amount ->
+                val step = -moveStep * amount
+                camera.moveLocal(right = step, moveTarget = !shift)
+            }
+        }
+        if (window.isKeyPressed(GLFW.GLFW_KEY_D)) {
+            enqueue(if (!shift) "strafe_right_target" else "strafe_right_at") { amount ->
+                val step = moveStep * amount
+                camera.moveLocal(right = step, moveTarget = !shift)
+            }
+        }
+
+        // ---------- local up / down (E / C) ----------
+        if (window.isKeyPressed(GLFW.GLFW_KEY_E)) {
+            enqueue(if (!shift) "vertical_up_target" else "vertical_up_at") { amount ->
+                val step = moveStep * amount
+                camera.moveLocal(upAmount = step, moveTarget = !shift)
+            }
+        }
+        if (window.isKeyPressed(GLFW.GLFW_KEY_C)) {
+            enqueue(if (!shift) "vertical_down_target" else "vertical_down_at") { amount ->
+                val step = -moveStep * amount
+                camera.moveLocal(upAmount = step, moveTarget = !shift)
             }
         }
 
@@ -219,6 +247,10 @@ class KeyCamera(
     private fun isShiftDown(): Boolean {
         val w = renderer.window
         return w.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || w.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT)
+    }
+
+    private fun Window.isAnyKeyPressed(vararg keys: Int): Boolean {
+        return keys.any { isKeyPressed(it) }
     }
 
     /**

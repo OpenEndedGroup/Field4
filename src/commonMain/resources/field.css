@@ -1254,6 +1254,20 @@ body {
     font-weight: 600;
 }
 
+.afield-glsl-context {
+    font-family: "Iosevka", var(--field-font), monospace;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.afield-glsl-context code {
+    color: var(--field-fg-strong);
+    background: rgba(255, 255, 255, 0.08);
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    padding: 0 3px;
+}
+
 .afield-stacksl-warning {
     color: #ffb8b8;
 }

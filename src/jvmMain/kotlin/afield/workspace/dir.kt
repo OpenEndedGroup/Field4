@@ -335,6 +335,11 @@ private data class SearchOptions(
 
 private class WorkspaceSearchBudgetExceeded : RuntimeException()
 
+private data class WorkspaceDocumentScan(
+    val summary: WorkspaceDocumentSummary,
+    val matches: List<WorkspaceSearchMatch>
+)
+
 private val workspaceSearchProperties = linkedSetOf(
     "name",
     "code",
@@ -365,6 +370,61 @@ private val workspaceSearchProperties = linkedSetOf(
     "remote_js",
     "metadata"
 )
+
+private fun workspaceSearchSidecarSuffixes(): List<String> {
+    return workspaceSearchProperties.mapNotNull { property ->
+        Box.ioSeparateProperties[property]?.let { extension -> "_${property}_.${extension}" }
+    }
+}
+
+private fun workspaceSearchCandidateFiles(dir: File, metadataFile: File): Sequence<File> = sequence {
+    yield(metadataFile)
+    val suffixes = workspaceSearchSidecarSuffixes()
+    dir.listFiles()?.forEach { file ->
+        if (!file.isFile) return@forEach
+        if (file == metadataFile) return@forEach
+        if (suffixes.any { suffix -> file.name.endsWith(suffix) }) {
+            yield(file)
+        }
+    }
+}
+
+private fun documentMayContainQuery(
+    dir: File,
+    metadataFile: File,
+    query: String,
+    checkSearchActive: () -> Unit
+): Boolean {
+    checkSearchActive()
+    if (dir.name.lowercase().contains(query)) return true
+
+    workspaceSearchCandidateFiles(dir, metadataFile).forEach { file ->
+        checkSearchActive()
+        if (fileContainsQuery(file, query, checkSearchActive)) return true
+    }
+    return false
+}
+
+private fun fileContainsQuery(file: File, query: String, checkSearchActive: () -> Unit): Boolean {
+    if (!file.isFile) return false
+
+    return try {
+        var found = false
+        file.bufferedReader(Charsets.UTF_8).useLines { lines ->
+            var lineNumber = 0
+            for (line in lines) {
+                if (lineNumber++ % 128 == 0) checkSearchActive()
+                if (line.lowercase().contains(query)) {
+                    found = true
+                    break
+                }
+            }
+        }
+        found
+    } catch (_: Exception) {
+        false
+    }
+}
 
 fun searchWorkspace(
     base: String,
@@ -441,10 +501,14 @@ fun searchWorkspace(
         if (metadataFile == null) continue
 
         try {
-            val matches = if (metadataFile.name == SavingContext.METADATA_EDN) {
-                searchEdnDocument(savingContext, dir.absolutePath, searchTerm, options, ::checkSearchActive)
+            if (!documentMayContainQuery(dir, metadataFile, searchTerm, ::checkSearchActive)) {
+                continue
+            }
+
+            val scan = if (metadataFile.name == SavingContext.METADATA_EDN) {
+                scanEdnDocument(savingContext, dir.absolutePath, searchTerm, options, ::checkSearchActive)
             } else {
-                searchJsonDocument(savingContext, metadataJsonFile, dir.absolutePath, searchTerm, options, ::checkSearchActive)
+                scanJsonDocument(savingContext, metadataJsonFile, dir.absolutePath, searchTerm, options, ::checkSearchActive)
             }
             checkSearchActive()
 
@@ -457,26 +521,25 @@ fun searchWorkspace(
                 checkSearchActive = ::checkSearchActive
             )
 
-            val summary = readWorkspaceDocumentSummary(savingContext, dir, metadataFile)
             val tagMatches = buildMatchesForText(
                 boxName = dir.name,
                 property = "tags",
-                text = summary.tags.joinToString(" "),
+                text = scan.summary.tags.joinToString(" "),
                 query = searchTerm,
                 maxMatches = options.maxMatchesPerDocument,
                 checkSearchActive = ::checkSearchActive
             )
-            val combined = (filenameMatches + tagMatches + matches).take(options.maxMatchesPerDocument)
+            val combined = (filenameMatches + tagMatches + scan.matches).take(options.maxMatchesPerDocument)
             if (combined.isEmpty()) continue
 
             totalMatches += combined.size
             val modifiedAt = metadataFile.lastModified()
             results += WorkspaceSearchResult(
                 filename = dir.name,
-                numBoxes = summary.numBoxes,
+                numBoxes = scan.summary.numBoxes,
                 lastModifiedEpochMs = modifiedAt,
                 lastModifiedAgoMs = now - modifiedAt,
-                tags = summary.tags,
+                tags = scan.summary.tags,
                 matches = combined
             )
         } catch (e: WorkspaceSearchBudgetExceeded) {
@@ -756,72 +819,92 @@ private fun replaceTagsInMetadata(metadata: String, tags: List<String>): String 
     return yaml.dump(updated).trimEnd() + "\n"
 }
 
-private fun searchEdnDocument(
+private fun scanEdnDocument(
     savingContext: SavingContext,
     directory: String,
     query: String,
     options: SearchOptions,
     checkSearchActive: () -> Unit
-): List<WorkspaceSearchMatch> {
+): WorkspaceDocumentScan {
     val matches = mutableListOf<WorkspaceSearchMatch>()
     checkSearchActive()
-    savingContext.readEdnTransfers(directory)
+    val transfers = savingContext.readEdnTransfers(directory)
         .filter { !it.properties["_tombstone"].isTrue() }
-        .forEach { transfer ->
-            checkSearchActive()
-            val boxName = savingContext.resolveStoredValue(transfer.properties["name"], directory)?.toString().orEmpty()
-            collectPropertyMatches(
-                propertyProvider = { property ->
-                    checkSearchActive()
-                    savingContext.resolveStoredValue(transfer.properties[property], directory)?.toString()
-                },
-                boxName = boxName,
-                query = query,
-                matches = matches,
-                maxMatches = options.maxMatchesPerDocument,
-                checkSearchActive = checkSearchActive
-            )
-            if (matches.size >= options.maxMatchesPerDocument) return matches
-        }
-    return matches
+    val tags = collectDocumentTagsFromEdn(transfers) { value ->
+        checkSearchActive()
+        savingContext.resolveStoredValue(value, directory)?.toString()
+    }
+
+    for (transfer in transfers) {
+        checkSearchActive()
+        val boxName = savingContext.resolveStoredValue(transfer.properties["name"], directory)?.toString().orEmpty()
+        collectPropertyMatches(
+            propertyProvider = { property ->
+                checkSearchActive()
+                savingContext.resolveStoredValue(transfer.properties[property], directory)?.toString()
+            },
+            boxName = boxName,
+            query = query,
+            matches = matches,
+            maxMatches = options.maxMatchesPerDocument,
+            checkSearchActive = checkSearchActive
+        )
+        if (matches.size >= options.maxMatchesPerDocument) break
+    }
+
+    return WorkspaceDocumentScan(
+        summary = WorkspaceDocumentSummary(transfers.size, tags),
+        matches = matches
+    )
 }
 
-private fun searchJsonDocument(
+private fun scanJsonDocument(
     savingContext: SavingContext,
     metadataJsonFile: File,
     directory: String,
     query: String,
     options: SearchOptions,
     checkSearchActive: () -> Unit
-): List<WorkspaceSearchMatch> {
+): WorkspaceDocumentScan {
     val matches = mutableListOf<WorkspaceSearchMatch>()
     checkSearchActive()
     val metadataContent = metadataJsonFile.readText()
-    SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
+    val transfers = SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
         .filter { !it.properties["_tombstone"].isTrue() }
-        .forEach { transfer ->
-            checkSearchActive()
-            val boxName = try {
-                savingContext.fromTypedPair(transfer.properties["name"]!!, directory)?.toString().orEmpty()
-            } catch (_: Exception) {
-                ""
-            }
-            collectPropertyMatches(
-                propertyProvider = { property ->
-                    checkSearchActive()
-                    transfer.properties[property]?.let {
-                        savingContext.fromTypedPair(it, directory, createBoxes = false)?.toString()
-                    }
-                },
-                boxName = boxName,
-                query = query,
-                matches = matches,
-                maxMatches = options.maxMatchesPerDocument,
-                checkSearchActive = checkSearchActive
-            )
-            if (matches.size >= options.maxMatchesPerDocument) return matches
+    val tags = collectDocumentTagsFromJson(transfers) { value ->
+        checkSearchActive()
+        @Suppress("UNCHECKED_CAST")
+        val typed = value as? Pair<String, JsonElement> ?: return@collectDocumentTagsFromJson null
+        savingContext.fromTypedPair(typed, directory, createBoxes = false)?.toString()
+    }
+
+    for (transfer in transfers) {
+        checkSearchActive()
+        val boxName = try {
+            savingContext.fromTypedPair(transfer.properties["name"]!!, directory)?.toString().orEmpty()
+        } catch (_: Exception) {
+            ""
         }
-    return matches
+        collectPropertyMatches(
+            propertyProvider = { property ->
+                checkSearchActive()
+                transfer.properties[property]?.let {
+                    savingContext.fromTypedPair(it, directory, createBoxes = false)?.toString()
+                }
+            },
+            boxName = boxName,
+            query = query,
+            matches = matches,
+            maxMatches = options.maxMatchesPerDocument,
+            checkSearchActive = checkSearchActive
+        )
+        if (matches.size >= options.maxMatchesPerDocument) break
+    }
+
+    return WorkspaceDocumentScan(
+        summary = WorkspaceDocumentSummary(transfers.size, tags),
+        matches = matches
+    )
 }
 
 private fun collectPropertyMatches(
