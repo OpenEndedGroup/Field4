@@ -1,12 +1,11 @@
 package afield.examples
 
-import afield.four.physics.JoltBodyDef
 import afield.four.physics.JoltBodyPick
 import afield.four.physics.JoltPhysicsWorld
-import afield.four.physics.JoltShape
 import afield.graphics.FLine
 import afield.stdlib.Quat
 import afield.stdlib.Vec3
+import afield.stdlib.vec
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -68,30 +67,14 @@ object JoltPhysicsExample {
 		val planeB = PlaneDef(nx = -0.18, ny = 0.98, nz = -0.21, constant = -1.70)
 
 		JoltPhysicsWorld().use { engine ->
-			engine.createBody(
-				JoltBodyDef(
-					name = "planeA",
-					shape = JoltShape.Plane(planeA.nx, planeA.ny, planeA.nz, planeA.constant),
-					x = 0.0,
-					y = 0.0,
-					z = 0.0,
-					dynamic = false,
-					friction = 0.5,
-					restitution = 0.8
-				)
-			)
-			engine.createBody(
-				JoltBodyDef(
-					name = "planeB",
-					shape = JoltShape.Plane(planeB.nx, planeB.ny, planeB.nz, planeB.constant),
-					x = 0.0,
-					y = 0.0,
-					z = 0.0,
-					dynamic = false,
-					friction = 0.0,
-					restitution = 0.3
-				)
-			)
+			engine.planeComponents("planeA", planeA.nx, planeA.ny, planeA.nz, planeA.constant) {
+				friction = 0.5
+				restitution = 0.8
+			}
+			engine.planeComponents("planeB", planeB.nx, planeB.ny, planeB.nz, planeB.constant) {
+				friction = 0.0
+				restitution = 0.3
+			}
 
 			val spawns = generateNonOverlappingCuboidSpawns(
 				count = bodyCount,
@@ -103,25 +86,19 @@ object JoltPhysicsExample {
 			println("spawned ${spawns.size} cuboids (seed=$seed), initial overlap check: PASS")
 
 			spawns.forEachIndexed { index, spawn ->
-				engine.createBody(
-					JoltBodyDef(
-						name = "box_${index.toString().padStart(2, '0')}",
-						shape = JoltShape.Cuboid(spawn.width, spawn.height, spawn.depth),
-						x = spawn.x,
-						y = spawn.y,
-						z = spawn.z,
-						friction = random.nextDouble(0.05, 0.06),
-						restitution = random.nextDouble(0.02, 0.90),
-						linearDamping = random.nextDouble(0.0, 0.03),
-						angularDamping = random.nextDouble(0.0, 0.03),
-						vx = random.nextDouble(-0.9, 0.9),
-						vy = 0.0,
-						vz = random.nextDouble(-0.9, 0.9),
-						wx = random.nextDouble(-0.6, 0.6),
-						wy = random.nextDouble(-0.6, 0.6),
-						wz = random.nextDouble(-0.6, 0.6)
+				engine.cuboid("box_${index.toString().padStart(2, '0')}", spawn.width, spawn.height, spawn.depth) {
+					position = vec(spawn.x, spawn.y, spawn.z)
+					friction = random.nextDouble(0.05, 0.06)
+					restitution = random.nextDouble(0.02, 0.90)
+					linearDamping = random.nextDouble(0.0, 0.03)
+					angularDamping = random.nextDouble(0.0, 0.03)
+					velocity = vec(random.nextDouble(-0.9, 0.9), 0.0, random.nextDouble(-0.9, 0.9))
+					angularVelocity = vec(
+						random.nextDouble(-0.6, 0.6),
+						random.nextDouble(-0.6, 0.6),
+						random.nextDouble(-0.6, 0.6)
 					)
-				)
+				}
 			}
 
 			val dt = 1.0 / 120.0
@@ -169,18 +146,10 @@ object JoltPhysicsExample {
 		var closed = false
 
 		synchronized(simulationLock) {
-			engine.createBody(
-				JoltBodyDef(
-					name = "ground",
-					shape = JoltShape.Plane(ground.nx, ground.ny, ground.nz, ground.constant),
-					x = 0.0,
-					y = 0.0,
-					z = 0.0,
-					dynamic = false,
-					friction = 0.9,
-					restitution = 0.0
-				)
-			)
+			engine.planeComponents("ground", ground.nx, ground.ny, ground.nz, ground.constant) {
+				friction = 0.9
+				restitution = 0.0
+			}
 
 			val spawns = generateNonOverlappingCuboidSpawns(
 				count = bodyCount,
@@ -191,25 +160,19 @@ object JoltPhysicsExample {
 			check(!hasAnySpawnOverlap(spawns)) { "Internal error: overlapping spawn set." }
 
 			spawns.forEachIndexed { index, spawn ->
-				engine.createBody(
-					JoltBodyDef(
-						name = "box_${index.toString().padStart(2, '0')}",
-						shape = JoltShape.Cuboid(spawn.width, spawn.height, spawn.depth),
-						x = spawn.x,
-						y = spawn.y,
-						z = spawn.z,
-						friction = random.nextDouble(0.04, 0.10),
-						restitution = random.nextDouble(0.45, 0.90),
-						linearDamping = random.nextDouble(0.0, 0.02),
-						angularDamping = random.nextDouble(0.0, 0.02),
-						vx = random.nextDouble(-1.0, 1.0),
-						vy = 0.0,
-						vz = random.nextDouble(-1.0, 1.0),
-						wx = random.nextDouble(-21.7, 21.7),
-						wy = random.nextDouble(-0.7, 0.7),
-						wz = random.nextDouble(-0.7, 0.7)
+				engine.cuboid("box_${index.toString().padStart(2, '0')}", spawn.width, spawn.height, spawn.depth) {
+					position = vec(spawn.x, spawn.y, spawn.z)
+					friction = random.nextDouble(0.04, 0.10)
+					restitution = random.nextDouble(0.45, 0.90)
+					linearDamping = random.nextDouble(0.0, 0.02)
+					angularDamping = random.nextDouble(0.0, 0.02)
+					velocity = vec(random.nextDouble(-1.0, 1.0), 0.0, random.nextDouble(-1.0, 1.0))
+					angularVelocity = vec(
+						random.nextDouble(-21.7, 21.7),
+						random.nextDouble(-0.7, 0.7),
+						random.nextDouble(-0.7, 0.7)
 					)
-				)
+				}
 			}
 		}
 
@@ -282,45 +245,23 @@ object JoltPhysicsExample {
 
 	private fun runOffCenterCollisionDemo() {
 		JoltPhysicsWorld().use { engine ->
-			engine.createBody(
-				JoltBodyDef(
-					name = "ground",
-					shape = JoltShape.Plane(ny = 1.0, constant = 0.0),
-					x = 0.0,
-					y = 0.0,
-					z = 0.0,
-					dynamic = false,
-					friction = 0.05,
-					restitution = 0.9
-				)
-			)
+			engine.plane("ground") {
+				friction = 0.05
+				restitution = 0.9
+			}
 
-			engine.createBody(
-				JoltBodyDef(
-					name = "targetBox",
-					shape = JoltShape.Cuboid(1.0, 1.0, 1.0),
-					x = 0.0,
-					y = 0.55,
-					z = 0.0,
-					friction = 0.01,
-					restitution = 0.5
-				)
-			)
+			engine.cuboid("targetBox", 1.0, 1.0, 1.0) {
+				position = vec(0.0, 0.55, 0.0)
+				friction = 0.01
+				restitution = 0.5
+			}
 
-			engine.createBody(
-				JoltBodyDef(
-					name = "strikerSphere",
-					shape = JoltShape.Sphere(0.35),
-					x = -3.2,
-					y = 1.05,
-					z = 0.65,
-					vx = 12.0,
-					vy = 0.0,
-					vz = -1.5,
-					friction = 0.01,
-					restitution = 0.8
-				)
-			)
+			engine.sphere("strikerSphere", 0.35) {
+				position = vec(-3.2, 1.05, 0.65)
+				velocity = vec(12.0, 0.0, -1.5)
+				friction = 0.01
+				restitution = 0.8
+			}
 
 			val dt = 1.0 / 60.0
 			val steps = 60 * 4
@@ -430,4 +371,3 @@ private fun planeHeightAt(plane: PlaneDef, x: Double, z: Double): Double {
 	check(abs(denom) > 1e-6) { "Plane ny must be non-zero, got ${plane.ny}" }
 	return -(plane.nx * x + plane.nz * z + plane.constant) / denom
 }
-
