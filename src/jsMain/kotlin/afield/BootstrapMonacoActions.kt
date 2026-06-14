@@ -60,6 +60,19 @@ private val shaderInstancePattern = Regex("""\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?"
 private const val shaderNoMatchScore = -1000000
 private const val shaderNavigationSelectionDelayMs = 90
 private const val shaderNavigationRetryDelayMs = 180
+private val oscEditorNumberPattern = Regex("""[-+]?(?:(?:\d+\.\d*)|(?:\d+)|(?:\.\d+))(?:[eE][-+]?\d+)?[fF]?""")
+private var oscEditorExecuteTimer: Int? = null
+
+private fun oscEditorIdentifierChar(ch: Char): Boolean = ch == '_' || ch.isLetterOrDigit()
+
+private fun oscEditorCurrentEditor(): dynamic = js(
+    """(() => {
+        const focused = window.embeddedEditors && typeof window.embeddedEditors.getFocused === "function"
+            ? window.embeddedEditors.getFocused()
+            : null;
+        return (focused && focused.editor) || window.globalEditor || null;
+    })()"""
+)
 
 private fun shaderRelatedProperties(property: String): List<String> {
     val current = property.lowercase()
@@ -1062,6 +1075,91 @@ private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
             )
         )
     )
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunOscEditorCommand(command: OscEditorCommand) {
+    val editor = oscEditorCurrentEditor()
+    if (editor == null || editor == undefined) return
+
+    when (command.command.trim().lowercase()) {
+        "float" -> {
+            if (!monacoReplaceNumberUnderCursor(editor, command)) return
+            scheduleOscEditorExecute(editor, command.debounceMs)
+        }
+
+        "launch" -> monacoRunLaunchAll(editor)
+        "stop" -> monacoRunStopAll(editor)
+    }
+}
+
+private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCommand): Boolean {
+    val model = editor.getModel()
+    if (model == null || model == undefined) return false
+    val position = editor.getPosition()
+    if (position == null || position == undefined) return false
+
+    val lineNumber = (position.lineNumber as Number).toInt()
+    val column = (position.column as Number).toInt()
+    val line = model.getLineContent(lineNumber) as String
+    val cursorIndex = (column - 1).coerceIn(0, line.length)
+    val replacementBase = command.text.takeIf { it.isNotBlank() }
+        ?: command.value?.toString()
+        ?: return false
+
+    for (match in oscEditorNumberPattern.findAll(line)) {
+        val start = match.range.first
+        val endExclusive = match.range.last + 1
+        if (cursorIndex < start || cursorIndex > endExclusive) continue
+        if (start > 0 && oscEditorIdentifierChar(line[start - 1])) continue
+        if (endExclusive < line.length && oscEditorIdentifierChar(line[endExclusive])) continue
+
+        val original = match.value
+        val suffix = original.lastOrNull()?.takeIf { it == 'f' || it == 'F' }?.toString() ?: ""
+        val replacement = if (suffix.isNotBlank() && !replacementBase.endsWith("f", ignoreCase = true)) {
+            replacementBase + suffix
+        } else {
+            replacementBase
+        }
+        val range = js("{}")
+        range.startLineNumber = lineNumber
+        range.startColumn = start + 1
+        range.endLineNumber = lineNumber
+        range.endColumn = endExclusive + 1
+
+        val edit = js("{}")
+        edit.range = range
+        edit.text = replacement
+        edit.forceMoveMarkers = true
+        editor.executeEdits("osc-editor-float", arrayOf(edit))
+
+        val nextColumn = start + replacement.length + 1
+        val nextPosition = js("{}")
+        nextPosition.lineNumber = lineNumber
+        nextPosition.column = nextColumn
+        editor.setPosition(nextPosition)
+
+        val w = js("window")
+        val current = w.currentSelectedCode
+        val currentLen = (current?.length as? Number)?.toInt() ?: 0
+        if (currentLen == 1) {
+            val property = w.currentSelectedProperty as? String ?: "code"
+            current[0][property] = model.getValue()
+        }
+        return true
+    }
+    return false
+}
+
+private fun scheduleOscEditorExecute(editor: dynamic, debounceMs: Int) {
+    val w = js("window")
+    oscEditorExecuteTimer?.let { w.clearTimeout(it) }
+    val delay = debounceMs.coerceIn(0, 5_000)
+    oscEditorExecuteTimer = w.setTimeout({
+        oscEditorExecuteTimer = null
+        monacoRunExecuteFragmentOrShaderReload(editor)
+    }, delay)
 }
 
 private fun extractSelectionOrScope(editor: dynamic): Triple<String, Int, Boolean> {

@@ -439,9 +439,10 @@ fun ByteBuffer.putf16(value: Float): ByteBuffer {
 }
 
 
-data class Vec2h(val v: Vector2f)
-data class Vec3h(val v: Vector3f)
-data class Vec4h(val v: Vector4f)
+typealias Vec2h = afield.four.util.Vec2h
+typealias Vec3h = afield.four.util.Vec3h
+typealias Vec4h = afield.four.util.Vec4h
+typealias Vec8h = afield.four.util.Vec8h
 
 
 val <T> List<T>.m: MutableList<T>

@@ -1,5 +1,6 @@
 package afield.examples.stdlib
 
+import afield.graphics.FLine
 import afield.stdlib.*
 import kotlin.math.abs
 import kotlin.random.Random
@@ -60,6 +61,7 @@ object GraphConnectivitySmokeTest {
             testSearchAlgorithms()
             testEdgeVisitStateAndGreedyPaths()
             testGraphDiameterDecomposition()
+            testFLineGraph()
             println("✅ Graph Connectivity smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -833,6 +835,56 @@ object GraphConnectivitySmokeTest {
         }
 
         println("  ✓ Graph diameter decomposition test passed")
+    }
+
+    private fun testFLineGraph() {
+        val a = FLine()
+            .moveTo(0.0, 0.0, 0.0)
+            .lineTo(1.0, 0.0, 0.0)
+
+        val b = FLine()
+            .moveTo(1.04, 0.02, 0.0)
+            .lineTo(2.0, 0.0, 0.0)
+
+        val welded = listOf(a, b).toFLineGraph(epsilon = 0.05)
+        require(welded.pointCount == 3) {
+            "FLine graph should weld nearby shared endpoints into 3 vertices, got ${welded.pointCount}"
+        }
+        require(welded.edges.size == 2) {
+            "FLine graph should preserve the two line segments, got ${welded.edges.size}"
+        }
+        require(welded.graph.degree(1) == 2) {
+            "Welded middle vertex should connect both segments"
+        }
+        require(welded.vertexSources.any { it.size == 2 }) {
+            "Expected one welded vertex to retain sources from both lines"
+        }
+
+        val curve = FLine()
+            .moveTo(0.0, 0.0, 0.0)
+            .cubicTo(
+                vec(0.0, 1.0, 0.0),
+                vec(1.0, 1.0, 0.0),
+                vec(1.0, 0.0, 0.0)
+            )
+        val curveGraph = curve.toFLineGraph(epsilon = 0.001, cubicFlatness = 0.05)
+        require(curveGraph.pointCount > 2) {
+            "Curved FLine graph should contain intermediate flattened vertices"
+        }
+        require(curveGraph.edges.size == curveGraph.pointCount - 1) {
+            "Single open curve should produce a chain of edges"
+        }
+
+        val isolated = FLine().moveTo(10.0, 10.0, 0.0)
+        val isolatedGraph = isolated.toFLineGraph(epsilon = 0.0)
+        require(isolatedGraph.pointCount == 1) {
+            "Move-only FLine should still produce an isolated graph vertex"
+        }
+        require(isolatedGraph.edges.isEmpty()) {
+            "Move-only FLine should not produce graph edges"
+        }
+
+        println("  ✓ FLine graph connectivity test passed")
     }
 
     private fun assertClose(label: String, got: Double, expected: Double, eps: Double) {

@@ -143,6 +143,14 @@ private fun preview(value: Any?): String {
         is List<*> -> "List(size=${value.size})"
         is Map<*, *> -> "Map(size=${value.size})"
         is Array<*> -> "Array(size=${value.size})"
+        is ByteArray -> "ByteArray(size=${value.size})"
+        is ShortArray -> "ShortArray(size=${value.size})"
+        is IntArray -> "IntArray(size=${value.size})"
+        is LongArray -> "LongArray(size=${value.size})"
+        is FloatArray -> "FloatArray(size=${value.size})"
+        is DoubleArray -> "DoubleArray(size=${value.size})"
+        is BooleanArray -> "BooleanArray(size=${value.size})"
+        is CharArray -> "CharArray(size=${value.size})"
         is FloatBuffer -> "FloatBuffer(pos=${value.position()}, limit=${value.limit()}, cap=${value.capacity()})"
         is IntBuffer -> "IntBuffer(pos=${value.position()}, limit=${value.limit()}, cap=${value.capacity()})"
         else -> clipText(value.toString().replace('\n', ' '))
@@ -240,6 +248,42 @@ private class IntBufferSource(buffer: IntBuffer) : H2Source {
             for (c in 0 until s) {
                 val idx = base + c
                 cells.add(if (idx < totalValues) data.get(idx).toString() else "")
+            }
+            out.add(H2Row(index = row, cells = cells))
+        }
+        return out
+    }
+}
+
+private class NumericArraySource(
+    override val kind: String,
+    override val title: String,
+    private val totalValues: Int,
+    private val valueAt: (Int) -> String
+) : H2Source {
+    override val minStride: Int = 1
+    override val maxStride: Int = H2_EXPLORER_MAX_STRIDE
+    override val defaultStride: Int = chooseDefaultStride(totalValues)
+
+    override fun totalRows(stride: Int): Int = ceilDiv(totalValues, stride.coerceAtLeast(1))
+
+    override fun columns(stride: Int): List<String> {
+        val s = stride.coerceAtLeast(1)
+        return (0 until s).map { "c$it" }
+    }
+
+    override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
+        val s = stride.coerceAtLeast(1)
+        val totalRows = totalRows(s)
+        val safeStart = start.coerceIn(0, totalRows)
+        val safeEnd = (safeStart + count.coerceAtLeast(0)).coerceIn(safeStart, totalRows)
+        val out = ArrayList<H2Row>(safeEnd - safeStart)
+        for (row in safeStart until safeEnd) {
+            val base = row * s
+            val cells = ArrayList<String>(s)
+            for (c in 0 until s) {
+                val idx = base + c
+                cells.add(if (idx < totalValues) valueAt(idx) else "")
             }
             out.add(H2Row(index = row, cells = cells))
         }
@@ -393,6 +437,14 @@ private fun makeSource(value: Any?): H2Source {
         null -> ScalarSource(null)
         is FloatBuffer -> FloatBufferSource(value)
         is IntBuffer -> IntBufferSource(value)
+        is ByteArray -> NumericArraySource("bytearray", "ByteArray", value.size) { value[it].toString() }
+        is ShortArray -> NumericArraySource("shortarray", "ShortArray", value.size) { value[it].toString() }
+        is IntArray -> NumericArraySource("intarray", "IntArray", value.size) { value[it].toString() }
+        is LongArray -> NumericArraySource("longarray", "LongArray", value.size) { value[it].toString() }
+        is FloatArray -> NumericArraySource("floatarray", "FloatArray", value.size) { fmtNumber(value[it]) }
+        is DoubleArray -> NumericArraySource("doublearray", "DoubleArray", value.size) { fmtNumber(value[it]) }
+        is BooleanArray -> ListSource(value.asList())
+        is CharArray -> ListSource(value.asList())
         is List<*> -> ListSource(value)
         is Array<*> -> ListSource(value.asList())
         is Map<*, *> -> MapSource(value)

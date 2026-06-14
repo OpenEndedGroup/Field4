@@ -71,7 +71,7 @@ object LazyValueVisualizer {
         return buildString {
             append("<div class='value-viz-h2")
             if (appendable) append(" afield-appendable-output")
-            append("' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:auto;box-sizing:border-box;'>")
+            append("' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:100%;min-height:0;box-sizing:border-box;'>")
             append("<div style='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;'>")
             append("<span style='color:#9cf;'>")
             append(escapeHtml(summary(value)))
@@ -95,13 +95,25 @@ object LazyValueVisualizer {
         is Map<*, *> -> "${value::class.simpleName ?: "Map"} (size=${value.size})"
         is List<*> -> "${value::class.simpleName ?: "List"} (size=${value.size})"
         is Array<*> -> "${value::class.simpleName ?: "Array"} (size=${value.size})"
+        is IntArray -> "IntArray (size=${value.size})"
+        is LongArray -> "LongArray (size=${value.size})"
+        is FloatArray -> "FloatArray (size=${value.size})"
+        is DoubleArray -> "DoubleArray (size=${value.size})"
         is FloatBuffer -> "FloatBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         is IntBuffer -> "IntBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         else -> value::class.simpleName ?: value::class.java.simpleName
     }
 
     private fun isHeavyStructure(value: Any?): Boolean {
-        return value is Map<*, *> || value is List<*> || value is Array<*> || value is FloatBuffer || value is IntBuffer
+        return value is Map<*, *> ||
+            value is List<*> ||
+            value is Array<*> ||
+            value is IntArray ||
+            value is LongArray ||
+            value is FloatArray ||
+            value is DoubleArray ||
+            value is FloatBuffer ||
+            value is IntBuffer
     }
 }
 
@@ -195,9 +207,9 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is Array<*> -> PagedListBrowsable(value.asList(), title = title)
         is ByteArray -> PagedListBrowsable(value.asList(), title = title)
         is ShortArray -> PagedListBrowsable(value.asList(), title = title)
-        is IntArray -> PagedListBrowsable(value.asList(), title = title)
+        is IntArray -> IntBufferBrowsable(IntBuffer.wrap(value), title = title)
         is LongArray -> PagedListBrowsable(value.asList(), title = title)
-        is FloatArray -> PagedListBrowsable(value.asList(), title = title)
+        is FloatArray -> FloatBufferBrowsable(FloatBuffer.wrap(value), title = title)
         is DoubleArray -> PagedListBrowsable(value.asList(), title = title)
         is BooleanArray -> PagedListBrowsable(value.asList(), title = title)
         is CharArray -> PagedListBrowsable(value.asList(), title = title)

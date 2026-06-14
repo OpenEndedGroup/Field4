@@ -35,6 +35,7 @@ object StackSLSmokeTest {
             externalizesDanglingWires()
             compilesStoreReadWriteWords()
             inlinesRepeatedDefinitionForCse()
+            compilesFMChirpOperator()
             println("StackSL compiler smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -244,6 +245,64 @@ object StackSLSmokeTest {
         require(rootSource.indexOf(sharedSample) == rootSource.lastIndexOf(sharedSample)) { result.glsl }
         require(result.analysis.danglingWires.map { it.initial } == listOf("0.982", "0.42", "0.035", "0.08", "0.5")) {
             result.analysis.danglingWires.toString()
+        }
+    }
+
+    private fun compilesFMChirpOperator() {
+        val short = StackSLCompiler.compile(
+            "uv .x fmchirp",
+            StackSLCompileOptions(prefix = "chirp_short")
+        )
+
+        require(short.ok) { short.diagnostics.joinToString("\n") }
+        require("chirp_short_fmchirpSignedPow" in short.glsl) { short.glsl }
+        require("chirp_short_fmchirp(" in short.glsl) { short.glsl }
+        require("chirp_short_fmchirp(_chirp_short_v" in short.glsl) { short.glsl }
+
+        val full = StackSLCompiler.compile(
+            """
+            uv .x
+            2
+            10
+            0
+            0
+            0.25
+            -0.5
+            1
+            0.8
+            fmchirp
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "chirp_full")
+        )
+
+        require(full.ok) { full.diagnostics.joinToString("\n") }
+        require("chirp_full_fmchirpSignedPow" in full.glsl) { full.glsl }
+        require("chirp_full_fmchirp(" in full.glsl) { full.glsl }
+        require("chirp_full_fmchirp(_chirp_full_v" in full.glsl) { full.glsl }
+        require("vec4(2.0), vec4(10.0), vec4(0.0), vec4(0.0), vec4(0.25), vec4(-0.5), vec4(1.0), vec4(0.8))" in full.glsl) {
+            full.glsl
+        }
+
+        val eightParam = StackSLCompiler.compile(
+            """
+            2
+            10
+            0
+            0
+            0.25
+            -0.5
+            1
+            0.8
+            fmchirp
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "chirp_params")
+        )
+
+        require(eightParam.ok) { eightParam.diagnostics.joinToString("\n") }
+        require("vec4(chirp_params_in.x)" in eightParam.glsl) { eightParam.glsl }
+        require("chirp_params_fmchirp(_chirp_params_v" in eightParam.glsl) { eightParam.glsl }
+        require("vec4(2.0), vec4(10.0), vec4(0.0), vec4(0.0), vec4(0.25), vec4(-0.5), vec4(1.0), vec4(0.8))" in eightParam.glsl) {
+            eightParam.glsl
         }
     }
 }

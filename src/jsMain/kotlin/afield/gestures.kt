@@ -5,6 +5,7 @@ import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.DOMRect
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
@@ -874,7 +875,10 @@ fun midPose(sampled: List<DubinsPose>): DubinsPose {
 }
 
 
-class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
+class CanvasGestures(
+    val launcher: (List<HTMLElement>) -> Unit,
+    val executionExpansionProvider: (HTMLElement, Boolean) -> List<HTMLElement> = { box, _ -> listOf(box) }
+) {
 
     companion object {
         val svgNamespace = "http://www.w3.org/2000/svg"
@@ -905,6 +909,12 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         println("finding ${document.querySelector("#overlaycanvas")}")
         overlayCanvas = document.querySelector("#overlaycanvas")!! as HTMLCanvasElement
         overlayContext = overlayCanvas.getContext("2d") as CanvasRenderingContext2D
+        window.addEventListener("keydown", { event ->
+            handleExecutionModifierKey(event as? KeyboardEvent ?: return@addEventListener)
+        })
+        window.addEventListener("keyup", { event ->
+            handleExecutionModifierKey(event as? KeyboardEvent ?: return@addEventListener)
+        })
     }
 
     private fun uidOrNull(box: HTMLElement): String? {
@@ -1308,6 +1318,20 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
     var isMarquee = false
     var start: Pair<Double, Double>? = null
     var rects: List<Pair<HTMLElement, DOMRect>>? = null
+    private var executionBreadthFirst = false
+    private var lastExecutionPointer: Pair<Double, Double>? = null
+
+    private data class ExecutionHit(
+        val element: HTMLElement,
+        val rect: DOMRect,
+        val t: Double,
+        val point: Point
+    )
+
+    private data class ExecutionLabel(
+        val number: Int,
+        val point: Point
+    )
 
 
     fun down(e: org.w3c.dom.events.MouseEvent) {
@@ -1320,6 +1344,8 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
             isExecutionLine = true
             start = e.x to e.y
+            lastExecutionPointer = e.x to e.y
+            executionBreadthFirst = e.shiftKey
         } else {
 
             var boxList = document.querySelectorAll(".box")
@@ -1332,34 +1358,51 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
     }
 
     fun up(e: org.w3c.dom.events.MouseEvent) {
+        executionBreadthFirst = e.shiftKey
         isDown = false
         if (isExecutionLine) {
-            finalizeExecutionLine(start!!, e)
+            finalizeExecutionLine(start!!, e.x, e.y)
         } else if (isMarquee) {
             finalizeSelectionLine(start!!, e)
         }
         isExecutionLine = false
         isMarquee = false
+        lastExecutionPointer = null
         rebuildConnectionGroup()
     }
 
+    private fun handleExecutionModifierKey(e: KeyboardEvent) {
+        if (!isExecutionLine) return
+        if (e.key != "Shift") return
+        executionBreadthFirst = e.type == "keydown"
+        val s = start ?: return
+        val pointer = lastExecutionPointer ?: return
+        updateExecutionLine(s, pointer.first, pointer.second)
+    }
+
     fun updateExecutionLine(start: Pair<Double, Double>, e: MouseEvent) {
+        executionBreadthFirst = e.shiftKey
+        lastExecutionPointer = e.x to e.y
+        updateExecutionLine(start, e.x, e.y)
+    }
+
+    private fun updateExecutionLine(start: Pair<Double, Double>, x: Double, y: Double) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
         clearOverlayCanvas()
         overlayContext.strokeStyle = "rgba(128,255,164,0.5)"
         overlayContext.lineWidth = 1.75
         overlayContext.beginPath()
-        overlayContext.moveTo(e.x, e.y)
+        overlayContext.moveTo(x, y)
         overlayContext.lineTo(start.first, start.second)
         overlayContext.stroke()
         overlayContext.fillStyle = "rgba(128,255,164,0.5)"
-        drawDot(e.x, e.y, 2.0)
+        drawDot(x, y, 2.0)
         drawDot(start.first, start.second, 2.0)
-        rects!!.filter { (element, rect) ->
-            lineIntersectsDOMRect(e.x, e.y, start.first, start.second, rect)
-        }.forEach { (element, rect) ->
+        val hits = executionHits(start, x, y)
+        hits.forEach { (_, rect) ->
             overlayContext.strokeRect(rect.x, rect.y, rect.width, rect.height)
         }
+        drawExecutionOrderLabels(labelsForHits(hits, executionBreadthFirst, start, x, y))
     }
 
     fun updateMarquee(start: Pair<Double, Double>, e: MouseEvent) {
@@ -1384,26 +1427,11 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         }
     }
 
-    fun finalizeExecutionLine(start: Pair<Double, Double>, e: MouseEvent) {
+    fun finalizeExecutionLine(start: Pair<Double, Double>, x: Double, y: Double) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
         clearOverlayCanvas()
 
-        rects!!.filter { (element, rect) ->
-            lineIntersectsDOMRect(e.x, e.y, start.first, start.second, rect)
-        }.sortedBy { (_, rect) ->
-            val dx = e.x - start.first
-            val dy = e.y - start.second
-            val lengthSquared = dx * dx + dy * dy
-            if (lengthSquared <= 1e-9) {
-                0.0
-            } else {
-                val centerX = rect.x + rect.width / 2.0
-                val centerY = rect.y + rect.height / 2.0
-                ((centerX - start.first) * dx + (centerY - start.second) * dy) / lengthSquared
-            }
-        }.let {
-            launcher(it.map { it.first })
-        }
+        launcher(expandedExecutionOrder(executionHits(start, x, y), executionBreadthFirst))
     }
 
     fun finalizeSelectionLine(start: Pair<Double, Double>, e: MouseEvent) {
@@ -1446,6 +1474,208 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         val s = (-s1y * (x0 - x2) + s1x * (y0 - y2)) / denom
         val t = (s2x * (y0 - y2) - s2y * (x0 - x2)) / denom
         return (s in 0.0..1.0) && (t in 0.0..1.0)
+    }
+
+    private fun lineRectIntersectionPoint(
+        startX: Double,
+        startY: Double,
+        endX: Double,
+        endY: Double,
+        rect: DOMRect
+    ): Pair<Point, Double>? {
+        val dx = endX - startX
+        val dy = endY - startY
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 1e-9) return null
+
+        fun inside(x: Double, y: Double): Boolean {
+            return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        }
+
+        if (inside(startX, startY)) {
+            return Point(startX, startY) to 0.0
+        }
+
+        val candidates = mutableListOf<Pair<Point, Double>>()
+
+        fun addCandidate(t: Double, x: Double, y: Double) {
+            if (t !in 0.0..1.0) return
+            if (!inside(x, y)) return
+            candidates.add(Point(x, y) to t)
+        }
+
+        if (abs(dx) > 1e-9) {
+            val leftT = (rect.left - startX) / dx
+            addCandidate(leftT, rect.left, startY + leftT * dy)
+            val rightT = (rect.right - startX) / dx
+            addCandidate(rightT, rect.right, startY + rightT * dy)
+        }
+        if (abs(dy) > 1e-9) {
+            val topT = (rect.top - startY) / dy
+            addCandidate(topT, startX + topT * dx, rect.top)
+            val bottomT = (rect.bottom - startY) / dy
+            addCandidate(bottomT, startX + bottomT * dx, rect.bottom)
+        }
+
+        return candidates.minByOrNull { it.second }
+    }
+
+    private fun executionHits(start: Pair<Double, Double>, pointerX: Double, pointerY: Double): List<ExecutionHit> {
+        val sx = start.first
+        val sy = start.second
+        val ex = pointerX
+        val ey = pointerY
+        val dx = ex - sx
+        val dy = ey - sy
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 1e-9) return emptyList()
+
+        return rects.orEmpty().mapNotNull { (element, rect) ->
+            if (!lineIntersectsDOMRect(ex, ey, sx, sy, rect)) return@mapNotNull null
+            val hit = lineRectIntersectionPoint(sx, sy, ex, ey, rect)
+            val t = hit?.second ?: run {
+                val centerX = rect.x + rect.width / 2.0
+                val centerY = rect.y + rect.height / 2.0
+                ((centerX - sx) * dx + (centerY - sy) * dy) / lengthSquared
+            }
+            val point = hit?.first ?: Point(
+                (rect.x + rect.width / 2.0).coerceIn(rect.left, rect.right),
+                (rect.y + rect.height / 2.0).coerceIn(rect.top, rect.bottom)
+            )
+            ExecutionHit(element, rect, t, point)
+        }.sortedBy { it.t }
+    }
+
+    private fun expandedExecutionOrder(hits: List<ExecutionHit>, breadthFirst: Boolean): List<HTMLElement> {
+        val seen = mutableSetOf<String>()
+        val ordered = mutableListOf<HTMLElement>()
+
+        fun keyFor(box: HTMLElement): String {
+            val uid = box.unsafeCast<dynamic>().uid
+            if (uid != undefined && uid != null) return uid.toString()
+            return "element:${box.hashCode()}"
+        }
+
+        hits.forEach { hit ->
+            if (keyFor(hit.element) in seen) return@forEach
+            executionExpansionProvider(hit.element, breadthFirst).forEach { box ->
+                val key = keyFor(box)
+                if (seen.add(key)) ordered.add(box)
+            }
+        }
+        return ordered
+    }
+
+    private fun rectForBox(box: HTMLElement): DOMRect? {
+        return rects.orEmpty().firstOrNull { it.first == box }?.second
+    }
+
+    private fun closestPointOnSegment(px: Double, py: Double, ax: Double, ay: Double, bx: Double, by: Double): Point {
+        val dx = bx - ax
+        val dy = by - ay
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 1e-9) return Point(ax, ay)
+        val t = (((px - ax) * dx + (py - ay) * dy) / lengthSquared).coerceIn(0.0, 1.0)
+        return Point(ax + t * dx, ay + t * dy)
+    }
+
+    private fun closestPointOnRectToSegment(rect: DOMRect, sx: Double, sy: Double, ex: Double, ey: Double): Point {
+        lineRectIntersectionPoint(sx, sy, ex, ey, rect)?.let { return it.first }
+
+        fun dist2(a: Point, bx: Double, by: Double): Double {
+            val dx = a.x - bx
+            val dy = a.y - by
+            return dx * dx + dy * dy
+        }
+
+        val edges = listOf(
+            doubleArrayOf(rect.left, rect.top, rect.right, rect.top),
+            doubleArrayOf(rect.right, rect.top, rect.right, rect.bottom),
+            doubleArrayOf(rect.right, rect.bottom, rect.left, rect.bottom),
+            doubleArrayOf(rect.left, rect.bottom, rect.left, rect.top)
+        )
+
+        val candidates = mutableListOf<Pair<Point, Double>>()
+        edges.forEach { edge ->
+            val ax = edge[0]
+            val ay = edge[1]
+            val bx = edge[2]
+            val by = edge[3]
+
+            val nearStart = closestPointOnSegment(sx, sy, ax, ay, bx, by)
+            candidates.add(nearStart to dist2(nearStart, sx, sy))
+
+            val nearEnd = closestPointOnSegment(ex, ey, ax, ay, bx, by)
+            candidates.add(nearEnd to dist2(nearEnd, ex, ey))
+
+            val edgeStartToChord = closestPointOnSegment(ax, ay, sx, sy, ex, ey)
+            candidates.add(Point(ax, ay) to dist2(edgeStartToChord, ax, ay))
+
+            val edgeEndToChord = closestPointOnSegment(bx, by, sx, sy, ex, ey)
+            candidates.add(Point(bx, by) to dist2(edgeEndToChord, bx, by))
+        }
+
+        return candidates.minByOrNull { it.second }?.first ?: Point(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
+    }
+
+    private fun labelsForHits(
+        hits: List<ExecutionHit>,
+        breadthFirst: Boolean,
+        start: Pair<Double, Double>,
+        pointerX: Double,
+        pointerY: Double
+    ): List<ExecutionLabel> {
+        val seen = mutableSetOf<String>()
+        val labels = mutableListOf<ExecutionLabel>()
+        var nextNumber = 1
+
+        fun keyFor(box: HTMLElement): String {
+            val uid = box.unsafeCast<dynamic>().uid
+            if (uid != undefined && uid != null) return uid.toString()
+            return "element:${box.hashCode()}"
+        }
+
+        hits.forEach { hit ->
+            if (keyFor(hit.element) in seen) return@forEach
+            executionExpansionProvider(hit.element, breadthFirst).forEach { box ->
+                val key = keyFor(box)
+                if (seen.add(key)) {
+                    val labelPoint = rectForBox(box)?.let { rect ->
+                        closestPointOnRectToSegment(rect, start.first, start.second, pointerX, pointerY)
+                    } ?: hit.point
+                    labels.add(ExecutionLabel(nextNumber++, labelPoint))
+                }
+            }
+        }
+        return labels
+    }
+
+    private fun drawExecutionOrderLabels(labels: List<ExecutionLabel>) {
+        if (labels.isEmpty()) return
+
+        overlayContext.save()
+        overlayContext.font = "12px \"Iosevka Web\", \"Iosevka\", monospace"
+        overlayContext.asDynamic().textAlign = "center"
+        overlayContext.asDynamic().textBaseline = "middle"
+
+        labels.forEach { label ->
+            val text = label.number.toString()
+            val radius = max(8.0, 5.0 + text.length * 3.2)
+            val x = label.point.x
+            val y = label.point.y
+
+            overlayContext.beginPath()
+            overlayContext.arc(x, y, radius, 0.0, 2 * PI)
+            overlayContext.fillStyle = "rgba(128,255,164,0.94)"
+            overlayContext.fill()
+            overlayContext.lineWidth = 1.25
+            overlayContext.strokeStyle = "rgba(0,0,0,0.82)"
+            overlayContext.stroke()
+            overlayContext.fillStyle = "rgba(0,0,0,0.92)"
+            overlayContext.fillText(text, x, y + 0.5)
+        }
+
+        overlayContext.restore()
     }
 
     fun lineIntersectsDOMRect(x0: Double, y0: Double, x1: Double, y1: Double, rect: DOMRect): Boolean {

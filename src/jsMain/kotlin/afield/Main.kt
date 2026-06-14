@@ -380,6 +380,30 @@ var launchNumber = 0
 external fun launchAll(uid: String, code: String)
 external fun continueAll(uid: String, code: String)
 
+private fun breadthFirstExecutionOrder(root: HTMLElement): List<HTMLElement> {
+    val ordered = mutableListOf<HTMLElement>()
+    val seen = mutableSetOf<String>()
+    val queue = mutableListOf(root)
+
+    fun uidFor(box: HTMLElement): String? = box.asDynamic().uid as? String
+
+    var index = 0
+    while (index < queue.size) {
+        val box = queue[index++]
+        val uid = uidFor(box) ?: continue
+        if (!seen.add(uid)) continue
+        ordered.add(box)
+
+        val children = box.asDynamic().box_children as? Array<String> ?: emptyArray()
+        children.forEach { childUid ->
+            val child = findBoxElementByUid(childUid)
+            if (child != null) queue.add(child)
+        }
+    }
+
+    return ordered
+}
+
 var canvasGestures = CanvasGestures(launcher = {
     if (it.size == 1) {
         launchAll(it[0].unsafeCast<dynamic>().uid as String, it[0].unsafeCast<dynamic>().code as String)
@@ -396,6 +420,8 @@ var canvasGestures = CanvasGestures(launcher = {
         }.toTypedArray()
         monacoLaunchBatch(items)
     }
+}, executionExpansionProvider = { box, breadthFirst ->
+    if (breadthFirst) breadthFirstExecutionOrder(box) else listOf(box)
 }).also {
     val w = window.asDynamic()
     w.canvasGestures = it
@@ -4138,6 +4164,12 @@ suspend fun main() {
     handlers.put("notify") { message, _ ->
         val set = Json.decodeFromJsonElement<Notify>(message.payload!!)
         notify(set.text, set.category)
+        Handled.yes
+    }
+
+    handlers.put("osc-editor") { message, _ ->
+        val command = Json.decodeFromJsonElement<OscEditorCommand>(message.payload!!)
+        monacoRunOscEditorCommand(command)
         Handled.yes
     }
 

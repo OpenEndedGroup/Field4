@@ -36,7 +36,7 @@ package afield.four.util
     Types supported for normal fields:
       - Float
       - org.joml.Vector2f / Vector3f / Vector4f
-      - Vec2h / Vec3h / Vec4h (fp16 transit only)
+      - Vec2h / Vec3h / Vec4h / Vec8h (fp16 transit only)
 
     Instruction payloads:
       - You said these will always be Vec4h; this file supports that naturally.
@@ -46,6 +46,7 @@ package afield.four.util
       - Vec2h -> uint  (packed half2)
       - Vec3h -> uvec2 (x,y in .x; z in low half of .y)
       - Vec4h -> uvec2 (x,y in .x; z,w in .y)
+      - Vec8h -> uvec4 (two halfs per uint lane)
 
     NOTE:
       - Ensure the ByteBuffer uses LITTLE_ENDIAN:
@@ -84,19 +85,6 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 
 // ---------------------------
-// Half wrapper types + sugar
-// ---------------------------
-
-data class Vec2h(val v: Vector2f)
-data class Vec3h(val v: Vector3f)
-data class Vec4h(val v: Vector4f)
-
-// Convenient ".half" views on JOML vectors.
-val Vector2f.half: Vec2h get() = Vec2h(this)
-val Vector3f.half: Vec3h get() = Vec3h(this)
-val Vector4f.half: Vec4h get() = Vec4h(this)
-
-// ---------------------------
 // Ordering annotation (optional)
 // ---------------------------
 
@@ -116,7 +104,8 @@ internal enum class PcKind(val regFloats: Int) {
 
     H2(2), // Vec2h -> uint
     H3(3), // Vec3h -> uvec2
-    H4(4)  // Vec4h -> uvec2
+    H4(4), // Vec4h -> uvec2
+    H8(8)  // Vec8h -> uvec4
 }
 
 internal data class FieldInfo(
@@ -135,43 +124,6 @@ internal class Schema(
     val regIndexByName: Map<String, Int>,
     val pcOffsetByName: Map<String, Int>
 )
-
-// ---------------------------
-// Half packing utilities
-// ---------------------------
-
-object HalfUtil {
-
-    fun pack2ToU32(x: Float, y: Float): Int {
-        val hx = floatToHalfBits(x).toInt() and 0xFFFF
-        val hy = floatToHalfBits(y).toInt() and 0xFFFF
-        return hx or (hy shl 16)
-    }
-
-    fun pack1ToU32(x: Float): Int =
-        floatToHalfBits(x).toInt() and 0xFFFF
-
-    // Common float->half conversion
-    fun floatToHalfBits(f: Float): Short {
-        val bits = java.lang.Float.floatToIntBits(f)
-        val sign = (bits ushr 16) and 0x8000
-        var exp = ((bits ushr 23) and 0xFF) - 127 + 15
-        var mant = bits and 0x7FFFFF
-
-        if (exp <= 0) {
-            if (exp < -10) return sign.toShort()
-            mant = (mant or 0x800000) ushr (1 - exp)
-            return (sign or ((mant + 0x1000) ushr 13)).toShort()
-        }
-
-        if (exp >= 31) {
-            // Inf/NaN
-            return (sign or 0x7C00 or (mant ushr 13)).toShort()
-        }
-
-        return (sign or (exp shl 10) or ((mant + 0x1000) ushr 13)).toShort()
-    }
-}
 
 // ---------------------------
 // Base class
@@ -309,6 +261,7 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
             PcKind.H2 -> value is Vec2h
             PcKind.H3 -> value is Vec3h
             PcKind.H4 -> value is Vec4h
+            PcKind.H8 -> value is Vec8h
         }
 
         if (!ok) {
@@ -327,6 +280,7 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
         PcKind.H2 -> "Vec2h"
         PcKind.H3 -> "Vec3h"
         PcKind.H4 -> "Vec4h"
+        PcKind.H8 -> "Vec8h"
     }
 
     private fun writeField(bb: ByteBuffer, absOffset: Int, kind: PcKind, v: Any?) {
@@ -351,21 +305,28 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
 
             PcKind.H2 -> {
                 val t = (v as Vec2h).v
-                bb.putInt(HalfUtil.pack2ToU32(t.x, t.y))
+                bb.putInt(packHalf2x16(t.x, t.y))
             }
             PcKind.H3 -> {
                 val t = (v as Vec3h).v
-                val xy = HalfUtil.pack2ToU32(t.x, t.y)
-                val z0 = HalfUtil.pack1ToU32(t.z)
+                val xy = packHalf2x16(t.x, t.y)
+                val z0 = packHalf1x16(t.z)
                 bb.putInt(xy)
                 bb.putInt(z0)
             }
             PcKind.H4 -> {
                 val t = (v as Vec4h).v
-                val xy = HalfUtil.pack2ToU32(t.x, t.y)
-                val zw = HalfUtil.pack2ToU32(t.z, t.w)
+                val xy = packHalf2x16(t.x, t.y)
+                val zw = packHalf2x16(t.z, t.w)
                 bb.putInt(xy)
                 bb.putInt(zw)
+            }
+            PcKind.H8 -> {
+                val t = v as Vec8h
+                bb.putInt(packHalf2x16(t.lo.x, t.lo.y))
+                bb.putInt(packHalf2x16(t.lo.z, t.lo.w))
+                bb.putInt(packHalf2x16(t.hi.x, t.hi.y))
+                bb.putInt(packHalf2x16(t.hi.z, t.hi.w))
             }
         }
 
@@ -469,6 +430,7 @@ private fun inferKind(k: KClass<*>?): PcKind = when (k) {
     Vec2h::class -> PcKind.H2
     Vec3h::class -> PcKind.H3
     Vec4h::class -> PcKind.H4
+    Vec8h::class -> PcKind.H8
 
     else -> error("Unsupported push-constant field type: $k")
 }
@@ -493,6 +455,7 @@ private fun pcStorageLayout(kind: PcKind): Pair<Int, Int> = when (kind) {
     PcKind.H2 -> 4 to 4     // uint
     PcKind.H3 -> 8 to 8     // uvec2
     PcKind.H4 -> 8 to 8     // uvec2
+    PcKind.H8 -> 16 to 16   // uvec4
 }
 
 // ---------------------------
@@ -534,6 +497,12 @@ object GlslGen {
                     "vec2 a = unpackHalf2x16(p.x); " +
                     "vec2 b = unpackHalf2x16(p.y); " +
                     "return vec4(a, b); " +
+                    "}"
+        )
+        sb.appendLine(
+            "void half8(uvec4 p, out vec4 lo, out vec4 hi) { " +
+                    "lo = vec4(unpackHalf2x16(p.x), unpackHalf2x16(p.y)); " +
+                    "hi = vec4(unpackHalf2x16(p.z), unpackHalf2x16(p.w)); " +
                     "}"
         )
         sb.appendLine()
@@ -621,6 +590,19 @@ object GlslGen {
                     sb.appendLine("    $regsName[REG_$n + 2] = _${n}_v.z;")
                     sb.appendLine("    $regsName[REG_$n + 3] = _${n}_v.w;")
                 }
+                PcKind.H8 -> {
+                    sb.appendLine("    vec4 _${n}_lo;")
+                    sb.appendLine("    vec4 _${n}_hi;")
+                    sb.appendLine("    half8($pcInstanceName.$m, _${n}_lo, _${n}_hi);")
+                    sb.appendLine("    $regsName[REG_$n + 0] = _${n}_lo.x;")
+                    sb.appendLine("    $regsName[REG_$n + 1] = _${n}_lo.y;")
+                    sb.appendLine("    $regsName[REG_$n + 2] = _${n}_lo.z;")
+                    sb.appendLine("    $regsName[REG_$n + 3] = _${n}_lo.w;")
+                    sb.appendLine("    $regsName[REG_$n + 4] = _${n}_hi.x;")
+                    sb.appendLine("    $regsName[REG_$n + 5] = _${n}_hi.y;")
+                    sb.appendLine("    $regsName[REG_$n + 6] = _${n}_hi.z;")
+                    sb.appendLine("    $regsName[REG_$n + 7] = _${n}_hi.w;")
+                }
             }
         }
         sb.appendLine("}")
@@ -660,6 +642,24 @@ object GlslGen {
                     sb.appendLine("    );")
                     sb.appendLine("}")
                 }
+                PcKind.H8 -> {
+                    sb.appendLine("vec4 ${n}Lo() {")
+                    sb.appendLine("    return vec4(")
+                    sb.appendLine("        $regsName[REG_$n + 0],")
+                    sb.appendLine("        $regsName[REG_$n + 1],")
+                    sb.appendLine("        $regsName[REG_$n + 2],")
+                    sb.appendLine("        $regsName[REG_$n + 3]")
+                    sb.appendLine("    );")
+                    sb.appendLine("}")
+                    sb.appendLine("vec4 ${n}Hi() {")
+                    sb.appendLine("    return vec4(")
+                    sb.appendLine("        $regsName[REG_$n + 4],")
+                    sb.appendLine("        $regsName[REG_$n + 5],")
+                    sb.appendLine("        $regsName[REG_$n + 6],")
+                    sb.appendLine("        $regsName[REG_$n + 7]")
+                    sb.appendLine("    );")
+                    sb.appendLine("}")
+                }
             }
             sb.appendLine()
         }
@@ -686,6 +686,7 @@ object GlslGen {
         PcKind.H2 -> "uint"
         PcKind.H3 -> "uvec2"
         PcKind.H4 -> "uvec2"
+        PcKind.H8 -> "uvec4"
     }
 }
 

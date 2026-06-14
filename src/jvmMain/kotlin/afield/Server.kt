@@ -364,7 +364,22 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
         "global" -> "global"
         else -> "none"
     }
-    return preferences.copy(editorPropertyStickiness = sticky)
+    fun normalizeOscAddress(address: String): String {
+        val trimmed = address.trim()
+        return when {
+            trimmed.isBlank() -> ""
+            trimmed.startsWith("/") -> trimmed
+            else -> "/$trimmed"
+        }
+    }
+    return preferences.copy(
+        editorPropertyStickiness = sticky,
+        oscEditorPort = preferences.oscEditorPort.coerceIn(1, 65535),
+        oscEditorFloatAddress = normalizeOscAddress(preferences.oscEditorFloatAddress),
+        oscEditorLaunchAddress = normalizeOscAddress(preferences.oscEditorLaunchAddress),
+        oscEditorStopAddress = normalizeOscAddress(preferences.oscEditorStopAddress),
+        oscEditorDebounceMs = preferences.oscEditorDebounceMs.coerceIn(0, 5_000)
+    )
 }
 
 private fun applyFieldPreferences(preferences: FieldPreferences) {
@@ -374,6 +389,7 @@ private fun applyFieldPreferences(preferences: FieldPreferences) {
     Options.enableHDR = preferences.enableHDR
     Options.openXRDebugInput = preferences.openXRDebugInput
     Options.validate = preferences.validate
+    OscEditorBackdoor.configure(preferences)
 }
 
 private fun persistWorkspacePath(path: String) {
@@ -1072,6 +1088,7 @@ class Server {
             System.setProperty("joml.format", "false")
 
             initializeClassCache()
+            applyFieldPreferences(currentFieldPreferences())
 
             runAll(plugins)
             runAll(installHandlers)

@@ -64,7 +64,13 @@ data class FieldPreferences(
     val openXRDebugInput: Boolean = true,
     val validate: Boolean = true,
     val autoOpenLastDocumentInDesktop: Boolean = false,
-    val editorPropertyStickiness: String = "none"
+    val editorPropertyStickiness: String = "none",
+    val oscEditorEnabled: Boolean = false,
+    val oscEditorPort: Int = 9000,
+    val oscEditorFloatAddress: String = "/field/float",
+    val oscEditorLaunchAddress: String = "/field/launch",
+    val oscEditorStopAddress: String = "/field/stop",
+    val oscEditorDebounceMs: Int = 200
 )
 
 @Serializable

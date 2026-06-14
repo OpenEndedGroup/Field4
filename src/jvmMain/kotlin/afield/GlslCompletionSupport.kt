@@ -5,6 +5,7 @@ import afield.four.modules.Introspection
 import afield.four.modules.Introspected
 import afield.four.modules.PrimitiveType
 import afield.four.modules.ShaderKind
+import afield.four.util.listGlobalShaderTemplateNames
 import afield.stdlib._computeShader
 import afield.stdlib._meshShader
 import afield.stdlib._rayTracingShader
@@ -749,7 +750,9 @@ private fun templateExpressionCompletions(inventory: GlslCompletionInventory): L
     listOf(
         Metadata("property", "Field template", "shadertoy.vertexPreamble", "shadertoy.vertexPreamble", "Shadertoy vertex helper preamble."),
         Metadata("property", "Field template", "shadertoy.fragmentPreamble", "shadertoy.fragmentPreamble", "Shadertoy fragment helper preamble.")
-    ) + inventory.symbols.map { it.toMetadata() }
+    ) + listGlobalShaderTemplateNames().map {
+        Metadata("property", "Field template", it, it, "Global shader template.")
+    } + inventory.symbols.map { it.toMetadata() }
 
 private fun templateShadertoyMemberCompletions(): List<Metadata> =
     listOf(

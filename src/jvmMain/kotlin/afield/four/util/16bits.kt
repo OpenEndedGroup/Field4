@@ -1,6 +1,61 @@
 package afield.four.util
 
+import org.joml.Vector2f
+import org.joml.Vector3f
+import org.joml.Vector4f
 import java.nio.ByteBuffer
+
+data class Vec2h(val v: Vector2f)
+data class Vec3h(val v: Vector3f)
+data class Vec4h(val v: Vector4f)
+
+data class Vec8h(val lo: Vector4f, val hi: Vector4f) {
+    constructor(
+        x: Float,
+        y: Float,
+        z: Float,
+        w: Float,
+        a: Float,
+        b: Float,
+        c: Float,
+        d: Float
+    ) : this(Vector4f(x, y, z, w), Vector4f(a, b, c, d))
+
+    constructor(values: FloatArray) : this(
+        requireVec8(values)[0],
+        values[1],
+        values[2],
+        values[3],
+        values[4],
+        values[5],
+        values[6],
+        values[7]
+    )
+
+    fun toFloatArray(): FloatArray =
+        floatArrayOf(lo.x, lo.y, lo.z, lo.w, hi.x, hi.y, hi.z, hi.w)
+
+    companion object {
+        private fun requireVec8(values: FloatArray): FloatArray {
+            require(values.size == 8) { "Vec8h requires exactly 8 floats, got ${values.size}" }
+            return values
+        }
+    }
+}
+
+// Convenient ".half" views on JOML vectors.
+val Vector2f.half: Vec2h get() = Vec2h(this)
+val Vector3f.half: Vec3h get() = Vec3h(this)
+val Vector4f.half: Vec4h get() = Vec4h(this)
+
+fun packHalf1x16(x: Float): Int =
+    floatToHalfBits(x).toInt() and 0xFFFF
+
+fun packHalf2x16(x: Float, y: Float): Int {
+    val hx = packHalf1x16(x)
+    val hy = packHalf1x16(y)
+    return hx or (hy shl 16)
+}
 
 /** Convert a Float to IEEE 754 binary16 bit pattern (half float). */
 fun floatToHalfBits(value: Float): Short {
@@ -131,4 +186,3 @@ fun halfBitsToFloat(bits: Short): Float {
 
     return Float.fromBits(fBits)
 }
-

@@ -215,7 +215,8 @@
 
         .workspace-header,
         .ai-settings-header,
-        .preferences-header {
+        .preferences-header,
+        .osc-settings-header {
             display: grid;
             grid-template-columns: auto 1fr;
             gap: 10px;
@@ -225,14 +226,16 @@
 
         .workspace-label,
         .ai-settings-label,
-        .preferences-label {
+        .preferences-label,
+        .osc-settings-label {
             color: var(--field-text-soft);
         }
 
         #current-workspace,
         #ai-settings-state,
         #ai-settings-path,
-        #preferences-state {
+        #preferences-state,
+        #osc-settings-state {
             min-width: 0;
             color: var(--field-cyan);
             overflow: hidden;
@@ -241,7 +244,8 @@
         }
 
         .workspace-controls,
-        .ai-settings-controls {
+        .ai-settings-controls,
+        .osc-settings-controls {
             display: grid;
             grid-template-columns: 1fr auto auto;
             gap: 8px;
@@ -253,7 +257,12 @@
         }
 
         #workspace-path,
-        #openai-platform-key {
+        #openai-platform-key,
+        #osc-editor-port,
+        #osc-editor-float-address,
+        #osc-editor-launch-address,
+        #osc-editor-stop-address,
+        #osc-editor-debounce-ms {
             width: 100%;
             background: rgba(0, 0, 0, 0.8);
             color: var(--field-cyan);
@@ -265,19 +274,30 @@
         }
 
         #workspace-path::placeholder,
-        #openai-platform-key::placeholder {
+        #openai-platform-key::placeholder,
+        #osc-editor-port::placeholder,
+        #osc-editor-float-address::placeholder,
+        #osc-editor-launch-address::placeholder,
+        #osc-editor-stop-address::placeholder,
+        #osc-editor-debounce-ms::placeholder {
             font-size: 12px;
             color: rgba(164, 193, 210, 0.8);
         }
 
         #workspace-path:focus,
-        #openai-platform-key:focus {
+        #openai-platform-key:focus,
+        #osc-editor-port:focus,
+        #osc-editor-float-address:focus,
+        #osc-editor-launch-address:focus,
+        #osc-editor-stop-address:focus,
+        #osc-editor-debounce-ms:focus {
             border-color: var(--field-cyan);
         }
 
         #workspace-status,
         #ai-settings-status,
-        #preferences-status {
+        #preferences-status,
+        #osc-settings-status {
             min-height: 1.2em;
             font-size: 12px;
             color: var(--field-text-soft);
@@ -285,7 +305,8 @@
 
         #workspace-status.error,
         #ai-settings-status.error,
-        #preferences-status.error {
+        #preferences-status.error,
+        #osc-settings-status.error {
             color: var(--field-danger);
         }
 
@@ -339,10 +360,37 @@
 
         .workspace-details-body,
         .ai-settings-body,
-        .preferences-body {
+        .preferences-body,
+        .osc-settings-body {
             padding: 0 12px 12px;
             display: grid;
             gap: 8px;
+        }
+
+        .osc-settings-panel {
+            padding: 10px 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .osc-settings-controls {
+            grid-template-columns: minmax(110px, 0.4fr) minmax(150px, 1fr) minmax(135px, 0.85fr) minmax(120px, 0.8fr) minmax(82px, 0.28fr) minmax(82px, 0.28fr);
+        }
+
+        .osc-settings-enable {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            color: var(--field-text);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .osc-settings-enable input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--field-cyan);
         }
 
         .preference-grid {
@@ -866,6 +914,8 @@
             .workspace-controls,
             .ai-settings-header,
             .ai-settings-controls,
+            .osc-settings-header,
+            .osc-settings-controls,
             .preferences-header,
             .preference-grid {
                 grid-template-columns: 1fr;
@@ -874,7 +924,8 @@
             #current-workspace,
             #ai-settings-state,
             #ai-settings-path,
-            #preferences-state {
+            #preferences-state,
+            #osc-settings-state {
                 white-space: normal;
                 word-break: break-all;
             }
@@ -1052,6 +1103,22 @@
         </details>
     </section>
 
+    <section class="panel osc-settings-panel">
+        <div class="osc-settings-header">
+            <span class="osc-settings-label">OSC editor</span>
+            <span id="osc-settings-state">disabled</span>
+        </div>
+        <div class="osc-settings-controls">
+            <label class="osc-settings-enable"><input id="osc-editor-enabled" type="checkbox"> enabled</label>
+            <input id="osc-editor-float-address" type="text" autocomplete="off" placeholder="/field/float">
+            <input id="osc-editor-launch-address" type="text" autocomplete="off" placeholder="/field/launch">
+            <input id="osc-editor-stop-address" type="text" autocomplete="off" placeholder="/field/stop">
+            <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
+            <input id="osc-editor-debounce-ms" type="number" min="0" max="5000" step="25" autocomplete="off" placeholder="200">
+        </div>
+        <div id="osc-settings-status" aria-live="polite"></div>
+    </section>
+
     <section class="panel running-panel" id="running-panel" hidden>
         <div class="running-header">
             <span>Running now</span>
@@ -1109,7 +1176,13 @@
             openXRDebugInput: true,
             validate: true,
             autoOpenLastDocumentInDesktop: false,
-            editorPropertyStickiness: "none"
+            editorPropertyStickiness: "none",
+            oscEditorEnabled: false,
+            oscEditorPort: 9000,
+            oscEditorFloatAddress: "/field/float",
+            oscEditorLaunchAddress: "/field/launch",
+            oscEditorStopAddress: "/field/stop",
+            oscEditorDebounceMs: 200
         },
         savingPreferences: false
     };
@@ -1117,6 +1190,7 @@
     let searchRequestSerial = 0;
     let searchDebounceTimer = null;
     let preferencesSaveSerial = 0;
+    let oscSettingsSaveTimer = null;
     let welcomeRefreshTimer = null;
     let welcomeEventSocket = null;
     let welcomeEventReconnectTimer = null;
@@ -1285,7 +1359,43 @@
         node.classList.toggle("error", !!isError);
     }
 
+    function renderOscSettings() {
+        const prefs = state.preferences || {};
+        const stateNode = document.getElementById("osc-settings-state");
+        const enabled = document.getElementById("osc-editor-enabled");
+        const port = document.getElementById("osc-editor-port");
+        const floatAddress = document.getElementById("osc-editor-float-address");
+        const launchAddress = document.getElementById("osc-editor-launch-address");
+        const stopAddress = document.getElementById("osc-editor-stop-address");
+        const debounce = document.getElementById("osc-editor-debounce-ms");
+
+        if (stateNode) {
+            const label = prefs.oscEditorEnabled
+                ? `UDP ${prefs.oscEditorPort || 9000} · ${prefs.oscEditorFloatAddress || "/field/float"}`
+                : "disabled";
+            stateNode.textContent = label;
+        }
+        if (enabled) enabled.checked = !!prefs.oscEditorEnabled;
+        if (port) port.value = String(prefs.oscEditorPort || 9000);
+        if (floatAddress) floatAddress.value = prefs.oscEditorFloatAddress || "/field/float";
+        if (launchAddress) launchAddress.value = prefs.oscEditorLaunchAddress || "/field/launch";
+        if (stopAddress) stopAddress.value = prefs.oscEditorStopAddress || "/field/stop";
+        if (debounce) debounce.value = String(prefs.oscEditorDebounceMs ?? 200);
+
+        [enabled, port, floatAddress, launchAddress, stopAddress, debounce].forEach((node) => {
+            if (node) node.disabled = state.savingPreferences;
+        });
+    }
+
+    function setOscSettingsStatus(text, isError = false) {
+        const node = document.getElementById("osc-settings-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
     function readPreferencesForm() {
+        const parsedDebounce = Number.parseInt(document.getElementById("osc-editor-debounce-ms")?.value || "200", 10);
         return {
             profiling: !!document.getElementById("pref-profiling")?.checked,
             logShadercSource: !!document.getElementById("pref-log-shaderc-source")?.checked,
@@ -1294,7 +1404,13 @@
             openXRDebugInput: !!document.getElementById("pref-openxr-debug-input")?.checked,
             validate: !!document.getElementById("pref-validate")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
-            editorPropertyStickiness: document.getElementById("editor-stickiness")?.value || "none"
+            editorPropertyStickiness: document.getElementById("editor-stickiness")?.value || "none",
+            oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
+            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000,
+            oscEditorFloatAddress: String(document.getElementById("osc-editor-float-address")?.value || "/field/float").trim(),
+            oscEditorLaunchAddress: String(document.getElementById("osc-editor-launch-address")?.value || "/field/launch").trim(),
+            oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
+            oscEditorDebounceMs: Number.isFinite(parsedDebounce) ? parsedDebounce : 200
         };
     }
 
@@ -1783,6 +1899,7 @@
             renderWorkspaceControls();
             renderAiSettings();
             renderPreferences();
+            renderOscSettings();
             renderList();
         } catch (error) {
             console.error("Failed to load welcome docs", error);
@@ -1791,6 +1908,7 @@
             renderWorkspaceControls();
             renderAiSettings();
             renderPreferences();
+            renderOscSettings();
             renderList();
             setCreateStatus("Could not load workspace documents.", true);
         }
@@ -2072,13 +2190,16 @@
         }
     }
 
-    async function savePreferences() {
+    async function savePreferences(statusTarget = "preferences", options = {}) {
+        const setStatus = statusTarget === "osc" ? setOscSettingsStatus : setPreferencesStatus;
+        const background = !!options.background;
         const saveSerial = ++preferencesSaveSerial;
-        state.savingPreferences = true;
+        if (!background) state.savingPreferences = true;
         const preferences = readPreferencesForm();
         state.preferences = preferences;
         renderPreferences();
-        setPreferencesStatus("Saving...");
+        renderOscSettings();
+        setStatus("Saving...");
 
         try {
             const response = await fetch("/api/preferences", {
@@ -2098,17 +2219,26 @@
                 window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
             } catch (_) {
             }
-            setPreferencesStatus(payload.message || "Preferences saved.");
+            setStatus(statusTarget === "osc" ? "OSC settings saved." : (payload.message || "Preferences saved."));
         } catch (error) {
             if (saveSerial !== preferencesSaveSerial) return;
             console.error("Failed to save preferences", error);
-            setPreferencesStatus(error?.message || "Could not save preferences.", true);
+            setStatus(error?.message || "Could not save preferences.", true);
         } finally {
             if (saveSerial === preferencesSaveSerial) {
-                state.savingPreferences = false;
+                if (!background) state.savingPreferences = false;
                 renderPreferences();
+                renderOscSettings();
             }
         }
+    }
+
+    function queueOscSettingsSave(delay = 450) {
+        clearTimeout(oscSettingsSaveTimer);
+        oscSettingsSaveTimer = setTimeout(() => {
+            oscSettingsSaveTimer = null;
+            savePreferences("osc", { background: true });
+        }, delay);
     }
 
     function installDocumentListHandlers(listNode) {
@@ -2192,6 +2322,14 @@
         const openAiKeyInput = document.getElementById("openai-platform-key");
         const saveOpenAiKeyButton = document.getElementById("save-openai-platform-key");
         const editorStickiness = document.getElementById("editor-stickiness");
+        const oscInputs = [
+            document.getElementById("osc-editor-enabled"),
+            document.getElementById("osc-editor-port"),
+            document.getElementById("osc-editor-float-address"),
+            document.getElementById("osc-editor-launch-address"),
+            document.getElementById("osc-editor-stop-address"),
+            document.getElementById("osc-editor-debounce-ms")
+        ].filter(Boolean);
 
         const runCreate = () => {
             const name = nameInput.value.trim();
@@ -2273,6 +2411,22 @@
             } catch (_) {
             }
             savePreferences();
+        });
+
+        oscInputs.forEach((input) => {
+            const queue = () => {
+                setOscSettingsStatus("");
+                queueOscSettingsSave();
+            };
+            input.addEventListener("input", queue);
+            input.addEventListener("change", queue);
+            input.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                clearTimeout(oscSettingsSaveTimer);
+                oscSettingsSaveTimer = null;
+                savePreferences("osc", { background: true });
+            });
         });
 
         shutdownButton?.addEventListener("click", async () => {
@@ -2485,6 +2639,7 @@
 
     state.recentWorkspaces = getStoredWorkspaces();
     renderWorkspaceControls();
+    renderOscSettings();
     installHandlers();
     loadWelcomeDocs();
     loadWelcomeChangelog();

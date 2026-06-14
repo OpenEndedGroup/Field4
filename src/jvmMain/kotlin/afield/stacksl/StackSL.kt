@@ -684,6 +684,52 @@ private class FunctionCompiler(
                 }
                 push(expr("${options.prefix}_fm(${ref(phase)}, ${ref(carrier)}, ${ref(modulator)})", listOf(phase, carrier, modulator), token, "fm"))
             }
+            "fmchirp" -> {
+                requiredHelpers += "fmchirp"
+                val params = if (stack.size >= 9) {
+                    val outputPow = pop(token, "fmchirp outputPow", "vec4(1.0)", wrap = false)
+                    val inputPow = pop(token, "fmchirp inputPow", "vec4(1.0)", wrap = false)
+                    val modChirp = pop(token, "fmchirp modChirp", "vec4(0.0)", wrap = false)
+                    val chirp = pop(token, "fmchirp chirp", "vec4(0.0)", wrap = false)
+                    val phase = pop(token, "fmchirp phase", "vec4(0.0)", wrap = false)
+                    val modPhase = pop(token, "fmchirp modPhase", "vec4(0.0)", wrap = false)
+                    val mod = pop(token, "fmchirp mod", "vec4(0.0)", wrap = false)
+                    val freq = pop(token, "fmchirp freq", "vec4(0.0)", wrap = false)
+                    val x = pop(token, "fmchirp x", "input", wrap = false)
+                    listOf(x, freq, mod, modPhase, phase, chirp, modChirp, inputPow, outputPow)
+                } else if (stack.size == 8) {
+                    val outputPow = pop(token, "fmchirp outputPow", "vec4(1.0)", wrap = false)
+                    val inputPow = pop(token, "fmchirp inputPow", "vec4(1.0)", wrap = false)
+                    val modChirp = pop(token, "fmchirp modChirp", "vec4(0.0)", wrap = false)
+                    val chirp = pop(token, "fmchirp chirp", "vec4(0.0)", wrap = false)
+                    val phase = pop(token, "fmchirp phase", "vec4(0.0)", wrap = false)
+                    val modPhase = pop(token, "fmchirp modPhase", "vec4(0.0)", wrap = false)
+                    val mod = pop(token, "fmchirp mod", "vec4(0.0)", wrap = false)
+                    val freq = pop(token, "fmchirp freq", "vec4(0.0)", wrap = false)
+                    val x = inputExpr(token, "fmchirp implicit x") { "vec4($it.x)" }
+                    listOf(x, freq, mod, modPhase, phase, chirp, modChirp, inputPow, outputPow)
+                } else {
+                    listOf(
+                        pop(token, "fmchirp x", "input", wrap = false),
+                        optionalDefault(token, "fmchirp freq", "vec4(0.0)"),
+                        optionalDefault(token, "fmchirp mod", "vec4(0.0)"),
+                        optionalDefault(token, "fmchirp modPhase", "vec4(0.0)"),
+                        optionalDefault(token, "fmchirp phase", "vec4(0.0)"),
+                        optionalDefault(token, "fmchirp chirp", "vec4(0.0)"),
+                        optionalDefault(token, "fmchirp modChirp", "vec4(0.0)"),
+                        optionalDefault(token, "fmchirp inputPow", "vec4(1.0)"),
+                        optionalDefault(token, "fmchirp outputPow", "vec4(1.0)")
+                    )
+                }
+                push(
+                    expr(
+                        "${options.prefix}_fmchirp(${params.joinToString(", ") { ref(it) }})",
+                        params,
+                        token,
+                        "fmchirp"
+                    )
+                )
+            }
             "palette", "cos-palette", "cosine-palette" -> {
                 requiredHelpers += "palette"
                 val (t, a, b, c, d) = if (stack.size < 5) {
@@ -1480,7 +1526,7 @@ private val builtinWords = setOf(
     "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "atan2",
     "dot", "cross", "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
     "and", "or", "not", "mix", "lerp", "step", "smoothstep",
-    "noise", "perlin", "fbm", "pulse", "fm", "palette", "cos-palette", "cosine-palette",
+    "noise", "perlin", "fbm", "pulse", "fm", "fmchirp", "palette", "cos-palette", "cosine-palette",
     "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
     "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
     "saturation", "sat-color", "contrast", "grade", "ema", "ema-diff", "diff-ema", "dema",
@@ -1562,6 +1608,24 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
         if ("fm" in helpers) {
             appendLine("vec4 ${prefix}_fm(vec4 phase, vec4 carrier, vec4 modulator) {")
             appendLine("    return sin(phase + modulator * sin(carrier));")
+            appendLine("}")
+            appendLine()
+        }
+        if ("fmchirp" in helpers) {
+            appendLine("vec4 ${prefix}_fmchirpSignedPow(vec4 x, vec4 exponent) {")
+            appendLine("    vec4 ax = abs(x);")
+            appendLine("    vec4 e = max(exponent, vec4(0.0001));")
+            appendLine("    vec4 y = pow(max(ax, vec4(0.00000001)), e);")
+            appendLine("    return sign(x) * y;")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_fmchirp(vec4 x, vec4 freq, vec4 mod, vec4 modPhase, vec4 phase, vec4 chirp, vec4 modChirp, vec4 inputPow, vec4 outputPow) {")
+            appendLine("    vec4 xWarped = ${prefix}_fmchirpSignedPow(x, inputPow);")
+            appendLine("    vec4 xx = xWarped * xWarped;")
+            appendLine("    vec4 modPhaseValue = 6.283185307179586 * (mod * xWarped + modPhase + modChirp * xx);")
+            appendLine("    vec4 phaseValue = 6.283185307179586 * (freq * xWarped + phase + chirp * xx);")
+            appendLine("    vec4 q = sin(phaseValue + sin(modPhaseValue));")
+            appendLine("    return x + ${prefix}_fmchirpSignedPow(q, outputPow);")
             appendLine("}")
             appendLine()
         }

@@ -3,9 +3,7 @@ package afield.four.util
 import afield.Box
 import afield.gather
 import afield.logger.lprintln
-import afield.stdlib.Action
-import afield.stdlib.Delegation
-import afield.logger.lprintln
+import java.util.concurrent.ConcurrentHashMap
 
 // A tiny, dynamic, Jinja-ish templating engine in *one file* using only Kotlin stdlib.
 // Features:
@@ -43,8 +41,25 @@ fun interface IncludeResolver {
     fun include(path: String, line: Int, col: Int): String
 }
 
+private val globalShaderTemplates = ConcurrentHashMap<String, Any>()
 
-fun getShaderTemplateResolverForBox(b : Box) = b.gather<MutableMap<String, Any>>("shaderTemplate")
+private val globalShaderTemplateResolver = Resolver { key -> globalShaderTemplates[key] }
+
+fun registerGlobalShaderTemplate(name: String, template: Any) {
+    globalShaderTemplates[name] = template
+}
+
+fun unregisterGlobalShaderTemplate(name: String): Any? =
+    globalShaderTemplates.remove(name)
+
+fun listGlobalShaderTemplateNames(): Set<String> =
+    globalShaderTemplates.keys.toSortedSet()
+
+fun getShaderTemplateResolverForBox(b : Box): List<Resolver> =
+    listOf(
+        MapResolver(b.gather<MutableMap<String, Any>>("shaderTemplate")),
+        globalShaderTemplateResolver
+    )
 
 fun runTemplate(template: String, resolver: Resolver, includeResolver: IncludeResolver? = null): String =
     TemplateEngine().run(template, listOf(resolver), includeResolver)

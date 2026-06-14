@@ -489,6 +489,15 @@ data class ProvisionalTarget(val uid: String, val property: String)
 data class Notify(val text: String, val category: String)
 
 @Serializable
+data class OscEditorCommand(
+    val command: String,
+    val address: String,
+    val value: Double? = null,
+    val text: String = "",
+    val debounceMs: Int = 200
+)
+
+@Serializable
 data class Set_topology(val uid: String, val kind: String, val value: List<String>)
 
 @Serializable

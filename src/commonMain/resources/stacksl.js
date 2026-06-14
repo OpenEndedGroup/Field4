@@ -47,7 +47,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     ];
 
     var creativeWords = [
-        "noise", "perlin", "fbm", "pulse", "fm",
+        "noise", "perlin", "fbm", "pulse", "fm", "fmchirp",
         "palette", "cos-palette", "cosine-palette",
         "luma", "sat", "saturate", "clamp", "mirror", "tonemap",
         "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
@@ -73,6 +73,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var numberModifierRegex = new RegExp("^" + numberSource + "(?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?$", "i");
     var topModifierRegex = new RegExp("^[\\|\\]](?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?$", "i");
     var swizzleRegex = /^\.?[xyzwrgba]{1,4}$/i;
+    var numberRangeTokenRegex = new RegExp("(" + numberSource + ")(_)" + "(" + numberSource + ")");
+    var topModifierTokenRegex = new RegExp("([\\|\\]])(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
+    var numberModifierTokenRegex = new RegExp("(" + numberSource + ")(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
+    var simpleNumberSuffixTokenRegex = new RegExp("(" + numberSource + ")([trgba])\\b", "i");
 
     function wordSet(words) {
         var out = Object.create(null);
@@ -114,6 +118,12 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         return depth < fullArity ? effect(1, 1) : effect(fullArity, 1);
     }
 
+    function fmchirpEffect(depth) {
+        if (depth >= 9) return effect(9, 1);
+        if (depth === 8) return effect(8, 1);
+        return effect(1, 1);
+    }
+
     function stackEffectForWord(rawWord, depth, definitionWords) {
         var word = String(rawWord || "").toLowerCase();
         if (!word || word === ":" || word === ";" || word === "|" || word === "]") return effect(0, 0);
@@ -140,6 +150,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (word === "step") return effect(2, 1);
         if (word === "smoothstep") return effect(3, 1);
         if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") return dynamicEffect(depth, 3);
+        if (word === "fmchirp") return fmchirpEffect(depth);
         if (word === "palette" || word === "cos-palette" || word === "cosine-palette") return dynamicEffect(depth, 5);
         if (word === "saturation" || word === "sat-color" || word === "contrast") return dynamicEffect(depth, 2);
         if (word === "grade") return dynamicEffect(depth, 4);
@@ -334,6 +345,853 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         return formatted;
     }
 
+    function escapeStackSLHtml(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    var stackSLFlowIdCounter = 0;
+    function newStackSLFlowId() {
+        stackSLFlowIdCounter += 1;
+        return "stacksl-flow-" + Date.now().toString(36) + "-" + stackSLFlowIdCounter.toString(36);
+    }
+
+    const STACKSL_NUMBER_SOURCE = "[+-]?(?:(?:\\d+\\.\\d*)|(?:\\d*\\.\\d+)|(?:\\d+))(?:[eE][+-]?\\d+)?"
+    const STACKSL_MODIFIER_SOURCE = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|n|j|c|s|t|r|g|b|a|x|y"
+    const STACKSL_NUMBER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}$`)
+    const STACKSL_NUMBER_SUFFIX_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}[trgba]$`, "i")
+    const STACKSL_NUMBER_RANGE_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}_${STACKSL_NUMBER_SOURCE}$`, "i")
+    const STACKSL_NUMBER_MODIFIER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}(?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
+    const STACKSL_TOP_MODIFIER_RE = new RegExp(`^[\\|\\]](?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
+    const STACKSL_SWIZZLE_RE = /^\.?[xyzwrgba]{1,4}$/i
+    const STACKSL_COLOR_WORDS = new Set([
+            "black", "white", "gray", "grey", "red", "green", "blue", "cyan", "magenta", "yellow", "orange",
+    ])
+
+    const STACKSL_PUSH_WORDS = new Set([
+            "input", "in", "uv", "p", "pos", "center", "centered", "time", "t", "hash", "h",
+            "pi", "tau", "e",
+            ...STACKSL_COLOR_WORDS,
+            "prev", "state",
+            "0->", "1->", "2->", "3->",
+    ])
+
+    const STACKSL_UNARY_WORDS = new Set([
+            "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
+            "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
+            "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
+            "luma", "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
+            "sat", "saturate", "clamp", "mirror", "tonemap",
+            "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
+            "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
+            "noise", "perlin", "fbm", "not",
+    ])
+
+    const STACKSL_BINARY_WORDS = new Set([
+            "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow",
+            "atan2", "dot", "cross",
+            "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
+            "and", "or",
+    ])
+
+    const stackslEffect = (consume, produce, label = "") => ({ consume, produce, label })
+    const stackslDoc = (signature, detail) => ({ signature, detail })
+
+    const STACKSL_WORD_DOC_ALIASES = new Map([
+            ["in", "input"],
+            ["pos", "p"],
+            ["center", "p"],
+            ["centered", "p"],
+            ["t", "time"],
+            ["h", "hash"],
+            ["v2", "vec2"],
+            ["v3", "vec3"],
+            ["v4", "vec4"],
+            ["negate", "neg"],
+            ["len", "length"],
+            ["len2", "length"],
+            ["length2", "length"],
+            ["len3", "length3"],
+            ["len4", "length4"],
+            ["average", "avg"],
+            ["mean", "avg"],
+            ["med", "median"],
+            ["minimum", "vmin"],
+            ["maximum", "vmax"],
+            ["saturate", "sat"],
+            ["clamp", "sat"],
+            ["perlin", "noise"],
+            ["cos-palette", "palette"],
+            ["cosine-palette", "palette"],
+            ["sat-color", "saturation"],
+            ["diff-ema", "ema-diff"],
+            ["dema", "ema-diff"],
+            ["from-ryb", "ryb"],
+            ["ryb2rgb", "ryb"],
+            ["to-ryb", "rgb2ryb"],
+            ["from-oklab", "oklab"],
+            ["oklab2rgb", "oklab"],
+            ["to-oklab", "rgb2oklab"],
+            ["add", "+"],
+            ["sub", "-"],
+            ["mul", "*"],
+            ["div", "/"],
+            ["lerp", "mix"],
+    ])
+
+    const STACKSL_WORD_DOCS = new Map([
+            ["noop", stackslDoc("--", "No operation.")],
+            ["input", stackslDoc("-- input", "Push the full vec4(uv.x, uv.y, time, hash).")],
+            ["uv", stackslDoc("-- uv", "Push normalized uv as vec4(uv.xy, 0, 1).")],
+            ["p", stackslDoc("-- p", "Push centered uv as vec4(uv.xy - 0.5, 0, 1).")],
+            ["time", stackslDoc("-- time", "Push time from input.z, splatted to vec4.")],
+            ["hash", stackslDoc("-- hash", "Push per-pixel hash from input.w, splatted to vec4.")],
+            ["pi", stackslDoc("-- value", "Push pi, splatted to vec4.")],
+            ["tau", stackslDoc("-- value", "Push tau, splatted to vec4.")],
+            ["e", stackslDoc("-- value", "Push e, splatted to vec4.")],
+            ["dup", stackslDoc("a -- a a", "Duplicate the top stack value.")],
+            ["drop", stackslDoc("a --", "Discard the top stack value.")],
+            ["swap", stackslDoc("a b -- b a", "Swap the top two stack values.")],
+            ["over", stackslDoc("a b -- a b a", "Copy the second value to the top.")],
+            ["rot", stackslDoc("a b c -- b c a", "Rotate the third value to the top.")],
+            ["nip", stackslDoc("a b -- b", "Drop the value under the top.")],
+            ["tuck", stackslDoc("a b -- b a b", "Copy the top value under the previous value.")],
+            ["vec2", stackslDoc("x y -- vec", "Build vec4(x.x, y.x, 0, 1).")],
+            ["vec3", stackslDoc("x y z -- vec", "Build vec4(x.x, y.x, z.x, 1).")],
+            ["vec4", stackslDoc("x y z w -- vec", "Build vec4 from the .x channel of four stack values.")],
+            ["neg", stackslDoc("a -- out", "Negate component-wise.")],
+            ["abs", stackslDoc("a -- out", "Absolute value component-wise.")],
+            ["floor", stackslDoc("a -- out", "Floor component-wise.")],
+            ["ceil", stackslDoc("a -- out", "Ceil component-wise.")],
+            ["fract", stackslDoc("a -- out", "Fractional part component-wise.")],
+            ["sqrt", stackslDoc("a -- out", "Square root component-wise.")],
+            ["inversesqrt", stackslDoc("a -- out", "Inverse square root component-wise.")],
+            ["exp", stackslDoc("a -- out", "Exponential component-wise.")],
+            ["log", stackslDoc("a -- out", "Natural log component-wise.")],
+            ["sin", stackslDoc("phase -- out", "Sine component-wise.")],
+            ["cos", stackslDoc("phase -- out", "Cosine component-wise.")],
+            ["tan", stackslDoc("phase -- out", "Tangent component-wise.")],
+            ["asin", stackslDoc("a -- out", "Arc sine component-wise.")],
+            ["acos", stackslDoc("a -- out", "Arc cosine component-wise.")],
+            ["atan", stackslDoc("a -- out", "Arc tangent component-wise.")],
+            ["atan2", stackslDoc("y x -- angle", "Two-argument atan.")],
+            ["normalize", stackslDoc("vec -- out", "Normalize component vector.")],
+            ["length", stackslDoc("vec -- scalar", "Length of vec.xy, splatted to vec4.")],
+            ["length3", stackslDoc("vec -- scalar", "Length of vec.xyz, splatted to vec4.")],
+            ["length4", stackslDoc("vec -- scalar", "Length of full vec4, splatted.")],
+            ["luma", stackslDoc("color -- scalar", "Rec.709 luminance, splatted.")],
+            ["avg", stackslDoc("vec -- scalar", "Average of RGBA channels, splatted.")],
+            ["median", stackslDoc("vec -- scalar", "Median-ish RGBA channel value, splatted.")],
+            ["vmin", stackslDoc("vec -- scalar", "Minimum RGBA channel, splatted.")],
+            ["vmax", stackslDoc("vec -- scalar", "Maximum RGBA channel, splatted.")],
+            ["sat", stackslDoc("color -- color", "Clamp all channels to 0..1.")],
+            ["mirror", stackslDoc("a -- out", "Triangle-wrap values into 0..1.")],
+            ["tonemap", stackslDoc("color -- color", "Compress bright colors for feedback.")],
+            ["ryb", stackslDoc("ryb -- rgb", "Convert paint-like RYB color to RGB.")],
+            ["rgb2ryb", stackslDoc("rgb -- ryb", "Convert RGB to paint-like RYB.")],
+            ["oklab", stackslDoc("oklab -- rgb", "Convert OKLab-like values to RGB.")],
+            ["rgb2oklab", stackslDoc("rgb -- oklab", "Convert RGB to perceptual-ish OKLab.")],
+            ["+", stackslDoc("a b -- out", "Add component-wise.")],
+            ["-", stackslDoc("a b -- out", "Subtract component-wise.")],
+            ["*", stackslDoc("a b -- out", "Multiply component-wise.")],
+            ["/", stackslDoc("a b -- out", "Safe divide component-wise.")],
+            ["mod", stackslDoc("a b -- out", "Safe modulo component-wise.")],
+            ["pow", stackslDoc("base exp -- out", "Power with a safe absolute base.")],
+            ["dot", stackslDoc("a b -- scalar", "Dot product, splatted.")],
+            ["cross", stackslDoc("a b -- vec", "Cross product of xyz, alpha set to 1.")],
+            ["lt", stackslDoc("a b -- mask", "lessThan mask in 0..1.")],
+            ["lte", stackslDoc("a b -- mask", "lessThanEqual mask in 0..1.")],
+            ["gt", stackslDoc("a b -- mask", "greaterThan mask in 0..1.")],
+            ["gte", stackslDoc("a b -- mask", "greaterThanEqual mask in 0..1.")],
+            ["eq", stackslDoc("a b -- mask", "equal mask in 0..1.")],
+            ["neq", stackslDoc("a b -- mask", "notEqual mask in 0..1.")],
+            ["and", stackslDoc("a b -- mask", "Boolean-ish and using threshold 0.5.")],
+            ["or", stackslDoc("a b -- mask", "Boolean-ish or using threshold 0.5.")],
+            ["not", stackslDoc("a -- mask", "Boolean-ish not using threshold 0.5.")],
+            ["mix", stackslDoc("a b amount -- out", "Clamped component-wise mix.")],
+            ["step", stackslDoc("edge x -- mask", "GLSL step, with defaults if needed.")],
+            ["smoothstep", stackslDoc("low high x -- mask", "GLSL smoothstep, with defaults if needed.")],
+            ["noise", stackslDoc("coord -- scalar", "Value noise from coord.xy + coord.zw * 0.07.")],
+            ["fbm", stackslDoc("coord -- scalar", "Five-octave fractal noise.")],
+            ["sample", stackslDoc("offset -- color", "Sample previous frame at fract(uv + offset.xy).")],
+            ["sample-abs", stackslDoc("coord -- color", "Sample previous frame at fract(coord.xy).")],
+            ["gather", stackslDoc("offset -- vec", "textureGather red channel around uv + offset.xy.")],
+            ["prev", stackslDoc("-- color", "Sample previous frame at the current uv.")],
+            ["state", stackslDoc("-- color", "Alias for prev.")],
+            ["0->", stackslDoc("-- value", "Read stored red channel at this pixel.")],
+            ["1->", stackslDoc("-- value", "Read stored green channel at this pixel.")],
+            ["2->", stackslDoc("-- value", "Read stored blue channel at this pixel.")],
+            ["3->", stackslDoc("-- value", "Read stored alpha channel at this pixel.")],
+            ["->0", stackslDoc("value --", "Write value.x to output red channel.")],
+            ["->1", stackslDoc("value --", "Write value.x to output green channel.")],
+            ["->2", stackslDoc("value --", "Write value.x to output blue channel.")],
+            ["->3", stackslDoc("value --", "Write value.x to output alpha channel.")],
+    ])
+
+    const stackSLCanonicalWord = (word) => STACKSL_WORD_DOC_ALIASES.get(word) || word
+
+    const stackSLDocForWord = (rawWord, effect, definitionWords) => {
+            const word = String(rawWord || "").toLowerCase()
+            const canonical = stackSLCanonicalWord(word)
+
+            if (STACKSL_NUMBER_RANGE_RE.test(word)) {
+                    return stackslDoc("-- vec", "Push a vec4 range spread across four scalar values.")
+            }
+            if (STACKSL_NUMBER_SUFFIX_RE.test(word)) {
+                    return stackslDoc("-- value", "Push a time-scaled or channel-weighted number.")
+            }
+            if (STACKSL_NUMBER_MODIFIER_RE.test(word)) {
+                    return stackslDoc("-- value", "Push amount times a time/spatial/noise modifier.")
+            }
+            if (STACKSL_NUMBER_RE.test(word)) {
+                    return stackslDoc("-- value", "Push the number splatted to vec4.")
+            }
+            if (STACKSL_COLOR_WORDS.has(word)) {
+                    return stackslDoc("-- color", "Push a named RGBA color.")
+            }
+            if (word === "|" || word === "]") {
+                    return stackslDoc("--", "Modifier prefix; combine it with a suffix such as |c2 or ]fbm4.")
+            }
+            if (STACKSL_TOP_MODIFIER_RE.test(word)) {
+                    return word.startsWith("]")
+                            ? stackslDoc("driver -- out", "Use the consumed value as modifier driver; amplitude is one.")
+                            : stackslDoc("amount -- out", "Multiply consumed amount by a time/spatial/noise modifier.")
+            }
+            if (STACKSL_SWIZZLE_RE.test(word)) {
+                    return stackslDoc("vec -- vec", "Swizzle channels and return a vec4-shaped value.")
+            }
+
+            if (word === "min" || word === "max") {
+                    return effect.consume === 1
+                            ? stackslDoc("vec -- scalar", `${word} of RGBA channels, splatted.`)
+                            : stackslDoc("a b -- out", `${word} component-wise.`)
+            }
+            if (canonical === "pulse") {
+                    return effect.consume === 1
+                            ? stackslDoc("x -- mask", "Soft band with default center 0.5 and width 0.08.")
+                            : stackslDoc("x center width -- mask", "Soft band around center with the given width.")
+            }
+            if (canonical === "fm") {
+                    return effect.consume === 1
+                            ? stackslDoc("phase -- out", "Frequency modulation with default carrier and modulator.")
+                            : stackslDoc("phase carrier mod -- out", "Frequency-modulated sine field.")
+            }
+            if (canonical === "fmchirp") {
+                    if (effect.consume === 8) {
+                            return stackslDoc("freq mod modPhase phase chirp modChirp inputPow outputPow -- out", "FMChirp residual curve using input.x as x.")
+                    }
+                    return effect.consume === 1
+                            ? stackslDoc("x -- out", "FMChirp residual curve with identity-producing default parameters.")
+                            : stackslDoc("x freq mod modPhase phase chirp modChirp inputPow outputPow -- out", "Component-wise FMChirp residual curve.")
+            }
+            if (canonical === "palette") {
+                    return effect.consume === 1
+                            ? stackslDoc("t -- color", "Cosine palette using the default color bands.")
+                            : stackslDoc("t a b c d -- color", "Cosine palette a + b*cos(t*c + d).")
+            }
+            if (canonical === "saturation") {
+                    return effect.consume === 1
+                            ? stackslDoc("color -- color", "Saturation with default amount 1.")
+                            : stackslDoc("color amount -- color", "Adjust color saturation.")
+            }
+            if (canonical === "contrast") {
+                    return effect.consume === 1
+                            ? stackslDoc("color -- color", "Contrast with default amount 1.2.")
+                            : stackslDoc("color amount -- color", "Adjust contrast around mid gray.")
+            }
+            if (canonical === "grade") {
+                    return effect.consume === 1
+                            ? stackslDoc("color -- color", "Neutral lift/gain/gamma grade.")
+                            : stackslDoc("color lift gain gamma -- color", "Color grade with lift, gain, and gamma.")
+            }
+            if (canonical === "ema") {
+                    return effect.consume === 1
+                            ? stackslDoc("current -- smooth", "EMA with default previous value and alpha 0.08.")
+                            : stackslDoc("current previous alpha -- smooth", "Exponential moving average.")
+            }
+            if (canonical === "ema-diff") {
+                    return effect.consume === 1
+                            ? stackslDoc("current -- diff", "Current minus default EMA.")
+                            : stackslDoc("current previous alpha -- diff", "Current minus exponential moving average.")
+            }
+
+            if (/^sample[0-3]$/.test(word)) return STACKSL_WORD_DOCS.get("sample")
+            if (/^sample[0-3]-abs$/.test(word)) return STACKSL_WORD_DOCS.get("sample-abs")
+            if (/^gather[0-3]$/.test(word)) return STACKSL_WORD_DOCS.get("gather")
+            if (word === "<") return STACKSL_WORD_DOCS.get("lt")
+            if (word === "<=") return STACKSL_WORD_DOCS.get("lte")
+            if (word === ">") return STACKSL_WORD_DOCS.get("gt")
+            if (word === ">=") return STACKSL_WORD_DOCS.get("gte")
+            if (word === "=") return STACKSL_WORD_DOCS.get("eq")
+            if (word === "!=" || word === "<>") return STACKSL_WORD_DOCS.get("neq")
+
+            const doc = STACKSL_WORD_DOCS.get(canonical)
+            if (doc) return doc
+            if (definitionWords && definitionWords.has(word)) {
+                    return stackslDoc("input -- out", "User-defined StackSL word call.")
+            }
+            return stackslDoc(`${effect.consume}->${effect.produce}`, effect.label || "Unknown word.")
+    }
+
+    const tokenizeStackSLForContext = (source) => {
+            const tokens = []
+            let i = 0
+            let line = 1
+            let column = 1
+
+            const advance = () => {
+                    const ch = source[i]
+                    i += 1
+                    if (ch === "\n") {
+                            line += 1
+                            column = 1
+                    } else {
+                            column += 1
+                    }
+                    return ch
+            }
+
+            const skipLineComment = () => {
+                    while (i < source.length && source[i] !== "\n") advance()
+            }
+
+            while (i < source.length) {
+                    const ch = source[i]
+                    if (/\s/.test(ch)) {
+                            advance()
+                    } else if (ch === "#") {
+                            skipLineComment()
+                    } else if (ch === "/" && source[i + 1] === "/") {
+                            skipLineComment()
+                    } else if (ch === "(") {
+                            while (i < source.length && source[i] !== ")") advance()
+                            if (i < source.length) advance()
+                    } else {
+                            const start = i
+                            const startLine = line
+                            const startColumn = column
+                            let text = ""
+                            while (i < source.length) {
+                                    const c = source[i]
+                                    if (/\s/.test(c) || c === "#" || c === "(") break
+                                    if (c === "/" && source[i + 1] === "/") break
+                                    text += c
+                                    advance()
+                            }
+                            if (text.length > 0) {
+                                    tokens.push({
+                                            text,
+                                            lower: text.toLowerCase(),
+                                            start,
+                                            end: i,
+                                            line: startLine,
+                                            column: startColumn,
+                                    })
+                            }
+                    }
+            }
+            return tokens
+    }
+
+    const parseStackSLDefinitionsForContext = (tokens) => {
+            const root = []
+            const definitions = []
+            const definitionWords = new Set()
+            let index = 0
+            while (index < tokens.length) {
+                    const token = tokens[index]
+                    if (token.text === ":") {
+                            const name = tokens[index + 1] || null
+                            const body = []
+                            const colon = token
+                            index += 2
+                            while (index < tokens.length && tokens[index].text !== ";") {
+                                    body.push(tokens[index])
+                                    index += 1
+                            }
+                            const terminator = index < tokens.length ? tokens[index] : null
+                            const end = terminator ? terminator.end : ((body[body.length - 1] || name || colon).end)
+                            const definition = {
+                                    colon,
+                                    name,
+                                    body,
+                                    terminator,
+                                    start: colon.start,
+                                    end,
+                            }
+                            definitions.push(definition)
+                            if (name && /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name.text)) {
+                                    definitionWords.add(name.lower)
+                            }
+                            if (terminator) index += 1
+                    } else {
+                            root.push(token)
+                            index += 1
+                    }
+            }
+            return { root, definitions, definitionWords }
+    }
+
+    const findStackSLTokenAtOffset = (tokens, offset) => {
+            if (!tokens || tokens.length === 0) return null
+            const safeOffset = Math.max(0, offset)
+            let previous = null
+            for (const token of tokens) {
+                    if (token.start <= safeOffset && safeOffset <= token.end) return token
+                    if (token.end < safeOffset) previous = token
+            }
+            if (previous && previous.end === safeOffset) return previous
+            return null
+    }
+
+    const findStackSLDefinitionContext = (parsed, offset) => {
+            for (const definition of parsed.definitions) {
+                    if (definition.start <= offset && offset <= definition.end) {
+                            return {
+                                    kind: "definition",
+                                    definition,
+                                    tokens: definition.body,
+                                    initialDepth: 1,
+                            }
+                    }
+            }
+            return {
+                    kind: "root",
+                    definition: null,
+                    tokens: parsed.root,
+                    initialDepth: 1,
+            }
+    }
+
+    const isStackSLPushToken = (word) => {
+            return STACKSL_PUSH_WORDS.has(word) ||
+                    STACKSL_NUMBER_RE.test(word) ||
+                    STACKSL_NUMBER_SUFFIX_RE.test(word) ||
+                    STACKSL_NUMBER_RANGE_RE.test(word) ||
+                    STACKSL_NUMBER_MODIFIER_RE.test(word)
+    }
+
+    const dynamicStackSLEffect = (depth, fullArity, shortLabel) => {
+            if (depth < fullArity) return stackslEffect(1, 1, shortLabel || "short form")
+            return stackslEffect(fullArity, 1)
+    }
+
+    const stackSLFMChirpEffect = (depth) => {
+            if (depth >= 9) return stackslEffect(9, 1)
+            if (depth === 8) return stackslEffect(8, 1, "implicit x")
+            return stackslEffect(1, 1, "short form")
+    }
+
+    const stackSLEffectForWord = (rawWord, depth, definitionWords) => {
+            const word = String(rawWord || "").toLowerCase()
+            if (!word) return stackslEffect(0, 0)
+            if (word === ":" || word === ";") return stackslEffect(0, 0, "definition marker")
+            if (word === "|" || word === "]") return stackslEffect(0, 0, "modifier prefix")
+            if (STACKSL_TOP_MODIFIER_RE.test(word)) return stackslEffect(1, 1, word.startsWith("]") ? "driven modifier" : "top modifier")
+            if (isStackSLPushToken(word)) return stackslEffect(0, 1, "push")
+            if (STACKSL_SWIZZLE_RE.test(word)) return stackslEffect(1, 1, "swizzle")
+
+            if (word === "noop") return stackslEffect(0, 0)
+            if (word === "dup") return stackslEffect(1, 2)
+            if (word === "drop") return stackslEffect(1, 0)
+            if (word === "swap") return stackslEffect(2, 2)
+            if (word === "over") return stackslEffect(2, 3)
+            if (word === "rot") return stackslEffect(3, 3)
+            if (word === "nip") return stackslEffect(2, 1)
+            if (word === "tuck") return stackslEffect(2, 3)
+
+            if (word === "vec2" || word === "v2") return stackslEffect(2, 1)
+            if (word === "vec3" || word === "v3") return stackslEffect(3, 1)
+            if (word === "vec4" || word === "v4") return stackslEffect(4, 1)
+            if (word === "->0" || word === "->1" || word === "->2" || word === "->3") return stackslEffect(1, 0, "store write")
+
+            if (STACKSL_UNARY_WORDS.has(word)) return stackslEffect(1, 1)
+            if (STACKSL_BINARY_WORDS.has(word)) return stackslEffect(2, 1)
+
+            if (word === "min" || word === "max") {
+                    return depth <= 2 ? stackslEffect(1, 1, "reduce top") : stackslEffect(2, 1)
+            }
+            if (word === "mix" || word === "lerp") return stackslEffect(3, 1)
+            if (word === "step") return stackslEffect(2, 1)
+            if (word === "smoothstep") return stackslEffect(3, 1)
+            if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") {
+                    return dynamicStackSLEffect(depth, 3, "short form")
+            }
+            if (word === "fmchirp") {
+                    return stackSLFMChirpEffect(depth)
+            }
+            if (word === "palette" || word === "cos-palette" || word === "cosine-palette") {
+                    return dynamicStackSLEffect(depth, 5, "short form")
+            }
+            if (word === "saturation" || word === "sat-color" || word === "contrast") {
+                    return dynamicStackSLEffect(depth, 2, "short form")
+            }
+            if (word === "grade") {
+                    return dynamicStackSLEffect(depth, 4, "short form")
+            }
+
+            if (word === "sample" || word === "sample0" || word === "sample1" || word === "sample2" || word === "sample3" ||
+                    word === "sample-abs" || word === "sample0-abs" || word === "sample1-abs" || word === "sample2-abs" || word === "sample3-abs" ||
+                    word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3") {
+                    return stackslEffect(1, 1, word.includes("abs") ? "absolute sample" : "sample")
+            }
+
+            if (definitionWords && definitionWords.has(word)) return stackslEffect(1, 1, "word call")
+            return stackslEffect(0, 0, "unknown")
+    }
+
+    const applyStackSLEffectToDepth = (depth, effect) => {
+            const missing = Math.max(0, effect.consume - depth)
+            const nextDepth = Math.max(0, depth - effect.consume) + effect.produce
+            return { depth: nextDepth, missing }
+    }
+
+    const newStackSLFlowValue = (producer, source = null) => ({
+            id: `stacksl-flow-${newStackSLFlowId()}`,
+            producer,
+            source,
+    })
+
+    const readStackSLFlowInputs = (stack, count) => {
+            const missing = Math.max(0, count - stack.length)
+            const available = stack.slice(Math.max(0, stack.length - count))
+            const synthetic = []
+            for (let i = 0; i < missing; i++) {
+                    synthetic.push(newStackSLFlowValue(null))
+            }
+            return synthetic.concat(available)
+    }
+
+    const applyStackSLFlowToken = (stack, token, definitionWords) => {
+            const effect = stackSLEffectForWord(token.text, stack.length, definitionWords)
+            const consume = Math.max(0, effect.consume || 0)
+            const produce = Math.max(0, effect.produce || 0)
+            const consumed = readStackSLFlowInputs(stack, consume)
+            const rest = consume > 0 ? stack.slice(0, Math.max(0, stack.length - consume)) : stack.slice()
+            const lower = token.lower || String(token.text || "").toLowerCase()
+            let next = rest
+            let produced = []
+
+            const make = (source = null) => newStackSLFlowValue(token, source)
+
+            if (lower === "dup") {
+                    const a = consumed[consumed.length - 1] || make()
+                    produced = [make(a)]
+                    next = rest.concat([a], produced)
+            } else if (lower === "drop") {
+                    next = rest
+            } else if (lower === "swap") {
+                    const a = consumed[0]
+                    const b = consumed[1]
+                    produced = [b, a].filter(Boolean)
+                    next = rest.concat(produced)
+            } else if (lower === "over") {
+                    const a = consumed[0]
+                    const b = consumed[1]
+                    const copy = make(a)
+                    produced = [copy]
+                    next = rest.concat([a, b, copy].filter(Boolean))
+            } else if (lower === "rot") {
+                    const a = consumed[0]
+                    const b = consumed[1]
+                    const c = consumed[2]
+                    produced = [b, c, a].filter(Boolean)
+                    next = rest.concat(produced)
+            } else if (lower === "nip") {
+                    const b = consumed[1]
+                    produced = b ? [b] : []
+                    next = rest.concat(produced)
+            } else if (lower === "tuck") {
+                    const a = consumed[0]
+                    const b = consumed[1]
+                    const copy = make(b)
+                    produced = [copy]
+                    next = rest.concat([b, a, copy].filter(Boolean))
+            } else {
+                    produced = []
+                    for (let i = 0; i < produce; i++) {
+                            produced.push(make(consumed.length === 1 ? consumed[0] : null))
+                    }
+                    next = rest.concat(produced)
+            }
+
+            return { effect, consumed, produced, stack: next }
+    }
+
+    const analyzeStackSLFlowAtToken = (tokens, activeToken, initialDepth, definitionWords) => {
+            let stack = []
+            for (let i = 0; i < initialDepth; i++) {
+                    stack.push(newStackSLFlowValue(null))
+            }
+
+            let active = null
+            let seenActive = false
+            const producedIds = new Set()
+            const futureConsumers = []
+
+            for (const token of tokens) {
+                    const step = applyStackSLFlowToken(stack, token, definitionWords)
+                    stack = step.stack
+                    if (token === activeToken) {
+                            active = step
+                            step.produced.forEach((value) => producedIds.add(value.id))
+                            seenActive = true
+                            continue
+                    }
+                    if (seenActive && producedIds.size > 0) {
+                            const consumesProduced = step.consumed.some((value) => producedIds.has(value.id))
+                            if (consumesProduced) futureConsumers.push(token)
+                    }
+            }
+
+            if (!active) return null
+            return {
+                    consumedSources: active.consumed
+                            .map((value) => value && value.producer)
+                            .filter(Boolean),
+                    futureConsumers,
+                    activeProduced: active.produced,
+            }
+    }
+
+    const stackSLTokenRange = (monacoApi, token) => {
+            return new monacoApi.Range(
+                    token.line,
+                    token.column,
+                    token.line,
+                    token.column + Math.max(1, String(token.text || "").length)
+            )
+    }
+
+    const ensureStackSLFlowLens = (editor) => {
+            if (!editor) return null
+            if (!editor._afieldStackSLFlowLens) {
+                    editor._afieldStackSLFlowLens = {
+                            enabled: false,
+                            decorations: typeof editor.createDecorationsCollection === "function"
+                                    ? editor.createDecorationsCollection([])
+                                    : null,
+                            legacyIds: [],
+                    }
+            }
+            return editor._afieldStackSLFlowLens
+    }
+
+    const setStackSLFlowLensDecorations = (editor, decorations) => {
+            const state = ensureStackSLFlowLens(editor)
+            if (!state) return
+            if (state.decorations && typeof state.decorations.set === "function") {
+                    state.decorations.set(decorations)
+            } else if (typeof editor.deltaDecorations === "function") {
+                    state.legacyIds = editor.deltaDecorations(state.legacyIds || [], decorations)
+            }
+    }
+
+    const clearStackSLFlowLens = (editor) => {
+            setStackSLFlowLensDecorations(editor, [])
+    }
+
+    const updateStackSLFlowLens = (editor) => {
+            const state = ensureStackSLFlowLens(editor)
+            if (!state || !state.enabled) return
+            const monacoApi = window.globalMonaco || window.monaco || monaco
+            const model = editor && editor.getModel && editor.getModel()
+            if (!monacoApi || !model || model.getLanguageId() !== "stacksl") {
+                    clearStackSLFlowLens(editor)
+                    return
+            }
+            const position = editor.getPosition && editor.getPosition()
+            if (!position) {
+                    clearStackSLFlowLens(editor)
+                    return
+            }
+
+            const source = model.getValue()
+            const offset = model.getOffsetAt(position)
+            const tokens = tokenizeStackSLForContext(source)
+            const parsed = parseStackSLDefinitionsForContext(tokens)
+            const context = findStackSLDefinitionContext(parsed, offset)
+            const activeToken = findStackSLTokenAtOffset(tokens, offset)
+            const activeInContext = activeToken && context.tokens.includes(activeToken) ? activeToken : null
+            if (!activeInContext) {
+                    clearStackSLFlowLens(editor)
+                    return
+            }
+
+            const flow = analyzeStackSLFlowAtToken(context.tokens, activeInContext, context.initialDepth, parsed.definitionWords)
+            if (!flow) {
+                    clearStackSLFlowLens(editor)
+                    return
+            }
+
+            const sourceTokens = new Set(flow.consumedSources)
+            const consumerTokens = new Set(flow.futureConsumers)
+            consumerTokens.delete(activeInContext)
+            sourceTokens.delete(activeInContext)
+
+            const decorations = []
+            for (const token of sourceTokens) {
+                    decorations.push({
+                            range: stackSLTokenRange(monacoApi, token),
+                            options: {
+                                    inlineClassName: "afield-stacksl-flow-source",
+                                    hoverMessage: { value: "StackSL value source" },
+                            },
+                    })
+            }
+            for (const token of consumerTokens) {
+                    decorations.push({
+                            range: stackSLTokenRange(monacoApi, token),
+                            options: {
+                                    inlineClassName: "afield-stacksl-flow-consumer",
+                                    hoverMessage: { value: "StackSL future consumer" },
+                            },
+                    })
+            }
+            setStackSLFlowLensDecorations(editor, decorations)
+    }
+
+    const setStackSLFlowLensEnabled = (editor, enabled) => {
+            const state = ensureStackSLFlowLens(editor)
+            if (!state) return
+            state.enabled = !!enabled
+            if (state.enabled) updateStackSLFlowLens(editor)
+            else clearStackSLFlowLens(editor)
+    }
+
+    const installStackSLFlowLens = (editor, monacoApi) => {
+            if (!editor || editor._afieldStackSLFlowLensInstalled) return
+            editor._afieldStackSLFlowLensInstalled = true
+            ensureStackSLFlowLens(editor)
+
+            const action = {
+                    id: "toggle-stacksl-flow-lens",
+                    label: "Toggle StackSL Flow Lens",
+                    contextMenuGroupId: "navigation",
+                    contextMenuOrder: 3.5,
+                    run: (editorNow) => {
+                            const activeEditor = editorNow || editor
+                            const state = ensureStackSLFlowLens(activeEditor)
+                            setStackSLFlowLensEnabled(activeEditor, !(state && state.enabled))
+                    },
+            }
+            if (typeof editor.addAction === "function") editor.addAction(action)
+
+            const schedule = () => setTimeout(() => updateStackSLFlowLens(editor), 0)
+            editor.onDidChangeCursorPosition(schedule)
+            editor.onDidChangeModelContent(schedule)
+            if (typeof editor.onDidChangeModel === "function") editor.onDidChangeModel(schedule)
+            if (typeof editor.onDidFocusEditorText === "function") editor.onDidFocusEditorText(schedule)
+    }
+
+    window.installStackSLFlowLens = installStackSLFlowLens
+    window.updateStackSLFlowLens = updateStackSLFlowLens
+
+    const analyzeStackSLDepth = (tokens, initialDepth, definitionWords) => {
+            let depth = initialDepth
+            let underflows = 0
+            for (const token of tokens) {
+                    const effect = stackSLEffectForWord(token.text, depth, definitionWords)
+                    const applied = applyStackSLEffectToDepth(depth, effect)
+                    depth = applied.depth
+                    underflows += applied.missing
+            }
+            return { depth, underflows }
+    }
+
+    const formatStackSLRelativeDepth = (depth, initialDepth) => {
+            const relative = depth - initialDepth
+            if (relative === 0) return "0"
+            return `${relative > 0 ? "+" : ""}${relative}`
+    }
+
+    const formatStackSLEffect = (effect) => {
+            const base = `${effect.consume}->${effect.produce}`
+            return effect.label ? `${base} ${effect.label}` : base
+    }
+
+    const buildStackSLContextPayload = (editor, resolveContext, options = {}) => {
+            const allowUnfocused = !!options.allowUnfocused
+            if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
+            const model = editor.getModel && editor.getModel()
+            if (!model || model.getLanguageId() !== "stacksl") return null
+
+            const position = editor.getPosition && editor.getPosition()
+            if (!position) return null
+
+            const source = model.getValue()
+            const offset = model.getOffsetAt(position)
+            const tokens = tokenizeStackSLForContext(source)
+            const parsed = parseStackSLDefinitionsForContext(tokens)
+            const context = findStackSLDefinitionContext(parsed, offset)
+            const activeToken = findStackSLTokenAtOffset(tokens, offset)
+            const activeInContext = activeToken && context.tokens.includes(activeToken) ? activeToken : null
+            const tokensBefore = activeInContext
+                    ? context.tokens.filter((token) => token.end <= activeInContext.start)
+                    : context.tokens.filter((token) => token.end <= offset)
+            const before = analyzeStackSLDepth(tokensBefore, context.initialDepth, parsed.definitionWords)
+
+            let after = before
+            let wordHtml = ""
+            if (activeToken) {
+                    if (activeInContext) {
+                            const effect = stackSLEffectForWord(activeInContext.text, before.depth, parsed.definitionWords)
+                            const doc = stackSLDocForWord(activeInContext.text, effect, parsed.definitionWords)
+                            const applied = applyStackSLEffectToDepth(before.depth, effect)
+                            after = { depth: applied.depth, underflows: before.underflows + applied.missing }
+                            const afterDepth = context.kind === "definition"
+                                    ? `rel ${formatStackSLRelativeDepth(after.depth, context.initialDepth)}`
+                                    : `depth ${after.depth}`
+                            const signatureHtml = doc && doc.signature
+                                    ? `<span class="afield-stacksl-signature">${escapeStackSLHtml(doc.signature)}</span>`
+                                    : `<span class="afield-stacksl-signature">${escapeStackSLHtml(formatStackSLEffect(effect))}</span>`
+                            const arityHtml = doc && doc.signature
+                                    ? `<span class="afield-stacksl-muted">(${escapeStackSLHtml(formatStackSLEffect(effect))})</span>`
+                                    : ""
+                            const detailHtml = doc && doc.detail
+                                    ? `<span class="afield-stacksl-muted">${escapeStackSLHtml(doc.detail)}</span>`
+                                    : ""
+                            const missingHtml = applied.missing > 0
+                                    ? `<span class="afield-stacksl-warning-text">needs ${effect.consume}, has ${before.depth}</span>`
+                                    : ""
+                            wordHtml = `<span class="afield-stacksl-word"><code>${escapeStackSLHtml(activeInContext.text)}</code> ${signatureHtml} ${arityHtml}; after ${escapeStackSLHtml(afterDepth)}${missingHtml ? " · " + missingHtml : ""}${detailHtml ? " · " + detailHtml : ""}</span>`
+                    } else if (context.kind === "definition" && activeToken === context.definition.name) {
+                            wordHtml = `<span class="afield-stacksl-word"><code>${escapeStackSLHtml(activeToken.text)}</code> definition name</span>`
+                    } else if (activeToken.text === ":" || activeToken.text === ";") {
+                            wordHtml = `<span class="afield-stacksl-word"><code>${escapeStackSLHtml(activeToken.text)}</code> definition marker</span>`
+                    }
+            }
+
+            const scopeName = context.kind === "definition" && context.definition && context.definition.name
+                    ? `:${context.definition.name.text}`
+                    : "root"
+            const depthHtml = context.kind === "definition"
+                    ? `relative stack <strong>${escapeStackSLHtml(formatStackSLRelativeDepth(before.depth, context.initialDepth))}</strong>`
+                    : `stack depth <strong>${before.depth}</strong>`
+            const underflowCount = after.underflows
+            const underflowHtml = underflowCount > 0
+                    ? `<span class="afield-stacksl-warning-text">${underflowCount} default/wrap fill${underflowCount === 1 ? "" : "s"}</span>`
+                    : ""
+            const warningClass = underflowCount > 0 ? " afield-stacksl-warning" : ""
+            const html = `<div class="afield-stacksl-context${warningClass}"><strong>StackSL</strong> <span class="afield-stacksl-scope">${escapeStackSLHtml(scopeName)}</span> ${depthHtml}${wordHtml ? " · " + wordHtml : ""}${underflowHtml ? " · " + underflowHtml : ""}</div>`
+
+            let contextKey = "stacksl"
+            const resolved = resolveContext ? resolveContext(editor) : null
+            if (resolved && resolved.uid && resolved.property) contextKey = `${resolved.uid}::${resolved.property}`
+            return {
+                    key: `${contextKey}::${model.getVersionId()}::${offset}`,
+                    editor,
+                    html,
+                    isLiveValue: false,
+            }
+    }
+
+    window.buildStackSLContextPayload = buildStackSLContextPayload
+
     monaco.languages.setMonarchTokensProvider(languageId, {
         tokenPostfix: ".stacksl",
         ignoreCase: true,
@@ -351,10 +1209,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 [/;/, "keyword.control"],
 
                 [/(?:0->|1->|2->|3->|->0|->1|->2|->3)/, "keyword"],
-                [/([+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)(_)([+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)/, ["number", "operator.stacksl.range", "number"]],
-                [/([\|\]])((?:pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|n|j|c|s|t|r|g|b|a|x|y)(?:[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)?(?:p[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)?(?:d[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)?)(?=$|[\s()#;])/, ["operator.stacksl.prefix", "number.stacksl.modifier"]],
-                [/([+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)((?:pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|n|j|c|s|t|r|g|b|a|x|y)(?:[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)?(?:p[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)?(?:d[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)?)(?=$|[\s()#;])/, ["number", "number.stacksl.modifier"]],
-                [/([+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?)([trgba])\b/, ["number", "number.stacksl.suffix"]],
+                [numberRangeTokenRegex, ["number", "operator.stacksl.range", "number"]],
+                [topModifierTokenRegex, ["operator.stacksl.prefix", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],
+                [numberModifierTokenRegex, ["number", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],
+                [simpleNumberSuffixTokenRegex, ["number", "number.stacksl.suffix"]],
                 [/[+\-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+\-]?\d+)?/, "number"],
                 [/[\|\]]/, "operator"],
                 [/\.[xyzwrgba]{1,4}\b/, "variable.predefined"],

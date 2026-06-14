@@ -3,6 +3,12 @@ package afield.four.buffers
 import afield.four.device.CommandBuffer
 import afield.four.modules.Introspected
 import afield.four.modules.PrimitiveType
+import afield.four.util.Vec2h
+import afield.four.util.Vec3h
+import afield.four.util.Vec4h
+import afield.four.util.Vec8h
+import afield.four.util.packHalf1x16
+import afield.four.util.packHalf2x16
 import afield.stdlib.NeedsStartingValue
 import org.joml.*
 import java.nio.ByteBuffer
@@ -298,6 +304,26 @@ open class Structure(
             is Matrix2f -> v.get(offset, f)
             is Matrix3f -> v.get(offset, f)
             is Matrix4f -> v.get(offset, f)
+            is Vec2h -> {
+                val t = v.v
+                f.putInt(offset, packHalf2x16(t.x, t.y))
+            }
+            is Vec3h -> {
+                val t = v.v
+                f.putInt(offset, packHalf2x16(t.x, t.y))
+                f.putInt(offset + 4, packHalf1x16(t.z))
+            }
+            is Vec4h -> {
+                val t = v.v
+                f.putInt(offset, packHalf2x16(t.x, t.y))
+                f.putInt(offset + 4, packHalf2x16(t.z, t.w))
+            }
+            is Vec8h -> {
+                f.putInt(offset, packHalf2x16(v.lo.x, v.lo.y))
+                f.putInt(offset + 4, packHalf2x16(v.lo.z, v.lo.w))
+                f.putInt(offset + 8, packHalf2x16(v.hi.x, v.hi.y))
+                f.putInt(offset + 12, packHalf2x16(v.hi.z, v.hi.w))
+            }
             is UInt -> f.putInt(offset, v.toInt())
             is ByteBuffer -> {
                 var was = f.position()

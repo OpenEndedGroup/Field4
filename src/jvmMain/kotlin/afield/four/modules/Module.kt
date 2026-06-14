@@ -456,6 +456,14 @@ class Module(val parameters: Parameters) : Renderable {
     var vsm: Long = 0L
     var fsm: Long = 0L
 
+    data class PipelineUpdate(
+        val vertexIntrospection: Introspection,
+        val fragmentIntrospection: Introspection,
+        val vertexShaderModule: Long,
+        val fragmentShaderModule: Long,
+        val pipeline: Long
+    )
+
     init {
         try {
             if (!vi.valid || !fi.valid) throw IllegalStateException("Can't make a module without valid programs")
@@ -875,6 +883,164 @@ class Module(val parameters: Parameters) : Renderable {
         }
     }
 
+    fun buildPipelineUpdate(
+        newVertex: Introspection,
+        newFragment: Introspection
+    ): PipelineUpdate {
+        var newVsm = 0L
+        var newFsm = 0L
+        var newPipeline = 0L
+        try {
+            newVsm = createShaderModule(newVertex.code.bytecode()!!)
+            newFsm = createShaderModule(newFragment.code.bytecode()!!)
+
+            parameters.renderer.device.nameObject(newVsm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} VS update")
+            parameters.renderer.device.nameObject(newFsm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} FS update")
+
+            MemoryStack.stackPush().use { stack ->
+                val shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack)
+                shaderStages[0].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                    .stage(VK_SHADER_STAGE_VERTEX_BIT).pName(stack.UTF8("main")).module(newVsm)
+                shaderStages[1].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                    .stage(VK_SHADER_STAGE_FRAGMENT_BIT).pName(stack.UTF8("main")).module(newFsm)
+
+                val ia = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
+                    .topology(parameters.primitiveType)
+                when (parameters.primitiveType) {
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> ia.primitiveRestartEnable(true)
+                }
+
+                val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO).viewportCount(1).scissorCount(1)
+
+                val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO).polygonMode(parameters.fillMode)
+                    .cullMode(VK_CULL_MODE_NONE).frontFace(VK_FRONT_FACE_CLOCKWISE).lineWidth(1.0f)
+
+                val ms = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
+                    .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+
+                var ds: VkPipelineDepthStencilStateCreateInfo? = null
+                if (parameters.depth > 0) {
+                    ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                        .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO).depthTestEnable(true)
+                        .depthWriteEnable(true).depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL).depthBoundsTestEnable(false)
+                        .stencilTestEnable(false)
+                }
+
+                val colorFormats = if (parameters.colorFormats.isNotEmpty()) parameters.colorFormats
+                else List(parameters.color) { parameters.imageFormat }
+                require(colorFormats.isNotEmpty()) { "Must specify at least one color attachment" }
+                val colorCount = colorFormats.size
+
+                val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
+                for (i in 0 until colorCount) {
+                    val attachmentBlend = parameters.blend &&
+                        parameters.renderer.formatSupportsColorAttachmentBlend(colorFormats[i])
+                    blendAtt[i].colorWriteMask(
+                        (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or
+                            (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or
+                            (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or
+                            (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
+                    ).blendEnable(attachmentBlend).srcColorBlendFactor(parameters.srcColor)
+                        .dstColorBlendFactor(parameters.dstColor).colorBlendOp(parameters.colorBlendOp)
+                        .srcAlphaBlendFactor(parameters.srcAlpha).dstAlphaBlendFactor(parameters.dstAlpha)
+                        .alphaBlendOp(parameters.alphaBlendOp)
+                }
+                val cb = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO).pAttachments(blendAtt)
+
+                val dynList = mutableListOf(
+                    VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+                )
+                if (parameters.renderer.device.supportsExtendedDynamicState) {
+                    dynList += listOf(
+                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY, VK_DYNAMIC_STATE_CULL_MODE, VK_DYNAMIC_STATE_FRONT_FACE
+                    )
+                }
+                if (parameters.renderer.device.supportsExtendedDynamicState3) {
+                    dynList += EXTExtendedDynamicState3.VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT
+                }
+                val dynStates = stack.ints(*dynList.toIntArray())
+
+                val dyn = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO).pDynamicStates(dynStates)
+
+                val renderInfo = VkPipelineRenderingCreateInfoKHR.calloc(1, stack)
+                    .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR)
+
+                val colorAttachmentFormats = stack.callocInt(colorCount)
+                colorFormats.forEach { colorAttachmentFormats.put(it) }
+                colorAttachmentFormats.flip()
+
+                renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
+                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
+                    .stencilAttachmentFormat(0)
+
+                val gp =
+                    VkGraphicsPipelineCreateInfo.calloc(1, stack).sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+                        .pStages(shaderStages).pVertexInputState(vertexInputState).pInputAssemblyState(ia)
+                        .pViewportState(vp).pRasterizationState(rs).pMultisampleState(ms).pColorBlendState(cb)
+                        .pDynamicState(dyn).layout(pipelineLayout).renderPass(0).pNext(renderInfo.address())
+
+                ds?.let { gp.pDepthStencilState(it) }
+
+                val lp = stack.mallocLong(1)
+                synchronized(parameters.renderer.pipelineCache) {
+                    vkCheck(
+                        vkCreateGraphicsPipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            gp,
+                            null,
+                            lp
+                        ), "Error creating graphics pipeline update"
+                    )
+                }
+                newPipeline = lp[0]
+                parameters.renderer.device.nameObject(
+                    newPipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline update"
+                )
+            }
+
+            return PipelineUpdate(newVertex, newFragment, newVsm, newFsm, newPipeline)
+        } catch (t: Throwable) {
+            destroyPipelineHandles(newPipeline, 0L, newVsm, newFsm)
+            throw t
+        }
+    }
+
+    fun installPipelineUpdate(update: PipelineUpdate) {
+        val oldPipeline = pipeline
+        val oldVsm = vsm
+        val oldFsm = fsm
+
+        pipeline = update.pipeline
+        vsm = update.vertexShaderModule
+        fsm = update.fragmentShaderModule
+
+        parameters.vertexIntrospection = update.vertexIntrospection
+        parameters.fragmentIntrospection = update.fragmentIntrospection
+
+        pipelineDisposeToken.updateCleanup {
+            destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
+        }
+
+        parameters.renderer.cleanup.add(Runnable {
+            destroyPipelineHandles(oldPipeline, 0L, oldVsm, oldFsm)
+        })
+    }
+
+    fun destroyUnusedPipelineUpdate(update: PipelineUpdate) {
+        destroyPipelineHandles(update.pipeline, 0L, update.vertexShaderModule, update.fragmentShaderModule)
+    }
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (!valid || !enabled) return
         MemoryStack.stackPush().use { stack ->
@@ -983,21 +1149,25 @@ class Module(val parameters: Parameters) : Renderable {
 
     fun cleanup() {
         pipelineDisposeToken.disable()
-        if (pipeline != 0L) {
-            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
-            pipeline = 0L
+        destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
+        pipeline = 0L
+        pipelineLayout = 0L
+        vsm = 0L
+        fsm = 0L
+    }
+
+    private fun destroyPipelineHandles(pipelineHandle: Long, pipelineLayoutHandle: Long, vertexShaderModule: Long, fragmentShaderModule: Long) {
+        if (pipelineHandle != 0L) {
+            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipelineHandle, null)
         }
-        if (pipelineLayout != 0L) {
-            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
-            pipelineLayout = 0L
+        if (pipelineLayoutHandle != 0L) {
+            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayoutHandle, null)
         }
-        if (vsm != 0L) {
-            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vsm, null)
-            vsm = 0L
+        if (vertexShaderModule != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vertexShaderModule, null)
         }
-        if (fsm != 0L) {
-            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
-            fsm = 0L
+        if (fragmentShaderModule != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fragmentShaderModule, null)
         }
     }
 

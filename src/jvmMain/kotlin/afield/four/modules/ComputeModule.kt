@@ -131,6 +131,12 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     var pipeline: Long = 0L
     private val pipelineDisposeToken = AutoDisposer.register(this, "ComputePipeline(${parameters.name})") { }
 
+    data class PipelineUpdate(
+        val computeIntrospection: Introspection,
+        val shaderModule: Long,
+        val pipeline: Long
+    )
+
     init {
         try {
             if (!ci.valid) throw IllegalStateException("Can't make a module without valid programs")
@@ -360,6 +366,72 @@ class ComputeModule(val parameters: Parameters) : Renderable {
         }
     }
 
+    fun buildPipelineUpdate(newCompute: Introspection): PipelineUpdate {
+        var newCsm = 0L
+        var newPipeline = 0L
+        try {
+            newCsm = createShaderModule(newCompute.code.bytecode()!!).also {
+                parameters.renderer.device.nameObject(it, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} CS update")
+            }
+
+            MemoryStack.stackPush().use { stack ->
+                val stage = VkPipelineShaderStageCreateInfo.calloc(1, stack)
+                stage[0].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                    .stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                    .pName(stack.UTF8("main"))
+                    .module(newCsm)
+
+                val cp = VkComputePipelineCreateInfo.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO)
+                    .stage(stage[0])
+                    .layout(pipelineLayout)
+
+                val lp = stack.mallocLong(1)
+                synchronized(parameters.renderer.pipelineCache) {
+                    vkCheck(
+                        vkCreateComputePipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            cp, null, lp
+                        ),
+                        "Error creating compute pipeline update"
+                    )
+                }
+                newPipeline = lp[0]
+                parameters.renderer.device.nameObject(
+                    newPipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline update"
+                )
+            }
+
+            return PipelineUpdate(newCompute, newCsm, newPipeline)
+        } catch (t: Throwable) {
+            destroyPipelineHandles(newPipeline, 0L, newCsm)
+            throw t
+        }
+    }
+
+    fun installPipelineUpdate(update: PipelineUpdate) {
+        val oldPipeline = pipeline
+        val oldCsm = csm
+
+        pipeline = update.pipeline
+        csm = update.shaderModule
+
+        parameters.computeIntrospection = update.computeIntrospection
+
+        pipelineDisposeToken.updateCleanup {
+            destroyPipelineHandles(pipeline, pipelineLayout, csm)
+        }
+
+        parameters.renderer.cleanup.add(Runnable {
+            destroyPipelineHandles(oldPipeline, 0L, oldCsm)
+        })
+    }
+
+    fun destroyUnusedPipelineUpdate(update: PipelineUpdate) {
+        destroyPipelineHandles(update.pipeline, 0L, update.shaderModule)
+    }
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (!valid || !enabled) return
         MemoryStack.stackPush().use { stack ->
@@ -464,17 +536,21 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
     fun cleanup() {
         pipelineDisposeToken.disable()
-        if (pipeline != 0L) {
-            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
-            pipeline = 0L
+        destroyPipelineHandles(pipeline, pipelineLayout, csm)
+        pipeline = 0L
+        pipelineLayout = 0L
+        csm = 0L
+    }
+
+    private fun destroyPipelineHandles(pipelineHandle: Long, pipelineLayoutHandle: Long, shaderModule: Long) {
+        if (pipelineHandle != 0L) {
+            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipelineHandle, null)
         }
-        if (pipelineLayout != 0L) {
-            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
-            pipelineLayout = 0L
+        if (pipelineLayoutHandle != 0L) {
+            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayoutHandle, null)
         }
-        if (csm != 0L) {
-            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, csm, null)
-            csm = 0L
+        if (shaderModule != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, shaderModule, null)
         }
     }
 

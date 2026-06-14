@@ -218,6 +218,9 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
     val globalEditor = w.globalEditor ?: editor
     if (globalEditor != null) {
         monaco.editor.setModelLanguage(globalEditor.getModel(), lang)
+        try {
+            w.updateStackSLFlowLens?.invoke(globalEditor)
+        } catch (_: dynamic) {}
         globalEditor._domElement
             .querySelectorAll(".hoverlay")[0]
             .innerHTML = "$property <i>($lang)</i>"
@@ -245,6 +248,7 @@ fun monacoInit(monaco: dynamic): dynamic {
         js("{ token: 'operator.stacksl.prefix', foreground: 'ffcf66', fontStyle: 'bold' }"),
         js("{ token: 'operator.stacksl.range', foreground: 'ffcf66', fontStyle: 'bold' }"),
         js("{ token: 'number.stacksl.modifier', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.option', foreground: 'ffcf66', fontStyle: 'bold' }"),
         js("{ token: 'number.stacksl.suffix', foreground: 'ffcf66', fontStyle: 'bold' }")
     )
     theme.colors = themeColors

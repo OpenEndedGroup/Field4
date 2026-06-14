@@ -20,6 +20,11 @@
 
         *{ box-sizing:border-box; font-family:var(--font); }
         html,body{ margin:0; width:100%; height:100%; background:var(--bg); color:var(--fg); overflow:hidden; }
+        :focus,
+        :focus-visible{
+            outline:none !important;
+            box-shadow:none !important;
+        }
 
         #root{
             display:flex;
@@ -216,7 +221,7 @@
     let openInfo = null;
     let stride = 1;
     let showKeys = true;
-    let windowData = { start: 0, rows: [], totalRows: 0, columnNames: [], hasKeys: false, kind: "unknown" };
+    let windowData = { start: 0, rows: [], totalRows: 0, stride: 1, columnNames: [], hasKeys: false, kind: "unknown" };
     const pageCache = new Map(); // key => rows
     let inflightWindowKey = null;
     let lastRequestedStart = -1;
@@ -549,7 +554,7 @@
         const { safeWindow, wantedStart } = computeWantedStart(startHint, totalRows, WINDOW_ROWS);
 
         // Avoid request/render loops when scrolling logic asks for the currently loaded page.
-        if (windowData.rows.length > 0 && wantedStart === (windowData.start | 0)) {
+        if (windowData.rows.length > 0 && wantedStart === (windowData.start | 0) && stride === (windowData.stride | 0)) {
             statusEl.textContent = "";
             return;
         }
@@ -559,7 +564,7 @@
         lastRequestedStart = wantedStart;
         if (pageCache.has(key)) {
             const cached = pageCache.get(key);
-            if ((windowData.start | 0) !== (cached.start | 0) || windowData.rows.length === 0) {
+            if ((windowData.start | 0) !== (cached.start | 0) || stride !== (windowData.stride | 0) || windowData.rows.length === 0) {
                 windowData = cached;
                 renderRows();
             }
@@ -583,6 +588,7 @@
                 start: resp.start || 0,
                 rows: resp.rows || [],
                 totalRows: resp.totalRows || 0,
+                stride: resp.stride || stride,
                 columnNames: resp.columnNames || [],
                 hasKeys: !!resp.hasKeys,
                 kind: resp.kind || openInfo.kind
@@ -630,6 +636,7 @@
             start: 0,
             rows: [],
             totalRows: resp.totalRows || 0,
+            stride,
             columnNames: resp.columnNames || [],
             hasKeys: !!resp.hasKeys,
             kind: resp.kind || "unknown"
@@ -676,7 +683,7 @@
             const wanted = pendingScrollWindowStart;
             pendingScrollWindowStart = null;
             if (wanted == null) return;
-            if ((windowData.start | 0) === (wanted | 0) && windowData.rows.length > 0) return;
+            if ((windowData.start | 0) === (wanted | 0) && stride === (windowData.stride | 0) && windowData.rows.length > 0) return;
             loadWindow(wanted);
         }, 140);
     });
