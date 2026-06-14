@@ -444,9 +444,12 @@ data class Vec3h(val v: Vector3f)
 data class Vec4h(val v: Vector4f)
 
 
-val <T> List<T>.m : MutableList<T>
+val <T> List<T>.m: MutableList<T>
     get() = this.toMutableList()
 
-val <T> List<T>.s : Set<T>
+val <T> List<T>.s: Set<T>
     get() = this.toSet()
 
+
+val String.r: Regex
+    get() = Regex(this)

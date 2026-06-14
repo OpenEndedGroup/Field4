@@ -407,6 +407,8 @@ var canvasGestures = CanvasGestures(launcher = {
 var selected = mutableSetOf<HTMLElement>()
 var selectedList = eval("[]")
 var selectedProperty = "code"
+private const val editorPropertyStickinessStorageKey = "field4.editorPropertyStickiness"
+private const val editorPropertyPerBoxStoragePrefix = "field4.editorPropertyPerBox."
 private var explicitPropertySelectionInProgress = false
 
 private val monacoRemoteTextProperties = monacoPropertyNames
@@ -468,6 +470,65 @@ fun selectionContextChanged() {
     }
     if (spatialNavActive) {
         refreshSpatialNavTargets()
+    }
+}
+
+internal fun setSelectedEditorProperty(property: String) {
+    selectedProperty = property
+    window.unsafeCast<dynamic>().selectedProperty = property
+}
+
+private fun editorPropertyStickinessMode(): String {
+    val raw = runCatching {
+        window.localStorage.getItem(editorPropertyStickinessStorageKey)
+    }.getOrNull()
+        ?: (window.asDynamic().fieldEditorPropertyStickiness as? String)
+        ?: "none"
+    return when (raw.trim().lowercase()) {
+        "per-box", "perbox" -> "per-box"
+        "global" -> "global"
+        else -> "none"
+    }
+}
+
+private fun activeEditorProperty(): String {
+    val w = window.asDynamic()
+    val property = (w.selectedProperty as? String)
+        ?: (w.currentSelectedProperty as? String)
+        ?: selectedProperty
+    return property.takeIf { monacoPropertyNames.contains(it) } ?: "code"
+}
+
+private fun boxHasPropertyContents(box: HTMLElement, property: String): Boolean {
+    val value = box.asDynamic()[property]
+    val exists = js("value !== undefined && value !== null") as Boolean
+    if (!exists) return false
+    return if (js("typeof value === 'string' || value instanceof String") as Boolean) {
+        (value as String).trim().isNotEmpty()
+    } else {
+        js("Boolean(value)") as Boolean
+    }
+}
+
+private fun rememberedEditorPropertyForBox(box: HTMLElement): String? {
+    val uid = uidForBoxElement(box) ?: return null
+    val property = runCatching {
+        window.localStorage.getItem(editorPropertyPerBoxStoragePrefix + uid)
+    }.getOrNull()?.takeIf { it.isNotBlank() } ?: return null
+    return property.takeIf { monacoPropertyNames.contains(it) }
+}
+
+internal fun rememberEditedPropertyForCurrentSelection(property: String) {
+    if (editorPropertyStickinessMode() != "per-box") return
+    if (!monacoPropertyNames.contains(property)) return
+    val w = window.asDynamic()
+    val next = w.selectedList ?: selectedList
+    val len = (next?.length as? Number)?.toInt() ?: 0
+    if (len != 1) return
+    val box = next[0] as? HTMLElement ?: return
+    val uid = uidForBoxElement(box) ?: return
+    runCatching {
+        window.localStorage.setItem(editorPropertyPerBoxStoragePrefix + uid, property)
     }
 }
 
@@ -3190,12 +3251,19 @@ fun selectBox(it: HTMLElement) {
         selected.add(it)
         if (selected.size == 1) {
             val defaultProperty = it.unsafeCast<dynamic>().default_property as? String
+            val editorProperty = activeEditorProperty()
             if (explicitPropertySelectionInProgress) {
                 // Keep explicit property navigation from becoming a default for later box selections.
+            } else if (editorPropertyStickinessMode() == "per-box") {
+                setSelectedEditorProperty(rememberedEditorPropertyForBox(it)
+                    ?: defaultProperty?.takeIf { property -> property.isNotBlank() }
+                    ?: "code")
+            } else if (editorPropertyStickinessMode() == "global" && boxHasPropertyContents(it, editorProperty)) {
+                setSelectedEditorProperty(editorProperty)
             } else if (!defaultProperty.isNullOrBlank()) {
-                selectedProperty = defaultProperty
+                setSelectedEditorProperty(defaultProperty)
             } else {
-                selectedProperty = "code"
+                setSelectedEditorProperty("code")
             }
         }
 

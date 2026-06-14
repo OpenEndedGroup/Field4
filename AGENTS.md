@@ -29,8 +29,20 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 ```
 
 - Use the same wrapper form for other Gradle tasks, replacing `compileKotlinJvm` with the task name, for example `.\gradlew runJvm`.
+- Before attempting any Gradle interaction in this checkout, run `killall -9 java` first. This is the expected local cleanup step for stale Field/Gradle/Kotlin daemon processes on this machine.
 - On Unix-like systems, use `./gradlew compileKotlinJvm` unless a task-specific note says otherwise.
-- If Gradle appears hung or reports a lock error, inspect the actual lock holder first (`ps`, `lsof .gradle/.../*.lock`) and clean up only the matching Gradle wrapper/daemon process tree for this checkout; do not use broad `killall java`.
+- Known local failure mode: if `./gradlew compileKotlinJvm` prints exactly this startup sequence and then sits at high CPU with no further output, treat it as a Gradle daemon hang, not a slow compile:
+
+```text
+Starting a Gradle Daemon, 10 busy Daemons could not be reused, use --status for details
+
+> Configure project :
+Mac OS X, aarch64
+Mac OS X
+```
+
+  In this state, do not keep waiting, do not retry `./gradlew --status`, and do not start more Gradle tasks. Run `killall -9 java`, then report the compile as unverified. Prefer a targeted verification path such as `python3 tools/field_backdoor.py --json --port <custom-port> --command 'run-jvm-main ...'` when it fits the change.
+- If Gradle appears hung or reports a lock error, run `killall -9 java` before retrying Gradle.
 - Use an isolated `GRADLE_USER_HOME` / `--project-cache-dir` only as a fallback when there is a confirmed cache-lock conflict that cannot be cleared without disrupting the user's running work. The isolated path is expected to be much slower because it loses the warm project caches.
 
 ## Field Backdoor (Preferred for Agents)

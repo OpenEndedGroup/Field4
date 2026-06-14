@@ -121,14 +121,20 @@
         button,
         .button-link {
             font-family: inherit;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--field-text);
             background: var(--field-panel-strong);
             border: 1px solid var(--field-border);
             border-radius: 8px;
-            padding: 10px;
+            padding: 7px 8px;
             cursor: pointer;
             transition: border-color 120ms ease, transform 120ms ease;
+        }
+
+        *:focus,
+        *:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
         }
 
         button:hover,
@@ -180,8 +186,9 @@
             color: var(--field-cyan);
             border: 1px solid rgba(72, 201, 255, 0.35);
             border-radius: 7px;
-            padding: 8px 10px;
+            padding: 5px 7px;
             font: inherit;
+            font-size: 12px;
             text-align: left;
         }
 
@@ -192,9 +199,7 @@
         }
 
         #new-doc-name:focus {
-            outline: none;
             border-color: var(--field-cyan);
-            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
         }
 
         #create-status {
@@ -209,7 +214,8 @@
         }
 
         .workspace-header,
-        .ai-settings-header {
+        .ai-settings-header,
+        .preferences-header {
             display: grid;
             grid-template-columns: auto 1fr;
             gap: 10px;
@@ -218,13 +224,15 @@
         }
 
         .workspace-label,
-        .ai-settings-label {
+        .ai-settings-label,
+        .preferences-label {
             color: var(--field-text-soft);
         }
 
         #current-workspace,
         #ai-settings-state,
-        #ai-settings-path {
+        #ai-settings-path,
+        #preferences-state {
             min-width: 0;
             color: var(--field-cyan);
             overflow: hidden;
@@ -251,8 +259,9 @@
             color: var(--field-cyan);
             border: 1px solid rgba(72, 201, 255, 0.35);
             border-radius: 7px;
-            padding: 8px 10px;
+            padding: 6px 8px;
             font: inherit;
+            font-size: 12px;
         }
 
         #workspace-path::placeholder,
@@ -263,20 +272,20 @@
 
         #workspace-path:focus,
         #openai-platform-key:focus {
-            outline: none;
             border-color: var(--field-cyan);
-            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
         }
 
         #workspace-status,
-        #ai-settings-status {
+        #ai-settings-status,
+        #preferences-status {
             min-height: 1.2em;
             font-size: 12px;
             color: var(--field-text-soft);
         }
 
         #workspace-status.error,
-        #ai-settings-status.error {
+        #ai-settings-status.error,
+        #preferences-status.error {
             color: var(--field-danger);
         }
 
@@ -284,7 +293,7 @@
             padding: 0;
             overflow: hidden;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(280px, 0.65fr) minmax(280px, 0.65fr);
+            grid-template-columns: minmax(0, 1fr) minmax(240px, 0.6fr) minmax(240px, 0.6fr) minmax(280px, 0.75fr);
         }
 
         .changelog-panel details {
@@ -329,10 +338,57 @@
         }
 
         .workspace-details-body,
-        .ai-settings-body {
+        .ai-settings-body,
+        .preferences-body {
             padding: 0 12px 12px;
             display: grid;
             gap: 8px;
+        }
+
+        .preference-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+        }
+
+        .preference-toggle {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            color: var(--field-text);
+            font-size: 12px;
+        }
+
+        .preference-toggle input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--field-cyan);
+        }
+
+        #editor-stickiness {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        #editor-stickiness:focus {
+            border-color: var(--field-cyan);
+        }
+
+        .preferences-controls {
+            display: grid;
+            gap: 5px;
+        }
+
+        .preference-select-label {
+            color: var(--field-text-soft);
+            font-size: 11px;
         }
 
         #changelog-list {
@@ -595,7 +651,6 @@
         }
 
         .doc-tag-input:focus {
-            outline: none;
             border-color: var(--field-cyan);
         }
 
@@ -629,7 +684,7 @@
         .context-menu-action {
             width: 100%;
             text-align: left;
-            padding: 8px 9px;
+            padding: 6px 8px;
             border-radius: 5px;
             border-color: rgba(72, 201, 255, 0.14);
             background: rgba(255, 255, 255, 0.035);
@@ -647,13 +702,12 @@
             color: var(--field-cyan);
             border: 1px solid rgba(72, 201, 255, 0.35);
             border-radius: 6px;
-            padding: 8px 9px;
+            padding: 6px 8px;
             font: inherit;
             font-size: 12px;
         }
 
         .context-input:focus {
-            outline: none;
             border-color: var(--field-cyan);
         }
 
@@ -717,8 +771,9 @@
             color: var(--field-cyan);
             border: 1px solid rgba(72, 201, 255, 0.35);
             border-radius: 7px;
-            padding: 8px 10px;
+            padding: 6px 8px;
             font: inherit;
+            font-size: 12px;
             text-align: left;
         }
 
@@ -729,9 +784,7 @@
         }
 
         #recent-search:focus {
-            outline: none;
             border-color: var(--field-cyan);
-            box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.65);
         }
 
         #recent-search-status {
@@ -812,13 +865,16 @@
             .workspace-header,
             .workspace-controls,
             .ai-settings-header,
-            .ai-settings-controls {
+            .ai-settings-controls,
+            .preferences-header,
+            .preference-grid {
                 grid-template-columns: 1fr;
             }
 
             #current-workspace,
             #ai-settings-state,
-            #ai-settings-path {
+            #ai-settings-path,
+            #preferences-state {
                 white-space: normal;
                 word-break: break-all;
             }
@@ -968,6 +1024,32 @@
                 <div id="ai-settings-status" aria-live="polite"></div>
             </div>
         </details>
+        <details id="preferences-details">
+            <summary>
+                <span>Preferences</span>
+                <span id="preferences-summary" class="changelog-count">loading</span>
+            </summary>
+            <div class="preferences-body">
+                <div class="preference-grid">
+                    <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
+                    <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
+                    <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
+                    <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
+                    <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
+                    <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
+                    <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
+                </div>
+                <div class="preferences-controls">
+                    <label class="preference-select-label" for="editor-stickiness">editor property</label>
+                    <select id="editor-stickiness">
+                        <option value="none">not sticky</option>
+                        <option value="per-box">per-box</option>
+                        <option value="global">global</option>
+                    </select>
+                </div>
+                <div id="preferences-status" aria-live="polite"></div>
+            </div>
+        </details>
     </section>
 
     <section class="panel running-panel" id="running-panel" hidden>
@@ -1018,11 +1100,23 @@
             source: "",
             configPath: ""
         },
-        savingAiSettings: false
+        savingAiSettings: false,
+        preferences: {
+            profiling: false,
+            logShadercSource: true,
+            enableVR: true,
+            enableHDR: false,
+            openXRDebugInput: true,
+            validate: true,
+            autoOpenLastDocumentInDesktop: false,
+            editorPropertyStickiness: "none"
+        },
+        savingPreferences: false
     };
     let searchController = null;
     let searchRequestSerial = 0;
     let searchDebounceTimer = null;
+    let preferencesSaveSerial = 0;
     let welcomeRefreshTimer = null;
     let welcomeEventSocket = null;
     let welcomeEventReconnectTimer = null;
@@ -1148,6 +1242,60 @@
         if (!node) return;
         node.textContent = text || "";
         node.classList.toggle("error", !!isError);
+    }
+
+    function renderPreferences() {
+        const prefs = state.preferences || {};
+        const summary = document.getElementById("preferences-summary");
+        const stickiness = document.getElementById("editor-stickiness");
+        const enabledCount = [
+            prefs.profiling,
+            prefs.logShadercSource,
+            prefs.enableVR,
+            prefs.enableHDR,
+            prefs.openXRDebugInput,
+            prefs.validate,
+            prefs.autoOpenLastDocumentInDesktop
+        ].filter(Boolean).length;
+
+        const fields = {
+            "pref-profiling": "profiling",
+            "pref-log-shaderc-source": "logShadercSource",
+            "pref-enable-vr": "enableVR",
+            "pref-enable-hdr": "enableHDR",
+            "pref-openxr-debug-input": "openXRDebugInput",
+            "pref-validate": "validate",
+            "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
+        };
+        Object.entries(fields).forEach(([id, key]) => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.checked = !!prefs[key];
+        });
+        if (stickiness) {
+            stickiness.value = prefs.editorPropertyStickiness || "none";
+        }
+        if (summary) summary.textContent = `${enabledCount} enabled`;
+    }
+
+    function setPreferencesStatus(text, isError = false) {
+        const node = document.getElementById("preferences-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function readPreferencesForm() {
+        return {
+            profiling: !!document.getElementById("pref-profiling")?.checked,
+            logShadercSource: !!document.getElementById("pref-log-shaderc-source")?.checked,
+            enableVR: !!document.getElementById("pref-enable-vr")?.checked,
+            enableHDR: !!document.getElementById("pref-enable-hdr")?.checked,
+            openXRDebugInput: !!document.getElementById("pref-openxr-debug-input")?.checked,
+            validate: !!document.getElementById("pref-validate")?.checked,
+            autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
+            editorPropertyStickiness: document.getElementById("editor-stickiness")?.value || "none"
+        };
     }
 
     function openDocument(name, options = {}) {
@@ -1626,9 +1774,15 @@
             state.currentWorkspace = payload.currentWorkspace || state.currentWorkspace || "";
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
             state.aiSettings = payload.aiSettings || state.aiSettings;
+            state.preferences = payload.preferences || state.preferences;
+            try {
+                window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
+            } catch (_) {
+            }
             rememberWorkspace(state.currentWorkspace);
             renderWorkspaceControls();
             renderAiSettings();
+            renderPreferences();
             renderList();
         } catch (error) {
             console.error("Failed to load welcome docs", error);
@@ -1636,6 +1790,7 @@
             state.runningDocuments = [];
             renderWorkspaceControls();
             renderAiSettings();
+            renderPreferences();
             renderList();
             setCreateStatus("Could not load workspace documents.", true);
         }
@@ -1917,6 +2072,45 @@
         }
     }
 
+    async function savePreferences() {
+        const saveSerial = ++preferencesSaveSerial;
+        state.savingPreferences = true;
+        const preferences = readPreferencesForm();
+        state.preferences = preferences;
+        renderPreferences();
+        setPreferencesStatus("Saving...");
+
+        try {
+            const response = await fetch("/api/preferences", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ preferences })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            if (saveSerial !== preferencesSaveSerial) return;
+            state.preferences = payload.preferences || preferences;
+            try {
+                window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
+            } catch (_) {
+            }
+            setPreferencesStatus(payload.message || "Preferences saved.");
+        } catch (error) {
+            if (saveSerial !== preferencesSaveSerial) return;
+            console.error("Failed to save preferences", error);
+            setPreferencesStatus(error?.message || "Could not save preferences.", true);
+        } finally {
+            if (saveSerial === preferencesSaveSerial) {
+                state.savingPreferences = false;
+                renderPreferences();
+            }
+        }
+    }
+
     function installDocumentListHandlers(listNode) {
         listNode.querySelectorAll(".doc-entry").forEach((entry) => {
             entry.addEventListener("click", (event) => {
@@ -1997,6 +2191,7 @@
         const openWorkspaceButton = document.getElementById("open-workspace");
         const openAiKeyInput = document.getElementById("openai-platform-key");
         const saveOpenAiKeyButton = document.getElementById("save-openai-platform-key");
+        const editorStickiness = document.getElementById("editor-stickiness");
 
         const runCreate = () => {
             const name = nameInput.value.trim();
@@ -2062,6 +2257,22 @@
 
         openAiKeyInput?.addEventListener("input", () => {
             setAiSettingsStatus("");
+        });
+
+        document.querySelectorAll(".preference-toggle input").forEach((input) => {
+            input.addEventListener("change", () => {
+                setPreferencesStatus("");
+                savePreferences();
+            });
+        });
+
+        editorStickiness?.addEventListener("change", () => {
+            setPreferencesStatus("");
+            try {
+                window.localStorage.setItem("field4.editorPropertyStickiness", editorStickiness.value || "none");
+            } catch (_) {
+            }
+            savePreferences();
         });
 
         shutdownButton?.addEventListener("click", async () => {

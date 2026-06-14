@@ -51,7 +51,31 @@ data class WelcomeDocsResponse(
     val runningDocuments: List<RunningDocumentEntry> = emptyList(),
     val currentWorkspace: String = "",
     val defaultWorkspace: String = "",
-    val aiSettings: AiSettingsStatus = AiSettingsStatus()
+    val aiSettings: AiSettingsStatus = AiSettingsStatus(),
+    val preferences: FieldPreferences = FieldPreferences()
+)
+
+@Serializable
+data class FieldPreferences(
+    val profiling: Boolean = false,
+    val logShadercSource: Boolean = true,
+    val enableVR: Boolean = true,
+    val enableHDR: Boolean = false,
+    val openXRDebugInput: Boolean = true,
+    val validate: Boolean = true,
+    val autoOpenLastDocumentInDesktop: Boolean = false,
+    val editorPropertyStickiness: String = "none"
+)
+
+@Serializable
+data class FieldPreferencesUpdateRequest(
+    val preferences: FieldPreferences
+)
+
+@Serializable
+data class FieldPreferencesUpdateResponse(
+    val preferences: FieldPreferences,
+    val message: String
 )
 
 @Serializable

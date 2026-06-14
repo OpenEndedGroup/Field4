@@ -772,6 +772,7 @@ class KotlinExecution : BoxExecution {
     companion object {
         private const val PENDING_LAUNCH_MODE = "launching"
         private const val ACTIVE_LAUNCH_MODE = "launch"
+        private const val BATCH_LAUNCH_INTER_BOX_YIELDS = 3
 
         private data class BatchLaunchRequest(
             val box: Box,
@@ -780,6 +781,11 @@ class KotlinExecution : BoxExecution {
             val strand: String,
             val pendingWatermark: Int,
             val originSession: WebSocketSession?
+        )
+
+        private data class ExpandedBatchLaunch(
+            val request: BatchLaunchRequest,
+            val sources: List<String>
         )
 
         private data class PreparedBatchLaunch(
@@ -810,9 +816,13 @@ class KotlinExecution : BoxExecution {
             }
 
             GlobalScope.launch(Dispatchers.Default) {
-                val prepared = pending.map { request ->
+                val expanded = pending.map { request ->
+                    expandBatchLaunch(request, reply)
+                }
+
+                val prepared = expanded.map { launch ->
                     async {
-                        prepareBatchLaunch(request, reply)
+                        compileBatchLaunch(launch, reply)
                     }
                 }.awaitAll()
 
@@ -824,7 +834,9 @@ class KotlinExecution : BoxExecution {
                             return@forEach
                         }
 
-                        if (evaluatedAny) yield()
+                        if (evaluatedAny) {
+                            repeat(BATCH_LAUNCH_INTER_BOX_YIELDS) { yield() }
+                        }
                         evaluatedAny = true
 
                         evaluatePreparedBatchLaunch(launch, reply)
@@ -838,13 +850,12 @@ class KotlinExecution : BoxExecution {
             return "\n".repeat(leadingLines) + exec.code.trimEnd()
         }
 
-        private suspend fun prepareBatchLaunch(
+        private suspend fun expandBatchLaunch(
             request: BatchLaunchRequest,
             reply: (Message) -> Unit
-        ): PreparedBatchLaunch {
+        ): ExpandedBatchLaunch {
             val box = request.box
-            val snippets = mutableListOf<PreparedSnippet>()
-            var compileFailed = false
+            val sources = mutableListOf<String>()
 
             Box.withBoxContext(box) {
                 configureOutputProxies(box, reply, request.originSession)
@@ -875,6 +886,27 @@ class KotlinExecution : BoxExecution {
                         runLaunchSetupBlocks(box)
                     }
 
+                    sources += compiledSource
+                    at = breakIndex
+                }
+            }
+
+            return ExpandedBatchLaunch(request, sources)
+        }
+
+        private suspend fun compileBatchLaunch(
+            expanded: ExpandedBatchLaunch,
+            reply: (Message) -> Unit
+        ): PreparedBatchLaunch {
+            val request = expanded.request
+            val box = request.box
+            val snippets = mutableListOf<PreparedSnippet>()
+            var compileFailed = false
+
+            Box.withBoxContext(box) {
+                configureOutputProxies(box, reply, request.originSession)
+
+                for (compiledSource in expanded.sources) {
                     val snippet = box.ki.compileSnippet(
                         compiledSource,
                         implicits = listOf(box),
@@ -895,7 +927,6 @@ class KotlinExecution : BoxExecution {
                         return@withBoxContext
                     }
                     snippets += snippet
-                    at = breakIndex
                 }
             }
 

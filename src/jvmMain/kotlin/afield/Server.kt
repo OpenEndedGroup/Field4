@@ -346,6 +346,36 @@ private fun currentAiSettingsStatus(): AiSettingsStatus {
     )
 }
 
+private val preferencesJson = Json { ignoreUnknownKeys = true }
+
+private fun defaultFieldPreferences(): FieldPreferences =
+    FieldPreferences(
+        profiling = Options.profiling,
+        logShadercSource = Options.logShadercSource,
+        enableVR = Options.enableVR,
+        enableHDR = Options.enableHDR,
+        openXRDebugInput = Options.openXRDebugInput,
+        validate = Options.validate
+    )
+
+private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPreferences {
+    val sticky = when (preferences.editorPropertyStickiness.trim().lowercase(Locale.US)) {
+        "per-box", "perbox" -> "per-box"
+        "global" -> "global"
+        else -> "none"
+    }
+    return preferences.copy(editorPropertyStickiness = sticky)
+}
+
+private fun applyFieldPreferences(preferences: FieldPreferences) {
+    Options.profiling = preferences.profiling
+    Options.logShadercSource = preferences.logShadercSource
+    Options.enableVR = preferences.enableVR
+    Options.enableHDR = preferences.enableHDR
+    Options.openXRDebugInput = preferences.openXRDebugInput
+    Options.validate = preferences.validate
+}
+
 private fun persistWorkspacePath(path: String) {
     runCatching {
         val workspace = displayWorkspacePath(path)
@@ -628,6 +658,24 @@ internal fun broadcastWelcomeEvent(reason: String) {
 
 var lastFn by PersistentString { "welcome" }
 var recentFns by PersistentString { "" }
+var fieldPreferencesJson by PersistentString { "" }
+
+private fun currentFieldPreferences(): FieldPreferences {
+    val raw = fieldPreferencesJson.orEmpty().trim()
+    val decoded = if (raw.isBlank()) {
+        defaultFieldPreferences()
+    } else {
+        runCatching { preferencesJson.decodeFromString<FieldPreferences>(raw) }
+            .getOrElse { defaultFieldPreferences() }
+    }
+    return normalizeFieldPreferences(decoded)
+}
+
+private fun persistFieldPreferences(preferences: FieldPreferences) {
+    val normalized = normalizeFieldPreferences(preferences)
+    fieldPreferencesJson = preferencesJson.encodeToString(normalized)
+    applyFieldPreferences(normalized)
+}
 
 internal fun recordRecentDocument(documentName: String) {
     recentFns = updateRecentDocuments(recentFns, documentName)
@@ -2004,10 +2052,18 @@ class Server {
                     }
 
                     get("/app-url") {
-                        call.respondText("https://localhost:${port}/welcome", ContentType.Text.Plain)
+                        val preferences = currentFieldPreferences().also(::applyFieldPreferences)
+                        val url = if (preferences.autoOpenLastDocumentInDesktop) {
+                            val target = URLEncoder.encode(lastFn ?: "welcome", "UTF-8")
+                            "https://localhost:${port}/index.html?file=$target"
+                        } else {
+                            "https://localhost:${port}/welcome"
+                        }
+                        call.respondText(url, ContentType.Text.Plain)
                     }
 
                     get("/api/welcome-docs") {
+                        val preferences = currentFieldPreferences().also(::applyFieldPreferences)
                         val recentDocuments = parseRecentDocuments(recentFns)
                         val liveSessions = documents.values
                             .asSequence()
@@ -2077,7 +2133,8 @@ class Server {
                                 runningDocuments,
                                 currentWorkspace,
                                 defaultWorkspace,
-                                currentAiSettingsStatus()
+                                currentAiSettingsStatus(),
+                                preferences
                             )
                         )
                     }
@@ -2107,6 +2164,24 @@ class Server {
                         } catch (e: Exception) {
                             lprintln("error,server", "saving AI settings failed: ${e.message}")
                             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save AI settings"))
+                        }
+                    }
+
+                    post("/api/preferences") {
+                        try {
+                            val request = call.receive<FieldPreferencesUpdateRequest>()
+                            persistFieldPreferences(request.preferences)
+                            call.respond(
+                                FieldPreferencesUpdateResponse(
+                                    preferences = currentFieldPreferences(),
+                                    message = "Preferences saved. Renderer and desktop startup changes may need a restart or fresh window."
+                                )
+                            )
+                        } catch (e: SerializationException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid preferences payload"))
+                        } catch (e: Exception) {
+                            lprintln("error,server", "saving preferences failed: ${e.message}")
+                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save preferences"))
                         }
                     }
 

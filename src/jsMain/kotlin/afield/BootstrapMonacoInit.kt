@@ -191,7 +191,8 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
     if (index !in monacoPropertyNames.indices) return
     val w = js("window")
     val property = monacoPropertyNames[index]
-    w.selectedProperty = property
+    setSelectedEditorProperty(property)
+    rememberEditedPropertyForCurrentSelection(property)
     if (w.selectionContextChanged != null) {
         try {
             w.selectionContextChanged()
@@ -240,7 +241,12 @@ fun monacoInit(monaco: dynamic): dynamic {
     val theme = js("{}")
     theme.base = "vs-dark"
     theme.inherit = true
-    theme.rules = arrayOf<dynamic>()
+    theme.rules = arrayOf<dynamic>(
+        js("{ token: 'operator.stacksl.prefix', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'operator.stacksl.range', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.modifier', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.suffix', foreground: 'ffcf66', fontStyle: 'bold' }")
+    )
     theme.colors = themeColors
     monaco.editor.defineTheme("dark", theme)
 
@@ -314,7 +320,6 @@ fun monacoNextProperty(editor: dynamic, inc: Int) {
     val count = monacoPropertyNames.size
     for (n in 0..count) {
         val nextIndex = ((currentIndex + inc + count) % count + count) % count
-        w.selectedProperty = monacoPropertyNames[nextIndex]
         val currentSelectedCode = w.currentSelectedCode
         if (currentSelectedCode != null &&
             (currentSelectedCode.length as? Number)?.toInt() ?: 0 > 0

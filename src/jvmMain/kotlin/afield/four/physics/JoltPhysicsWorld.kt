@@ -23,9 +23,11 @@ import com.github.stephengold.joltjni.Vec3 as JoltVec3
 import com.github.stephengold.joltjni.BoxShape
 import com.github.stephengold.joltjni.SphereShape
 import com.github.stephengold.joltjni.CapsuleShape
+import com.github.stephengold.joltjni.MassProperties
 import com.github.stephengold.joltjni.TempAllocatorMalloc
 import com.github.stephengold.joltjni.enumerate.EActivation
 import com.github.stephengold.joltjni.enumerate.EMotionType
+import com.github.stephengold.joltjni.enumerate.EOverrideMassProperties
 import com.github.stephengold.joltjni.enumerate.EPhysicsUpdateError
 import kotlin.math.PI
 import kotlin.math.acos
@@ -56,7 +58,10 @@ data class JoltBodyDef(
     val linearDamping: Double = 0.0,
     val angularDamping: Double = 0.0,
     val linearVelocity: Vec3 = Vec3(),
-    val angularVelocity: Vec3 = Vec3()
+    val angularVelocity: Vec3 = Vec3(),
+    val mass: Double? = null,
+    val density: Double? = null,
+    val tags: Set<String> = emptySet()
 ) {
     @Deprecated("Use position", ReplaceWith("position.x.toDouble()"))
     val x: Double get() = position.x.toDouble()
@@ -103,7 +108,10 @@ data class JoltBodyDef(
         vz: Double = 0.0,
         wx: Double = 0.0,
         wy: Double = 0.0,
-        wz: Double = 0.0
+        wz: Double = 0.0,
+        mass: Double? = null,
+        density: Double? = null,
+        tags: Set<String> = emptySet()
     ) : this(
         name = name,
         shape = shape,
@@ -115,7 +123,10 @@ data class JoltBodyDef(
         linearDamping = linearDamping,
         angularDamping = angularDamping,
         linearVelocity = vec(vx, vy, vz),
-        angularVelocity = vec(wx, wy, wz)
+        angularVelocity = vec(wx, wy, wz),
+        mass = mass,
+        density = density,
+        tags = tags
     )
 }
 
@@ -137,6 +148,9 @@ class JoltBodyBuilder(
             velocity = Vec3(value)
         }
     var angularVelocity: Vec3 = Vec3()
+    var mass: Double? = null
+    var density: Double? = null
+    var tags: MutableSet<String> = LinkedHashSet()
 
     fun position(x: Number, y: Number, z: Number) {
         position = vec(x, y, z)
@@ -152,6 +166,14 @@ class JoltBodyBuilder(
 
     fun angularVelocity(x: Number, y: Number, z: Number) {
         angularVelocity = vec(x, y, z)
+    }
+
+    fun tag(vararg values: String) {
+        tags.addAll(values.filter { it.isNotBlank() })
+    }
+
+    fun tags(values: Iterable<String>) {
+        tags.addAll(values.filter { it.isNotBlank() })
     }
 
     fun cuboid(width: Number, height: Number, depth: Number) {
@@ -202,7 +224,10 @@ class JoltBodyBuilder(
             linearDamping = linearDamping,
             angularDamping = angularDamping,
             linearVelocity = Vec3(velocity),
-            angularVelocity = Vec3(angularVelocity)
+            angularVelocity = Vec3(angularVelocity),
+            mass = mass,
+            density = density,
+            tags = tags.toSet()
         )
     }
 }
@@ -235,6 +260,8 @@ class JoltPhysicsWorld(
 
     private val shapeByName = LinkedHashMap<String, JoltShape>()
     private val dynamicByName = HashMap<String, Boolean>()
+    private val massByName = HashMap<String, Double>()
+    private val tagsByName = HashMap<String, Set<String>>()
     private val nameByBodyId = HashMap<Int, String>()
     private var activeGrab: ActiveGrab? = null
 
@@ -292,6 +319,7 @@ class JoltPhysicsWorld(
             .setAngularDamping(def.angularDamping.toFloat())
             .setLinearVelocity(def.linearVelocity.x, def.linearVelocity.y, def.linearVelocity.z)
             .setAngularVelocity(def.angularVelocity.x, def.angularVelocity.y, def.angularVelocity.z)
+        val effectiveMass = applyMassProperties(def, settings)
 
         val activation = if (isDynamic) EActivation.Activate else EActivation.DontActivate
         val bodyId = bodyInterface.createAndAddBody(settings, activation)
@@ -300,6 +328,10 @@ class JoltPhysicsWorld(
         bodyIdsByName[def.name] = bodyId
         shapeByName[def.name] = def.shape
         dynamicByName[def.name] = isDynamic
+        tagsByName[def.name] = def.tags
+        if (effectiveMass != null) {
+            massByName[def.name] = effectiveMass
+        }
         nameByBodyId[bodyId] = def.name
 
         return bodyId
@@ -368,6 +400,8 @@ class JoltPhysicsWorld(
 
         shapeByName.remove(name)
         dynamicByName.remove(name)
+        massByName.remove(name)
+        tagsByName.remove(name)
         nameByBodyId.remove(bodyId)
 
         if (bodyInterface.isAdded(bodyId)) {
@@ -379,6 +413,32 @@ class JoltPhysicsWorld(
 
     fun isDynamic(name: String): Boolean = dynamicByName[name] == true
 
+    fun mass(name: String): Double? = massByName[name]
+
+    fun tags(name: String): Set<String> = tagsByName[name].orEmpty()
+
+    fun activateBody(name: String): Boolean {
+        val bodyId = bodyIdsByName[name] ?: return false
+        if (!bodyInterface.isAdded(bodyId)) return false
+        bodyInterface.activateBody(bodyId)
+        return true
+    }
+
+    fun activateBodies(
+        dynamicOnly: Boolean = true,
+        includeTagRegex: Regex? = null,
+        excludeTagRegex: Regex? = null
+    ): Int {
+        var activated = 0
+        for ((name, bodyId) in bodyIdsByName) {
+            if (!bodyInterface.isAdded(bodyId)) continue
+            if (!shouldMatchBody(name, dynamicOnly, includeTagRegex, excludeTagRegex)) continue
+            bodyInterface.activateBody(bodyId)
+            activated++
+        }
+        return activated
+    }
+
     fun clearBodies() {
         activeGrab = null
         if (bodyIdsByName.isNotEmpty()) {
@@ -387,6 +447,8 @@ class JoltPhysicsWorld(
         bodyIdsByName.clear()
         shapeByName.clear()
         dynamicByName.clear()
+        massByName.clear()
+        tagsByName.clear()
         nameByBodyId.clear()
     }
 
@@ -609,7 +671,10 @@ class JoltPhysicsWorld(
     fun debugWireLines3D(
         sphereSegments: Int = 24,
         capsuleSegments: Int = 24,
-        axisLength: Float = 0f
+        axisLength: Float = 0f,
+        dynamicOnly: Boolean = false,
+        includeTagRegex: Regex? = null,
+        excludeTagRegex: Regex? = null
     ): List<FLine> {
         val lines = ArrayList<FLine>(bodyIdsByName.size * 4)
         val sphereSegs = sphereSegments.coerceAtLeast(8)
@@ -617,6 +682,7 @@ class JoltPhysicsWorld(
 
         for ((name, bodyId) in bodyIdsByName) {
             if (!bodyInterface.isAdded(bodyId)) continue
+            if (!shouldMatchBody(name, dynamicOnly, includeTagRegex, excludeTagRegex)) continue
 
             val shape = shapeByName[name] ?: continue
             val position = bodyInterface.getPosition(bodyId).toVec3f()
@@ -643,6 +709,25 @@ class JoltPhysicsWorld(
         }
 
         return lines
+    }
+
+    private fun shouldMatchBody(
+        name: String,
+        dynamicOnly: Boolean,
+        includeTagRegex: Regex?,
+        excludeTagRegex: Regex?
+    ): Boolean {
+        if (dynamicOnly && dynamicByName[name] != true) return false
+
+        val tags = tagsByName[name].orEmpty()
+        if (includeTagRegex != null && tags.none { includeTagRegex.containsMatchIn(it) }) {
+            return false
+        }
+        if (excludeTagRegex != null && tags.any { excludeTagRegex.containsMatchIn(it) }) {
+            return false
+        }
+
+        return true
     }
 
     override fun close() {
@@ -715,6 +800,39 @@ class JoltPhysicsWorld(
             val plane = JoltPlane(normal, shape.constant.toFloat())
             PlaneShape(plane)
         }
+    }
+
+    private fun applyMassProperties(def: JoltBodyDef, settings: BodyCreationSettings): Double? {
+        require(def.mass == null || def.density == null) {
+            "Body '${def.name}' cannot set both mass and density."
+        }
+        if (def.mass == null && def.density == null) return null
+        require(def.shape !is JoltShape.Plane) {
+            "Body '${def.name}' is a plane; mass/density are only valid for finite dynamic shapes."
+        }
+
+        val effectiveMass = def.mass ?: (shapeVolume(def.shape) * def.density!!)
+        require(effectiveMass > 0.0 && effectiveMass.isFinite()) {
+            "Body '${def.name}' mass must be finite and > 0, got $effectiveMass."
+        }
+
+        val massProperties = MassProperties().setMass(effectiveMass.toFloat())
+        settings
+            .setOverrideMassProperties(EOverrideMassProperties.CalculateInertia)
+            .setMassPropertiesOverride(massProperties)
+
+        return effectiveMass
+    }
+
+    private fun shapeVolume(shape: JoltShape): Double = when (shape) {
+        is JoltShape.Cuboid -> shape.width * shape.height * shape.depth
+        is JoltShape.Sphere -> (4.0 / 3.0) * PI * shape.radius * shape.radius * shape.radius
+        is JoltShape.Capsule -> {
+            val cylinderHeight = max(0.0, shape.height - 2.0 * shape.radius)
+            PI * shape.radius * shape.radius * cylinderHeight +
+                (4.0 / 3.0) * PI * shape.radius * shape.radius * shape.radius
+        }
+        is JoltShape.Plane -> Double.POSITIVE_INFINITY
     }
 
     private fun applyActiveGrabTarget(dt: Float) {
@@ -915,10 +1033,14 @@ private fun JoltPhysicsWorld.summaryHtml(): String {
     val dynamicCount = states.count { state -> isDynamic(state.name) }
     val grabbed = grabbedBodyName
     val sample = states.take(6).joinToString("") { state ->
+        val mass = mass(state.name)?.let { " m=${fmtNumber(it)}" } ?: ""
+        val tags = tags(state.name).takeIf { it.isNotEmpty() }
+            ?.joinToString(prefix = " tags=", separator = ",") { escHtml(it) }
+            ?: ""
         "<tr>" +
             "<td style='padding-right:8px;color:#8f8'>'${escHtml(state.name)}'</td>" +
             "<td style='padding-right:8px;color:#8cf'>${fmtVec(state.position)}</td>" +
-            "<td style='color:#888'>v=${fmtVecPlain(state.linearVelocity)}</td>" +
+            "<td style='color:#888'>v=${fmtVecPlain(state.linearVelocity)}$mass$tags</td>" +
         "</tr>"
     }
     val overflow = if (states.size > 6) {
