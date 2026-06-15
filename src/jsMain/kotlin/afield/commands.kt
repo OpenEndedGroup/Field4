@@ -803,7 +803,7 @@ fun parseKeybindingSpec(spec: String): String? {
                     t.length == 1 && t[0] in 'a'..'z' -> "monaco.KeyCode.Key" + t.uppercase()
                     t.length == 1 && t[0] in '0'..'9' -> "monaco.KeyCode.Digit" + t
                     t.startsWith("f") && t.drop(1).toIntOrNull() != null -> "monaco.KeyCode." + t.uppercase()
-                    t == "enter" -> "monaco.KeyCode.Enter"
+                    t == "enter" || t == "return" -> "monaco.KeyCode.Enter"
                     t == "escape" || t == "esc" -> "monaco.KeyCode.Escape"
                     t == "backspace" -> "monaco.KeyCode.Backspace"
                     t == "delete" || t == "del" -> "monaco.KeyCode.Delete"

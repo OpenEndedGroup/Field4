@@ -6,6 +6,8 @@ import com.illposed.osc.OSCMessageListener
 import com.illposed.osc.messageselector.OSCPatternAddressMessageSelector
 import com.illposed.osc.transport.OSCPortIn
 import com.illposed.osc.transport.OSCPortInBuilder
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
@@ -17,7 +19,9 @@ private data class OscEditorConfig(
     val floatAddress: String,
     val launchAddress: String,
     val stopAddress: String,
-    val debounceMs: Int
+    val debounceMs: Int,
+    val maxExecutionMs: Int,
+    val deltaMode: Boolean
 )
 
 object OscEditorBackdoor {
@@ -32,7 +36,9 @@ object OscEditorBackdoor {
             floatAddress = preferences.oscEditorFloatAddress.trim(),
             launchAddress = preferences.oscEditorLaunchAddress.trim(),
             stopAddress = preferences.oscEditorStopAddress.trim(),
-            debounceMs = preferences.oscEditorDebounceMs.coerceIn(0, 5_000)
+            debounceMs = preferences.oscEditorDebounceMs.coerceIn(0, 5_000),
+            maxExecutionMs = preferences.oscEditorMaxExecutionMs.coerceIn(0, 60_000),
+            deltaMode = preferences.oscEditorDeltaMode
         )
 
         if (next == current) return
@@ -74,6 +80,44 @@ object OscEditorBackdoor {
         }
     }
 
+    suspend fun learnNextAddress(port: Int, timeoutMs: Long = 10_000, ignoreAddresses: Set<String> = emptySet()): String? {
+        val listenPort = port.coerceIn(1, 65535)
+        val timeout = timeoutMs.coerceIn(1_000, 60_000)
+        val ignored = ignoreAddresses.mapNotNull { normalizeAddressOrNull(it) }.toSet()
+        val learned = CompletableDeferred<String>()
+        val listener = OSCMessageListener { event ->
+            val address = event.message.address ?: return@OSCMessageListener
+            if (address.isBlank()) return@OSCMessageListener
+            if (address in ignored) return@OSCMessageListener
+            learned.complete(address)
+        }
+        val tempPort = OSCPortInBuilder()
+            .setLocalPort(listenPort)
+            .build()
+
+        return try {
+            try {
+                tempPort.connect()
+            } catch (_: Throwable) {
+            }
+            tempPort.dispatcher.addListener(OSCPatternAddressMessageSelector("//*"), listener)
+            tempPort.startListening()
+            withTimeoutOrNull(timeout) { learned.await() }
+        } finally {
+            runCatching { tempPort.stopListening() }
+            runCatching { tempPort.close() }
+        }
+    }
+
+    private fun normalizeAddressOrNull(address: String): String? {
+        val trimmed = address.trim()
+        return when {
+            trimmed.isBlank() -> null
+            trimmed.startsWith("/") -> trimmed
+            else -> "/$trimmed"
+        }
+    }
+
     private fun addListener(port: OSCPortIn, address: String, command: String, config: OscEditorConfig) {
         if (address.isBlank()) return
         if (!address.startsWith("/")) {
@@ -91,7 +135,7 @@ object OscEditorBackdoor {
     private fun handle(event: OSCMessageEvent, command: String, config: OscEditorConfig) {
         val address = event.message.address ?: ""
         if (command == "float") {
-            val value = firstNumber(event) ?: return
+            val value = lastNumber(event) ?: return
             _send(
                 Message("osc-editor").payload(
                     OscEditorCommand(
@@ -99,15 +143,17 @@ object OscEditorBackdoor {
                         address = address,
                         value = value,
                         text = formatFloat(value),
-                        debounceMs = config.debounceMs
+                        debounceMs = config.debounceMs,
+                        maxExecutionMs = config.maxExecutionMs,
+                        delta = config.deltaMode
                     )
                 )
             )
             return
         }
 
-        val first = firstNumber(event)
-        if (first != null && abs(first) <= 1.0e-9) return
+        val last = lastNumber(event)
+        if (last != null && abs(last) <= 1.0e-9) return
         _send(
             Message("osc-editor").payload(
                 OscEditorCommand(
@@ -119,15 +165,16 @@ object OscEditorBackdoor {
         )
     }
 
-    private fun firstNumber(event: OSCMessageEvent): Double? {
+    private fun lastNumber(event: OSCMessageEvent): Double? {
         val arguments = event.message.arguments ?: return null
+        var found: Double? = null
         for (argument in arguments) {
             when (argument) {
-                is Number -> return argument.toDouble()
-                is String -> argument.toDoubleOrNull()?.let { return it }
+                is Number -> found = argument.toDouble()
+                is String -> argument.toDoubleOrNull()?.let { found = it }
             }
         }
-        return null
+        return found
     }
 
     private fun formatFloat(value: Double): String {

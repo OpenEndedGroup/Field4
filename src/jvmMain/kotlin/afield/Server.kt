@@ -378,7 +378,8 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
         oscEditorFloatAddress = normalizeOscAddress(preferences.oscEditorFloatAddress),
         oscEditorLaunchAddress = normalizeOscAddress(preferences.oscEditorLaunchAddress),
         oscEditorStopAddress = normalizeOscAddress(preferences.oscEditorStopAddress),
-        oscEditorDebounceMs = preferences.oscEditorDebounceMs.coerceIn(0, 5_000)
+        oscEditorDebounceMs = preferences.oscEditorDebounceMs.coerceIn(0, 5_000),
+        oscEditorMaxExecutionMs = preferences.oscEditorMaxExecutionMs.coerceIn(0, 60_000)
     )
 }
 
@@ -2199,6 +2200,37 @@ class Server {
                         } catch (e: Exception) {
                             lprintln("error,server", "saving preferences failed: ${e.message}")
                             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save preferences"))
+                        }
+                    }
+
+                    post("/api/osc-editor-learn") {
+                        val preferencesBeforeLearn = currentFieldPreferences()
+                        var pausedBackdoor = false
+                        try {
+                            val request = call.receive<OscEditorLearnRequest>()
+                            val learnPort = request.port.coerceIn(1, 65535)
+                            if (preferencesBeforeLearn.oscEditorEnabled && preferencesBeforeLearn.oscEditorPort == learnPort) {
+                                pausedBackdoor = true
+                                OscEditorBackdoor.stop()
+                            }
+
+                            val address = OscEditorBackdoor.learnNextAddress(
+                                learnPort,
+                                request.timeoutMs,
+                                request.ignoreAddresses.toSet()
+                            )
+                            if (address.isNullOrBlank()) {
+                                call.respond(HttpStatusCode.RequestTimeout, mapOf("error" to "no OSC message received"))
+                            } else {
+                                call.respond(OscEditorLearnResponse(address = address, message = "Learned $address."))
+                            }
+                        } catch (e: Exception) {
+                            lprintln("error,server", "OSC learn failed: ${e.message}")
+                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "OSC learn failed"))
+                        } finally {
+                            if (pausedBackdoor) {
+                                OscEditorBackdoor.configure(currentFieldPreferences())
+                            }
                         }
                     }
 

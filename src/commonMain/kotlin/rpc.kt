@@ -494,7 +494,9 @@ data class OscEditorCommand(
     val address: String,
     val value: Double? = null,
     val text: String = "",
-    val debounceMs: Int = 200
+    val debounceMs: Int = 200,
+    val maxExecutionMs: Int = 750,
+    val delta: Boolean = false
 )
 
 @Serializable

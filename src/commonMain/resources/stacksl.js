@@ -40,7 +40,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "sqrt", "inversesqrt", "exp", "log", "sin", "cos", "tan",
         "asin", "acos", "atan", "atan2", "normalize",
         "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
-        "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
+        "average", "avg", "mean", "median", "med", "sort", "intermediate", "vmin", "minimum", "vmax", "maximum",
         "dot", "cross", "mix", "lerp", "step", "smoothstep",
         "lt", "lte", "gt", "gte", "eq", "neq", "and", "or", "not",
         "<", "<=", ">", ">=", "=", "!=", "<>"
@@ -58,6 +58,46 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "sample-abs", "sample0-abs", "sample1-abs", "sample2-abs", "sample3-abs",
         "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3"
     ];
+
+    var arityVariantArities = Object.create(null);
+
+    function registerArityVariants(word, min, max, includeAll) {
+        var arities = [];
+        for (var i = min; i <= max; i++) arities.push(i);
+        arityVariantArities[word] = arities;
+        if (includeAll) arityVariantArities[word + ".all"] = true;
+        return arities.map(function (arity) { return word + "." + arity; }).concat(includeAll ? [word + ".all"] : []);
+    }
+
+    var arityMathWords = []
+        .concat(registerArityVariants("min", 1, 8, true))
+        .concat(registerArityVariants("max", 1, 8, true))
+        .concat(registerArityVariants("average", 2, 8, true))
+        .concat(registerArityVariants("avg", 2, 8, true))
+        .concat(registerArityVariants("mean", 2, 8, true))
+        .concat(registerArityVariants("median", 2, 8, true))
+        .concat(registerArityVariants("med", 2, 8, true))
+        .concat(registerArityVariants("sort", 2, 8, true))
+        .concat(registerArityVariants("intermediate", 2, 8, true));
+
+    var arityCreativeWords = []
+        .concat(registerArityVariants("pulse", 1, 3, false))
+        .concat(registerArityVariants("fm", 1, 3, false))
+        .concat(registerArityVariants("fmchirp", 1, 9, false))
+        .concat(registerArityVariants("palette", 1, 5, false))
+        .concat(registerArityVariants("cos-palette", 1, 5, false))
+        .concat(registerArityVariants("cosine-palette", 1, 5, false))
+        .concat(registerArityVariants("saturation", 1, 2, false))
+        .concat(registerArityVariants("sat-color", 1, 2, false))
+        .concat(registerArityVariants("contrast", 1, 2, false))
+        .concat(registerArityVariants("grade", 1, 4, false))
+        .concat(registerArityVariants("ema", 1, 3, false))
+        .concat(registerArityVariants("ema-diff", 1, 3, false))
+        .concat(registerArityVariants("diff-ema", 1, 3, false))
+        .concat(registerArityVariants("dema", 1, 3, false));
+
+    mathWords = mathWords.concat(arityMathWords);
+    creativeWords = creativeWords.concat(arityCreativeWords);
 
     var constants = [
         "pi", "tau", "e",
@@ -118,14 +158,30 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         return depth < fullArity ? effect(1, 1) : effect(fullArity, 1);
     }
 
-    function fmchirpEffect(depth) {
-        if (depth >= 9) return effect(9, 1);
-        if (depth === 8) return effect(8, 1);
-        return effect(1, 1);
+    function arityVariant(word) {
+        var match = /^(.+)\.(\d+|all)$/.exec(word);
+        if (!match) return null;
+        var base = match[1];
+        if (match[2] === "all") {
+            if (!arityVariantArities[base + ".all"]) return null;
+            return { base: base, arity: null, all: true };
+        }
+        var arity = parseInt(match[2], 10);
+        var arities = arityVariantArities[base];
+        if (!arities || arities.indexOf(arity) < 0) return null;
+        return { base: base, arity: arity, all: false };
+    }
+
+    function blastCount(depth, requestedArity, requestedAll) {
+        return requestedAll ? Math.max(2, depth) : requestedArity;
     }
 
     function stackEffectForWord(rawWord, depth, definitionWords) {
-        var word = String(rawWord || "").toLowerCase();
+        var raw = String(rawWord || "").toLowerCase();
+        var variant = arityVariant(raw);
+        var word = variant ? variant.base : raw;
+        var requestedArity = variant ? variant.arity : null;
+        var requestedAll = variant ? variant.all : false;
         if (!word || word === ":" || word === ";" || word === "|" || word === "]") return effect(0, 0);
         if (topModifierRegex.test(word)) return effect(1, 1);
         if (isPushToken(word)) return effect(0, 1);
@@ -143,17 +199,31 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (word === "vec3" || word === "v3") return effect(3, 1);
         if (word === "vec4" || word === "v4") return effect(4, 1);
         if (word === "->0" || word === "->1" || word === "->2" || word === "->3") return effect(1, 0);
+        if (word === "average" || word === "avg" || word === "mean" || word === "median" || word === "med") {
+            if (variant) return effect(blastCount(depth, requestedArity, requestedAll), 1);
+        }
+        if (word === "sort") {
+            var sortCount = variant ? blastCount(depth, requestedArity, requestedAll) : Math.max(2, depth);
+            return effect(sortCount, sortCount);
+        }
+        if (word === "intermediate") {
+            var intermediateCount = variant ? blastCount(depth, requestedArity, requestedAll) : Math.max(2, depth);
+            return effect(intermediateCount, intermediateCount - 1);
+        }
         if (unaryWordSet[word]) return effect(1, 1);
         if (binaryWordSet[word]) return effect(2, 1);
-        if (word === "min" || word === "max") return depth <= 2 ? effect(1, 1) : effect(2, 1);
+        if (word === "min" || word === "max") {
+            if (requestedAll || (requestedArity || 0) >= 3) return effect(blastCount(depth, requestedArity, requestedAll), 1);
+            return effect(requestedArity || (depth <= 2 ? 1 : 2), 1);
+        }
         if (word === "mix" || word === "lerp") return effect(3, 1);
         if (word === "step") return effect(2, 1);
         if (word === "smoothstep") return effect(3, 1);
-        if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") return dynamicEffect(depth, 3);
-        if (word === "fmchirp") return fmchirpEffect(depth);
-        if (word === "palette" || word === "cos-palette" || word === "cosine-palette") return dynamicEffect(depth, 5);
-        if (word === "saturation" || word === "sat-color" || word === "contrast") return dynamicEffect(depth, 2);
-        if (word === "grade") return dynamicEffect(depth, 4);
+        if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 3);
+        if (word === "fmchirp") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 9);
+        if (word === "palette" || word === "cos-palette" || word === "cosine-palette") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 5);
+        if (word === "saturation" || word === "sat-color" || word === "contrast") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
+        if (word === "grade") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 4);
         if (word === "sample" || word === "sample0" || word === "sample1" || word === "sample2" || word === "sample3" ||
             word === "sample-abs" || word === "sample0-abs" || word === "sample1-abs" || word === "sample2-abs" || word === "sample3-abs" ||
             word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3") return effect(1, 1);
@@ -486,6 +556,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["luma", stackslDoc("color -- scalar", "Rec.709 luminance, splatted.")],
             ["avg", stackslDoc("vec -- scalar", "Average of RGBA channels, splatted.")],
             ["median", stackslDoc("vec -- scalar", "Median-ish RGBA channel value, splatted.")],
+            ["sort", stackslDoc("values -- values", "Component-wise ascending stack sort; use .2-.8 or .all.")],
+            ["intermediate", stackslDoc("values -- midpoints", "Adjacent midpoints; use .2-.8 or .all.")],
             ["vmin", stackslDoc("vec -- scalar", "Minimum RGBA channel, splatted.")],
             ["vmax", stackslDoc("vec -- scalar", "Maximum RGBA channel, splatted.")],
             ["sat", stackslDoc("color -- color", "Clamp all channels to 0..1.")],
@@ -535,63 +607,99 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     const stackSLCanonicalWord = (word) => STACKSL_WORD_DOC_ALIASES.get(word) || word
 
     const stackSLDocForWord = (rawWord, effect, definitionWords) => {
-            const word = String(rawWord || "").toLowerCase()
+            const raw = String(rawWord || "").toLowerCase()
+            const variant = arityVariant(raw)
+            const word = variant ? variant.base : raw
             const canonical = stackSLCanonicalWord(word)
 
-            if (STACKSL_NUMBER_RANGE_RE.test(word)) {
+            if (STACKSL_NUMBER_RANGE_RE.test(raw)) {
                     return stackslDoc("-- vec", "Push a vec4 range spread across four scalar values.")
             }
-            if (STACKSL_NUMBER_SUFFIX_RE.test(word)) {
+            if (STACKSL_NUMBER_SUFFIX_RE.test(raw)) {
                     return stackslDoc("-- value", "Push a time-scaled or channel-weighted number.")
             }
-            if (STACKSL_NUMBER_MODIFIER_RE.test(word)) {
+            if (STACKSL_NUMBER_MODIFIER_RE.test(raw)) {
                     return stackslDoc("-- value", "Push amount times a time/spatial/noise modifier.")
             }
-            if (STACKSL_NUMBER_RE.test(word)) {
+            if (STACKSL_NUMBER_RE.test(raw)) {
                     return stackslDoc("-- value", "Push the number splatted to vec4.")
             }
-            if (STACKSL_COLOR_WORDS.has(word)) {
+            if (STACKSL_COLOR_WORDS.has(raw)) {
                     return stackslDoc("-- color", "Push a named RGBA color.")
             }
-            if (word === "|" || word === "]") {
+            if (raw === "|" || raw === "]") {
                     return stackslDoc("--", "Modifier prefix; combine it with a suffix such as |c2 or ]fbm4.")
             }
-            if (STACKSL_TOP_MODIFIER_RE.test(word)) {
-                    return word.startsWith("]")
+            if (STACKSL_TOP_MODIFIER_RE.test(raw)) {
+                    return raw.startsWith("]")
                             ? stackslDoc("driver -- out", "Use the consumed value as modifier driver; amplitude is one.")
                             : stackslDoc("amount -- out", "Multiply consumed amount by a time/spatial/noise modifier.")
             }
-            if (STACKSL_SWIZZLE_RE.test(word)) {
+            if (STACKSL_SWIZZLE_RE.test(raw)) {
                     return stackslDoc("vec -- vec", "Swizzle channels and return a vec4-shaped value.")
             }
 
             if (word === "min" || word === "max") {
+                    if (variant && (variant.all || effect.consume >= 3)) {
+                            return stackslDoc(`${effect.consume} values -- value`, `${word} across a stack blast, component-wise.`)
+                    }
                     return effect.consume === 1
                             ? stackslDoc("vec -- scalar", `${word} of RGBA channels, splatted.`)
                             : stackslDoc("a b -- out", `${word} component-wise.`)
             }
+            if (canonical === "avg" && variant) {
+                    return stackslDoc(`${effect.consume} values -- mean`, "Mean across a stack blast, component-wise.")
+            }
+            if (canonical === "median" && variant) {
+                    return stackslDoc(`${effect.consume} values -- median`, "Median across a stack blast, component-wise.")
+            }
+            if (word === "sort") {
+                    return stackslDoc(`${effect.consume} values -- ${effect.produce} values`, "Component-wise ascending stack sort.")
+            }
+            if (word === "intermediate") {
+                    return stackslDoc(`${effect.consume} values -- ${effect.produce} midpoints`, "Adjacent midpoints between consumed stack values.")
+            }
             if (canonical === "pulse") {
-                    return effect.consume === 1
-                            ? stackslDoc("x -- mask", "Soft band with default center 0.5 and width 0.08.")
-                            : stackslDoc("x center width -- mask", "Soft band around center with the given width.")
+                    const signatures = {
+                            1: "x -- mask",
+                            2: "x center -- mask",
+                            3: "x center width -- mask",
+                    }
+                    return stackslDoc(signatures[effect.consume] || "x center width -- mask", effect.consume < 3 ? "Soft band with trailing defaults." : "Soft band around center with the given width.")
             }
             if (canonical === "fm") {
-                    return effect.consume === 1
-                            ? stackslDoc("phase -- out", "Frequency modulation with default carrier and modulator.")
-                            : stackslDoc("phase carrier mod -- out", "Frequency-modulated sine field.")
+                    const signatures = {
+                            1: "phase -- out",
+                            2: "phase carrier -- out",
+                            3: "phase carrier mod -- out",
+                    }
+                    return stackslDoc(signatures[effect.consume] || "phase carrier mod -- out", effect.consume < 3 ? "Frequency modulation with trailing defaults." : "Frequency-modulated sine field.")
+            }
+            if (canonical === "fmchirp" && variant && variant.arity === 8) {
+                    return stackslDoc("freq mod modPhase phase chirp modChirp inputPow outputPow -- out", "FMChirp residual curve using input.x as x.")
             }
             if (canonical === "fmchirp") {
-                    if (effect.consume === 8) {
-                            return stackslDoc("freq mod modPhase phase chirp modChirp inputPow outputPow -- out", "FMChirp residual curve using input.x as x.")
+                    const signatures = {
+                            1: "x -- out",
+                            2: "x freq -- out",
+                            3: "x freq mod -- out",
+                            4: "x freq mod modPhase -- out",
+                            5: "x freq mod modPhase phase -- out",
+                            6: "x freq mod modPhase phase chirp -- out",
+                            7: "x freq mod modPhase phase chirp modChirp -- out",
+                            9: "x freq mod modPhase phase chirp modChirp inputPow outputPow -- out",
                     }
-                    return effect.consume === 1
-                            ? stackslDoc("x -- out", "FMChirp residual curve with identity-producing default parameters.")
-                            : stackslDoc("x freq mod modPhase phase chirp modChirp inputPow outputPow -- out", "Component-wise FMChirp residual curve.")
+                    return stackslDoc(signatures[effect.consume] || signatures[9], effect.consume < 9 ? "Component-wise FMChirp residual curve with trailing defaults." : "Component-wise FMChirp residual curve.")
             }
             if (canonical === "palette") {
-                    return effect.consume === 1
-                            ? stackslDoc("t -- color", "Cosine palette using the default color bands.")
-                            : stackslDoc("t a b c d -- color", "Cosine palette a + b*cos(t*c + d).")
+                    const signatures = {
+                            1: "t -- color",
+                            2: "t a -- color",
+                            3: "t a b -- color",
+                            4: "t a b c -- color",
+                            5: "t a b c d -- color",
+                    }
+                    return stackslDoc(signatures[effect.consume] || signatures[5], effect.consume < 5 ? "Cosine palette with trailing default bands." : "Cosine palette a + b*cos(t*c + d).")
             }
             if (canonical === "saturation") {
                     return effect.consume === 1
@@ -604,19 +712,29 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                             : stackslDoc("color amount -- color", "Adjust contrast around mid gray.")
             }
             if (canonical === "grade") {
-                    return effect.consume === 1
-                            ? stackslDoc("color -- color", "Neutral lift/gain/gamma grade.")
-                            : stackslDoc("color lift gain gamma -- color", "Color grade with lift, gain, and gamma.")
+                    const signatures = {
+                            1: "color -- color",
+                            2: "color lift -- color",
+                            3: "color lift gain -- color",
+                            4: "color lift gain gamma -- color",
+                    }
+                    return stackslDoc(signatures[effect.consume] || signatures[4], effect.consume < 4 ? "Color grade with trailing defaults." : "Color grade with lift, gain, and gamma.")
             }
             if (canonical === "ema") {
-                    return effect.consume === 1
-                            ? stackslDoc("current -- smooth", "EMA with default previous value and alpha 0.08.")
-                            : stackslDoc("current previous alpha -- smooth", "Exponential moving average.")
+                    const signatures = {
+                            1: "current -- smooth",
+                            2: "current previous -- smooth",
+                            3: "current previous alpha -- smooth",
+                    }
+                    return stackslDoc(signatures[effect.consume] || signatures[3], effect.consume < 3 ? "EMA with trailing defaults." : "Exponential moving average.")
             }
             if (canonical === "ema-diff") {
-                    return effect.consume === 1
-                            ? stackslDoc("current -- diff", "Current minus default EMA.")
-                            : stackslDoc("current previous alpha -- diff", "Current minus exponential moving average.")
+                    const signatures = {
+                            1: "current -- diff",
+                            2: "current previous -- diff",
+                            3: "current previous alpha -- diff",
+                    }
+                    return stackslDoc(signatures[effect.consume] || signatures[3], effect.consume < 3 ? "Current minus EMA with trailing defaults." : "Current minus exponential moving average.")
             }
 
             if (/^sample[0-3]$/.test(word)) return STACKSL_WORD_DOCS.get("sample")
@@ -780,20 +898,18 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             return stackslEffect(fullArity, 1)
     }
 
-    const stackSLFMChirpEffect = (depth) => {
-            if (depth >= 9) return stackslEffect(9, 1)
-            if (depth === 8) return stackslEffect(8, 1, "implicit x")
-            return stackslEffect(1, 1, "short form")
-    }
-
     const stackSLEffectForWord = (rawWord, depth, definitionWords) => {
-            const word = String(rawWord || "").toLowerCase()
+            const raw = String(rawWord || "").toLowerCase()
+            const variant = arityVariant(raw)
+            const word = variant ? variant.base : raw
+            const requestedArity = variant ? variant.arity : null
+            const requestedAll = variant ? variant.all : false
             if (!word) return stackslEffect(0, 0)
             if (word === ":" || word === ";") return stackslEffect(0, 0, "definition marker")
             if (word === "|" || word === "]") return stackslEffect(0, 0, "modifier prefix")
-            if (STACKSL_TOP_MODIFIER_RE.test(word)) return stackslEffect(1, 1, word.startsWith("]") ? "driven modifier" : "top modifier")
-            if (isStackSLPushToken(word)) return stackslEffect(0, 1, "push")
-            if (STACKSL_SWIZZLE_RE.test(word)) return stackslEffect(1, 1, "swizzle")
+            if (STACKSL_TOP_MODIFIER_RE.test(raw)) return stackslEffect(1, 1, raw.startsWith("]") ? "driven modifier" : "top modifier")
+            if (isStackSLPushToken(raw)) return stackslEffect(0, 1, "push")
+            if (STACKSL_SWIZZLE_RE.test(raw)) return stackslEffect(1, 1, "swizzle")
 
             if (word === "noop") return stackslEffect(0, 0)
             if (word === "dup") return stackslEffect(1, 2)
@@ -809,29 +925,43 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (word === "vec4" || word === "v4") return stackslEffect(4, 1)
             if (word === "->0" || word === "->1" || word === "->2" || word === "->3") return stackslEffect(1, 0, "store write")
 
+            if (word === "average" || word === "avg" || word === "mean" || word === "median" || word === "med") {
+                    if (variant) return stackslEffect(blastCount(depth, requestedArity, requestedAll), 1, "stack blast")
+            }
+            if (word === "sort") {
+                    const count = variant ? blastCount(depth, requestedArity, requestedAll) : Math.max(2, depth)
+                    return stackslEffect(count, count, "stack blast")
+            }
+            if (word === "intermediate") {
+                    const count = variant ? blastCount(depth, requestedArity, requestedAll) : Math.max(2, depth)
+                    return stackslEffect(count, count - 1, "stack blast")
+            }
             if (STACKSL_UNARY_WORDS.has(word)) return stackslEffect(1, 1)
             if (STACKSL_BINARY_WORDS.has(word)) return stackslEffect(2, 1)
 
             if (word === "min" || word === "max") {
-                    return depth <= 2 ? stackslEffect(1, 1, "reduce top") : stackslEffect(2, 1)
+                    if (requestedAll || (requestedArity || 0) >= 3) return stackslEffect(blastCount(depth, requestedArity, requestedAll), 1, "stack blast")
+                    return requestedArity
+                            ? stackslEffect(requestedArity, 1, requestedArity === 1 ? "reduce top" : "")
+                            : depth <= 2 ? stackslEffect(1, 1, "reduce top") : stackslEffect(2, 1)
             }
             if (word === "mix" || word === "lerp") return stackslEffect(3, 1)
             if (word === "step") return stackslEffect(2, 1)
             if (word === "smoothstep") return stackslEffect(3, 1)
             if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") {
-                    return dynamicStackSLEffect(depth, 3, "short form")
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 3 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 3, "short form")
             }
-            if (word === "fmchirp") {
-                    return stackSLFMChirpEffect(depth)
-            }
+            if (word === "fmchirp") return requestedArity
+                    ? stackslEffect(requestedArity, 1, requestedArity === 8 ? "implicit x" : requestedArity < 9 ? "trailing defaults" : "")
+                    : dynamicStackSLEffect(depth, 9, "short form")
             if (word === "palette" || word === "cos-palette" || word === "cosine-palette") {
-                    return dynamicStackSLEffect(depth, 5, "short form")
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 5 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 5, "short form")
             }
             if (word === "saturation" || word === "sat-color" || word === "contrast") {
-                    return dynamicStackSLEffect(depth, 2, "short form")
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 2 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 2, "short form")
             }
             if (word === "grade") {
-                    return dynamicStackSLEffect(depth, 4, "short form")
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 4 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 4, "short form")
             }
 
             if (word === "sample" || word === "sample0" || word === "sample1" || word === "sample2" || word === "sample3" ||

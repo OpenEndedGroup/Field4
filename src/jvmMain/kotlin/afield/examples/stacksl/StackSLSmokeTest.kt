@@ -35,6 +35,8 @@ object StackSLSmokeTest {
             externalizesDanglingWires()
             compilesStoreReadWriteWords()
             inlinesRepeatedDefinitionForCse()
+            compilesExplicitArityVariants()
+            compilesStackBlastOperators()
             compilesFMChirpOperator()
             println("StackSL compiler smoke tests passed")
             true
@@ -248,9 +250,49 @@ object StackSLSmokeTest {
         }
     }
 
+    private fun compilesExplicitArityVariants() {
+        val result = StackSLCompiler.compile(
+            """
+            time
+            uv 0.4 pulse.2
+            +
+            time
+            uv 0.1 1.4 grade.3
+            +
+            time
+            uv .x 2 fmchirp.2
+            +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "arity_variants")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require(result.diagnostics.isEmpty()) { result.diagnostics.joinToString("\n") }
+    }
+
+    private fun compilesStackBlastOperators() {
+        val result = StackSLCompiler.compile(
+            """
+            1 2 3 4 mean.4
+            5 6 7 median.3
+            8 9 10 min.3
+            11 12 13 max.3
+            sort.4
+            intermediate.3
+            mean.all
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "blast")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("min(" in result.glsl) { result.glsl }
+        require("max(" in result.glsl) { result.glsl }
+        require("vec4(0.5)" in result.glsl) { result.glsl }
+    }
+
     private fun compilesFMChirpOperator() {
         val short = StackSLCompiler.compile(
-            "uv .x fmchirp",
+            "uv .x fmchirp.1",
             StackSLCompileOptions(prefix = "chirp_short")
         )
 
@@ -293,7 +335,7 @@ object StackSLSmokeTest {
             -0.5
             1
             0.8
-            fmchirp
+            fmchirp.8
             """.trimIndent(),
             StackSLCompileOptions(prefix = "chirp_params")
         )
@@ -304,5 +346,24 @@ object StackSLSmokeTest {
         require("vec4(2.0), vec4(10.0), vec4(0.0), vec4(0.0), vec4(0.25), vec4(-0.5), vec4(1.0), vec4(0.8))" in eightParam.glsl) {
             eightParam.glsl
         }
+
+        val eightParamWithPriorStack = StackSLCompiler.compile(
+            """
+            uv
+            2
+            10
+            0
+            0
+            0.25
+            -0.5
+            1
+            0.8
+            fmchirp.8
+            +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "chirp_params_plus")
+        )
+
+        require(eightParamWithPriorStack.ok) { eightParamWithPriorStack.diagnostics.joinToString("\n") }
     }
 }
