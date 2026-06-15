@@ -64,7 +64,7 @@ fun isStaticValue(a: Any): Boolean {
     return false
 }
 
-fun tryToWrite(a: Any, to: FloatBuffer) {
+fun tryToWrite(a: Any, to: FloatBuffer) {-
     when (a) {
         is Vector2f -> {
             a.get(to)
