@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ base_url }}/stylesheets/extra.css">
+    {% if page and page.file and page.file.src_uri == "index.md" %}
+    <script>
+        document.documentElement.setAttribute("data-field-homepage", "true");
+        window.addEventListener("load", function () {
+            var background = document.querySelector(".field-homepage-video");
+            document.documentElement.setAttribute("data-field-homepage-loaded", "true");
+            if (!background) return;
+            background.animate(
+                [
+                    { opacity: 0 },
+                    { opacity: 1 }
+                ],
+                {
+                    duration: 2900,
+                    easing: "ease",
+                    fill: "forwards"
+                }
+            );
+        }, { once: true });
+    </script>
+    {% endif %}
+{% endblock extrahead %}
+
+{% block content %}
+{% if page.nb_url %}
+    <a href="{{ page.nb_url }}" title="Download Notebook" class="md-content__button md-icon" style="z-index: 100 !important;display: block; position: relative;">
+        {% include ".icons/material/download.svg" %}
+    </a>
+{% endif %}
+
+{% if page and page.file and page.file.src_uri == "index.md" %}
+    <div class="field-homepage-video" aria-hidden="true">
+        <video autoplay muted loop playsinline preload="auto">
+            <source src="{{ base_url }}/assets/banner.mp4" type="video/mp4">
+        </video>
+        <div class="field-homepage-video__veil"></div>
+    </div>
+{% endif %}
+
+{{ super() }}
+{% endblock content %}

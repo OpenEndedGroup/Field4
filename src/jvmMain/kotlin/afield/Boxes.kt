@@ -6,24 +6,19 @@ import afield.stdlib.Action
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
 import afield.stdlib.actions
-import checkUpdateVersion
-import defaultUpdateUrl
-import downloadAndUnzip
-import fetchUpdateInfo
-import formatKotlinCode
 import io.ktor.util.collections.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import promoteStagingToLive
-import writeLocalVersion
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
 var needsResync = ConcurrentSet<Pair<Box, String>>()
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
+var Box.attic by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
@@ -40,6 +35,16 @@ interface HasHierarchy : HasProperties {
     var parents: MutableSet<Box>
 }
 
+data class CachedLaunchReturn(
+    val code: String,
+    val returnValue: Any
+)
+
+data class RunningState(
+    val watermark: Int,
+    val mode: String
+)
+
 open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : HasOutput by output, HasProperties,
     HasHierarchy {
 
@@ -50,8 +55,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     val properties = mutableMapOf<String, Any?>()
     val markers = mutableMapOf<String, Marker>()
 
-    var ki by lazyVar {
-        makeKI(this)
+    var ki: KotlinScriptEngine by lazyVar {
+        makeKI(this, reason = "box.ki lazy initialization")
     }
     var ke: BoxExecution = KotlinExecution()
 
@@ -67,6 +72,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var runGeneration = mutableMapOf("default" to -1)
     var fragmentGeneration: Int = -1
     var jobs = mutableListOf<Job>()
+    val cachedLaunchReturns = mutableMapOf<String, CachedLaunchReturn>()
+    val currentRunningStates = mutableMapOf<String, RunningState>()
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
@@ -142,12 +149,39 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "name",
             "code",
             "code_language",
+            "contents",
+            "contents_language",
+            "default_property",
+            "file_proxy_mode",
+            "file_proxy_path",
+            "file_proxy_original_path",
+            "file_proxy_mime",
+            "file_proxy_error",
             "filename",
             "preamble",
+            "attic",
             "fragment",
+            "stackSL",
             "vertex",
+            "vertex_fragment",
             "mesh",
             "task",
+            "raygen",
+            "miss",
+            "closesthit",
+            "anyhit",
+            "intersection",
+            "callable",
+            "fragment_s",
+            "vertex_s",
+            "mesh_s",
+            "task_s",
+            "raygen_s",
+            "miss_s",
+            "closesthit_s",
+            "anyhit_s",
+            "intersection_s",
+            "callable_s",
             "children",
             "parents",
             "nested",
@@ -155,16 +189,18 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "visible",
             "actions",
             "compute",
+            "compute_s",
             "customization",
             "_tombstone",
-//            ".*_editorState",
+            ".*_editorState",
             "code_decorationState",
             "metadata",
             "offline",
             "bookmarks",
             "autorun",
             "layers",
-            "layerFrames"
+            "layerFrames",
+            "ai4_auto_name"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -172,16 +208,42 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "name",
             "code",
             "code_language",
+            "contents_language",
+            "default_property",
+            "file_proxy_mode",
+            "file_proxy_path",
+            "file_proxy_original_path",
+            "file_proxy_mime",
             "filename",
             "preamble",
             "introduction",
+            "attic",
             "fragment",
+            "stackSL",
             "vertex",
+            "vertex_fragment",
             "task",
             "mesh",
+            "raygen",
+            "miss",
+            "closesthit",
+            "anyhit",
+            "intersection",
+            "callable",
+            "fragment_s",
+            "vertex_s",
+            "task_s",
+            "mesh_s",
+            "raygen_s",
+            "miss_s",
+            "closesthit_s",
+            "anyhit_s",
+            "intersection_s",
+            "callable_s",
             "children",
             "parents",
             "compute",
+            "compute_s",
             "customization",
             "source_id",
             "templateId",
@@ -198,15 +260,36 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "slideShow",
             "autorun",
             "layers",
-            "layerFrames"
+            "layerFrames",
+            "ai4_auto_name",
+            "ai4_auto_name_signature"
         )
 
         var ioSeparateProperties = mutableMapOf(
             "fragment" to "glsl",
+            "stackSL" to "stacksl",
             "vertex" to "glsl",
+            "vertex_fragment" to "slang",
             "compute" to "glsl",
             "task" to "glsl",
             "mesh" to "glsl",
+            "raygen" to "glsl",
+            "miss" to "glsl",
+            "closesthit" to "glsl",
+            "anyhit" to "glsl",
+            "intersection" to "glsl",
+            "callable" to "glsl",
+            "fragment_s" to "slang",
+            "vertex_s" to "slang",
+            "compute_s" to "slang",
+            "task_s" to "slang",
+            "mesh_s" to "slang",
+            "raygen_s" to "slang",
+            "miss_s" to "slang",
+            "closesthit_s" to "slang",
+            "anyhit_s" to "slang",
+            "intersection_s" to "slang",
+            "callable_s" to "slang",
             "code" to "kt",
             "customization" to "js",
             "remote_js" to "js",
@@ -300,13 +383,29 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             }
 
             actionTable["-delete-box"] = { boxes ->
-                var names = ""
-                boxes.forEach {
-                    it.setPropertyRaw("_tombstone", true)
-                    names += it.name + ", "
-                    thisSessionInfo.get().root.disconnect(it)
+                val selected = boxes
+                    .filter { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+                    .toSet()
+                val targets = collectAllNestedBoxes(selected)
+                    .filter { !it.getPropertyRaw("_tombstone").isTrue() && it.id != "root" }
+                    .toSet()
+
+                if (targets.isEmpty()) {
+                    notify("Deleted 0 boxes")
+                } else {
+                    val root = thisSessionInfo.get().root
+                    targets.forEach { target ->
+                        // Ensure live parents don't retain stale nested links to deleted boxes.
+                        if (target.nestedIn != null) {
+                            target.nestedIn = null
+                        }
+                        target.setPropertyRaw("_tombstone", true)
+                        root.disconnect(target)
+                    }
+
+                    val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
+                    notify(countMessage)
                 }
-                notify("Deleted ${names.trim(' ', ',')}")
             }
 
             actionTable["-update-check"] = { boxes ->
@@ -352,13 +451,15 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     @JvmOverloads
     override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+        val oldValue = properties[name]
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
-            val a = properties[name]
-            if (a != value) needsResync.add(this to name)
+            if (oldValue != value) needsResync.add(this to name)
             properties[name] = value
         } else {
             properties[name] = value
         }
+
+        FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, value)
     }
 
     override fun getPropertyRaw(name: String, default: Any?): Any? {
@@ -402,7 +503,14 @@ fun doResync() {
         }
         if (box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
         val value = box.getPropertyRaw(name, null)
-        if (value == null) return@removeAll true
+        if (value == null) {
+            val message = Message("set-null").payload(Set_null(box.id, name))
+            lprintln("info,boxes", "resync $name -> $message (x${sessions.size} sessions)")
+            if (box.isInsideInitialized()) {
+                box.inside.sessions.forEach { _send(it, message) }
+            }
+            return@removeAll true
+        }
 
         var message: Message? = null
         when (name) {
@@ -475,8 +583,8 @@ fun doResync() {
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
                     is String -> {
                         lprintln("info,boxes", "sending set-string for $name = $value")
-                        if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized()) {
-                            box.inside.pendingSidecarSaves += box.id to name
+                        if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized() && !box.inside.ephemeral) {
+                            box.inside.markSidecarPending(box.id, name)
                         }
                         Message("set-string").payload(Set_string(box.id, name, value))
                     }
@@ -537,12 +645,28 @@ fun syncExecutionStatus() {
             val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
 
             if (hasActiveJobs) {
-                // Send is-running messages for each strand that has been used
-                box.runGeneration.forEach { (strand, generation) ->
-                    if (generation >= 0) {
-                        val message = Message("is-running").payload(IsRunning(box.id, true, generation, strand))
-                        sessionInfo.sessions.forEach { _send(it, message) }
-                    }
+                val activeStates = box.currentRunningStates.toMap()
+                val strandsToSync = if (activeStates.isNotEmpty()) {
+                    activeStates.keys
+                } else {
+                    box.runGeneration.keys
+                }
+
+                strandsToSync.forEach { strand ->
+                    val state = activeStates[strand]
+                    val generation = state?.watermark ?: box.runGeneration[strand] ?: return@forEach
+                    if (generation < 0) return@forEach
+
+                    val message = Message("is-running").payload(
+                        IsRunning(
+                            box.id,
+                            true,
+                            generation,
+                            strand,
+                            state?.mode ?: "launch"
+                        )
+                    )
+                    sessionInfo.sessions.forEach { _send(it, message) }
                 }
             }
         }
@@ -584,7 +708,9 @@ fun box(
 
 var intro = """
 import afield.*
+import afield.nano.*
 import afield.stdlib.*
+import afield.four.synth.*
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
@@ -603,13 +729,45 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 """
 
-fun makeKI(box: Box): KotlinInterface {
+private val kotlinStartupLogIds = AtomicLong(0)
+
+private fun Box.kotlinStartupLabel(): String {
+    val displayName = name.ifBlank { "Untitled" }
+    return "'$displayName' ($id)"
+}
+
+private fun kotlinStartupStack(maxFrames: Int = 8): String {
+    val ignoredMethods = setOf("kotlinStartupStack", "makeKI", "makeKIHere", "kotlinStartupLabel")
+    return Thread.currentThread().stackTrace
+        .asSequence()
+        .filter { it.className.startsWith("afield.") }
+        .filterNot { it.methodName in ignoredMethods }
+        .filterNot { it.className.startsWith("afield.logger.") }
+        .take(maxFrames)
+        .joinToString(" <- ") { frame ->
+            "${frame.className.substringAfterLast('.')}.${frame.methodName}:${frame.lineNumber}"
+        }
+        .ifBlank { "no afield stack frames" }
+}
+
+private fun KotlinScriptEngine.kotlinStartupEngineLabel(): String {
+    val backend = this::class.simpleName ?: this::class.java.name.substringAfterLast('.')
+    return "$backend execNumber=$execNumber"
+}
+
+fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
 
     // force resync of actions per box
     box.actions
 
     logTime("ki_standardlib") {
-        val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        val startupId = kotlinStartupLogIds.incrementAndGet()
+        val requestedFrom = kotlinStartupStack()
+        lprintln(
+            "info,ki,startup",
+            "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
+        )
+        val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
         ki.associatedBox = box  // Set the box reference for @exported support
         val si = thisSessionInfo.get()
         inMain {
@@ -618,14 +776,23 @@ fun makeKI(box: Box): KotlinInterface {
 
             launch(Runloop.miscPool.asCoroutineDispatcher() + Box.boxContextElement(box)) {
 
-                lblock("info,ki", "executing stdlib import") {
+                lblock(
+                    "info,ki,startup",
+                    "executing stdlib import #$startupId async reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}"
+                ) {
 //                    if (box.properties["_tombstone"].isTrue()) return@launch
-                    if (box.properties["_tombstone"].isTrue()) return@launch
-                    lprintln("info,ki", "$box executing imports")
+                    if (box.properties["_tombstone"].isTrue()) {
+                        lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
+                        return@launch
+                    }
+                    lprintln(
+                        "info,ki,startup",
+                        "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
+                    )
                     ki.exec(
                         intro, implicits = listOf(box)
                     )
-                    lprintln("info,ki", "$box clearing preamble")
+                    lprintln("info,ki,startup", "clear preamble #$startupId box=${box.kotlinStartupLabel()}")
                     box.preamble = ""
 //                    try {
 //                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
@@ -634,7 +801,7 @@ fun makeKI(box: Box): KotlinInterface {
 //                        t.printStackTrace()
 //                        box.preamble = ""
 //                    }
-                    lprintln("info,ki", "$box box is no longer offline")
+                    lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline")
                     box.offline = false
                     si?.topologyGeneration++
                 }
@@ -644,17 +811,43 @@ fun makeKI(box: Box): KotlinInterface {
     }
 }
 
-suspend fun makeKIHere(box: Box): KotlinInterface {
-    val ki = KotlinInterface(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScriptEngine {
+    val startupId = kotlinStartupLogIds.incrementAndGet()
+    val requestedFrom = kotlinStartupStack()
+    lprintln(
+        "info,ki,startup",
+        "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
+    )
+    val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
-    if (box.properties["_tombstone"].isTrue()) return box.ki
+    if (box.properties["_tombstone"].isTrue()) {
+        lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
+        return box.ki
+    }
 
     Box.withBoxContext(box) {
-        ki.exec(
-            intro, implicits = listOf(box)
-        )
-        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
+        lblock(
+            "info,ki,startup",
+            "executing stdlib import #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}"
+        ) {
+            lprintln(
+                "info,ki,startup",
+                "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
+            )
+            ki.exec(
+                intro, implicits = listOf(box)
+            )
+            val preamble = box.preamble
+            if (preamble.isNotBlank()) {
+                lprintln(
+                    "info,ki,startup",
+                    "begin preamble #$startupId box=${box.kotlinStartupLabel()} preambleLength=${preamble.length}"
+                )
+            }
+            preamble.let { ki.exec(it, implicits = listOf(box)) }
+            lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()}")
+        }
     }
     si?.topologyGeneration++
     box.offline = false

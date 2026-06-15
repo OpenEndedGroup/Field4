@@ -46,5 +46,24 @@ function setDecorationsForEditor(uid, property, box, decorSpec) {
 
                 }
         }
+
+        // Also try embedded editors for this (uid, property)
+        if (window.embeddedEditors) {
+                const entry = window.embeddedEditors.getFor(uid, property);
+                if (entry && entry.editor) {
+                        defineCssClasses(decorSpec.definition);
+                        if (!entry.editor._decorCollection) {
+                                entry.editor._decorCollection = entry.editor.createDecorationsCollection({});
+                        }
+                        let d = decorSpec.inline.map((e) => {
+                                return {
+                                        "range": new monaco.Range(e[0], e[1], e[2], e[3]),
+                                        "options": {"inlineClassName": e[4], "stickiness" : 1},
+                                }
+                        });
+                        entry.editor._decorCollection.set(d);
+                }
+        }
+
         box.decorSpec = decorSpec
 }

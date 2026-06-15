@@ -30,6 +30,7 @@ const initQuickPick = (is) => {
                 }
         })
 }
+window.initQuickPick = initQuickPick
 
 let allActions = {
         base: []
@@ -39,9 +40,22 @@ window.allActions = allActions
 
 let lastActions = []
 window.lastActions = lastActions
+let monacoActionDisposers = new Map()
+
+function normalizeActionsById(actions) {
+        const byId = new Map()
+        for (const action of actions || []) {
+                if (!action || !action.id) continue
+                byId.set(action.id, action)
+        }
+        return [...byId.values()]
+}
 
 function updateActions() {
         ensureBuiltinKeybindings();
+        if (typeof window.refreshLayerShortcutActions === "function") {
+                window.refreshLayerShortcutActions()
+        }
         let all = []
         Object.keys(allActions).forEach(key => {
                 all.push(...allActions[key])
@@ -50,12 +64,17 @@ function updateActions() {
 }
 
 function setActions(actions) {
+        actions = normalizeActionsById(actions)
 
         let add = []
         let remove = []
         for (let a of actions) {
                 let found = lastActions.find(x => x.id === a.id)
                 if (!found) add.push(a)
+                else if (found.label !== a.label || found.detail !== a.detail) {
+                        remove.push(found)
+                        add.push(a)
+                }
         }
 
         for (let a of lastActions) {
@@ -64,16 +83,23 @@ function setActions(actions) {
         }
 
         for (let a of remove) {
-                if (a.disposer) {
-                        a.disposer.dispose()
+                const disposer = monacoActionDisposers.get(a.id) || a.disposer
+                if (disposer) {
+                        disposer.dispose()
                 }
+                monacoActionDisposers.delete(a.id)
+                delete a.disposer
         }
 
         if (window.globalEditor) for (let a of add) {
+                const existing = monacoActionDisposers.get(a.id)
+                if (existing) existing.dispose()
                 a.disposer = globalEditor.addAction(a)
+                monacoActionDisposers.set(a.id, a.disposer)
         }
 
         lastActions = actions
+        window.lastActions = lastActions
 }
 window.updateActions = updateActions
 window.setActions = setActions
@@ -211,10 +237,28 @@ function bootstrapAnywhereProviders() {
         const propertyNames = [
                 "code",
                 "vertex",
+                "vertex_fragment",
+                "vertex_s",
                 "fragment",
+                "fragment_s",
                 "compute",
+                "compute_s",
                 "task",
+                "task_s",
                 "mesh",
+                "mesh_s",
+                "raygen",
+                "raygen_s",
+                "miss",
+                "miss_s",
+                "closesthit",
+                "closesthit_s",
+                "anyhit",
+                "anyhit_s",
+                "intersection",
+                "intersection_s",
+                "callable",
+                "callable_s",
                 "preamble",
                 "metadata",
         ]
@@ -528,28 +572,6 @@ const globalPickMenu_custom = (options) => {
                         const widget = document.querySelector('.quick-input-widget')
                         if (widget) widget.classList.add('qp-has-side-detail')
 
-                        const styleId = "quickpick-docs-style"
-                        if (!document.getElementById(styleId)) {
-                                const style = document.createElement("style")
-                                style.id = styleId
-                                style.textContent = `
-                                .quick-input-widget.qp-has-side-detail { position: relative; width: min(90vw, 1200px); }
-                                .quick-input-widget.qp-has-side-detail .quick-input-list { width: 100%; }
-                                .quickpick-detail-pane { position: absolute; top: 8px; right: 12px; width: 40%; max-width: 520px; min-width: 260px; max-height: 70vh; padding: 8px 10px; border-radius: 8px; background: rgba(30, 30, 30, 0.92); color: #f5f5f5; box-shadow: 0 8px 30px rgba(0,0,0,0.35); display: none; overflow: hidden; z-index: 5; }
-                                .quickpick-detail-pane.visible { display: flex; flex-direction: column; gap: 6px; }
-                                .quickpick-detail-pane .quickpick-detail-title { font-weight: 400; font-size: 12px; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.75; }
-                                .quickpick-detail-pane .quickpick-detail-body { white-space: normal; font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, 'Courier New', monospace); font-size: 11px; line-height: 1.4; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-                                .quickpick-detail-pane .quickpick-detail-hint { font-size: 10px; opacity: 0.7; }
-                                .quickpick-detail-pane .qp-line { white-space: pre-wrap; }
-                                .quickpick-detail-pane .qp-boxes { line-height: 1.5; }
-                                .quickpick-detail-pane .qp-boxes-label { font-weight: 700; margin-right: 4px; }
-                                .quickpick-detail-pane .qp-box-name strong { font-weight: 700; }
-                                .quickpick-detail-pane .qp-box-props { font-style: italic; opacity: 0.75; font-size: 10px; margin-left: 2px; }
-                                .quickpick-detail-pane .qp-box-mult { font-weight: 600; opacity: 0.85; margin-left: 2px; }
-                                `
-                                document.head.appendChild(style)
-                        }
-
                         let detailPane = widget?.querySelector(".quickpick-detail-pane")
                         let detailBody
                         if (!detailPane && widget) {
@@ -710,6 +732,7 @@ const globalPickMenu_custom = (options) => {
                 })
         })
 }
+window.globalPickMenu_custom = globalPickMenu_custom
 
 const globalPickMenu = () => {
         triggerQuickInput(() => {
@@ -725,3 +748,4 @@ const globalPickMenu = () => {
                 })
         })
 }
+window.globalPickMenu = globalPickMenu

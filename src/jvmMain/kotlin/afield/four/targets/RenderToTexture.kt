@@ -4,6 +4,7 @@ import afield.Rect
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
+import afield.four.buffers.MissingRefException
 import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
@@ -84,11 +85,16 @@ open class RenderToTexture(
 
     // depth (optional)
     var depthImageView: ImageView? = null
+    var depthSampledImageView: ImageView? = null
     var depthImage: Image? = null
 
     // Track current layouts across frames (base color level and depth).
     protected var colorLayout: IntArray = intArrayOf()   // tracks mip level 0 per attachment
     private var depthLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
+    protected val sampledReadStageMask: Long =
+        VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT or
+                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
 
     // Track whether mips (levels 1..N-1) have ever been initialized (affects oldLayout for barriers)
     protected var colorMipsInitialized: BooleanArray = booleanArrayOf()
@@ -259,6 +265,19 @@ open class RenderToTexture(
                 .mipLevels(1)
 
             depthImageView = ImageView(renderer.device, depthImage!!, depthViewData)
+            depthSampledImageView =
+                if (this.parameters.depthSampled && depthAspect != VK_IMAGE_ASPECT_DEPTH_BIT) {
+                    ImageView(
+                        renderer.device,
+                        depthImage!!,
+                        ImageViewData()
+                            .format(this.parameters.depthFormat)
+                            .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                            .mipLevels(1)
+                    )
+                } else {
+                    depthImageView
+                }
         }
 
         // per-swapchain command buffers & fences
@@ -292,20 +311,22 @@ open class RenderToTexture(
     data class ColorGrade(
         var exposure: Vec4 = vec(1f, 1f, 1f, 1f),
         var gamma: Vec4 = vec(1f, 1f, 1f, 1f),
-        var offset: Vec4 = vec(0f, 0f, 0f, 0f)
+        var offset: Vec4 = vec(0f, 0f, 0f, 0f),
+        var sampleWeight: Float = 1f
     )
 
     /**
      * Simple on-screen blit of a color attachment from this RTT. Generates a fullscreen triangle
      * mesh internally (no vertex inputs) and wires a small grading push-constant block.
      */
-    fun blitToScreen(
+    open fun blitToScreen(
         renderer: Renderer = this.renderer,
         target: RenderTarget = renderer.renderList,
         attachment: Int = 0,
         name: String = "rtt-blit",
         viewport: Rect? = null,
         sourceRect: Rect? = null,
+        blend: Boolean = false,
         additive: Boolean = false,
         configure: ColorGrade.() -> Unit = {}
     ): ModulePointer {
@@ -314,7 +335,17 @@ open class RenderToTexture(
         }
 
         val grade = ColorGrade().apply(configure)
-        val sampler = afield.four.texture.TextureSampler(renderer, imageViewArray[attachment].imageView.imageViewData.mipLevels, true)
+        val sampler = afield.four.texture.TextureSampler(
+            renderer,
+            imageViewArray[attachment].imageView.imageViewData.mipLevels,
+            true,
+            VK_FILTER_NEAREST,
+            VK_SAMPLER_MIPMAP_MODE_NEAREST
+        )
+        val sourceProvider = object : HasImageViewArray {
+            override val imageViewArray: List<HasImageView>
+                get() = listOf(this@RenderToTexture.imageViewArray[attachment])
+        }
 
         val module = Module(afield.four.modules.parameters(renderer) {
             this.name = name
@@ -322,6 +353,7 @@ open class RenderToTexture(
             depth = 1
             depthFormat = Options.defaultDepthFormat
             depthTest = false
+            this.blend = blend || additive
             if (additive) {
                 colorBlendOp = VK_BLEND_OP_ADD
                 alphaBlendOp = VK_BLEND_OP_ADD
@@ -330,7 +362,7 @@ open class RenderToTexture(
             vertex = blitVertexShader
             fragment = blitFragmentShader
             textureResolver = { tex ->
-                if (tex.name == "sourceTex") afield.stdlib.fromViews(listOf(imageViewArray[attachment]), tex.name, sampler) else null
+                if (tex.name == "sourceTex") sourceProvider to sampler else null
             }
         }).pointer()
 
@@ -342,6 +374,7 @@ open class RenderToTexture(
         mesh.push["offset"] = grade.offset
         val src = sourceRect ?: Rect(0.0, 0.0, 1.0, 1.0)
         mesh.push["srcRect"] = vec(src.x.f, src.y.f, src.w.f, src.h.f)
+        mesh.push["sampleWeight"] = grade.sampleWeight
         module.current.meshes[name] = mesh
 
         target += name to module
@@ -373,12 +406,18 @@ open class RenderToTexture(
                 vec4 gamma;
                 vec4 offset;
                 vec4 srcRect; // xy = offset, zw = size in UV space
+                float sampleWeight;
             } push;
             
             void main() {
                 vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
-                vec4 color = texture(sourceTex, uv);
-                color.rgb = pow(color.rgb * push.exposure.rgb + push.offset.rgb, push.gamma.rgb);
+                vec4 sampled = push.sampleWeight == 0.0 ? vec4(0.0, 0.0, 0.0, 1.0) : texture(sourceTex, uv);
+                if (any(isnan(sampled)) || any(isinf(sampled))) {
+                    sampled = vec4(0.0, 0.0, 0.0, 1.0);
+                }
+                vec4 color = sampled * push.sampleWeight;
+                vec3 graded = color.rgb * push.exposure.rgb + push.offset.rgb;
+                color.rgb = pow(max(graded, vec3(0.0)), push.gamma.rgb);
                 outColor = color;
             }
         """.trimIndent()
@@ -402,9 +441,9 @@ open class RenderToTexture(
                 val (srcStage, srcAccess) = when (layout) {
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
                         // Include CA/depth test stages to chain with broad read barriers on strict validators (MoltenVK/macOS).
-                        (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
+                        (sampledReadStageMask or
                                 VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT or
-                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) to VK_ACCESS_2_SHADER_READ_BIT
+                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ->
@@ -456,7 +495,7 @@ open class RenderToTexture(
 
                 val (srcStage, srcAccess) = when (depthLayout) {
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                        sampledReadStageMask to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
                         (VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT or VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT) to
                                 VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
@@ -541,6 +580,20 @@ open class RenderToTexture(
             modules.values.forEach { mp ->
                 mp.current.meshes.values.forEach { mesh ->
                     mesh.prepareForDraw(command)
+                    mesh.push.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+                mp.current.liveUniformStructures.values.forEach { structure ->
+                    structure.primeBufferReferences(command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
+                    }
+                }
+            }
+
+            modules.values.forEach { mp ->
+                mp.current.before.values.forEach { target ->
+                    target.render(command, index)
                 }
             }
 
@@ -582,6 +635,7 @@ open class RenderToTexture(
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
             command.inRenderPassInstance = false
+            command.flushDeferredGraphicsHostReadBarriers()
 
             // --- Automatic color mipmap recompute (if requested & supported) ---
             colorImageHandles.forEachIndexed { idx, img ->
@@ -620,9 +674,9 @@ open class RenderToTexture(
                             command.vkCommandBuffer,
                             imgRef,
                             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevelsRange
@@ -632,9 +686,9 @@ open class RenderToTexture(
                             command.vkCommandBuffer,
                             img,
                             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevelsRange
@@ -653,9 +707,9 @@ open class RenderToTexture(
                     command.vkCommandBuffer,
                     depthImage!!,
                     VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    sampledReadStageMask,
                     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
                     depthRange
@@ -681,10 +735,14 @@ open class RenderToTexture(
     }
 
     private fun validateModule(module: Module) {
-        val moduleColorCount = if (module.parameters.colorFormats.isNotEmpty())
-            module.parameters.colorFormats.size else module.parameters.color
+        val moduleFormats = if (module.parameters.colorFormats.isNotEmpty())
+            module.parameters.colorFormats else List(module.parameters.color) { module.parameters.imageFormat }
+        val moduleColorCount = moduleFormats.size
         require(moduleColorCount == colorImageHandles.size) {
             "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
+        }
+        require(moduleFormats == colorFormats) {
+            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Call target.apply() inside module parameters."
         }
     }
 
@@ -761,8 +819,8 @@ open class RenderToTexture(
                     val (srcStage, srcAccess, oldLayout) =
                         if (mipsWereInitialized)
                             Triple(
-                                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                                VK_ACCESS_2_SHADER_READ_BIT,
+                                sampledReadStageMask,
+                                VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                             )
                         else
@@ -879,9 +937,9 @@ open class RenderToTexture(
                             commandBuffer,
                             imageRef,
                             VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevels
@@ -891,9 +949,9 @@ open class RenderToTexture(
                             commandBuffer,
                             image,
                             VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                            sampledReadStageMask,
                             VK_ACCESS_2_TRANSFER_READ_BIT or VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_READ_BIT,
+                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // valid for mip 0 and last src; others are also SRC after loop
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             allLevels

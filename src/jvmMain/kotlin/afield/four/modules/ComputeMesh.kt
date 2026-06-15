@@ -117,6 +117,40 @@ fun computeMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
     }
 }
 
+/** COMPUTE write -> graphics shader read / write. */
+fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
+    MemoryStack.stackPush().use { stack ->
+        val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+        if (buffer != null) {
+            val b = VkBufferMemoryBarrier2.calloc(1, stack)
+            b[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer.buffer)
+                .offset(0L)
+                .size(buffer.requestedSize)
+
+            dep.pBufferMemoryBarriers(b)
+        } else {
+            val m = VkMemoryBarrier2.calloc(1, stack)
+            m[0]
+                .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+
+            dep.pMemoryBarriers(m)
+        }
+        vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+    }
+}
+
 fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_WHOLE_SIZE) {
     MemoryStack.stackPush().use { stack ->
         val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
@@ -150,6 +184,39 @@ fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_
     }
 }
 
+fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_WHOLE_SIZE) {
+    MemoryStack.stackPush().use { stack ->
+        val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+        if (buffer != null) {
+            val b = VkBufferMemoryBarrier2.calloc(1, stack)
+            b[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer)
+                .offset(0L)
+                .size(size)
+
+            dep.pBufferMemoryBarriers(b)
+        } else {
+            val m = VkMemoryBarrier2.calloc(1, stack)
+            m[0]
+                .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+
+            dep.pMemoryBarriers(m)
+        }
+        vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+    }
+}
+
 /** COMPUTE write -> HOST read. */
 fun hostReadBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
     MemoryStack.stackPush().use { stack ->
@@ -174,6 +241,43 @@ fun hostReadBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
             m[0]
                 .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
                 .srcStageMask(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_HOST_BIT)
+                .dstAccessMask(VK_ACCESS_2_HOST_READ_BIT)
+            dep.pMemoryBarriers(m)
+        }
+        vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+    }
+}
+
+/** GRAPHICS write -> HOST read. */
+fun graphicsHostReadBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
+    if (buffer != null && cmd.inRenderPassInstance) {
+        cmd.deferGraphicsHostReadBarrier(buffer)
+        return
+    }
+    MemoryStack.stackPush().use { stack ->
+        val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+        if (buffer != null) {
+            val b = VkBufferMemoryBarrier2.calloc(1, stack)
+            b[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+                .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_HOST_BIT)
+                .dstAccessMask(VK_ACCESS_2_HOST_READ_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(buffer.buffer)
+                .offset(0L)
+                .size(buffer.requestedSize)
+
+            dep.pBufferMemoryBarriers(b)
+        } else {
+            val m = VkMemoryBarrier2.calloc(1, stack)
+            m[0]
+                .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
                 .srcAccessMask(VK_ACCESS_2_SHADER_WRITE_BIT)
                 .dstStageMask(VK_PIPELINE_STAGE_2_HOST_BIT)
                 .dstAccessMask(VK_ACCESS_2_HOST_READ_BIT)
@@ -254,8 +358,8 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
                 for (pc in inside.ci.pushConstants) {
                     push.setMembers(pc.members)
                 }
-                pushConstantBuffer.clear()
                 try {
+                    pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
                         throw MissingRefException("risk of GPU null ref `$it`")
                     }
@@ -265,7 +369,6 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
                     return false
                 }
                 pushConstantBuffer.clear()
-
                 vkCmdPushConstants(
                     cmd.vkCommandBuffer,
                     inside.pipelineLayout,

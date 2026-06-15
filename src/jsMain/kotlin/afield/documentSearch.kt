@@ -26,10 +26,30 @@ private val searchableProperties = listOf(
     "code",
     "vertex",
     "fragment",
+    "stackSL",
+    "vertex_fragment",
     "compute",
     "task",
     "mesh",
+    "raygen",
+    "miss",
+    "closesthit",
+    "anyhit",
+    "intersection",
+    "callable",
+    "vertex_s",
+    "fragment_s",
+    "compute_s",
+    "task_s",
+    "mesh_s",
+    "raygen_s",
+    "miss_s",
+    "closesthit_s",
+    "anyhit_s",
+    "intersection_s",
+    "callable_s",
     "preamble",
+    "attic",
     "metadata"
 )
 
@@ -44,96 +64,12 @@ private var searchNext: HTMLButtonElement? = null
 private var searchClose: HTMLButtonElement? = null
 private var activeHighlightedBox: HTMLElement? = null
 
-private const val searchStylesId = "document-search-styles"
 private const val searchWidgetId = "document-search"
 private const val searchRefocusDelayMs = 180
 
 fun initializeDocumentSearch() {
-    ensureSearchStyles()
     ensureSearchWidget()
     registerSearchKeybindings()
-}
-
-private fun ensureSearchStyles() {
-    if (document.getElementById(searchStylesId) != null) return
-    val style = document.createElement("style")
-    style.id = searchStylesId
-    style.innerHTML = """
-        #$searchWidgetId {
-            position: fixed;
-            top: 14px;
-            right: 18px;
-            display: none;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 8px;
-            background: rgba(24, 24, 24, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 7px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-            z-index: 11000;
-            font-family: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
-        }
-        #$searchWidgetId input {
-            min-width: 220px;
-            padding: 6px 8px;
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: #f3f3f3;
-            outline: none;
-        }
-        #$searchWidgetId input:focus {
-            border-color: rgba(255, 209, 102, 0.65);
-            box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.15);
-        }
-        #$searchWidgetId .search-button {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: #f3f3f3;
-            border-radius: 5px;
-            width: 28px;
-            height: 28px;
-            display: grid;
-            place-items: center;
-            cursor: pointer;
-            transition: background 120ms ease, border-color 120ms ease;
-        }
-        #$searchWidgetId .search-button:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.18);
-        }
-        #$searchWidgetId .search-button.close {
-            width: 26px;
-            height: 26px;
-            font-size: 14px;
-        }
-        #$searchWidgetId .search-count {
-            color: #bcbcbc;
-            font-size: 12px;
-            min-width: 72px;
-            text-align: right;
-        }
-        .box.search-hit {
-            position: relative;
-        }
-        .box.search-hit::after {
-            content: "";
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            bottom: -6px;
-            left: -6px;
-            border: 5px dashed rgba(86, 156, 214, 0.8);
-            border-radius: 6px;
-            pointer-events: none;
-            box-sizing: border-box;
-        }
-        .box.search-hit-active::after {
-            border-color: rgba(255, 209, 102, 0.95);
-        }
-    """.trimIndent()
-    document.head?.appendChild(style)
 }
 
 private fun ensureSearchWidget() {
@@ -148,15 +84,13 @@ private fun ensureSearchWidget() {
         null
     }
     input.onkeydown = { event ->
-        val ke = event as? KeyboardEvent
-        if (ke != null) {
-            if (ke.key == "Enter") {
-                ke.preventDefault()
-                if (ke.shiftKey) goToPreviousMatch() else goToNextMatch()
-            } else if (ke.key == "Escape") {
-                ke.preventDefault()
-                hideSearch()
-            }
+        val ke = event
+        if (ke.key == "Enter") {
+            ke.preventDefault()
+            if (ke.shiftKey) goToPreviousMatch() else goToNextMatch()
+        } else if (ke.key == "Escape") {
+            ke.preventDefault()
+            hideSearch()
         }
         null
     }
@@ -208,7 +142,7 @@ private fun ensureSearchWidget() {
 private fun registerSearchKeybindings() {
     window.addEventListener("keydown", { event ->
         val ke = event as? KeyboardEvent ?: return@addEventListener
-        val key = (ke.key ?: "").lowercase()
+        val key = ke.key.lowercase()
         val hasModifier = ke.metaKey || ke.ctrlKey
         val editorHasFocus = try {
             val w = js("window")

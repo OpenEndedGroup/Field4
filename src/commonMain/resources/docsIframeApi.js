@@ -195,14 +195,68 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
         return false;
     };
 
-    window.handleDocsIframeMessage = function(event) {
-        // Only process messages from our iframe
+    const docsIframeWindow = () => {
         const iframe = document.getElementById('docs-iframe');
-        if (!iframe || event.source !== iframe.contentWindow) {
+        return iframe ? iframe.contentWindow : null;
+    };
+
+    const isDocsIframeSource = (source, allowNested = false) => {
+        const iframeWindow = docsIframeWindow();
+        if (!iframeWindow || !source) return false;
+        if (source === iframeWindow) return true;
+        if (!allowNested) return false;
+        try {
+            return source.parent === iframeWindow;
+        } catch (_error) {
+            return false;
+        }
+    };
+
+    const postDocsResponse = (source, origin, payload) => {
+        if (!source || typeof source.postMessage !== 'function') return;
+        try {
+            source.postMessage(payload, origin && origin !== 'null' ? origin : '*');
+        } catch (error) {
+            console.warn('Unable to post docs iframe response', error);
+        }
+    };
+
+    const readResponseError = async (response) => {
+        try {
+            const text = await response.text();
+            return text && text.trim() ? text.trim() : `HTTP ${response.status}: ${response.statusText}`;
+        } catch (_error) {
+            return `HTTP ${response.status}: ${response.statusText}`;
+        }
+    };
+
+    const importOfflineDocIntoField = async (payload) => {
+        const response = await fetch('/api/import-offline-doc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recommendedName: payload.recommendedName,
+                ednText: payload.ednText,
+                sourceUrl: payload.sourceUrl
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(await readResponseError(response));
+        }
+
+        return response.json();
+    };
+
+    window.handleDocsIframeMessage = function(event) {
+        const payload = event.data || {};
+        const type = payload.type;
+        const allowNested = type === 'field-import-offline-doc';
+        if (!isDocsIframeSource(event.source, allowNested)) {
             return;
         }
 
-        const { type, ...data } = event.data;
+        const { type: _type, ...data } = payload;
 
         try {
             switch (type) {
@@ -211,6 +265,60 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                     if (window.allActions && window.allActions[data.command]) {
                         window.allActions[data.command](data.args);
                     }
+                    break;
+
+                case 'field-copy-to-clipboard':
+                    Promise.resolve().then(async () => {
+                        if (typeof data.text !== 'string') {
+                            throw new Error('missing text');
+                        }
+                        const clipboard = navigator.clipboard;
+                        if (!clipboard || typeof clipboard.writeText !== 'function') {
+                            throw new Error('clipboard unavailable');
+                        }
+                        await clipboard.writeText(data.text);
+                        postDocsResponse(event.source, event.origin, {
+                            type: 'field-copy-to-clipboard-response',
+                            messageId: data.messageId,
+                            ok: true
+                        });
+                    }).catch((error) => {
+                        postDocsResponse(event.source, event.origin, {
+                            type: 'field-copy-to-clipboard-response',
+                            messageId: data.messageId,
+                            ok: false,
+                            error: error && error.message ? error.message : String(error)
+                        });
+                    });
+                    break;
+
+                case 'field-import-offline-doc':
+                    Promise.resolve().then(async () => {
+                        if (typeof data.ednText !== 'string' || data.ednText.length === 0) {
+                            throw new Error('missing ednText');
+                        }
+
+                        const result = await importOfflineDocIntoField(data);
+                        postDocsResponse(event.source, event.origin, {
+                            type: 'field-import-offline-doc-response',
+                            messageId: data.messageId,
+                            ok: true,
+                            result: result
+                        });
+
+                        if (data.openInHost !== false && result && result.openUrl) {
+                            setTimeout(() => {
+                                window.location.href = result.openUrl;
+                            }, 20);
+                        }
+                    }).catch((error) => {
+                        postDocsResponse(event.source, event.origin, {
+                            type: 'field-import-offline-doc-response',
+                            messageId: data.messageId,
+                            ok: false,
+                            error: error && error.message ? error.message : String(error)
+                        });
+                    });
                     break;
 
                 case 'field-run-action':
@@ -326,15 +434,12 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                         })),
                         property: window.selectedProperty
                     };
-                    
-                    const iframeElement = document.getElementById('docs-iframe');
-                    if (iframeElement && iframeElement.contentWindow) {
-                        iframeElement.contentWindow.postMessage({
-                            type: 'field-selection-response',
-                            messageId: data.messageId,
-                            selection: selection
-                        }, '*');
-                    }
+
+                    postDocsResponse(event.source, event.origin, {
+                        type: 'field-selection-response',
+                        messageId: data.messageId,
+                        selection: selection
+                    });
                     break;
 
                 case 'field-navigate-to-box':

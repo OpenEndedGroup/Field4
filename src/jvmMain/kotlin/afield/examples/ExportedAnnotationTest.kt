@@ -4,6 +4,18 @@ import afield.Box
 import afield.KotlinInterface
 import afield.preamble
 
+/*
+FIELD_TEST
+id: examples.exported-annotation.smoke
+runner: jvm-main
+entrypoint: afield.examples.ExportedAnnotationTest
+tags: [smoke, examples, kotlin, exports]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "@exported annotation tests passed"
+*/
 /**
  * Test for @exported annotation functionality
  *

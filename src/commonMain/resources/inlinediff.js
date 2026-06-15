@@ -466,6 +466,7 @@ function apply(editor, newText, options = {}) {
                 const pos = t?.position;
                 const be = e.event?.browserEvent;
                 if (!be || be.button !== 0) return;
+                if (s._lastOptions?.readOnly) return;
 
                 // 1) If Monaco reports this click is on a view zone, accept that zone's hunk.
                 if (s._viewZoneTypeSet.has(t.type)) {

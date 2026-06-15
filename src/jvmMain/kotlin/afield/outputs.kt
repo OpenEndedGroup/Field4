@@ -4,6 +4,7 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
+import afield.stdlib.FLineIntersection
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.joml.Vector2f
@@ -85,6 +86,54 @@ private fun escapeHtml(text: String): String {
                 else -> append(it)
             }
         }
+    }
+}
+
+private fun buildInlineProgressBarHtml(value: Double, details: String? = null): String {
+    val clamped = value.coerceIn(0.0, 1.0)
+    val percent = String.format(Locale.US, "%.2f", clamped * 100.0)
+    val detailsHtml = details
+        ?.takeIf { it.isNotBlank() }
+        ?.let { """<span class="field-inline-progress-details">${escapeHtml(it)}</span>""" }
+        ?: ""
+    return """
+        <span class="field-inline-progress">
+            <span class="field-inline-progress-track">
+                <span class="field-inline-progress-fill" style="width:${percent}%;"></span>
+            </span>
+            $detailsHtml
+        </span>
+    """.trimIndent()
+}
+
+private fun formatProgressDuration(seconds: Double): String {
+    if (!seconds.isFinite()) return "--:--"
+    val total = seconds.coerceAtLeast(0.0).toLong()
+    val hours = total / 3600
+    val minutes = (total % 3600) / 60
+    val secs = total % 60
+    return if (hours > 0) {
+        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, secs)
+    } else {
+        String.format(Locale.US, "%02d:%02d", minutes, secs)
+    }
+}
+
+fun Box.progressBar(name: String, value: Double, details: String? = null) {
+    val channel = name.trim().ifEmpty { "progress" }
+    val inlineChannel = if (channel.startsWith("*")) channel else "*$channel"
+    display(inlineChannel, buildInlineProgressBarHtml(value, details))
+}
+
+interface SizedIterable<out T> : Iterable<T> {
+    val size: Int
+}
+
+fun <T> sizedIterable(size: Int, iteratorFactory: () -> Iterator<T>): SizedIterable<T> {
+    val safeSize = size.coerceAtLeast(0)
+    return object : SizedIterable<T> {
+        override val size: Int = safeSize
+        override fun iterator(): Iterator<T> = iteratorFactory()
     }
 }
 
@@ -213,8 +262,16 @@ fun Box.streamProcess(
 }
 
 
-fun Box._printHere(line: Int, vararg a: Any) {
-    output.proxy(a.joinToString("\n"), false, line)
+private fun printedPayload(arguments: Array<out Any?>): Any? {
+    return when (arguments.size) {
+        0 -> ""
+        1 -> arguments[0]
+        else -> arguments.asList()
+    }
+}
+
+fun Box._printHere(line: Int, vararg a: Any?) {
+    output.proxy(printedPayload(a), false, line)
 }
 
 fun Box.macro_printHere(contents: List<String>): Insert? {
@@ -228,7 +285,7 @@ fun Box.macro_printHere(contents: List<String>): Insert? {
 }
 
 fun Box._printlnHere(line: Int, vararg a: Any) {
-    output.proxy(a.joinToString("\n"), true, line)
+    output.proxy(printedPayload(a), true, line)
 }
 
 fun Box.marco_printlnHere(contents: List<String>): Insert? {
@@ -324,6 +381,23 @@ fun Box.logs(
     logs(channel = channel, filter = filter, latestOnly = latestOnly, subId = subId)
 }
 
+fun Box.transcriptEntries(): List<LinkedHashMap<String, Any?>> = FlightRecorder.entriesFor(this)
+
+fun Box.transcriptPayload(): LinkedHashMap<String, Any?> = FlightRecorder.payloadFor(this)
+
+fun Box.transcriptHtml(): String = FlightRecorder.htmlFor(this)
+
+fun Box.transcript(channel: String = "transcript") {
+    val html = transcriptHtml().ifBlank {
+        """
+        <div style="padding:16px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(17,20,24,0.9);color:rgba(255,255,255,0.68);">
+            No transcript entries yet.
+        </div>
+        """.trimIndent()
+    }
+    display(channel, html)
+}
+
 // Slider support
 data class SliderConfig(
     val label: String,
@@ -343,6 +417,17 @@ internal fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit
 
 internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
     return sliderCallbacks[sliderId]
+}
+
+// Global registry for FLine click callbacks
+private val flineClickCallbacks = java.util.concurrent.ConcurrentHashMap<String, (FLineIntersection) -> Unit>()
+
+internal fun registerFLineClickCallback(callbackId: String, callback: (FLineIntersection) -> Unit) {
+    flineClickCallbacks[callbackId] = callback
+}
+
+internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> Unit)? {
+    return flineClickCallbacks[callbackId]
 }
 
 fun Box.slider(
@@ -605,6 +690,51 @@ fun Box.stringInput(
     display(channel, html)
 }
 
+// File upload control
+private val fileUploadCallbacks = java.util.concurrent.ConcurrentHashMap<String, (List<FileUploadEntry>) -> Unit>()
+
+internal fun registerFileUploadCallback(controlId: String, callback: (List<FileUploadEntry>) -> Unit) {
+    fileUploadCallbacks[controlId] = callback
+}
+
+internal fun getFileUploadCallback(controlId: String): ((List<FileUploadEntry>) -> Unit)? {
+    return fileUploadCallbacks[controlId]
+}
+
+// Shared storage for uploaded file data (used for polling from Python)
+private val fileUploadData = java.util.concurrent.ConcurrentHashMap<String, List<FileUploadEntry>>()
+
+fun storeFileUploadData(controlId: String, files: List<FileUploadEntry>) {
+    fileUploadData[controlId] = files
+}
+
+fun getFileUploadData(controlId: String): List<FileUploadEntry>? = fileUploadData[controlId]
+
+private fun buildFileUploadHtml(controlId: String, label: String, accept: String, multiple: Boolean): String {
+    val multipleAttr = if (multiple) "multiple" else ""
+    val acceptAttr = if (accept.isNotEmpty()) "accept=\"$accept\"" else ""
+    return """
+        <div class="field-control field-file-upload">
+            <label class="field-label" style="flex:0 0 auto;">$label</label>
+            <input type="file" id="$controlId" $acceptAttr $multipleAttr onchange="handleFileUploadInput(this)" style="flex:1 1 auto;" />
+            <span class="field-value" id="${controlId}-status"></span>
+        </div>
+    """.trimIndent()
+}
+
+fun Box.fileUpload(
+    label: String = "Upload",
+    accept: String = "",
+    multiple: Boolean = false,
+    channel: String = "controls",
+    onUpload: (List<FileUploadEntry>) -> Unit
+) {
+    val controlId = "file-upload-${UUID.randomUUID()}"
+    registerFileUploadCallback(controlId, onUpload)
+    val html = buildFileUploadHtml(controlId, label, accept, multiple)
+    display(channel, html)
+}
+
 // Color picker control (vec4, normalized - using JOML Vector4f)
 private val colorCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector4f) -> Unit>()
 
@@ -816,3 +946,77 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
         }
     }
 }
+
+fun Box.showLayers() {
+    display("layers", "") // magic
+}
+
+fun <T> Box.tqdm(items: SizedIterable<T>, name: String = "progress"): Iterable<T> {
+    val totalCount = items.size
+    val startedAt = System.nanoTime()
+
+    fun stats(done: Int): String {
+        val elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000.0
+        val rate = done / elapsedSeconds.coerceAtLeast(1e-9)
+        val remaining = (totalCount - done).coerceAtLeast(0)
+        val etaSeconds = if (rate > 1e-9) remaining / rate else Double.POSITIVE_INFINITY
+        val rateText = String.format(Locale.US, "%.1f", rate)
+        return "$done/$totalCount $rateText it/s ${formatProgressDuration(elapsedSeconds)}<${formatProgressDuration(etaSeconds)}"
+    }
+
+    if (totalCount == 0) {
+        progressBar(name, 1.0, stats(0))
+        return items
+    }
+
+    progressBar(name, 0.0, stats(0))
+    val total = totalCount.toDouble()
+
+    return Iterable {
+        val base = items.iterator()
+        var index = 0
+        var finished = false
+
+        object : Iterator<T> {
+            override fun hasNext(): Boolean {
+                val has = base.hasNext()
+                if (!has && !finished) {
+                    finished = true
+                    progressBar(name, 1.0, stats(totalCount))
+                }
+                return has
+            }
+
+            override fun next(): T {
+                val value = base.next()
+                index++
+                progressBar(name, index / total, stats(index))
+                return value
+            }
+        }
+    }
+}
+
+fun <T> Box.tqdm(items: List<T>, name: String = "progress"): Iterable<T> {
+    return tqdm(sizedIterable(items.size) { items.iterator() }, name)
+}
+
+fun Box.tqdm(items: IntRange, name: String = "progress"): Iterable<Int> {
+    return tqdm(sizedIterable(items.count()) { items.iterator() }, name)
+}
+
+fun Box.tqdm(items: Int, name: String = "progress"): Iterable<Int> {
+    val range = 0 until items.coerceAtLeast(0)
+    return tqdm(range, name)
+}
+
+fun <T> Box.tqdm(items: Iterable<T>, name: String = "progress"): Iterable<T> {
+    @Suppress("UNCHECKED_CAST")
+    return when (items) {
+        is SizedIterable<*> -> tqdm(items as SizedIterable<T>, name)
+        is List<T> -> tqdm(items, name)
+        is Collection<T> -> tqdm(sizedIterable(items.size) { items.iterator() }, name)
+        else -> tqdm(items.toList(), name)
+    }
+}
+

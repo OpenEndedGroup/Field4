@@ -1,6 +1,17 @@
 
 var lastDiv = null;
 
+function notifyCategoryKey(cat) {
+        if (!cat) return "";
+        return cat.startsWith("*") ? cat.substring(1) : cat;
+}
+
+function sameNotifyCategory(a, b) {
+        const aKey = notifyCategoryKey(a);
+        const bKey = notifyCategoryKey(b);
+        return aKey.length > 0 && aKey === bKey;
+}
+
 function formatNotifyAgo(ms) {
         const secs = Math.max(0, Math.floor(ms / 1000));
         if (secs < 60) return `${secs}s`;
@@ -43,7 +54,7 @@ function stopNotifySpinnersForCategory(cat, exceptNode) {
         const bubbles = Array.from(document.getElementsByClassName("bubble"));
         for (const bubble of bubbles) {
                 if (bubble === exceptNode) continue;
-                if (bubble.cat !== cat) continue;
+                if (!sameNotifyCategory(bubble.cat, cat)) continue;
                 const spinners = bubble.querySelectorAll(".notify-spinner");
                 spinners.forEach((spinner) => {
                         spinner.style.animation = "none";
@@ -52,30 +63,6 @@ function stopNotifySpinnersForCategory(cat, exceptNode) {
 }
 
 var notify = (text, cat = "") => {
-        if (!document.getElementById("notify-spinner-style")) {
-                const style = document.createElement("style");
-                style.id = "notify-spinner-style";
-                style.textContent = `
-.notify-spinner {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        margin-left: 6px;
-        border-radius: 50%;
-        background: #f3a24f;
-        box-shadow: 0 0 6px rgba(243, 162, 79, 0.9);
-        animation: notifyPulse 1s ease-in-out infinite;
-        vertical-align: middle;
-}
-@keyframes notifyPulse {
-        0% { transform: scale(0.7); opacity: 0.4; }
-        80% { transform: scale(1.2); opacity: 1; }
-        100% { transform: scale(0.7); opacity: 0.4; }
-}
-                `;
-                document.head.appendChild(style);
-        }
-
         const htmlText = text
                 .replace(/<<spinner>>/g, '<span class="notify-spinner"></span>')
                 .replace(/<<timeago:(\d+)>>/g, '<span class="notify-timeago" data-time="$1"></span>');
@@ -100,10 +87,18 @@ var notify = (text, cat = "") => {
         }
 
         const purgeCategory = cat && cat.startsWith("*");
+        const bubblesForCategory = cat
+                ? Array.from(document.getElementsByClassName("bubble")).filter((bubble) => sameNotifyCategory(bubble.cat, cat))
+                : [];
+        let categoryDiv = null;
+        if (lastDiv && sameNotifyCategory(lastDiv.cat, cat) && document.body.contains(lastDiv)) {
+                categoryDiv = lastDiv;
+        } else if (bubblesForCategory.length > 0) {
+                categoryDiv = bubblesForCategory[bubblesForCategory.length - 1];
+        }
         if (purgeCategory) {
-                const bubbles = Array.from(document.getElementsByClassName("bubble"));
-                for (let bubble of bubbles) {
-                        if (bubble.cat === cat && bubble !== lastDiv) {
+                for (let bubble of bubblesForCategory) {
+                        if (bubble !== categoryDiv) {
                                 if (bubble.parentNode) {
                                         bubble.parentNode.removeChild(bubble);
                                 }
@@ -111,14 +106,16 @@ var notify = (text, cat = "") => {
                 }
                 restackBubbles();
         }
-        if (lastDiv && lastDiv.cat === cat && !document.body.contains(lastDiv)) {
+        if (lastDiv && sameNotifyCategory(lastDiv.cat, cat) && !document.body.contains(lastDiv)) {
                 lastDiv = null;
         }
 
         let newDiv;
         let noScroll = false;
-        if (lastDiv && lastDiv.cat && lastDiv.cat.length > 0 && lastDiv.cat === cat) {
-                newDiv = lastDiv;
+        if (categoryDiv) {
+                newDiv = categoryDiv;
+                lastDiv = newDiv;
+                newDiv.cat = cat;
                 if (newDiv.innerHTML === htmlText) return;
                 noScroll = true;
         } else {

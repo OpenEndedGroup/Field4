@@ -8,6 +8,7 @@ import afield.four.util.Options
 import afield.four.util.Window
 import afield.four.util.vkCheck
 import afield.logTime
+import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
@@ -26,6 +27,7 @@ class SwapChain(
     var surfaceFormat: SurfaceFormat
     var swapChainExtent: VkExtent2D
     val syncSemaphoresList: Array<SyncSemaphores>
+    val supportsTransferSrc: Boolean
     var vkSwapChain: Long = 0
 
     var currentFrame: Int = 0
@@ -45,6 +47,8 @@ class SwapChain(
             )
 
             var numImages = calcNumImages(surfCapabilities, requestedImages)
+            supportsTransferSrc =
+                (surfCapabilities.supportedUsageFlags() and VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0
 
             surfaceFormat = calcSurfaceFormat(physicalDevice, surface)
 
@@ -58,7 +62,10 @@ class SwapChain(
                 .imageColorSpace(surfaceFormat.colorSpace)
                 .imageExtent(swapChainExtent)
                 .imageArrayLayers(1)
-                .imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .imageUsage(
+                    VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
+                        (if (supportsTransferSrc) VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT else 0)
+                )
                 .preTransform(surfCapabilities.currentTransform())
                 .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                 .clipped(true)
@@ -105,6 +112,12 @@ class SwapChain(
             numImages = imageViews.size
             syncSemaphoresList = (0 until numImages).map { SyncSemaphores(device) }.toTypedArray()
             currentFrame = 0
+        }
+
+        // On macOS, tell the CAMetalLayer backing the window to enable Extended Dynamic Range so
+        // the OS compositor delivers HDR headroom when an HDR Vulkan surface format is selected.
+        if (Options.enableHDR && Options.isMac) {
+            MacHdrActivator.activate(window.windowHandle)
         }
     }
 
@@ -165,9 +178,7 @@ class SwapChain(
     }
 
     private fun calcSurfaceFormat(physicalDevice: PhysicalDevice, surface: Surface): SurfaceFormat {
-        var imageFormat: Int
-        var colorSpace: Int
-        MemoryStack.stackPush().use { stack ->
+        return MemoryStack.stackPush().use { stack ->
             val ip = stack.mallocInt(1)
             vkCheck(
                 KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(
@@ -188,8 +199,31 @@ class SwapChain(
                 ), "Failed to get surface formats"
             )
 
-            imageFormat = VK10.VK_FORMAT_B8G8R8A8_SRGB
-            colorSpace = surfaceFormats[0].colorSpace()
+            // When HDR is enabled, attempt to select an HDR surface format.
+            // Priority order:
+            //   1. scRGB  – R16G16B16A16_SFLOAT + EXTENDED_SRGB_LINEAR   (Mac EDR / Windows scRGB)
+            //   2. HDR10  – A2B10G10R10_UNORM_PACK32 + HDR10_ST2084       (Windows HDR10 displays)
+            //   3. sRGB   – B8G8R8A8_SRGB + SRGB_NONLINEAR               (universal fallback)
+            if (Options.enableHDR) {
+                val hdrCandidates = listOf(
+                    Pair(VK10.VK_FORMAT_R16G16B16A16_SFLOAT, EXTSwapchainColorspace.VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT),
+                    Pair(VK10.VK_FORMAT_A2B10G10R10_UNORM_PACK32, EXTSwapchainColorspace.VK_COLOR_SPACE_HDR10_ST2084_EXT)
+                )
+                for ((fmt, cs) in hdrCandidates) {
+                    for (i in 0 until numFormats) {
+                        val sf = surfaceFormats[i]
+                        if (sf.format() == fmt && sf.colorSpace() == cs) {
+                            lprintln("info,hdr", "[HDR] selected HDR surface format: format=$fmt colorSpace=$cs")
+                            return@use SurfaceFormat(fmt, cs)
+                        }
+                    }
+                }
+                lprintln("warning,hdr", "[HDR] no HDR surface format available; falling back to sRGB")
+            }
+
+            // Default / fallback: prefer B8G8R8A8_SRGB + SRGB_NONLINEAR
+            var imageFormat = VK10.VK_FORMAT_B8G8R8A8_SRGB
+            var colorSpace = surfaceFormats[0].colorSpace()
             for (i in 0 until numFormats) {
                 val surfaceFormatKHR = surfaceFormats[i]
                 if (surfaceFormatKHR.format() == VK10.VK_FORMAT_B8G8R8A8_SRGB &&
@@ -200,8 +234,8 @@ class SwapChain(
                     break
                 }
             }
+            SurfaceFormat(imageFormat, colorSpace)
         }
-        return SurfaceFormat(imageFormat, colorSpace)
     }
 
     private fun calcSwapChainExtent(window: Window, surfCapabilities: VkSurfaceCapabilitiesKHR): VkExtent2D {

@@ -143,7 +143,9 @@ class TraceLogger private constructor(
 
     companion object {
         fun fromEnv(): TraceLogger? {
-            val raw = System.getenv("AFIELD_AI4_TRACE")
+            val raw = System.getProperty("afield.ai4.trace")
+                ?: System.getProperty("afield.ai4.trace.path")
+                ?: System.getenv("AFIELD_AI4_TRACE")
                 ?: System.getenv("AFIELD_AI4_TRACE_PATH")
                 ?: return null
             val normalized = raw.trim()
@@ -166,8 +168,19 @@ class TraceLogger private constructor(
                 val p = Paths.get(normalized)
                 if (p.isAbsolute) p else Paths.get(System.getProperty("user.dir")).resolve(p)
             }
-            val max = System.getenv("AFIELD_AI4_TRACE_MAX")?.toIntOrNull()?.coerceAtLeast(1000) ?: 20000
-            return TraceLogger(path, max)
+            val max = (
+                System.getProperty("afield.ai4.trace.max")
+                    ?: System.getenv("AFIELD_AI4_TRACE_MAX")
+            )?.toIntOrNull()?.coerceAtLeast(1000) ?: 20000
+            return TraceLogger(path, max).also {
+                it.log(
+                    "TRACE_INIT",
+                    buildString {
+                        appendLine("path=$path")
+                        appendLine("maxChars=$max")
+                    }
+                )
+            }
         }
     }
 }

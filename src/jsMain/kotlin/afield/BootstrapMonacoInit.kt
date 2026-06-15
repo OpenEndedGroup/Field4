@@ -6,34 +6,97 @@ internal val monacoPropertyNames = arrayOf(
     "code",
     "vertex",
     "fragment",
+    "stackSL",
+    "vertex_fragment",
     "compute",
     "task",
     "mesh",
+    "raygen",
+    "miss",
+    "closesthit",
+    "anyhit",
+    "intersection",
+    "callable",
+    "vertex_s",
+    "fragment_s",
+    "compute_s",
+    "task_s",
+    "mesh_s",
+    "raygen_s",
+    "miss_s",
+    "closesthit_s",
+    "anyhit_s",
+    "intersection_s",
+    "callable_s",
     "preamble",
     "introduction",
-    "metadata"
+    "attic",
+    "metadata",
+    "contents"
 )
 internal val monacoPropertyDescriptions = arrayOf(
     "Kotlin (main)",
-    "Vertex Shader",
-    "Fragment Shader",
-    "Compute Shader",
-    "Task Shader",
-    "Mesh Shader",
+    "Vertex Shader (GLSL)",
+    "Fragment Shader (GLSL)",
+    "StackSL Shader Function",
+    "Shared Vertex+Fragment Shader (Slang)",
+    "Compute Shader (GLSL)",
+    "Task Shader (GLSL)",
+    "Mesh Shader (GLSL)",
+    "Ray Generation Shader (GLSL)",
+    "Miss Shader (GLSL)",
+    "Closest Hit Shader (GLSL)",
+    "Any Hit Shader (GLSL)",
+    "Intersection Shader (GLSL)",
+    "Callable Shader (GLSL)",
+    "Vertex Shader (Slang)",
+    "Fragment Shader (Slang)",
+    "Compute Shader (Slang)",
+    "Task Shader (Slang)",
+    "Mesh Shader (Slang)",
+    "Ray Generation Shader (Slang)",
+    "Miss Shader (Slang)",
+    "Closest Hit Shader (Slang)",
+    "Any Hit Shader (Slang)",
+    "Intersection Shader (Slang)",
+    "Callable Shader (Slang)",
     "Kotlin (preamble)",
     "Kotlin (introduction)",
-    "Metadata about this box"
+    "Kotlin (attic)",
+    "Metadata about this box",
+    "File contents"
 )
 internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
     "glsl",
     "glsl",
+    "stacksl",
+    "slang",
     "glsl",
     "glsl",
     "glsl",
+    "glsl",
+    "glsl",
+    "glsl",
+    "glsl",
+    "glsl",
+    "glsl",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
+    "slang",
     "kotlin",
     "kotlin",
-    "yaml"
+    "kotlin",
+    "yaml",
+    "plaintext"
 )
 
 private fun propertyIndexOf(name: String?): Int {
@@ -78,6 +141,9 @@ private fun disposePropertySwitchActions(previous: dynamic) {
 }
 
 internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
+    if ((ed.afieldPropertySwitchActionsInstalled as? Boolean) == true) return
+    ed.afieldPropertySwitchActionsInstalled = true
+
     val w = js("window")
     disposePropertySwitchActions(w.propertyActionDisposables)
 
@@ -99,7 +165,7 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
 
         val action = js("{}")
         action.id = actionId
-        action.label = computePropertyActionLabel(w, baseLabel, propName)
+        action.label = baseLabel
         action.contextMenuGroupId = "navigation"
         action.contextMenuOrder = 2.0
 
@@ -125,7 +191,8 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
     if (index !in monacoPropertyNames.indices) return
     val w = js("window")
     val property = monacoPropertyNames[index]
-    w.selectedProperty = property
+    setSelectedEditorProperty(property)
+    rememberEditedPropertyForCurrentSelection(property)
     if (w.selectionContextChanged != null) {
         try {
             w.selectionContextChanged()
@@ -140,11 +207,20 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
         currentSelectedCode[0].code_language != null
     ) {
         lang = currentSelectedCode[0].code_language as String
+    } else if (property == "contents" &&
+        currentSelectedCode != null &&
+        (currentSelectedCode.length as? Number)?.toInt() ?: 0 > 0 &&
+        currentSelectedCode[0].contents_language != null
+    ) {
+        lang = currentSelectedCode[0].contents_language as String
     }
 
     val globalEditor = w.globalEditor ?: editor
     if (globalEditor != null) {
         monaco.editor.setModelLanguage(globalEditor.getModel(), lang)
+        try {
+            w.updateStackSLFlowLens?.invoke(globalEditor)
+        } catch (_: dynamic) {}
         globalEditor._domElement
             .querySelectorAll(".hoverlay")[0]
             .innerHTML = "$property <i>($lang)</i>"
@@ -168,7 +244,13 @@ fun monacoInit(monaco: dynamic): dynamic {
     val theme = js("{}")
     theme.base = "vs-dark"
     theme.inherit = true
-    theme.rules = arrayOf<dynamic>()
+    theme.rules = arrayOf<dynamic>(
+        js("{ token: 'operator.stacksl.prefix', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'operator.stacksl.range', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.modifier', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.option', foreground: 'ffcf66', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.suffix', foreground: 'ffcf66', fontStyle: 'bold' }")
+    )
     theme.colors = themeColors
     monaco.editor.defineTheme("dark", theme)
 
@@ -180,6 +262,9 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.automaticLayout = true
     options.scrollBeyondLastLine = false
     options.lineNumbersMinChars = 2
+    options.lineDecorationsWidth = 12
+    options.glyphMargin = false
+    options.padding = js("{ top: 2, bottom: 2 }")
     options.cursorStyle = "block"
     options.cursorBlinking = "blink"
     options.matchBrackets = "never"
@@ -218,6 +303,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     w.addOutput = w.addOutput
     w.clear = w.clear
 
+    installFragileErrorMarkerPruning(ed)
+
     monacoInstallPropertySwitchActions(monaco, ed)
 
     // Add Alt+DoubleClick handler for execute symbol feature
@@ -237,7 +324,6 @@ fun monacoNextProperty(editor: dynamic, inc: Int) {
     val count = monacoPropertyNames.size
     for (n in 0..count) {
         val nextIndex = ((currentIndex + inc + count) % count + count) % count
-        w.selectedProperty = monacoPropertyNames[nextIndex]
         val currentSelectedCode = w.currentSelectedCode
         if (currentSelectedCode != null &&
             (currentSelectedCode.length as? Number)?.toInt() ?: 0 > 0

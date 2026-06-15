@@ -1,0 +1,82 @@
+#version 460
+
+#extension GL_EXT_buffer_reference : require
+#extension GL_KHR_shader_subgroup_basic: enable
+
+const int RADIX = 256;
+#define WORKGROUP_SIZE 512
+#define PARTITION_DIVISION 8
+const int PARTITION_SIZE = PARTITION_DIVISION * WORKGROUP_SIZE;
+
+layout (local_size_x = WORKGROUP_SIZE) in;
+
+layout (buffer_reference, std430) buffer ElementCount {
+    uint elementCount;
+};
+
+layout (buffer_reference, std430) buffer GlobalHistogram {
+    uint globalHistogram[];  // (4, R)
+};
+
+layout (buffer_reference, std430) writeonly buffer PartitionHistogram {
+    uint partitionHistogram[];  // (P, R)
+};
+
+layout (buffer_reference, std430) buffer Keys {
+    uint keys[];  // (N)
+};
+
+layout (buffer_reference, std430) buffer Values {
+    uint values[];  // (N)
+};
+
+layout (push_constant) uniform PushConstant {
+    ElementCount elementCountReference;
+    GlobalHistogram globalHistogramReference;
+    PartitionHistogram partitionHistogramReference;
+    Keys keysInReference;
+    Keys keysOutReference;
+    Values valuesInReference;
+    Values valuesOutReference;
+    int pass;
+};
+
+shared uint localHistogram[RADIX];
+
+void main() {
+  uint threadIndex = gl_SubgroupInvocationID;  // 0..31 or 0..63
+  uint subgroupIndex = gl_SubgroupID;  // 0..15 or 0..7
+  uint index = subgroupIndex * gl_SubgroupSize + threadIndex;
+
+  uint elementCount = elementCountReference.elementCount;
+
+  uint partitionIndex = gl_WorkGroupID.x;
+  uint partitionStart = partitionIndex * PARTITION_SIZE;
+
+  // discard all workgroup invocations
+  if (partitionStart >= elementCount) {
+    return;
+  }
+
+  if (index < RADIX) {
+    localHistogram[index] = 0;
+  }
+  barrier();
+
+  // local histogram
+  for (int i = 0; i < PARTITION_DIVISION; ++i) {
+    uint keyIndex = partitionStart + WORKGROUP_SIZE * i + index;
+    uint key = keyIndex < elementCount ? keysInReference.keys[keyIndex] : 0xffffffff;
+    uint radix = bitfieldExtract(key, 8 * pass, 8);
+    atomicAdd(localHistogram[radix], 1);
+  }
+  barrier();
+
+  if (index < RADIX) {
+    // set to partition histogram
+    partitionHistogramReference.partitionHistogram[RADIX * partitionIndex + index] = localHistogram[index];
+
+    // add to global histogram
+    atomicAdd(globalHistogramReference.globalHistogram[RADIX * pass + index], localHistogram[index]);
+  }
+}

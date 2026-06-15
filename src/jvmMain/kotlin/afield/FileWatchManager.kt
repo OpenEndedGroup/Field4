@@ -25,7 +25,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private val watchKeys = ConcurrentHashMap<WatchKey, Path>()
     private val fileTimestamps = ConcurrentHashMap<String, Long>()
+    private val startupSidecarFiles = ConcurrentHashMap.newKeySet<String>()
     private data class InternalSave(val lastModified: Long, val size: Long, val wallClockMs: Long)
+    private data class SidecarPath(val boxId: String, val propertyName: String)
 
     private val internalSaveInfo = ConcurrentHashMap<String, InternalSave>()
     // Grace window to treat shortly-after writes as internal saves, avoiding misfired "external" reloads
@@ -54,8 +56,6 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
      */
     fun start() {
         if (isRunning) return
-
-        if (true) return // disable for now
 
         isRunning = true
         val workspaceDir = File(sessionInfo.filename).absoluteFile
@@ -106,6 +106,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         watchKeys.keys.forEach { it.cancel() }
         watchKeys.clear()
         fileTimestamps.clear()
+        startupSidecarFiles.clear()
         internalSaveInfo.clear()
 
         try {
@@ -167,7 +168,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private fun scanAndRecordTimestamps(directory: File) {
         directory.listFiles()?.forEach { file ->
             if (file.isFile && isSidecarFile(file)) {
-                fileTimestamps[file.absolutePath] = file.lastModified()
+                val absolutePath = file.absolutePath
+                fileTimestamps[absolutePath] = file.lastModified()
+                startupSidecarFiles += absolutePath
             }
         }
     }
@@ -182,6 +185,21 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
         // Check if extension matches known sidecar extensions
         return Box.ioSeparateProperties.values.contains(extension)
+    }
+
+    private fun parseSidecarPath(file: File): SidecarPath? {
+        val filename = file.name
+        val lastUnderscore = filename.lastIndexOf("_.")
+        if (lastUnderscore == -1) return null
+
+        val beforeLastUnderscore = filename.substring(0, lastUnderscore)
+        val firstUnderscore = beforeLastUnderscore.indexOf("_")
+        if (firstUnderscore == -1) return null
+
+        val boxId = beforeLastUnderscore.substring(0, firstUnderscore)
+        val propertyName = beforeLastUnderscore.substring(firstUnderscore + 1)
+        if (boxId.isBlank() || propertyName.isBlank()) return null
+        return SidecarPath(boxId, propertyName)
     }
 
     private suspend fun watchLoop() {
@@ -248,6 +266,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
         val currentTime = file.lastModified()
         val lastKnownTime = fileTimestamps[absolutePath]
+        val sidecarPath = parseSidecarPath(file)
         SaveReloadLog.log(
             "watch-event",
             "doc=${sessionInfo.filename} path=$absolutePath mtime=$currentTime size=${file.length()} lastKnown=${lastKnownTime ?: -1}"
@@ -259,6 +278,15 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             SaveReloadLog.log(
                 "watch-skip-internal",
                 "doc=${sessionInfo.filename} path=$absolutePath mtime=$currentTime size=${file.length()}"
+            )
+            return
+        }
+
+        if (sidecarPath != null && sessionInfo.hasPendingSidecarSave(sidecarPath.boxId, sidecarPath.propertyName)) {
+            fileTimestamps[absolutePath] = currentTime
+            SaveReloadLog.log(
+                "watch-skip-pending-local",
+                "doc=${sessionInfo.filename} path=$absolutePath box=${sidecarPath.boxId} property=${sidecarPath.propertyName} mtime=$currentTime size=${file.length()}"
             )
             return
         }
@@ -278,18 +306,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private suspend fun reloadSidecarFile(file: File) {
         try {
             val filename = file.name
-
-            // Parse filename: <boxId>_<propertyName>_.<extension>
-            // Note the pattern has an underscore before the dot
-            val lastUnderscore = filename.lastIndexOf("_.")
-            if (lastUnderscore == -1) return
-
-            val beforeLastUnderscore = filename.substring(0, lastUnderscore)
-            val parts = beforeLastUnderscore.split("_")
-            if (parts.size < 2) return
-
-            val boxId = parts[0]
-            val propertyName = parts[1]
+            val sidecarPath = parseSidecarPath(file) ?: return
+            val boxId = sidecarPath.boxId
+            val propertyName = sidecarPath.propertyName
 
             // Root is a reserved box and is never sourced from sidecar files.
             if (isReservedBoxId(boxId)) {
@@ -328,7 +347,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                     box.setPropertyRaw(propertyName, content, doResync = true)
                     // External change to a sidecar-backed property needs persistence
                     if (Box.ioSeparateProperties.containsKey(propertyName) && box.isInsideInitialized()) {
-                        box.inside.pendingSidecarSaves += box.id to propertyName
+                        box.inside.markSidecarPending(box.id, propertyName)
                     }
 
                     lprintln("info,file-watch", "Reloaded external change: $propertyName in box ${box.name} (${box.id})")
@@ -512,17 +531,16 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             
             for (file in sidecarFiles) {
                 val filename = file.name
-                val lastUnderscore = filename.lastIndexOf("_.")
-                if (lastUnderscore == -1) continue
-                
-                val beforeLastUnderscore = filename.substring(0, lastUnderscore)
-                val parts = beforeLastUnderscore.split("_")
-                if (parts.size < 2) continue
-                
-                val boxId = parts[0]
-                val propertyName = parts[1]
+                val sidecarPath = parseSidecarPath(file) ?: continue
+                val boxId = sidecarPath.boxId
+                val propertyName = sidecarPath.propertyName
 
                 if (isReservedBoxId(boxId)) continue
+                val absolutePath = file.absolutePath
+                val startupTimestamp = fileTimestamps[absolutePath]
+                if (absolutePath in startupSidecarFiles && startupTimestamp != null && file.lastModified() <= startupTimestamp) {
+                    continue
+                }
                 
                 // Check if box exists
                 if (!sessionInfo.boxes.containsKey(boxId)) {
@@ -582,7 +600,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             
             // Mark for persistence
             if (box.isInsideInitialized()) {
-                box.inside.pendingSidecarSaves += box.id to propertyName
+                box.inside.markSidecarPending(box.id, propertyName)
                 // Also ensure the box itself is saved to metadata
                 // Saving below will persist metadata; no extra dirty flag needed.
             }

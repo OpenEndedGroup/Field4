@@ -51,6 +51,8 @@ fun reopen() {
 var isReconnect = false
 
 fun initializeClient() {
+    window.asDynamic().fieldClientOpen = clientOpen
+    window.asDynamic().fieldBackdoorDisconnectedOverlayActive = !clientOpen
     client.onopen = {
         console.info("[ws] open")
         if (window.unsafeCast<dynamic>().notify!=null) {
@@ -66,6 +68,8 @@ fun initializeClient() {
         }
         
         clientOpen = true
+        window.asDynamic().fieldClientOpen = true
+        window.asDynamic().fieldBackdoorDisconnectedOverlayActive = false
         clearReconnectTimeout()
         reopen_backoff = reopen_backoff_min
         onOpen.forEach {
@@ -82,6 +86,8 @@ fun initializeClient() {
         notify("Disconnected (try reloading this window)", "connectivity")
         console.info("[ws] closed", it)
         clientOpen = false
+        window.asDynamic().fieldClientOpen = false
+        window.asDynamic().fieldBackdoorDisconnectedOverlayActive = true
         reopen_backoff = (1.1 * reopen_backoff).toLong().coerceAtMost(reopen_backoff_max)
         scheduleReconnect(reopen_backoff)
         (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = "blur(20px)"
@@ -96,6 +102,8 @@ fun initializeClient() {
         notify("Disconnected (error)", "connectivity")
         console.info("[ws] error", it)
         clientOpen = false
+        window.asDynamic().fieldClientOpen = false
+        window.asDynamic().fieldBackdoorDisconnectedOverlayActive = true
         reopen_backoff = (reopen_backoff * 2).coerceAtMost(reopen_backoff_max)
         scheduleReconnect(reopen_backoff)
         (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = "blur(20px)"
@@ -131,6 +139,14 @@ private fun hideSplashScreenAfterFontLoad() {
         })
     } else {
         startFade()
+    }
+}
+
+fun registerOnOpen(message: Message) {
+    onOpen.removeAll { it == message }
+    onOpen.add(message)
+    if (clientOpen) {
+        send(message)
     }
 }
 

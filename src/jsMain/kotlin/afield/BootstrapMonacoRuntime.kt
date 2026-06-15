@@ -133,34 +133,54 @@ private fun monitorSelection() {
     if (currentLen == 1) {
         val codeDiv = currentSelectedCode[0]
         val nc = globalEditor.getModel().getValue() as String
+        val propertyValue = codeDiv[currentSelectedProperty] as? String ?: ""
         val vs = js("JSON.stringify")(globalEditor.saveViewState()) as String
         val editorStateKey = "${currentSelectedProperty}_editorState"
-        if (codeDiv[editorStateKey] != vs) {
-            codeDiv[editorStateKey] = vs
-            val payload = js("{}")
-            payload.uid = codeDiv.uid
-            payload.property = editorStateKey
-            payload.value = vs
-            send("set-string", payload)
-        }
+        val mainEditorHasFocus = runCatching {
+            globalEditor.hasTextFocus() as? Boolean ?: false
+        }.getOrDefault(false)
+        val embeddedPeer = if (w.embeddedEditors != null && w.embeddedEditors != undefined) {
+            w.embeddedEditors.getFor(codeDiv.uid, currentSelectedProperty)
+        } else null
+        val hasEmbeddedPeer = embeddedPeer != null && embeddedPeer != undefined
 
-        if (nc != codeDiv[currentSelectedProperty]) {
-            codeDiv[currentSelectedProperty] = nc
-            currentValueAtOrigination = codeDiv[currentSelectedProperty] as? String ?: ""
-            recentChangeCache.add(currentValueAtOrigination)
-            if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
+        if (hasEmbeddedPeer && !mainEditorHasFocus && nc != propertyValue) {
+            notifyPotentialEditedPropertyHasBeenRemoteUpdated(
+                codeDiv.uid as String,
+                currentSelectedProperty,
+                propertyValue
+            )
+        } else {
+            if (codeDiv[editorStateKey] != vs) {
+                codeDiv[editorStateKey] = vs
+                val payload = js("{}")
+                payload.uid = codeDiv.uid
+                payload.property = editorStateKey
+                payload.value = vs
+                send("set-string", payload)
+            }
 
-            val payload = js("{}")
-            payload.uid = codeDiv.uid
-            payload.property = currentSelectedProperty
-            payload.value = codeDiv[currentSelectedProperty]
-            send("set-string", payload)
+            if (nc != propertyValue) {
+                codeDiv[currentSelectedProperty] = nc
+                if (hasEmbeddedPeer) {
+                    notifyEmbeddedEditorOfRemoteUpdate(codeDiv.uid as String, currentSelectedProperty, nc)
+                }
+                currentValueAtOrigination = codeDiv[currentSelectedProperty] as? String ?: ""
+                recentChangeCache.add(currentValueAtOrigination)
+                if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
 
-            val payloadState = js("{}")
-            payloadState.uid = codeDiv.uid
-            payloadState.property = editorStateKey
-            payloadState.value = vs
-            send("set-string", payloadState)
+                val payload = js("{}")
+                payload.uid = codeDiv.uid
+                payload.property = currentSelectedProperty
+                payload.value = codeDiv[currentSelectedProperty]
+                send("set-string", payload)
+
+                val payloadState = js("{}")
+                payloadState.uid = codeDiv.uid
+                payloadState.property = editorStateKey
+                payloadState.value = vs
+                send("set-string", payloadState)
+            }
         }
     }
 
@@ -168,11 +188,13 @@ private fun monitorSelection() {
         val currentGen = (w.currentEditorGeneration as? Number)?.toInt() ?: 0
         w.currentEditorGeneration = currentGen + 1
 
-        if ((next.length as? Number)?.toInt() == 1) {
-            w.showMonaco()
+        if (w.HistoryLens != null && w.HistoryLens != undefined) {
+            w.HistoryLens.close(globalEditor)
         }
-
         w.clear(globalEditor)
+        if (w.setEditorContextBadge != null) {
+            w.setEditorContextBadge(globalEditor, "")
+        }
 
         currentSelectedCode = next
         currentSelectedProperty = nextProperty
@@ -180,7 +202,9 @@ private fun monitorSelection() {
         w.currentSelectedProperty = currentSelectedProperty
 
         val nextLen = (currentSelectedCode.length as? Number)?.toInt() ?: 0
+
         if (nextLen == 1) {
+            w.showMonaco()
             var code = currentSelectedCode[0][currentSelectedProperty] as? String
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
@@ -215,7 +239,12 @@ private fun monitorSelection() {
 
         if (nextLen > 0) {
             val useCodeLanguage = currentSelectedProperty == "code"
-            var lang = if (useCodeLanguage) currentSelectedCode[0].code_language as? String else null
+            val useContentsLanguage = currentSelectedProperty == "contents"
+            var lang = when {
+                useCodeLanguage -> currentSelectedCode[0].code_language as? String
+                useContentsLanguage -> currentSelectedCode[0].contents_language as? String
+                else -> null
+            }
             if (lang == null) {
                 lang = monacoFindLanguageForPropertyName(currentSelectedProperty)
             }
@@ -230,6 +259,9 @@ private fun monitorSelection() {
         val monaco = w.globalMonaco
         if (monaco != null && monaco != undefined) {
             monacoInstallPropertySwitchActions(monaco, globalEditor)
+        }
+        if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+            w.LineHeatmap.scheduleRefresh(globalEditor, true)
         }
 
         updateProvisionalDiff()
@@ -257,6 +289,33 @@ fun notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(uid: String, proper
     if (w.currentSelectedProperty != property) return
 }
 
+private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, editor: dynamic, property: String, value: String) {
+    val normalized = value.replace("\r\n", "\n")
+    if (w.AIDiff != null && w.AIDiff != undefined) {
+        w.AIDiff.clear(editor)
+    }
+
+    val selection = editor.getSelection()
+    if (w.pauseLineTracking != null && w.pauseLineTracking != undefined) {
+        w.pauseLineTracking()
+    }
+    editor.setValue(normalized)
+    editor.getModel().setEOL(0)
+    if (w.unpauseLineTracking != null && w.unpauseLineTracking != undefined) {
+        w.unpauseLineTracking()
+    }
+    runCatching {
+        if (selection != null && selection != undefined) {
+            editor.setSelection(selection)
+        }
+    }
+
+    selected[0][property] = normalized
+    currentValueAtOrigination = normalized
+    recentChangeCache.add(normalized)
+    if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
+}
+
 fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: String, value: String) {
     val w = js("window")
     val selected = w.currentSelectedCode
@@ -267,12 +326,18 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
 
     val editor = w.globalEditor ?: return
     val currentValue = editor.getValue() as String
-    if (currentValue == value || currentValueAtOrigination == value) return
-    if (recentChangeCache.contains(value)) return
+    val normalizedValue = value.replace("\r\n", "\n")
+    val historyRestoreIsAuthoritative = (w.__historyRestoreAuthoritative as? Boolean) == true
+    if (historyRestoreIsAuthoritative) {
+        forceEditedPropertyToRemoteValue(w, selected, editor, property, normalizedValue)
+        return
+    }
+    if (currentValue == normalizedValue || currentValueAtOrigination == normalizedValue) return
+    if (recentChangeCache.contains(normalizedValue)) return
 
     val a = currentValueAtOrigination.split("\n").toTypedArray()
     val b = currentValue.split("\n").toTypedArray()
-    val c = value.split("\n").toTypedArray()
+    val c = normalizedValue.split("\n").toTypedArray()
     val merged = w.diff.mergeDigIn(b, a, c)
     val result = (merged.result as Array<*>).joinToString("\n") { it?.toString() ?: "" }
     console.log(" testing to see if this change is actually a change ", result, currentValue)
@@ -283,4 +348,15 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
     editor.setSelection(selection)
     currentValueAtOrigination = result
     selected[0][property] = result
+}
+
+/**
+ * Forward a remote property update to any open embedded editor for (uid, property).
+ * Delegates to the JS embeddedEditors registry.
+ */
+fun notifyEmbeddedEditorOfRemoteUpdate(uid: String, property: String, value: String) {
+    val w = js("window")
+    val emb = w.embeddedEditors ?: return
+    val fn = emb.notifyRemote ?: return
+    (fn as Function<*>).asDynamic().call(emb, uid, property, value)
 }

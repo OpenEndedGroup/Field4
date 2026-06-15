@@ -1,0 +1,32 @@
+{
+  "name": "Field4 Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "mathiasfrohlich.Kotlin"
+      ],
+      "settings": {
+        "java.configuration.detectJdksAtStart": true
+      }
+    }
+  },
+  "forwardPorts": [9092, 8000],
+  "portsAttributes": {
+    "9092": { "label": "Field4 Server" },
+    "8000": { "label": "MkDocs" }
+  },
+  "remoteEnv": {
+    "JAVA_HOME": "/usr/lib/jvm/temurin-25-jdk"
+  }
+}

@@ -12,7 +12,7 @@ echo "==================================="
 echo ""
 
 # Run the gradle wrapper
-./gradlew runJvm
+./gradlew runDesktop
 
 # Keep terminal open if there's an error
 if [ $? -ne 0 ]; then

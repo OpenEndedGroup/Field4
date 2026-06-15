@@ -161,6 +161,26 @@ class FLinesAndJavaShapes {
             return on.nodes.get(clamp(index + 1)) is FLine.MoveTo
         }
 
+        /**
+         * returns whether the current segment is a .close
+         */
+        fun segmentIsClose(): Boolean {
+            return on.nodes.get(clamp(index + 1)) is FLine.Close
+        }
+
+        /**
+         * Resolve the target point for a close segment by walking back to the
+         * most recent MoveTo in the current subpath.
+         */
+        private fun closeTarget(): Vec3 {
+            val start = clamp(index)
+            for (i in start downTo 0) {
+                val node = on.nodes[i]
+                if (node is FLine.MoveTo) return Vec3(node.to)
+            }
+            return Vec3(on.nodes.firstOrNull()?.to ?: Vec3())
+        }
+
         fun next(): Array<Vec3> {
             try {
                 return if (segmentIsCubic()) arrayOf<Vec3>(
@@ -174,6 +194,10 @@ class FLinesAndJavaShapes {
                 else if (segmentIsLinear()) arrayOf<Vec3>(
                     Vec3(on.nodes[clamp(index)].to),
                     Vec3(on.nodes[clamp(index + 1)].to)
+                )
+                else if (segmentIsClose()) arrayOf<Vec3>(
+                    Vec3(on.nodes[clamp(index)].to),
+                    closeTarget()
                 )
                 else if (segmentIsMove()) arrayOf<Vec3>(Vec3(on.nodes[clamp(index)].to))
                 else throw java.lang.IllegalStateException(" segment not implemented ")
@@ -200,6 +224,8 @@ class FLinesAndJavaShapes {
                 else Vec3(on.nodes.get(clamp(index + 1)).to)
             } else if (segmentIsLinear()) {
                 on.nodes.get(clamp(index)).to.lerp(on.nodes.get(clamp(index + 1)).to, alpha.toFloat(), Vec3())
+            } else if (segmentIsClose()) {
+                on.nodes.get(clamp(index)).to.lerp(closeTarget(), alpha.toFloat(), Vec3())
             } else if (segmentIsCubic()) {
                 evaluateCubicFrame(
                     on.nodes.get(clamp(index)).to,
@@ -220,6 +246,8 @@ class FLinesAndJavaShapes {
                 null
             } else if (segmentIsLinear()) {
                 on.nodes.get(clamp(index + 1)).to - on.nodes.get(clamp(index)).to
+            } else if (segmentIsClose()) {
+                closeTarget() - on.nodes.get(clamp(index)).to
             } else if (segmentIsCubic()) {
                 evaluateDCubicFrame(
                     on.nodes.get(clamp(index)).to,
@@ -252,6 +280,8 @@ class FLinesAndJavaShapes {
             return if (segmentIsMove()) {
                 null
             } else if (segmentIsLinear()) {
+                Vec3()
+            } else if (segmentIsClose()) {
                 Vec3()
             } else if (segmentIsCubic()) {
                 evaluateDDCubicFrame(
@@ -2525,4 +2555,3 @@ class FLinesAndJavaShapes {
         }
     }
 }
-

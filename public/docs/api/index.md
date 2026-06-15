@@ -13,7 +13,7 @@ The API documentation covers the following packages:
 
 To generate the latest API documentation from source code, run:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew dokkaGenerateHtml
 ```
 
@@ -23,7 +23,7 @@ This will generate HTML files in `build/dokka/html/` that can be browsed directl
 
 To generate all supported Dokka publications:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew dokkaGenerate
 ```
 

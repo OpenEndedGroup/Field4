@@ -1,0 +1,1001 @@
+package afield
+
+import afield.logger.lprintln
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import org.yaml.snakeyaml.Yaml
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import kotlin.math.max
+import kotlin.math.min
+
+@Serializable
+class Entry {
+    var filename: String = ""
+    var numBoxes: Int = -1
+    var lastModified: Long = -1
+    var boxes: MutableList<Pair<String, String>> = mutableListOf()
+    var metadata: MutableList<Pair<String, List<String>>> = mutableListOf()
+}
+
+@Serializable
+data class WelcomeEntry(
+    val filename: String,
+    val numBoxes: Int,
+    val sizeBytes: Long,
+    val lastModifiedEpochMs: Long,
+    val lastModifiedAgoMs: Long,
+    val tags: List<String> = emptyList(),
+    val runningSessionCount: Int = 0,
+    val runningExecutionCount: Int = 0
+)
+
+@Serializable
+data class RunningDocumentEntry(
+    val documentName: String,
+    val sessionCount: Int,
+    val ephemeral: Boolean = false,
+    val openUrl: String
+)
+
+@Serializable
+data class WelcomeDocsResponse(
+    val documents: List<WelcomeEntry>,
+    val lastOpened: String,
+    val defaultDocument: String,
+    val allTags: List<String> = emptyList(),
+    val runningDocuments: List<RunningDocumentEntry> = emptyList(),
+    val currentWorkspace: String = "",
+    val defaultWorkspace: String = "",
+    val aiSettings: AiSettingsStatus = AiSettingsStatus(),
+    val preferences: FieldPreferences = FieldPreferences()
+)
+
+@Serializable
+data class FieldPreferences(
+    val profiling: Boolean = false,
+    val logShadercSource: Boolean = true,
+    val enableVR: Boolean = true,
+    val enableHDR: Boolean = false,
+    val openXRDebugInput: Boolean = true,
+    val validate: Boolean = true,
+    val autoOpenLastDocumentInDesktop: Boolean = false,
+    val editorPropertyStickiness: String = "none",
+    val oscEditorEnabled: Boolean = false,
+    val oscEditorPort: Int = 9000,
+    val oscEditorFloatAddress: String = "/field/float",
+    val oscEditorLaunchAddress: String = "/field/launch",
+    val oscEditorStopAddress: String = "/field/stop",
+    val oscEditorDebounceMs: Int = 200
+)
+
+@Serializable
+data class FieldPreferencesUpdateRequest(
+    val preferences: FieldPreferences
+)
+
+@Serializable
+data class FieldPreferencesUpdateResponse(
+    val preferences: FieldPreferences,
+    val message: String
+)
+
+@Serializable
+data class WorkspaceSwitchRequest(
+    val path: String
+)
+
+@Serializable
+data class AiSettingsStatus(
+    val hasOpenAiPlatformKey: Boolean = false,
+    val source: String = "",
+    val configPath: String = ""
+)
+
+@Serializable
+data class AiSettingsUpdateRequest(
+    val openAiPlatformKey: String
+)
+
+@Serializable
+data class AiSettingsUpdateResponse(
+    val hasOpenAiPlatformKey: Boolean,
+    val source: String,
+    val configPath: String,
+    val message: String
+)
+
+@Serializable
+data class WorkspaceSwitchResponse(
+    val workspace: String,
+    val current: Boolean,
+    val restarting: Boolean,
+    val message: String
+)
+
+@Serializable
+data class WelcomeChangelogEntry(
+    val hash: String,
+    val summary: String,
+    val committedEpochMs: Long
+)
+
+@Serializable
+data class WelcomeChangelogResponse(
+    val entries: List<WelcomeChangelogEntry>
+)
+
+@Serializable
+data class DocumentTagsUpdateRequest(
+    val filename: String,
+    val tags: List<String>
+)
+
+@Serializable
+data class DocumentTagsUpdateResponse(
+    val filename: String,
+    val tags: List<String>,
+    val changed: Boolean
+)
+
+@Serializable
+data class DuplicateDocumentRequest(
+    val sourceFilename: String,
+    val newFilename: String
+)
+
+@Serializable
+data class DuplicateDocumentResponse(
+    val filename: String,
+    val numBoxes: Int,
+    val sizeBytes: Long,
+    val tags: List<String> = emptyList()
+)
+
+data class TaggedDocumentsZip(
+    val filename: String,
+    val bytes: ByteArray,
+    val documentCount: Int
+)
+
+@Serializable
+data class WorkspaceSearchMatch(
+    val boxName: String,
+    val property: String,
+    val line: Int,
+    val snippet: String
+)
+
+@Serializable
+data class WorkspaceSearchResult(
+    val filename: String,
+    val numBoxes: Int,
+    val lastModifiedEpochMs: Long,
+    val lastModifiedAgoMs: Long,
+    val tags: List<String> = emptyList(),
+    val matches: List<WorkspaceSearchMatch>
+)
+
+@Serializable
+data class WorkspaceSearchResponse(
+    val query: String,
+    val documents: List<WorkspaceSearchResult>,
+    val totalDocuments: Int,
+    val totalMatches: Int,
+    val truncated: Boolean
+)
+
+fun registerTemplate(dir: String) {
+
+    val format = Json {
+        prettyPrint = true
+    }
+
+
+    templates["dir_json"] = { template, everything ->
+        val entries = simpleDir(dir)
+
+        format.encodeToString(entries)
+    }
+
+    runAll(templatesRegistration)
+}
+
+fun simpleDir(base: String): List<Entry> {
+    val baseDir = File(base)
+    if (!baseDir.exists() || !baseDir.isDirectory) {
+        return emptyList()
+    }
+
+    val entries = mutableListOf<Entry>()
+
+    val s = SavingContext()
+
+    baseDir.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+        val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
+        val metadataJsonFile = File(dir, SavingContext.METADATA_JSON)
+        val hasEdn = metadataEdnFile.exists()
+        val hasJson = metadataJsonFile.exists()
+        if (!hasEdn && !hasJson) return@forEach
+
+        try {
+            val entry = Entry()
+            entry.filename = dir.name
+
+            if (hasEdn) {
+                val transfers = s.readEdnTransfers(dir.absolutePath)
+                    .filter { !it.properties["_tombstone"].isTrue() }
+                entry.numBoxes = transfers.size
+
+                transfers.forEach { transfer ->
+                    var contents = ""
+                    var metadata = ""
+                    val name =
+                        s.resolveStoredValue(transfer.properties["name"], dir.absolutePath)?.toString() ?: ""
+                    transfer.properties["code"]?.let {
+                        contents = s.resolveStoredValue(it, dir.absolutePath)?.toString() ?: ""
+                    }
+                    transfer.properties["metadata"]?.let {
+                        metadata = s.resolveStoredValue(it, dir.absolutePath)?.toString() ?: ""
+                    }
+
+                    if (contents.isNotBlank()) {
+                        val c = (tagsForString(metadata, "tags") ?: emptyList())
+                        entry.boxes.add(name to contents)
+                        entry.metadata.add(name to c)
+                    }
+                }
+
+                entry.lastModified = System.currentTimeMillis() - metadataEdnFile.lastModified()
+            } else {
+                val metadataContent = metadataJsonFile.readText()
+                val transfers = SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
+                    .filter { !it.properties["_tombstone"].isTrue() }
+                entry.numBoxes = transfers.size
+
+                transfers.forEach { transfer ->
+                    var contents = ""
+                    var metadata = ""
+
+                    try {
+                        val name =
+                            s.fromTypedPair(transfer.properties.get("name")!!, dir.absolutePath).toString()
+                        transfer.properties.get("code")?.let {
+                            contents = s.fromTypedPair(it, dir.absolutePath, createBoxes = false)?.toString() ?: ""
+                        }
+                        transfer.properties.get("metadata")?.let {
+                            metadata = s.fromTypedPair(it, dir.absolutePath, createBoxes = false)?.toString() ?: ""
+                        }
+
+                        if (contents.isNotBlank()) {
+                            val c = (tagsForString(metadata, "tags") ?: emptyList())
+                            entry.boxes.add(name to contents)
+                            entry.metadata.add(name to c)
+                        }
+                    } catch (e: NullPointerException) {
+                        // we supress this for now
+                        lprintln("warning,dir", "${entry.filename} failed to get name or code for ${transfer}")
+                    }
+                }
+
+                entry.lastModified = System.currentTimeMillis() - metadataJsonFile.lastModified()
+            }
+
+            entries.add(entry)
+        } catch (e: Exception) {
+            // Skip directories with invalid metadata
+            lprintln("error,dir", "Error processing directory ${dir.name}: ${e.message}")
+        }
+    }
+
+    return entries
+}
+
+fun parseRecentDocuments(raw: String?): List<String> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return raw
+        .split('\n')
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+}
+
+fun updateRecentDocuments(raw: String?, documentName: String, maxEntries: Int = 200): String {
+    val clean = documentName.trim()
+    if (clean.isBlank()) return raw ?: ""
+
+    val updated = mutableListOf(clean)
+    parseRecentDocuments(raw).forEach {
+        if (it != clean && updated.size < maxEntries) updated += it
+    }
+    return updated.take(maxEntries).joinToString("\n")
+}
+
+fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
+    val baseDir = File(base)
+    if (!baseDir.exists() || !baseDir.isDirectory) {
+        return emptyList()
+    }
+
+    val recencyOrder = recents.withIndex().associate { it.value to it.index }
+    val entries = mutableListOf<WelcomeEntry>()
+    val now = System.currentTimeMillis()
+    val s = SavingContext()
+
+    baseDir.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+        val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
+        val metadataJsonFile = File(dir, SavingContext.METADATA_JSON)
+        val metadataFile = when {
+            metadataEdnFile.exists() -> metadataEdnFile
+            metadataJsonFile.exists() -> metadataJsonFile
+            else -> null
+        } ?: return@forEach
+
+        try {
+            val summary = readWorkspaceDocumentSummary(s, dir, metadataFile)
+
+            val modifiedAt = metadataFile.lastModified()
+            entries += WelcomeEntry(
+                filename = dir.name,
+                numBoxes = summary.numBoxes,
+                sizeBytes = metadataFile.length(),
+                lastModifiedEpochMs = modifiedAt,
+                lastModifiedAgoMs = now - modifiedAt,
+                tags = summary.tags
+            )
+        } catch (e: Exception) {
+            lprintln("warning,welcome", "Skipping ${dir.name}: ${e.message}")
+        }
+    }
+
+    return entries.sortedWith(
+        compareBy<WelcomeEntry> { recencyOrder[it.filename] ?: Int.MAX_VALUE }
+            .thenByDescending { it.lastModifiedEpochMs }
+    )
+}
+
+private data class SearchOptions(
+    val maxDocuments: Int = 50,
+    val maxMatchesPerDocument: Int = 5,
+    val maxScanMillis: Long = 3_000L
+)
+
+private class WorkspaceSearchBudgetExceeded : RuntimeException()
+
+private data class WorkspaceDocumentScan(
+    val summary: WorkspaceDocumentSummary,
+    val matches: List<WorkspaceSearchMatch>
+)
+
+private val workspaceSearchProperties = linkedSetOf(
+    "name",
+    "code",
+    "fragment",
+    "vertex",
+    "vertex_fragment",
+    "compute",
+    "task",
+    "mesh",
+    "raygen",
+    "miss",
+    "closesthit",
+    "anyhit",
+    "intersection",
+    "callable",
+    "fragment_s",
+    "vertex_s",
+    "compute_s",
+    "task_s",
+    "mesh_s",
+    "raygen_s",
+    "miss_s",
+    "closesthit_s",
+    "anyhit_s",
+    "intersection_s",
+    "callable_s",
+    "customization",
+    "remote_js",
+    "metadata"
+)
+
+private fun workspaceSearchSidecarSuffixes(): List<String> {
+    return workspaceSearchProperties.mapNotNull { property ->
+        Box.ioSeparateProperties[property]?.let { extension -> "_${property}_.${extension}" }
+    }
+}
+
+private fun workspaceSearchCandidateFiles(dir: File, metadataFile: File): Sequence<File> = sequence {
+    yield(metadataFile)
+    val suffixes = workspaceSearchSidecarSuffixes()
+    dir.listFiles()?.forEach { file ->
+        if (!file.isFile) return@forEach
+        if (file == metadataFile) return@forEach
+        if (suffixes.any { suffix -> file.name.endsWith(suffix) }) {
+            yield(file)
+        }
+    }
+}
+
+private fun documentMayContainQuery(
+    dir: File,
+    metadataFile: File,
+    query: String,
+    checkSearchActive: () -> Unit
+): Boolean {
+    checkSearchActive()
+    if (dir.name.lowercase().contains(query)) return true
+
+    workspaceSearchCandidateFiles(dir, metadataFile).forEach { file ->
+        checkSearchActive()
+        if (fileContainsQuery(file, query, checkSearchActive)) return true
+    }
+    return false
+}
+
+private fun fileContainsQuery(file: File, query: String, checkSearchActive: () -> Unit): Boolean {
+    if (!file.isFile) return false
+
+    return try {
+        var found = false
+        file.bufferedReader(Charsets.UTF_8).useLines { lines ->
+            var lineNumber = 0
+            for (line in lines) {
+                if (lineNumber++ % 128 == 0) checkSearchActive()
+                if (line.lowercase().contains(query)) {
+                    found = true
+                    break
+                }
+            }
+        }
+        found
+    } catch (_: Exception) {
+        false
+    }
+}
+
+fun searchWorkspace(
+    base: String,
+    rawQuery: String,
+    maxDocuments: Int = 50,
+    maxMatchesPerDocument: Int = 5,
+    maxScanMillis: Long = 3_000L,
+    cancellationCheck: () -> Unit = {}
+): WorkspaceSearchResponse {
+    val query = rawQuery.trim()
+    if (query.isBlank()) {
+        return WorkspaceSearchResponse(
+            query = "",
+            documents = emptyList(),
+            totalDocuments = 0,
+            totalMatches = 0,
+            truncated = false
+        )
+    }
+
+    val baseDir = File(base)
+    if (!baseDir.exists() || !baseDir.isDirectory) {
+        return WorkspaceSearchResponse(
+            query = query,
+            documents = emptyList(),
+            totalDocuments = 0,
+            totalMatches = 0,
+            truncated = false
+        )
+    }
+
+    val options = SearchOptions(
+        maxDocuments = maxDocuments.coerceIn(1, 200),
+        maxMatchesPerDocument = maxMatchesPerDocument.coerceIn(1, 20),
+        maxScanMillis = maxScanMillis.coerceIn(250L, 15_000L)
+    )
+    val now = System.currentTimeMillis()
+    val startedAt = System.nanoTime()
+    val searchTerm = query.lowercase()
+    val savingContext = SavingContext()
+    val results = mutableListOf<WorkspaceSearchResult>()
+    var totalMatches = 0
+    var truncated = false
+
+    fun checkSearchActive() {
+        cancellationCheck()
+        val elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L
+        if (elapsedMillis > options.maxScanMillis) {
+            throw WorkspaceSearchBudgetExceeded()
+        }
+    }
+
+    val directories = baseDir.listFiles()?.filter { it.isDirectory }?.sortedByDescending {
+        max(
+            File(it, SavingContext.METADATA_EDN).lastModified(),
+            File(it, SavingContext.METADATA_JSON).lastModified()
+        )
+    }.orEmpty()
+
+    for (dir in directories) {
+        checkSearchActive()
+        if (results.size >= options.maxDocuments) {
+            truncated = true
+            break
+        }
+
+        val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
+        val metadataJsonFile = File(dir, SavingContext.METADATA_JSON)
+        val metadataFile = when {
+            metadataEdnFile.exists() -> metadataEdnFile
+            metadataJsonFile.exists() -> metadataJsonFile
+            else -> null
+        }
+        if (metadataFile == null) continue
+
+        try {
+            if (!documentMayContainQuery(dir, metadataFile, searchTerm, ::checkSearchActive)) {
+                continue
+            }
+
+            val scan = if (metadataFile.name == SavingContext.METADATA_EDN) {
+                scanEdnDocument(savingContext, dir.absolutePath, searchTerm, options, ::checkSearchActive)
+            } else {
+                scanJsonDocument(savingContext, metadataJsonFile, dir.absolutePath, searchTerm, options, ::checkSearchActive)
+            }
+            checkSearchActive()
+
+            val filenameMatches = buildMatchesForText(
+                boxName = dir.name,
+                property = "document",
+                text = dir.name,
+                query = searchTerm,
+                maxMatches = options.maxMatchesPerDocument,
+                checkSearchActive = ::checkSearchActive
+            )
+
+            val tagMatches = buildMatchesForText(
+                boxName = dir.name,
+                property = "tags",
+                text = scan.summary.tags.joinToString(" "),
+                query = searchTerm,
+                maxMatches = options.maxMatchesPerDocument,
+                checkSearchActive = ::checkSearchActive
+            )
+            val combined = (filenameMatches + tagMatches + scan.matches).take(options.maxMatchesPerDocument)
+            if (combined.isEmpty()) continue
+
+            totalMatches += combined.size
+            val modifiedAt = metadataFile.lastModified()
+            results += WorkspaceSearchResult(
+                filename = dir.name,
+                numBoxes = scan.summary.numBoxes,
+                lastModifiedEpochMs = modifiedAt,
+                lastModifiedAgoMs = now - modifiedAt,
+                tags = scan.summary.tags,
+                matches = combined
+            )
+        } catch (e: WorkspaceSearchBudgetExceeded) {
+            truncated = true
+            break
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            lprintln("warning,workspace-search", "Skipping ${dir.name}: ${e.message}")
+        }
+    }
+
+    return WorkspaceSearchResponse(
+        query = query,
+        documents = results,
+        totalDocuments = results.size,
+        totalMatches = totalMatches,
+        truncated = truncated
+    )
+}
+
+private data class WorkspaceDocumentSummary(
+    val numBoxes: Int,
+    val tags: List<String>
+)
+
+private fun readWorkspaceDocumentSummary(
+    savingContext: SavingContext,
+    dir: File,
+    metadataFile: File
+): WorkspaceDocumentSummary {
+    return if (metadataFile.name == SavingContext.METADATA_EDN) {
+        val transfers = savingContext.readEdnTransfers(dir.absolutePath)
+            .filter { !it.properties["_tombstone"].isTrue() }
+        WorkspaceDocumentSummary(
+            numBoxes = transfers.size,
+            tags = collectDocumentTagsFromEdn(transfers) { value ->
+                savingContext.resolveStoredValue(value, dir.absolutePath)?.toString()
+            }
+        )
+    } else {
+        val metadataContent = metadataFile.readText()
+        val transfers = SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
+            .filter { !it.properties["_tombstone"].isTrue() }
+        WorkspaceDocumentSummary(
+            numBoxes = transfers.size,
+            tags = collectDocumentTagsFromJson(transfers) { value ->
+                @Suppress("UNCHECKED_CAST")
+                val typed = value as? Pair<String, JsonElement> ?: return@collectDocumentTagsFromJson null
+                savingContext.fromTypedPair(typed, dir.absolutePath, createBoxes = false)?.toString()
+            }
+        )
+    }
+}
+
+private fun collectDocumentTagsFromEdn(
+    transfers: List<BoxTransferEdn>,
+    resolve: (Any?) -> String?
+): List<String> {
+    val rootTags = transfers
+        .firstOrNull { it.id == "root" }
+        ?.properties
+        ?.get("metadata")
+        ?.let(resolve)
+        ?.let { tagsForString(it, "tags") }
+        .orEmpty()
+
+    val aggregateTags = linkedSetOf<String>()
+    transfers.forEach { transfer ->
+        val metadata = resolve(transfer.properties["metadata"]) ?: return@forEach
+        tagsForString(metadata, "tags")?.forEach { aggregateTags += it }
+    }
+
+    return normalizeDocumentTags(rootTags.ifEmpty { aggregateTags.toList() })
+}
+
+private fun collectDocumentTagsFromJson(
+    transfers: List<Box_transfer>,
+    resolve: (Any?) -> String?
+): List<String> {
+    val rootTags = transfers
+        .firstOrNull { it.id == "root" }
+        ?.properties
+        ?.get("metadata")
+        ?.let(resolve)
+        ?.let { tagsForString(it, "tags") }
+        .orEmpty()
+
+    val aggregateTags = linkedSetOf<String>()
+    transfers.forEach { transfer ->
+        val metadata = resolve(transfer.properties["metadata"]) ?: return@forEach
+        tagsForString(metadata, "tags")?.forEach { aggregateTags += it }
+    }
+
+    return normalizeDocumentTags(rootTags.ifEmpty { aggregateTags.toList() })
+}
+
+fun normalizeDocumentTags(tags: List<String>): List<String> {
+    val seen = linkedSetOf<String>()
+    tags.forEach { raw ->
+        val tag = raw.trim()
+            .replace(Regex("\\s+"), "-")
+            .trim('-', ',', ';')
+        if (tag.isNotBlank()) seen += tag
+    }
+    return seen.toList().sortedWith(String.CASE_INSENSITIVE_ORDER)
+}
+
+private fun validateWorkspaceDocumentName(name: String): String {
+    val clean = name.trim()
+    require(clean.isNotBlank()) { "missing document filename" }
+    require(!clean.contains('/') && !clean.contains('\\') && !clean.contains('\u0000')) {
+        "invalid document filename"
+    }
+    require(!clean.contains("..") && !clean.startsWith(".") && !clean.endsWith(" ")) {
+        "invalid document filename"
+    }
+
+    val reservedNames = setOf(
+        "con", "prn", "aux", "nul",
+        "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+        "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+    )
+    require(clean.lowercase() !in reservedNames) { "reserved document filename" }
+    return clean
+}
+
+private fun workspaceDocumentDir(base: String, filename: String): File {
+    val cleanName = validateWorkspaceDocumentName(filename)
+    val baseDir = File(base).canonicalFile
+    val documentDir = File(baseDir, cleanName).canonicalFile
+    require(documentDir.toPath().startsWith(baseDir.toPath())) { "document is outside workspace" }
+    return documentDir
+}
+
+fun updateDocumentTags(base: String, filename: String, tags: List<String>): DocumentTagsUpdateResponse {
+    val cleanName = validateWorkspaceDocumentName(filename)
+    val documentDir = workspaceDocumentDir(base, cleanName)
+    require(documentDir.isDirectory) { "document not found" }
+    require(File(documentDir, SavingContext.METADATA_EDN).isFile) {
+        "tag editing is only supported for EDN-backed documents"
+    }
+
+    val normalizedTags = normalizeDocumentTags(tags)
+    val existingMetadata = try {
+        val savingContext = SavingContext()
+        val root = savingContext.readEdnTransfers(documentDir.absolutePath)
+            .firstOrNull { it.id == "root" }
+        root?.properties?.get("metadata")?.let {
+            savingContext.resolveStoredValue(it, documentDir.absolutePath)?.toString()
+        }.orEmpty()
+    } catch (_: Exception) {
+        ""
+    }
+
+    val updatedMetadata = replaceTagsInMetadata(existingMetadata, normalizedTags)
+    val changed = SavingContext().updateRootMetadata(documentDir.absolutePath, updatedMetadata)
+    return DocumentTagsUpdateResponse(cleanName, normalizedTags, changed)
+}
+
+fun duplicateWorkspaceDocument(base: String, sourceFilename: String, newFilename: String): DuplicateDocumentResponse {
+    val cleanSource = validateWorkspaceDocumentName(sourceFilename)
+    val cleanTarget = validateWorkspaceDocumentName(newFilename)
+    val sourceDir = workspaceDocumentDir(base, cleanSource)
+    val targetDir = workspaceDocumentDir(base, cleanTarget)
+
+    require(sourceDir.isDirectory) { "source document not found" }
+    require(File(sourceDir, SavingContext.METADATA_EDN).isFile || File(sourceDir, SavingContext.METADATA_JSON).isFile) {
+        "source document has no metadata"
+    }
+    require(!targetDir.exists()) { "target document already exists" }
+    require(targetDir.mkdirs()) { "could not create duplicate document" }
+
+    try {
+        sourceDir.walkTopDown()
+            .onEnter { dir -> dir == sourceDir || (dir.name != "backups" && dir.name != ".git") }
+            .forEach { source ->
+                if (source == sourceDir) return@forEach
+                if (source.isDirectory && (source.name == "backups" || source.name == ".git")) return@forEach
+                if (source.name == "versions.edn") return@forEach
+                val relative = source.relativeTo(sourceDir)
+                val target = File(targetDir, relative.path)
+                if (source.isDirectory) {
+                    target.mkdirs()
+                } else {
+                    target.parentFile?.mkdirs()
+                    source.copyTo(target, overwrite = false)
+                }
+            }
+    } catch (e: Exception) {
+        targetDir.deleteRecursively()
+        throw e
+    }
+
+    val metadataFile = when {
+        File(targetDir, SavingContext.METADATA_EDN).isFile -> File(targetDir, SavingContext.METADATA_EDN)
+        File(targetDir, SavingContext.METADATA_JSON).isFile -> File(targetDir, SavingContext.METADATA_JSON)
+        else -> throw IllegalStateException("duplicate was created without metadata")
+    }
+    val summary = readWorkspaceDocumentSummary(SavingContext(), targetDir, metadataFile)
+    return DuplicateDocumentResponse(
+        filename = cleanTarget,
+        numBoxes = summary.numBoxes,
+        sizeBytes = metadataFile.length(),
+        tags = summary.tags
+    )
+}
+
+fun exportTaggedDocumentsZip(base: String, rawTag: String): TaggedDocumentsZip {
+    val tag = normalizeDocumentTags(listOf(rawTag)).firstOrNull()
+        ?: throw IllegalArgumentException("missing tag")
+    val baseDir = File(base).canonicalFile
+    require(baseDir.isDirectory) { "workspace not found" }
+
+    val documents = welcomeDir(base, emptyList())
+        .filter { doc -> doc.tags.any { it.equals(tag, ignoreCase = true) } }
+        .sortedBy { it.filename.lowercase() }
+
+    require(documents.isNotEmpty()) { "no documents with tag '$tag'" }
+
+    val output = ByteArrayOutputStream()
+    var count = 0
+    ZipOutputStream(output).use { zip ->
+        documents.forEach { doc ->
+            val dir = workspaceDocumentDir(base, doc.filename)
+            val metadata = File(dir, SavingContext.METADATA_EDN)
+            if (!metadata.isFile) return@forEach
+            val documentName = zipSafePathSegment(doc.filename)
+            zip.putNextEntry(ZipEntry("$documentName/${SavingContext.METADATA_EDN}"))
+            metadata.inputStream().use { input -> input.copyTo(zip) }
+            zip.closeEntry()
+            count += 1
+        }
+    }
+
+    require(count > 0) { "no EDN-backed documents with tag '$tag'" }
+
+    return TaggedDocumentsZip(
+        filename = "field4-${downloadSafeName(tag)}-documents.zip",
+        bytes = output.toByteArray(),
+        documentCount = count
+    )
+}
+
+private fun zipSafePathSegment(value: String): String {
+    return value.trim()
+        .replace(Regex("[\\\\/]+"), "_")
+        .replace(Regex("[\\r\\n\\t]+"), " ")
+        .ifBlank { "document" }
+}
+
+private fun downloadSafeName(value: String): String {
+    return value.trim()
+        .replace(Regex("[^A-Za-z0-9._-]+"), "-")
+        .trim('-', '.')
+        .ifBlank { "tagged" }
+}
+
+private fun replaceTagsInMetadata(metadata: String, tags: List<String>): String {
+    val yaml = Yaml()
+    val existing = try {
+        @Suppress("UNCHECKED_CAST")
+        yaml.load(metadata) as? Map<String, Any?>
+    } catch (_: Exception) {
+        null
+    }
+
+    val updated = linkedMapOf<String, Any?>()
+    existing?.forEach { (key, value) ->
+        if (key != "tags") updated[key] = value
+    }
+    if (tags.isNotEmpty()) {
+        updated["tags"] = tags
+    }
+
+    if (updated.isEmpty()) return ""
+    return yaml.dump(updated).trimEnd() + "\n"
+}
+
+private fun scanEdnDocument(
+    savingContext: SavingContext,
+    directory: String,
+    query: String,
+    options: SearchOptions,
+    checkSearchActive: () -> Unit
+): WorkspaceDocumentScan {
+    val matches = mutableListOf<WorkspaceSearchMatch>()
+    checkSearchActive()
+    val transfers = savingContext.readEdnTransfers(directory)
+        .filter { !it.properties["_tombstone"].isTrue() }
+    val tags = collectDocumentTagsFromEdn(transfers) { value ->
+        checkSearchActive()
+        savingContext.resolveStoredValue(value, directory)?.toString()
+    }
+
+    for (transfer in transfers) {
+        checkSearchActive()
+        val boxName = savingContext.resolveStoredValue(transfer.properties["name"], directory)?.toString().orEmpty()
+        collectPropertyMatches(
+            propertyProvider = { property ->
+                checkSearchActive()
+                savingContext.resolveStoredValue(transfer.properties[property], directory)?.toString()
+            },
+            boxName = boxName,
+            query = query,
+            matches = matches,
+            maxMatches = options.maxMatchesPerDocument,
+            checkSearchActive = checkSearchActive
+        )
+        if (matches.size >= options.maxMatchesPerDocument) break
+    }
+
+    return WorkspaceDocumentScan(
+        summary = WorkspaceDocumentSummary(transfers.size, tags),
+        matches = matches
+    )
+}
+
+private fun scanJsonDocument(
+    savingContext: SavingContext,
+    metadataJsonFile: File,
+    directory: String,
+    query: String,
+    options: SearchOptions,
+    checkSearchActive: () -> Unit
+): WorkspaceDocumentScan {
+    val matches = mutableListOf<WorkspaceSearchMatch>()
+    checkSearchActive()
+    val metadataContent = metadataJsonFile.readText()
+    val transfers = SavingContext.format.decodeFromString<Set<Box_transfer>>(metadataContent)
+        .filter { !it.properties["_tombstone"].isTrue() }
+    val tags = collectDocumentTagsFromJson(transfers) { value ->
+        checkSearchActive()
+        @Suppress("UNCHECKED_CAST")
+        val typed = value as? Pair<String, JsonElement> ?: return@collectDocumentTagsFromJson null
+        savingContext.fromTypedPair(typed, directory, createBoxes = false)?.toString()
+    }
+
+    for (transfer in transfers) {
+        checkSearchActive()
+        val boxName = try {
+            savingContext.fromTypedPair(transfer.properties["name"]!!, directory)?.toString().orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+        collectPropertyMatches(
+            propertyProvider = { property ->
+                checkSearchActive()
+                transfer.properties[property]?.let {
+                    savingContext.fromTypedPair(it, directory, createBoxes = false)?.toString()
+                }
+            },
+            boxName = boxName,
+            query = query,
+            matches = matches,
+            maxMatches = options.maxMatchesPerDocument,
+            checkSearchActive = checkSearchActive
+        )
+        if (matches.size >= options.maxMatchesPerDocument) break
+    }
+
+    return WorkspaceDocumentScan(
+        summary = WorkspaceDocumentSummary(transfers.size, tags),
+        matches = matches
+    )
+}
+
+private fun collectPropertyMatches(
+    propertyProvider: (String) -> String?,
+    boxName: String,
+    query: String,
+    matches: MutableList<WorkspaceSearchMatch>,
+    maxMatches: Int,
+    checkSearchActive: () -> Unit
+) {
+    workspaceSearchProperties.forEach { property ->
+        checkSearchActive()
+        if (matches.size >= maxMatches) return
+        val text = propertyProvider(property) ?: return@forEach
+        val remaining = maxMatches - matches.size
+        matches += buildMatchesForText(boxName, property, text, query, remaining, checkSearchActive)
+    }
+}
+
+private fun buildMatchesForText(
+    boxName: String,
+    property: String,
+    text: String,
+    query: String,
+    maxMatches: Int,
+    checkSearchActive: () -> Unit = {}
+): List<WorkspaceSearchMatch> {
+    if (text.isBlank() || maxMatches <= 0) return emptyList()
+
+    val lines = text.split('\n')
+    val results = mutableListOf<WorkspaceSearchMatch>()
+
+    lines.forEachIndexed { index, rawLine ->
+        if (index % 64 == 0) checkSearchActive()
+        if (results.size >= maxMatches) return@forEachIndexed
+        val line = rawLine.trim()
+        if (!line.lowercase().contains(query)) return@forEachIndexed
+
+        results += WorkspaceSearchMatch(
+            boxName = boxName.ifBlank { "(unnamed box)" },
+            property = property,
+            line = index + 1,
+            snippet = trimSnippet(rawLine, query)
+        )
+    }
+
+    return results
+}
+
+private fun trimSnippet(line: String, query: String, maxLength: Int = 180): String {
+    val trimmedLine = line.trim()
+    if (trimmedLine.isBlank()) return ""
+
+    val lowered = trimmedLine.lowercase()
+    val startIndex = lowered.indexOf(query)
+    if (startIndex < 0 || trimmedLine.length <= maxLength) return trimmedLine
+
+    val context = maxLength / 2
+    val sliceStart = max(0, startIndex - context)
+    val sliceEnd = min(trimmedLine.length, sliceStart + maxLength)
+    val prefix = if (sliceStart > 0) "…" else ""
+    val suffix = if (sliceEnd < trimmedLine.length) "…" else ""
+    return prefix + trimmedLine.substring(sliceStart, sliceEnd).trim() + suffix
+}

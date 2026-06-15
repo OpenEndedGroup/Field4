@@ -2,550 +2,427 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Field | 4</title>
-    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-
+    <title>Field·4 Workspace Search</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
     <style>
-        @import url("https://pvinis.github.io/iosevka-webfont/3.4.1/iosevka.css");
-
-        body {
-            font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
-            margin: 10px;
-            padding: 10px;
-
-            background: rgba(20, 20, 20, 1);
-            color: rgba(200, 200, 200, 1);
-            font-weight: 300;
-            font-size: 14px;
-        }
-
-        tr.not-matched {
-            opacity: 0.0;
-            transform: scaleY(0);
-            display: none;
-        }
-
-        td {
-            vertical-align: top;
-            padding-bottom: 10px;
-        }
-
-        th {
-            opacity: 0.5;
-            font-weight: 100;
-            font-style: italic;
-            text-align: left;
-            font-size: 10px;
-            border-bottom: 1px solid rgba(200, 200, 200, 1);
-        }
-
-        .title {
-            background: rgba(0, 0, 0, 1);
-            padding: 5px;
-            margin: 4px;
-        }
-
-        .title-text {
-            float: right;
-            background: black;
-            background: rgba(20, 20, 20, 1);
-            padding: 10px;
-            margin: -5px;
-            z-index: 5;
-            position: relative;
-            right: 0;
-        }
-
-        .code {
-            white-space: pre-wrap;
-            font-size: 75%;
-            padding-left: 10px;
-        }
-
-        .date {
-            opacity: 0.5;
-            font-size: 75%;
-        }
-
-        .boxes {
-            opacity: 0.5;
-            font-size: 75%;
-        }
-
-        a {
-            text-decoration: none;
-            border-bottom: 0.5px dashed rgba(200, 200, 200, 0.5);
-            color: inherit;
+        :root {
+            --field-bg: rgba(20, 20, 20, 1);
+            --field-panel: rgba(0, 0, 0, 0.32);
+            --field-border: rgba(72, 201, 255, 0.18);
+            --field-border-strong: rgba(72, 201, 255, 0.45);
+            --field-cyan: rgb(72, 201, 255);
+            --field-text: rgba(220, 235, 244, 0.95);
+            --field-text-soft: rgba(164, 193, 210, 0.95);
+            --field-danger: #ff6f6f;
         }
 
         * {
             box-sizing: border-box;
-
-            scrollbar-gutter: stable;
-
-            transition: 250ms linear opacity;
-
-            &::-webkit-scrollbar {
-                width: 8px;
-                height: 8px;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                background: rgba(1, 1, 1, 0.5);
-                border-radius: 8px;
-            }
-
-            &::-webkit-scrollbar-track {
-                background: transparent;
-            }
-
-            &::-webkit-scrollbar-button {
-                display: none;
-            }
         }
 
-        input {
-            right: -10px;
-            top: 0px;
-            padding: 9px;
-            width: 500px;
-            position: fixed;
-            background: black;
-            border: 1px solid black;
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: var(--field-bg);
+            color: var(--field-text);
+            font-family: "Iosevka Web", system-ui, sans-serif;
+        }
+
+        body {
+            padding: 16px;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dashed rgba(180, 220, 245, 0.42);
+        }
+
+        .page {
+            width: min(1100px, 96vw);
+            margin: 0 auto;
+            display: grid;
+            gap: 12px;
+        }
+
+        .panel {
+            border: 5px solid black;
+            background: #222;
+            padding: 12px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .hero-title {
+            font-size: 20px;
+            color: var(--field-cyan);
+        }
+
+        .hero-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .hero-links a {
+            padding: 8px 10px;
+            border: 1px solid var(--field-border);
+            border-bottom-style: solid;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #searchBox {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            padding: 10px;
+            font: inherit;
+        }
+
+        #searchBox:focus {
+            outline: none;
+            border-color: var(--field-cyan);
+        }
+
+        #status {
+            color: var(--field-text-soft);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        #status.error {
+            color: var(--field-danger);
+        }
+
+        #results {
+            display: grid;
+            gap: 8px;
+        }
+
+        .doc-entry {
+            border-bottom: 1px solid black;
+            padding: 6px 2px 10px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: start;
+        }
+
+        .doc-entry:hover .doc-name {
             color: white;
-            z-index: 1;
         }
 
-        input:focus {
-            outline: none !important;
+        .doc-name {
+            font-size: 14px;
         }
 
-        .codeline {
-            display: none;
-            /*white-space: pre;*/
-            /*transform: scaleY(0);*/
-            /*height:0;*/
-            /*opacity: 0;*/
-            /*margin-top: 0;*/
-            /*margin-bottom: 0;*/
-            /*padding-top: 0;*/
-            /*padding-bottom: 0;*/
+        .doc-meta {
+            font-size: 10px;
+            color: var(--field-text-soft);
+            text-align: right;
+            white-space: nowrap;
         }
 
-
-        .codeline.also-matches {
-            transform: scaleY(1);
-            display: block;
-            height:100%;
-            opacity: 1.0 !important;
-            padding-bottom: 0 !important;
-            margin-bottom: 0 !important;
-            border-bottom: none !important;
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-            border-top: none !important;
+        .doc-body {
+            display: grid;
+            gap: 6px;
         }
 
-        .codeline.matches {
-            display: block;
-            height:100%;
-            opacity: 1 !important;
-            transform: scaleY(1);
+        .match-list {
+            display: grid;
+            gap: 4px;
         }
 
-        .title {
-            display: none;
+        .match {
+            border-left: 1px solid rgba(72, 201, 255, 0.16);
+            padding-left: 8px;
         }
 
-        .title.matches {
-            display: block;
+        .match-meta {
+            font-size: 10px;
+            color: var(--field-text-soft);
+            text-transform: lowercase;
         }
 
-        .codeline.context-end {
-            display: block;
-            opacity: 0.5;
-            padding-bottom: 3px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            transform: scaleY(1);
+        .match-snippet {
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
-        .codeline.context-start {
-            display: block;
-            opacity: 0.5;
-            padding-top: 3px;
-            margin-top: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            transform: scaleY(1);
+        mark {
+            background: rgba(72, 201, 255, 0.18);
+            color: white;
+            padding: 0 2px;
         }
 
-        .highlight {
-            background-color: rgba(150, 0, 0, 1);
-            color: rgba(255, 255, 255, 1);
-            font-weight: bold;
+        .empty-state {
+            padding: 16px;
+            color: var(--field-text-soft);
+            border: 1px dashed rgba(72, 201, 255, 0.35);
         }
 
-        .tags {
-            float: right;
-            font-size: 50%;
-            padding: 5px;
-            padding-right: 10px;
-        }
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
 
-        .token-keyword {
-            color: #569cd6;
-            font-weight: 500;
-        }
+            .search-row {
+                grid-template-columns: 1fr;
+            }
 
-        .token-bracket {
-            color: #d7ba7d;
-        }
+            .doc-entry {
+                grid-template-columns: 1fr;
+            }
 
-        .token-number {
-            color: #b5cea8;
-        }
-
-        .token-punctuation {
-            color: #9cdcfe;
+            .doc-meta {
+                text-align: left;
+            }
         }
     </style>
 </head>
 <body>
+<main class="page">
+    <section class="panel hero">
+        <div class="hero-title">Workspace Search</div>
+        <div class="hero-links">
+            <a href="/welcome">/welcome</a>
+            <a href="/index.html?file=welcome">open `welcome`</a>
+        </div>
+    </section>
 
+    <section class="panel">
+        <div class="search-row">
+            <input id="searchBox" type="text" autocomplete="off" autofocus placeholder="search workspace text or document name">
+            <div id="status" aria-live="polite"></div>
+        </div>
+    </section>
 
-<div class="search-container">
-    <input
-            type="text"
-            id="searchBox"
-            class="search-box"
-            placeholder="Search code…"
-            autocomplete="off"
-    />
-</div>
-
-
-<table id="root">
-    <tr>
-        <th style="min-width:400px">name</th>
-        <th style="width:30px">boxes</th>
-        <th style="min-width:100px">last modified</th>
-        <th style="width:100%; border: none"></th>
-    </tr>
-</table>
-
-
+    <section class="panel">
+        <div id="results"></div>
+    </section>
+</main>
 
 <script>
+    const state = {
+        welcomeDocs: [],
+        searchResults: [],
+        query: "",
+        truncated: false
+    };
+    let searchController = null;
+    let searchTimer = null;
 
-        function highlightLine(line) {
-                return line
-                    // escape HTML
-                    // .replace(/&/g, "&amp;")
-                    // .replace(/</g, "&lt;")
-                    // .replace(/>/g, "&gt;")
-                    // keywords
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
 
-                    // // keywords
-                    .replace(/\b(var|val|fun|import)\b/g, match =>
-                        `<span class="token-keyword">${match}</span>`)
-                    // brackets
-                    .replace(/[\[\]\(\)\{\}]/g, match =>
-                        `<span class="token-bracket">${match}</span>`)
-                    // // numbers (int & float)
-                    .replace(/\b\d+(?:\.\d+)?\b/g, match =>
-                        `<span class="token-number">${match}</span>`)
-                    // // // punctuation
-                    // .replace(/[,;:!?]/g, match =>
-                    //     `<span class="token-punctuation">${match}</span>`);
+    function escapeRegExp(text) {
+        return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function highlightQuery(text, query) {
+        if (!query) return escapeHtml(text);
+        const safe = escapeHtml(text);
+        return safe.replace(new RegExp(`(${escapeRegExp(query)})`, "ig"), "<mark>$1</mark>");
+    }
+
+    function formatDuration(ms) {
+        const abs = Math.max(0, Math.floor(ms));
+        if (abs < 1000) return "just now";
+        const minutes = Math.floor(abs / 60000);
+        if (minutes < 1) return `${Math.floor(abs / 1000)}s ago`;
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        const weeks = Math.floor(days / 7);
+        if (weeks < 6) return `${weeks}wk ago`;
+        const months = Math.floor(days / 30);
+        if (months < 24) return `${months}mo ago`;
+        const years = Math.floor(days / 365);
+        return `${years}y ago`;
+    }
+
+    function renderRecentDocuments() {
+        const resultsNode = document.getElementById("results");
+        const statusNode = document.getElementById("status");
+        const docs = state.welcomeDocs;
+
+        if (!docs.length) {
+            resultsNode.innerHTML = `
+                <div class="empty-state">
+                    No documents found in this workspace.
+                </div>
+            `;
+            statusNode.textContent = "";
+            statusNode.classList.remove("error");
+            return;
         }
 
+        resultsNode.innerHTML = docs.map((doc) => {
+            const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+            const meta = `${boxes} · ${formatDuration(doc.lastModifiedAgoMs)}`;
+            return `
+                <div class="doc-entry">
+                    <div class="doc-body">
+                        <a class="doc-name" href="/index.html?file=${encodeURIComponent(doc.filename)}">${escapeHtml(doc.filename)}</a>
+                    </div>
+                    <div class="doc-meta">${escapeHtml(meta)}</div>
+                </div>
+            `;
+        }).join("");
 
-        function formatDuration(ms) {
-                const msPerSecond = 1000;
-                const msPerMinute = msPerSecond * 60;
-                const msPerHour = msPerMinute * 60;
-                const msPerDay = msPerHour * 24;
-                const msPerWeek = msPerDay * 7;
-                const msPerMonth = msPerDay * 28;   // approximate month
-                const msPerYear = msPerDay * 365;  // approximate year
+        statusNode.textContent = `${docs.length} documents`;
+        statusNode.classList.remove("error");
+    }
 
-                // helper to pluralize unit names
-                const plural = (n, unit) => `${unit}${n === 1 ? "" : "s"}`;
+    function renderSearchResults() {
+        const resultsNode = document.getElementById("results");
+        const statusNode = document.getElementById("status");
+        const docs = state.searchResults;
+        const query = state.query.trim();
 
-                if (ms < msPerSecond) {
-                        return "just now";
-                }
-
-                if (ms < msPerMinute) {
-                        const secs = Math.floor(ms / msPerSecond);
-                        return `${secs}s}`;
-                }
-
-                if (ms < msPerHour) {
-                        const mins = Math.floor(ms / msPerMinute);
-                        const secs = Math.floor((ms % msPerMinute) / msPerSecond);
-                        return secs
-                            ? `${mins}m + ${secs}s`
-                            : `${mins}m`;
-                }
-
-                if (ms < msPerDay) {
-                        const hrs = Math.floor(ms / msPerHour);
-                        const mins = Math.floor((ms % msPerHour) / msPerMinute);
-                        return mins
-                            ? `${hrs}${plural(hrs, "hr")} + ${mins}m`
-                            : `${hrs}${plural(hrs, "hr")}`;
-                }
-
-                if (ms < msPerWeek) {
-                        const days = Math.floor(ms / msPerDay);
-                        const hrs = Math.floor((ms % msPerDay) / msPerHour);
-                        return hrs
-                            ? `${days}${plural(days, "d")} + ${hrs}${plural(hrs, "hr")}`
-                            : `${days}${plural(days, "d")}`;
-                }
-
-                if (ms < msPerMonth) {
-                        const weeks = Math.floor(ms / msPerWeek);
-                        const days = Math.floor((ms % msPerWeek) / msPerDay);
-                        return days
-                            ? `${weeks}${plural(weeks, "wk")} + ${days}${plural(days, "d")}`
-                            : `${weeks}${plural(weeks, "wk")}`;
-                }
-
-                if (ms < msPerYear) {
-                        const months = Math.floor(ms / msPerMonth);
-                        const weeks = Math.floor((ms % msPerMonth) / msPerWeek);
-                        return weeks
-                            ? `${months}${plural(months, "mn")} + ${weeks}${plural(weeks, "wk")}`
-                            : `${months}${plural(months, "mn")}`;
-                }
-
-                const years = Math.floor(ms / msPerYear);
-                const months = Math.floor((ms % msPerYear) / msPerMonth);
-                return months
-                    ? `${years}${plural(years, "yr")} + ${months}${plural(months, "mn")}`
-                    : `${years}${plural(years, "yr")}`;
+        if (!docs.length) {
+            resultsNode.innerHTML = `
+                <div class="empty-state">
+                    No workspace matches for <code>${escapeHtml(query)}</code>.
+                </div>
+            `;
+            statusNode.textContent = "no matches";
+            statusNode.classList.remove("error");
+            return;
         }
 
-        var everything = {{dir_json}}
+        resultsNode.innerHTML = docs.map((doc) => {
+            const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+            const meta = `${boxes} · ${formatDuration(doc.lastModifiedAgoMs)}`;
+            const matches = (doc.matches || []).map((match) => {
+                const property = match.property === "document" ? "document name" : match.property;
+                const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                return `
+                    <div class="match">
+                        <div class="match-meta">${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(linePart)}</div>
+                        <div class="match-snippet">${highlightQuery(match.snippet || "", query)}</div>
+                    </div>
+                `;
+            }).join("");
 
-        var root = document.getElementById('root');
+            return `
+                <div class="doc-entry">
+                    <div class="doc-body">
+                        <a class="doc-name" href="/index.html?file=${encodeURIComponent(doc.filename)}">${highlightQuery(doc.filename, query)}</a>
+                        <div class="match-list">${matches}</div>
+                    </div>
+                    <div class="doc-meta">${escapeHtml(meta)}</div>
+                </div>
+            `;
+        }).join("");
 
-        function escapeHTML(str) {
-                const map = {
-                        '&': '&amp;',
-                        '<': '&lt;',
-                        '>': '&gt;',
-                        '"': '&quot;',
-                        "'": '&#39;'
-                };
-                return String(str).replace(/[&<>"']/g, ch => map[ch]);
+        const matchCount = docs.reduce((sum, doc) => sum + ((doc.matches || []).length), 0);
+        statusNode.textContent = state.truncated ? `${matchCount}+ matches shown` : `${matchCount} matches`;
+        statusNode.classList.remove("error");
+    }
+
+    function render() {
+        if (state.query.trim()) {
+            renderSearchResults();
+        } else {
+            renderRecentDocuments();
+        }
+    }
+
+    async function loadRecentDocuments() {
+        try {
+            const response = await fetch("/api/welcome-docs", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.welcomeDocs = Array.isArray(payload.documents) ? payload.documents : [];
+            render();
+        } catch (error) {
+            console.error("Failed to load workspace documents", error);
+            const statusNode = document.getElementById("status");
+            statusNode.textContent = "could not load documents";
+            statusNode.classList.add("error");
+        }
+    }
+
+    async function runSearch(query) {
+        if (searchController) searchController.abort();
+        searchController = new AbortController();
+
+        const statusNode = document.getElementById("status");
+        statusNode.textContent = "searching…";
+        statusNode.classList.remove("error");
+
+        try {
+            const params = new URLSearchParams({
+                q: query,
+                maxDocuments: "75",
+                maxMatchesPerDocument: "5"
+            });
+            const response = await fetch(`/api/workspace-search?${params.toString()}`, {
+                cache: "no-store",
+                signal: searchController.signal
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.searchResults = Array.isArray(payload.documents) ? payload.documents : [];
+            state.truncated = !!payload.truncated;
+            render();
+        } catch (error) {
+            if (error?.name === "AbortError") return;
+            console.error("Workspace search failed", error);
+            const statusNode = document.getElementById("status");
+            statusNode.textContent = "search failed";
+            statusNode.classList.add("error");
+        }
+    }
+
+    function queueSearch(query) {
+        clearTimeout(searchTimer);
+        state.query = query;
+
+        if (!query.trim()) {
+            if (searchController) {
+                searchController.abort();
+                searchController = null;
+            }
+            state.searchResults = [];
+            state.truncated = false;
+            render();
+            return;
         }
 
-        const local = true
-        function formulateLink(name) {
-                if (local) {
-                        return `<a href="/?file=${name}">${name}</a>`
-                }
-                else {
-                        const e = `${document.location.protocol}//${document.location.host}/?file=${encodeURIComponent(`http://${document.location.hostname}:${location.port}/${name}.git`)}`;
-                        return `<a href="${e}">${name} [clone]</a>`
-                }
-        }
+        searchTimer = setTimeout(() => runSearch(query.trim()), 180);
+    }
 
-        everything.forEach((item) => {
+    document.getElementById("searchBox").addEventListener("input", (event) => {
+        queueSearch(event.target.value || "");
+    });
 
-                var contents = ""
-                var allTags = new Set()
-                if (item.boxes) {
-                        let index = 0
-                        item.boxes.forEach((box) => {
-                                var lines = ""
-                                let tags = item.metadata[index]
-                                tags.second.forEach( e => allTags.add(e))
-                                let theseTags = ""
-                                tags.second.forEach( e => {
-                                        theseTags += "#"+e+", "
-                                } )
-                                theseTags = theseTags.trim()
-                                theseTags = theseTags.substring(0, theseTags.length-1)
-                                lines += "<div class='codeline'><div class='tags' style='font-size:100%;'>"+theseTags+"</div></div>";
-
-                                box.second.split("\n").forEach((line) => {
-                                        if (line.trim() === "") {
-                                        } else
-                                                lines += "<div class='codeline'>" + highlightLine(escapeHTML(line)) + "</div>";
-                                })
-
-
-                                // console.log("these tags -- ", theseTags, "<- ", allTags, tags.second)
-
-                                contents += "<div class='title'><div class='title-text'>" + box.first + "</div><div class='code'>" + lines + "</div></div>";
-                                index++
-                        })
-                }
-
-                var tags = ""
-                allTags.forEach( e=> tags += "#"+e+", " )
-                tags = tags.trim()
-                tags = tags.substring(0, tags.length-1)
-
-                const div = document.createElement('tr');
-                div.className = 'entry';
-                const link = formulateLink(item.filename)
-                div.innerHTML = `<td class="filename">`+link+`<div class="tags">${tags}</div></td>
-                                 <td class="boxes">${item.numBoxes}</td>
-                                 <td class="date">${formatDuration(item.lastModified)}</td>
-                                 <td class="contents">${contents}</td>
-                                `;
-                div.querySelector("td.date").sortTime = item.lastModified;
-                root.appendChild(div);
-        })
-
-        function sortTableBySortTime(tableOrSelector) {
-                // 1) Resolve the table
-                const table = typeof tableOrSelector === 'string'
-                    ? document.querySelector(tableOrSelector)
-                    : tableOrSelector;
-                if (!table) throw new Error('Table not found');
-
-                const container =  table;
-
-                // 3) Pull out the rows into an array
-                const rows = Array.from(container.querySelectorAll('tr'));
-                rows.splice(0,1)
-                console.log(container, rows);
-
-                // 4) Sort by the numeric .sortTime on the <td class="date">
-                rows.sort((rowA, rowB) => {
-                        const aTime = parseFloat(
-                            rowA.querySelector('td.date').sortTime
-                        );
-                        const bTime = parseFloat(
-                            rowB.querySelector('td.date').sortTime
-                        );
-                        return aTime - bTime;
-                });
-
-                // 5) Re-append in sorted order
-                rows.forEach(row => container.appendChild(row));
-        }
-
-        sortTableBySortTime("#root")
-
-        document.querySelectorAll('.title').forEach(title => {
-                title.addEventListener('mouseenter', () => {
-                        title.querySelectorAll('.codeline').forEach(line =>
-                            line.classList.add('also-matches')
-                        );
-                });
-        });
-
-        function highlightMatches(query) {
-                const raw = query;
-                const contents = document.querySelectorAll('td.contents');
-                const allRows = document.querySelectorAll('tr');
-
-                // 1) Reset every .codeline's innerHTML from data-original (stash on first run)
-                contents.forEach(td => {
-                        td.querySelectorAll('.codeline').forEach(line => {
-                                if (line.dataset.original == null) {
-                                        line.dataset.original = line.innerHTML;
-                                }
-                                line.innerHTML = line.dataset.original;
-                                line.classList.remove('matches', 'context-start', 'context-end', 'also-matches');
-                        });
-                        td.querySelectorAll('.title.matches').forEach(t => t.classList.remove('matches'));
-                });
-
-                // 2) If the box is completely empty, clear not-matched + exit
-                if (raw.length === 0) {
-                        allRows.forEach(tr => tr.classList.remove('not-matched'));
-                        return;
-                }
-
-                // 3) Try to build the regex; if invalid, bail (no highlights)
-                let re;
-                try {
-                        re = new RegExp(raw, 'gi');
-                } catch (e) {
-                        console.warn('Invalid regex:', e);
-                        return;
-                }
-
-                // 4) Mark matches & titles
-                contents.forEach(td => {
-                        td.querySelectorAll('.codeline').forEach(line => {
-                                if (re.test(line.textContent)) {
-                                        line.classList.add('matches');
-                                        const title = line.closest('.title');
-                                        if (title) title.classList.add('matches');
-                                }
-                                re.lastIndex = 0; // reset for next test
-                        });
-                });
-
-                // 5) Wrap all matching substrings in <span class="highlight">
-                contents.forEach(td => {
-                        td.querySelectorAll('.codeline.matches').forEach(line => {
-                                const original = line.dataset.original;
-                                line.innerHTML = original.replace(re, `<span class="highlight">$&</span>`);
-                                re.lastIndex = 0;
-                        });
-                });
-
-                // 6) Tag one-line context around each run of matches
-                contents.forEach(td => {
-                        td.querySelectorAll('.title').forEach(title => {
-                                const lines = Array.from(title.querySelectorAll('.codeline'));
-                                const isMatch = i => lines[i].classList.contains('matches');
-                                let i = 0;
-                                while (i < lines.length) {
-                                        if (!isMatch(i)) {
-                                                i++;
-                                                continue;
-                                        }
-                                        const start = i;
-                                        while (i < lines.length && isMatch(i)) i++;
-                                        const end = i - 1;
-                                        if (start > 0 && !isMatch(start - 1)) {
-                                                lines[start - 1].classList.add('context-start');
-                                        }
-                                        if (end < lines.length - 1 && !isMatch(end + 1)) {
-                                                lines[end + 1].classList.add('context-end');
-                                        }
-                                }
-                        });
-                });
-
-                // 7) Since raw.length > 0, tag rows without any .matches as .not-matched
-                var first = true
-                allRows.forEach(tr => {
-                        if (first) {
-                                first = false
-                                return;
-                        }
-                        if (tr.querySelector('.matches')) {
-                                tr.classList.remove('not-matched');
-                        } else {
-                                tr.classList.add('not-matched');
-                        }
-                });
-        }
-
-        // --- wiring it up to an input box ---
-        const searchBox = document.getElementById('searchBox');
-        searchBox.addEventListener('input', e => {
-                console.log(e.target.value);
-                highlightMatches(e.target.value);
-        });
-
-
+    loadRecentDocuments();
 </script>
-
 </body>
-
-
 </html>

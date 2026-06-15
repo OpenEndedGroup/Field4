@@ -16,6 +16,7 @@ import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
+import afield.four.buffers.MissingRefException
 import afield.four.texture.HasImageView
 import afield.four.texture.image_layout_transition
 import afield.four.util.Options
@@ -2066,6 +2067,45 @@ class OpenXRHmdTarget(
                         .pColorAttachments(colorAttachment)
                         .pDepthAttachment(depthAttachment[0])
 
+                    modules.forEach { (_, mp) ->
+                        mp.current.meshes.values.forEach { mesh ->
+                            mesh.prepareForDraw(cmd)
+                            mesh.push.primeBufferReferences(cmd) {
+                                throw MissingRefException("risk of GPU null ref `$it`")
+                            }
+                        }
+                        mp.current.liveUniformStructures.values.forEach { structure ->
+                            structure.primeBufferReferences(cmd) {
+                                throw MissingRefException("risk of GPU null ref `$it`")
+                            }
+                        }
+                    }
+
+                    meshModules.forEach { (_, mp) ->
+                        mp.current.meshes.values.forEach { mesh ->
+                            mesh.push.primeBufferReferences(cmd) {
+                                throw MissingRefException("risk of GPU null ref `$it`")
+                            }
+                        }
+                        mp.current.liveUniformStructures.values.forEach { structure ->
+                            structure.primeBufferReferences(cmd) {
+                                throw MissingRefException("risk of GPU null ref `$it`")
+                            }
+                        }
+                    }
+
+                    modules.forEach { (_, mp) ->
+                        mp.current.before.forEach { (_, target) ->
+                            target.render(cmd, 0)
+                        }
+                    }
+
+                    meshModules.forEach { (_, mp) ->
+                        mp.current.before.forEach { (_, target) ->
+                            target.render(cmd, 0)
+                        }
+                    }
+
                     cmd.inRenderPassInstance = true
                     KHRDynamicRendering.vkCmdBeginRenderingKHR(cmd.vkCommandBuffer, renderInfo)
 
@@ -2089,6 +2129,7 @@ class OpenXRHmdTarget(
 
                     KHRDynamicRendering.vkCmdEndRenderingKHR(cmd.vkCommandBuffer)
                     cmd.inRenderPassInstance = false
+                    cmd.flushDeferredGraphicsHostReadBarriers()
 
                     // End per-eye GPU timing
                     ps?.let { p ->

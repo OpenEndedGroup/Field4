@@ -1,0 +1,15 @@
+{
+  "name": "afield-shell",
+  "private": true,
+  "version": "0.1.0",
+  "main": "electron-main.js",
+  "scripts": {
+    "electron": "electron electron-main.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  },
+  "dependencies": {
+    "electron": "^31.2.0"
+  }
+}

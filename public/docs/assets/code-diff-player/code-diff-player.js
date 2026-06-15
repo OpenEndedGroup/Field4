@@ -1,16 +1,96 @@
 (function() {
   const HIGHLIGHT_URL = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js";
   let highlightPromise = null;
+  let forthRegistered = false;
+
+  function registerForthLanguage() {
+    if (!window.hljs || forthRegistered || hljs.getLanguage("forth")) {
+      forthRegistered = true;
+      return;
+    }
+
+    hljs.registerLanguage("forth", function(hljs) {
+      const BUILTINS = [
+        "!", "+!", ",", ".", ".r", "*", "*/", "*/mod", "+", "1+", "1-", "-", "/", "/mod", "2!",
+        "2*", "2/", "2@", "2drop", "2dup", "2over", "2swap", "<", "<>", "=", ">", ">body",
+        ">in", ">number", ">r", "?", "?do", "?dup", "@", "abs", "accept", "again", "align",
+        "aligned", "allot", "and", "base", "begin", "bl", "blank", "c!", "c,", "c@", "case",
+        "catch", "cell+", "cells", "char", "chars", "constant", "count", "cr", "create", "depth",
+        "do", "does>", "drop", "dup", "else", "emit", "endcase", "endof", "evaluate", "execute",
+        "exit", "false", "fill", "find", "fm/mod", "forget", "here", "hold", "i", "if", "immediate",
+        "invert", "j", "leave", "literal", "loop", "lshift", "max", "min", "mod", "move", "negate",
+        "nip", "of", "or", "over", "pick", "postpone", "r>", "r@", "recurse", "repeat", "roll",
+        "rot", "rshift", "s>d", "see", "sm/rem", "source", "space", "spaces", "state", "swap",
+        "then", "throw", "true", "tuck", "type", "u.", "u<", "u.r", "um*", "um/mod", "until",
+        "variable", "while", "within", "word", "words", "xor"
+      ];
+      const FIELD_WORDS = [
+        "@?", "@?!", "bar", "class-for", "cubicto", "cubicto3", "display", "display-channel",
+        "fline", "fline-close", "fline-color", "fline-filled", "fline-lineto-v2",
+        "fline-lineto-v3", "fline-moveto-v2", "fline-moveto-v3", "fline-node-color",
+        "fline-stroked", "fline-thickness", "frame", "html", "lineto", "lineto3", "moveto",
+        "moveto3", "newInstance", "plot-stack", "println", "stack-display", "str", "str+",
+        "vec2", "vec2*", "vec2+", "vec2-", "vec2@y", "vec2@x", "vec2dot", "vec2len",
+        "vec2norm", "vec3", "vec4", "watch"
+      ];
+      const WORD_BOUNDARY = "(?=\\s|$)";
+
+      return {
+        name: "Forth",
+        aliases: ["forth", "fth", "fs"],
+        case_insensitive: true,
+        keywords: {
+          keyword: "if else then begin while repeat until again do ?do loop +loop leave case of endof endcase recurse exit",
+          built_in: BUILTINS.join(" ") + " " + FIELD_WORDS.join(" "),
+          literal: "true false"
+        },
+        contains: [
+          hljs.COMMENT("\\\\", "$"),
+          hljs.COMMENT("\\(", "\\)"),
+          {
+            scope: "string",
+            begin: "\\bs\\\"",
+            end: "\\\"",
+            relevance: 0
+          },
+          {
+            scope: "string",
+            begin: "\\.\\\"",
+            end: "\\\"",
+            relevance: 0
+          },
+          {
+            scope: "title",
+            begin: "(:|variable|constant|create|value)\\s+",
+            end: WORD_BOUNDARY,
+            excludeBegin: true
+          },
+          {
+            scope: "number",
+            begin: "[-+]?\\b(?:0x[0-9a-f]+|\\d+(?:\\.\\d+)?(?:e[-+]?\\d+)?)\\b",
+            relevance: 0
+          }
+        ]
+      };
+    });
+    forthRegistered = true;
+  }
 
   function ensureHighlight() {
-    if (window.hljs) return Promise.resolve();
+    if (window.hljs) {
+      registerForthLanguage();
+      return Promise.resolve();
+    }
     if (highlightPromise) return highlightPromise;
     highlightPromise = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = HIGHLIGHT_URL;
       script.crossOrigin = "anonymous";
       script.referrerPolicy = "no-referrer";
-      script.onload = () => resolve();
+      script.onload = () => {
+        registerForthLanguage();
+        resolve();
+      };
       script.onerror = (err) => reject(err);
       document.head.appendChild(script);
     }).catch((err) => {
@@ -225,8 +305,14 @@
 
   function highlightLine(line, language) {
     if (!window.hljs) return escapeHtml(line === "" ? "\u00a0" : line);
+    registerForthLanguage();
     const source = line === "" ? " " : line;
-    const html = hljs.highlight(source, { language }).value;
+    let html;
+    if (hljs.getLanguage(language)) {
+      html = hljs.highlight(source, { language, ignoreIllegals: true }).value;
+    } else {
+      html = hljs.highlightAuto(source).value;
+    }
     return line === "" ? html.replace(" ", "&nbsp;") : html;
   }
 

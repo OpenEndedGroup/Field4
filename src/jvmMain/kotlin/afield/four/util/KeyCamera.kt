@@ -3,11 +3,11 @@ package afield.four.util
 import afield.Box
 import afield.four.Renderer
 import afield.four.modules.fromContext
-import org.joml.Math
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
+import kotlin.math.PI
 import kotlin.math.pow
 
 class KeyCamera(
@@ -49,7 +49,7 @@ class KeyCamera(
                 dt = dt.coerceIn(0.0, 0.5)
                 val frameFactor = (dt / (1.0 / 60.0))
 
-                checkKeys()
+                checkKeys(frameFactor)
 
                 // decay & run actions
                 actions.entries.retainAll { entry ->
@@ -72,7 +72,7 @@ class KeyCamera(
         }
     }
 
-    private fun checkKeys() {
+    private fun checkKeys(frameFactor: Double) {
         val window = renderer.window
 
         // handle right-shift double tap before computing general "shift" state
@@ -85,7 +85,7 @@ class KeyCamera(
         val moveStep = baseDistance * movementSpeed
 
         // ---------- forward / back (UP / DOWN) ----------
-        if (window.isKeyPressed(GLFW.GLFW_KEY_UP)) {
+        if (window.isAnyKeyPressed(GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_W)) {
             enqueue(if (!shift) "up_target" else "up_at") { amount ->
                 val step = moveStep * amount
                 if (!shift) {
@@ -97,7 +97,7 @@ class KeyCamera(
                 }
             }
         }
-        if (window.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
+        if (window.isAnyKeyPressed(GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_S)) {
             enqueue(if (!shift) "down_target" else "down_at") { amount ->
                 val step = -moveStep * amount
                 if (!shift) {
@@ -105,6 +105,34 @@ class KeyCamera(
                 } else {
                     camera.moveLocal(forward = step, moveTarget = false)
                 }
+            }
+        }
+
+        // ---------- strafe left / right (A / D) ----------
+        if (window.isKeyPressed(GLFW.GLFW_KEY_A)) {
+            enqueue(if (!shift) "strafe_left_target" else "strafe_left_at") { amount ->
+                val step = -moveStep * amount
+                camera.moveLocal(right = step, moveTarget = !shift)
+            }
+        }
+        if (window.isKeyPressed(GLFW.GLFW_KEY_D)) {
+            enqueue(if (!shift) "strafe_right_target" else "strafe_right_at") { amount ->
+                val step = moveStep * amount
+                camera.moveLocal(right = step, moveTarget = !shift)
+            }
+        }
+
+        // ---------- local up / down (E / C) ----------
+        if (window.isKeyPressed(GLFW.GLFW_KEY_E)) {
+            enqueue(if (!shift) "vertical_up_target" else "vertical_up_at") { amount ->
+                val step = moveStep * amount
+                camera.moveLocal(upAmount = step, moveTarget = !shift)
+            }
+        }
+        if (window.isKeyPressed(GLFW.GLFW_KEY_C)) {
+            enqueue(if (!shift) "vertical_down_target" else "vertical_down_at") { amount ->
+                val step = -moveStep * amount
+                camera.moveLocal(upAmount = step, moveTarget = !shift)
             }
         }
 
@@ -176,27 +204,21 @@ class KeyCamera(
             }
         }
 
-        // ---------- zoom ([ and ]) → change camera.p.fov ----------
-        if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_BRACKET)) {
-            // zoom in → smaller fov
-            enqueue("zoom_fov_in") { amount ->
-                zoomFov(amount, inward = true, fine = shift)
-            }
+        // ---------- FOV (- / =) ----------
+        if (window.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
+            adjustFov(direction = -1.0, frameFactor = frameFactor, fine = shift)
         }
-        if (window.isKeyPressed(GLFW.GLFW_KEY_RIGHT_BRACKET)) {
-            // zoom out → bigger fov
-            enqueue("zoom_fov_out") { amount ->
-                zoomFov(amount, inward = false, fine = shift)
-            }
+        if (window.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
+            adjustFov(direction = 1.0, frameFactor = frameFactor, fine = shift)
         }
 
-        // ---------- roll ( , and . ) ----------
-        if (window.isKeyPressed(GLFW.GLFW_KEY_COMMA)) {
+        // ---------- roll (Z / X, also , / .) ----------
+        if (window.isAnyKeyPressed(GLFW.GLFW_KEY_Z, GLFW.GLFW_KEY_COMMA)) {
             enqueue("roll_left") { amount ->
                 camera.roll(rotationSpeed * amount)
             }
         }
-        if (window.isKeyPressed(GLFW.GLFW_KEY_PERIOD)) {
+        if (window.isAnyKeyPressed(GLFW.GLFW_KEY_X, GLFW.GLFW_KEY_PERIOD)) {
             enqueue("roll_right") { amount ->
                 camera.roll(rotationSpeed * -amount)
             }
@@ -219,6 +241,16 @@ class KeyCamera(
     private fun isShiftDown(): Boolean {
         val w = renderer.window
         return w.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || w.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT)
+    }
+
+    private fun Window.isAnyKeyPressed(vararg keys: Int): Boolean {
+        return keys.any { isKeyPressed(it) }
+    }
+
+    private fun adjustFov(direction: Double, frameFactor: Double, fine: Boolean) {
+        val step = if (fine) FOV_FINE_STEP_RADIANS else FOV_STEP_RADIANS
+        camera.p.fov = (camera.p.fov + direction * step * frameFactor)
+            .coerceIn(MIN_FOV_RADIANS, MAX_FOV_RADIANS)
     }
 
     /**
@@ -262,30 +294,6 @@ class KeyCamera(
         }
     }
 
-    /**
-     * FOV-based zoom: shrink/enlarge camera.p.fov.
-     *
-     * - inward = true  → zoom in  → fov goes down
-     * - inward = false → zoom out → fov goes up
-     * - fine = true    → smaller step (when Shift is held)
-     */
-    private fun zoomFov(amount: Double, inward: Boolean, fine: Boolean) {
-        val proj = camera.p
-        val current = proj.fov
-
-        // radians (JOML Math is double-based)
-        val baseStep = Math.toRadians(5.0)                    // ~0.087 rad
-        val step = if (fine) baseStep * 0.25 else baseStep    // fine → ~0.0217 rad
-
-        val minFov = Math.toRadians(5.0)                      // 0.087 rad
-        val maxFov = Math.toRadians(120.0)                    // 2.094 rad
-
-        val dir = if (inward) -1.0 else 1.0
-        val next = current + (dir * step * amount).toFloat()
-
-        proj.fov = next.coerceIn(minFov, maxFov)
-    }
-
     private fun resetToInitial() {
         camera.at.set(initialAt)
         camera.target.set(initialTarget)
@@ -299,6 +307,10 @@ class KeyCamera(
 
     companion object {
         private const val DOUBLE_TAP_WINDOW_MS: Long = 500L
+        private const val MIN_FOV_RADIANS = 5.0 * PI / 180.0
+        private const val MAX_FOV_RADIANS = 120.0 * PI / 180.0
+        private const val FOV_STEP_RADIANS = 1.0 * PI / 180.0
+        private const val FOV_FINE_STEP_RADIANS = 0.25 * PI / 180.0
     }
 }
 

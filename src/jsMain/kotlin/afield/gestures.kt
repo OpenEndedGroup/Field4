@@ -1,5 +1,3 @@
-@file:JsExport
-
 import afield.*
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -7,14 +5,191 @@ import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.DOMRect
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
 import kotlin.math.*
 
 
+private enum class ConnectionTerminalStyle {
+    None,
+    Dot,
+    PerpendicularTick
+}
+
+private data class ConnectionTerminalConfig(
+    val style: ConnectionTerminalStyle = ConnectionTerminalStyle.None,
+    val endpointInset: Double = 0.0
+)
+
+private data class ConnectionTerminals(
+    val start: ConnectionTerminalConfig = ConnectionTerminalConfig(),
+    val end: ConnectionTerminalConfig = ConnectionTerminalConfig(style = ConnectionTerminalStyle.Dot)
+)
+
+private data class ConnectionTerminalLabels(
+    val start: String? = null,
+    val end: String? = null
+)
+
+private data class NestedDisclosureSnapshot(
+    val isOpen: Boolean,
+    val viewportWorldRect: DOMRect?
+)
+
+private fun connectionLabelFor(box: HTMLElement): String? {
+    val name = (box.asDynamic().name as? String)?.trim()
+    if (!name.isNullOrEmpty()) return name
+    val uid = (box.asDynamic().uid as? String)?.trim()
+    return uid?.takeIf { it.isNotEmpty() }
+}
+
+private var currentConnectionSelectedUids: Set<String> = emptySet()
+
+private fun proxyAnchorSelected(box: HTMLElement, terminal: ConnectionTerminalConfig): Boolean {
+    if (terminal.style != ConnectionTerminalStyle.PerpendicularTick) return false
+    val nestedInUid = box.asDynamic().box_nestedIn as? String ?: return false
+    return currentConnectionSelectedUids.contains(nestedInUid)
+}
+
 fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_rect: DOMRect, svg: SVGElement, opacity: Double = 1.0) {
-    val (a, b) = connectCenters(a_rect, b_rect)
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(),
+        ConnectionTerminalLabels()
+    )
+}
+
+private fun connect_center_nested_proxy_to(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0
+) {
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(
+            end = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            )
+        ),
+        ConnectionTerminalLabels(end = connectionLabelFor(b_box))
+    )
+}
+
+private fun connect_center_nested_proxy_from(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0
+) {
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(
+            start = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            )
+        ),
+        ConnectionTerminalLabels(start = connectionLabelFor(a_box))
+    )
+}
+
+private fun connect_center_nested_proxy_both(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0
+) {
+    connect_center_with_terminal(
+        a_box,
+        a_rect,
+        b_box,
+        b_rect,
+        svg,
+        opacity,
+        ConnectionTerminals(
+            start = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            ),
+            end = ConnectionTerminalConfig(
+                style = ConnectionTerminalStyle.PerpendicularTick,
+                endpointInset = NESTED_PROXY_ENDPOINT_INSET
+            )
+        ),
+        ConnectionTerminalLabels(
+            start = connectionLabelFor(a_box),
+            end = connectionLabelFor(b_box)
+        )
+    )
+}
+
+private fun connect_center_with_terminal(
+    a_box: HTMLElement,
+    a_rect: DOMRect,
+    b_box: HTMLElement,
+    b_rect: DOMRect,
+    svg: SVGElement,
+    opacity: Double = 1.0,
+    terminals: ConnectionTerminals = ConnectionTerminals(),
+    terminalLabels: ConnectionTerminalLabels = ConnectionTerminalLabels()
+) {
+    val (rawA, rawB) = connectCenters(a_rect, b_rect)
+
+    val maxStartInset = max(0.0, rawA.point.distance(rawB.point) - MIN_CONNECTION_LENGTH)
+    val clampedStartInset = min(terminals.start.endpointInset, maxStartInset)
+    val a = if (clampedStartInset > 0.0) {
+        ClippedResult(
+            Point(
+                rawA.point.x + rawA.normal.x * clampedStartInset,
+                rawA.point.y + rawA.normal.y * clampedStartInset
+            ),
+            rawA.normal
+        )
+    } else {
+        rawA
+    }
+
+    val maxEndInset = max(0.0, a.point.distance(rawB.point) - MIN_CONNECTION_LENGTH)
+    val clampedEndInset = min(terminals.end.endpointInset, maxEndInset)
+    val b = if (clampedEndInset > 0.0) {
+        ClippedResult(
+            Point(
+                rawB.point.x + rawB.normal.x * clampedEndInset,
+                rawB.point.y + rawB.normal.y * clampedEndInset
+            ),
+            rawB.normal
+        )
+    } else {
+        rawB
+    }
+    if (!a.point.isFinite() || !b.point.isFinite()) return
+    if (a.point.distance(b.point) < 1e-3) return
+
     val startHeading = atan2(a.normal.y, a.normal.x)
     val endHeading = atan2(-b.normal.y, -b.normal.x)
     val startScreen = DubinsPose(a.point.x, a.point.y, startHeading)
@@ -27,8 +202,8 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
     currentFrameKeys += key
 
-    val fromSelected = selected.contains(a_box)
-    val toSelected = selected.contains(b_box)
+    val fromSelected = selected.contains(a_box) || proxyAnchorSelected(a_box, terminals.start)
+    val toSelected = selected.contains(b_box) || proxyAnchorSelected(b_box, terminals.end)
     val isHighlighted = fromSelected || toSelected
     val color = when {
         fromSelected && !toSelected -> OUTGOING_CONNECTION_COLOR
@@ -39,15 +214,16 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     val visibilityScale = if (isHighlighted) HIGHLIGHTED_CONNECTION_VISIBILITY else DIMMED_CONNECTION_VISIBILITY
     val drawOpacity = (opacity * visibilityScale).coerceIn(0.0, 1.0)
     val markerLayer = currentFrontMarkerLayer ?: svg
-    val markerPoint = Point(
-        b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET,
-        b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET
-    )
+    val startMarkerPoint = Point(a.point.x - a.normal.x * TERMINAL_MARKER_OFFSET, a.point.y - a.normal.y * TERMINAL_MARKER_OFFSET)
+    val endMarkerPoint = Point(b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET, b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET)
+    val startLabel = if (isHighlighted) terminalLabels.start else null
+    val endLabel = if (isHighlighted) terminalLabels.end else null
 
     val dubins = dubinsShortestPath(screenToStandard(startScreen), screenToStandard(endScreen), radius)
     if (dubins == null) {
         drawFallbackBezier(a, b, svg, drawOpacity, color)
-        addTerminalMarker(markerLayer, key, markerPoint, b_rect, drawOpacity, color)
+        addTerminalDecoration(markerLayer, "$key-start", startMarkerPoint, a, a_rect, drawOpacity, color, terminals.start.style, startLabel)
+        addTerminalDecoration(markerLayer, "$key-end", endMarkerPoint, b, b_rect, drawOpacity, color, terminals.end.style, endLabel)
         return
     }
 
@@ -76,7 +252,8 @@ fun connect_center(a_box: HTMLElement, a_rect: DOMRect, b_box: HTMLElement, b_re
     }
 
     addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, drawOpacity, color)
-    addTerminalMarker(markerLayer, key, markerPoint, b_rect, drawOpacity, color)
+    addTerminalDecoration(markerLayer, "$key-start", startMarkerPoint, a, a_rect, drawOpacity, color, terminals.start.style, startLabel)
+    addTerminalDecoration(markerLayer, "$key-end", endMarkerPoint, b, b_rect, drawOpacity, color, terminals.end.style, endLabel)
 }
 
 private const val SELECTED_CONNECTION_COLOR = "var(--field-cyan)"
@@ -87,8 +264,23 @@ private const val HIGHLIGHTED_CONNECTION_VISIBILITY = 1.0
 private const val DIMMED_CONNECTION_VISIBILITY = 0.12
 private const val TERMINAL_MARKER_RADIUS = 3.25
 private const val TERMINAL_MARKER_OFFSET = 0.0
+private const val NESTED_PROXY_ENDPOINT_INSET = 20.0
+private const val NESTED_PROXY_TICK_HALF_LENGTH = 5.5
+private const val NESTED_PROXY_TICK_STROKE_WIDTH = 1.8
+private const val NESTED_PROXY_LABEL_X_OFFSET = 7.0
+private const val NESTED_PROXY_LABEL_Y_OFFSET = 8.0
+private const val NESTED_PROXY_LABEL_FONT_SIZE = 10
+private const val NESTED_PROXY_LABEL_BG_PAD_X = 3.5
+private const val NESTED_PROXY_LABEL_BG_PAD_Y = 1.5
+private const val NESTED_PROXY_LABEL_BG_RADIUS = 2.5
+private const val NESTED_PROXY_LABEL_BG_FILL = "rgba(0,0,0,0.75)"
+private const val MIN_CONNECTION_LENGTH = 6.0
+private const val NESTED_VIEWPORT_VISIBILITY_EPSILON = 1e-6
 private const val FRONT_CONNECTION_LAYER_ID = "overlaysvgfrontlayer"
 var knownConnections = mutableMapOf("parent->child" to ::connect_center)
+var knownProxyConnectionsTo = mutableMapOf("parent->child" to ::connect_center_nested_proxy_to)
+var knownProxyConnectionsFrom = mutableMapOf("parent->child" to ::connect_center_nested_proxy_from)
+var knownProxyConnectionsBoth = mutableMapOf("parent->child" to ::connect_center_nested_proxy_both)
 var dubinsMinRadius = 190.0 // ends up being length / 3
 
 private const val FILTER_RESAMPLE_COUNT = 64
@@ -105,13 +297,15 @@ private val currentFrameKeys = mutableSetOf<String>()
 private var currentFrontMarkerLayer: SVGElement? = null
 private var currentFrontMarkerDefs: SVGElement? = null
 
+private fun DOMRect.copyRect(): DOMRect = DOMRect(x, y, width, height)
+
 private fun ensureFrontConnectionLayer(): SVGSVGElement {
     val existing = document.getElementById(FRONT_CONNECTION_LAYER_ID) as? SVGSVGElement
     if (existing != null) return existing
 
     val front = document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement
     front.id = FRONT_CONNECTION_LAYER_ID
-    front.setAttribute("style", "position: absolute; top:0; bottom:0; left:0; right:0; z-index: 18; pointer-events: none")
+    front.classList.add("front-connection-layer")
     front.setAttribute("height", "100%")
     front.setAttribute("width", "100%")
     document.body?.appendChild(front)
@@ -170,6 +364,111 @@ private fun addTerminalMarker(layer: SVGElement, key: String, point: Point, trim
     marker.setAttribute("mask", "url(#$maskId)")
 
     layer.appendChild(marker)
+}
+
+private fun addPerpendicularTerminalTick(layer: SVGElement, point: Point, endNormal: Point, opacity: Double, color: String) {
+    val dirLen = hypot(endNormal.x, endNormal.y)
+    if (dirLen < 1e-6) return
+
+    val nx = endNormal.x / dirLen
+    val ny = endNormal.y / dirLen
+    val tx = -ny
+    val ty = nx
+    val half = NESTED_PROXY_TICK_HALF_LENGTH
+
+    path {
+        moveTo(point.x - tx * half, point.y - ty * half)
+        lineTo(point.x + tx * half, point.y + ty * half)
+        stroke = color
+        strokeWidth = NESTED_PROXY_TICK_STROKE_WIDTH
+        fill = "none"
+        this.path.setAttribute("opacity", opacity.toString())
+        this.path.setAttribute("stroke-linecap", "round")
+        appendTo(layer)
+    }
+}
+
+private fun addTerminalDecoration(
+    layer: SVGElement,
+    key: String,
+    point: Point,
+    clippedEnd: ClippedResult,
+    trimRect: DOMRect,
+    opacity: Double,
+    color: String,
+    style: ConnectionTerminalStyle,
+    labelText: String? = null
+) {
+    when (style) {
+        ConnectionTerminalStyle.None -> {}
+        ConnectionTerminalStyle.Dot -> addTerminalMarker(layer, key, point, trimRect, opacity, color)
+        ConnectionTerminalStyle.PerpendicularTick -> {
+            addPerpendicularTerminalTick(layer, point, clippedEnd.normal, opacity, color)
+            if (!labelText.isNullOrBlank()) {
+                addTerminalLabel(layer, point, clippedEnd, trimRect, opacity, color, labelText)
+            }
+        }
+    }
+}
+
+private fun addTerminalLabel(
+    layer: SVGElement,
+    point: Point,
+    clippedEnd: ClippedResult,
+    trimRect: DOMRect,
+    opacity: Double,
+    color: String,
+    text: String
+) {
+    val centerX = trimRect.x + trimRect.width * 0.5
+    val rightSide = if (abs(clippedEnd.normal.x) > 0.2) clippedEnd.normal.x > 0 else point.x >= centerX
+    val mostlyHorizontal = abs(clippedEnd.normal.x) >= abs(clippedEnd.normal.y)
+    val placeBelow = if (mostlyHorizontal) {
+        // For horizontal exits, keep left-side labels above and right-side labels below.
+        rightSide
+    } else {
+        // For vertical exits, follow the line direction.
+        clippedEnd.normal.y > 0
+    }
+    val textElement = document.createElementNS("http://www.w3.org/2000/svg", "text") as SVGElement
+    val dx = if (rightSide) NESTED_PROXY_LABEL_X_OFFSET else -NESTED_PROXY_LABEL_X_OFFSET
+    val dy = if (placeBelow) NESTED_PROXY_LABEL_Y_OFFSET else -NESTED_PROXY_LABEL_Y_OFFSET
+    textElement.setAttribute("x", (point.x + dx).toString())
+    textElement.setAttribute("y", (point.y + dy).toString())
+    textElement.setAttribute("text-anchor", if (rightSide) "start" else "end")
+    textElement.setAttribute("dominant-baseline", "middle")
+    textElement.setAttribute("font-family", "\"Iosevka Web\", \"Iosevka\", monospace")
+    textElement.setAttribute("font-size", NESTED_PROXY_LABEL_FONT_SIZE.toString())
+    textElement.setAttribute("font-weight", "300")
+    textElement.setAttribute("fill", color)
+    textElement.setAttribute("opacity", opacity.toString())
+    textElement.setAttribute("pointer-events", "none")
+    textElement.textContent = text
+    layer.appendChild(textElement)
+
+    val bbox = try {
+        textElement.asDynamic().getBBox()
+    } catch (t: dynamic) {
+        null
+    } ?: return
+
+    val bx = (bbox.x as Number).toDouble()
+    val by = (bbox.y as Number).toDouble()
+    val bw = (bbox.width as Number).toDouble()
+    val bh = (bbox.height as Number).toDouble()
+    if (!bx.isFinite() || !by.isFinite() || !bw.isFinite() || !bh.isFinite()) return
+
+    val bg = document.createElementNS("http://www.w3.org/2000/svg", "rect") as SVGElement
+    bg.setAttribute("x", (bx - NESTED_PROXY_LABEL_BG_PAD_X).toString())
+    bg.setAttribute("y", (by - NESTED_PROXY_LABEL_BG_PAD_Y).toString())
+    bg.setAttribute("width", (bw + NESTED_PROXY_LABEL_BG_PAD_X * 2.0).toString())
+    bg.setAttribute("height", (bh + NESTED_PROXY_LABEL_BG_PAD_Y * 2.0).toString())
+    bg.setAttribute("rx", NESTED_PROXY_LABEL_BG_RADIUS.toString())
+    bg.setAttribute("ry", NESTED_PROXY_LABEL_BG_RADIUS.toString())
+    bg.setAttribute("fill", NESTED_PROXY_LABEL_BG_FILL)
+    bg.setAttribute("opacity", opacity.toString())
+    bg.setAttribute("pointer-events", "none")
+    layer.insertBefore(bg, textElement)
 }
 
 private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double, color: String) {
@@ -576,7 +875,10 @@ fun midPose(sampled: List<DubinsPose>): DubinsPose {
 }
 
 
-class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
+class CanvasGestures(
+    val launcher: (List<HTMLElement>) -> Unit,
+    val executionExpansionProvider: (HTMLElement, Boolean) -> List<HTMLElement> = { box, _ -> listOf(box) }
+) {
 
     companion object {
         val svgNamespace = "http://www.w3.org/2000/svg"
@@ -596,11 +898,80 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
     private var overlayContext: CanvasRenderingContext2D
     private var overlayCanvas: HTMLCanvasElement
+    private var cachedViewportWidth = 0.0
+    private var cachedViewportHeight = 0.0
+    private var cachedBoxes: List<HTMLElement> = emptyList()
+    private var cachedBoxByUid: Map<String, HTMLElement> = emptyMap()
+    private var cachedWorldRects: Map<HTMLElement, DOMRect> = emptyMap()
+    private var cachedDomBoxCount: Int = -1
 
     init {
         println("finding ${document.querySelector("#overlaycanvas")}")
         overlayCanvas = document.querySelector("#overlaycanvas")!! as HTMLCanvasElement
         overlayContext = overlayCanvas.getContext("2d") as CanvasRenderingContext2D
+        window.addEventListener("keydown", { event ->
+            handleExecutionModifierKey(event as? KeyboardEvent ?: return@addEventListener)
+        })
+        window.addEventListener("keyup", { event ->
+            handleExecutionModifierKey(event as? KeyboardEvent ?: return@addEventListener)
+        })
+    }
+
+    private fun uidOrNull(box: HTMLElement): String? {
+        val uid = box.unsafeCast<dynamic>().uid
+        if (uid == undefined || uid == null) return null
+        return uid.toString()
+    }
+
+    private fun captureLayoutSnapshot(parent: SVGSVGElement, ox: Double, oy: Double) {
+        val parentRect = parent.getBoundingClientRect()
+        val boxElements = boxes()
+        val screenRects = boxElements.associateWith { it.getBoundingClientRect() }
+        val worldRects = screenRects.mapValues { (_, rect) ->
+            DOMRect(rect.x - ox, rect.y - oy, rect.width, rect.height)
+        }
+        val boxByUid = boxElements.mapNotNull { box ->
+            uidOrNull(box)?.let { it to box }
+        }.toMap()
+
+        cachedViewportWidth = parentRect.width
+        cachedViewportHeight = parentRect.height
+        cachedBoxes = boxElements
+        cachedBoxByUid = boxByUid
+        cachedWorldRects = worldRects
+        cachedDomBoxCount = document.querySelectorAll(".box").length
+    }
+
+    private fun hasValidCachedLayoutForTranslation(): Boolean {
+        if (cachedBoxes.isEmpty()) return false
+        if (document.querySelectorAll(".box").length != cachedDomBoxCount) return false
+        if (abs(window.innerWidth.toDouble() - cachedViewportWidth) > 0.5) return false
+        if (abs(window.innerHeight.toDouble() - cachedViewportHeight) > 0.5) return false
+        if (cachedBoxes.any { it.asDynamic().isConnected != true }) return false
+        return true
+    }
+
+    private fun nestedDisclosureElement(parentBox: HTMLElement): HTMLElement? {
+        val outputAreas = parentBox.getElementsByClassName("outputArea")
+        val outputArea = if (outputAreas.length > 0) outputAreas.item(0) as? HTMLElement else null
+        if (outputArea == null) return null
+        val contain = outputArea.querySelector(".disclosure-group") ?: return null
+        val disclosures = contain.querySelectorAll(".disclosure")
+        for (i in 0 until disclosures.length) {
+            val disclosure = disclosures.item(i) as? HTMLElement ?: continue
+            if ((disclosure.asDynamic().__disclosureId as? String) == "nested") {
+                return disclosure
+            }
+        }
+        return null
+    }
+
+    private fun rectsIntersect(a: DOMRect, b: DOMRect): Boolean {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+    }
+
+    private fun pointInRect(p: Point, r: DOMRect): Boolean {
+        return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom
     }
 
     fun getNamedSVGGroup(name: String) =
@@ -612,14 +983,22 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
     }
 
 
-    fun rebuildConnectionGroup() {
+    fun rebuildConnectionGroup(translationOnly: Boolean = false) {
         currentFrameKeys.clear()
         needsFilterFrame = false
 
         val parent = document.getElementById("overlaysvglayer") as SVGSVGElement
         val frontParent = ensureFrontConnectionLayer()
+        val ox = mainTranslation[0] * 1.0
+        val oy = mainTranslation[1] * 1.0
 
-        val (vbw, vbh) = parent.getBoundingClientRect().let { it.width to it.height }
+        val shouldCapture = !translationOnly || !hasValidCachedLayoutForTranslation()
+        if (shouldCapture) {
+            captureLayoutSnapshot(parent, ox, oy)
+        }
+
+        val vbw = cachedViewportWidth
+        val vbh = cachedViewportHeight
 
         parent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
         frontParent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
@@ -638,6 +1017,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         markerDefs.innerHTML = ""
         currentFrontMarkerLayer = markers
         currentFrontMarkerDefs = markerDefs
+        currentConnectionSelectedUids = selected.mapNotNull { it.asDynamic().uid as? String }.toSet()
 
         // example of new box accessable drawing
 //        val circleLayer = getNamedSVGGroup("circleLayer")
@@ -658,10 +1038,6 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 //            }
 //        }
 
-        // because we're getting client rects we actually need to subtract this off
-        var ox = mainTranslation[0] * 1.0
-        var oy = mainTranslation[1] * 1.0
-
         fun clamp(v: Double, lo: Double, hi: Double) = max(lo, min(hi, v))
 
         fun addHintLine(x1: Double, y1: Double, x2: Double, y2: Double) {
@@ -676,59 +1052,212 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             hints.appendChild(line)
         }
 
-        fun traverse(connectionName: String, find: (HTMLElement) -> List<String>?) {
-            boxes().forEach { from ->
-                val c = find(from)
-                val screenRect = from.getBoundingClientRect()
+        fun addOffscreenHintForViewport(targetRect: DOMRect, viewportRect: DOMRect) {
+            val viewportLeft = viewportRect.x
+            val viewportTop = viewportRect.y
+            val viewportRight = viewportRect.x + viewportRect.width
+            val viewportBottom = viewportRect.y + viewportRect.height
 
-                if (from.style.visibility === "hidden") return@forEach
+            val offLeft = targetRect.x + targetRect.width < viewportLeft
+            val offRight = targetRect.x > viewportRight
+            val offTop = targetRect.y + targetRect.height < viewportTop
+            val offBottom = targetRect.y > viewportBottom
+            if (!(offLeft || offRight || offTop || offBottom)) return
+
+            val margin = 4.0
+            val edgeX = if (offLeft) viewportLeft + margin else viewportRight - margin
+            val edgeY = if (offTop) viewportTop + margin else viewportBottom - margin
+            when {
+                (offLeft || offRight) && (offTop || offBottom) -> {
+                    addHintLine(edgeX, edgeY, edgeX, edgeY)
+                }
+                offLeft || offRight -> {
+                    val y1 = clamp(targetRect.y, viewportTop, viewportBottom)
+                    val y2 = clamp(targetRect.y + targetRect.height, viewportTop, viewportBottom)
+                    addHintLine(edgeX, y1, edgeX, y2)
+                }
+                offTop || offBottom -> {
+                    val x1 = clamp(targetRect.x, viewportLeft, viewportRight)
+                    val x2 = clamp(targetRect.x + targetRect.width, viewportLeft, viewportRight)
+                    addHintLine(x1, edgeY, x2, edgeY)
+                }
+            }
+        }
+
+        val mainViewportRect = DOMRect(-ox, -oy, vbw, vbh)
+        val nestedDisclosureSnapshotCache = mutableMapOf<String, NestedDisclosureSnapshot>()
+        fun nestedDisclosureSnapshot(parentUid: String): NestedDisclosureSnapshot = nestedDisclosureSnapshotCache.getOrPut(parentUid) {
+            val parentBox = cachedBoxByUid[parentUid] ?: return@getOrPut NestedDisclosureSnapshot(
+                isOpen = false,
+                viewportWorldRect = null
+            )
+            val disclosure = nestedDisclosureElement(parentBox)
+            val isOpen = disclosure?.classList?.contains("open") == true
+            if (!isOpen) {
+                return@getOrPut NestedDisclosureSnapshot(
+                    isOpen = false,
+                    viewportWorldRect = null
+                )
+            }
+            val viewport = disclosure.querySelector(".disclosure-content") as? HTMLElement
+            val r = viewport?.getBoundingClientRect()
+            val viewportWorldRect = if (
+                r != null &&
+                r.width > NESTED_VIEWPORT_VISIBILITY_EPSILON &&
+                r.height > NESTED_VIEWPORT_VISIBILITY_EPSILON
+            ) {
+                DOMRect(r.x - ox, r.y - oy, r.width, r.height)
+            } else {
+                null
+            }
+            NestedDisclosureSnapshot(isOpen = true, viewportWorldRect = viewportWorldRect)
+        }
+
+        fun traverse(connectionName: String, find: (HTMLElement) -> List<String>?) {
+            val proxyCache = mutableMapOf<HTMLElement, HTMLElement?>()
+            fun proxyFor(box: HTMLElement): HTMLElement? = proxyCache.getOrPut(box) {
+                val nestedInUid = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return@getOrPut null
+                val nestedIn = cachedBoxByUid[nestedInUid] ?: return@getOrPut null
+                val snapshot = nestedDisclosureSnapshot(nestedInUid)
+                if (!snapshot.isOpen) return@getOrPut nestedIn
+                val childRect = cachedWorldRects[box] ?: return@getOrPut nestedIn
+                val viewportRect = snapshot.viewportWorldRect ?: return@getOrPut nestedIn
+                if (!rectsIntersect(childRect, viewportRect)) nestedIn else null
+            }
+
+            cachedBoxes.forEach { from ->
+                val c = find(from)
+                val fromProxyTarget = proxyFor(from)
+                val renderedFrom = fromProxyTarget ?: from
+                val worldRect = cachedWorldRects[renderedFrom] ?: return@forEach
+
+                if (renderedFrom.style.visibility === "hidden" || !hasRenderableFrame(renderedFrom)) return@forEach
 
                 var o0 = 1.0
                 if (from.asDynamic().offline ) o0 = 0.25
 
-                val r1 = DOMRect(screenRect.x - ox, screenRect.y - oy, screenRect.width, screenRect.height)
+                val r1 = worldRect.copyRect()
 
-                val offLeft = screenRect.x + screenRect.width < 0
-                val offRight = screenRect.x > vbw
-                val offTop = screenRect.y + screenRect.height < 0
-                val offBottom = screenRect.y > vbh
+                addOffscreenHintForViewport(worldRect, mainViewportRect)
 
-                if (offLeft || offRight || offTop || offBottom) {
-                    val margin = 4.0
-                    val edgeXScreen = if (offLeft) margin else vbw - margin
-                    val edgeYScreen = if (offTop) margin else vbh - margin
-                    val edgeX = edgeXScreen - ox
-                    val edgeY = edgeYScreen - oy
-                    when {
-                        (offLeft || offRight) && (offTop || offBottom) -> {
-                            // Corner case: keep using a short line segment
-                            addHintLine(edgeX, edgeY, edgeX, edgeY)
-                        }
-                        offLeft || offRight -> {
-                            val y1 = clamp(screenRect.y, 0.0, vbh) - oy
-                            val y2 = clamp(screenRect.y + screenRect.height, 0.0, vbh) - oy
-                            addHintLine(edgeX, y1, edgeX, y2)
-                        }
-                        offTop || offBottom -> {
-                            val x1 = clamp(screenRect.x, 0.0, vbw) - ox
-                            val x2 = clamp(screenRect.x + screenRect.width, 0.0, vbw) - ox
-                            addHintLine(x1, edgeY, x2, edgeY)
-                        }
-                    }
-                }
-
-                from.unsafeCast<dynamic>()
                 c?.let {
                     it.forEach { id ->
-                        find(id)?.let { to ->
-                            val r2 = to.getBoundingClientRect()
-                            if (to.style.visibility === "hidden") return@forEach
+                        cachedBoxByUid[id]?.let { to ->
+                            var effectiveFromProxy = fromProxyTarget
+                            var effectiveToProxy = proxyFor(to)
+                            var effectiveRenderedFrom = effectiveFromProxy ?: from
+                            var effectiveRenderedTo = effectiveToProxy ?: to
+                            if (effectiveRenderedTo.style.visibility === "hidden" || !hasRenderableFrame(effectiveRenderedTo)) return@forEach
+                            if (effectiveRenderedFrom == effectiveRenderedTo) return@forEach
+                            var effectiveFromRect = cachedWorldRects[effectiveRenderedFrom]?.copyRect() ?: return@forEach
+                            var effectiveToRect = cachedWorldRects[effectiveRenderedTo]?.copyRect() ?: return@forEach
+
+                            // Per-connection endpoint visibility: if the box is partially visible
+                            // inside the nest viewport but the connection endpoint falls outside
+                            // the viewport, override to proxy so the connection doesn't float.
+                            fun endpointVisibilityOverride() {
+                                val fromNestedUid = from.unsafeCast<dynamic>().box_nestedIn as? String
+                                val toNestedUid = to.unsafeCast<dynamic>().box_nestedIn as? String
+                                if (fromNestedUid == null && toNestedUid == null) return
+
+                                val endpoints = connectCenters(effectiveFromRect, effectiveToRect)
+
+                                // Check "from" endpoint: if from is nested, not proxied, and endpoint is outside viewport
+                                if (fromNestedUid != null && effectiveFromProxy == null) {
+                                    val viewportRect = nestedDisclosureSnapshot(fromNestedUid).viewportWorldRect
+                                    if (viewportRect != null && !pointInRect(endpoints.first.point, viewportRect)) {
+                                        val parentEl = cachedBoxByUid[fromNestedUid]
+                                        if (parentEl != null) {
+                                            effectiveFromProxy = parentEl
+                                            effectiveRenderedFrom = parentEl
+                                            effectiveFromRect = cachedWorldRects[parentEl]?.copyRect() ?: return
+                                        }
+                                    }
+                                }
+
+                                // Check "to" endpoint: if to is nested, not proxied, and endpoint is outside viewport
+                                if (toNestedUid != null && effectiveToProxy == null) {
+                                    // Recompute endpoints since fromRect may have changed
+                                    val endpoints2 = connectCenters(effectiveFromRect, effectiveToRect)
+                                    val viewportRect = nestedDisclosureSnapshot(toNestedUid).viewportWorldRect
+                                    if (viewportRect != null && !pointInRect(endpoints2.second.point, viewportRect)) {
+                                        val parentEl = cachedBoxByUid[toNestedUid]
+                                        if (parentEl != null) {
+                                            effectiveToProxy = parentEl
+                                            effectiveRenderedTo = parentEl
+                                            effectiveToRect = cachedWorldRects[parentEl]?.copyRect() ?: return
+                                        }
+                                    }
+                                }
+
+                                // If from was overridden, re-verify its endpoint against the new geometry
+                                if (fromNestedUid != null && effectiveFromProxy != null && effectiveFromProxy != fromProxyTarget) {
+                                    // Already proxied to parent — nothing more to do
+                                } else if (fromNestedUid != null && effectiveFromProxy == null) {
+                                    // Recheck: overriding "to" may have shifted from's endpoint
+                                    val endpoints3 = connectCenters(effectiveFromRect, effectiveToRect)
+                                    val viewportRect = nestedDisclosureSnapshot(fromNestedUid).viewportWorldRect
+                                    if (viewportRect != null && !pointInRect(endpoints3.first.point, viewportRect)) {
+                                        val parentEl = cachedBoxByUid[fromNestedUid]
+                                        if (parentEl != null) {
+                                            effectiveFromProxy = parentEl
+                                            effectiveRenderedFrom = parentEl
+                                            effectiveFromRect = cachedWorldRects[parentEl]?.copyRect() ?: return
+                                        }
+                                    }
+                                }
+                            }
+                            endpointVisibilityOverride()
+
+                            // Re-check identity after potential proxy overrides
+                            if (effectiveRenderedFrom == effectiveRenderedTo) return@forEach
+
                             var o1 = 1.0
                             if (to.asDynamic().offline ) o1 = 0.25
 
-                            r2.x -= ox
-                            r2.y -= oy
-                            knownConnections[connectionName]?.invoke(from, r1, to, r2, svg, o0*o1)
+                            when {
+                                effectiveFromProxy != null && effectiveToProxy != null -> {
+                                    (knownProxyConnectionsBoth[connectionName] ?: knownConnections[connectionName])?.invoke(
+                                        from,
+                                        effectiveFromRect,
+                                        to,
+                                        effectiveToRect,
+                                        svg,
+                                        o0 * o1
+                                    )
+                                }
+
+                                effectiveFromProxy != null -> {
+                                    (knownProxyConnectionsFrom[connectionName] ?: knownConnections[connectionName])?.invoke(
+                                        from,
+                                        effectiveFromRect,
+                                        to,
+                                        effectiveToRect,
+                                        svg,
+                                        o0 * o1
+                                    )
+                                }
+
+                                effectiveToProxy != null -> {
+                                    (knownProxyConnectionsTo[connectionName] ?: knownConnections[connectionName])?.invoke(
+                                        from,
+                                        effectiveFromRect,
+                                        to,
+                                        effectiveToRect,
+                                        svg,
+                                        o0 * o1
+                                    )
+                                }
+
+                                else -> knownConnections[connectionName]?.invoke(
+                                    from,
+                                    effectiveFromRect,
+                                    to,
+                                    effectiveToRect,
+                                    svg,
+                                    o0 * o1
+                                )
+                            }
                         }
                     }
                 }
@@ -739,8 +1268,18 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             (from.unsafeCast<dynamic>().box_children as Array<String>?)?.toList()
         }
 
+        cachedBoxes.forEach { box ->
+            if (box.style.visibility === "hidden" || !hasRenderableFrame(box)) return@forEach
+            val parentUid = box.unsafeCast<dynamic>().box_nestedIn as? String ?: return@forEach
+            val viewportRect = nestedDisclosureSnapshot(parentUid).viewportWorldRect ?: return@forEach
+            val boxRect = cachedWorldRects[box] ?: return@forEach
+            if (rectsIntersect(boxRect, viewportRect)) return@forEach
+            addOffscreenHintForViewport(boxRect, viewportRect)
+        }
+
         val obsolete = connectionFilterStates.keys - currentFrameKeys
         obsolete.forEach { connectionFilterStates.remove(it) }
+        currentConnectionSelectedUids = emptySet()
         currentFrontMarkerLayer = null
         currentFrontMarkerDefs = null
 
@@ -748,7 +1287,7 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
             filterFrameScheduled = true
             window.requestAnimationFrame {
                 filterFrameScheduled = false
-                rebuildConnectionGroup()
+                rebuildConnectionGroup(translationOnly = translationOnly)
             }
         }
     }
@@ -758,6 +1297,14 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         overlayContext.beginPath()
         overlayContext.arc(x, y, r, 0.0, 2 * PI)
         overlayContext.fill()
+    }
+
+    private fun clearOverlayCanvas() {
+        // Clear in raw canvas pixel space so browser zoom / DPR transforms cannot leave stale regions.
+        overlayContext.save()
+        overlayContext.setTransform(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        overlayContext.restore()
     }
 
     fun intersects(x: Double, y: Double): dynamic {
@@ -771,6 +1318,20 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
     var isMarquee = false
     var start: Pair<Double, Double>? = null
     var rects: List<Pair<HTMLElement, DOMRect>>? = null
+    private var executionBreadthFirst = false
+    private var lastExecutionPointer: Pair<Double, Double>? = null
+
+    private data class ExecutionHit(
+        val element: HTMLElement,
+        val rect: DOMRect,
+        val t: Double,
+        val point: Point
+    )
+
+    private data class ExecutionLabel(
+        val number: Int,
+        val point: Point
+    )
 
 
     fun down(e: org.w3c.dom.events.MouseEvent) {
@@ -783,6 +1344,8 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
 
             isExecutionLine = true
             start = e.x to e.y
+            lastExecutionPointer = e.x to e.y
+            executionBreadthFirst = e.shiftKey
         } else {
 
             var boxList = document.querySelectorAll(".box")
@@ -795,39 +1358,56 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
     }
 
     fun up(e: org.w3c.dom.events.MouseEvent) {
+        executionBreadthFirst = e.shiftKey
         isDown = false
         if (isExecutionLine) {
-            finalizeExecutionLine(start!!, e)
+            finalizeExecutionLine(start!!, e.x, e.y)
         } else if (isMarquee) {
             finalizeSelectionLine(start!!, e)
         }
         isExecutionLine = false
         isMarquee = false
+        lastExecutionPointer = null
         rebuildConnectionGroup()
     }
 
+    private fun handleExecutionModifierKey(e: KeyboardEvent) {
+        if (!isExecutionLine) return
+        if (e.key != "Shift") return
+        executionBreadthFirst = e.type == "keydown"
+        val s = start ?: return
+        val pointer = lastExecutionPointer ?: return
+        updateExecutionLine(s, pointer.first, pointer.second)
+    }
+
     fun updateExecutionLine(start: Pair<Double, Double>, e: MouseEvent) {
+        executionBreadthFirst = e.shiftKey
+        lastExecutionPointer = e.x to e.y
+        updateExecutionLine(start, e.x, e.y)
+    }
+
+    private fun updateExecutionLine(start: Pair<Double, Double>, x: Double, y: Double) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
         overlayContext.strokeStyle = "rgba(128,255,164,0.5)"
         overlayContext.lineWidth = 1.75
         overlayContext.beginPath()
-        overlayContext.moveTo(e.x, e.y)
+        overlayContext.moveTo(x, y)
         overlayContext.lineTo(start.first, start.second)
         overlayContext.stroke()
         overlayContext.fillStyle = "rgba(128,255,164,0.5)"
-        drawDot(e.x, e.y, 2.0)
+        drawDot(x, y, 2.0)
         drawDot(start.first, start.second, 2.0)
-        rects!!.filter { (element, rect) ->
-            lineIntersectsDOMRect(e.x, e.y, start.first, start.second, rect)
-        }.forEach { (element, rect) ->
+        val hits = executionHits(start, x, y)
+        hits.forEach { (_, rect) ->
             overlayContext.strokeRect(rect.x, rect.y, rect.width, rect.height)
         }
+        drawExecutionOrderLabels(labelsForHits(hits, executionBreadthFirst, start, x, y))
     }
 
     fun updateMarquee(start: Pair<Double, Double>, e: MouseEvent) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
         overlayContext.strokeStyle = "rgba(128,255,164,0.5)"
         overlayContext.lineWidth = 1.75
         overlayContext.beginPath()
@@ -847,20 +1427,16 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         }
     }
 
-    fun finalizeExecutionLine(start: Pair<Double, Double>, e: MouseEvent) {
+    fun finalizeExecutionLine(start: Pair<Double, Double>, x: Double, y: Double) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
 
-        rects!!.filter { (element, rect) ->
-            lineIntersectsDOMRect(e.x, e.y, start.first, start.second, rect)
-        }.let {
-            launcher(it.map { it.first })
-        }
+        launcher(expandedExecutionOrder(executionHits(start, x, y), executionBreadthFirst))
     }
 
     fun finalizeSelectionLine(start: Pair<Double, Double>, e: MouseEvent) {
         overlayContext.fillStyle = "rgba(0,0,0,0)"
-        overlayContext.clearRect(0.0, 0.0, overlayCanvas.width.toDouble(), overlayCanvas.height.toDouble())
+        clearOverlayCanvas()
 
         if (!e.shiftKey) selected.copy().forEach {
             deselectBox(it)
@@ -898,6 +1474,208 @@ class CanvasGestures(val launcher: (List<HTMLElement>) -> Unit) {
         val s = (-s1y * (x0 - x2) + s1x * (y0 - y2)) / denom
         val t = (s2x * (y0 - y2) - s2y * (x0 - x2)) / denom
         return (s in 0.0..1.0) && (t in 0.0..1.0)
+    }
+
+    private fun lineRectIntersectionPoint(
+        startX: Double,
+        startY: Double,
+        endX: Double,
+        endY: Double,
+        rect: DOMRect
+    ): Pair<Point, Double>? {
+        val dx = endX - startX
+        val dy = endY - startY
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 1e-9) return null
+
+        fun inside(x: Double, y: Double): Boolean {
+            return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        }
+
+        if (inside(startX, startY)) {
+            return Point(startX, startY) to 0.0
+        }
+
+        val candidates = mutableListOf<Pair<Point, Double>>()
+
+        fun addCandidate(t: Double, x: Double, y: Double) {
+            if (t !in 0.0..1.0) return
+            if (!inside(x, y)) return
+            candidates.add(Point(x, y) to t)
+        }
+
+        if (abs(dx) > 1e-9) {
+            val leftT = (rect.left - startX) / dx
+            addCandidate(leftT, rect.left, startY + leftT * dy)
+            val rightT = (rect.right - startX) / dx
+            addCandidate(rightT, rect.right, startY + rightT * dy)
+        }
+        if (abs(dy) > 1e-9) {
+            val topT = (rect.top - startY) / dy
+            addCandidate(topT, startX + topT * dx, rect.top)
+            val bottomT = (rect.bottom - startY) / dy
+            addCandidate(bottomT, startX + bottomT * dx, rect.bottom)
+        }
+
+        return candidates.minByOrNull { it.second }
+    }
+
+    private fun executionHits(start: Pair<Double, Double>, pointerX: Double, pointerY: Double): List<ExecutionHit> {
+        val sx = start.first
+        val sy = start.second
+        val ex = pointerX
+        val ey = pointerY
+        val dx = ex - sx
+        val dy = ey - sy
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 1e-9) return emptyList()
+
+        return rects.orEmpty().mapNotNull { (element, rect) ->
+            if (!lineIntersectsDOMRect(ex, ey, sx, sy, rect)) return@mapNotNull null
+            val hit = lineRectIntersectionPoint(sx, sy, ex, ey, rect)
+            val t = hit?.second ?: run {
+                val centerX = rect.x + rect.width / 2.0
+                val centerY = rect.y + rect.height / 2.0
+                ((centerX - sx) * dx + (centerY - sy) * dy) / lengthSquared
+            }
+            val point = hit?.first ?: Point(
+                (rect.x + rect.width / 2.0).coerceIn(rect.left, rect.right),
+                (rect.y + rect.height / 2.0).coerceIn(rect.top, rect.bottom)
+            )
+            ExecutionHit(element, rect, t, point)
+        }.sortedBy { it.t }
+    }
+
+    private fun expandedExecutionOrder(hits: List<ExecutionHit>, breadthFirst: Boolean): List<HTMLElement> {
+        val seen = mutableSetOf<String>()
+        val ordered = mutableListOf<HTMLElement>()
+
+        fun keyFor(box: HTMLElement): String {
+            val uid = box.unsafeCast<dynamic>().uid
+            if (uid != undefined && uid != null) return uid.toString()
+            return "element:${box.hashCode()}"
+        }
+
+        hits.forEach { hit ->
+            if (keyFor(hit.element) in seen) return@forEach
+            executionExpansionProvider(hit.element, breadthFirst).forEach { box ->
+                val key = keyFor(box)
+                if (seen.add(key)) ordered.add(box)
+            }
+        }
+        return ordered
+    }
+
+    private fun rectForBox(box: HTMLElement): DOMRect? {
+        return rects.orEmpty().firstOrNull { it.first == box }?.second
+    }
+
+    private fun closestPointOnSegment(px: Double, py: Double, ax: Double, ay: Double, bx: Double, by: Double): Point {
+        val dx = bx - ax
+        val dy = by - ay
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 1e-9) return Point(ax, ay)
+        val t = (((px - ax) * dx + (py - ay) * dy) / lengthSquared).coerceIn(0.0, 1.0)
+        return Point(ax + t * dx, ay + t * dy)
+    }
+
+    private fun closestPointOnRectToSegment(rect: DOMRect, sx: Double, sy: Double, ex: Double, ey: Double): Point {
+        lineRectIntersectionPoint(sx, sy, ex, ey, rect)?.let { return it.first }
+
+        fun dist2(a: Point, bx: Double, by: Double): Double {
+            val dx = a.x - bx
+            val dy = a.y - by
+            return dx * dx + dy * dy
+        }
+
+        val edges = listOf(
+            doubleArrayOf(rect.left, rect.top, rect.right, rect.top),
+            doubleArrayOf(rect.right, rect.top, rect.right, rect.bottom),
+            doubleArrayOf(rect.right, rect.bottom, rect.left, rect.bottom),
+            doubleArrayOf(rect.left, rect.bottom, rect.left, rect.top)
+        )
+
+        val candidates = mutableListOf<Pair<Point, Double>>()
+        edges.forEach { edge ->
+            val ax = edge[0]
+            val ay = edge[1]
+            val bx = edge[2]
+            val by = edge[3]
+
+            val nearStart = closestPointOnSegment(sx, sy, ax, ay, bx, by)
+            candidates.add(nearStart to dist2(nearStart, sx, sy))
+
+            val nearEnd = closestPointOnSegment(ex, ey, ax, ay, bx, by)
+            candidates.add(nearEnd to dist2(nearEnd, ex, ey))
+
+            val edgeStartToChord = closestPointOnSegment(ax, ay, sx, sy, ex, ey)
+            candidates.add(Point(ax, ay) to dist2(edgeStartToChord, ax, ay))
+
+            val edgeEndToChord = closestPointOnSegment(bx, by, sx, sy, ex, ey)
+            candidates.add(Point(bx, by) to dist2(edgeEndToChord, bx, by))
+        }
+
+        return candidates.minByOrNull { it.second }?.first ?: Point(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
+    }
+
+    private fun labelsForHits(
+        hits: List<ExecutionHit>,
+        breadthFirst: Boolean,
+        start: Pair<Double, Double>,
+        pointerX: Double,
+        pointerY: Double
+    ): List<ExecutionLabel> {
+        val seen = mutableSetOf<String>()
+        val labels = mutableListOf<ExecutionLabel>()
+        var nextNumber = 1
+
+        fun keyFor(box: HTMLElement): String {
+            val uid = box.unsafeCast<dynamic>().uid
+            if (uid != undefined && uid != null) return uid.toString()
+            return "element:${box.hashCode()}"
+        }
+
+        hits.forEach { hit ->
+            if (keyFor(hit.element) in seen) return@forEach
+            executionExpansionProvider(hit.element, breadthFirst).forEach { box ->
+                val key = keyFor(box)
+                if (seen.add(key)) {
+                    val labelPoint = rectForBox(box)?.let { rect ->
+                        closestPointOnRectToSegment(rect, start.first, start.second, pointerX, pointerY)
+                    } ?: hit.point
+                    labels.add(ExecutionLabel(nextNumber++, labelPoint))
+                }
+            }
+        }
+        return labels
+    }
+
+    private fun drawExecutionOrderLabels(labels: List<ExecutionLabel>) {
+        if (labels.isEmpty()) return
+
+        overlayContext.save()
+        overlayContext.font = "12px \"Iosevka Web\", \"Iosevka\", monospace"
+        overlayContext.asDynamic().textAlign = "center"
+        overlayContext.asDynamic().textBaseline = "middle"
+
+        labels.forEach { label ->
+            val text = label.number.toString()
+            val radius = max(8.0, 5.0 + text.length * 3.2)
+            val x = label.point.x
+            val y = label.point.y
+
+            overlayContext.beginPath()
+            overlayContext.arc(x, y, radius, 0.0, 2 * PI)
+            overlayContext.fillStyle = "rgba(128,255,164,0.94)"
+            overlayContext.fill()
+            overlayContext.lineWidth = 1.25
+            overlayContext.strokeStyle = "rgba(0,0,0,0.82)"
+            overlayContext.stroke()
+            overlayContext.fillStyle = "rgba(0,0,0,0.92)"
+            overlayContext.fillText(text, x, y + 0.5)
+        }
+
+        overlayContext.restore()
     }
 
     fun lineIntersectsDOMRect(x0: Double, y0: Double, x1: Double, y1: Double, rect: DOMRect): Boolean {

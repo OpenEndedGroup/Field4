@@ -74,9 +74,9 @@ const STYLE_BLOCK = `
   background: var(--kf-bg);
   color: var(--kf-text);
   border: 1px solid var(--kf-border);
-  // border-radius: 16px;
-  padding: 1rem;
-  width: fit-content;
+  padding: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   position: relative;
 }
@@ -122,6 +122,7 @@ const STYLE_BLOCK = `
   fill: #ffab47;
   stroke: var(--kf-bg);
   stroke-width: 2;
+  pointer-events: none;
 }
 
 .kf-snap-line {
@@ -156,6 +157,11 @@ const STYLE_BLOCK = `
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.kf-keyframes {
+  transition: opacity 0.2s ease;
 }
 
 .kf-keyframe circle {
@@ -308,6 +314,24 @@ const STYLE_BLOCK = `
   color: var(--kf-selected);
 }
 
+.kf-keyframe.is-locked circle {
+  stroke-dasharray: 2.5 2;
+  opacity: 0.55;
+}
+
+.kf-keyframe.is-locked.is-selected circle {
+  stroke-dasharray: 2.5 2;
+  opacity: 0.7;
+}
+
+.kf-marquee {
+  fill: rgba(255, 209, 102, 0.08);
+  stroke: var(--kf-selected);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
 .kf-overlay path {
   fill: none;
   stroke: rgba(255, 255, 255, 0.35);
@@ -333,18 +357,30 @@ const STYLE_BLOCK = `
   pointer-events: none;
 }
 
+.kf-axis-label {
+  fill: rgba(255, 255, 255, 0.4);
+  font-size: 9px;
+  font-family: 'Inter', system-ui, sans-serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+.kf-axis-label--origin {
+  fill: rgba(255, 255, 255, 0.6);
+}
+
 .kf-menu {
   position: absolute;
-  min-width: 200px;
+  min-width: 120px;
   background: #0a0d13;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  // border-radius: 12px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
-  padding: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  padding: 0.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
   z-index: 20;
+  font-size: 0.7rem;
 }
 
 .kf-menu.is-hidden {
@@ -353,21 +389,22 @@ const STYLE_BLOCK = `
 
 .kf-menu-group {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  flex-direction: row;
+  gap: 0.15rem;
 }
 
 .kf-menu-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
-  margin: 0.25rem 0;
+  margin: 0.1rem 0;
 }
 
 .kf-menu-label {
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--kf-muted);
+  padding: 0 0.15rem;
 }
 
 .kf-menu button {
@@ -380,11 +417,12 @@ const STYLE_BLOCK = `
   justify-content: space-between;
   align-items: center;
   border: 1px solid transparent;
-  // border-radius: 10px;
-  padding: 0.35rem 0.5rem;
+  padding: 0.15rem 0.3rem;
   background: transparent;
   color: inherit;
   cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1.2;
 }
 
 .kf-menu-item:hover {
@@ -395,6 +433,34 @@ const STYLE_BLOCK = `
 .kf-menu-item.is-active {
   border-color: var(--kf-accent);
   color: var(--kf-accent);
+}
+
+.kf-type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 1px;
+}
+
+.kf-type-icon:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.kf-type-icon.is-active {
+  border-color: var(--kf-accent);
+  color: var(--kf-accent);
+}
+
+.kf-type-icon svg {
+  width: 16px;
+  height: 14px;
 }
 
 `;
@@ -641,6 +707,10 @@ export class KeyframeEditor {
                         ? this.options.playhead
                         : null;
 
+                /** Map from overlay id → {samples, color, strokeWidth, dashArray} */
+                this._overlays = new Map();
+                this._isDragging = false;
+
                 this.buildDOM();
                 this.refresh({ notify: false });
         }
@@ -651,6 +721,21 @@ export class KeyframeEditor {
 
         get innerHeight() {
                 return Math.max(this.options.height - this.options.padding * 2, 10);
+        }
+
+        /**
+         * Resize the editor to a new width/height and rebuild the SVG
+         */
+        resize(width, height) {
+                this.options.width = width;
+                this.options.height = height;
+                this.wrapper.style.width = `${width}px`;
+                // Rebuild SVG with new dimensions
+                if (this.svg) {
+                        this.svg.remove();
+                }
+                this.buildSVG();
+                this.refresh({ notify: false });
         }
 
         prepareKeyframe(kf) {
@@ -674,6 +759,7 @@ export class KeyframeEditor {
                         value: clamp(Number.isFinite(desiredValue) ? desiredValue : valueMin, valueMin, valueMax),
                         type: this.options.types[kf.type] ? kf.type : "linear",
                         handles: this.createHandlePayload(kf.handles),
+                        locked: !!kf.locked,
                 };
                 this.ensureHandles(prepared);
                 this.applyHandleMode(prepared);
@@ -684,7 +770,6 @@ export class KeyframeEditor {
                 this.root.innerHTML = "";
                 this.wrapper = document.createElement("div");
                 this.wrapper.className = "kf-editor";
-                this.wrapper.style.width = `${this.options.width}px`;
                 this.root.appendChild(this.wrapper);
 
                 this.buildSVG();
@@ -734,6 +819,9 @@ export class KeyframeEditor {
                 this.graphOverlay = overlayGroup;
                 this.graphOverlayExtras = createSVGElement("g", { class: "kf-overlay-extras" });
                 overlayGroup.appendChild(this.graphOverlayExtras);
+                // Persistent overlay curves sent from backend (not cleared on re-render)
+                this.backendOverlayGroup = createSVGElement("g", { class: "kf-backend-overlays" });
+                overlayGroup.appendChild(this.backendOverlayGroup);
                 this.snapIndicatorTime = createSVGElement("line", {
                         class: "kf-snap-line",
                         visibility: "hidden",
@@ -804,7 +892,7 @@ export class KeyframeEditor {
                         }
                         if (event.button !== 0) return;
                         this.hideContextMenu();
-                        this.clearSelection();
+                        this.startMarquee(event);
                 });
 
                 hitRegion.addEventListener("contextmenu", (event) => {
@@ -817,12 +905,64 @@ export class KeyframeEditor {
                         const point = this.pointerToValues(event);
                         this.addKeyframe(point);
                 });
+
+                // Two-finger trackpad pan & pinch-zoom via wheel events
+                hitRegion.addEventListener("wheel", (event) => {
+                        event.preventDefault();
+                        const timeSpan = rangeSize(this.viewTimeRange);
+                        const valueSpan = rangeSize(this.viewValueRange);
+                        const width = Math.max(this.innerWidth, 1);
+                        const height = Math.max(this.innerHeight, 1);
+
+                        if (event.ctrlKey) {
+                                // Pinch-to-zoom: ctrlKey is set by trackpad pinch gestures
+                                const zoomFactor = 1 + event.deltaY * 0.005;
+                                const rect = this.svg.getBoundingClientRect();
+                                const localX = event.clientX - rect.left - this.options.padding;
+                                const localY = event.clientY - rect.top - this.options.padding;
+                                const anchorTimeRatio = clamp(localX / width, 0, 1);
+
+                                const [tMin, tMax] = this.viewTimeRange;
+                                const anchorTime = tMin + anchorTimeRatio * timeSpan;
+                                const newTimeSpan = Math.max(timeSpan * zoomFactor, 0.1);
+                                const newTMin = anchorTime - anchorTimeRatio * newTimeSpan;
+                                const newTMax = anchorTime + (1 - anchorTimeRatio) * newTimeSpan;
+                                this.setViewTimeRange([newTMin, newTMax], { render: false });
+
+                                // Zoom value axis only when Shift is also held
+                                if (event.shiftKey) {
+                                        const anchorValueRatio = clamp(1 - localY / height, 0, 1);
+                                        const [vMin, vMax] = this.viewValueRange;
+                                        const anchorValue = vMin + anchorValueRatio * valueSpan;
+                                        const newValueSpan = Math.max(valueSpan * zoomFactor, 0.01);
+                                        const newVMin = anchorValue - anchorValueRatio * newValueSpan;
+                                        const newVMax = anchorValue + (1 - anchorValueRatio) * newValueSpan;
+                                        this.setViewValueRange([newVMin, newVMax], { render: false });
+                                }
+                        } else {
+                                // Two-finger scroll → pan
+                                const timeShift = (event.deltaX / width) * timeSpan;
+                                const valueShift = -(event.deltaY / height) * valueSpan;
+                                const [tMin, tMax] = this.viewTimeRange;
+                                this.setViewTimeRange([tMin + timeShift, tMax + timeShift], { render: false });
+                                const [vMin, vMax] = this.viewValueRange;
+                                this.setViewValueRange([vMin + valueShift, vMax + valueShift], { render: false });
+                        }
+                        this.render();
+                }, { passive: false });
+
+                this.marqueeRect = createSVGElement("rect", {
+                        class: "kf-marquee",
+                        visibility: "hidden",
+                });
+
                 svg.appendChild(gridGroup);
                 svg.appendChild(axisGroup);
                 svg.appendChild(bg);
                 svg.appendChild(hitRegion);
                 svg.appendChild(this.graphPath);
                 svg.appendChild(overlayGroup);
+                svg.appendChild(this.marqueeRect);
                 svg.appendChild(keyframeLayer);
                 svg.appendChild(this.playheadLine);
                 svg.appendChild(this.playheadDot);
@@ -840,6 +980,15 @@ export class KeyframeEditor {
                 this.menuTargetId = null;
                 this.menuTypeButtons = {};
 
+                // Compact SVG icon definitions for each type
+                const typeIcons = {
+                        linear: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="12" x2="14" y2="2" stroke="currentColor" stroke-width="1.5"/></svg>`,
+                        hold: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><polyline points="2,4 9,4 9,10 14,10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
+                        bezierFree: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,12 C6,12 10,2 14,2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
+                        bezierFlat: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,10 C6,10 10,4 14,4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="10" x2="5" y2="10" stroke="currentColor" stroke-width="0.8" opacity="0.5"/></svg>`,
+                        bezierContinuous: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,12 C5,12 5,2 8,7 C11,12 11,2 14,2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
+                };
+
                 const resetButton = document.createElement("button");
                 resetButton.type = "button";
                 resetButton.className = "kf-menu-item";
@@ -849,10 +998,26 @@ export class KeyframeEditor {
                         this.hideContextMenu();
                 });
 
+                const lockButton = document.createElement("button");
+                lockButton.type = "button";
+                lockButton.className = "kf-menu-item";
+                lockButton.textContent = "Lock";
+                lockButton.addEventListener("click", () => {
+                        if (this.menuTargetId) {
+                                const ids =
+                                    this.state.selectedIds.includes(this.menuTargetId) && this.state.selectedIds.length > 1
+                                        ? [...this.state.selectedIds]
+                                        : [this.menuTargetId];
+                                this.toggleLock(ids);
+                        }
+                        this.hideContextMenu();
+                });
+                this._lockButton = lockButton;
+
                 const deleteButton = document.createElement("button");
                 deleteButton.type = "button";
                 deleteButton.className = "kf-menu-item";
-                deleteButton.textContent = "Delete keyframe";
+                deleteButton.textContent = "Delete";
                 deleteButton.addEventListener("click", () => {
                         if (this.menuTargetId) {
                                 this.removeKeyframe(this.menuTargetId);
@@ -863,18 +1028,15 @@ export class KeyframeEditor {
                 const divider = document.createElement("div");
                 divider.className = "kf-menu-divider";
 
-                const typeLabel = document.createElement("div");
-                typeLabel.className = "kf-menu-label";
-                typeLabel.textContent = "Type";
-
                 const typeGroup = document.createElement("div");
                 typeGroup.className = "kf-menu-group";
 
                 Object.entries(this.options.types).forEach(([key, meta]) => {
                         const button = document.createElement("button");
                         button.type = "button";
-                        button.className = "kf-menu-item";
-                        button.textContent = meta.label ?? key;
+                        button.className = "kf-type-icon";
+                        button.title = meta.label ?? key;
+                        button.innerHTML = typeIcons[key] || `<span style="font-size:9px">${(meta.label ?? key).charAt(0)}</span>`;
                         button.addEventListener("click", () => {
                                 if (this.menuTargetId) {
                                         const ids =
@@ -890,9 +1052,9 @@ export class KeyframeEditor {
                 });
 
                 menu.appendChild(resetButton);
+                menu.appendChild(lockButton);
                 menu.appendChild(deleteButton);
                 menu.appendChild(divider);
-                menu.appendChild(typeLabel);
                 menu.appendChild(typeGroup);
 
                 this.wrapper.appendChild(menu);
@@ -923,6 +1085,18 @@ export class KeyframeEditor {
                 const target = this.keyframes.find((kf) => kf.id === id);
                 if (!target) return;
                 this.menuTargetId = id;
+                // Update lock button label
+                if (this._lockButton) {
+                        const ids =
+                            this.state.selectedIds.includes(id) && this.state.selectedIds.length > 1
+                                ? [...this.state.selectedIds]
+                                : [id];
+                        const anyLocked = ids.some((lockId) => {
+                                const kf = this.keyframes.find((k) => k.id === lockId);
+                                return kf?.locked;
+                        });
+                        this._lockButton.textContent = anyLocked ? "Unlock" : "Lock";
+                }
                 this.contextMenu.classList.remove("is-hidden");
                 this.contextMenu.style.left = "0px";
                 this.contextMenu.style.top = "0px";
@@ -975,7 +1149,10 @@ export class KeyframeEditor {
                 const span = rangeSize(this.viewTimeRange);
                 if (span <= EPSILON) return;
                 const step = this.computeTimeStep(span);
+                // Only show labels at intervals that aren't too crowded
+                const labelStep = step < 1 ? (step * 5 <= span * 0.5 ? step * 5 : step * 2) : step;
                 const start = Math.floor(min / step) * step;
+                const bottomY = this.options.padding + this.innerHeight;
                 for (let t = start; t <= max + step; t += step) {
                         if (t < min - step) continue;
                         const x = this.timeToX(t);
@@ -991,17 +1168,32 @@ export class KeyframeEditor {
                                 x1: x,
                                 y1: this.options.padding,
                                 x2: x,
-                                y2: this.options.padding + this.innerHeight,
+                                y2: bottomY,
                                 stroke: lineStyle.stroke,
                                 "stroke-width": lineStyle.width,
                         });
                         this.gridGroup.appendChild(line);
+
+                        // Draw label at major or integer ticks
+                        const isLabelTick = isOrigin || isMajor || Math.abs(t - Math.round(t / labelStep) * labelStep) < step * 0.35;
+                        if (isLabelTick) {
+                                const labelText = Number.isInteger(t) ? t.toFixed(0) : t.toFixed(step < 0.1 ? 2 : 1);
+                                const label = createSVGElement("text", {
+                                        x: x,
+                                        y: bottomY - 3,
+                                        'text-anchor': 'middle',
+                                        'class': isOrigin ? 'kf-axis-label kf-axis-label--origin' : 'kf-axis-label',
+                                });
+                                label.textContent = labelText;
+                                this.axisGroup.appendChild(label);
+                        }
                 }
         }
 
         drawValueGridLines() {
                 const [min, max] = this.viewValueRange;
                 const ticks = this.getValueTicks(min, max);
+                const leftX = this.options.padding;
                 ticks.forEach(({ value, level }) => {
                         const y = this.valueToY(value);
                         let stroke = "rgba(255, 255, 255, 0.08)";
@@ -1017,14 +1209,26 @@ export class KeyframeEditor {
                                 width = 1;
                         }
                         const line = createSVGElement("line", {
-                                x1: this.options.padding,
+                                x1: leftX,
                                 y1: y,
-                                x2: this.options.padding + this.innerWidth,
+                                x2: leftX + this.innerWidth,
                                 y2: y,
                                 stroke,
                                 "stroke-width": width,
                         });
                         this.gridGroup.appendChild(line);
+
+                        // Draw label for origin, integer (hundred), and major (0.5) ticks
+                        if (level === "origin" || level === "hundred" || level === "major") {
+                                const labelText = Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2).replace(/0$/, '');
+                                const label = createSVGElement("text", {
+                                        x: leftX + 3,
+                                        y: y - 3,
+                                        'class': level === 'origin' ? 'kf-axis-label kf-axis-label--origin' : 'kf-axis-label',
+                                });
+                                label.textContent = labelText;
+                                this.axisGroup.appendChild(label);
+                        }
                 });
         }
 
@@ -1106,6 +1310,7 @@ export class KeyframeEditor {
                 this.cachedSamples = this.sampleCurve({ stepsPerSegment: 96 });
                 this.renderKeyframes();
                 this.renderGraph();
+                this._renderBackendOverlays();
                 this.renderPlayhead();
         }
 
@@ -1115,8 +1320,11 @@ export class KeyframeEditor {
                 this.keyframes.forEach((kf) => {
                         const { x, y } = ctx.project(kf);
                         const typeClass = this.getNodeStyleClass(kf);
+                        let cls = `kf-keyframe ${typeClass}`;
+                        if (this.isSelected(kf.id)) cls += ' is-selected';
+                        if (kf.locked) cls += ' is-locked';
                         const group = createSVGElement("g", {
-                                'class': `kf-keyframe ${typeClass}` + (this.isSelected(kf.id) ? " is-selected" : ""),
+                                'class': cls,
                                 transform: `translate(${x}, ${y})`,
                                 'data-id': kf.id,
                         });
@@ -1134,8 +1342,20 @@ export class KeyframeEditor {
                         group.addEventListener("pointerdown", (event) => {
                                 if (event.button !== 0) return;
                                 event.stopPropagation();
-                                this.handleSelectionClick(kf.id, event);
-                                this.startDrag(event, kf.id);
+                                // Don't narrow selection on pointerdown — defer to click
+                                // so multi-selection drag works from any selected node.
+                                if (event.shiftKey) {
+                                        // Shift: add to selection if not already there
+                                        if (!this.isSelected(kf.id)) {
+                                                const merged = [...this.state.selectedIds, kf.id];
+                                                this.setSelection(merged, this.state.anchorId);
+                                        }
+                                } else if (!this.isSelected(kf.id)) {
+                                        this.setSelection([kf.id], kf.id);
+                                }
+                                if (!kf.locked) {
+                                        this.startDrag(event, kf.id);
+                                }
                         });
 
                         group.addEventListener("pointerenter", () => {
@@ -1148,6 +1368,11 @@ export class KeyframeEditor {
 
                         group.addEventListener("click", (event) => {
                                 event.stopPropagation();
+                                // After a drag, don't narrow the selection
+                                if (this._didDrag) {
+                                        this._didDrag = false;
+                                        return;
+                                }
                                 this.handleSelectionClick(kf.id, event);
                         });
 
@@ -1200,7 +1425,9 @@ export class KeyframeEditor {
                                 if (event.button !== 0) return;
                                 event.stopPropagation();
                                 this.handleSelectionClick(kf.id, event);
-                                this.startHandleDrag(event, kf.id, key);
+                                if (!kf.locked) {
+                                        this.startHandleDrag(event, kf.id, key);
+                                }
                         });
                         handle.addEventListener("click", (event) => {
                                 event.stopPropagation();
@@ -1280,6 +1507,77 @@ export class KeyframeEditor {
                 }
         }
 
+        // ── Backend overlay management ────────────────────────────────
+
+        /**
+         * Set (or update) a named overlay curve from backend data.
+         * @param {string} id - unique overlay identifier
+         * @param {Array<{time:number,value:number}>} samples - the curve data
+         * @param {string} color - CSS stroke color
+         * @param {number} strokeWidth - SVG stroke width
+         * @param {string|null} dashArray - SVG dash pattern or null for solid
+         */
+        setOverlay(id, samples, color = '#ff9800', strokeWidth = 1.5, dashArray = '6 3') {
+                this._overlays.set(id, { samples, color, strokeWidth, dashArray });
+                this._renderBackendOverlays();
+                this._updateGraphDimming();
+        }
+
+        /** Remove a specific backend overlay by id. */
+        removeOverlay(id) {
+                this._overlays.delete(id);
+                this._renderBackendOverlays();
+                this._updateGraphDimming();
+        }
+
+        /** Remove all backend overlays. */
+        clearAllOverlays() {
+                this._overlays.clear();
+                this._renderBackendOverlays();
+                this._updateGraphDimming();
+        }
+
+        /**
+         * @private Dim the main graph path + keyframe nodes to 50% when overlays
+         * are present and the user is NOT dragging.  Restores full opacity otherwise.
+         */
+        _updateGraphDimming() {
+                const hasOverlays = this._overlays.size > 0;
+                const dim = hasOverlays && !this._isDragging;
+                const opacity = dim ? '0.5' : '1';
+                if (this.graphPath) this.graphPath.style.opacity = opacity;
+                if (this.keyframeLayer) this.keyframeLayer.style.opacity = opacity;
+        }
+
+        /** @private Re-render all backend overlay curves into the dedicated group. */
+        _renderBackendOverlays() {
+                if (!this.backendOverlayGroup) return;
+                this.backendOverlayGroup.innerHTML = '';
+                for (const [id, ov] of this._overlays) {
+                        if (!ov.samples || !ov.samples.length) continue;
+                        const commands = [];
+                        for (let i = 0; i < ov.samples.length; i++) {
+                                const s = ov.samples[i];
+                                const x = this.timeToX(s.time);
+                                const y = this.valueToY(s.value);
+                                commands.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
+                        }
+                        const attrs = {
+                                d: commands.join(' '),
+                                stroke: ov.color,
+                                'stroke-width': String(ov.strokeWidth),
+                                fill: 'none',
+                                'pointer-events': 'none',
+                                'data-overlay-id': id,
+                        };
+                        if (ov.dashArray) {
+                                attrs['stroke-dasharray'] = ov.dashArray;
+                        }
+                        const path = createSVGElement('path', attrs);
+                        this.backendOverlayGroup.appendChild(path);
+                }
+        }
+
         renderPlayhead() {
                 if (!this.playheadLine) return;
                 if (typeof this.playhead !== "number" || !Number.isFinite(this.playhead)) {
@@ -1356,14 +1654,6 @@ export class KeyframeEditor {
                 const [start, end] = anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
                 const ids = order.slice(start, end + 1).map((kf) => kf.id);
                 this.setSelection(ids, anchorId);
-        }
-
-        handleSelectionClick(id, event) {
-                if (event.shiftKey) {
-                        this.selectRange(id);
-                } else {
-                        this.selectKeyframe(id);
-                }
         }
 
         handleSelectionClick(id, event) {
@@ -1612,6 +1902,7 @@ export class KeyframeEditor {
         getKeyframes() {
                 return this.keyframes.map((kf) => ({
                         ...kf,
+                        locked: !!kf.locked,
                         handles: {
                                 in: { ...(kf.handles?.in || {}) },
                                 out: { ...(kf.handles?.out || {}) },
@@ -1675,14 +1966,33 @@ export class KeyframeEditor {
                 this.refresh();
         }
 
+        /**
+         * Toggle the locked state of the given keyframe ids.
+         * If any of them are unlocked, lock all; otherwise unlock all.
+         */
+        toggleLock(ids) {
+                const targets = ids
+                    .map((id) => this.keyframes.find((kf) => kf.id === id))
+                    .filter(Boolean);
+                if (!targets.length) return;
+                const anyUnlocked = targets.some((kf) => !kf.locked);
+                targets.forEach((kf) => { kf.locked = anyUnlocked; });
+                this.render();
+                this.refresh();
+        }
+
         startDrag(event, id) {
                 event.preventDefault();
+                this._isDragging = true;
+                this._didDrag = false;
+                this._updateGraphDimming();
                 this.hideContextMenu();
                 this.hideSnapIndicators();
                 this.hideDragLabel();
                 const targets = (this.isSelected(id) ? [...this.state.selectedIds] : [id])
                     .map((selectedId) => this.keyframes.find((item) => item.id === selectedId))
-                    .filter(Boolean);
+                    .filter(Boolean)
+                    .filter((kf) => !kf.locked);
                 if (!targets.length) {
                         return;
                 }
@@ -1698,6 +2008,7 @@ export class KeyframeEditor {
                 const anchorId = anchorOffset?.id ?? movingIds[0];
                 const move = (ev) => {
                         if (ev.pointerId !== pointerId) return;
+                        this._didDrag = true;
                         const point = this.pointerToValues(ev);
                         const planned = offsets.map((offset) => ({
                                 id: offset.id,
@@ -1744,6 +2055,8 @@ export class KeyframeEditor {
                         window.removeEventListener("pointermove", move);
                         window.removeEventListener("pointerup", stop);
                         window.removeEventListener("pointercancel", stop);
+                        this._isDragging = false;
+                        this._updateGraphDimming();
                         this.hideSnapIndicators();
                         this.hideDragLabel();
                         this.refresh();
@@ -1756,6 +2069,8 @@ export class KeyframeEditor {
 
         startHandleDrag(event, keyframeId, handleKey) {
                 event.preventDefault();
+                this._isDragging = true;
+                this._updateGraphDimming();
                 this.hideContextMenu();
                 const kf = this.keyframes.find((item) => item.id === keyframeId);
                 if (!kf) return;
@@ -1784,6 +2099,8 @@ export class KeyframeEditor {
                         window.removeEventListener("pointermove", move);
                         window.removeEventListener("pointerup", stop);
                         window.removeEventListener("pointercancel", stop);
+                        this._isDragging = false;
+                        this._updateGraphDimming();
                         this.refresh();
                 };
 
@@ -2180,6 +2497,92 @@ export class KeyframeEditor {
                 window.addEventListener("pointercancel", stop);
         }
 
+        /**
+         * Start a marquee (rubber-band) selection on the hit region.
+         * Default: x-range only (full-height band).
+         * Alt held: 2D box selection (x + y range).
+         * Shift: additive — toggles exclusively-already-selected sets.
+         */
+        startMarquee(event) {
+                event.preventDefault();
+                const pointerId = event.pointerId;
+                const rect = this.svg.getBoundingClientRect();
+                const pad = this.options.padding;
+                const startX = clamp(event.clientX - rect.left, pad, pad + this.innerWidth);
+                const startY = clamp(event.clientY - rect.top, pad, pad + this.innerHeight);
+                const THRESHOLD = 4; // px before we commit to a marquee vs a click
+                let didMarquee = false;
+                const isShift = event.shiftKey;
+                const prevSelection = isShift ? [...this.state.selectedIds] : [];
+
+                const move = (ev) => {
+                        if (ev.pointerId !== pointerId) return;
+                        const curX = clamp(ev.clientX - rect.left, pad, pad + this.innerWidth);
+                        const curY = clamp(ev.clientY - rect.top, pad, pad + this.innerHeight);
+                        const dx = curX - startX;
+                        const dy = curY - startY;
+                        if (!didMarquee && Math.hypot(dx, dy) < THRESHOLD) return;
+                        didMarquee = true;
+                        const useY = ev.altKey;
+
+                        // Draw marquee rect
+                        const mx = Math.min(startX, curX);
+                        const mw = Math.abs(dx);
+                        const my = useY ? Math.min(startY, curY) : pad;
+                        const mh = useY ? Math.abs(dy) : this.innerHeight;
+                        this.marqueeRect.setAttribute("x", mx);
+                        this.marqueeRect.setAttribute("y", my);
+                        this.marqueeRect.setAttribute("width", mw);
+                        this.marqueeRect.setAttribute("height", mh);
+                        this.marqueeRect.setAttribute("visibility", "visible");
+
+                        // Convert px bounds to time/value space
+                        const tMin = this._xToTime(Math.min(startX, curX));
+                        const tMax = this._xToTime(Math.max(startX, curX));
+                        const vMin = useY ? this._yToValue(Math.max(startY, curY)) : -Infinity;
+                        const vMax = useY ? this._yToValue(Math.min(startY, curY)) : Infinity;
+
+                        // Find keyframes inside the marquee
+                        const marqueeIds = this.keyframes
+                            .filter((kf) => kf.time >= tMin && kf.time <= tMax && kf.value >= vMin && kf.value <= vMax)
+                            .map((kf) => kf.id);
+
+                        if (isShift) {
+                                // Shift: additive toggle
+                                const allAlreadySelected = marqueeIds.length > 0 && marqueeIds.every((mid) => prevSelection.includes(mid));
+                                if (allAlreadySelected) {
+                                        // Remove the marquee set from previous selection
+                                        const filtered = prevSelection.filter((id) => !marqueeIds.includes(id));
+                                        this.setSelection(filtered);
+                                } else {
+                                        // Add marquee set to previous selection
+                                        const merged = Array.from(new Set([...prevSelection, ...marqueeIds]));
+                                        this.setSelection(merged);
+                                }
+                        } else {
+                                this.setSelection(marqueeIds);
+                        }
+                };
+
+                const stop = (ev) => {
+                        if (ev.pointerId !== pointerId) return;
+                        window.removeEventListener("pointermove", move);
+                        window.removeEventListener("pointerup", stop);
+                        window.removeEventListener("pointercancel", stop);
+                        this.marqueeRect.setAttribute("visibility", "hidden");
+                        if (!didMarquee) {
+                                // It was just a click on empty space
+                                if (!isShift) {
+                                        this.clearSelection();
+                                }
+                        }
+                };
+
+                window.addEventListener("pointermove", move);
+                window.addEventListener("pointerup", stop);
+                window.addEventListener("pointercancel", stop);
+        }
+
         setPlayhead(time) {
                 if (typeof time === "number" && Number.isFinite(time)) {
                         this.playhead = time;
@@ -2412,6 +2815,20 @@ export class KeyframeEditor {
                 return this.options.padding + this.innerHeight - ratio * this.innerHeight;
         }
 
+        /** Inverse of timeToX — convert an SVG x-coordinate back to time. */
+        _xToTime(x) {
+                const ratio = (x - this.options.padding) / this.innerWidth;
+                const [min] = this.viewTimeRange;
+                return min + ratio * rangeSize(this.viewTimeRange);
+        }
+
+        /** Inverse of valueToY — convert an SVG y-coordinate back to value. */
+        _yToValue(y) {
+                const ratio = (this.options.padding + this.innerHeight - y) / this.innerHeight;
+                const [min] = this.viewValueRange;
+                return min + ratio * rangeSize(this.viewValueRange);
+        }
+
         getGraphContext() {
                 return {
                         width: this.options.width,
@@ -2444,6 +2861,7 @@ export class KeyframeEditor {
                         time: kf.time,
                         value: kf.value,
                         type: kf.type,
+                        locked: kf.locked || undefined,
                         handles: kf.handles ? {
                                 in: {
                                         time: kf.handles.in?.time ?? 0,

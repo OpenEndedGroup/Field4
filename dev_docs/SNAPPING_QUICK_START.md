@@ -44,7 +44,7 @@ Caps Lock snapping: (245.3, 156.7) → (240.0, 155.0)
 For more details, see:
 - **[SNAPPING_SYSTEM.md](./SNAPPING_SYSTEM.md)** - Complete user guide
 - **[SNAPPING_VISUAL_GUIDE.md](./SNAPPING_VISUAL_GUIDE.md)** - Visual examples
-- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Technical details
+- **[IMPLEMENTATION_SUMMARY.md](./workspace/IMPLEMENTATION_SUMMARY.md)** - Technical details
 
 ## Technical Overview
 

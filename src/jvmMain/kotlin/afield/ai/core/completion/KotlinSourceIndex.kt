@@ -215,13 +215,14 @@ object KotlinSourceIndex {
         if (exactMatch?.kdoc != null) {
             return exactMatch.kdoc
         }
+
+        // If the input is already qualified (contains '.'), don't fall through to partial matching —
+        // that would match unrelated symbols with the same simple name (e.g. "Vector3f.add" → "LittleHistory.add")
+        if ('.' in symbolName) return null
         
-        // Try matching the last part of qualified names as a fallback
-        // Note: This may return incorrect results if multiple symbols have the same simple name
-        // A more robust solution would require storing and matching fully qualified names
-        val lastPart = symbolName.substringAfterLast('.')
+        // Try matching the last part of qualified names as a fallback for simple names only
         val partialMatch = index.definitions.firstOrNull { 
-            it.name == lastPart || it.name.endsWith(".$lastPart") 
+            it.name == symbolName || it.name.endsWith(".$symbolName") 
         }
         return partialMatch?.kdoc
     }

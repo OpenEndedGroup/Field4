@@ -109,3 +109,9 @@ function mapLineFromRevision(inside, revName, line, options) {
 
         return mappedLine;
 }
+
+window.markRevision = markRevision
+window.pauseLineTracking = pauseLineTracking
+window.unpauseLineTracking = unpauseLineTracking
+window.beginLineTracking = beginLineTracking
+window.mapLineFromRevision = mapLineFromRevision

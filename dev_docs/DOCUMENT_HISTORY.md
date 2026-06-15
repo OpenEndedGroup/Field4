@@ -325,5 +325,4 @@ transitions.forEach { trans ->
 
 ## See Also
 - File watching system: `FileWatchManager.kt`
-- Git integration: `git.kt`
 - Saving system: `saving.kt` (see `safeSave()` function)

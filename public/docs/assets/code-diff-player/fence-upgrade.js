@@ -1,28 +1,40 @@
 (() => {
   const MARKER_LINE_RE = /^\s*:::(before|after|static)?\s*$/;
+  const DIFF_CLASS_RE = /\b(?:code-diff-fence|language-diff)\b/;
+  const DIFF_STATIC_CLASS_RE = /\b(?:code-diff-fence-static|language-diffstatic)\b/;
+
+  function surroundingInfo(codeEl) {
+    const pre = codeEl.closest("pre");
+    const holder = pre && pre.parentElement && pre.parentElement.classList.contains("highlight")
+      ? pre.parentElement
+      : pre;
+    const classes = [
+      codeEl.className || "",
+      pre ? pre.className || "" : "",
+      holder && holder !== pre ? holder.className || "" : "",
+    ].join(" ");
+    return { pre, holder, classes };
+  }
 
   function extractLanguage(codeEl) {
-    const cls = codeEl.className || "";
+    const { pre, holder, classes } = surroundingInfo(codeEl);
+    const cls = classes;
     const tokens = Array.from(cls.matchAll(/language-([\w-]+)/g)).map((m) => m[1]);
     const preferred = tokens.find((t) => t !== "diff" && t !== "diffstatic");
     if (preferred) return preferred;
     if (codeEl.dataset.lang) return codeEl.dataset.lang;
     if (codeEl.dataset.language) return codeEl.dataset.language;
+    if (pre && pre.dataset.lang) return pre.dataset.lang;
+    if (pre && pre.dataset.language) return pre.dataset.language;
+    if (holder && holder.dataset && holder.dataset.lang) return holder.dataset.lang;
+    if (holder && holder.dataset && holder.dataset.language) return holder.dataset.language;
     return "kotlin";
   }
 
   function classify(codeEl) {
-    const cls = codeEl.className || "";
-    const hasDiffClass = cls.includes("code-diff-fence") || cls.includes("language-diff");
-    const hasDiffStaticClass = cls.includes("code-diff-fence-static") || cls.includes("language-diffstatic");
-    const text = codeEl.textContent || "";
-    const hasMarkers = text.includes(":::before") || text.includes(":::after");
-    const hasStaticMarker = text.includes(":::static");
-    const hasBeforeOnly = text.includes(":::before") && !text.includes(":::after");
-    if (hasDiffStaticClass) return "static";
-    if (hasStaticMarker) return "static";
-    if (hasBeforeOnly) return "static";
-    if (hasDiffClass || hasMarkers) return "diff";
+    const { classes } = surroundingInfo(codeEl);
+    if (DIFF_STATIC_CLASS_RE.test(classes)) return "static";
+    if (DIFF_CLASS_RE.test(classes)) return "diff";
     return null;
   }
 
@@ -66,11 +78,8 @@
   }
 
   function upgradeOne(codeEl, isStatic) {
-    const pre = codeEl.closest("pre");
+    const { pre, holder } = surroundingInfo(codeEl);
     if (!pre) return;
-    const holder = pre.parentElement && pre.parentElement.classList.contains("highlight")
-      ? pre.parentElement
-      : pre;
 
     const raw = codeEl.textContent || "";
     const lang = extractLanguage(codeEl);

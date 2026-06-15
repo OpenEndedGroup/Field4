@@ -78,6 +78,7 @@ object LeafRenderers {
 typealias RootsProvider = () -> Map<String, Any?>
 
 object Inspector {
+    private data class RetainedLink(val obj: Any, val createdAtMs: Long)
 
     // --- Configuration ---------------------------------------------------------------------------
 
@@ -91,6 +92,7 @@ object Inspector {
     fun linkPathFor(obj: Any, browsePath: String = "/browse", uid : String? = null): String {
         val token = uid ?: "r${idGen.getAndIncrement()}"
         linkTokens[token] = WeakReference(obj)
+        retainLinkToken(token, obj)
         return "$browsePath?root=$token"
     }
 
@@ -137,6 +139,31 @@ object Inspector {
 
     // deep-link token store (weak so links don't pin objects)
     private val linkTokens = ConcurrentHashMap<String, WeakReference<Any>>()
+    private val retainedLinkTokens = LinkedHashMap<String, RetainedLink>()
+    private val retainedLinkTokenTtlMs = 10 * 60 * 1000L
+    private val retainedLinkTokenMax = 256
+
+    @Synchronized
+    private fun retainLinkToken(token: String, obj: Any) {
+        val now = System.currentTimeMillis()
+        retainedLinkTokens[token] = RetainedLink(obj, now)
+        cleanupRetainedLinkTokens(now)
+    }
+
+    @Synchronized
+    private fun cleanupRetainedLinkTokens(now: Long) {
+        val it = retainedLinkTokens.entries.iterator()
+        while (it.hasNext()) {
+            val (_, entry) = it.next()
+            if (now - entry.createdAtMs > retainedLinkTokenTtlMs) {
+                it.remove()
+            }
+        }
+        while (retainedLinkTokens.size > retainedLinkTokenMax) {
+            val eldestKey = retainedLinkTokens.entries.firstOrNull()?.key ?: break
+            retainedLinkTokens.remove(eldestKey)
+        }
+    }
 
     private data class Client(val key: Any, val send: (String) -> Unit) {
         override fun equals(other: Any?) = other is Client && other.key === key
@@ -183,6 +210,25 @@ object Inspector {
             // 2) Treat HasBrowsable with null like real null
             any == null || any is HasBrowsable -> Resolved.Leaf(html = { "<i>null</i>" }, obj = null)
 
+            // 2.5) Maps and Iterables: handle directly so KClass mapped-type lookups can't miss
+            any is Map<*, *> -> {
+                val entries = any.entries.associate { (k, v) -> (k?.toString() ?: "null") to v }
+                Resolved.Dir(
+                    heading = title ?: "Map",
+                    entries = { entries },
+                    obj = any
+                )
+            }
+
+            any is Iterable<*> -> {
+                val items = any.toList()
+                Resolved.Dir(
+                    heading = title ?: "List",
+                    entries = { items.mapIndexed { idx, v -> "[${idx}]" to v }.toMap() },
+                    obj = any
+                )
+            }
+
             // 3) Try adapters: turn arbitrary types into a Browsable wrapper
             else -> {
                 val adapted = BrowsableAdapters.adapt(any, parent, title)
@@ -225,6 +271,7 @@ object Inspector {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     @Serializable private data class Request(
+        val channel: String? = null,
         val reqId: String,
         val op: String,
         val id: String? = null,
@@ -260,6 +307,7 @@ object Inspector {
         val client = Client(clientKey) { payload -> push(payload) }
         return try {
             val req = json.decodeFromString(Request.serializer(), text)
+            if (req.channel != null && req.channel != "__browsing__") return ""
             when (req.op) {
                 "getRoots" -> {
                     // If a deep-link token is provided, start from THAT object (as the unseen parent).
@@ -593,15 +641,12 @@ object BrowsableAdapters {
 @Suppress("UNCHECKED_CAST")
 fun registerExampleAdapters() {
     BrowsableAdapters.register(Map::class) { m: Map<*, *>, parent, title ->
-        val allStrings = m.keys.all { it is String } && m.values.all { it is String }
-        if (!allStrings) return@register null
+        if (!m.keys.all { it is String }) return@register null
 
-        val map = m as Map<String, String>
+        val entries = m.entries.associate { (k, v) -> (k as String) to v }
         object : Browsable {
             override fun heading(): String = title ?: "Map"
-            override fun dir(): Map<String, Any?> = map   // values are Strings -> leaves
-            // optional: provide a version if the map is known to change
-            // override fun version(): Long = (parent as? SomeParent)?.version() ?: 0
+            override fun dir(): Map<String, Any?> = entries
         }
     }
 }

@@ -2,6 +2,7 @@ package afield.ai.core.completion
 
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
+import afield.ai.core.Ai4ModelDefaults
 import afield.ai.core.OpenAiIdeCodexBridge
 import afield.ai.core.SilentLog
 import com.openai.models.ReasoningEffort
@@ -12,11 +13,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 object Ai4CompletionDoc {
     private val bridge: OpenAiIdeCodexBridge by lazy {
-        val model = System.getenv("AFIELD_COMPLETION_DOC_MODEL") ?: "gpt-5.2"
+        val model = Ai4ModelDefaults.envOrDefault("AFIELD_COMPLETION_DOC_MODEL", Ai4ModelDefaults.FLAGSHIP_MODEL)
         OpenAiIdeCodexBridge(
             model = model,
             log = SilentLog,
-            reasoningEffort = ReasoningEffort.LOW
+            reasoningEffort = ReasoningEffort.MEDIUM
         )
     }
     private val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()

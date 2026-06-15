@@ -162,6 +162,23 @@ inline operator fun <T> IntRange.invoke(to: (Int) -> T): List<T> = this.map { to
 inline operator fun <T> Int.invoke(to: (Int) -> T): List<T> = (0 until this).map { to(it) }
 inline infix fun <T> Int.alphas(to: (Double) -> T): List<T> = (0 until this).map { to(it / (this - 1.0)) }
 
+fun Int.alphas(): SizedIterable<Double> {
+    val n = this.coerceAtLeast(0)
+    return sizedIterable(n) {
+        var i = 0
+        object : Iterator<Double> {
+            override fun hasNext(): Boolean = i < n
+
+            override fun next(): Double {
+                if (!hasNext()) throw NoSuchElementException("No more alpha values")
+                val value = if (n <= 1) 0.0 else i / (n - 1.0)
+                i++
+                return value
+            }
+        }
+    }
+}
+
 operator fun String.times(ln: Int): String {
 
     var s = StringBuilder(this.length * ln)
@@ -174,14 +191,16 @@ operator fun String.times(ln: Int): String {
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.begin(strand: String = "default") {
     var box = this
+    val execute = Execute(box.id, "launch", 1, code, false, strand = strand)
 
-    box.ke.launchAll(box, Execute(box.id, "launch", 1, code, false), code, strand = strand, {
+    FlightRecorder.recordLaunchEntrypoint("stdlib.begin", box, execute, strand = strand)
+    box.ke.launchAll(box, execute, code, strand = strand, {
 //        send(it)
     })
 }
 
 fun Box.end() {
-    stop(this)
+    stop(this, entrypoint = "stdlib.end")
 }
 
 
@@ -200,12 +219,12 @@ fun start(a: suspend () -> Unit): Frames {
 /**
  * Creates an animation loop from a lambda.
  * The lambda will be executed every frame when this function is launched.
- * 
+ *
  * Usage:
  * ```
  * foo()
  * bar(10.0)
- * 
+ *
  * animate {
  *     gux()
  * }
@@ -342,27 +361,44 @@ val Number.d
     get() = this.toDouble()
 
 
+private fun escapeSyntaxHtml(input: String): String {
+    return input
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+}
+
 fun highlightSyntax(input: String): String {
     // Named groups: float, int, punct, bracket
     val pattern = Regex(
         """
-        (?<float>\d+\.\d+)
-        |(?<int>\d+)
-        |(?<punct>[.,;:?!])
+        (?<float>[+-]?\d+\.\d+)
+        |(?<int>[+-]?\d+)
+        |(?<punct>[.,;:?!+\-*/%=<>|&])
         |(?<bracket>[\[\]\{\}\(\)])
         """.trimIndent(), RegexOption.COMMENTS
     )
 
     val groupNames = listOf("float", "int", "punct", "bracket")
 
-
-    return pattern.replace(input) { m ->
-        // Find the first named group that matched and wrap it
-        groupNames.firstNotNullOfOrNull { name ->
-                m.groups[name]?.value?.let { "<span class='ss-$name'>$it</span>" }
-            } ?: m.value
-    }.replace("\t", "<span class='tab'></span>")
+    var cursor = 0
+    return buildString(input.length + 64) {
+        pattern.findAll(input).forEach { m ->
+            append(escapeSyntaxHtml(input.substring(cursor, m.range.first)).replace("\t", "<span class='tab'></span>"))
+            val replacement = groupNames.firstNotNullOfOrNull { name ->
+                m.groups[name]?.value?.let { "<span class='ss-$name'>${escapeSyntaxHtml(it)}</span>" }
+            }
+            append(replacement ?: escapeSyntaxHtml(m.value))
+            cursor = m.range.last + 1
+        }
+        append(escapeSyntaxHtml(input.substring(cursor)).replace("\t", "<span class='tab'></span>"))
+    }
 }
+
+val String.h: String
+    get() = highlightSyntax(this)
 
 val String.ss: String
     get() = highlightSyntax(this)
@@ -403,6 +439,18 @@ fun ByteBuffer.putf16(value: Float): ByteBuffer {
 }
 
 
-data class Vec2h(val v: Vector2f)
-data class Vec3h(val v: Vector3f)
-data class Vec4h(val v: Vector4f)
+typealias Vec2h = afield.four.util.Vec2h
+typealias Vec3h = afield.four.util.Vec3h
+typealias Vec4h = afield.four.util.Vec4h
+typealias Vec8h = afield.four.util.Vec8h
+
+
+val <T> List<T>.m: MutableList<T>
+    get() = this.toMutableList()
+
+val <T> List<T>.s: Set<T>
+    get() = this.toSet()
+
+
+val String.r: Regex
+    get() = Regex(this)

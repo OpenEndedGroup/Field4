@@ -3,17 +3,21 @@ package afield.four.modules
 import afield.Named
 import afield.Rect
 import afield.four.Renderer
+import afield.four.Target
 import afield.four.buffers.*
 import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Introspected.Bindable
+import afield.four.targets.MultiPingPongRenderToTexture
 import afield.four.targets.RenderToTexture
 import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
 import afield.four.util.AutoDisposer
+import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.Options
+import afield.four.util.ShaderFieldProbe
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.Vec4
@@ -33,6 +37,45 @@ data class Parameters(
     var compute: String = "",
     var mesh: String = "",
     var task: String = "",
+    var raygen: String = "",
+    var miss: String = "",
+    var closesthit: String = "",
+    var anyhit: String = "",
+    var intersection: String = "",
+    var callable: String = "",
+    var vertexIntrospection: Introspection? = null,
+    var fragmentIntrospection: Introspection? = null,
+    var computeIntrospection: Introspection? = null,
+    var meshIntrospection: Introspection? = null,
+    var taskIntrospection: Introspection? = null,
+    var raygenIntrospection: Introspection? = null,
+    var missIntrospection: Introspection? = null,
+    var closesthitIntrospection: Introspection? = null,
+    var anyhitIntrospection: Introspection? = null,
+    var intersectionIntrospection: Introspection? = null,
+    var callableIntrospection: Introspection? = null,
+    var vertexSourceName: String = "vertex.glsl",
+    var fragmentSourceName: String = "fragment.glsl",
+    var computeSourceName: String = "compute.glsl",
+    var meshSourceName: String = "mesh.glsl",
+    var taskSourceName: String = "task.glsl",
+    var raygenSourceName: String = "raygen.rgen",
+    var missSourceName: String = "miss.rmiss",
+    var closesthitSourceName: String = "closesthit.rchit",
+    var anyhitSourceName: String = "anyhit.rahit",
+    var intersectionSourceName: String = "intersection.rint",
+    var callableSourceName: String = "callable.rcall",
+    var vertexIncludeResolver: ShaderIncludeResolver? = null,
+    var fragmentIncludeResolver: ShaderIncludeResolver? = null,
+    var computeIncludeResolver: ShaderIncludeResolver? = null,
+    var meshIncludeResolver: ShaderIncludeResolver? = null,
+    var taskIncludeResolver: ShaderIncludeResolver? = null,
+    var raygenIncludeResolver: ShaderIncludeResolver? = null,
+    var missIncludeResolver: ShaderIncludeResolver? = null,
+    var closesthitIncludeResolver: ShaderIncludeResolver? = null,
+    var anyhitIncludeResolver: ShaderIncludeResolver? = null,
+    var intersectionIncludeResolver: ShaderIncludeResolver? = null,
+    var callableIncludeResolver: ShaderIncludeResolver? = null,
     var color: Int = 1,
     var colorFormats: List<Int> = emptyList(),
     var depth: Int = 1,
@@ -56,6 +99,14 @@ data class Parameters(
 //        throw Exception("Cannot resolve image ${it.name}")
         null
     },
+    var accelerationStructureResolver: (Introspected.AccelerationStructure) -> HasAccelerationStructure? = {
+        val found = fromContextWithNameOrNull<HasAccelerationStructure>(it.name)
+        if (found == null) lprintln("warning,graphics", "Cannot resolve acceleration structure ${it.name}")
+        found
+    },
+    var rayTracingGroups: RayTracingGroups? = null,
+    var maxRayRecursionDepth: Int = 1,
+    var rayTracingPipelineFlags: Int = 0,
     var name: String = "unnamed module",
     var errorHandler: (String, Throwable?) -> Unit = { desc, it ->
         lprintln("error,graphics", "error $desc while creating Module: $it")
@@ -73,7 +124,8 @@ data class Parameters(
     var viewport: Rect? = null,
     var fillMode: Int = VK_POLYGON_MODE_FILL,
     var imageFormat: Int = renderer.swapChain.surfaceFormat.imageFormat,
-    val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f)
+    val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f),
+    var fieldProbe: ShaderFieldProbe? = null
 
 ) {
     val triangles = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
@@ -88,6 +140,14 @@ data class Parameters(
     fun RenderToTexture.apply() {
         this@Parameters.color = colorFormats.size
         this@Parameters.colorFormats = colorFormats
+        this@Parameters.depth = if (parameters.useDepth) 1 else 0
+        this@Parameters.depthFormat = parameters.depthFormat
+    }
+
+    fun MultiPingPongRenderToTexture.apply() {
+        val resolvedColorFormat = if (this.parameters.colorFormats.isNotEmpty()) this.parameters.colorFormats.first() else this.parameters.format
+        this@Parameters.color = 1
+        this@Parameters.colorFormats = listOf(resolvedColorFormat)
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
         this@Parameters.depthFormat = parameters.depthFormat
     }
@@ -112,6 +172,14 @@ fun parameters(renderer: Renderer = fromContext(), build: Parameters.() -> Unit)
     val p = Parameters(renderer)
     p.build()
     return p
+}
+
+internal fun Renderer.formatSupportsColorAttachmentBlend(format: Int): Boolean {
+    MemoryStack.stackPush().use { stack ->
+        val props = VkFormatProperties.calloc(stack)
+        VK10.vkGetPhysicalDeviceFormatProperties(device.physicalDevice.vkPhysicalDevice, format, props)
+        return (props.optimalTilingFeatures() and VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) != 0
+    }
 }
 
 interface Renderable {
@@ -147,7 +215,15 @@ class ModulePointer(var current: Module) : Renderable {
         }
 
         val oSsboResolver = p.ssboResolver
-        p.ssboResolver = { oSsboResolver(it) }
+        p.ssboResolver = {
+            val prev = current.uniforms[it.name]
+            if (prev == null) oSsboResolver(it) else {
+                val prevSrc = prev.source
+                if (prevSrc == null) oSsboResolver(it)
+                else if (prevSrc.checkCompatibility(it) == false) oSsboResolver(it)
+                else oSsboResolver(prevSrc)
+            }
+        }
 
         val oTextureResolver = p.textureResolver
         p.textureResolver = {
@@ -194,6 +270,26 @@ class ModulePointer(var current: Module) : Renderable {
         m.value.inside = this
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        current.after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_namedTarget")
+    operator fun plusAssign(m: Named<Target>) {
+        current.after[m.name] = m.value
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        current.before[m.first] = m.second.target
+    }
+
+    @JvmName("plusAssign_namedBeforeTarget")
+    operator fun plusAssign(m: Named<BeforeTarget>) {
+        current.before[m.name] = m.value.target
+    }
+
     fun enable() {
         current.enable()
     }
@@ -210,14 +306,29 @@ fun Module.pointer() = ModulePointer(this)
 class Module(val parameters: Parameters) : Renderable {
     var valid = false
     var enabled = true
-    var meshes = mutableMapOf<String, Mesh>()
+    var meshes = linkedMapOf<String, Mesh>()
+    var before = linkedMapOf<String, Target>()
+    var after = linkedMapOf<String, Target>()
 
-    val vi = Introspection(parameters.vertex, ShaderKind.VERTEX_SHADER, errorHandler = parameters.errorHandler)
-    val fi = Introspection(parameters.fragment, ShaderKind.FRAGMENT_SHADER, errorHandler = parameters.errorHandler)
+    val vi = parameters.vertexIntrospection
+        ?: Introspection(
+            parameters.vertex,
+            ShaderKind.VERTEX_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.vertexSourceName,
+            includeResolver = parameters.vertexIncludeResolver
+        )
+    val fi = parameters.fragmentIntrospection
+        ?: Introspection(
+            parameters.fragment,
+            ShaderKind.FRAGMENT_SHADER,
+            errorHandler = parameters.errorHandler,
+            sourceName = parameters.fragmentSourceName,
+            includeResolver = parameters.fragmentIncludeResolver
+        )
 
     val namedInputs = vi.inputs.associateBy { it.name }
-    val pushConstantSize =
-        (vi.pushConstants.associateBy { it.name } + fi.pushConstants.associateBy { it.name }).values.sumOf { it.size }
+    val pushConstantSize = (vi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -345,6 +456,14 @@ class Module(val parameters: Parameters) : Renderable {
     var vsm: Long = 0L
     var fsm: Long = 0L
 
+    data class PipelineUpdate(
+        val vertexIntrospection: Introspection,
+        val fragmentIntrospection: Introspection,
+        val vertexShaderModule: Long,
+        val fragmentShaderModule: Long,
+        val pipeline: Long
+    )
+
     init {
         try {
             if (!vi.valid || !fi.valid) throw IllegalStateException("Can't make a module without valid programs")
@@ -389,75 +508,77 @@ class Module(val parameters: Parameters) : Renderable {
             // Create layouts/sets for each set >= 1
             setsNeeded.entries.forEach { (set, bindingList) ->
                 var where = 0
-                val tag = mutableListOf<Introspected.Bindable>()
                 val kinds = mutableListOf<Int>()
                 val lens = mutableListOf<Int>()
 
                 bindingList.forEach { bind ->
                     var kind = 0
+                    var descriptorCount = 1
+
+                    fun noteBinding(stageFlag: Int, descriptorType: Int, count: Int = 1) {
+                        where = where or stageFlag
+                        if (kind == 0) kind = descriptorType
+                        else require(kind == descriptorType) {
+                            "binding $bind in set $set resolves to multiple descriptor types"
+                        }
+                        descriptorCount = maxOf(descriptorCount, count)
+                    }
 
                     vi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
                     fi.ubos.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                         }
                     }
 
                     vi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
                     fi.ssbo.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         }
                     }
 
                     vi.textures.forEach {
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it); lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
                     fi.textures.forEach {                      // fix #1
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-                            tag.add(it); lens.add(maxOf(1, it.arrayCount))
+                            noteBinding(
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                maxOf(1, it.arrayCount)
+                            )
                         }
                     }
 
                     vi.images.forEach {                        // fix #1
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_VERTEX_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
                     fi.images.forEach {                        // fix #1
                         if (it.set == set && it.binding == bind) {
-                            where = where or VK_SHADER_STAGE_FRAGMENT_BIT
-                            kind = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-                            tag.add(it); lens.add(1)
+                            noteBinding(VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         }
                     }
 
                     if (kind == 0) throw IllegalArgumentException(" couldn't find binding $bind for set $set in $bindingList")
                     kinds.add(kind)
+                    lens.add(descriptorCount)
                 }
 
                 val layout = DescriptorSetLayout.SimpleDescriptorSetLayout(
@@ -639,9 +760,11 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
                 for (i in 0 until colorCount) {
+                    val attachmentBlend = parameters.blend &&
+                            parameters.renderer.formatSupportsColorAttachmentBlend(colorFormats[i])
                     blendAtt[i].colorWriteMask(
                             (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
-                        ).blendEnable(parameters.blend).srcColorBlendFactor(parameters.srcColor)
+                        ).blendEnable(attachmentBlend).srcColorBlendFactor(parameters.srcColor)
                         .dstColorBlendFactor(parameters.dstColor).colorBlendOp(parameters.colorBlendOp)
                         .srcAlphaBlendFactor(parameters.srcAlpha).dstAlphaBlendFactor(parameters.dstAlpha)   // fix #3
                         .alphaBlendOp(parameters.alphaBlendOp)
@@ -760,6 +883,164 @@ class Module(val parameters: Parameters) : Renderable {
         }
     }
 
+    fun buildPipelineUpdate(
+        newVertex: Introspection,
+        newFragment: Introspection
+    ): PipelineUpdate {
+        var newVsm = 0L
+        var newFsm = 0L
+        var newPipeline = 0L
+        try {
+            newVsm = createShaderModule(newVertex.code.bytecode()!!)
+            newFsm = createShaderModule(newFragment.code.bytecode()!!)
+
+            parameters.renderer.device.nameObject(newVsm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} VS update")
+            parameters.renderer.device.nameObject(newFsm, VK10.VK_OBJECT_TYPE_SHADER_MODULE, "${parameters.name} FS update")
+
+            MemoryStack.stackPush().use { stack ->
+                val shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack)
+                shaderStages[0].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                    .stage(VK_SHADER_STAGE_VERTEX_BIT).pName(stack.UTF8("main")).module(newVsm)
+                shaderStages[1].sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                    .stage(VK_SHADER_STAGE_FRAGMENT_BIT).pName(stack.UTF8("main")).module(newFsm)
+
+                val ia = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
+                    .topology(parameters.primitiveType)
+                when (parameters.primitiveType) {
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+                    VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> ia.primitiveRestartEnable(true)
+                }
+
+                val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO).viewportCount(1).scissorCount(1)
+
+                val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO).polygonMode(parameters.fillMode)
+                    .cullMode(VK_CULL_MODE_NONE).frontFace(VK_FRONT_FACE_CLOCKWISE).lineWidth(1.0f)
+
+                val ms = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
+                    .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+
+                var ds: VkPipelineDepthStencilStateCreateInfo? = null
+                if (parameters.depth > 0) {
+                    ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                        .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO).depthTestEnable(true)
+                        .depthWriteEnable(true).depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL).depthBoundsTestEnable(false)
+                        .stencilTestEnable(false)
+                }
+
+                val colorFormats = if (parameters.colorFormats.isNotEmpty()) parameters.colorFormats
+                else List(parameters.color) { parameters.imageFormat }
+                require(colorFormats.isNotEmpty()) { "Must specify at least one color attachment" }
+                val colorCount = colorFormats.size
+
+                val blendAtt = VkPipelineColorBlendAttachmentState.calloc(colorCount, stack)
+                for (i in 0 until colorCount) {
+                    val attachmentBlend = parameters.blend &&
+                        parameters.renderer.formatSupportsColorAttachmentBlend(colorFormats[i])
+                    blendAtt[i].colorWriteMask(
+                        (if (parameters.colorMask[0]) VK_COLOR_COMPONENT_R_BIT else 0) or
+                            (if (parameters.colorMask[1]) VK_COLOR_COMPONENT_G_BIT else 0) or
+                            (if (parameters.colorMask[2]) VK_COLOR_COMPONENT_B_BIT else 0) or
+                            (if (parameters.colorMask[3]) VK_COLOR_COMPONENT_A_BIT else 0)
+                    ).blendEnable(attachmentBlend).srcColorBlendFactor(parameters.srcColor)
+                        .dstColorBlendFactor(parameters.dstColor).colorBlendOp(parameters.colorBlendOp)
+                        .srcAlphaBlendFactor(parameters.srcAlpha).dstAlphaBlendFactor(parameters.dstAlpha)
+                        .alphaBlendOp(parameters.alphaBlendOp)
+                }
+                val cb = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO).pAttachments(blendAtt)
+
+                val dynList = mutableListOf(
+                    VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+                )
+                if (parameters.renderer.device.supportsExtendedDynamicState) {
+                    dynList += listOf(
+                        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY, VK_DYNAMIC_STATE_CULL_MODE, VK_DYNAMIC_STATE_FRONT_FACE
+                    )
+                }
+                if (parameters.renderer.device.supportsExtendedDynamicState3) {
+                    dynList += EXTExtendedDynamicState3.VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT
+                }
+                val dynStates = stack.ints(*dynList.toIntArray())
+
+                val dyn = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO).pDynamicStates(dynStates)
+
+                val renderInfo = VkPipelineRenderingCreateInfoKHR.calloc(1, stack)
+                    .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR)
+
+                val colorAttachmentFormats = stack.callocInt(colorCount)
+                colorFormats.forEach { colorAttachmentFormats.put(it) }
+                colorAttachmentFormats.flip()
+
+                renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
+                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
+                    .stencilAttachmentFormat(0)
+
+                val gp =
+                    VkGraphicsPipelineCreateInfo.calloc(1, stack).sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+                        .pStages(shaderStages).pVertexInputState(vertexInputState).pInputAssemblyState(ia)
+                        .pViewportState(vp).pRasterizationState(rs).pMultisampleState(ms).pColorBlendState(cb)
+                        .pDynamicState(dyn).layout(pipelineLayout).renderPass(0).pNext(renderInfo.address())
+
+                ds?.let { gp.pDepthStencilState(it) }
+
+                val lp = stack.mallocLong(1)
+                synchronized(parameters.renderer.pipelineCache) {
+                    vkCheck(
+                        vkCreateGraphicsPipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            gp,
+                            null,
+                            lp
+                        ), "Error creating graphics pipeline update"
+                    )
+                }
+                newPipeline = lp[0]
+                parameters.renderer.device.nameObject(
+                    newPipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline update"
+                )
+            }
+
+            return PipelineUpdate(newVertex, newFragment, newVsm, newFsm, newPipeline)
+        } catch (t: Throwable) {
+            destroyPipelineHandles(newPipeline, 0L, newVsm, newFsm)
+            throw t
+        }
+    }
+
+    fun installPipelineUpdate(update: PipelineUpdate) {
+        val oldPipeline = pipeline
+        val oldVsm = vsm
+        val oldFsm = fsm
+
+        pipeline = update.pipeline
+        vsm = update.vertexShaderModule
+        fsm = update.fragmentShaderModule
+
+        parameters.vertexIntrospection = update.vertexIntrospection
+        parameters.fragmentIntrospection = update.fragmentIntrospection
+
+        pipelineDisposeToken.updateCleanup {
+            destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
+        }
+
+        parameters.renderer.cleanup.add(Runnable {
+            destroyPipelineHandles(oldPipeline, 0L, oldVsm, oldFsm)
+        })
+    }
+
+    fun destroyUnusedPipelineUpdate(update: PipelineUpdate) {
+        destroyPipelineHandles(update.pipeline, 0L, update.vertexShaderModule, update.fragmentShaderModule)
+    }
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (!valid || !enabled) return
         MemoryStack.stackPush().use { stack ->
@@ -767,6 +1048,9 @@ class Module(val parameters: Parameters) : Renderable {
             val renderer = parameters.renderer
             val frameIndex = renderer.currentImage
             val profiler = renderer.getProfiler()
+            val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+
+            fieldProbe?.beforeShaderUse(renderer, frameIndex)
 
             // Begin label for the whole module render (if EXT_debug_utils is available)
             val labelColor = stack.floats(
@@ -800,7 +1084,7 @@ class Module(val parameters: Parameters) : Renderable {
                     EXTExtendedDynamicState3.vkCmdSetDepthClampEnableEXT(cmd, false)
                 }
 
-                val pushConstantBuffer = if (pushConstantSize > 0) stack.malloc(pushConstantSize) else stack.malloc(0)
+                val pushConstantBuffer = if (pushConstantSize > 0) stack.calloc(pushConstantSize) else stack.malloc(0)
 
                 uniforms.values.forEach { upd ->
                     upd.pushDescriptorSet(command, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS)
@@ -820,6 +1104,15 @@ class Module(val parameters: Parameters) : Renderable {
 
                 meshes.forEach { (_, mesh) ->
                     mesh.draw(this, command, pushConstantBuffer)
+                }
+
+                after.forEach { (_, target) ->
+                    target.render(command, renderer.currentImage)
+                }
+
+                fieldProbe?.let {
+                    graphicsHostReadBarrier(command, it.bufferForImage(renderer, frameIndex))
+                    it.afterShaderUse(renderer, frameIndex)
                 }
 
                 if (profiler != null) {
@@ -850,25 +1143,31 @@ class Module(val parameters: Parameters) : Renderable {
             it.value.resize(it.value.numVert, it.value.numTriangle, inside = this.pointer())
             true
         }
+        before.putAll(old.before)
+        after.putAll(old.after)
     }
 
     fun cleanup() {
         pipelineDisposeToken.disable()
-        if (pipeline != 0L) {
-            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
-            pipeline = 0L
+        destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
+        pipeline = 0L
+        pipelineLayout = 0L
+        vsm = 0L
+        fsm = 0L
+    }
+
+    private fun destroyPipelineHandles(pipelineHandle: Long, pipelineLayoutHandle: Long, vertexShaderModule: Long, fragmentShaderModule: Long) {
+        if (pipelineHandle != 0L) {
+            VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipelineHandle, null)
         }
-        if (pipelineLayout != 0L) {
-            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
-            pipelineLayout = 0L
+        if (pipelineLayoutHandle != 0L) {
+            VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayoutHandle, null)
         }
-        if (vsm != 0L) {
-            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vsm, null)
-            vsm = 0L
+        if (vertexShaderModule != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vertexShaderModule, null)
         }
-        if (fsm != 0L) {
-            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
-            fsm = 0L
+        if (fragmentShaderModule != 0L) {
+            VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fragmentShaderModule, null)
         }
     }
 
@@ -891,7 +1190,24 @@ class Module(val parameters: Parameters) : Renderable {
         m.second.inside = this.pointer()
     }
 
+    @JvmName("plusAssign_target")
+    operator fun plusAssign(m: Pair<String, Target>) {
+        after[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_beforeTarget")
+    operator fun plusAssign(m: Pair<String, BeforeTarget>) {
+        before[m.first] = m.second.target
+    }
+
 }
+
+@JvmInline
+value class BeforeTarget(val target: Target)
+
+fun before(a: (CommandBuffer, Int) -> Unit) = BeforeTarget(object : Target {
+    override fun render(command: CommandBuffer, index: Int) = a(command, index)
+})
 
 // ---------- helper (unchanged) ----------
 

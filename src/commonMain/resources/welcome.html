@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Field·4</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+
+    <style>
+        :root {
+            --field-bg: rgb(20, 20, 20);
+            --field-panel: rgba(0, 0, 0, 0.32);
+            --field-panel-strong: rgba(0, 0, 0, 0.52);
+            --field-border: rgba(72, 201, 255, 0.18);
+            --field-border-strong: rgba(72, 201, 255, 0.45);
+            --field-cyan: rgb(72, 201, 255);
+            --field-text: rgba(220, 235, 244, 0.95);
+            --field-text-soft: rgba(164, 193, 210, 0.95);
+            --field-danger: #ff6f6f;
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--field-bg);
+            color: var(--field-text);
+            font-family: "Iosevka Web", system-ui, sans-serif;
+            overflow: hidden;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dashed rgba(180, 220, 245, 0.42);
+        }
+
+        #welcome-root {
+            position: relative;
+            z-index: 1;
+            width: min(1100px, 96vw);
+            margin: 18px auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: calc(100vh - 36px);
+            min-height: 0;
+        }
+
+        .panel {
+            flex: 0 0 auto;
+            border: 5px solid black;
+            border-radius: var(--radius);
+            background: #222;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 14px 48px rgba(0, 0, 0, 0.35);
+            margin-top: -5px;
+            margin-bottom: -5px;
+        }
+
+        .hero {
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(18px, 2.4vw, 30px);
+            font-weight: 400;
+            color: var(--field-cyan);
+            /*letter-spacing: 0.3px;*/
+        }
+
+        .hero p {
+            margin: 6px 0 0;
+            color: var(--field-text-soft);
+            font-size: 13px;
+        }
+
+        .hero-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hero-logo {
+            margin: 0;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(72, 201, 255, 0.36);
+            background: rgba(0, 0, 0, 0.62);
+            color: var(--field-cyan);
+            font-family: "Iosevka Web", monospace;
+            font-size: 14px;
+            line-height: 0.95;
+            /*letter-spacing: 1px;*/
+            text-shadow: 0 0 9px rgba(72, 201, 255, 0.45);
+            min-width: 50px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        button,
+        .button-link {
+            font-family: inherit;
+            font-size: 12px;
+            color: var(--field-text);
+            background: var(--field-panel-strong);
+            border: 1px solid var(--field-border);
+            border-radius: 8px;
+            padding: 7px 8px;
+            cursor: pointer;
+            transition: border-color 120ms ease, transform 120ms ease;
+        }
+
+        *:focus,
+        *:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        button:hover,
+        .button-link:hover {
+            border-color: var(--field-border-strong);
+            /*transform: translateY(-1px);*/
+        }
+
+        .button-link {
+            display: inline-flex;
+            align-items: center;
+            border-bottom-style: solid;
+        }
+
+        .button-danger {
+            color: var(--field-danger);
+            border-color: rgba(255, 111, 111, 0.45);
+        }
+
+        .button-danger:hover {
+            border-color: rgba(255, 111, 111, 0.8);
+        }
+
+        .new-doc {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .new-doc label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--field-text-soft);
+        }
+
+        .new-doc-controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #new-doc-name {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 5px 7px;
+            font: inherit;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        #new-doc-name::placeholder {
+            font-size: 12px;
+            color: rgba(164, 193, 210, 0.8);
+            text-align: right;
+        }
+
+        #new-doc-name:focus {
+            border-color: var(--field-cyan);
+        }
+
+        #create-status {
+            min-height: 1.2em;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            text-align: right;
+        }
+
+        #create-status.error {
+            color: var(--field-danger);
+        }
+
+        .workspace-header,
+        .ai-settings-header,
+        .preferences-header,
+        .osc-settings-header {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            align-items: baseline;
+            font-size: 12px;
+        }
+
+        .workspace-label,
+        .ai-settings-label,
+        .preferences-label,
+        .osc-settings-label {
+            color: var(--field-text-soft);
+        }
+
+        #current-workspace,
+        #ai-settings-state,
+        #ai-settings-path,
+        #preferences-state,
+        #osc-settings-state {
+            min-width: 0;
+            color: var(--field-cyan);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .workspace-controls,
+        .ai-settings-controls,
+        .osc-settings-controls {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ai-settings-controls {
+            grid-template-columns: 1fr auto;
+        }
+
+        #workspace-path,
+        #openai-platform-key,
+        #osc-editor-port,
+        #osc-editor-float-address,
+        #osc-editor-launch-address,
+        #osc-editor-stop-address,
+        #osc-editor-debounce-ms {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        #workspace-path::placeholder,
+        #openai-platform-key::placeholder,
+        #osc-editor-port::placeholder,
+        #osc-editor-float-address::placeholder,
+        #osc-editor-launch-address::placeholder,
+        #osc-editor-stop-address::placeholder,
+        #osc-editor-debounce-ms::placeholder {
+            font-size: 12px;
+            color: rgba(164, 193, 210, 0.8);
+        }
+
+        #workspace-path:focus,
+        #openai-platform-key:focus,
+        #osc-editor-port:focus,
+        #osc-editor-float-address:focus,
+        #osc-editor-launch-address:focus,
+        #osc-editor-stop-address:focus,
+        #osc-editor-debounce-ms:focus {
+            border-color: var(--field-cyan);
+        }
+
+        #workspace-status,
+        #ai-settings-status,
+        #preferences-status,
+        #osc-settings-status {
+            min-height: 1.2em;
+            font-size: 12px;
+            color: var(--field-text-soft);
+        }
+
+        #workspace-status.error,
+        #ai-settings-status.error,
+        #preferences-status.error,
+        #osc-settings-status.error {
+            color: var(--field-danger);
+        }
+
+        .changelog-panel {
+            padding: 0;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(240px, 0.6fr) minmax(240px, 0.6fr) minmax(280px, 0.75fr);
+        }
+
+        .changelog-panel details {
+            display: grid;
+            min-width: 0;
+            align-content: start;
+        }
+
+        .changelog-panel details + details {
+            border-left: 1px solid rgba(0, 0, 0, 0.62);
+        }
+
+        .changelog-panel summary {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            cursor: pointer;
+            color: var(--field-text);
+            font-size: 13px;
+            list-style: none;
+        }
+
+        .changelog-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .changelog-panel summary::after {
+            content: "+";
+            color: var(--field-cyan);
+            font-size: 14px;
+        }
+
+        .changelog-panel details[open] summary::after {
+            content: "-";
+        }
+
+        .changelog-count {
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        .workspace-details-body,
+        .ai-settings-body,
+        .preferences-body,
+        .osc-settings-body {
+            padding: 0 12px 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .osc-settings-panel {
+            padding: 10px 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .osc-settings-controls {
+            grid-template-columns: minmax(110px, 0.4fr) minmax(150px, 1fr) minmax(135px, 0.85fr) minmax(120px, 0.8fr) minmax(82px, 0.28fr) minmax(82px, 0.28fr);
+        }
+
+        .osc-settings-enable {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            color: var(--field-text);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .osc-settings-enable input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--field-cyan);
+        }
+
+        .preference-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+        }
+
+        .preference-toggle {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            color: var(--field-text);
+            font-size: 12px;
+        }
+
+        .preference-toggle input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--field-cyan);
+        }
+
+        #editor-stickiness {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        #editor-stickiness:focus {
+            border-color: var(--field-cyan);
+        }
+
+        .preferences-controls {
+            display: grid;
+            gap: 5px;
+        }
+
+        .preference-select-label {
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        #changelog-list {
+            max-height: min(260px, 32vh);
+            overflow: auto;
+            margin: 0;
+            padding: 0 12px 12px;
+            display: grid;
+            gap: 4px;
+            list-style: none;
+        }
+
+        .changelog-entry {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 10px;
+            align-items: baseline;
+            padding: 5px 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.62);
+            font-size: 12px;
+        }
+
+        .changelog-hash {
+            color: var(--field-cyan);
+            font-size: 11px;
+        }
+
+        .changelog-summary {
+            color: var(--field-text);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .changelog-date {
+            color: var(--field-text-soft);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .list-panel {
+            flex: 1 1 220px;
+            padding: 10px;
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 8px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .running-panel {
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .running-panel[hidden] {
+            display: none;
+        }
+
+        .running-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            color: var(--field-text-soft);
+            font-size: 12px;
+            padding: 2px 0 0;
+        }
+
+        #running-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .running-entry {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.32);
+            border: 1px solid rgba(72, 201, 255, 0.18);
+            color: var(--field-text);
+        }
+
+        .running-entry:hover {
+            border-color: var(--field-border-strong);
+        }
+
+        .running-entry-name {
+            font-size: 12px;
+            color: var(--field-cyan);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 20px;
+            padding: 4px 7px;
+            border-radius: 999px;
+            background: rgba(72, 201, 255, 0.12);
+            border: 1px solid rgba(72, 201, 255, 0.28);
+            color: var(--field-cyan);
+            font-size: 10px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .status-badge.running {
+            background: rgba(72, 255, 146, 0.1);
+            border-color: rgba(72, 255, 146, 0.25);
+            color: rgba(167, 255, 197, 0.98);
+        }
+
+        .status-badge.scratch {
+            background: rgba(255, 220, 72, 0.1);
+            border-color: rgba(255, 220, 72, 0.24);
+            color: rgba(255, 231, 155, 0.98);
+        }
+
+        .list-header {
+            display: none;
+            justify-content: space-between;
+            align-items: baseline;
+            color: var(--field-text-soft);
+            font-size: 12px;
+            padding: 8px 8px 8px 4px;
+        }
+
+        #recent-list {
+            overflow: auto;
+            min-height: 0;
+            padding-right: 6px;
+            display: grid;
+            gap: 8px;
+            align-content: start;
+        }
+
+        .doc-entry {
+            border: none;
+            border-radius: 0px;
+            background: none;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 4px;
+            cursor: pointer;
+            text-align: left;
+            border-bottom: 1px solid black;
+        }
+
+        .doc-entry {
+            opacity: 0.65;
+            transition: opacity 80ms ease;
+        }
+
+        .doc-entry:hover {
+            opacity: 1;
+            border-color: rgba(72, 201, 255, 0.5);
+            color: white;
+        }
+
+        .doc-entry.active {
+            /*border-color: rgba(72, 201, 255, 0.75);*/
+            /*box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.35) inset;*/
+        }
+
+        .doc-name {
+            font-size: 14px;
+            color: var(--field-text);
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .doc-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        .doc-meta {
+            font-size: 9px;
+            color: var(--field-text-soft);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .doc-body {
+            display: grid;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .doc-side {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+            max-width: min(72vw, 900px);
+        }
+
+        .doc-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+            max-width: min(46vw, 620px);
+        }
+
+        .tag-chip,
+        .tag-edit {
+            font: inherit;
+            font-size: 10px;
+            line-height: 1;
+            min-height: 20px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.36);
+            border: 1px solid rgba(72, 201, 255, 0.18);
+            color: var(--field-text-soft);
+        }
+
+        .tag-chip {
+            cursor: pointer;
+        }
+
+        .tag-chip:hover,
+        .tag-edit:hover {
+            border-color: var(--field-border-strong);
+            color: white;
+        }
+
+        .tag-edit {
+            color: var(--field-cyan);
+        }
+
+        .doc-tag-editor {
+            display: block;
+        }
+
+        .doc-tag-input {
+            width: min(360px, 36vw);
+            min-width: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 6px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        .doc-tag-input:focus {
+            border-color: var(--field-cyan);
+        }
+
+        #welcome-context-menu {
+            position: fixed;
+            z-index: 1200;
+            display: none;
+            min-width: 230px;
+            max-width: min(340px, calc(100vw - 20px));
+            padding: 6px;
+            background: rgba(10, 10, 10, 0.96);
+            border: 1px solid rgba(72, 201, 255, 0.28);
+            border-radius: 7px;
+            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42);
+        }
+
+        #welcome-context-menu.open {
+            display: grid;
+            gap: 5px;
+        }
+
+        .context-menu-title {
+            padding: 5px 6px 3px;
+            color: var(--field-text-soft);
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .context-menu-action {
+            width: 100%;
+            text-align: left;
+            padding: 6px 8px;
+            border-radius: 5px;
+            border-color: rgba(72, 201, 255, 0.14);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .context-menu-action:hover {
+            border-color: var(--field-border-strong);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .context-input {
+            width: 100%;
+            min-width: 0;
+            background: rgba(0, 0, 0, 0.82);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 6px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        .context-input:focus {
+            border-color: var(--field-cyan);
+        }
+
+        .context-error {
+            min-height: 1.2em;
+            padding: 2px 6px;
+            color: var(--field-danger);
+            font-size: 10px;
+        }
+
+        .search-match-list {
+            display: grid;
+            gap: 4px;
+        }
+
+        .search-match {
+            border-left: 1px solid rgba(72, 201, 255, 0.16);
+            padding-left: 8px;
+        }
+
+        .search-match-meta {
+            font-size: 10px;
+            color: var(--field-text-soft);
+            text-transform: lowercase;
+        }
+
+        .search-match-snippet {
+            font-size: 11px;
+            color: var(--field-text);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .search-match mark {
+            background: rgba(72, 201, 255, 0.18);
+            color: white;
+            padding: 0 2px;
+        }
+
+        .empty-state {
+            border: 1px dashed rgba(72, 201, 255, 0.35);
+            border-radius: 9px;
+            padding: 18px;
+            color: var(--field-text-soft);
+            background: rgba(0, 0, 0, 0.2);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        #recent-search {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--field-cyan);
+            border: 1px solid rgba(72, 201, 255, 0.35);
+            border-radius: 7px;
+            padding: 6px 8px;
+            font: inherit;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        #recent-search::placeholder {
+            font-size: 12px;
+            color: rgba(164, 193, 210, 0.8);
+            text-align: right;
+        }
+
+        #recent-search:focus {
+            border-color: var(--field-cyan);
+        }
+
+        #recent-search-status {
+            min-height: 1.2em;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        #recent-search-status.error {
+            color: var(--field-danger);
+        }
+
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: grid;
+            place-items: center;
+            background: var(--field-bg);
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity var(--splash-fade, 700ms) ease;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+        }
+
+        #splash-screen pre {
+            font-family: "Iosevka Web", monospace;
+            color: var(--field-cyan);
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            white-space: pre;
+            opacity: 0;
+            transition: opacity var(--splash-pre-fade, 200ms) ease-in;
+        }
+
+        #splash-screen pre.f4lit {
+            opacity: 1;
+        }
+
+        @media (max-width: 900px) {
+            #welcome-root {
+                margin: 10px auto;
+                height: calc(100vh - 20px);
+            }
+
+            .hero {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .hero-brand {
+                align-items: flex-start;
+            }
+
+            .button-row {
+                justify-content: flex-start;
+            }
+
+            .new-doc {
+                grid-template-columns: 1fr;
+            }
+
+            .changelog-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .changelog-panel details + details {
+                border-left: none;
+                border-top: 1px solid rgba(0, 0, 0, 0.62);
+            }
+
+            .workspace-header,
+            .workspace-controls,
+            .ai-settings-header,
+            .ai-settings-controls,
+            .osc-settings-header,
+            .osc-settings-controls,
+            .preferences-header,
+            .preference-grid {
+                grid-template-columns: 1fr;
+            }
+
+            #current-workspace,
+            #ai-settings-state,
+            #ai-settings-path,
+            #preferences-state,
+            #osc-settings-state {
+                white-space: normal;
+                word-break: break-all;
+            }
+
+            #create-status {
+                text-align: left;
+            }
+
+            .search-row {
+                grid-template-columns: 1fr;
+            }
+
+            #recent-search-status {
+                text-align: left;
+            }
+
+            .doc-entry {
+                grid-template-columns: 1fr;
+            }
+
+            .doc-side {
+                justify-content: flex-start;
+                align-items: flex-start;
+                flex-wrap: wrap;
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .doc-tags {
+                justify-content: flex-start;
+                max-width: 100%;
+            }
+
+            .doc-tag-input {
+                width: 100%;
+            }
+
+            .doc-meta {
+                text-align: left;
+            }
+
+            .changelog-entry {
+                grid-template-columns: auto 1fr;
+            }
+
+            .changelog-date {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="splash-screen">
+    <pre class="f4drift">
+          _____                    _____                    _____                    _____            _____
+         /\    \                  /\    \                  /\    \                  /\    \          /\    \
+        /::\    \                /::\    \                /::\    \                /::\____\        /::\    \
+       /::::\    \               \:::\    \              /::::\    \              /:::/    /       /::::\    \
+      /::::::\    \               \:::\    \            /::::::\    \            /:::/    /       /::::::\    \
+     /:::/\:::\    \               \:::\    \          /:::/\:::\    \          /:::/    /       /:::/\:::\    \
+    /:::/__\:::\    \               \:::\    \        /:::/__\:::\    \        /:::/    /       /:::/  \:::\    \
+   /::::\   \:::\    \              /::::\    \      /::::\   \:::\    \      /:::/    /       /:::/    \:::\    \
+  /::::::\   \:::\    \    ____    /::::::\    \    /::::::\   \:::\    \    /:::/    /       /:::/    / \:::\    \
+ /:::/\:::\   \:::\    \  /\   \  /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/    /       /:::/    /   \:::\ ___\
+/:::/  \:::\   \:::\____\/::\   \/:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/____/       /:::/____/     \:::|    |
+\::/    \:::\   \::/    /\:::\  /:::/    \::/    /\:::\   \:::\   \::/    /\:::\    \       \:::\    \     /:::|____|
+ \/____/ \:::\   \/____/  \:::\/:::/    / \/____/  \:::\   \:::\   \/____/  \:::\    \       \:::\    \   /:::/    /
+          \:::\    \       \::::::/    /            \:::\   \:::\    \       \:::\    \       \:::\    \ /:::/    /
+           \:::\____\       \::::/____/              \:::\   \:::\____\       \:::\    \       \:::\    /:::/    /
+            \::/    /        \:::\    \               \:::\   \::/    /        \:::\    \       \:::\  /:::/    /
+             \/____/          \:::\    \               \:::\   \/____/          \:::\    \       \:::\/:::/    /
+                               \:::\    \               \:::\    \               \:::\    \       \::::::/    /
+                                \:::\____\               \:::\____\               \:::\____\       \::::/    /
+                                 \::/    /                \::/    /                \::/    /        \::/____/
+                                  \/____/                  \/____/                  \/____/          ~~
+
+</pre>
+</div>
+
+<main id="welcome-root">
+    <section class="panel hero">
+        Field·4
+        <div class="button-row">
+            <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
+            <a class="button-link" href="https://openendedgroup.com/field4">/docs</a>
+            <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
+        </div>
+    </section>
+
+    <section class="panel new-doc">
+        <div>
+<!--            <label for="new-doc-name">Create new document</label>-->
+            <div class="new-doc-controls">
+                <input id="new-doc-name" type="text" autocomplete="off" placeholder="filename">
+                <button id="create-doc" type="button">Create</button>
+            </div>
+        </div>
+        <div id="create-status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel changelog-panel">
+        <details id="welcome-changelog">
+            <summary>
+                <span>Changelog</span>
+                <span id="changelog-count" class="changelog-count">loading</span>
+            </summary>
+            <ol id="changelog-list"></ol>
+        </details>
+        <details id="workspace-details">
+            <summary>
+                <span>Workspace</span>
+                <span class="changelog-count">advanced</span>
+            </summary>
+            <div class="workspace-details-body">
+                <div class="workspace-header">
+                    <span class="workspace-label">Current</span>
+                    <span id="current-workspace">loading</span>
+                </div>
+                <div class="workspace-controls">
+                    <input id="workspace-path" type="text" autocomplete="off" list="workspace-options" placeholder="~/Documents/AFieldWorkspace">
+                    <datalist id="workspace-options"></datalist>
+                    <button id="default-workspace" type="button">Default</button>
+                    <button id="open-workspace" type="button">Open</button>
+                </div>
+                <div id="workspace-status" aria-live="polite"></div>
+            </div>
+        </details>
+        <details id="ai-settings-details">
+            <summary>
+                <span>AI</span>
+                <span id="ai-settings-summary" class="changelog-count">checking</span>
+            </summary>
+            <div class="ai-settings-body">
+                <div class="ai-settings-header">
+                    <span class="ai-settings-label">OpenAI</span>
+                    <span id="ai-settings-state">checking</span>
+                </div>
+                <div class="ai-settings-controls">
+                    <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
+                    <button id="save-openai-platform-key" type="button">Save</button>
+                </div>
+                <div class="ai-settings-header">
+                    <span class="ai-settings-label">Path</span>
+                    <span id="ai-settings-path"></span>
+                </div>
+                <div id="ai-settings-status" aria-live="polite"></div>
+            </div>
+        </details>
+        <details id="preferences-details">
+            <summary>
+                <span>Preferences</span>
+                <span id="preferences-summary" class="changelog-count">loading</span>
+            </summary>
+            <div class="preferences-body">
+                <div class="preference-grid">
+                    <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
+                    <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
+                    <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
+                    <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
+                    <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
+                    <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
+                    <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
+                </div>
+                <div class="preferences-controls">
+                    <label class="preference-select-label" for="editor-stickiness">editor property</label>
+                    <select id="editor-stickiness">
+                        <option value="none">not sticky</option>
+                        <option value="per-box">per-box</option>
+                        <option value="global">global</option>
+                    </select>
+                </div>
+                <div id="preferences-status" aria-live="polite"></div>
+            </div>
+        </details>
+    </section>
+
+    <section class="panel osc-settings-panel">
+        <div class="osc-settings-header">
+            <span class="osc-settings-label">OSC editor</span>
+            <span id="osc-settings-state">disabled</span>
+        </div>
+        <div class="osc-settings-controls">
+            <label class="osc-settings-enable"><input id="osc-editor-enabled" type="checkbox"> enabled</label>
+            <input id="osc-editor-float-address" type="text" autocomplete="off" placeholder="/field/float">
+            <input id="osc-editor-launch-address" type="text" autocomplete="off" placeholder="/field/launch">
+            <input id="osc-editor-stop-address" type="text" autocomplete="off" placeholder="/field/stop">
+            <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
+            <input id="osc-editor-debounce-ms" type="number" min="0" max="5000" step="25" autocomplete="off" placeholder="200">
+        </div>
+        <div id="osc-settings-status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel running-panel" id="running-panel" hidden>
+        <div class="running-header">
+            <span>Running now</span>
+            <span id="running-count">0</span>
+        </div>
+        <div id="running-list"></div>
+    </section>
+
+    <section class="panel list-panel">
+        <div class="search-row">
+            <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search workspace text or document name">
+            <div id="recent-search-status" aria-live="polite"></div>
+        </div>
+        <div class="list-header">
+            <span>Search</span>
+            <span id="doc-count">0</span>
+        </div>
+        <div id="recent-list"></div>
+    </section>
+</main>
+
+<div id="welcome-context-menu" aria-live="polite"></div>
+
+<script>
+    const state = {
+        documents: [],
+        runningDocuments: [],
+        searchQuery: "",
+        searchResults: [],
+        searchTruncated: false,
+        lastOpened: "welcome",
+        defaultDocument: "welcome",
+        allTags: [],
+        editingDocument: null,
+        savingTags: null,
+        contextMenu: null,
+        duplicatePrompt: null,
+        contextError: "",
+        changelog: [],
+        currentWorkspace: "",
+        defaultWorkspace: "",
+        recentWorkspaces: [],
+        workspaceSwitching: false,
+        aiSettings: {
+            hasOpenAiPlatformKey: false,
+            source: "",
+            configPath: ""
+        },
+        savingAiSettings: false,
+        preferences: {
+            profiling: false,
+            logShadercSource: true,
+            enableVR: true,
+            enableHDR: false,
+            openXRDebugInput: true,
+            validate: true,
+            autoOpenLastDocumentInDesktop: false,
+            editorPropertyStickiness: "none",
+            oscEditorEnabled: false,
+            oscEditorPort: 9000,
+            oscEditorFloatAddress: "/field/float",
+            oscEditorLaunchAddress: "/field/launch",
+            oscEditorStopAddress: "/field/stop",
+            oscEditorDebounceMs: 200
+        },
+        savingPreferences: false
+    };
+    let searchController = null;
+    let searchRequestSerial = 0;
+    let searchDebounceTimer = null;
+    let preferencesSaveSerial = 0;
+    let oscSettingsSaveTimer = null;
+    let welcomeRefreshTimer = null;
+    let welcomeEventSocket = null;
+    let welcomeEventReconnectTimer = null;
+    let welcomeEventRefreshTimer = null;
+    const WELCOME_REFRESH_MS = 10000;
+    const WELCOME_EVENT_REFRESH_MS = 120;
+    const WELCOME_EVENT_RECONNECT_MS = 1500;
+    const RECENT_WORKSPACES_KEY = "field4.recentWorkspaces";
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function formatDuration(ms) {
+        const abs = Math.max(0, Math.floor(ms));
+        if (abs < 1000) return "just now";
+        const minutes = Math.floor(abs / 60000);
+        if (minutes < 1) return `${Math.floor(abs / 1000)}s ago`;
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        const weeks = Math.floor(days / 7);
+        if (weeks < 6) return `${weeks}wk ago`;
+        const months = Math.floor(days / 30);
+        if (months < 24) return `${months}mo ago`;
+        const years = Math.floor(days / 365);
+        return `${years}y ago`;
+    }
+
+    function formatBytes(bytes) {
+        const value = Number(bytes) || 0;
+        if (value < 1024) return `${value} B`;
+        const units = ["KB", "MB", "GB", "TB"];
+        let n = value / 1024;
+        let index = 0;
+        while (n >= 1024 && index < units.length - 1) {
+            n /= 1024;
+            index += 1;
+        }
+        const rounded = n >= 100 ? n.toFixed(0) : n >= 10 ? n.toFixed(1) : n.toFixed(2);
+        return `${rounded} ${units[index]}`;
+    }
+
+    function formatCommitDate(epochMs) {
+        const value = Number(epochMs) || 0;
+        if (!value) return "";
+        return formatDuration(Date.now() - value);
+    }
+
+    function getStoredWorkspaces() {
+        try {
+            const raw = window.localStorage.getItem(RECENT_WORKSPACES_KEY);
+            const parsed = JSON.parse(raw || "[]");
+            return Array.isArray(parsed) ? parsed.filter((path) => typeof path === "string" && path.trim()) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function rememberWorkspace(path) {
+        const clean = String(path || "").trim();
+        if (!clean) return;
+        const current = [clean, ...getStoredWorkspaces().filter((other) => other !== clean)].slice(0, 12);
+        state.recentWorkspaces = current;
+        try {
+            window.localStorage.setItem(RECENT_WORKSPACES_KEY, JSON.stringify(current));
+        } catch (_) {
+        }
+        renderWorkspaceControls();
+    }
+
+    function renderWorkspaceControls() {
+        const currentNode = document.getElementById("current-workspace");
+        const input = document.getElementById("workspace-path");
+        const options = document.getElementById("workspace-options");
+        const paths = [
+            state.currentWorkspace,
+            state.defaultWorkspace,
+            ...state.recentWorkspaces
+        ].filter(Boolean);
+        const uniquePaths = Array.from(new Set(paths));
+
+        if (currentNode) currentNode.textContent = state.currentWorkspace || "unknown";
+        if (input && !input.value.trim()) input.value = state.currentWorkspace || state.defaultWorkspace || "";
+        if (options) {
+            options.innerHTML = uniquePaths.map((path) => `<option value="${escapeHtml(path)}"></option>`).join("");
+        }
+    }
+
+    function setWorkspaceStatus(text, isError = false) {
+        const node = document.getElementById("workspace-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderAiSettings() {
+        const summary = document.getElementById("ai-settings-summary");
+        const stateNode = document.getElementById("ai-settings-state");
+        const pathNode = document.getElementById("ai-settings-path");
+        const input = document.getElementById("openai-platform-key");
+        const button = document.getElementById("save-openai-platform-key");
+        const settings = state.aiSettings || {};
+        const configured = !!settings.hasOpenAiPlatformKey;
+        const source = settings.source || "";
+
+        if (summary) summary.textContent = configured ? "configured" : "missing key";
+        if (stateNode) stateNode.textContent = configured ? `configured${source ? ` (${source})` : ""}` : "missing OPENAI_PLATFORM_KEY";
+        if (pathNode) pathNode.textContent = settings.configPath || "";
+        if (input) input.disabled = state.savingAiSettings;
+        if (button) button.disabled = state.savingAiSettings;
+    }
+
+    function setAiSettingsStatus(text, isError = false) {
+        const node = document.getElementById("ai-settings-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderPreferences() {
+        const prefs = state.preferences || {};
+        const summary = document.getElementById("preferences-summary");
+        const stickiness = document.getElementById("editor-stickiness");
+        const enabledCount = [
+            prefs.profiling,
+            prefs.logShadercSource,
+            prefs.enableVR,
+            prefs.enableHDR,
+            prefs.openXRDebugInput,
+            prefs.validate,
+            prefs.autoOpenLastDocumentInDesktop
+        ].filter(Boolean).length;
+
+        const fields = {
+            "pref-profiling": "profiling",
+            "pref-log-shaderc-source": "logShadercSource",
+            "pref-enable-vr": "enableVR",
+            "pref-enable-hdr": "enableHDR",
+            "pref-openxr-debug-input": "openXRDebugInput",
+            "pref-validate": "validate",
+            "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
+        };
+        Object.entries(fields).forEach(([id, key]) => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.checked = !!prefs[key];
+        });
+        if (stickiness) {
+            stickiness.value = prefs.editorPropertyStickiness || "none";
+        }
+        if (summary) summary.textContent = `${enabledCount} enabled`;
+    }
+
+    function setPreferencesStatus(text, isError = false) {
+        const node = document.getElementById("preferences-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderOscSettings() {
+        const prefs = state.preferences || {};
+        const stateNode = document.getElementById("osc-settings-state");
+        const enabled = document.getElementById("osc-editor-enabled");
+        const port = document.getElementById("osc-editor-port");
+        const floatAddress = document.getElementById("osc-editor-float-address");
+        const launchAddress = document.getElementById("osc-editor-launch-address");
+        const stopAddress = document.getElementById("osc-editor-stop-address");
+        const debounce = document.getElementById("osc-editor-debounce-ms");
+
+        if (stateNode) {
+            const label = prefs.oscEditorEnabled
+                ? `UDP ${prefs.oscEditorPort || 9000} · ${prefs.oscEditorFloatAddress || "/field/float"}`
+                : "disabled";
+            stateNode.textContent = label;
+        }
+        if (enabled) enabled.checked = !!prefs.oscEditorEnabled;
+        if (port) port.value = String(prefs.oscEditorPort || 9000);
+        if (floatAddress) floatAddress.value = prefs.oscEditorFloatAddress || "/field/float";
+        if (launchAddress) launchAddress.value = prefs.oscEditorLaunchAddress || "/field/launch";
+        if (stopAddress) stopAddress.value = prefs.oscEditorStopAddress || "/field/stop";
+        if (debounce) debounce.value = String(prefs.oscEditorDebounceMs ?? 200);
+
+        [enabled, port, floatAddress, launchAddress, stopAddress, debounce].forEach((node) => {
+            if (node) node.disabled = state.savingPreferences;
+        });
+    }
+
+    function setOscSettingsStatus(text, isError = false) {
+        const node = document.getElementById("osc-settings-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function readPreferencesForm() {
+        const parsedDebounce = Number.parseInt(document.getElementById("osc-editor-debounce-ms")?.value || "200", 10);
+        return {
+            profiling: !!document.getElementById("pref-profiling")?.checked,
+            logShadercSource: !!document.getElementById("pref-log-shaderc-source")?.checked,
+            enableVR: !!document.getElementById("pref-enable-vr")?.checked,
+            enableHDR: !!document.getElementById("pref-enable-hdr")?.checked,
+            openXRDebugInput: !!document.getElementById("pref-openxr-debug-input")?.checked,
+            validate: !!document.getElementById("pref-validate")?.checked,
+            autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
+            editorPropertyStickiness: document.getElementById("editor-stickiness")?.value || "none",
+            oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
+            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000,
+            oscEditorFloatAddress: String(document.getElementById("osc-editor-float-address")?.value || "/field/float").trim(),
+            oscEditorLaunchAddress: String(document.getElementById("osc-editor-launch-address")?.value || "/field/launch").trim(),
+            oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
+            oscEditorDebounceMs: Number.isFinite(parsedDebounce) ? parsedDebounce : 200
+        };
+    }
+
+    function openDocument(name, options = {}) {
+        searchRequestSerial += 1;
+        if (searchController) {
+            searchController.abort();
+            searchController = null;
+        }
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = null;
+        }
+        if (options.url) {
+            window.location.href = options.url;
+            return;
+        }
+        const params = new URLSearchParams({ file: name });
+        if (options.sessionKey) params.set("sessionKey", options.sessionKey);
+        if (options.scratch) params.set("scratch", "1");
+        window.location.href = `/index.html?${params.toString()}`;
+    }
+
+    function welcomeEventsUrl() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${window.location.host}/welcome-events`;
+    }
+
+    function setCreateStatus(text, isError = false) {
+        const node = document.getElementById("create-status");
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+
+    function escapeRegExp(text) {
+        return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function highlightQuery(text, query) {
+        if (!query) return escapeHtml(text);
+        const safe = escapeHtml(text);
+        const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
+        return safe.replace(regex, "<mark>$1</mark>");
+    }
+
+    function tagsForDoc(doc) {
+        return Array.isArray(doc.tags) ? doc.tags : [];
+    }
+
+    function renderTags(doc, query = "") {
+        const tags = tagsForDoc(doc);
+        const chips = tags.map((tag) => `
+            <button type="button" class="tag-chip tag-control" data-tag="${escapeHtml(tag)}">
+                ${highlightQuery(tag, query)}
+            </button>
+        `).join("");
+        return `
+            <div class="doc-tags">
+                ${chips}
+                <button type="button" class="tag-edit tag-control" data-tag-edit="${escapeHtml(doc.filename)}">tags</button>
+            </div>
+        `;
+    }
+
+    function renderTagEditor(doc) {
+        const tags = tagsForDoc(doc).join(", ");
+        const saving = state.savingTags === doc.filename;
+        return `
+            <div class="doc-tag-editor tag-control" data-tag-editor="${escapeHtml(doc.filename)}">
+                <input class="doc-tag-input tag-control" value="${escapeHtml(tags)}" autocomplete="off" placeholder="comma separated tags, ⏎ / esc" ${saving ? "disabled" : ""}>
+            </div>
+        `;
+    }
+
+    function splitTags(value) {
+        return String(value || "")
+            .split(",")
+            .map((tag) => tag.trim().replace(/\s+/g, "-").replace(/^[-,;]+|[-,;]+$/g, ""))
+            .filter(Boolean)
+            .filter((tag, index, list) => list.findIndex((other) => other.toLowerCase() === tag.toLowerCase()) === index);
+    }
+
+    function contextMenuNode() {
+        return document.getElementById("welcome-context-menu");
+    }
+
+    function clampMenuPosition(x, y) {
+        const margin = 10;
+        const menu = contextMenuNode();
+        const width = menu?.offsetWidth || 260;
+        const height = menu?.offsetHeight || 120;
+        return {
+            x: Math.max(margin, Math.min(x, window.innerWidth - width - margin)),
+            y: Math.max(margin, Math.min(y, window.innerHeight - height - margin))
+        };
+    }
+
+    function nextDuplicateName(sourceName) {
+        const existing = new Set(state.documents.map((doc) => doc.filename.toLowerCase()));
+        let candidate = `${sourceName}-copy`;
+        let index = 2;
+        while (existing.has(candidate.toLowerCase())) {
+            candidate = `${sourceName}-copy-${index}`;
+            index += 1;
+        }
+        return candidate;
+    }
+
+    function openDocumentContextMenu(event, filename) {
+        event.preventDefault();
+        state.contextMenu = { type: "document", filename, x: event.clientX, y: event.clientY };
+        state.duplicatePrompt = null;
+        state.contextError = "";
+        renderContextMenu();
+    }
+
+    function openTagContextMenu(event, tag) {
+        event.preventDefault();
+        event.stopPropagation();
+        state.contextMenu = { type: "tag", tag, x: event.clientX, y: event.clientY };
+        state.duplicatePrompt = null;
+        state.contextError = "";
+        renderContextMenu();
+    }
+
+    function closeContextMenu() {
+        state.contextMenu = null;
+        state.duplicatePrompt = null;
+        state.contextError = "";
+        const menu = contextMenuNode();
+        if (menu) {
+            menu.classList.remove("open");
+            menu.innerHTML = "";
+        }
+    }
+
+    function renderContextMenu() {
+        const menu = contextMenuNode();
+        if (!menu || !state.contextMenu) return;
+
+        const position = clampMenuPosition(state.contextMenu.x, state.contextMenu.y);
+        menu.style.left = `${position.x}px`;
+        menu.style.top = `${position.y}px`;
+        menu.classList.add("open");
+
+        if (state.duplicatePrompt) {
+            const source = state.duplicatePrompt.sourceFilename;
+            const suggested = state.duplicatePrompt.value || nextDuplicateName(source);
+            menu.innerHTML = `
+                <div class="context-menu-title">Duplicate ${escapeHtml(source)}</div>
+                <input class="context-input" value="${escapeHtml(suggested)}" autocomplete="off" placeholder="duplicate name, ⏎ / esc">
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+            requestAnimationFrame(() => {
+                const input = menu.querySelector(".context-input");
+                input?.focus({ preventScroll: true });
+                input?.select();
+                input?.addEventListener("keydown", (event) => {
+                    event.stopPropagation();
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        closeContextMenu();
+                    } else if (event.key === "Enter") {
+                        event.preventDefault();
+                        duplicateDocument(source, input.value);
+                    }
+                });
+                input?.addEventListener("click", (event) => event.stopPropagation());
+            });
+            return;
+        }
+
+        if (state.contextMenu.type === "document") {
+            const filename = state.contextMenu.filename;
+            menu.innerHTML = `
+                <div class="context-menu-title">${escapeHtml(filename)}</div>
+                <button type="button" class="context-menu-action" data-menu-action="duplicate-document">Duplicate</button>
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+        } else {
+            const tag = state.contextMenu.tag;
+            menu.innerHTML = `
+                <div class="context-menu-title">#${escapeHtml(tag)}</div>
+                <button type="button" class="context-menu-action" data-menu-action="export-tagged-documents">Export tagged documents</button>
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+        }
+
+        menu.querySelector("[data-menu-action='duplicate-document']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const source = state.contextMenu?.filename;
+            if (!source) return;
+            state.duplicatePrompt = { sourceFilename: source, value: nextDuplicateName(source) };
+            state.contextError = "";
+            renderContextMenu();
+        });
+
+        menu.querySelector("[data-menu-action='export-tagged-documents']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const tag = state.contextMenu?.tag;
+            if (!tag) return;
+            exportTaggedDocuments(tag);
+        });
+    }
+
+    function validateDocumentName(name) {
+        if (!name) return "Enter a document name.";
+        if (/[\/\\]/.test(name)) return "Document names cannot contain path separators.";
+        if (/\0/.test(name)) return "Document name contains invalid characters.";
+        if (/\.\./.test(name)) return "Document name cannot contain '..'.";
+        if (/^\./.test(name)) return "Document name cannot start with '.'.";
+        if (/\s$/.test(name)) return "Document name cannot end with whitespace.";
+
+        const reservedNames = new Set([
+            "con", "prn", "aux", "nul",
+            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+        ]);
+        if (reservedNames.has(name.toLowerCase())) return "That name is reserved by the OS.";
+
+        const duplicate = state.documents.find(d => d.filename.toLowerCase() === name.toLowerCase());
+        if (duplicate) return `Document '${name}' already exists.`;
+
+        return null;
+    }
+
+    async function duplicateDocument(sourceFilename, rawName) {
+        const newFilename = String(rawName || "").trim();
+        const error = validateDocumentName(newFilename);
+        if (error) {
+            state.contextError = error;
+            state.duplicatePrompt = { sourceFilename, value: newFilename };
+            renderContextMenu();
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/duplicate-document", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ sourceFilename, newFilename })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            closeContextMenu();
+            setCreateStatus(`Duplicated ${sourceFilename} as ${payload.filename}.`);
+            await loadWelcomeDocs();
+        } catch (error) {
+            console.error("Failed to duplicate document", error);
+            state.contextError = "Could not duplicate this document.";
+            state.duplicatePrompt = { sourceFilename, value: newFilename };
+            renderContextMenu();
+        }
+    }
+
+    function exportTaggedDocuments(tag) {
+        closeContextMenu();
+        setCreateStatus(`Exporting documents tagged ${tag}...`);
+        const link = document.createElement("a");
+        link.href = `/api/export-tagged-documents?tag=${encodeURIComponent(tag)}`;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setCreateStatus(`Export requested for tag ${tag}.`);
+    }
+
+    function getFirstVisibleDocument() {
+        if (state.searchQuery.trim()) {
+            return state.searchResults[0] || null;
+        }
+        return state.documents[0] || null;
+    }
+
+    function runningBadge(doc) {
+        const runningCount = Number(doc.runningExecutionCount) || 0;
+        if (runningCount) {
+            const label = runningCount === 1 ? "running" : `${runningCount} running`;
+            return `<span class="status-badge running">${escapeHtml(label)}</span>`;
+        }
+
+        const sessionCount = Number(doc.runningSessionCount) || 0;
+        if (!sessionCount) return "";
+        const label = sessionCount === 1 ? "live" : `${sessionCount} live`;
+        return `<span class="status-badge running">${escapeHtml(label)}</span>`;
+    }
+
+    function renderRunningDocuments() {
+        const panel = document.getElementById("running-panel");
+        const listNode = document.getElementById("running-list");
+        const countNode = document.getElementById("running-count");
+        const docs = state.runningDocuments;
+
+        if (!panel || !listNode || !countNode) return;
+        panel.hidden = docs.length === 0;
+        countNode.textContent = docs.length === 1 ? "1 extra live document" : `${docs.length} extra live documents`;
+
+        if (!docs.length) {
+            listNode.innerHTML = "";
+            return;
+        }
+
+        listNode.innerHTML = docs.map((doc) => `
+            <button type="button" class="running-entry" data-running-open="${escapeHtml(doc.openUrl)}">
+                <span class="running-entry-name">${escapeHtml(doc.documentName)}</span>
+                <span class="status-badge running">${escapeHtml(doc.sessionCount === 1 ? "1 session" : `${doc.sessionCount} sessions`)}</span>
+                ${doc.ephemeral ? '<span class="status-badge scratch">scratch</span>' : ""}
+            </button>
+        `).join("");
+
+        listNode.querySelectorAll("[data-running-open]").forEach((entry) => {
+            entry.addEventListener("click", () => {
+                const url = entry.getAttribute("data-running-open");
+                if (url) openDocument("", { url });
+            });
+        });
+    }
+
+    function renderRecentDocuments() {
+        const listNode = document.getElementById("recent-list");
+        const countNode = document.getElementById("doc-count");
+        const docs = state.documents;
+        countNode.textContent = docs.length === 1 ? "1 document" : `${docs.length} documents`;
+
+        if (!docs.length) {
+            listNode.innerHTML = `
+                <div class="empty-state">
+                    No documents found in this workspace yet.<br><br>
+                    Start with <a href="/index.html?file=welcome"><code>welcome</code></a> or create one above.
+                </div>
+            `;
+            return;
+        }
+
+        listNode.innerHTML = docs.map((doc) => {
+            const activeClass = doc.filename === state.lastOpened ? "active" : "";
+            const when = formatDuration(doc.lastModifiedAgoMs);
+            const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+            const meta = `${boxes} · ${formatBytes(doc.sizeBytes)} · ${when}`;
+            return `
+                <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                    <div class="doc-body">
+                        <div class="doc-title">
+                            <span class="doc-name">${escapeHtml(doc.filename)}</span>
+                            ${runningBadge(doc)}
+                        </div>
+                    </div>
+                    <div class="doc-side">
+                        ${state.editingDocument === doc.filename ? renderTagEditor(doc) : renderTags(doc)}
+                        <span class="doc-meta">${escapeHtml(meta)}</span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        installDocumentListHandlers(listNode);
+    }
+
+    function renderSearchResults() {
+        const listNode = document.getElementById("recent-list");
+        const countNode = document.getElementById("doc-count");
+        const docs = state.searchResults;
+        const query = state.searchQuery.trim();
+        const statusNode = document.getElementById("recent-search-status");
+
+        countNode.textContent = docs.length === 1 ? "1 matching document" : `${docs.length} matching documents`;
+
+        if (!docs.length) {
+            listNode.innerHTML = `
+                <div class="empty-state">
+                    No workspace matches for <code>${escapeHtml(query)}</code>.
+                </div>
+            `;
+            statusNode.textContent = "no matches";
+            statusNode.classList.remove("error");
+            return;
+        }
+
+        listNode.innerHTML = docs.map((doc) => {
+            const activeClass = doc.filename === state.lastOpened ? "active" : "";
+            const when = formatDuration(doc.lastModifiedAgoMs);
+            const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+            const meta = `${boxes} · ${when}`;
+            const matches = Array.isArray(doc.matches) ? doc.matches : [];
+            const matchHtml = matches.map((match) => {
+                const property = match.property === "document" ? "document name" : match.property;
+                const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                return `
+                    <div class="search-match">
+                        <div class="search-match-meta">${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(linePart)}</div>
+                        <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
+                    </div>
+                `;
+            }).join("");
+
+            return `
+                <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                    <div class="doc-body">
+                        <div class="doc-title">
+                            <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
+                            ${runningBadge(doc)}
+                        </div>
+                        <div class="search-match-list">${matchHtml}</div>
+                    </div>
+                    <div class="doc-side">
+                        ${state.editingDocument === doc.filename ? renderTagEditor(doc) : renderTags(doc, query)}
+                        <span class="doc-meta">${escapeHtml(meta)}</span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        installDocumentListHandlers(listNode);
+
+        const matchCount = docs.reduce((sum, doc) => sum + ((doc.matches || []).length), 0);
+        statusNode.textContent = state.searchTruncated
+            ? `${matchCount}+ matches shown`
+            : `${matchCount} matches`;
+        statusNode.classList.remove("error");
+    }
+
+    function renderList() {
+        renderRunningDocuments();
+        if (state.searchQuery.trim()) {
+            renderSearchResults();
+        } else {
+            const statusNode = document.getElementById("recent-search-status");
+            statusNode.textContent = state.documents.length
+                ? `${state.documents.length} recent documents`
+                : "";
+            statusNode.classList.remove("error");
+            renderRecentDocuments();
+        }
+    }
+
+    function renderChangelog() {
+        const listNode = document.getElementById("changelog-list");
+        const countNode = document.getElementById("changelog-count");
+        if (!listNode || !countNode) return;
+
+        const entries = state.changelog;
+        countNode.textContent = entries.length === 1 ? "1 change" : `${entries.length} changes`;
+
+        if (!entries.length) {
+            listNode.innerHTML = `
+                <li class="empty-state">
+                    Changelog entries are unavailable for this checkout.
+                </li>
+            `;
+            countNode.textContent = "unavailable";
+            return;
+        }
+
+        listNode.innerHTML = entries.map((entry) => `
+            <li class="changelog-entry">
+                <span class="changelog-hash">${escapeHtml(entry.hash || "")}</span>
+                <span class="changelog-summary">${escapeHtml(entry.summary || "")}</span>
+                <span class="changelog-date">${escapeHtml(formatCommitDate(entry.committedEpochMs))}</span>
+            </li>
+        `).join("");
+    }
+
+    async function loadWelcomeDocs() {
+        try {
+            const response = await fetch("/api/welcome-docs", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.documents = Array.isArray(payload.documents) ? payload.documents : [];
+            state.runningDocuments = Array.isArray(payload.runningDocuments) ? payload.runningDocuments : [];
+            state.lastOpened = payload.lastOpened || "welcome";
+            state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
+            state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
+            state.currentWorkspace = payload.currentWorkspace || state.currentWorkspace || "";
+            state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
+            state.aiSettings = payload.aiSettings || state.aiSettings;
+            state.preferences = payload.preferences || state.preferences;
+            try {
+                window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
+            } catch (_) {
+            }
+            rememberWorkspace(state.currentWorkspace);
+            renderWorkspaceControls();
+            renderAiSettings();
+            renderPreferences();
+            renderOscSettings();
+            renderList();
+        } catch (error) {
+            console.error("Failed to load welcome docs", error);
+            state.documents = [];
+            state.runningDocuments = [];
+            renderWorkspaceControls();
+            renderAiSettings();
+            renderPreferences();
+            renderOscSettings();
+            renderList();
+            setCreateStatus("Could not load workspace documents.", true);
+        }
+    }
+
+    function queueWelcomeDocsRefresh() {
+        clearTimeout(welcomeEventRefreshTimer);
+        welcomeEventRefreshTimer = setTimeout(() => {
+            if (document.visibilityState !== "visible") return;
+            loadWelcomeDocs();
+        }, WELCOME_EVENT_REFRESH_MS);
+    }
+
+    async function loadWelcomeChangelog() {
+        try {
+            const response = await fetch("/api/welcome-changelog?limit=30", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            state.changelog = Array.isArray(payload.entries) ? payload.entries : [];
+            renderChangelog();
+        } catch (error) {
+            console.error("Failed to load welcome changelog", error);
+            state.changelog = [];
+            renderChangelog();
+        }
+    }
+
+    function startWelcomePolling() {
+        if (welcomeRefreshTimer) return;
+        welcomeRefreshTimer = setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            loadWelcomeDocs();
+        }, WELCOME_REFRESH_MS);
+    }
+
+    function connectWelcomeEvents() {
+        if (welcomeEventSocket && (
+            welcomeEventSocket.readyState === WebSocket.OPEN ||
+            welcomeEventSocket.readyState === WebSocket.CONNECTING
+        )) return;
+
+        clearTimeout(welcomeEventReconnectTimer);
+        welcomeEventReconnectTimer = null;
+
+        try {
+            welcomeEventSocket = new WebSocket(welcomeEventsUrl());
+        } catch (error) {
+            welcomeEventReconnectTimer = setTimeout(connectWelcomeEvents, WELCOME_EVENT_RECONNECT_MS);
+            return;
+        }
+
+        welcomeEventSocket.addEventListener("message", () => {
+            queueWelcomeDocsRefresh();
+        });
+
+        welcomeEventSocket.addEventListener("close", () => {
+            welcomeEventSocket = null;
+            clearTimeout(welcomeEventReconnectTimer);
+            welcomeEventReconnectTimer = setTimeout(connectWelcomeEvents, WELCOME_EVENT_RECONNECT_MS);
+        });
+
+        welcomeEventSocket.addEventListener("error", () => {
+            try {
+                welcomeEventSocket?.close();
+            } catch (_) {
+            }
+        });
+    }
+
+    async function runWorkspaceSearch(query) {
+        if (searchController) {
+            searchController.abort();
+        }
+
+        const requestSerial = ++searchRequestSerial;
+        searchController = new AbortController();
+        const statusNode = document.getElementById("recent-search-status");
+        statusNode.textContent = "searching…";
+        statusNode.classList.remove("error");
+
+        try {
+            const params = new URLSearchParams({
+                q: query,
+                maxDocuments: "50",
+                maxMatchesPerDocument: "5",
+                maxScanMillis: "3000"
+            });
+            const response = await fetch(`/api/workspace-search?${params.toString()}`, {
+                cache: "no-store",
+                signal: searchController.signal
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            if (requestSerial !== searchRequestSerial) return;
+            state.searchResults = Array.isArray(payload.documents) ? payload.documents : [];
+            state.searchTruncated = !!payload.truncated;
+            renderList();
+        } catch (error) {
+            if (error?.name === "AbortError") return;
+            if (requestSerial !== searchRequestSerial) return;
+            console.error("Workspace search failed", error);
+            state.searchResults = [];
+            state.searchTruncated = false;
+            renderList();
+            statusNode.textContent = "search failed";
+            statusNode.classList.add("error");
+        }
+    }
+
+    function queueWorkspaceSearch(query) {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = null;
+
+        const trimmed = query.trim();
+        if (!trimmed) {
+            searchRequestSerial += 1;
+            if (searchController) {
+                searchController.abort();
+                searchController = null;
+            }
+            state.searchResults = [];
+            state.searchTruncated = false;
+            renderList();
+            return;
+        }
+
+        searchDebounceTimer = setTimeout(() => {
+            runWorkspaceSearch(trimmed);
+        }, 180);
+    }
+
+    function refreshDocumentTags(filename, tags) {
+        [state.documents, state.searchResults].forEach((docs) => {
+            docs.forEach((doc) => {
+                if (doc.filename === filename) doc.tags = tags;
+            });
+        });
+        state.allTags = Array.from(new Set(state.documents.flatMap(tagsForDoc))).sort((a, b) => a.localeCompare(b));
+    }
+
+    async function saveDocumentTags(filename, input) {
+        const tags = splitTags(input.value);
+        state.savingTags = filename;
+        renderList();
+
+        try {
+            const response = await fetch("/api/document-tags", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ filename, tags })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            refreshDocumentTags(filename, Array.isArray(payload.tags) ? payload.tags : tags);
+            state.editingDocument = null;
+            state.savingTags = null;
+            setCreateStatus(payload.changed ? "Tags saved." : "Tags already up to date.");
+            renderList();
+        } catch (error) {
+            console.error("Failed to update document tags", error);
+            state.savingTags = null;
+            setCreateStatus("Could not save tags for this document.", true);
+            renderList();
+        }
+    }
+
+    function setWorkspaceInputsDisabled(disabled) {
+        ["workspace-path", "default-workspace", "open-workspace"].forEach((id) => {
+            const node = document.getElementById(id);
+            if (node) node.disabled = !!disabled;
+        });
+    }
+
+    async function waitForWorkspaceRestart(targetWorkspace) {
+        const deadline = Date.now() + 45000;
+        await new Promise((resolve) => setTimeout(resolve, 1400));
+
+        while (Date.now() < deadline) {
+            try {
+                const response = await fetch("/api/welcome-docs", { cache: "no-store" });
+                if (response.ok) {
+                    const payload = await response.json();
+                    if (payload.currentWorkspace === targetWorkspace) {
+                        window.location.href = "/welcome";
+                        return;
+                    }
+                }
+            } catch (_) {
+            }
+            await new Promise((resolve) => setTimeout(resolve, 900));
+        }
+
+        state.workspaceSwitching = false;
+        setWorkspaceInputsDisabled(false);
+        setWorkspaceStatus("Field did not come back on that workspace yet. Refresh once the server is ready.", true);
+    }
+
+    async function switchWorkspace(path) {
+        const target = String(path || "").trim();
+        if (!target) {
+            setWorkspaceStatus("Enter a workspace path.", true);
+            return;
+        }
+
+        state.workspaceSwitching = true;
+        setWorkspaceInputsDisabled(true);
+        setWorkspaceStatus("Preparing workspace switch...");
+
+        try {
+            const response = await fetch("/api/workspace-switch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ path: target })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            rememberWorkspace(payload.workspace || target);
+            if (payload.current) {
+                state.workspaceSwitching = false;
+                setWorkspaceInputsDisabled(false);
+                state.currentWorkspace = payload.workspace || state.currentWorkspace;
+                renderWorkspaceControls();
+                setWorkspaceStatus(payload.message || "Already using this workspace.");
+                return;
+            }
+
+            setWorkspaceStatus(payload.message || "Restarting Field...");
+            waitForWorkspaceRestart(payload.workspace || target);
+        } catch (error) {
+            console.error("Failed to switch workspace", error);
+            state.workspaceSwitching = false;
+            setWorkspaceInputsDisabled(false);
+            setWorkspaceStatus(error?.message || "Could not switch workspace.", true);
+        }
+    }
+
+    async function saveAiSettings() {
+        const input = document.getElementById("openai-platform-key");
+        const key = String(input?.value || "").trim();
+        if (!key) {
+            setAiSettingsStatus("Enter an OpenAI Platform key.", true);
+            return;
+        }
+
+        state.savingAiSettings = true;
+        renderAiSettings();
+        setAiSettingsStatus("Saving...");
+
+        try {
+            const response = await fetch("/api/ai-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ openAiPlatformKey: key })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            state.aiSettings = {
+                hasOpenAiPlatformKey: !!payload.hasOpenAiPlatformKey,
+                source: payload.source || "",
+                configPath: payload.configPath || state.aiSettings.configPath || ""
+            };
+            if (input) input.value = "";
+            setAiSettingsStatus(payload.message || "OpenAI Platform key saved.");
+        } catch (error) {
+            console.error("Failed to save AI settings", error);
+            setAiSettingsStatus(error?.message || "Could not save OpenAI Platform key.", true);
+        } finally {
+            state.savingAiSettings = false;
+            renderAiSettings();
+        }
+    }
+
+    async function savePreferences(statusTarget = "preferences", options = {}) {
+        const setStatus = statusTarget === "osc" ? setOscSettingsStatus : setPreferencesStatus;
+        const background = !!options.background;
+        const saveSerial = ++preferencesSaveSerial;
+        if (!background) state.savingPreferences = true;
+        const preferences = readPreferencesForm();
+        state.preferences = preferences;
+        renderPreferences();
+        renderOscSettings();
+        setStatus("Saving...");
+
+        try {
+            const response = await fetch("/api/preferences", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ preferences })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            if (saveSerial !== preferencesSaveSerial) return;
+            state.preferences = payload.preferences || preferences;
+            try {
+                window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
+            } catch (_) {
+            }
+            setStatus(statusTarget === "osc" ? "OSC settings saved." : (payload.message || "Preferences saved."));
+        } catch (error) {
+            if (saveSerial !== preferencesSaveSerial) return;
+            console.error("Failed to save preferences", error);
+            setStatus(error?.message || "Could not save preferences.", true);
+        } finally {
+            if (saveSerial === preferencesSaveSerial) {
+                if (!background) state.savingPreferences = false;
+                renderPreferences();
+                renderOscSettings();
+            }
+        }
+    }
+
+    function queueOscSettingsSave(delay = 450) {
+        clearTimeout(oscSettingsSaveTimer);
+        oscSettingsSaveTimer = setTimeout(() => {
+            oscSettingsSaveTimer = null;
+            savePreferences("osc", { background: true });
+        }, delay);
+    }
+
+    function installDocumentListHandlers(listNode) {
+        listNode.querySelectorAll(".doc-entry").forEach((entry) => {
+            entry.addEventListener("click", (event) => {
+                if (event.target.closest(".tag-control")) return;
+                closeContextMenu();
+                const name = entry.getAttribute("data-doc");
+                if (name) openDocument(name);
+            });
+            entry.addEventListener("keydown", (event) => {
+                if (event.target.closest(".tag-control")) return;
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                const name = entry.getAttribute("data-doc");
+                if (name) openDocument(name);
+            });
+            entry.addEventListener("contextmenu", (event) => {
+                if (event.target.closest("[data-tag]")) return;
+                const name = entry.getAttribute("data-doc");
+                if (name) openDocumentContextMenu(event, name);
+            });
+        });
+
+        listNode.querySelectorAll("[data-tag]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const tag = button.getAttribute("data-tag") || "";
+                const searchInput = document.getElementById("recent-search");
+                searchInput.value = tag;
+                state.searchQuery = tag;
+                queueWorkspaceSearch(tag);
+                searchInput.focus({ preventScroll: true });
+            });
+            button.addEventListener("contextmenu", (event) => {
+                const tag = button.getAttribute("data-tag") || "";
+                if (tag) openTagContextMenu(event, tag);
+            });
+        });
+
+        listNode.querySelectorAll("[data-tag-edit]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                state.editingDocument = button.getAttribute("data-tag-edit");
+                renderList();
+                requestAnimationFrame(() => {
+                    const input = document.querySelector(`[data-tag-editor="${CSS.escape(state.editingDocument)}"] .doc-tag-input`);
+                    input?.focus({ preventScroll: true });
+                    input?.select();
+                });
+            });
+        });
+
+        listNode.querySelectorAll(".doc-tag-input").forEach((input) => {
+            input.addEventListener("keydown", (event) => {
+                event.stopPropagation();
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    state.editingDocument = null;
+                    renderList();
+                } else if (event.key === "Enter") {
+                    event.preventDefault();
+                    const filename = input.closest(".doc-tag-editor")?.getAttribute("data-tag-editor");
+                    if (filename) saveDocumentTags(filename, input);
+                }
+            });
+            input.addEventListener("click", (event) => event.stopPropagation());
+        });
+    }
+
+    function installHandlers() {
+        const createButton = document.getElementById("create-doc");
+        const nameInput = document.getElementById("new-doc-name");
+        const searchInput = document.getElementById("recent-search");
+        const shutdownButton = document.getElementById("shutdown-instance");
+        const workspaceInput = document.getElementById("workspace-path");
+        const defaultWorkspaceButton = document.getElementById("default-workspace");
+        const openWorkspaceButton = document.getElementById("open-workspace");
+        const openAiKeyInput = document.getElementById("openai-platform-key");
+        const saveOpenAiKeyButton = document.getElementById("save-openai-platform-key");
+        const editorStickiness = document.getElementById("editor-stickiness");
+        const oscInputs = [
+            document.getElementById("osc-editor-enabled"),
+            document.getElementById("osc-editor-port"),
+            document.getElementById("osc-editor-float-address"),
+            document.getElementById("osc-editor-launch-address"),
+            document.getElementById("osc-editor-stop-address"),
+            document.getElementById("osc-editor-debounce-ms")
+        ].filter(Boolean);
+
+        const runCreate = () => {
+            const name = nameInput.value.trim();
+            const error = validateDocumentName(name);
+            if (error) {
+                setCreateStatus(error, true);
+                return;
+            }
+            setCreateStatus("");
+            openDocument(name);
+        };
+
+        createButton.addEventListener("click", runCreate);
+        nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runCreate();
+            }
+        });
+
+        searchInput.addEventListener("input", () => {
+            state.searchQuery = searchInput.value;
+            queueWorkspaceSearch(state.searchQuery);
+        });
+
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            const first = getFirstVisibleDocument();
+            if (first && first.filename) {
+                openDocument(first.filename);
+                return;
+            }
+        });
+
+        openWorkspaceButton?.addEventListener("click", () => {
+            switchWorkspace(workspaceInput?.value || "");
+        });
+
+        defaultWorkspaceButton?.addEventListener("click", () => {
+            const path = state.defaultWorkspace || "~/Documents/AFieldWorkspace";
+            if (workspaceInput) workspaceInput.value = path;
+            switchWorkspace(path);
+        });
+
+        workspaceInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            switchWorkspace(workspaceInput.value);
+        });
+
+        workspaceInput?.addEventListener("input", () => {
+            if (!state.workspaceSwitching) setWorkspaceStatus("");
+        });
+
+        saveOpenAiKeyButton?.addEventListener("click", saveAiSettings);
+
+        openAiKeyInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            saveAiSettings();
+        });
+
+        openAiKeyInput?.addEventListener("input", () => {
+            setAiSettingsStatus("");
+        });
+
+        document.querySelectorAll(".preference-toggle input").forEach((input) => {
+            input.addEventListener("change", () => {
+                setPreferencesStatus("");
+                savePreferences();
+            });
+        });
+
+        editorStickiness?.addEventListener("change", () => {
+            setPreferencesStatus("");
+            try {
+                window.localStorage.setItem("field4.editorPropertyStickiness", editorStickiness.value || "none");
+            } catch (_) {
+            }
+            savePreferences();
+        });
+
+        oscInputs.forEach((input) => {
+            const queue = () => {
+                setOscSettingsStatus("");
+                queueOscSettingsSave();
+            };
+            input.addEventListener("input", queue);
+            input.addEventListener("change", queue);
+            input.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                clearTimeout(oscSettingsSaveTimer);
+                oscSettingsSaveTimer = null;
+                savePreferences("osc", { background: true });
+            });
+        });
+
+        shutdownButton?.addEventListener("click", async () => {
+            const confirmed = window.confirm("Shutdown this Field instance now?");
+            if (!confirmed) return;
+
+            shutdownButton.disabled = true;
+            shutdownButton.textContent = "shutting down...";
+            setCreateStatus("Shutting down this Field instance...");
+
+            try {
+                const response = await fetch("/api/shutdown-instance", {
+                    method: "POST",
+                    cache: "no-store"
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                setCreateStatus("Shutdown requested. This page should disconnect shortly.");
+            } catch (error) {
+                console.error("Failed to shutdown Field instance", error);
+                shutdownButton.disabled = false;
+                shutdownButton.textContent = "shutdown this instance of Field";
+                setCreateStatus("Could not shutdown this Field instance.", true);
+            }
+        });
+
+        document.addEventListener("click", (event) => {
+            const menu = contextMenuNode();
+            if (menu && menu.contains(event.target)) return;
+            closeContextMenu();
+        });
+
+        window.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && state.contextMenu) {
+                event.preventDefault();
+                closeContextMenu();
+            }
+        });
+
+        window.addEventListener("resize", closeContextMenu);
+        document.getElementById("recent-list")?.addEventListener("scroll", closeContextMenu);
+
+        requestAnimationFrame(() => {
+            searchInput.focus({ preventScroll: true });
+        });
+    }
+
+    function runSplashAnimation() {
+        const splash = document.querySelector("#splash-screen");
+        const pre = document.querySelector("#splash-screen pre");
+        if (!splash || !pre) return;
+
+        const text = pre.textContent || "";
+        let runId = 0;
+        let timers = [];
+
+        const TIMING = {
+            fadeIn: 200,
+            explodeDelay: 120,
+            driftDuration: 900,
+            maxDelay: 120,
+            settle: 80,
+            fadeOut: 700
+        };
+
+        const clearTimers = () => {
+            timers.forEach((id) => clearTimeout(id));
+            timers = [];
+        };
+
+        const schedule = (ms, fn) => {
+            const id = setTimeout(fn, ms);
+            timers.push(id);
+            return id;
+        };
+
+        const nextFrame = () => new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+
+        const mulberry32 = (seed) => () => {
+            let t = seed += 0x6D2B79F5;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+
+        const style = document.createElement("style");
+        style.textContent = `
+            #splash-screen pre.f4drift .f4ch {
+                display: inline-block;
+                will-change: transform;
+                transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0);
+            }
+        `;
+        document.head.appendChild(style);
+
+        const build = async () => {
+            runId += 1;
+            const myRun = runId;
+            clearTimers();
+
+            const previous = pre.__f4Animations || [];
+            previous.forEach((anim) => {
+                try { anim.cancel(); } catch (_) {}
+            });
+            pre.__f4Animations = [];
+
+            splash.classList.remove("hidden");
+            pre.classList.remove("f4lit");
+            pre.textContent = "";
+
+            splash.style.setProperty("--splash-fade", `${TIMING.fadeOut}ms`);
+            pre.style.setProperty("--splash-pre-fade", `${TIMING.fadeIn}ms`);
+
+            pre.setAttribute("aria-label", text);
+            pre.classList.add("f4drift");
+
+            const frag = document.createDocumentFragment();
+            const chars = Array.from(text);
+            const maxPx = 200.25;
+            const maxDelay = TIMING.maxDelay;
+
+            let printable = 0;
+            for (const ch of chars) if (ch !== "\n") printable++;
+
+            const rng = mulberry32(0xF4D1F7);
+            let i = 0;
+            for (const ch of chars) {
+                if (ch === "\n") {
+                    frag.appendChild(document.createTextNode("\n"));
+                    continue;
+                }
+
+                const span = document.createElement("span");
+                span.className = "f4ch";
+                span.setAttribute("aria-hidden", "true");
+                span.textContent = ch;
+
+                const dx = (rng() * 2 - 1) * maxPx;
+                const dy = (rng() * 2 - 1) * maxPx;
+                const dly = (i / Math.max(1, printable)) * maxDelay;
+
+                span.style.setProperty("--dx", `${dx.toFixed(3)}px`);
+                span.style.setProperty("--dy", `${dy.toFixed(3)}px`);
+                span.style.setProperty("--dly", `${dly.toFixed(1)}ms`);
+
+                frag.appendChild(span);
+                i += 1;
+            }
+
+            pre.appendChild(frag);
+
+            const fadeOutDelay = TIMING.explodeDelay + maxDelay + TIMING.driftDuration + TIMING.settle;
+            await nextFrame();
+            if (myRun !== runId) return;
+
+            pre.classList.add("f4lit");
+            schedule(TIMING.explodeDelay, () => {
+                if (myRun !== runId) return;
+                const animations = [];
+                const spans = pre.querySelectorAll(".f4ch");
+
+                spans.forEach((span) => {
+                    const dx = span.style.getPropertyValue("--dx") || "0px";
+                    const dy = span.style.getPropertyValue("--dy") || "0px";
+                    const dly = span.style.getPropertyValue("--dly") || "0ms";
+                    const anim = span.animate(
+                        [
+                            { transform: `translate3d(${dx}, ${dy}, 0)` },
+                            { transform: "translate3d(0, 0, 0)" }
+                        ],
+                        {
+                            duration: TIMING.driftDuration,
+                            delay: parseFloat(dly) || 0,
+                            easing: "cubic-bezier(.2,.8,.2,1)",
+                            fill: "both"
+                        }
+                    );
+                    animations.push(anim);
+                });
+
+                pre.__f4Animations = animations;
+                Promise.all(animations.map((anim) => anim.finished.catch(() => {}))).then(() => {
+                    if (myRun !== runId) return;
+                    schedule(TIMING.settle, () => {
+                        if (myRun !== runId) return;
+                        splash.classList.add("hidden");
+                    });
+                });
+            });
+
+            schedule(fadeOutDelay + TIMING.fadeOut + 200, () => {
+                if (myRun !== runId) return;
+                splash.classList.add("hidden");
+            });
+        };
+
+        if (document.fonts && document.fonts.ready) {
+            const fontReady = document.fonts.ready.catch(() => {});
+            const fallback = new Promise((resolve) => setTimeout(resolve, 500));
+            Promise.race([fontReady, fallback]).then(build);
+        } else {
+            build();
+        }
+    }
+
+    state.recentWorkspaces = getStoredWorkspaces();
+    renderWorkspaceControls();
+    renderOscSettings();
+    installHandlers();
+    loadWelcomeDocs();
+    loadWelcomeChangelog();
+    connectWelcomeEvents();
+    startWelcomePolling();
+    runSplashAnimation();
+</script>
+
+</body>
+</html>

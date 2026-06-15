@@ -1,0 +1,49 @@
+[
+    {
+        "id": "3c6a8254-9160-4021-803c-57c4ff93f8f1",
+        "properties": {
+            "children": {
+                "first": "Set",
+                "second": []
+            },
+            "parents": {
+                "first": "Set",
+                "second": [
+                    {
+                        "first": "Box",
+                        "second": "root"
+                    }
+                ]
+            },
+            "name": {
+                "first": "String",
+                "second": "t"
+            },
+            "frame": {
+                "first": "Rect",
+                "second": {
+                    "x": 206.578125,
+                    "y": -80.0,
+                    "w": 40.0,
+                    "h": 2258.0
+                }
+            },
+            "preamble": {
+                "first": "String",
+                "second": "var Box.execution by Inheritance<Box>()\nval Once.execution by Onceing<Box>()"
+            },
+            "code_editorState": {
+                "first": "String",
+                "second": "{\"cursorState\":[{\"inSelectionMode\":false,\"selectionStart\":{\"lineNumber\":45,\"column\":48},\"position\":{\"lineNumber\":45,\"column\":48}}],\"viewState\":{\"scrollLeft\":0,\"firstPosition\":{\"lineNumber\":14,\"column\":1},\"firstPositionDeltaTop\":-2},\"contributionsState\":{\"editor.contrib.folding\":{\"lineCount\":54,\"provider\":\"indent\",\"foldedImports\":false},\"editor.contrib.wordHighlighter\":false}}"
+            },
+            "code": {
+                "first": "__file__",
+                "second": "3c6a8254-9160-4021-803c-57c4ff93f8f1_code_.kt"
+            },
+            "customization": {
+                "first": "__file__",
+                "second": "3c6a8254-9160-4021-803c-57c4ff93f8f1_customization_.js"
+            }
+        }
+    }
+]

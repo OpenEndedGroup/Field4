@@ -1,10 +1,10 @@
 package afield.ai.core
 
+import afield.ai.RelatedContextDiscovery
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.openai.client.OpenAIClient
-import com.openai.client.okhttp.OpenAIOkHttpClient
 import com.openai.core.JsonValue
 import com.openai.helpers.ResponseAccumulator
 import com.openai.models.ChatModel
@@ -17,8 +17,8 @@ import com.openai.models.responses.*
 import java.util.*
 
 class OpenAiIdeCodexBridge(
-    private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
-    model: String = ChatModel.GPT_5_1_CODEX.toString(),
+    private val client: OpenAIClient = openAiClientFromFieldConfig(),
+    model: String = Ai4ModelDefaults.FLAGSHIP_MODEL,
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
@@ -96,9 +96,10 @@ class OpenAiIdeCodexBridge(
         ctx: ToolExecutionContext = ToolExecutionContext(),
         vectorStoreIds: List<String> = emptyList(),
         maxOutputTokens: Long = 20480,
-        maxToolRounds: Int = 8,
+        maxToolRounds: Int = 24,
         imageDataUrls: List<String> = emptyList(),
-        onTextDelta: ((String) -> Unit)? = null
+        onTextDelta: ((String) -> Unit)? = null,
+        onProgress: ((ProgressUpdate) -> Unit)? = null
     ): SendResult {
         val t0 = System.nanoTime()
 
@@ -183,6 +184,7 @@ class OpenAiIdeCodexBridge(
         info("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
 
         val commentaryMessages = mutableListOf<String>()
+        val conversationAdditions = mutableListOf<String>()
 
         fun logOutputShape(resp: Response) {
             val out = resp.output()
@@ -206,6 +208,7 @@ class OpenAiIdeCodexBridge(
         }
 
         logOutputShape(response)
+        emitResponseProgress(response, onProgress)
 
         var rounds = 0
         while (rounds < maxToolRounds) {
@@ -222,6 +225,12 @@ class OpenAiIdeCodexBridge(
             val toolOutputs = mutableListOf<ResponseInputItem>()
             for (call in calls) {
                 info("tool: name=${call.name()} callId=${call.callId()} ${call.arguments()}")
+                onProgress?.invoke(
+                    ProgressUpdate(
+                        title = "Using ${call.name()}",
+                        body = truncate(call.arguments(), 700)
+                    )
+                )
                 trace?.log(
                     "TOOL_CALL",
                     "name=${call.name()} callId=${call.callId()}\nargs=${call.arguments()}"
@@ -247,6 +256,13 @@ class OpenAiIdeCodexBridge(
                         append(json)
                     }
                 )
+                info("tool: result name=${call.name()} ${summarizeToolResult(toolResult)}")
+                onProgress?.invoke(
+                    ProgressUpdate(
+                        title = "${call.name()} finished",
+                        body = summarizeToolResult(toolResult)
+                    )
+                )
 
                 if (call.name() == Commentary::class.java.simpleName) {
                     // Extract commentary regardless of handler output
@@ -254,6 +270,12 @@ class OpenAiIdeCodexBridge(
                         val c = call.arguments(Commentary::class.java)
                         commentaryMessages += c.text
                         info("tool: Commentary captured (${c.text.length} chars)")
+                        onProgress?.invoke(
+                            ProgressUpdate(
+                                title = "Commentary",
+                                body = c.text
+                            )
+                        )
                     } catch (e: Exception) {
                         error("tool: Commentary parse failed: ${e.message}")
                     }
@@ -264,6 +286,36 @@ class OpenAiIdeCodexBridge(
                     .outputAsJson(toolResult)
                     .build()
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
+
+                if (toolResult is ReloadShadersResult && toolResult.visualDataUrl.isNotBlank()) {
+                    conversationAdditions += buildString {
+                        appendLine("<<ai>>")
+                        appendLine("_Post-shader-reload screenshot captured after the settle delay._")
+                        if (toolResult.visualCheckMessage.isNotBlank()) {
+                            appendLine()
+                            appendLine("_${toolResult.visualCheckMessage}_")
+                        }
+                        appendLine()
+                        append("![post-shader-reload screenshot](")
+                        append(toolResult.visualDataUrl)
+                        append(")")
+                    }
+                    val visualMessage = ResponseInputItem.Message.builder()
+                        .role(ResponseInputItem.Message.Role.USER)
+                        .addInputTextContent(
+                            "Post-shader-reload screenshot captured after the requested settle delay. " +
+                                "Inspect this image in the context of the user's request and any earlier screenshot. " +
+                                "If the requested visual result is not achieved, edit/reload again before finalizing."
+                        )
+                        .addContent(
+                            ResponseInputImage.builder()
+                                .imageUrl(toolResult.visualDataUrl)
+                                .detail(ResponseInputImage.Detail.HIGH)
+                                .build()
+                        )
+                        .build()
+                    toolOutputs += ResponseInputItem.ofMessage(visualMessage)
+                }
             }
 
             info("creating response (follow-up) <<spinner>>")
@@ -286,8 +338,31 @@ class OpenAiIdeCodexBridge(
             state.previousResponseId = response.id()
             info("follow-up response id=${response.id()} outputItems=${response.output().size}")
             logOutputShape(response)
+            emitResponseProgress(response, onProgress)
 
             rounds++
+        }
+
+        val pendingCalls = response.output()
+            .filter { it.isFunctionCall() }
+            .mapNotNull { it.functionCall().orElse(null) }
+        if (pendingCalls.isNotEmpty()) {
+            warn(
+                "maxToolRounds=$maxToolRounds reached with ${pendingCalls.size} pending tool call(s); " +
+                    "requesting a final answer without further tools."
+            )
+            response = createForcedFinalResponse(
+                previousResponse = response,
+                pendingCalls = pendingCalls,
+                maxOutputTokens = maxOutputTokens,
+                onTextDelta = onTextDelta
+            )
+            if (onTextDelta != null) {
+                info("")
+            }
+            state.previousResponseId = response.id()
+            info("forced-final response id=${response.id()} outputItems=${response.output().size}")
+            logOutputShape(response)
         }
 
         val text = extractOutputTextWithNewlines(response)
@@ -305,7 +380,7 @@ class OpenAiIdeCodexBridge(
         if (text.isBlank() && reasoningSummaries.isNotEmpty()) {
             commentaryMessages += reasoningSummaries
             val combined = reasoningSummaries.joinToString(" ").trim()
-            info("reasoning summary (no output_text): ${truncate(combined, 400)}")
+            info("reasoning summary (no output_text): ${truncate(combined, 40000)}")
         }
 
         if (text.isBlank()) {
@@ -327,7 +402,8 @@ class OpenAiIdeCodexBridge(
             threadState = state,
             text = text,
             rawResponseId = response.id(),
-            commentary = commentaryMessages.toList()
+            commentary = commentaryMessages.toList(),
+            conversationAdditions = conversationAdditions.toList()
         )
     }
 
@@ -338,7 +414,13 @@ class OpenAiIdeCodexBridge(
         val threadState: ThreadState,
         val text: String,
         val rawResponseId: String,
-        val commentary: List<String> = emptyList()
+        val commentary: List<String> = emptyList(),
+        val conversationAdditions: List<String> = emptyList()
+    )
+
+    data class ProgressUpdate(
+        val title: String,
+        val body: String = ""
     )
 
     data class ThreadState(
@@ -371,18 +453,95 @@ class OpenAiIdeCodexBridge(
     }
 
     private fun createResponse(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response {
-        if (onTextDelta == null) return client.responses().create(params)
-
-        val acc = ResponseAccumulator.create()
-        client.async().responses().createStreaming(params).subscribe({ event ->
-            acc.accumulate(event)
-            event.outputTextDelta().ifPresent { delta ->
-                val chunk = delta.delta()
-                if (chunk.isNotEmpty()) onTextDelta(chunk)
+        if (onTextDelta == null) {
+            return try {
+                client.responses().create(params)
+            } catch (t: Throwable) {
+                traceResponseError("create", t)
+                throw t
             }
-        }).onCompleteFuture().join()
+        }
 
-        return acc.response()
+        return try {
+            val acc = ResponseAccumulator.create()
+            client.async().responses().createStreaming(params).subscribe({ event ->
+                acc.accumulate(event)
+                event.outputTextDelta().ifPresent { delta ->
+                    val chunk = delta.delta()
+                    if (chunk.isNotEmpty()) onTextDelta(chunk)
+                }
+            }).onCompleteFuture().join()
+
+            acc.response()
+        } catch (t: Throwable) {
+            val rendered = renderThrowableChain(t)
+            warn(
+                "streaming response failed; falling back to non-streaming create. " +
+                    "cause=${truncate(rendered, 600)}"
+            )
+            try {
+                client.responses().create(params)
+            } catch (fallback: Throwable) {
+                traceResponseError("streaming-fallback", fallback)
+                throw fallback
+            }
+        }
+    }
+
+    private fun traceResponseError(stage: String, error: Throwable) {
+        val rendered = renderThrowableChain(error)
+        trace?.log(
+            "RESPONSE_ERROR",
+            buildString {
+                appendLine("stage=$stage")
+                appendLine("cause=$rendered")
+                appendLine()
+                append(error.stackTraceToString())
+            }
+        )
+    }
+
+    private fun createForcedFinalResponse(
+        previousResponse: Response,
+        pendingCalls: List<ResponseFunctionToolCall>,
+        maxOutputTokens: Long,
+        onTextDelta: ((String) -> Unit)?
+    ): Response {
+        val inputItems = mutableListOf<ResponseInputItem>()
+        pendingCalls.forEach { call ->
+            val outputItem = ResponseInputItem.FunctionCallOutput.builder()
+                .callId(call.callId())
+                .outputAsJson(
+                    mapOf(
+                        "error" to true,
+                        "aborted" to true,
+                        "tool" to call.name(),
+                        "reason" to "max_tool_rounds_reached",
+                        "message" to "Tool call aborted so the assistant can answer directly."
+                    )
+                )
+                .build()
+            inputItems += ResponseInputItem.ofFunctionCallOutput(outputItem)
+        }
+
+        val stopUsingTools = ResponseInputItem.Message.builder()
+            .role(ResponseInputItem.Message.Role.DEVELOPER)
+            .addInputTextContent(
+                "Stop using tools for this turn. Answer the user directly in text now using the context " +
+                    "already gathered. If you remain uncertain, say so briefly instead of calling more tools."
+            )
+            .build()
+        inputItems += ResponseInputItem.ofMessage(stopUsingTools)
+
+        val builder = ResponseCreateParams.builder()
+            .model(chatModel)
+            .previousResponseId(previousResponse.id())
+            .input(ResponseCreateParams.Input.ofResponse(inputItems))
+            .maxOutputTokens(maxOutputTokens)
+        builder.text(textConfig)
+        builder.reasoning(reasoningConfig)
+        info("creating response (forced-final) <<spinner>>")
+        return createResponse(builder.build(), onTextDelta)
     }
 
     private fun extractOutputTextWithNewlines(response: Response): String {
@@ -434,7 +593,7 @@ class OpenAiIdeCodexBridge(
                         } catch (_: Exception) {
                             ""
                         }
-                        val summaryPart = if (summary.isBlank()) "" else " summary=${truncate(summary, 200)}"
+                        val summaryPart = if (summary.isBlank()) "" else " summary=${truncate(summary, 20000)}"
                         "reasoning status=${reasoning.status().orElse(null)}$summaryPart"
                     }
                 }
@@ -458,7 +617,7 @@ class OpenAiIdeCodexBridge(
             info("output[$idx] $desc")
             if (desc == "unknown") {
                 val raw = item._json().orElse(null)?.toString()
-                if (raw != null) warn("output[$idx] raw=${truncate(raw, 400)}")
+                if (raw != null) warn("output[$idx] raw=${raw}")
             }
         }
     }
@@ -474,8 +633,106 @@ class OpenAiIdeCodexBridge(
             summary.ifBlank { null }
         }
 
+    private fun emitResponseProgress(response: Response, onProgress: ((ProgressUpdate) -> Unit)?) {
+        if (onProgress == null) return
+        val summaries = extractReasoningSummaries(response)
+        val calls = response.output()
+            .filter { it.isFunctionCall() }
+            .mapNotNull { it.functionCall().orElse(null) }
+        if (summaries.isEmpty() && calls.isEmpty()) return
+
+        val firstSummary = summaries.firstOrNull().orEmpty()
+        val title = progressTitle(firstSummary).ifBlank {
+            if (calls.isNotEmpty()) {
+                "Planning tool use"
+            } else {
+                "Thinking"
+            }
+        }
+        val body = buildString {
+            if (summaries.isNotEmpty()) {
+                append(summaries.joinToString("\n\n"))
+            }
+            if (calls.isNotEmpty()) {
+                if (isNotEmpty()) append("\n\n")
+                append("Next tool")
+                if (calls.size > 1) append("s")
+                append(": ")
+                append(calls.joinToString(", ") { "`${it.name()}`" })
+            }
+        }
+        onProgress(ProgressUpdate(title = title, body = body))
+    }
+
+    private fun progressTitle(summary: String): String {
+        val first = summary.lineSequence().firstOrNull { it.isNotBlank() } ?: return ""
+        return first
+            .replace(Regex("[*_#`]"), "")
+            .trim()
+            .take(80)
+    }
+
     private fun truncate(text: String, max: Int): String =
         if (text.length <= max) text else text.substring(0, max) + "..."
+
+    private fun renderThrowableChain(error: Throwable): String {
+        val seen = linkedSetOf<String>()
+        var cursor: Throwable? = error
+        while (cursor != null) {
+            val label = buildString {
+                append(cursor::class.java.simpleName.ifBlank { cursor::class.java.name })
+                cursor.message?.takeIf { it.isNotBlank() }?.let {
+                    append(": ")
+                    append(it)
+                }
+            }
+            seen += label
+            cursor = cursor.cause
+        }
+        return seen.joinToString(" <- ")
+    }
+
+    private fun summarizeToolResult(toolResult: Any): String = when (toolResult) {
+        is CompileKotlinResult ->
+            "success=${toolResult.success} diagnostics=${toolResult.diagnostics.size} " +
+                "setupChanges=${toolResult.setupChanges.count { it.changed || it.cacheChanged }}"
+        is ReloadShadersResult ->
+            "success=${toolResult.success} reloaded=${toolResult.reloaded.joinToString(",")} " +
+                "errors=${toolResult.errors.size} visual=${toolResult.visualCheckAttached}"
+        is ScratchpadResult ->
+            "success=${toolResult.success} chars=${toolResult.charCount} message=${truncate(toolResult.message, 120)}"
+        is ChecklistResult ->
+            "success=${toolResult.success} items=${toolResult.items.size} message=${truncate(toolResult.message, 120)}"
+        is WorkspaceSymbolSearchResult -> {
+            val preview = toolResult.matches.take(3).joinToString(" | ") { match ->
+                val guideHint = when {
+                    match.relatedGuides.isNotEmpty() || match.relatedExamples.isNotEmpty() ->
+                        " docs=${match.relatedGuides.size}/${match.relatedExamples.size}"
+                    else -> ""
+                }
+                "${match.symbol}@${match.filePath ?: "?"}:${match.line ?: 0}$guideHint"
+            }
+            "matches=${toolResult.matches.size}" + if (preview.isNotBlank()) " top=$preview" else ""
+        }
+        is AttachmentResponse ->
+            "file=${toolResult.file} language=${toolResult.language} chars=${toolResult.content.length} " +
+                "guides=${toolResult.relatedGuides.size} examples=${toolResult.relatedExamples.size}"
+        is ListContentsResult -> {
+            val totalChars = toolResult.contents.sumOf { it.content.length }
+            val graphHints = toolResult.preambleHints.count { it.graphRelevant }
+            "entries=${toolResult.contents.size} primary=${toolResult.fileRef ?: "<none>"} " +
+                "chars=$totalChars preambleHints=${toolResult.preambleHints.size} graphHints=$graphHints"
+        }
+        is ListDefinitionsResult -> {
+            val preview = toolResult.definitions.take(5).joinToString(",") { it.name }
+            "definitions=${toolResult.definitions.size}" + if (preview.isNotBlank()) " top=$preview" else ""
+        }
+        is EditFileResponse ->
+            "success=${toolResult.success}" + (toolResult.message?.let { " message=${truncate(it, 200)}" } ?: "")
+        is Map<*, *> ->
+            "keys=${toolResult.keys.joinToString(",") { it.toString() }}"
+        else -> "type=${toolResult::class.java.simpleName}"
+    }
 
     private fun supportsFileSearch(): Boolean = chatModel != ChatModel.GPT_5_1_CODEX
 
@@ -488,7 +745,7 @@ class OpenAiIdeCodexBridge(
         // Attachments
         tools.register(ListAttachmentsRequest::class.java) { ctx, _ ->
             ListAttachmentsResult(
-                attachments = ctx.attachments.map { AttachmentInfo(it.fileName, it.language) }
+                attachments = ctx.attachments.map { AttachmentInfo(it.fileName, it.language, it.description) }
             )
         }
         tools.register(AttachmentRequest::class.java) { ctx, req ->
@@ -508,7 +765,14 @@ class OpenAiIdeCodexBridge(
                 }
 
             if (hit != null) {
-                AttachmentResponse(hit.fileName, hit.language, hit.code)
+                val related = RelatedContextDiscovery.forPath(hit.fileName)
+                AttachmentResponse(
+                    file = hit.fileName,
+                    language = hit.language,
+                    content = hit.code,
+                    relatedGuides = related.guides,
+                    relatedExamples = related.examples
+                )
             } else {
                 ctx.resolveAttachment?.invoke(requested)
                     ?: throw IllegalArgumentException(
@@ -530,6 +794,30 @@ class OpenAiIdeCodexBridge(
             ctx.editOtherFile?.invoke(req)
                 ?: throw IllegalStateException("EditFile not available for this request.")
         }
+        tools.register(CompileKotlinRequest::class.java) { ctx, req ->
+            ctx.compileKotlin?.invoke(req)
+                ?: throw IllegalStateException("CompileKotlin not available for this request.")
+        }
+        tools.register(ReloadShadersRequest::class.java) { ctx, req ->
+            ctx.reloadShaders?.invoke(req)
+                ?: throw IllegalStateException("ReloadShaders not available for this request.")
+        }
+        tools.register(ScratchpadReadRequest::class.java) { ctx, _ ->
+            ctx.agentMemory?.readScratchpad()
+                ?: throw IllegalStateException("Scratchpad not available for this request.")
+        }
+        tools.register(ScratchpadUpdateRequest::class.java) { ctx, req ->
+            ctx.agentMemory?.updateScratchpad(req)
+                ?: throw IllegalStateException("Scratchpad not available for this request.")
+        }
+        tools.register(ChecklistReadRequest::class.java) { ctx, _ ->
+            ctx.agentMemory?.readChecklist()
+                ?: throw IllegalStateException("Checklist not available for this request.")
+        }
+        tools.register(ChecklistUpdateRequest::class.java) { ctx, req ->
+            ctx.agentMemory?.updateChecklist(req)
+                ?: throw IllegalStateException("Checklist not available for this request.")
+        }
 
         // Optional extra tool
         tools.register(WorkspaceSymbolSearch::class.java) { ctx, req ->
@@ -543,12 +831,14 @@ class OpenAiIdeCodexBridge(
 You are an IDE-embedded code assistant working in a novel live-coding environment.
 Return only code for the current file in responses (no markdown fences, no diffs, no prose).
 If you have non-code thoughts, call the Commentary tool. Commentary, reasoning and questions there are welcome if you use the tool.
+When verification tools are available, treat them as part of the edit loop: compile Kotlin after Kotlin edits, reload shaders after shader edits, inspect any post-reload screenshots for visual requests, fix failures, and repeat before finalizing.
         """.trimIndent()
 
         val defaultChatThreadInstructions: String = """
 You are an IDE-embedded assistant working in a novel live-coding environment.
 Respond in markdown. You may discuss, explain, and propose options.
 If you need to change code, use the available tools rather than dumping entire files.
+When verification tools are available, treat them as part of the edit loop: compile Kotlin after Kotlin edits, reload shaders after shader edits, inspect any post-reload screenshots for visual requests, fix failures, and repeat before finalizing.
         """.trimIndent()
     }
 }

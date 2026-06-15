@@ -119,7 +119,7 @@ CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 
 # GRADLE JVM WRAPPER START MARKER
-BUILD_DIR="${HOME}/my-custom-path/gradle-jvm"
+BUILD_DIR="${HOME}/.field4/  gradle-jvm"
 JVM_ARCH=$(uname -m)
 JVM_TEMP_FILE=$BUILD_DIR/gradle-jvm-temp.tar.gz
 if [ "$darwin" = "true" ]; then

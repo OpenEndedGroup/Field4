@@ -3,18 +3,18 @@ package afield
 //import org.jetbrains.kotlin.scripting.ide_services.compiler.KJvmReplCompilerWithIdeServices
 import afield.logger.lblock
 import afield.logger.lprintln
+import afield.macros.ContainingFunction
 import afield.macros.MacroRegistry
 import afield.stdlib.applyInsertToPreamble
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.com.intellij.lang.Language
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
@@ -27,6 +27,8 @@ import java.net.URL
 import java.net.URLClassLoader
 import java.util.concurrent.Executors
 import kotlin.reflect.*
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.reflect.jvm.kotlinProperty
 import kotlin.script.experimental.api.*
@@ -41,27 +43,15 @@ import kotlin.script.experimental.jvm.util.toSourceCodePosition
 import kotlin.script.experimental.util.LinkedSnippet
 import kotlin.system.measureNanoTime
 
-/**
- * Annotation to mark functions/values that should be automatically exported to the box's preamble.
- * When a declaration is annotated with @exported, its fully-typed signature will be added to
- * the box's preamble after execution, making it available as a declared property.
- */
-@Target(
-    AnnotationTarget.FUNCTION,
-    AnnotationTarget.PROPERTY,
-    AnnotationTarget.FIELD,
-    AnnotationTarget.PROPERTY_GETTER
-)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class exported
-
 class KotlinInterface(
     val propertyClasses: Map<String, KClass<*>> = emptyMap(), val properties: Map<String, Any?> = emptyMap(),
 
     val implicitReceivers: List<KotlinType> = emptyList(),
 
-    var classLoader: ClassLoader? = null, val filePrefix: String = "EVAL_"
-) {
+    override var classLoader: ClassLoader? = null, val filePrefix: String = "EVAL_"
+) : KotlinScriptEngine {
+
+    override val compilationDispatcher get() = compilationThread
 
     internal inner class SourceCodeImpl(number: Int, override val text: String) : SourceCode {
         override val name: String? = "${filePrefix}_\$$number"
@@ -81,12 +71,12 @@ class KotlinInterface(
 //    var compiler: K2KJvmReplCompilerWithCompletion
 
     //    var evalConfig: ScriptEvaluationConfiguration
-    var compilerConfig: ScriptCompilationConfiguration
+    override var compilerConfig: ScriptCompilationConfiguration
     val contextUpdater: ContextUpdater
-    val context: KotlinContext
+    override val context: KotlinContext
 
     // Reference to the box this KotlinInterface is associated with (for @exported support)
-    var associatedBox: Any? = null
+    override var associatedBox: Any? = null
 
     private val resolver = CompoundDependenciesResolver(FileSystemDependenciesResolver(), MavenDependenciesResolver())
 
@@ -109,15 +99,16 @@ class KotlinInterface(
         }
 
         compilerConfig = ScriptCompilationConfiguration {
-            defaultImports(DependsOn::class, Repository::class)
+            defaultImports(DependsOn::class, Repository::class, exported::class)
             hostConfiguration.update {
                 myHostConfiguration
             }
             this@KotlinInterface.implicitReceivers.forEach { implicitReceivers.append(it) }
+
             jvm {
                 jvmTarget.put("24")
-                _languageVersion.put("2.2")
-                compilerOptions.put(listOf("-jvm-target", "24"))
+                _languageVersion.put(fieldKotlinLanguageVersion)
+                compilerOptions.put(fieldKotlinJvmCompilerOptions)
 
                 dependenciesFromClassloader(
                     classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true
@@ -179,6 +170,24 @@ class KotlinInterface(
 
     var cache = mutableMapOf<String, ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>?>()
 
+    private fun compileSnippetKind(s: String): String {
+        return when {
+            s == intro -> "field-startup-imports"
+            s.isBlank() -> "blank"
+            s.trimStart().startsWith("import ") -> "imports-or-preamble"
+            else -> "user-code"
+        }
+    }
+
+    private fun compileSnippetPreview(s: String, maxLength: Int = 120): String {
+        val compact = s.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(3)
+            .joinToString(" | ")
+        return if (compact.length <= maxLength) compact else compact.take(maxLength) + "..."
+    }
+
     private fun resolveBoxContext(implicits: List<Any> = emptyList()): Box? {
         val fromImplicits = implicits.firstOrNull { it is Box } as? Box
         if (fromImplicits != null) return fromImplicits
@@ -189,21 +198,30 @@ class KotlinInterface(
 
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>> {
         val code = SourceCodeImpl(id++, s)
+        val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
         var r: ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>>? = null
-//        val r2 = cache.get(s)
-//        if (r2!=null) return r2
 
-        coroutineScope {
-//            async(Runloop.miscPool.asCoroutineDispatcher()) { // Not until K2
-                async(compilationThread) {
-                val ns = measureNanoTime {
-                    r = compiler.compile(code, compilerConfig)
+        lprintln(
+            "info,kotlin,perf",
+            "\t\t compile request engine=KotlinInterface filePrefix=$filePrefix source=${code.name} kind=${compileSnippetKind(s)} length=${s.length} preview=${compileSnippetPreview(s)}"
+        )
+        lprintln("info,kotlin,perf", "\t\t compile code $s")
+
+        val ns = measureNanoTime {
+            if (KotlinEngineConfig.offloadCompilation) {
+                // K1 is NOT thread-safe — always use the single compilationThread
+                r = withContext(compilationDispatcher) {
+                    compiler.compile(code, compilerConfig)
                 }
-                lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile (async)")
-            }.await()
+            } else {
+                r = compiler.compile(code, compilerConfig)
+            }
+        }
+        lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = compile")
+        if (r is ResultWithDiagnostics.Failure) {
+            context.debugScripts.discard(snapshot)
         }
 
-//        cache.put(s, r)
         return r!!
     }
 
@@ -224,6 +242,10 @@ class KotlinInterface(
 
 
                 r = evaluator.eval(e, evalConfig)
+                if (r is ResultWithDiagnostics.Success) {
+                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
+                }
                 if (updateContext) contextUpdater.update()
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
@@ -247,6 +269,10 @@ class KotlinInterface(
                 }
 
                 r = evaluator.eval(e, evalConfig)
+                if (r is ResultWithDiagnostics.Success) {
+                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
+                }
                 if (updateContext) contextUpdater.update()
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
@@ -285,7 +311,7 @@ class KotlinInterface(
     }
 
 
-    suspend fun complete(s: String, cursor: Int): CompletionResult {
+    override suspend fun complete(s: String, cursor: Int): CompletionResult {
         val code = SourceCodeImpl(id++, s)
 
         return try {
@@ -303,11 +329,11 @@ class KotlinInterface(
 
 
     @JvmOverloads
-    fun completeAndWait(s: String, cursor: Int = s.length): CompletionResult {
+    override fun completeAndWait(s: String, cursor: Int): CompletionResult {
         return runBlocking { complete(s, cursor) }
     }
 
-    fun applyMacros(box: Box, _s: String): String {
+    override fun applyMacros(box: Box, _s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
         var s = _s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {
@@ -328,7 +354,12 @@ class KotlinInterface(
                             expression.children.forEach {
                                 when (it) {
                                     is KtNameReferenceExpression -> {
-                                        lprintln("debug,kotlin", "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}")
+                                        if (it.text in skipMacros) return@forEach
+
+                                        lprintln(
+                                            "debug,kotlin",
+                                            "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}"
+                                        )
 
                                         var ns = it.nextSibling
                                         val t = mutableListOf<String>()
@@ -337,8 +368,21 @@ class KotlinInterface(
                                             ns = ns.nextSibling
                                         }
 
-                                        val e = MacroRegistry.rewrite(box, it.text, t)
+
+                                        // won't work for inferred return types
+                                        val containingFunction = PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
+                                        val containingFunctionName = containingFunction?.name
+                                        val valueParameterList = (containingFunction?.valueParameterList as? KtParameterList)?.text
+                                        val returnParameterText = (containingFunction?.typeReference as? KtTypeReference)?.text
+
+                                        val containingFunctionInfo = if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
+                                            ContainingFunction(containingFunctionName, valueParameterList, returnParameterText)
+                                        else null
+
+                                        val e = MacroRegistry.rewrite(box, it.text, t, containingFunctionInfo)
+
                                         if (e != null) {
+                                            if (!previewOnly) {
                                                 if (e.start.length > 0) {
                                                     edits.add((0 to 0) to e.preamble)
                                                 }
@@ -346,11 +390,14 @@ class KotlinInterface(
                                                     val a = findLastImport(s)
                                                     edits.add((a to a) to e.afterImports)
                                                 }
+                                            }
 
                                             edits.add((expression.startOffset to expression.endOffset) to e.here)
 
-                                            if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {
-                                                applyInsertToPreamble(box, e)
+                                            if (!previewOnly) {
+                                                if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {
+                                                    applyInsertToPreamble(box, e)
+                                                }
                                             }
                                         }
                                     }
@@ -364,6 +411,7 @@ class KotlinInterface(
 
                         is KtNameReferenceExpression -> {
                         }
+
                     }
                 }
                 while (edits.size > 0) {
@@ -385,7 +433,7 @@ class KotlinInterface(
     }
 
 
-    fun findLastImport(s: String): Int {
+    override fun findLastImport(s: String): Int {
         if (s.contains("import ")) {
             val m = s.findLastAnyOf(listOf("import "))!!.first
             val m2 = s.findAnyOf(listOf("\n"), startIndex = m)
@@ -395,7 +443,7 @@ class KotlinInterface(
 
     }
 
-    fun parseAndRewrite(s: String, rules: List<(PsiElement, String) -> String>): String {
+    override fun parseAndRewrite(s: String, rules: List<(PsiElement, String) -> String>): String {
 
         // trying something new here
 
@@ -422,13 +470,13 @@ class KotlinInterface(
 
     }
 
-    var execNumber = 0
-    suspend fun exec(
+    override var execNumber = 0
+    override suspend fun exec(
         s: String,
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onCompileError default handler $it") },
-        onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
-        onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it"); throw it },
-        implicits: List<Any> = emptyList(),
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+        implicits: List<Any>,
     ): ResultValue? {
 
         when (val r = compile(s)) {
@@ -438,7 +486,7 @@ class KotlinInterface(
                         when (val e = r2.value.get().result) {
                             is ResultValue.Error -> {
                                 lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
-                                onEvalException(e.error)
+                                onEvalException(translateKotlinEvalException(e.error, s))
                                 e
                             }
 
@@ -475,12 +523,12 @@ class KotlinInterface(
     }
 
     @JvmOverloads
-    fun execAndWait(
+    override fun execAndWait(
         s: String,
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = {},
-        onEvalError: (List<ScriptDiagnostic>) -> Unit = {},
-        onEvalException: (Throwable) -> Unit = {},
-        implicits: List<Any> = emptyList()
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+        implicits: List<Any>
     ): ResultValue? {
         return runBlocking {
             exec(s, onCompileError, onEvalError, onEvalException, implicits)
@@ -501,28 +549,21 @@ class KotlinInterface(
     inner class CompiledSnippet internal constructor(
         private val compiled: LinkedSnippet<KJvmCompiledScript>,
         private val defaultImplicits: List<Any>
-    ) {
-        /**
-         * Evaluates the compiled snippet with optional implicit receivers and context update.
-         *
-         * @param updateContext Whether to update the KotlinInterface context with new variables/functions
-         * @param implicits Optional list of implicit receiver objects for this evaluation
-         * @param onEvalError Callback for evaluation errors
-         * @param onEvalException Callback for evaluation exceptions
-         * @return The result value or null on error
-         */
-        suspend fun eval(
-            updateContext: Boolean = false,
-            implicits: List<Any> = defaultImplicits,
-            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
-            onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it"); throw it }
+    ) : PreparedSnippet {
+        override suspend fun eval(
+            updateContext: Boolean,
+            implicits: List<Any>,
+            onEvalError: (List<ScriptDiagnostic>) -> Unit,
+            onEvalException: (Throwable) -> Unit
         ): ResultValue? {
+            @Suppress("NAME_SHADOWING")
+            val implicits = implicits.ifEmpty { defaultImplicits }
             return when (val r = evaluate(compiled, updateContext, implicits)) {
                 is ResultWithDiagnostics.Success -> {
                     when (val e = r.value.get().result) {
                         is ResultValue.Error -> {
                             lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
-                            onEvalException(e.error)
+                            onEvalException(translateKotlinEvalException(e.error))
                             e
                         }
 
@@ -547,18 +588,12 @@ class KotlinInterface(
             }
         }
 
-        /**
-         * Synchronous version of eval() that blocks until evaluation completes.
-         *
-         * Note: Unlike the async eval(), this version uses empty default error handlers
-         * to avoid throwing exceptions, providing a simpler API for synchronous use cases.
-         */
         @JvmOverloads
-        fun evalAndWait(
-            updateContext: Boolean = false,
-            implicits: List<Any> = defaultImplicits,
-            onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onEvalError default handler $it") },
-            onEvalException: (Throwable) -> Unit = { lprintln("error,kotlin", "onEvalException default handler $it") }
+        override fun evalAndWait(
+            updateContext: Boolean,
+            implicits: List<Any>,
+            onEvalError: (List<ScriptDiagnostic>) -> Unit,
+            onEvalException: (Throwable) -> Unit
         ): ResultValue? {
             return runBlocking {
                 eval(updateContext, implicits, onEvalError, onEvalException)
@@ -576,10 +611,10 @@ class KotlinInterface(
      * @param onCompileError Callback for compilation errors
      * @return A CompiledSnippet that can be evaluated multiple times, or null on error
      */
-    suspend fun compileSnippet(
+    override suspend fun compileSnippet(
         s: String,
-        implicits: List<Any> = emptyList(),
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,kotlin", "onCompileError default handler $it") }
+        implicits: List<Any>,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit
     ): CompiledSnippet? {
         return when (val r = compile(s)) {
             is ResultWithDiagnostics.Success -> {
@@ -598,49 +633,13 @@ class KotlinInterface(
      * Synchronous version of compileSnippet() that blocks until compilation completes.
      */
     @JvmOverloads
-    fun compileSnippetAndWait(
+    override fun compileSnippetAndWait(
         s: String,
-        implicits: List<Any> = emptyList(),
-        onCompileError: (List<ScriptDiagnostic>) -> Unit = {}
+        implicits: List<Any>,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit
     ): CompiledSnippet? {
         return runBlocking {
             compileSnippet(s, implicits, onCompileError)
-        }
-    }
-
-
-    enum class CompletionStatus(private val value: String) {
-        OK("ok"), ERROR("error");
-
-        override fun toString(): String {
-            return value
-        }
-    }
-
-
-    abstract class CompletionResult(private val status: CompletionStatus) {
-//        open fun toJson(): JsonObject {
-//            return jsonObject("status" to status.toString())
-//        }
-
-        open class Success(
-            val matches: List<String>,
-            val bounds: CompletionTokenBounds,
-            val metadata: List<SourceCodeCompletionVariant>,
-            val text: String,
-            val cursor: Int
-        ) : CompletionResult(CompletionStatus.OK) {
-            init {
-                assert(matches.size == metadata.size)
-            }
-        }
-
-        class Empty(text: String, cursor: Int) :
-            Success(emptyList(), CompletionTokenBounds(cursor, cursor), emptyList(), text, cursor)
-
-        class Error(val errorName: String, val errorValue: String, val traceBack: String) :
-            CompletionResult(CompletionStatus.ERROR) {
-
         }
     }
 
@@ -652,93 +651,28 @@ class KotlinInterface(
         // multi-threaded compilation broken in current kotlin compiler
         var compilationThread = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
 
-        fun functionSignature(function: KFunction<*>) = function.toString().replace("Line_\\d+\\.".toRegex(), "")
+        // Delegates to shared top-level functions for backwards compatibility
+        fun functionSignature(function: KFunction<*>) = afield.functionSignature(function)
+        fun shortenType(name: String) = afield.shortenType(name)
 
-        fun shortenType(name: String) = name.replace("(\\b[_a-zA-Z$][_a-zA-Z0-9$]*\\b\\.)+".toRegex(), "")
-
-        data class CompletionTokenBounds(val start: Int, val end: Int)
-
-
-        fun getTokenBounds(buf: String, cursor: Int): CompletionTokenBounds {
-            require(cursor <= buf.length) { "Position $cursor does not exist in code snippet <$buf>" }
-
-            val startSubstring = buf.substring(0, cursor)
-
-            val filter = { c: Char -> !c.isLetterOrDigit() && c != '_' }
-
-            val start = startSubstring.indexOfLast(filter) + 1
-
-            return CompletionTokenBounds(start, cursor)
+        // Keep CompletionTokenBounds as a typealias-like accessor for backwards compatibility
+        @Suppress("unused")
+        val CompletionTokenBounds = object {
+            operator fun invoke(start: Int, end: Int) = afield.CompletionTokenBounds(start, end)
         }
+
+        fun getTokenBounds(buf: String, cursor: Int) = afield.getTokenBounds(buf, cursor)
 
         fun getResult(
             code: String, cursor: Int, completions: List<SourceCodeCompletionVariant>
-        ): CompletionResult.Success {
-            val filteredCompletions = completions.filter { !it.text.contains("clojure", ignoreCase = true) }.filter { !it.text.contains("$", ignoreCase = true) }
-            val bounds = getTokenBounds(code, cursor)
-            return CompletionResult.Success(filteredCompletions.map { it.text }, bounds, filteredCompletions, code, cursor)
-        }
+        ) = getCompletionResult(code, cursor, completions)
     }
 
-    class KotlinContext(
-        val vars: HashMap<String, KotlinVariableInfo> = HashMap(),
-        val functions: HashMap<String, KotlinFunctionInfo> = HashMap()
-    )
-
-
-    class KotlinFunctionInfo(val function: KFunction<*>, val line: Any) : Comparable<KotlinFunctionInfo> {
-
-        val name: String
-            get() = function.name
-
-        fun toString(shortenTypes: Boolean): String {
-            return if (shortenTypes) {
-                shortenType(toString())
-            } else toString()
-        }
-
-        override fun toString(): String {
-            return functionSignature(function)
-        }
-
-        override fun compareTo(other: KotlinFunctionInfo): Int {
-            return this.toString().compareTo(other.toString())
-        }
-
-        override fun hashCode(): Int {
-            return this.toString().hashCode()
-        }
-
-        override fun equals(other: Any?): Boolean {
-            return if (other is KotlinFunctionInfo) {
-                this.toString() == other.toString()
-            } else false
-        }
-    }
-
-    class KotlinVariableInfo(val value: Any?, val descriptor: KProperty<*>, val line: Any) {
-
-        val name: String
-            get() = descriptor.name
-
-        @Suppress("MemberVisibilityCanBePrivate")
-        val type: String
-            get() = descriptor.toString() //!! suspect
-
-        fun toString(shortenTypes: Boolean): String {
-            var type: String = type
-            if (shortenTypes) {
-                type = shortenType(type)
-            }
-            return "$name: $type = $value"
-        }
-
-        override fun toString(): String {
-            return toString(false)
-        }
-    }
-
-    class ContextUpdater(val context: KotlinContext, private val evaluator: BasicJvmReplEvaluator, private val ki: KotlinInterface) {
+    class ContextUpdater(
+        val context: KotlinContext,
+        private val evaluator: BasicJvmReplEvaluator,
+        private val ki: KotlinInterface
+    ) {
 
         private var lastProcessedSnippet: LinkedSnippet<KJvmEvaluatedSnippet>? = null
 
@@ -757,6 +691,9 @@ class KotlinInterface(
                 newSnippets.reverse()
                 refreshVariables(newSnippets)
                 refreshMethods(newSnippets)
+                if (newSnippets.isNotEmpty()) {
+                    context.generation++
+                }
 
                 lastProcessedSnippet = evaluator.lastEvaluatedSnippet
             } catch (e: ReflectiveOperationException) {
@@ -1000,13 +937,15 @@ class KotlinInterface(
         @Throws(ReflectiveOperationException::class)
         private fun refreshVariables(lines: List<Any>) {
             for (line in lines) {
+                val seen = mutableSetOf<String>()
                 val fields = line.javaClass.declaredFields
-                findVariables(fields, line)
+                findVariables(fields, line, seen)
+                findKotlinProperties(line, seen)
             }
         }
 
         @Throws(IllegalAccessException::class)
-        private fun findVariables(fields: Array<Field>, o: Any) {
+        private fun findVariables(fields: Array<Field>, o: Any, seen: MutableSet<String>) {
             for (field in fields) {
                 val fieldName = field.name
                 if (fieldName.contains("$\$implicitReceiver") || fieldName.contains("script$") || fieldName.endsWith("\$delegate")) {
@@ -1018,12 +957,35 @@ class KotlinInterface(
                 val descriptor = field.kotlinProperty
                 if (descriptor != null) {
                     context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
+                    seen += descriptor.name
                     val isExported = field.isAnnotationPresent(exported::class.java) ||
-                        descriptor.annotations.any { it.annotationClass == exported::class } ||
-                        descriptor.getter.annotations.any { it.annotationClass == exported::class }
+                            descriptor.annotations.any { it.annotationClass == exported::class } ||
+                            descriptor.getter.annotations.any { it.annotationClass == exported::class }
                     if (isExported) {
                         processExportedProperty(descriptor.name, descriptor, value)
                     }
+                }
+            }
+        }
+
+        private fun findKotlinProperties(o: Any, seen: MutableSet<String>) {
+            for (descriptor in o::class.memberProperties) {
+                val name = descriptor.name
+                if (name in seen || name.contains("$\$implicitReceiver") || name.contains("script$")) continue
+                if (descriptor.parameters.size != 1) continue
+
+                val value = runCatching {
+                    descriptor.isAccessible = true
+                    descriptor.getter.call(o)
+                }.getOrNull() ?: continue
+
+                context.vars[name] = KotlinVariableInfo(value, descriptor, o)
+                seen += name
+
+                val isExported = descriptor.annotations.any { it.annotationClass == exported::class } ||
+                        descriptor.getter.annotations.any { it.annotationClass == exported::class }
+                if (isExported) {
+                    processExportedProperty(name, descriptor, value)
                 }
             }
         }

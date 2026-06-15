@@ -43,22 +43,22 @@ object PngEncoder {
     
     /**
      * Convert a ByteBuffer containing RGBA image data to PNG bytes.
-     * The image is flipped vertically to account for OpenGL/Vulkan coordinate systems
-     * (which store images bottom-to-top).
      * 
      * @param buffer ByteBuffer containing RGBA pixel data (4 bytes per pixel)
      * @param width Image width in pixels
      * @param height Image height in pixels
+     * @param flipY When true, invert row order for framebuffer-style readbacks whose
+     * origin is bottom-left. Vulkan image-to-buffer readbacks usually want false.
      * @return ByteArray containing the complete PNG file data
      */
-    fun encodeFromBuffer(buffer: ByteBuffer, width: Int, height: Int): ByteArray {
+    fun encodeFromBuffer(buffer: ByteBuffer, width: Int, height: Int, flipY: Boolean = true): ByteArray {
         // Reset buffer position
         buffer.rewind()
         
         // Create ARGB array (PNG encoder expects ARGB ints)
         val pixels = IntArray(width * height)
         
-        // Read pixels and flip vertically
+        // Read pixels, optionally flipping vertically.
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val r = buffer.get().toInt() and 0xFF
@@ -67,8 +67,8 @@ object PngEncoder {
                 val a = buffer.get().toInt() and 0xFF
                 
                 val argb = (a shl 24) or (r shl 16) or (g shl 8) or b
-                // Flip vertically (OpenGL/Vulkan coordinates are bottom-to-top)
-                pixels[x + (height - 1 - y) * width] = argb
+                val targetY = if (flipY) height - 1 - y else y
+                pixels[x + targetY * width] = argb
             }
         }
         

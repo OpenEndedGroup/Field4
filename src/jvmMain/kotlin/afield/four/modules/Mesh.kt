@@ -59,6 +59,7 @@ inline fun <reified A> fromContext(defaultValue: A? = null): A {
 
 inline fun <reified A> fromContextWithNameOrNull(name: String, defaultValue: A? = null): A? {
     val f = Box.context.get()
+    if (f == null) return defaultValue
 
     val a =
         f.properties.entries.firstOrNull { it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class) }
@@ -371,17 +372,14 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
             fun pushConstantsForCurrentDispatch(): Boolean {
                 if (pushConstantBuffer.limit() <= 0) return true
-
-                // todo: this needs to be the unification of both otherwise vertex wins
                 for (pc in inside.fi.pushConstants) {
                     push.setMembers(pc.members)
                 }
                 for (pc in inside.vi.pushConstants) {
                     push.setMembers(pc.members)
                 }
-
-                pushConstantBuffer.clear()
                 try {
+                    pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
                         throw MissingRefException("risk of GPU null ref `$it`")
                     }
@@ -391,7 +389,6 @@ class Mesh(var renderer: Renderer = fromContext()) {
                     return false
                 }
                 pushConstantBuffer.clear()
-
                 vkCmdPushConstants(
                     cmd.vkCommandBuffer,
                     inside.pipelineLayout,

@@ -3,7 +3,6 @@ package afield.four.buffers
 import afield.stdlib.*
 import java.lang.foreign.MemorySegment
 import java.nio.BufferOverflowException
-import java.nio.BufferUnderflowException
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
@@ -56,8 +55,6 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         }
         return this
     }
-
-
 
     fun put(d: DoubleArray): DynamicBuffer {
         d.forEach { put(it.f) }

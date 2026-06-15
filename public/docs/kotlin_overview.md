@@ -105,6 +105,18 @@ And `.i` and `.l` as well. This looks a bit odd, but it's much less typing than 
 
 Printing is the simplest way to see what your code is doing. Kotlin uses `println(...)` (prints a line) and `print(...)` (prints without a trailing newline). Kotlin will call `toString()` for you.
 
+<!--
+FIELD_TEST
+id: docs.kotlin-overview.printing.println
+runner: backdoor-box
+tags: [docs, kotlin, printing]
+timeoutSec: 30
+expect:
+  outputContains:
+    - "x = 42"
+  eventKinds:
+    - output
+-->
 ```diffstatic {data-lang=kotlin}
 :::static
 val x = 42
@@ -117,6 +129,23 @@ Field wires Kotlin's `print( ... )` and `println( ... )` functions such that wha
 
 For larger outputs Field also defines a `display(channel :String, contents: Any)` function that lets you 'print' to a channel on the canvas. So:
 
+<!--
+FIELD_TEST
+id: docs.kotlin-overview.display.basic
+runner: backdoor-box
+tags: [docs, kotlin, display, visual]
+timeoutSec: 45
+withPlaywright: true
+waitSec: 0.75
+expect:
+  outputContains:
+    - "hello!?"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
 ```diffstatic {data-lang=kotlin}
 :::static
 display("foo", "hello!?")
@@ -639,7 +668,7 @@ foreach (var i in Enumerable.Range(0, 3))
 
 ### Building objects: `apply` and `also` (fluent setup)
 
-In Field sketches you’ll often see patterns like `FLine().apply { ... }`. This is Kotlin’s way to “make an object, configure it, and return it” in one expression.
+In Field sketches you’ll often see patterns like `fline { ... }`. This is a small Field helper built on Kotlin’s `apply { ... }`, which lets you make an object, configure it, and return it in one expression.
 
 This is especially handy when the methods you’re calling don’t return the object (for example, `FLine.moveTo(...)` returns a `Node`, so it can’t be chained in the usual fluent style).
 
@@ -650,8 +679,8 @@ import afield.stdlib.*
 
 // These three are equivalent: they all build the same FLine.
 
-// 1) `apply { ... }`: inside the block, `this` is the object.
-val f1 = FLine().apply {
+// 1) `fline { ... }`: preferred in Field. Inside the block, `this` is the object.
+val f1 = fline {
   moveTo(50, 50)
   lineTo(200, 120)
   thickness = 4.0

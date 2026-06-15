@@ -1,5 +1,6 @@
 package afield.ai
 
+import afield.ai.core.Ai4ModelDefaults
 import afield.ai.core.LogEvent
 import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -191,116 +192,11 @@ private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> Workspa
     return { req ->
         val query = req.query.trim()
         if (query.isEmpty()) WorkspaceSymbolSearchResult(emptyList()) else {
-            val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
-            val definitions = index?.definitions.orEmpty()
-            val limit = req.limit.coerceAtLeast(1)
-            val exact = ArrayList<WorkspaceSymbolMatch>()
-            val prefix = ArrayList<WorkspaceSymbolMatch>()
-            val contains = ArrayList<WorkspaceSymbolMatch>()
-
-            val fileCache = HashMap<String, List<String>>()
-            fun fileLines(path: String): List<String>? {
-                return fileCache.getOrPut(path) {
-                    val direct = Paths.get(path)
-                    val resolved = if (Files.exists(direct)) direct else Paths.get(System.getProperty("user.dir")).resolve(path)
-                    if (!Files.exists(resolved)) return@getOrPut emptyList()
-                    runCatching { Files.readAllLines(resolved, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
-                }.takeIf { it.isNotEmpty() }
-            }
-
-            fun definitionLineText(def: KotlinDefinitionRecord): String? {
-                val lines = fileLines(def.filePath) ?: return null
-                val idx = def.line - 1
-                return lines.getOrNull(idx)?.trimEnd()
-            }
-
-            fun functionBody(def: KotlinDefinitionRecord, maxChars: Int = 6000): String? {
-                if (def.kind != "fun") return null
-                val lines = fileLines(def.filePath) ?: return null
-                val startIdx = (def.line - 1).coerceIn(0, lines.lastIndex)
-                var depth = 0
-                var found = false
-                val sb = StringBuilder()
-                var chars = 0
-                for (i in startIdx..lines.lastIndex) {
-                    val line = lines[i]
-                    var j = 0
-                    while (j < line.length) {
-                        val ch = line[j]
-                        if (!found) {
-                            if (ch == '{') {
-                                found = true
-                                depth = 1
-                                sb.append(ch)
-                            }
-                        } else {
-                            sb.append(ch)
-                            if (ch == '{') depth++
-                            if (ch == '}') {
-                                depth--
-                                if (depth == 0) return sb.toString().trimEnd()
-                            }
-                        }
-                        if (found) {
-                            chars++
-                            if (chars >= maxChars) return sb.toString().trimEnd()
-                        }
-                        j++
-                    }
-                    if (found) {
-                        sb.append('\n')
-                        chars++
-                        if (chars >= maxChars) return sb.toString().trimEnd()
-                    }
-                }
-                return if (found) sb.toString().trimEnd() else null
-            }
-
-            fun toMatch(def: KotlinDefinitionRecord): WorkspaceSymbolMatch {
-                val location = if (!def.fileId.isNullOrBlank()) {
-                    "${def.filePath}:${def.line} (fileId=${def.fileId})"
-                } else {
-                    "${def.filePath}:${def.line}"
-                }
-                val lineText = definitionLineText(def)
-                val body = functionBody(def)
-                return WorkspaceSymbolMatch(
-                    symbol = def.name,
-                    kind = def.kind,
-                    locationHint = location,
-                    filePath = def.filePath,
-                    fileId = def.fileId,
-                    line = def.line,
-                    definitionLine = lineText,
-                    definitionBody = body
-                )
-            }
-
-            for (def in definitions) {
-                val name = def.name
-                if (name.equals(query, ignoreCase = true)) {
-                    exact.add(toMatch(def))
-                    if (exact.size >= limit) break
-                    continue
-                }
-                if (name.startsWith(query, ignoreCase = true)) {
-                    prefix.add(toMatch(def))
-                    continue
-                }
-                if (name.contains(query, ignoreCase = true)) {
-                    contains.add(toMatch(def))
-                }
-            }
-
-            val matches = ArrayList<WorkspaceSymbolMatch>(limit)
-            for (bucket in listOf(exact, prefix, contains)) {
-                for (item in bucket) {
-                    matches.add(item)
-                    if (matches.size >= limit) break
-                }
-                if (matches.size >= limit) break
-            }
-            WorkspaceSymbolSearchResult(matches)
+            searchWorkspaceSymbols(
+                index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(),
+                rawQuery = query,
+                limit = req.limit
+            )
         }
     }
 }
@@ -555,7 +451,7 @@ fun main(args: Array<String>) {
         }
     } else null
 
-    val bridge = OpenAiIdeCodexBridge(model = "gpt-5.2", log = TputLog())
+    val bridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = TputLog())
     val indexForTools = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
     val instructions = buildString {
         appendLine(OpenAiIdeCodexBridge.defaultChatThreadInstructions.trim())

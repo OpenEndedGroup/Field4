@@ -1,0 +1,6 @@
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec4 col;
+layout(push_constant) uniform matrices {
+    mat4 p;
+    mat4 m;
+} pc;

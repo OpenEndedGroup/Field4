@@ -1,6 +1,7 @@
 package afield
 
 import kotlinx.browser.document
+import kotlin.math.abs
 
 private fun encodeCommandUri(value: String): String = js("encodeURIComponent")(value) as String
 
@@ -8,6 +9,393 @@ private fun decodeCommandUri(value: String): String = try {
     js("decodeURIComponent")(value) as String
 } catch (_: dynamic) {
     value
+}
+
+private data class ShaderDeclaration(
+    val symbol: String,
+    val lineNumber: Int,
+    val startColumn: Int,
+    val endColumn: Int,
+    val kind: String,
+    val direction: String? = null,
+    val locationKey: String? = null,
+    val semanticKey: String? = null
+)
+
+private data class ShaderNavigationTarget(
+    val property: String,
+    val lineNumber: Int,
+    val startColumn: Int,
+    val endColumn: Int,
+    val score: Int
+)
+
+private data class ShaderBlockState(
+    val kind: String,
+    val direction: String? = null,
+    val locationKey: String? = null,
+    var depth: Int = 0
+)
+
+private val shaderLocationPattern = Regex("""\blocation\s*=\s*(\d+)""", RegexOption.IGNORE_CASE)
+private val shaderSemanticPattern = Regex(""":\s*([A-Za-z_][A-Za-z0-9_]*)""")
+private val shaderFieldPattern = Regex(
+    """\b([A-Za-z_][A-Za-z0-9_]*)\b\s*(?:\[[^\]]*\])?\s*(?::\s*([A-Za-z_][A-Za-z0-9_]*))?\s*;"""
+)
+private val shaderPushConstantStartPattern = Regex(
+    """layout\s*\([^)]*push_constant[^)]*\)\s*uniform\b.*\{""",
+    RegexOption.IGNORE_CASE
+)
+private val shaderInterfaceStructStartPattern = Regex(
+    """(?:layout\s*\([^)]*\)\s*)?\b(in|out)\b\s+struct\b.*\{""",
+    RegexOption.IGNORE_CASE
+)
+private val shaderStructStartPattern = Regex("""\bstruct\b.*\{""", RegexOption.IGNORE_CASE)
+private val shaderCbufferStartPattern = Regex("""\bcbuffer\b.*\{""", RegexOption.IGNORE_CASE)
+private val shaderTopLevelInterfacePattern = Regex(
+    """(?:layout\s*\([^)]*\)\s*)?\b(in|out)\b[^;{]*\b([A-Za-z_][A-Za-z0-9_]*)\s*;""",
+    RegexOption.IGNORE_CASE
+)
+private val shaderInstancePattern = Regex("""\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?""")
+private const val shaderNoMatchScore = -1000000
+private const val shaderNavigationSelectionDelayMs = 90
+private const val shaderNavigationRetryDelayMs = 180
+private val oscEditorNumberPattern = Regex("""[-+]?(?:(?:\d+\.\d*)|(?:\d+)|(?:\.\d+))(?:[eE][-+]?\d+)?[fF]?""")
+private var oscEditorExecuteTimer: Int? = null
+
+private fun oscEditorIdentifierChar(ch: Char): Boolean = ch == '_' || ch.isLetterOrDigit()
+
+private fun oscEditorCurrentEditor(): dynamic = js(
+    """(() => {
+        const focused = window.embeddedEditors && typeof window.embeddedEditors.getFocused === "function"
+            ? window.embeddedEditors.getFocused()
+            : null;
+        return (focused && focused.editor) || window.globalEditor || null;
+    })()"""
+)
+
+private fun shaderRelatedProperties(property: String): List<String> {
+    val current = property.lowercase()
+    val glslRayStages = listOf("raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
+    val slangRayStages = listOf("raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s")
+    return when (current) {
+        "vertex" -> listOf("fragment")
+        "fragment" -> listOf("vertex")
+        "task" -> listOf("mesh")
+        "mesh" -> listOf("task")
+        "vertex_s" -> listOf("fragment_s", "vertex_fragment")
+        "fragment_s" -> listOf("vertex_s", "vertex_fragment")
+        "vertex_fragment" -> listOf("vertex_s", "fragment_s")
+        "task_s" -> listOf("mesh_s")
+        "mesh_s" -> listOf("task_s")
+        in glslRayStages -> glslRayStages.filter { it != current }
+        in slangRayStages -> slangRayStages.filter { it != current }
+        else -> emptyList()
+    }
+}
+
+private fun shaderPropertyIndexOf(name: String?): Int {
+    if (name == null) return -1
+    for (i in monacoPropertyNames.indices) {
+        if (monacoPropertyNames[i] == name) return i
+    }
+    return -1
+}
+
+private fun shaderKindFamily(kind: String): String = when {
+    kind.startsWith("push") || kind.startsWith("buffer") -> "push"
+    kind.startsWith("interface") -> "interface"
+    kind.startsWith("struct") -> "struct"
+    else -> kind
+}
+
+private fun shaderBraceDelta(line: String): Int =
+    line.count { it == '{' } - line.count { it == '}' }
+
+private fun shaderLocationKey(line: String): String? =
+    shaderLocationPattern.find(line)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { "location:$it" }
+
+private fun shaderSymbolColumns(line: String, symbol: String, preferLast: Boolean = false): Pair<Int, Int>? {
+    if (symbol.isBlank()) return null
+    val index = if (preferLast) line.lastIndexOf(symbol) else line.indexOf(symbol)
+    if (index < 0) return null
+    return (index + 1) to (index + symbol.length + 1)
+}
+
+private fun shaderFieldDeclaration(line: String, lineNumber: Int, state: ShaderBlockState): ShaderDeclaration? {
+    val match = shaderFieldPattern.findAll(line).lastOrNull() ?: return null
+    val symbol = match.groupValues.getOrNull(1)?.trim().orEmpty()
+    if (symbol.isBlank()) return null
+    val symbolColumns = shaderSymbolColumns(line, symbol, preferLast = true) ?: return null
+    val semantic = match.groupValues.getOrNull(2)?.trim()?.takeIf { it.isNotEmpty() }?.uppercase()
+    return ShaderDeclaration(
+        symbol = symbol,
+        lineNumber = lineNumber,
+        startColumn = symbolColumns.first,
+        endColumn = symbolColumns.second,
+        kind = when (state.kind) {
+            "push" -> "push-field"
+            "cbuffer" -> "buffer-field"
+            "interface-struct" -> "interface-field"
+            else -> "struct-field"
+        },
+        direction = state.direction,
+        locationKey = state.locationKey,
+        semanticKey = semantic
+    )
+}
+
+private fun shaderParseDeclarations(source: String): List<ShaderDeclaration> {
+    val declarations = mutableListOf<ShaderDeclaration>()
+    val lines = source.replace("\r\n", "\n").split('\n')
+    var blockState: ShaderBlockState? = null
+
+    lines.forEachIndexed { index, rawLine ->
+        val lineNumber = index + 1
+        val line = rawLine.substringBefore("//")
+        val trimmed = line.trim()
+
+        val state = blockState
+        if (state != null) {
+            shaderFieldDeclaration(line, lineNumber, state)?.let { declarations.add(it) }
+            val instanceMatch = shaderInstancePattern.find(line)
+            if ((state.kind == "push" || state.kind == "interface-struct") && instanceMatch != null) {
+                val instance = instanceMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+                val instanceColumns = shaderSymbolColumns(line, instance, preferLast = true)
+                if (instance.isNotBlank() && instanceColumns != null) {
+                    declarations.add(
+                        ShaderDeclaration(
+                            symbol = instance,
+                            lineNumber = lineNumber,
+                            startColumn = instanceColumns.first,
+                            endColumn = instanceColumns.second,
+                            kind = if (state.kind == "push") "push-instance" else "interface-instance",
+                            direction = state.direction,
+                            locationKey = state.locationKey
+                        )
+                    )
+                }
+            }
+
+            state.depth += shaderBraceDelta(line)
+            if (state.depth <= 0) {
+                blockState = null
+            }
+            return@forEachIndexed
+        }
+
+        if (trimmed.isBlank()) return@forEachIndexed
+
+        if (shaderPushConstantStartPattern.containsMatchIn(trimmed)) {
+            blockState = ShaderBlockState(kind = "push", depth = shaderBraceDelta(line))
+            return@forEachIndexed
+        }
+
+        val interfaceStructMatch = shaderInterfaceStructStartPattern.find(trimmed)
+        if (interfaceStructMatch != null) {
+            val direction = interfaceStructMatch.groupValues.getOrNull(1)?.lowercase()
+            blockState = ShaderBlockState(
+                kind = "interface-struct",
+                direction = direction,
+                locationKey = shaderLocationKey(trimmed),
+                depth = shaderBraceDelta(line)
+            )
+            return@forEachIndexed
+        }
+
+        if (shaderCbufferStartPattern.containsMatchIn(trimmed)) {
+            blockState = ShaderBlockState(kind = "cbuffer", depth = shaderBraceDelta(line))
+            return@forEachIndexed
+        }
+
+        if (shaderStructStartPattern.containsMatchIn(trimmed)) {
+            blockState = ShaderBlockState(kind = "struct", depth = shaderBraceDelta(line))
+            return@forEachIndexed
+        }
+
+        val interfaceMatch = shaderTopLevelInterfacePattern.find(trimmed)
+        if (interfaceMatch != null) {
+            val direction = interfaceMatch.groupValues.getOrNull(1)?.lowercase()
+            val symbol = interfaceMatch.groupValues.getOrNull(2)?.trim().orEmpty()
+            val symbolColumns = shaderSymbolColumns(line, symbol, preferLast = true)
+            if (symbol.isNotBlank() && symbolColumns != null) {
+                declarations.add(
+                    ShaderDeclaration(
+                        symbol = symbol,
+                        lineNumber = lineNumber,
+                        startColumn = symbolColumns.first,
+                        endColumn = symbolColumns.second,
+                        kind = "interface-variable",
+                        direction = direction,
+                        locationKey = shaderLocationKey(trimmed)
+                    )
+                )
+            }
+            return@forEachIndexed
+        }
+
+        if (shaderSemanticPattern.containsMatchIn(trimmed)) {
+            shaderFieldDeclaration(line, lineNumber, ShaderBlockState(kind = "struct"))?.let { declarations.add(it) }
+        }
+    }
+
+    return declarations
+}
+
+private fun shaderCurrentDeclaration(
+    symbol: String,
+    declarations: List<ShaderDeclaration>,
+    cursorLineNumber: Int
+): ShaderDeclaration? {
+    return declarations
+        .asSequence()
+        .filter { it.symbol == symbol }
+        .sortedWith(compareBy<ShaderDeclaration>({ abs(it.lineNumber - cursorLineNumber) }, { it.startColumn }, { it.endColumn }))
+        .firstOrNull()
+}
+
+private fun shaderScoreTarget(
+    symbol: String,
+    currentDeclaration: ShaderDeclaration?,
+    candidate: ShaderDeclaration,
+    relationIndex: Int
+): Int {
+    var score = shaderNoMatchScore
+    val symbolMatches = candidate.symbol == symbol
+
+    if (currentDeclaration == null) {
+        if (!symbolMatches) return score
+        score = 70
+    } else {
+        val matchedByLocation = !symbolMatches &&
+            currentDeclaration.locationKey != null &&
+            currentDeclaration.locationKey == candidate.locationKey
+        val matchedBySemantic = !symbolMatches &&
+            currentDeclaration.semanticKey != null &&
+            currentDeclaration.semanticKey == candidate.semanticKey
+        if (!symbolMatches && !matchedByLocation && !matchedBySemantic) {
+            return shaderNoMatchScore
+        }
+
+        score = 0
+        if (symbolMatches) score += 55
+
+        if (matchedByLocation) {
+            score += 140
+        }
+        if (matchedBySemantic) {
+            score += 140
+        }
+
+        val currentFamily = shaderKindFamily(currentDeclaration.kind)
+        val candidateFamily = shaderKindFamily(candidate.kind)
+        if (currentFamily == candidateFamily) score += 45
+
+        if (currentDeclaration.direction != null && candidate.direction != null) {
+            score += if (currentDeclaration.direction != candidate.direction) 30 else -10
+        }
+    }
+
+    score -= relationIndex * 5
+    return score
+}
+
+private fun shaderFindLinkedDefinition(
+    editor: dynamic,
+    position: dynamic,
+    modelOverride: dynamic = undefined
+): ShaderNavigationTarget? {
+    val w = js("window")
+    val currentSelectedCode = w.currentSelectedCode
+    val currentLen = (currentSelectedCode?.length as? Number)?.toInt() ?: 0
+    if (currentLen != 1) return null
+
+    val currentProperty = (w.currentSelectedProperty as? String)?.trim()?.lowercase() ?: return null
+    val relatedProperties = shaderRelatedProperties(currentProperty)
+    if (relatedProperties.isEmpty()) return null
+
+    val model = if (modelOverride != null && modelOverride != undefined) modelOverride else editor.getModel()
+    if (model == null || model == undefined) return null
+    val wordAtPosition = model.getWordAtPosition(position) ?: return null
+    val symbol = (wordAtPosition.word as? String)?.trim().orEmpty()
+    if (symbol.isBlank()) return null
+
+    val currentSource = model.getValue() as? String ?: ""
+    val currentLineNumber = ((position.lineNumber as? Number)?.toInt() ?: 1).coerceAtLeast(1)
+    val currentDeclaration = shaderCurrentDeclaration(symbol, shaderParseDeclarations(currentSource), currentLineNumber)
+
+    var best: ShaderNavigationTarget? = null
+    relatedProperties.forEachIndexed { relationIndex, property ->
+        val targetSource = currentSelectedCode[0][property] as? String ?: return@forEachIndexed
+        if (targetSource.isBlank()) return@forEachIndexed
+
+        for (candidate in shaderParseDeclarations(targetSource)) {
+            val score = shaderScoreTarget(symbol, currentDeclaration, candidate, relationIndex)
+            if (score > (best?.score ?: shaderNoMatchScore)) {
+                best = ShaderNavigationTarget(
+                    property = property,
+                    lineNumber = candidate.lineNumber,
+                    startColumn = candidate.startColumn,
+                    endColumn = candidate.endColumn,
+                    score = score
+                )
+            }
+        }
+    }
+
+    return best?.takeIf { it.score > 0 }
+}
+
+private fun shaderNavigateToTarget(target: ShaderNavigationTarget) {
+    val w = js("window")
+    val currentSelectedCode = w.currentSelectedCode
+    val currentLen = (currentSelectedCode?.length as? Number)?.toInt() ?: 0
+    if (currentLen != 1) return
+    val uid = currentSelectedCode[0].uid as? String ?: return
+
+    val navigateToBoxProperty = w.navigateToBoxProperty
+    try {
+        if (navigateToBoxProperty != null && navigateToBoxProperty != undefined) {
+            navigateToBoxProperty(uid, target.property, target.lineNumber, target.lineNumber)
+        } else {
+            val targetIndex = shaderPropertyIndexOf(target.property)
+            if (targetIndex >= 0) {
+                monacoApplyPropertySelection(w.globalMonaco, w.globalEditor, targetIndex)
+            }
+        }
+    } catch (_: dynamic) {
+        val targetIndex = shaderPropertyIndexOf(target.property)
+        if (targetIndex >= 0) {
+            monacoApplyPropertySelection(w.globalMonaco, w.globalEditor, targetIndex)
+        }
+    }
+
+    fun applySelection() {
+        val editor = w.globalEditor ?: return
+        val range = js("{}")
+        range.startLineNumber = target.lineNumber
+        range.startColumn = target.startColumn
+        range.endLineNumber = target.lineNumber
+        range.endColumn = target.endColumn
+        try {
+            editor.setSelection(range)
+            editor.revealRangeInCenter(range)
+            editor.focus()
+        } catch (_: dynamic) {
+        }
+    }
+
+    // Selection is applied twice because property switching is asynchronous and the
+    // first attempt can race Monaco model replacement.
+    w.setTimeout({ applySelection() }, shaderNavigationSelectionDelayMs)
+    w.setTimeout({ applySelection() }, shaderNavigationRetryDelayMs)
+}
+
+private fun monacoRunShaderLinkedDefinition(editor: dynamic, position: dynamic = editor.getPosition()): Boolean {
+    if (position == null || position == undefined) return false
+    val target = shaderFindLinkedDefinition(editor, position) ?: return false
+    shaderNavigateToTarget(target)
+    return true
 }
 
 private fun runCommandById(editor: dynamic, id: String): Boolean {
@@ -145,7 +533,7 @@ private fun monacoInstallCommandLinkDetector(editor: dynamic, monaco: dynamic) {
     opener.id = "afield-command-link-opener"
     opener.open = open@{ uri: dynamic, _: dynamic ->
         val raw = when {
-            js("typeof uri === 'string'") as Boolean -> uri as String
+            js("typeof uri === 'string'") as Boolean -> uri
             (js("uri && uri.scheme === 'command'") as Boolean) -> {
                 val pathPart = try {
                     uri.path as? String
@@ -154,7 +542,7 @@ private fun monacoInstallCommandLinkDetector(editor: dynamic, monaco: dynamic) {
                 }
                 "command:" + (pathPart ?: "")
             }
-            else -> uri?.toString() as? String ?: ""
+            else -> uri?.toString() ?: ""
         }
         if (!raw.startsWith("command:")) return@open false
         val encoded = raw.removePrefix("command:").trimStart('/')
@@ -254,6 +642,7 @@ fun monacoRunAiAssist(editor: dynamic) {
     }
 
     val uid = w.currentSelectedCode[0].uid as String
+    openAiChatPanelForUid(w, uid)
     val kind = if (startOffset != endOffset) "rewrite" else "cursor"
     val startLine = ((startPosition.lineNumber as Number).toInt() - 1).coerceAtLeast(0)
 
@@ -267,9 +656,19 @@ fun monacoRunAiAssist(editor: dynamic) {
     send("ai-assist", payload)
 }
 
+private fun openAiChatPanelForUid(w: dynamic, uid: String) {
+    val opener = w.openAiChatForBox
+    if (opener != null) {
+        opener(uid, w.currentSelectedProperty)
+    }
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
+    if ((editor.afieldCoreActionsRegistered as? Boolean) == true) return
+    editor.afieldCoreActionsRegistered = true
+
     fun keycode(value: dynamic): Int {
         return (value as Number).toInt()
     }
@@ -281,8 +680,10 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         return result
     }
 
+    val disposables = mutableListOf<dynamic>()
     fun addAction(action: dynamic) {
-        editor.addAction(action)
+        val handle = editor.addAction(action)
+        disposables.add(handle)
     }
 
     run {
@@ -321,6 +722,42 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     run {
         val action = js("{}")
+        action.id = "paired-shader-definition"
+        action.label = "Go to Paired Shader Definition"
+        // Intentionally front F12 so paired shader navigation runs before Monaco's
+        // ordinary same-file definition lookup, then fall back when no cross-property match exists.
+        action.keybindings = arrayOf(keybinding(monaco.KeyCode.F12))
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 1.4
+        action.run = { ed: dynamic ->
+            if (!monacoRunShaderLinkedDefinition(ed)) {
+                ed.trigger("afield-shader-definition", "editor.action.revealDefinition", null)
+            }
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
+        action.id = "history-lens-selection"
+        action.label = "Show History Lens for Line / Selection"
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "navigation"
+        action.contextMenuOrder = 1.45
+        action.run = { ed: dynamic ->
+            val lens = js("window").HistoryLens
+            if (lens != null && lens != undefined) {
+                lens.open(ed, monaco)
+            }
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
         action.id = "ai-assist"
         action.label = "Apply Intelligence"
         action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.KeyO))
@@ -334,10 +771,19 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         addAction(action)
     }
 
-    val hover = document.createElement("div")
-    hover.className = "hoverlay"
-    hover.textContent = ".code"
-    editor._domElement.appendChild(hover)
+    if (editor._domElement.querySelector(".hoverlay") == null) {
+        val hover = document.createElement("div")
+        hover.className = "hoverlay"
+        hover.textContent = ".code"
+        editor._domElement.appendChild(hover)
+    }
+
+    if (editor._domElement.querySelector(".hoverlay-left") == null) {
+        val context = document.createElement("div")
+        context.className = "hoverlay-left"
+        context.innerHTML = ""
+        editor._domElement.appendChild(context)
+    }
 
     run {
         val action = js("{}")
@@ -465,7 +911,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.contextMenuGroupId = "execution"
         action.contextMenuOrder = 1.5
         action.run = { ed: dynamic ->
-            monacoRunExecuteFragment(ed)
+            monacoRunExecuteFragmentOrShaderReload(ed)
         }
         addAction(action)
     }
@@ -517,9 +963,27 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     run {
         val action = js("{}")
+        action.id = "continue-all"
+        action.label = "Continue Box"
+        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.UpArrow))
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "execution"
+        action.contextMenuOrder = 2.1
+        action.run = { ed: dynamic ->
+            monacoRunContinueAll(ed)
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
         action.id = "stop-all"
         action.label = "Stop Box"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow))
+        action.keybindings = arrayOf(
+            keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow),
+            keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.DownArrow)
+        )
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -529,6 +993,8 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         }
         addAction(action)
     }
+
+    editor.afieldCoreActionDisposables = disposables.toTypedArray()
 
     monacoInstallCommandLinkDetector(editor, monaco)
 }
@@ -557,11 +1023,143 @@ fun monacoRunAiAssistError(editor: dynamic) {
         fullText.substring(offset)
 
     val uid = w.currentSelectedCode[0].uid as String
+    openAiChatPanelForUid(w, uid)
     val payload = js("{}")
     payload.uid = uid
     payload.prompt = allText
     payload.kind = "error"
     send("ai-assist", payload)
+}
+
+private fun shaderReloadActionForProperty(property: String): String? = when (property.lowercase()) {
+    "vertex", "fragment", "vertex_fragment", "vertex_s", "fragment_s" -> "moduleHere_reload"
+    "compute", "compute_s" -> "computeModuleHere_reload"
+    "mesh", "task", "mesh_s", "task_s" -> "meshModuleHere_reload"
+    "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
+    "raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s" -> "rayTracingModuleHere_reload"
+    else -> null
+}
+
+private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
+    val w = js("window")
+    val property = (w.currentSelectedProperty as? String)?.trim()?.lowercase()
+    if (property == "contents") return
+    val actionId = property?.let(::shaderReloadActionForProperty)
+    if (actionId == null) {
+        monacoRunExecuteFragment(editor)
+        return
+    }
+
+    val current = w.currentSelectedCode
+    val currentLen = (current?.length as? Number)?.toInt() ?: 0
+    if (currentLen != 1) return
+    val selected = current[0] ?: return
+    val uid = selected.uid as? String ?: return
+
+    val model = editor.getModel()
+    if (model != null && model != undefined) {
+        val value = model.getValue() as? String ?: ""
+        selected[property] = value
+        val payload = js("{}")
+        payload.uid = uid
+        payload.property = property
+        payload.value = value
+        send("set-string", payload)
+    }
+
+    send(
+        Message("perform-action").payload(
+            Perform_action(
+                uid_currentSelection = listOf(uid),
+                uid_action = actionId
+            )
+        )
+    )
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunOscEditorCommand(command: OscEditorCommand) {
+    val editor = oscEditorCurrentEditor()
+    if (editor == null || editor == undefined) return
+
+    when (command.command.trim().lowercase()) {
+        "float" -> {
+            if (!monacoReplaceNumberUnderCursor(editor, command)) return
+            scheduleOscEditorExecute(editor, command.debounceMs)
+        }
+
+        "launch" -> monacoRunLaunchAll(editor)
+        "stop" -> monacoRunStopAll(editor)
+    }
+}
+
+private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCommand): Boolean {
+    val model = editor.getModel()
+    if (model == null || model == undefined) return false
+    val position = editor.getPosition()
+    if (position == null || position == undefined) return false
+
+    val lineNumber = (position.lineNumber as Number).toInt()
+    val column = (position.column as Number).toInt()
+    val line = model.getLineContent(lineNumber) as String
+    val cursorIndex = (column - 1).coerceIn(0, line.length)
+    val replacementBase = command.text.takeIf { it.isNotBlank() }
+        ?: command.value?.toString()
+        ?: return false
+
+    for (match in oscEditorNumberPattern.findAll(line)) {
+        val start = match.range.first
+        val endExclusive = match.range.last + 1
+        if (cursorIndex < start || cursorIndex > endExclusive) continue
+        if (start > 0 && oscEditorIdentifierChar(line[start - 1])) continue
+        if (endExclusive < line.length && oscEditorIdentifierChar(line[endExclusive])) continue
+
+        val original = match.value
+        val suffix = original.lastOrNull()?.takeIf { it == 'f' || it == 'F' }?.toString() ?: ""
+        val replacement = if (suffix.isNotBlank() && !replacementBase.endsWith("f", ignoreCase = true)) {
+            replacementBase + suffix
+        } else {
+            replacementBase
+        }
+        val range = js("{}")
+        range.startLineNumber = lineNumber
+        range.startColumn = start + 1
+        range.endLineNumber = lineNumber
+        range.endColumn = endExclusive + 1
+
+        val edit = js("{}")
+        edit.range = range
+        edit.text = replacement
+        edit.forceMoveMarkers = true
+        editor.executeEdits("osc-editor-float", arrayOf(edit))
+
+        val nextColumn = start + replacement.length + 1
+        val nextPosition = js("{}")
+        nextPosition.lineNumber = lineNumber
+        nextPosition.column = nextColumn
+        editor.setPosition(nextPosition)
+
+        val w = js("window")
+        val current = w.currentSelectedCode
+        val currentLen = (current?.length as? Number)?.toInt() ?: 0
+        if (currentLen == 1) {
+            val property = w.currentSelectedProperty as? String ?: "code"
+            current[0][property] = model.getValue()
+        }
+        return true
+    }
+    return false
+}
+
+private fun scheduleOscEditorExecute(editor: dynamic, debounceMs: Int) {
+    val w = js("window")
+    oscEditorExecuteTimer?.let { w.clearTimeout(it) }
+    val delay = debounceMs.coerceIn(0, 5_000)
+    oscEditorExecuteTimer = w.setTimeout({
+        oscEditorExecuteTimer = null
+        monacoRunExecuteFragmentOrShaderReload(editor)
+    }, delay)
 }
 
 private fun extractSelectionOrScope(editor: dynamic): Triple<String, Int, Boolean> {
@@ -600,6 +1198,9 @@ fun monacoRunExecuteFragment(editor: dynamic) {
     val w = js("window")
     val (code, belowLine, singleLine) = extractSelectionOrScope(editor)
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
+    val topLine = belowLine + 1
+    val bottomLine = topLine + code.split("\n").size - 1
 
     val payload = js("{}")
     payload.uid = uid
@@ -613,6 +1214,9 @@ fun monacoRunExecuteFragment(editor: dynamic) {
         handler(response, message, uid)
         true
     }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, topLine, bottomLine)
+    }
     sendWithReply("execute-fragment", payload, "exec_$uid", callback.asDynamic())
 }
 
@@ -621,7 +1225,9 @@ fun monacoRunExecuteFragment(editor: dynamic) {
 fun monacoRunExecuteAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    val code = w.currentSelectedCode[0].code as? String ?: ""
+    val property = w.currentSelectedProperty as? String ?: "code"
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
 
     val payload = js("{}")
     payload.uid = uid
@@ -634,6 +1240,9 @@ fun monacoRunExecuteAll(editor: dynamic) {
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
         handler(response, message, uid)
         true
+    }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, 1, code.split("\n").size)
     }
     sendWithReply("execute-all", payload, "exec_$uid", callback.asDynamic())
 }
@@ -670,9 +1279,11 @@ fun monacoRunAiChatInline(editor: dynamic) {
     val selection = editor.getSelection()
     val start = (selection.startLineNumber as Number).toInt() - 1
     val uid = w.currentSelectedCode[0].uid as String
+    openAiChatPanelForUid(w, uid)
     val fullText = editor.getModel().getValue() as String
     val addPromptBox = w.addPromptBox
     val callback: (dynamic) -> Unit = { v ->
+        openAiChatPanelForUid(w, uid)
         val payload = js("{}")
         payload.uid = uid
         payload.prompt = fullText
@@ -692,10 +1303,7 @@ fun monacoRunAiChatPanel() {
     val current = w.currentSelectedCode
     if (current == null || (current.length as? Number)?.toInt() != 1) return
     val uid = current[0].uid as? String ?: return
-    val opener = w.openAiChatForBox
-    if (opener != null) {
-        opener(uid, w.currentSelectedProperty)
-    }
+    openAiChatPanelForUid(w, uid)
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -783,6 +1391,7 @@ fun monacoRunLaunchFragment(editor: dynamic) {
     val selection = extractSelectionOrScopeForLaunch(editor)
     val className = w.addExecutionMarker(editor, selection.topLine, selection.bottomLine)
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
 
     val payload = js("{}")
     payload.uid = uid
@@ -797,6 +1406,9 @@ fun monacoRunLaunchFragment(editor: dynamic) {
         handler(response, message, uid)
         true
     }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, selection.topLine, selection.bottomLine)
+    }
     sendWithReply("launch-fragment", payload, "exec_$uid", callback.asDynamic())
 }
 
@@ -805,8 +1417,27 @@ fun monacoRunLaunchFragment(editor: dynamic) {
 fun monacoRunLaunchAll(editor: dynamic) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
-    val code = w.currentSelectedCode[0].code as? String ?: ""
+    val property = w.currentSelectedProperty as? String ?: "code"
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, 1, code.split("\n").size)
+    }
     w.launchAll(uid, code)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunContinueAll(editor: dynamic) {
+    val w = js("window")
+    val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
+    val model = editor.getModel()
+    val code = model?.getValue() as? String ?: (w.currentSelectedCode[0].code as? String ?: "")
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, 1, code.split("\n").size)
+    }
+    w.continueAll(uid, code)
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -835,9 +1466,10 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
     editor.onMouseDown(fun(e: dynamic) {
         // Check if Alt key is pressed and it's a double click
         val altKey = e.event.altKey as? Boolean ?: false
+        val shiftKey = e.event.shiftKey as? Boolean ?: false
         val detail = e.event.detail as? Int ?: 0
 
-        if (altKey && detail == 2) {
+        if (altKey && !shiftKey && detail == 2) {
             val position = e.target.position
             if (position != null) {
                 val model = editor.getModel()
@@ -903,6 +1535,7 @@ fun monacoInstallAltDoubleClickHandler(editor: dynamic, monaco: dynamic) {
 fun monacoRunExecuteSymbol(editor: dynamic, symbol: String, lineNumber: Int) {
     val w = js("window")
     val uid = w.currentSelectedCode[0].uid as String
+    val property = w.currentSelectedProperty as? String ?: "code"
 
     val payload = js("{}")
     payload.uid = uid
@@ -913,6 +1546,9 @@ fun monacoRunExecuteSymbol(editor: dynamic, symbol: String, lineNumber: Int) {
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
         handler(response, message, uid)
         true
+    }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, property, lineNumber + 1, lineNumber + 1)
     }
     sendWithReply("execute-symbol", payload, "exec_$uid", callback.asDynamic())
 }

@@ -1,11 +1,16 @@
 
 import afield.*
 import kotlinx.browser.document
+import kotlinx.browser.window
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlin.math.max
+import kotlin.math.min
 import org.w3c.dom.*
 
 external fun disclosureInterface(container: Element): dynamic
 external fun aiChatUpdate(container: Element, uid: String, markdown: String)
+
+private const val PRESERVE_DISCLOSURE_CONTENT = "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__"
 
 fun insertHTMLWithScripts(container: Element, htmlString: String, isModule : Boolean = false) {
     // Create a document fragment from the HTML string
@@ -39,6 +44,405 @@ fun insertHTMLWithScripts(container: Element, htmlString: String, isModule : Boo
 
     // Insert the fragment into the container at the desired location
     container.appendChild(fragment)
+}
+
+private data class LinesBounds(
+    val x: Double,
+    val y: Double,
+    val width: Double,
+    val height: Double
+)
+
+private fun parsePositiveDouble(raw: String?): Double? {
+    val candidate = raw?.trim()?.removeSuffix("px")?.takeIf { it.isNotEmpty() } ?: return null
+    return candidate.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
+}
+
+private fun parseSvgViewBox(raw: String?): LinesBounds? {
+    val parts = raw
+        ?.trim()
+        ?.split(Regex("[\\s,]+"))
+        ?.mapNotNull { it.toDoubleOrNull() }
+        ?: return null
+    if (parts.size < 4) return null
+    val width = parts[2]
+    val height = parts[3]
+    if (!width.isFinite() || !height.isFinite() || width <= 0.0 || height <= 0.0) return null
+    return LinesBounds(parts[0], parts[1], width, height)
+}
+
+private fun parseLinesWrapper(htmlString: String): HTMLElement? {
+    val range = document.createRange()
+    val fragment = range.createContextualFragment(htmlString)
+    return fragment.querySelector(".afield-lines-output") as? HTMLElement
+}
+
+private data class ThreeIframeRequest(
+    val src: String,
+    val height: String?
+)
+
+private fun parseThreeIframeRequest(htmlString: String): ThreeIframeRequest? {
+    val range = document.createRange()
+    val fragment = range.createContextualFragment(htmlString)
+    val iframe = fragment.querySelector("iframe") as? HTMLIFrameElement ?: return null
+    val rawSrc = iframe.getAttribute("src")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val anchor = document.createElement("a") as HTMLAnchorElement
+    anchor.href = rawSrc
+    if (anchor.pathname != "/threejs") return null
+    val height = parsePositiveDouble(iframe.style.height)
+        ?.let { "${it}px" }
+        ?: parsePositiveDouble(iframe.getAttribute("height"))?.let { "${it}px" }
+    return ThreeIframeRequest(rawSrc, height)
+}
+
+private fun isPersistentThreeOutput(htmlString: String): Boolean =
+    parseThreeIframeRequest(htmlString) != null
+
+private fun updatePersistentThreeOutput(contentRoot: HTMLElement, htmlString: String): Boolean {
+    val request = parseThreeIframeRequest(htmlString) ?: return false
+    val existing = contentRoot.asDynamic().__afieldThreeIframe as? HTMLIFrameElement
+    val iframe = if (existing != null) {
+        if (existing.parentNode == null) contentRoot.appendChild(existing)
+        existing
+    } else {
+        val created = document.createElement("iframe") as HTMLIFrameElement
+        created.style.apply {
+            border = "none"
+            padding = "0"
+            margin = "0"
+            width = "100%"
+            display = "block"
+            background = "#000000"
+        }
+        contentRoot.innerHTML = ""
+        contentRoot.appendChild(created)
+        contentRoot.asDynamic().__afieldThreeIframe = created
+        created
+    }
+
+    if (iframe.getAttribute("src") != request.src) {
+        iframe.setAttribute("src", request.src)
+    }
+    iframe.style.height = request.height ?: iframe.style.height.takeIf { it.isNotBlank() } ?: "420px"
+    contentRoot.asDynamic().dataset.afieldAutoSizeMode = "fixed"
+    contentRoot.style.padding = "0px"
+    contentRoot.style.background = "#000000"
+    return true
+}
+
+private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
+    val existing = contentRoot.asDynamic().__afieldLinesView
+    if (existing != null) {
+        val root = existing.root as? HTMLElement
+        if (root != null && root.parentNode == null) contentRoot.appendChild(root)
+        return existing
+    }
+
+    val root = document.createElement("div") as HTMLElement
+    root.className = "afield-lines-output-shell"
+    root.style.apply {
+        position = "relative"
+        width = "100%"
+        height = "100%"
+        minWidth = "0"
+        minHeight = "0"
+    }
+
+    val viewport = document.createElement("div") as HTMLElement
+    viewport.className = "afield-lines-output-viewport"
+    viewport.style.apply {
+        position = "relative"
+        setProperty("overflow", "hidden")
+        width = "100%"
+        height = "100%"
+        minWidth = "0"
+        minHeight = "0"
+        border = "1px solid rgba(255,255,255,0.07)"
+        background = "rgba(0,0,0,0.16)"
+        boxSizing = "border-box"
+        setProperty("touch-action", "none")
+        cursor = "grab"
+    }
+
+    val stage = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    stage.setAttribute("width", "100%")
+    stage.setAttribute("height", "100%")
+    stage.setAttribute("preserveAspectRatio", "none")
+    stage.setAttribute("shape-rendering", "geometricPrecision")
+    stage.setAttribute("text-rendering", "geometricPrecision")
+    stage.setAttribute("class", "nested-svg-stage")
+
+    val stageGroup = document.createElementNS("http://www.w3.org/2000/svg", "g")
+    stageGroup.setAttribute("vector-effect", "non-scaling-stroke")
+    stage.appendChild(stageGroup)
+    viewport.appendChild(stage)
+    root.appendChild(viewport)
+    contentRoot.appendChild(root)
+    contentRoot.asDynamic().dataset.afieldAutoSizeMode = "fixed"
+    contentRoot.style.padding = "0px"
+
+    val view = js("({})")
+    view.root = root
+    view.viewport = viewport
+    view.stage = stage
+    view.stageGroup = stageGroup
+    view.scale = 1.0
+    view.tx = 0.0
+    view.ty = 0.0
+    view.manual = false
+    view.contentBounds = null
+    view.viewportWidth = 1.0
+    view.viewportHeight = 1.0
+    view.panPointerId = null
+    view.panLastX = 0.0
+    view.panLastY = 0.0
+    view.sourceWidth = 1.0
+    view.sourceHeight = 1.0
+    view.lastMeasuredWidth = -1.0
+    view.lastMeasuredHeight = -1.0
+    view.lastStrokeFadeScale = null
+
+    fun updateTransform() {
+        val scale = (view.scale as Double)
+        val tx = (view.tx as Double)
+        val ty = (view.ty as Double)
+        stageGroup.setAttribute("transform", "matrix($scale 0 0 $scale $tx $ty)")
+        val previousStrokeFadeScale = (view.lastStrokeFadeScale as? Number)?.toDouble()
+        if (previousStrokeFadeScale != scale) {
+            applySubpixelStrokeFade(stageGroup, scale)
+            view.lastStrokeFadeScale = scale
+        }
+    }
+
+    fun updateViewportMetrics() {
+        val measuredWidth = viewport.clientWidth.toDouble()
+        val measuredHeight = viewport.clientHeight.toDouble()
+        val fallbackWidth = view.sourceWidth as Double
+        val fallbackHeight = view.sourceHeight as Double
+        view.viewportWidth = max(1.0, if (measuredWidth > 0.0) measuredWidth else fallbackWidth)
+        view.viewportHeight = max(1.0, if (measuredHeight > 0.0) measuredHeight else fallbackHeight)
+        stage.setAttribute("viewBox", "0 0 ${view.viewportWidth} ${view.viewportHeight}")
+    }
+
+    fun fitToContent() {
+        val bounds = view.contentBounds as? LinesBounds ?: return
+        updateViewportMetrics()
+        val viewportWidth = max(1.0, view.viewportWidth as Double)
+        val viewportHeight = max(1.0, view.viewportHeight as Double)
+        val pad = max(12.0, min(viewportWidth, viewportHeight) * 0.06)
+        val scale = min(
+            (viewportWidth - pad * 2.0) / max(bounds.width, 1e-6),
+            (viewportHeight - pad * 2.0) / max(bounds.height, 1e-6)
+        ).coerceAtLeast(1e-6)
+        view.scale = scale
+        view.tx = (viewportWidth - bounds.width * scale) * 0.5 - bounds.x * scale
+        view.ty = (viewportHeight - bounds.height * scale) * 0.5 - bounds.y * scale
+        updateTransform()
+    }
+
+    fun endPan() {
+        view.panPointerId = null
+        viewport.style.cursor = "grab"
+    }
+
+    viewport.onwheel = { event ->
+        event.preventDefault()
+        val rect = viewport.getBoundingClientRect()
+        val px = event.clientX - rect.left
+        val py = event.clientY - rect.top
+        val currentScale = view.scale as Double
+        val factor = if (event.deltaY < 0) 1.12 else 1.0 / 1.12
+        val nextScale = (currentScale * factor).coerceIn(1e-4, 1e4)
+        if (nextScale != currentScale) {
+            val tx = view.tx as Double
+            val ty = view.ty as Double
+            val worldX = (px - tx) / currentScale
+            val worldY = (py - ty) / currentScale
+            view.scale = nextScale
+            view.tx = px - worldX * nextScale
+            view.ty = py - worldY * nextScale
+            view.manual = true
+            updateTransform()
+        }
+        null
+    }
+
+    viewport.onpointerdown = { event ->
+        if (event.button.toInt() != 0 && event.button.toInt() != 1) {
+            null
+        } else {
+        view.panPointerId = event.pointerId
+        view.panLastX = event.clientX
+        view.panLastY = event.clientY
+        view.manual = true
+        viewport.style.cursor = "grabbing"
+        viewport.setPointerCapture(event.pointerId)
+        event.preventDefault()
+        null
+        }
+    }
+
+    viewport.onpointermove = { event ->
+        if ((view.panPointerId as? Number)?.toInt() != event.pointerId) {
+            null
+        } else {
+            val dx = event.clientX - (view.panLastX as Double)
+            val dy = event.clientY - (view.panLastY as Double)
+            view.panLastX = event.clientX
+            view.panLastY = event.clientY
+            view.tx = (view.tx as Double) + dx
+            view.ty = (view.ty as Double) + dy
+            updateTransform()
+            null
+        }
+    }
+
+    viewport.onpointerup = { event ->
+        if ((view.panPointerId as? Number)?.toInt() == event.pointerId) endPan()
+        null
+    }
+
+    viewport.onpointercancel = {
+        endPan()
+        null
+    }
+
+    viewport.ondblclick = {
+        view.manual = false
+        fitToContent()
+        null
+    }
+
+    fun watchViewportSize() {
+        if (root.parentNode == null) return
+        val width = viewport.clientWidth.toDouble()
+        val height = viewport.clientHeight.toDouble()
+        if (width != (view.lastMeasuredWidth as Double) || height != (view.lastMeasuredHeight as Double)) {
+            view.lastMeasuredWidth = width
+            view.lastMeasuredHeight = height
+            updateViewportMetrics()
+            if (!(view.manual as Boolean)) {
+                fitToContent()
+            } else {
+                updateTransform()
+            }
+        }
+        window.requestAnimationFrame {
+            watchViewportSize()
+        }
+    }
+    watchViewportSize()
+
+    view.updateViewportMetrics = { updateViewportMetrics() }
+    view.updateTransform = { updateTransform() }
+    view.fitToContent = { fitToContent() }
+    contentRoot.asDynamic().__afieldLinesView = view
+    return view
+}
+
+private fun applyNonScalingStroke(root: Element) {
+    root.setAttribute("vector-effect", "non-scaling-stroke")
+    forEachStrokeFadeElement(root) { element ->
+        element.setAttribute("vector-effect", "non-scaling-stroke")
+        element.setAttribute("data-afield-base-stroke-width", parsePositiveDouble(element.getAttribute("stroke-width"))?.toString() ?: "1")
+        element.getAttribute("stroke-opacity")?.let {
+            element.setAttribute("data-afield-base-stroke-opacity", it)
+        }
+    }
+}
+
+private fun forEachStrokeFadeElement(root: Element, block: (Element) -> Unit) {
+    if (root.isStrokeFadeElement()) block(root)
+    val strokedElements = root.querySelectorAll("path,circle,line,polyline,polygon,rect,ellipse")
+    for (index in 0 until strokedElements.length) {
+        (strokedElements.item(index) as? Element)?.let(block)
+    }
+}
+
+private fun Element.isStrokeFadeElement(): Boolean {
+    val tag = tagName.lowercase()
+    return tag == "path" ||
+        tag == "circle" ||
+        tag == "line" ||
+        tag == "polyline" ||
+        tag == "polygon" ||
+        tag == "rect" ||
+        tag == "ellipse"
+}
+
+private fun strokeOpacityValue(raw: String?): Double {
+    return raw?.toDoubleOrNull()?.takeIf { it.isFinite() }?.coerceIn(0.0, 1.0) ?: 1.0
+}
+
+private fun applySubpixelStrokeFade(root: Element, scale: Double) {
+    if (!scale.isFinite()) return
+    forEachStrokeFadeElement(root) { element ->
+        val stroke = element.getAttribute("stroke")?.trim()
+        if (stroke == null || stroke == "none") return@forEachStrokeFadeElement
+
+        val baseWidth = parsePositiveDouble(element.getAttribute("data-afield-base-stroke-width")) ?: 1.0
+        val baseOpacityRaw = element.getAttribute("data-afield-base-stroke-opacity")
+        val baseOpacity = strokeOpacityValue(baseOpacityRaw)
+        val effectiveWidth = baseWidth * scale
+        if (effectiveWidth < 1.0) {
+            element.setAttribute("stroke-opacity", (baseOpacity * effectiveWidth.coerceIn(0.0, 1.0)).toString())
+        } else if (baseOpacityRaw != null) {
+            element.setAttribute("stroke-opacity", baseOpacityRaw)
+        } else {
+            element.removeAttribute("stroke-opacity")
+        }
+    }
+}
+
+private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: String): Boolean {
+    val wrapper = parseLinesWrapper(htmlString) ?: return false
+    val sourceSvg = wrapper.querySelector("svg") ?: return false
+    val view = ensureLinesOutputView(contentRoot)
+    val stageGroup = view.stageGroup as Element
+
+    while (stageGroup.firstChild != null) {
+        stageGroup.removeChild(stageGroup.firstChild!!)
+    }
+    val sourceChildren = sourceSvg.childNodes
+    for (index in 0 until sourceChildren.length) {
+        val child = sourceChildren.item(index) ?: continue
+        val cloned = child.cloneNode(true)
+        (cloned as? Element)?.let { applyNonScalingStroke(it) }
+        stageGroup.appendChild(cloned)
+    }
+
+    val sourceViewBox = parseSvgViewBox(sourceSvg.getAttribute("viewBox"))
+    val groupBox = runCatching {
+        val box = stageGroup.asDynamic().getBBox()
+        if (box != null) LinesBounds(
+            x = (box.x as Number).toDouble(),
+            y = (box.y as Number).toDouble(),
+            width = (box.width as Number).toDouble(),
+            height = (box.height as Number).toDouble()
+        ) else null
+    }.getOrNull()
+    val fallbackWidth = parsePositiveDouble(sourceSvg.getAttribute("width")) ?: sourceViewBox?.width ?: groupBox?.width ?: 1.0
+    val fallbackHeight = parsePositiveDouble(sourceSvg.getAttribute("height")) ?: sourceViewBox?.height ?: groupBox?.height ?: 1.0
+    val contentBounds = sourceViewBox
+        ?: groupBox?.takeIf { it.width > 0.0 && it.height > 0.0 }
+        ?: LinesBounds(0.0, 0.0, fallbackWidth, fallbackHeight)
+
+    val sourceWidth = max(1.0, parsePositiveDouble(sourceSvg.getAttribute("width")) ?: contentBounds.width)
+    val sourceHeight = max(1.0, parsePositiveDouble(sourceSvg.getAttribute("height")) ?: contentBounds.height)
+
+    view.sourceWidth = sourceWidth
+    view.sourceHeight = sourceHeight
+    view.contentBounds = contentBounds
+    view.updateViewportMetrics()
+
+    if (!(view.manual as Boolean)) {
+        view.fitToContent()
+    } else {
+        view.updateTransform()
+    }
+
+    return true
 }
 
 fun renderLayersPalette(contentRoot: HTMLElement) {
@@ -97,13 +501,24 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         if (nextVisible.isEmpty()) return
         val normalizedVisible = nextVisible.filter { it.isNotBlank() }.toMutableSet()
         if (normalizedVisible.isEmpty()) normalizedVisible.add("default")
+
         val activeCandidate = when {
             desiredActive != null && normalizedVisible.contains(desiredActive) -> desiredActive
-            activeLayer != null && normalizedVisible.contains(activeLayer!!) -> activeLayer!!
-            else -> normalizedVisible.first()
+            desiredActive != null -> normalizedVisible.firstOrNull()
+            activeLayer == null -> null
+            normalizedVisible.contains(activeLayer!!) -> activeLayer
+            else -> normalizedVisible.firstOrNull()
         }
+        layerDebugLog(
+            "palette applyLayerState nextVisible=${normalizedVisible.joinToString(",")} " +
+                "desiredActive=${desiredActive ?: "null"} activeCandidate=${activeCandidate ?: "null"} " +
+                "prevVisible=${visibleLayers.joinToString(",")} prevActive=${activeLayer ?: "null"}"
+        )
+
         setVisibleLayers(normalizedVisible.toSet(), animated = true, duration = animateDuration)
-        setActiveLayer(activeCandidate, animated = true, duration = animateDuration)
+        if (activeCandidate != activeLayer) {
+            setActiveLayer(activeCandidate, animated = true, duration = animateDuration)
+        }
     }
 
     fun renderList() {
@@ -112,11 +527,7 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         val visibleNow = visibleLayers.filter { available.contains(it) }.toMutableSet().ifEmpty {
             if (allLayers.isNotEmpty()) mutableSetOf(allLayers.first()) else mutableSetOf("default")
         }
-        val activeNow = when {
-            activeLayer != null && visibleNow.contains(activeLayer!!) -> activeLayer
-            visibleNow.isNotEmpty() -> visibleNow.firstOrNull()
-            else -> null
-        }
+        val activeNow = activeLayer?.takeIf { visibleNow.contains(it) }
 
         list.innerHTML = ""
         if (allLayers.isEmpty()) {
@@ -181,10 +592,10 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
                 if (nextVisible.isEmpty()) {
                     updateEye(true)
                 } else {
-                    val nextActive = if (activeLayer != null && nextVisible.contains(activeLayer!!)) {
-                        activeLayer
-                    } else {
-                        nextVisible.firstOrNull()
+                    val nextActive = when {
+                        activeLayer == null -> null
+                        nextVisible.contains(activeLayer!!) -> activeLayer
+                        else -> nextVisible.firstOrNull()
                     }
                     applyLayerState(nextVisible, nextActive)
                     renderList()
@@ -255,10 +666,12 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
 
     val channelId = set.channel
     val title = if (set.channel == "ai-chat") "AI Chat" else set.channel
-    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(
+    val preserveExistingContent = isPersistentThreeOutput(set.value)
+    val initialContent = if (preserveExistingContent) PRESERVE_DISCLOSURE_CONTENT else ""
+    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> HTMLElement).invoke(
         channelId,
         title,
-        ""
+        initialContent
     )
     val isLayersChannel = set.channel.equals("layers", ignoreCase = true)
 
@@ -267,7 +680,11 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
         aiChatUpdate(contentRoot, set.uid, set.value)
         (inter.open as (String) -> Unit).invoke(channelId)
     } else if (isLayersChannel) {
-        renderLayersPalette(contentRoot as HTMLElement)
+        renderLayersPalette(contentRoot)
+        (inter.open as (String) -> Unit).invoke(channelId)
+    } else if (updatePersistentThreeOutput(contentRoot, set.value)) {
+        (inter.open as (String) -> Unit).invoke(channelId)
+    } else if (updatePersistentLinesOutput(contentRoot, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else {
         insertHTMLWithScripts(contentRoot, set.value)
@@ -339,4 +756,86 @@ fun handleCustomizationRequest(box: HTMLElement, code: Set_string) {
 fun handleEvalRequest(box: HTMLElement, code: String) {
     console.info("[customize] evaluating module code")
     insertHTMLWithScripts(box, "<script type='module'>$code</script>", isModule = true)
+}
+
+// ── Embedded editor in output area ─────────────────────────────────────
+
+/**
+ * Open an embedded Monaco editor for a given property inside a box's output area.
+ * Creates a disclosure panel with the editor inside.
+ */
+fun openEditorInOutput(uid: String, property: String) {
+    val box = findBoxByUid(uid) ?: run {
+        console.warn("[embedded-editor] box not found: $uid")
+        return
+    }
+
+    val emb = js("window.embeddedEditors") ?: run {
+        console.warn("[embedded-editor] embeddedEditors module not loaded")
+        return
+    }
+
+    // Check if an editor already exists for this (uid, property)
+    val existing = emb.getFor(uid, property)
+    if (existing != null) {
+        js("if (typeof window.notify === 'function') window.notify('Editor already open for ' + property, 'command')")
+        return
+    }
+
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+    outputArea.style.visibility = "visible"
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val di = js("window.disclosureInterface") ?: return
+    val inter = di(contain)
+
+    val channelId = "editor:$property"
+    val language = (emb.languageFor as Function<*>).asDynamic().call(emb, property) as? String ?: "plaintext"
+    val title = "\u270E $property ($language)"
+
+    // Create the disclosure panel
+    val contentRoot = (inter.upsertDisclosure as (String, String, String) -> Element).invoke(channelId, title, "")
+    (contentRoot as HTMLElement).asDynamic().dataset.afieldAutoSizeMode = "fixed"
+
+    // Read current value from the box DOM element
+    val currentValue = box.asDynamic()[property] as? String ?: ""
+
+    // Create a container div for Monaco
+    val editorContainer = document.createElement("div") as HTMLElement
+    editorContainer.style.width = "100%"
+    editorContainer.style.height = "100%"
+    editorContainer.style.minHeight = "120px"
+    editorContainer.asDynamic().style.overflow = "hidden"
+    contentRoot.innerHTML = ""
+    contentRoot.appendChild(editorContainer)
+
+    // Override disclosure-content font-size — it defaults to 10px in CSS,
+    // which Monaco inherits for gutter measurements. Set it to match the
+    // editor's configured fontSize so line numbers and controls are sized
+    // correctly.
+    contentRoot.style.fontSize = "13px"
+    contentRoot.style.padding = "0px"
+    contentRoot.style.background = "#000000"
+
+    // Create the embedded editor
+    val editorId = (emb.create as Function<*>).asDynamic().call(emb, editorContainer, uid, property, language, currentValue) as? String
+
+    if (editorId != null) {
+        // The embeddedEditors.js module tags the container with data-embeddedEditorId
+        // which the disclosure remove() hook reads for cleanup.
+        // Also tag the disclosure content wrapper (contentRoot) so the remove hook can find it
+        contentRoot.asDynamic().dataset.embeddedEditorId = editorId
+    }
+
+    // Open the disclosure
+    (inter.open as (String) -> Unit).invoke(channelId)
+
+    // Force Monaco to re-layout after the disclosure has opened and the DOM has settled
+    if (editorId != null) {
+        val entry = emb.getFor(uid, property)
+        if (entry != null) {
+            kotlinx.browser.window.requestAnimationFrame {
+                entry.editor.layout()
+            }
+        }
+    }
 }

@@ -5,8 +5,21 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
+import java.io.InputStream
+import java.io.PrintStream
+import java.io.ByteArrayOutputStream
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.net.URL
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.imageio.ImageIO
+import javax.net.ssl.*
 
-val lwjglVersion = "3.4.0-SNAPSHOT"
+val lwjglVersion = "3.4.0"
 val jomlVersion = "1.10.7"
 val `joml-primitivesVersion` = "1.10.0"
 
@@ -29,28 +42,126 @@ val lwjglNatives = when {
 val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
-val kotlinVersion = "2.3.0"
+
+val kotlinVersion = "2.4.0"
+val kotlinExperimentalCompilerArgs = listOf(
+    "-Xcollection-literals",
+    "-Xname-based-destructuring=only-syntax",
+)
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
 val imguiVersion = "1.90.0"
 val smileVersion = "5.0.1"
 val javaToolchainVersion = 25
+val graalvmVersion = "25.0.2"
 
 // Bytedeco FFmpeg for video support
-val ffmpegVersion = "7.1-1.5.11"
-val javacppVersion = "1.5.11"
+val ffmpegVersion = "6.1.1-1.5.10"
+val opencvVersion = "4.9.0-1.5.10"
+val openblasVersion = "0.3.26-1.5.10"
+val javacppVersion = "1.5.10"
+val javacvVersion = "1.5.10"
 //val kotlinWrappersVersion = "1.0.0-pre.621"
+val electronDir = layout.projectDirectory.dir("electron")
+val abletonLinkNative = layout.projectDirectory.file("libs/libabl_link_jvm.dylib")
+val ceresNative = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
+val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
+    .map(String::toBoolean)
+    .orElse(true)
+val kotlinRuntimeModulesShadowedByLocalJars = listOf(
+    "kotlin-compiler-embeddable",
+    "kotlin-daemon-embeddable",
+    "kotlin-scripting-compiler-embeddable",
+    "kotlin-scripting-compiler-impl-embeddable",
+    "kotlin-scripting-jvm",
+    "kotlin-scripting-common",
+    "kotlin-script-runtime",
+)
+
+fun requiredRunJvmArgs(): List<String> {
+    val os = System.getProperty("os.name").lowercase()
+    val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
+
+    return buildList {
+        add("--add-opens=java.base/java.net=ALL-UNNAMED")
+        add("-Dorg.lwjgl.system.stackSize=256")
+        add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
+        add("--enable-native-access=ALL-UNNAMED")
+        add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
+        add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
+        if (!onWindowsOrLinux) {
+            add("-XstartOnFirstThread")
+            add("-Xdock:name=Field4")
+            val dockIcon = electronDir.file("icon-1024.png").asFile
+            if (dockIcon.exists()) {
+                add("-Xdock:icon=${dockIcon.absolutePath}")
+            }
+            add("-Djoml.format=false")
+            add("-Dorg.lwjgl.util.Debug=true")
+            add("-Dorg.lwjgl.util.DebugLoader=true")
+        }
+        add("--add-modules")
+        add("jdk.incubator.vector")
+    }
+}
+
+fun configuredAi4TraceJvmArgs(): List<String> {
+    fun firstNonBlank(vararg values: String?): String? =
+        values.firstOrNull { !it.isNullOrBlank() }?.trim()
+
+    val trace = firstNonBlank(
+        providers.gradleProperty("ai4Trace").orNull,
+        providers.gradleProperty("ai4TracePath").orNull,
+        System.getProperty("afield.ai4.trace"),
+        System.getProperty("afield.ai4.trace.path"),
+        System.getenv("AFIELD_AI4_TRACE"),
+        System.getenv("AFIELD_AI4_TRACE_PATH")
+    )
+    val max = firstNonBlank(
+        providers.gradleProperty("ai4TraceMax").orNull,
+        System.getProperty("afield.ai4.trace.max"),
+        System.getenv("AFIELD_AI4_TRACE_MAX")
+    )
+
+    return buildList {
+        trace?.let { add("-Dafield.ai4.trace=$it") }
+        max?.let { add("-Dafield.ai4.trace.max=$it") }
+    }
+}
+
+fun MutableList<String>.addOrReplaceSystemProperties(args: List<String>) {
+    args.forEach { arg ->
+        val key = arg.substringBefore("=")
+        removeAll { it.substringBefore("=") == key }
+        add(arg)
+    }
+}
+
+fun configuredJdwpArg(): String? {
+    val rawPort = System.getProperty("afield.jdwp.port")
+        ?: System.getenv("AFIELD_JDWP_PORT")
+        ?: return null
+    val port = rawPort.trim().takeIf { it.isNotEmpty() } ?: return null
+    val host = (System.getProperty("afield.jdwp.host")
+        ?: System.getenv("AFIELD_JDWP_HOST")
+        ?: "127.0.0.1").trim()
+    val suspendFlag = (System.getProperty("afield.jdwp.suspend")
+        ?: System.getenv("AFIELD_JDWP_SUSPEND")
+        ?: "false").trim().lowercase() in setOf("1", "true", "yes", "on")
+    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=$host:$port"
+}
 
 plugins {
-    kotlin("multiplatform") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("multiplatform") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.0"
     id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
+    id("com.github.node-gradle.node") version "7.1.0"
 }
 
 jvmWrapper {
-    unixJvmInstallDir = "${"$"}{HOME}/my-custom-path/gradle-jvm"
+    unixJvmInstallDir = "${"$"}{HOME}/.field4/  gradle-jvm"
     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
     linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
     linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
@@ -63,12 +174,122 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaToolchainVersion)
         // Constrain vendor to avoid Foojay returning non-directly-downloadable builds (which can 4xx on /redirect).
-        vendor = JvmVendorSpec.ADOPTIUM
+//        vendor = JvmVendorSpec.ADOPTIUM
+        vendor = JvmVendorSpec.GRAAL_VM
     }
-}
+    }
 
 group = "afield"
 version = "1.1-SNAPSHOT"
+
+val managedNodeVersion = "22.12.0"
+val managedNpmVersion = "10.9.0"
+val managedNodePlatform = when {
+    osName.lowercase().contains("windows") -> "win"
+    osName.lowercase().contains("mac") || osName.lowercase().contains("darwin") -> "darwin"
+    osName.lowercase().contains("linux") -> "linux"
+    else -> throw GradleException("Unsupported Node platform for Electron wrapper: $osName")
+}
+val managedNodeArch = when (osArch.lowercase()) {
+    "amd64", "x86_64" -> "x64"
+    "aarch64", "arm64" -> "arm64"
+    else -> throw GradleException("Unsupported Node architecture for Electron wrapper: $osArch")
+}
+
+fun managedNodeExecutable(): File {
+    val nodeDir = layout.projectDirectory
+        .dir(".gradle/nodejs/node-v${managedNodeVersion}-${managedNodePlatform}-${managedNodeArch}")
+        .asFile
+    return if (managedNodePlatform == "win") File(nodeDir, "node.exe") else File(nodeDir, "bin/node")
+}
+
+fun electronHostBinary(): File {
+    val distDir = electronDir.file("node_modules/electron/dist").asFile
+    return when (managedNodePlatform) {
+        "win" -> File(distDir, "electron.exe")
+        "darwin" -> {
+            val field4 = File(distDir, "Field4.app/Contents/MacOS/Field4")
+            val electronAlias = File(distDir, "Electron.app/Contents/MacOS/Field4")
+            val electron = File(distDir, "Electron.app/Contents/MacOS/Electron")
+            when {
+                field4.exists() -> field4
+                electronAlias.exists() -> electronAlias
+                else -> electron
+            }
+        }
+        else -> File(distDir, "electron")
+    }
+}
+
+fun writeWindowsIconFromPng(sourcePng: File, targetIco: File) {
+    val source = ImageIO.read(sourcePng)
+        ?: throw GradleException("Could not decode Electron icon source at ${sourcePng.absolutePath}")
+    val sizes = listOf(16, 24, 32, 48, 64, 128, 256)
+    val pngEntries = sizes.map { size ->
+        val image = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+        val graphics = image.createGraphics()
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            graphics.drawImage(source, 0, 0, size, size, null)
+        } finally {
+            graphics.dispose()
+        }
+
+        ByteArrayOutputStream().use { bytes ->
+            ImageIO.write(image, "png", bytes)
+            size to bytes.toByteArray()
+        }
+    }
+
+    targetIco.parentFile.mkdirs()
+    targetIco.outputStream().use { out ->
+        fun writeShort(value: Int) {
+            out.write(value and 0xff)
+            out.write((value ushr 8) and 0xff)
+        }
+
+        fun writeInt(value: Int) {
+            out.write(value and 0xff)
+            out.write((value ushr 8) and 0xff)
+            out.write((value ushr 16) and 0xff)
+            out.write((value ushr 24) and 0xff)
+        }
+
+        writeShort(0) // reserved
+        writeShort(1) // icon
+        writeShort(pngEntries.size)
+
+        var imageOffset = 6 + (pngEntries.size * 16)
+        pngEntries.forEach { (size, pngBytes) ->
+            out.write(if (size == 256) 0 else size)
+            out.write(if (size == 256) 0 else size)
+            out.write(0) // colors
+            out.write(0) // reserved
+            writeShort(1) // color planes
+            writeShort(32) // bits per pixel
+            writeInt(pngBytes.size)
+            writeInt(imageOffset)
+            imageOffset += pngBytes.size
+        }
+
+        pngEntries.forEach { (_, pngBytes) -> out.write(pngBytes) }
+    }
+}
+
+node {
+    download.set(true)
+    version.set(managedNodeVersion)
+    npmVersion.set(managedNpmVersion)
+    nodeProjectDir.set(electronDir.asFile)
+}
+
+configurations.matching { it.name in setOf("jvmRuntimeClasspath", "jvmMainRuntimeClasspath") }.configureEach {
+    kotlinRuntimeModulesShadowedByLocalJars.forEach { moduleName ->
+        exclude(group = "org.jetbrains.kotlin", module = moduleName)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -76,8 +297,7 @@ repositories {
     maven("https://central.sonatype.com/repository/maven-snapshots")
     maven("https://repo.kotlin.link")
     maven(url = "https://repo.clojars.org/")
-    maven("https://jogamp.org/deployment/maven")
-
+//    maven("https://jogamp.org/deployment/maven")
 }
 
 
@@ -100,6 +320,9 @@ kotlin {
 
                 args += "-Dorg.lwjgl.system.stackSize=257"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
+                args += "--enable-native-access=ALL-UNNAMED"
+                args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
+                args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
 
                 applicationDefaultJvmArgs.set(args)
             }
@@ -123,6 +346,7 @@ kotlin {
     tasks.withType<KotlinJsCompile>().configureEach {
         compilerOptions {
             target = "es2015"
+            freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
         }
     }
 
@@ -148,7 +372,7 @@ kotlin {
             else -> error("Unsupported arch: $osArch")
         }
 
-        val version = "0.8.9" // or any more recent version
+        val version = "0.9.47"
         val target = "${targetOs}-${targetArch}"
 
         // FFmpeg platform classifier for bytedeco (uses slightly different naming convention)
@@ -176,6 +400,8 @@ kotlin {
 
                 implementation("org.slf4j:slf4j-api:2.0.16")
                 runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
+
+                implementation("eu.sirotin.kotunil:kotunil-jvm:4.2.3")
 
                 implementation(project.dependencies.platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
 
@@ -252,45 +478,45 @@ kotlin {
                 // for parse tree rewriting — still useful for remote js
 //                implementation("org.openjdk.nashorn:nashorn-core:15.6")
                 implementation(files("libs/nashorn-core-15.6.jar"))
+                implementation(files("libs/ableton-link-ffm.jar"))
                 implementation("org.ow2.asm:asm:7.3.1")
                 implementation("org.ow2.asm:asm-commons:7.3.1")
                 implementation("org.ow2.asm:asm-tree:7.3.1")
                 implementation("org.ow2.asm:asm-util:7.3.1")
 
                 implementation("com.aallam.openai:openai-client:4.0.1")
-                implementation("com.openai:openai-java:4.13.0")
+                implementation("com.openai:openai-java:4.29.0")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
-                val kotlinScriptingVersion = "2.3.0"
+                val customKotlinVersion = "2.4.255-SNAPSHOT"
 
                 /*
                 gently customized versions of the kotlin scripting front-end to provide better completion and skip the history check on the repl evaluator to allow us to reused compiled fragments
                  */
-//                implementation(files("libs/kotlin-scripting-common-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-jvm-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-ide-services-2.2.255-SNAPSHOT.jar"))
-//                implementation(files("libs/kotlin-scripting-ide-common-2.2.255-SNAPSHOT.jar"))
+                implementation(files("libs/analysis-api-$customKotlinVersion.jar"))
+                implementation(files("libs/analysis-api-fir-generator-$customKotlinVersion.jar"))
 
-                implementation(files("libs/jep-4.2.2.jar"))
+                implementation(files("libs/jep-4.3.1.jar"))
 
-
-                implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinScriptingVersion")
+                implementation(files("libs/kotlin-compiler-embeddable-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-compiler-impl-embeddable-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-compiler-embeddable-$customKotlinVersion.jar"))
                 implementation("com.facebook:ktfmt:0.54")
 
-                implementation(files("libs/kotlin-scripting-ide-services-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-common-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jsr223-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-2.3.255-SNAPSHOT.jar"))
-                implementation(files("libs/kotlin-scripting-jvm-host-2.3.255-SNAPSHOT.jar"))
+                implementation(files("libs/kotlin-scripting-ide-services-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-common-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jsr223-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-jvm-host-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-script-runtime-$customKotlinVersion.jar"))
+                implementation(files("libs/names-$customKotlinVersion.jar"))
 
-//                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies:$kotlinScriptingVersion")
-                implementation("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven:$kotlinScriptingVersion")
+//                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$customKotlinVersion")
+                implementation(files("libs/kotlin-scripting-dependencies-$customKotlinVersion.jar"))
+                implementation(files("libs/kotlin-scripting-dependencies-maven-$customKotlinVersion.jar"))
                 implementation("org.apache.maven.resolver:maven-resolver-api:2.0.7")
 
                 implementation("org.joml:joml-experimental:1.10.7")
@@ -310,8 +536,6 @@ kotlin {
 
                 implementation("io.github.classgraph:classgraph:4.8.179")
 
-                implementation("com.github.sya-ri:kgit:1.1.0")
-
                 implementation("com.illposed.osc:javaosc-core:0.9")
 
                 implementation("org.ejml:ejml-simple:0.43.1")
@@ -324,39 +548,29 @@ kotlin {
                 implementation("compliment:compliment:0.5.5")
                 implementation("org.clojure:data.json:2.5.0")
 
-                // Processing support
-                val jogampVersion = "2.5.0"
-                val osName = System.getProperty("os.name").lowercase()
-                val osArch = System.getProperty("os.arch").lowercase()
-                val jogampClassifier = when {
-                    osName.contains("mac") -> "natives-macosx-universal"
-                    osName.contains("linux") -> if (osArch.contains("aarch64") || osArch.contains("arm64")) {
-                        "natives-linux-aarch64"
-                    } else {
-                        "natives-linux-amd64"
-                    }
-                    osName.contains("windows") -> "natives-windows-amd64"
-                    else -> null
-                }
-
-                implementation("org.processing:core:4.3.1")
-                implementation("org.jogamp.jogl:jogl-all:$jogampVersion")
-                implementation("org.jogamp.jogl:nativewindow:$jogampVersion")
-                implementation("org.jogamp.jogl:nativewindow-main:$jogampVersion")
-                implementation("org.jogamp.gluegen:gluegen-rt:$jogampVersion")
-                if (jogampClassifier != null) {
-                    runtimeOnly("org.jogamp.jogl:jogl-all:$jogampVersion:$jogampClassifier")
-                    runtimeOnly("org.jogamp.jogl:nativewindow:$jogampVersion:$jogampClassifier")
-                    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$jogampVersion:$jogampClassifier")
-                }
-
                 // personal only
                 implementation("org.yaml:snakeyaml:2.4")
 
                 // Bytedeco FFmpeg for video texture support
                 implementation("org.bytedeco:javacpp:$javacppVersion")
+                implementation("org.bytedeco:javacv:$javacvVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
                 implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$ffmpegPlatform")
+                implementation("org.bytedeco:opencv:$opencvVersion")
+                implementation("org.bytedeco:opencv:$opencvVersion:$ffmpegPlatform")
+                implementation("org.bytedeco:openblas:$openblasVersion:$ffmpegPlatform")
+
+                implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0")
+                implementation("com.github.stephengold:jolt-jni-Linux64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-Linux_ARM64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-Windows64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-MacOSX64:3.6.0:DebugSp")
+                implementation("com.github.stephengold:jolt-jni-MacOSX_ARM64:3.6.0:DebugSp")
+
+                implementation("org.graalvm.polyglot:polyglot:${graalvmVersion}")
+                implementation("org.graalvm.polyglot:wasm:${graalvmVersion}")
+                implementation("org.graalvm.polyglot:js:${graalvmVersion}")
+
             }
         }
 
@@ -369,6 +583,12 @@ kotlin {
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 implementation("io.ktor:ktor-client-websockets:$ktorVersion")
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-styled-next:1.2.4-pre.779")
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
 
@@ -403,41 +623,493 @@ tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_24)
-            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2)
-            freeCompilerArgs.add("-Xannotations-in-metadata")
+            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_4)
+            javaParameters.set(true)
+            freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
         }
     }
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
+tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
+    group = "application"
+    description = "Analyzes a WAV file with TrackingResonatorBank and writes three additive-resynthesis WAV variants."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.audio.TrackingResonatorResynthesisExampleKt")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
 }
 
 
 
 tasks.named<JavaExec>("runJvm").configure {
-    val os = System.getProperty("os.name").lowercase()
-    val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
-
-    val requiredJvmArgs = mutableListOf(
-        "--add-opens=java.base/java.net=ALL-UNNAMED",
-        "-Dorg.lwjgl.system.stackSize=256",
-        "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
-    )
-    if (!onWindowsOrLinux) {
-        requiredJvmArgs += "-XstartOnFirstThread"
-        requiredJvmArgs += "-Djoml.format=false"
-        requiredJvmArgs += "-Dorg.lwjgl.util.Debug=true"
-        requiredJvmArgs += "-Dorg.lwjgl.util.DebugLoader=true"
-    }
-    requiredJvmArgs += "--add-modules"
-    requiredJvmArgs += "jdk.incubator.vector"
+    val requiredJvmArgs = requiredRunJvmArgs()
 
     doFirst {
         val merged = (jvmArgs ?: emptyList<Any>()).map { it.toString() }.toMutableList()
         requiredJvmArgs.forEach { arg ->
             if (!merged.contains(arg)) merged += arg
         }
+        configuredJdwpArg()?.let { jdwpArg ->
+            if (merged.none { it.startsWith("-agentlib:jdwp=") }) {
+                merged += jdwpArg
+            }
+        }
+        merged.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
         setJvmArgs(merged)
+
+        if (printRunJvmClasspath.get()) {
+            val entries = classpath.files.map { it.absolutePath }
+            val reportFile = layout.buildDirectory.file("reports/runJvm-classpath.txt").get().asFile
+            reportFile.parentFile.mkdirs()
+            reportFile.writeText(entries.joinToString(separator = System.lineSeparator(), postfix = System.lineSeparator()))
+
+            val shadowedKotlinEntries = entries.filter { entry ->
+                entry.contains("/.gradle/caches/modules-2/") &&
+                    kotlinRuntimeModulesShadowedByLocalJars.any { moduleName ->
+                        entry.substringAfterLast('/').startsWith("$moduleName-")
+                    }
+            }
+
+            logger.lifecycle("runJvm runtime classpath (${entries.size} entries):")
+            entries.forEachIndexed { index, entry ->
+                logger.lifecycle("  ${index + 1}: $entry")
+            }
+            logger.lifecycle("runJvm runtime classpath written to ${reportFile.absolutePath}")
+            if (shadowedKotlinEntries.isNotEmpty()) {
+                logger.warn("runJvm runtime classpath still contains Kotlin compiler/scripting modules shadowed by local jars:")
+                shadowedKotlinEntries.forEach { entry ->
+                    logger.warn("  $entry")
+                }
+            }
+        }
     }
 
     dependsOn(tasks.named("jvmJar"))
+}
+
+tasks.named("npmInstall") {
+    group = "application"
+    description = "Installs npm dependencies for the Electron wrapper."
+}
+
+val electronInstall = tasks.register("electronInstall") {
+    group = "application"
+    description = "Installs Electron wrapper dependencies in electron/."
+    dependsOn(tasks.named("npmInstall"))
+
+    doLast {
+        val isMac = System.getProperty("os.name").lowercase().contains("mac")
+        val pngIcon = electronDir.file("icon-1024.png").asFile
+        val windowsIcon = electronDir.file("Field4.ico").asFile
+
+        val hostBinary = electronHostBinary()
+        if (!hostBinary.exists()) {
+            val nodeExe = managedNodeExecutable()
+            val installScript = electronDir.file("node_modules/electron/install.js").asFile
+            if (!nodeExe.exists()) {
+                throw GradleException("Managed Node not found at ${nodeExe.absolutePath}; run ./gradlew nodeSetup")
+            }
+            if (!installScript.exists()) {
+                throw GradleException("Electron installer not found at ${installScript.absolutePath}; run ./gradlew npmInstall")
+            }
+            logger.lifecycle("Installing Electron binary with managed Node ${managedNodeVersion}.")
+            val exit = ProcessBuilder(nodeExe.absolutePath, installScript.absolutePath)
+                .directory(project.projectDir)
+                .inheritIO()
+                .start()
+                .waitFor()
+            if (exit != 0 || !hostBinary.exists()) {
+                throw GradleException("Electron binary install failed; expected ${hostBinary.absolutePath}")
+            }
+        }
+
+        if (pngIcon.exists() && (!windowsIcon.exists() || windowsIcon.lastModified() < pngIcon.lastModified())) {
+            writeWindowsIconFromPng(pngIcon, windowsIcon)
+            logger.lifecycle("Generated Windows app icon from ${pngIcon.absolutePath}.")
+        } else if (!pngIcon.exists()) {
+            logger.warn("Electron PNG icon not found at ${pngIcon.absolutePath}; skipping Windows icon generation.")
+        }
+
+        if (!isMac) return@doLast
+
+        val distDir = electronDir.file("node_modules/electron/dist").asFile
+        val electronApp = File(distDir, "Electron.app")
+        val field4App = File(distDir, "Field4.app")
+
+        if (electronApp.exists() && !field4App.exists()) {
+            Files.move(electronApp.toPath(), field4App.toPath())
+            Files.createSymbolicLink(electronApp.toPath(), Paths.get("Field4.app"))
+            logger.lifecycle("Renamed Electron.app bundle to Field4.app and created Electron.app symlink.")
+        } else if (!electronApp.exists() && field4App.exists()) {
+            Files.createSymbolicLink(electronApp.toPath(), Paths.get("Field4.app"))
+            logger.lifecycle("Created Electron.app symlink to existing Field4.app bundle.")
+        }
+
+        val appBundle = if (field4App.exists()) field4App else electronApp
+        val plistFile = File(appBundle, "Contents/Info.plist")
+        if (!plistFile.exists()) {
+            logger.warn("Electron Info.plist not found at ${plistFile.absolutePath}; skipping app name patch.")
+            return@doLast
+        }
+
+        fun replacePlistString(source: String, key: String, value: String): String {
+            val pattern = Regex("""(<key>$key</key>\s*<string>)([^<]*)(</string>)""")
+            val replaced = source.replace(pattern, "$1$value$3")
+            if (replaced != source) return replaced
+
+            val insertion = """
+                |	<key>$key</key>
+                |	<string>$value</string>
+                |""".trimMargin()
+            return source.replaceFirst("</dict>", "$insertion\n</dict>")
+        }
+
+        val iconSource = electronDir.file("Field4.icns").asFile
+        if (iconSource.exists()) {
+            val resourcesDir = File(appBundle, "Contents/Resources")
+            resourcesDir.mkdirs()
+            iconSource.copyTo(File(resourcesDir, "Field4.icns"), overwrite = true)
+            logger.lifecycle("Installed macOS app icon from ${iconSource.absolutePath}.")
+        } else {
+            logger.warn("macOS app icon not found at ${iconSource.absolutePath}; skipping bundle icon patch.")
+        }
+
+        val original = plistFile.readText()
+        var updated = original
+        updated = replacePlistString(updated, "CFBundleDisplayName", "Field4")
+        updated = replacePlistString(updated, "CFBundleName", "Field4")
+        updated = replacePlistString(updated, "CFBundleExecutable", "Field4")
+        updated = replacePlistString(updated, "CFBundleIdentifier", "com.field4.desktop")
+        updated = replacePlistString(updated, "CFBundleIconFile", "Field4.icns")
+
+        if (updated != original) {
+            plistFile.writeText(updated)
+            logger.lifecycle("Patched macOS Electron app name to Field4 in Info.plist.")
+        }
+
+        val macOsDir = File(appBundle, "Contents/MacOS")
+        val electronExecutable = File(macOsDir, "Electron")
+        val field4Executable = File(macOsDir, "Field4")
+        if (electronExecutable.exists() && !field4Executable.exists()) {
+            runCatching {
+                Files.createSymbolicLink(field4Executable.toPath(), Paths.get("Electron"))
+            }.onFailure {
+                electronExecutable.copyTo(field4Executable, overwrite = true)
+                field4Executable.setExecutable(true)
+            }
+            logger.lifecycle("Prepared macOS executable alias: ${field4Executable.absolutePath}")
+        }
+    }
+}
+
+tasks.register("runDesktop") {
+    group = "application"
+    description = "Runs backend and Electron together, then shuts both down cleanly. Use -PwithDevTools=true to open DevTools."
+
+    dependsOn(electronInstall)
+    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("generateLocalKeystore"))
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val runJvmTask = tasks.named<JavaExec>("runJvm").get()
+        val javaExecutable = runJvmTask.javaLauncher.get().executablePath.asFile.absolutePath
+        val backendMain = runJvmTask.mainClass.orNull
+            ?: throw GradleException("runJvm has no mainClass configured")
+
+        fun parseBooleanFlag(value: String?): Boolean = when (value?.trim()?.lowercase()) {
+            "1", "true", "yes", "on" -> true
+            else -> false
+        }
+
+        fun highlightImportantUrlLines(line: String): String {
+            val isTargetLine =
+                line.contains("last document: https://") ||
+                    line.contains("last document: http://") ||
+                    line.contains("welcome page: https://") ||
+                    line.contains("welcome page: http://")
+            if (!isTargetLine) return line
+
+            val green = "\u001B[32m"
+            val reset = "\u001B[0m"
+            val urlPattern = Regex("""https?://\S+""")
+            return line.replace(urlPattern) { matchResult ->
+                green + matchResult.value + reset
+            }
+        }
+
+        fun forwardProcessOutput(process: Process) {
+            fun pump(input: InputStream, sink: PrintStream): Thread {
+                val thread = Thread {
+                    input.use { source ->
+                        source.bufferedReader().useLines { lines ->
+                            for (line in lines) {
+                                val rendered = highlightImportantUrlLines(line)
+                                synchronized(sink) {
+                                    sink.println(rendered)
+                                    sink.flush()
+                                }
+                            }
+                        }
+                    }
+                }
+                thread.isDaemon = true
+                thread.start()
+                return thread
+            }
+
+            fun pumpRaw(input: InputStream, sink: PrintStream): Thread {
+                val thread = Thread {
+                    input.use { source ->
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val read = source.read(buffer)
+                            if (read < 0) break
+                            if (read == 0) continue
+                            synchronized(sink) {
+                                sink.write(buffer, 0, read)
+                                sink.flush()
+                            }
+                        }
+                    }
+                }
+                thread.isDaemon = true
+                thread.start()
+                return thread
+            }
+
+            pump(process.inputStream, System.out)
+            pumpRaw(process.errorStream, System.err)
+        }
+
+        val withDevTools = parseBooleanFlag(project.findProperty("withDevTools")?.toString()) ||
+            parseBooleanFlag(System.getenv("WITH_DEVTOOLS"))
+        if (withDevTools) {
+            logger.lifecycle("DevTools enabled for Electron this run.")
+        }
+        val port = System.getenv("PORT")?.trim()?.takeIf { it.isNotEmpty() } ?: "9092"
+
+        val backendJvmArgs = (runJvmTask.jvmArgs ?: emptyList()).map { it.toString() }.toMutableList()
+        requiredRunJvmArgs().forEach { arg ->
+            if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
+        }
+        backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
+
+        val os = System.getProperty("os.name").lowercase()
+        val isWindows = os.contains("windows")
+
+        val backendCommand = mutableListOf<String>()
+        backendCommand += javaExecutable
+        backendCommand += backendJvmArgs
+
+        // On Windows, the classpath can exceed the ~32K command-line limit.
+        // Write it to a temporary argfile and use Java's @argfile syntax.
+        if (isWindows) {
+            val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
+            argFile.parentFile.mkdirs()
+            argFile.writeText("-cp\n${runJvmTask.classpath.asPath}\n")
+            backendCommand += "@${argFile.absolutePath}"
+        } else {
+            backendCommand += "-cp"
+            backendCommand += runJvmTask.classpath.asPath
+        }
+
+        backendCommand += backendMain
+        backendCommand += (runJvmTask.args ?: emptyList()).map { it.toString() }
+
+        logger.lifecycle("Starting backend process via runJvm settings.")
+        val backendProcess = ProcessBuilder(backendCommand)
+            .directory(project.projectDir)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .apply {
+                environment()["PORT"] = port
+            }
+            .start()
+        forwardProcessOutput(backendProcess)
+        val isMac = os.contains("mac")
+        val electronCommand = if (isWindows) {
+            listOf(electronHostBinary().absolutePath, ".")
+        } else if (isMac) {
+            listOf(electronHostBinary().absolutePath, ".")
+        } else {
+            listOf(electronHostBinary().absolutePath, ".")
+        }
+        val electronBinary = File(electronCommand.first())
+        if (!electronBinary.exists()) {
+            backendProcess.destroyForcibly()
+            throw GradleException("Electron binary not found at ${electronBinary.absolutePath}. Run ./gradlew electronInstall")
+        }
+
+        val healthUrl = "https://localhost:${port}/health"
+        val appUrlEndpoint = "https://localhost:${port}/app-url"
+
+        val trustAll = object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+        }
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+        val socketFactory = sslContext.socketFactory
+        val hostnameVerifier = HostnameVerifier { _, _ -> true }
+
+        fun getHttps(url: String): Pair<Int, String> {
+            val connection = (URL(url).openConnection() as HttpsURLConnection).apply {
+                sslSocketFactory = socketFactory
+                this.hostnameVerifier = hostnameVerifier
+                requestMethod = "GET"
+                connectTimeout = 1500
+                readTimeout = 1500
+            }
+            return try {
+                val code = connection.responseCode
+                val body = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader()
+                    ?.use { reader -> reader.readText() }
+                    ?.trim()
+                    .orEmpty()
+                code to body
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        fun stopProcessTree(process: Process) {
+            if (!process.isAlive) return
+            process.toHandle().descendants().forEach { it.destroy() }
+            process.destroy()
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                process.toHandle().descendants().forEach { it.destroyForcibly() }
+                process.destroyForcibly()
+                process.waitFor(5, TimeUnit.SECONDS)
+            }
+        }
+
+        val deadline = System.currentTimeMillis() + 120_000
+        var backendReady = false
+        while (System.currentTimeMillis() < deadline) {
+            if (!backendProcess.isAlive) {
+                throw GradleException("Backend exited before becoming ready (exit code ${backendProcess.exitValue()}).")
+            }
+
+            val healthy = runCatching {
+                val (code, body) = getHttps(healthUrl)
+                code in 200..299 && body.contains("ok", ignoreCase = true)
+            }.getOrDefault(false)
+
+            if (healthy) {
+                backendReady = true
+                break
+            }
+
+            Thread.sleep(500)
+        }
+
+        if (!backendReady) {
+            stopProcessTree(backendProcess)
+            throw GradleException("Backend did not become reachable at ${healthUrl} within 120 seconds.")
+        }
+        logger.lifecycle("Backend is reachable at ${healthUrl}.")
+
+        val appUrl = runCatching {
+            val (code, body) = getHttps(appUrlEndpoint)
+            if (code in 200..299 && body.isNotBlank()) body else "https://localhost:${port}/index.html"
+        }.getOrDefault("https://localhost:${port}/index.html")
+        logger.lifecycle("Launching Electron with APP_URL=${appUrl}.")
+
+        val electronProcess = ProcessBuilder(electronCommand)
+            .directory(electronDir.asFile)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .apply {
+                environment()["APP_URL"] = appUrl
+                environment()["WITH_DEVTOOLS"] = if (withDevTools) "1" else "0"
+            }
+            .start()
+        forwardProcessOutput(electronProcess)
+
+        val stopping = AtomicBoolean(false)
+
+        fun shutdownAll() {
+            if (!stopping.compareAndSet(false, true)) return
+            stopProcessTree(electronProcess)
+            stopProcessTree(backendProcess)
+        }
+
+        val shutdownHook = Thread { shutdownAll() }
+        Runtime.getRuntime().addShutdownHook(shutdownHook)
+
+        val backendWatcher = Thread {
+            val code = backendProcess.waitFor()
+            if (!stopping.get()) {
+                logger.warn("Backend exited with code ${code}; closing Electron.")
+                shutdownAll()
+            }
+        }
+        backendWatcher.isDaemon = true
+        backendWatcher.start()
+
+        val electronExit = try {
+            electronProcess.waitFor()
+        } finally {
+            shutdownAll()
+            runCatching { Runtime.getRuntime().removeShutdownHook(shutdownHook) }
+        }
+
+        if (electronExit != 0) {
+            throw GradleException("Electron exited with code ${electronExit}.")
+        }
+    }
+}
+
+fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String) {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "verification"
+    description = taskDescription
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set(entrypoint)
+    workingDir = projectDir
+    jvmArgs(requiredRunJvmArgs())
+    inputs.file(ceresNative)
+    doFirst {
+        if (!ceresNative.asFile.exists()) {
+            throw GradleException("Ceres native library not found at ${ceresNative.asFile.absolutePath}")
+        }
+    }
+}
+
+val smokeCeresGeometryPrimitives = tasks.register<JavaExec>("smokeCeresGeometryPrimitives") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresGeometryPrimitivesSmokeKt",
+        "Runs the Ceres FFM geometry primitive smoke example.",
+    )
+}
+
+val smokeCeresArchitecturalDsl = tasks.register<JavaExec>("smokeCeresArchitecturalDsl") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresArchitecturalDslSmokeKt",
+        "Runs the Ceres architectural DSL smoke example.",
+    )
+}
+
+val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteractionExamples") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresInteractionExamplesKt",
+        "Runs the Ceres interaction examples smoke suite.",
+    )
+}
+
+tasks.register("smokeCeres") {
+    group = "verification"
+    description = "Runs all Ceres FFM smoke examples."
+    dependsOn(smokeCeresGeometryPrimitives, smokeCeresArchitecturalDsl, smokeCeresInteractionExamples)
 }
 
 tasks.register<JavaExec>("runai") {
@@ -562,31 +1234,4 @@ tasks.named("jvmDistTar") {
 
 tasks.named("jvmDistZip") {
     enabled = false
-}
-
-
-
-dokka {
-    // HTML documentation (Dokka Gradle plugin v2)
-    dokkaPublications.html {
-        outputDirectory.set(layout.buildDirectory.dir("dokka/html"))
-
-        dokkaSourceSets.configureEach {
-            perPackageOption {
-                matchingRegex.set(".*")
-                suppress.set(true)
-            }
-
-            perPackageOption {
-                matchingRegex.set("""afield\.four(\..*)?""")
-                suppress.set(false)
-            }
-            perPackageOption {
-                matchingRegex.set("""afield\.stdlib(\..*)?""")
-                suppress.set(false)
-            }
-
-            skipEmptyPackages.set(true)
-        }
-    }
 }

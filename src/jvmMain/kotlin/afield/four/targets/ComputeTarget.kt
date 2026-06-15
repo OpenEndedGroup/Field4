@@ -1,10 +1,13 @@
 package afield.four.targets
 
+import afield.Named
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
 import afield.four.modules.ComputeModule
 import afield.four.modules.ComputeModulePointer
+import afield.four.modules.RayTracingModule
+import afield.four.modules.RayTracingModulePointer
 import afield.four.modules.pointer
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
@@ -12,6 +15,7 @@ import org.lwjgl.system.MemoryStack
 class ComputeTarget(val renderer: Renderer) : Target {
 
     var modules = mutableMapOf<String, ComputeModulePointer>()
+    var rayTracingModules = mutableMapOf<String, RayTracingModulePointer>()
     var others = mutableMapOf<String, Target>()
 
     @JvmName("plusAssign")
@@ -19,9 +23,24 @@ class ComputeTarget(val renderer: Renderer) : Target {
         modules[m.first] = m.second
     }
 
+    @JvmName("plusAssign_n")
+    operator fun plusAssign(m: Named<ComputeModulePointer>) {
+        modules[m.name] = m.value
+    }
+
     @JvmName("plusAssign_module")
     operator fun plusAssign(m: Pair<String, ComputeModule>) {
         modules[m.first] = m.second.pointer()
+    }
+
+    @JvmName("plusAssign_rayTracing")
+    operator fun plusAssign(m: Pair<String, RayTracingModulePointer>) {
+        rayTracingModules[m.first] = m.second
+    }
+
+    @JvmName("plusAssign_rayTracingModule")
+    operator fun plusAssign(m: Pair<String, RayTracingModule>) {
+        rayTracingModules[m.first] = m.second.pointer()
     }
 
     @JvmName("plusAssign_target")
@@ -48,6 +67,10 @@ class ComputeTarget(val renderer: Renderer) : Target {
 //            vkBeginCommandBuffer(command.vkCommandBuffer, begin)
 
             modules.forEach {
+                it.value.render(command, Rectanglef(0f, 0f, 0f, 0f))
+            }
+
+            rayTracingModules.forEach {
                 it.value.render(command, Rectanglef(0f, 0f, 0f, 0f))
             }
 

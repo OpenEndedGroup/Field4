@@ -32,6 +32,13 @@ class FLineMap : LinkedHashMap<String, FLine>() {
     operator fun plusAssign(f: Named<FLine>) {
         this[f.name] = f.value
     }
+
+    override fun toString(): String = prettySummary(
+        "FLineMap",
+        "size" to size,
+        "keys" to keys.take(4),
+        "rev" to rev
+    )
 }
 
 

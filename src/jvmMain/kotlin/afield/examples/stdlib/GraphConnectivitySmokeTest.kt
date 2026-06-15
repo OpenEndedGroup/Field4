@@ -1,9 +1,22 @@
 package afield.examples.stdlib
 
+import afield.graphics.FLine
 import afield.stdlib.*
 import kotlin.math.abs
 import kotlin.random.Random
 
+/*
+FIELD_TEST
+id: stdlib.graph-connectivity.smoke
+runner: jvm-main
+entrypoint: afield.examples.stdlib.GraphConnectivitySmokeTest
+tags: [smoke, stdlib, graph, geometry]
+timeoutSec: 20
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "Graph Connectivity smoke tests passed"
+*/
 /**
  * Smoke tests for the graph connectivity library.
  *
@@ -48,6 +61,7 @@ object GraphConnectivitySmokeTest {
             testSearchAlgorithms()
             testEdgeVisitStateAndGreedyPaths()
             testGraphDiameterDecomposition()
+            testFLineGraph()
             println("✅ Graph Connectivity smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -204,8 +218,17 @@ object GraphConnectivitySmokeTest {
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.isNotEmpty()) { "Gabriel graph should have edges" }
         
-        // Gabriel graph should include edges of the square
-        require(graph.edges.size == 4) { "Square should have 4 Gabriel edges, got ${graph.edges.size}" }
+        val undirectedEdges = graph.edges
+            .map { minOf(it.i, it.j) to maxOf(it.i, it.j) }
+            .toSet()
+
+        // With the open-circle Gabriel definition, the square's diagonals are retained because the
+        // opposite corners lie on the boundary of the diameter circle rather than strictly inside it.
+        require(graph.edges.size == 6) { "Square should have 6 Gabriel edges under open-circle semantics, got ${graph.edges.size}" }
+        require((0 to 1) in undirectedEdges) { "Expected square edge 0-1" }
+        require((0 to 2) in undirectedEdges) { "Expected square edge 0-2" }
+        require((1 to 3) in undirectedEdges) { "Expected square edge 1-3" }
+        require((2 to 3) in undirectedEdges) { "Expected square edge 2-3" }
         
         println("  ✓ 2D Gabriel graph test passed")
     }
@@ -266,20 +289,24 @@ object GraphConnectivitySmokeTest {
         val points = listOf(
             vec(0.0, 0.0),
             vec(1.0, 0.0),
-            vec(0.0, 1.0),
-            vec(1.0, 1.0),
-            vec(0.5, 0.5)
+            vec(10.0, 0.0),
+            vec(11.0, 0.0)
         )
-        
+
         val mst = vec2MinimumSpanningTree(points)
-        
-        require(mst.pointCount == 5) { "Expected 5 points" }
-        require(mst.edges.size == 4) { "MST of 5 points should have 4 edges, got ${mst.edges.size}" }
-        
+
+        require(mst.pointCount == 4) { "Expected 4 points" }
+        require(mst.edges.size == 3) { "MST of 4 points should have 3 edges, got ${mst.edges.size}" }
+
+        // 1-NN is disconnected for these two tight pairs, so MST must grow KNN connectivity.
+        require(mst.edges.any { setOf(it.i, it.j) == setOf(1, 2) }) {
+            "Adaptive KNN MST should include the shortest bridge between the two pairs"
+        }
+
         // MST should be connected - check that sum of degrees is 2*(n-1)
         val totalDegree = (0 until mst.pointCount).sumOf { mst.degree(it) }
-        require(totalDegree == 8) { "MST total degree should be 8 (2*4), got $totalDegree" }
-        
+        require(totalDegree == 6) { "MST total degree should be 6 (2*3), got $totalDegree" }
+
         println("  ✓ 2D Minimum Spanning Tree test passed")
     }
 
@@ -287,16 +314,18 @@ object GraphConnectivitySmokeTest {
         val points = listOf(
             vec(0.0, 0.0, 0.0),
             vec(1.0, 0.0, 0.0),
-            vec(0.0, 1.0, 0.0),
-            vec(0.0, 0.0, 1.0),
-            vec(0.5, 0.5, 0.5)
+            vec(10.0, 0.0, 0.0),
+            vec(11.0, 0.0, 0.0)
         )
-        
+
         val mst = vec3MinimumSpanningTree(points)
-        
-        require(mst.pointCount == 5) { "Expected 5 points" }
-        require(mst.edges.size == 4) { "MST of 5 points should have 4 edges, got ${mst.edges.size}" }
-        
+
+        require(mst.pointCount == 4) { "Expected 4 points" }
+        require(mst.edges.size == 3) { "MST of 4 points should have 3 edges, got ${mst.edges.size}" }
+        require(mst.edges.any { setOf(it.i, it.j) == setOf(1, 2) }) {
+            "Adaptive KNN MST should include the shortest bridge between the two 3D pairs"
+        }
+
         println("  ✓ 3D Minimum Spanning Tree test passed")
     }
 
@@ -378,20 +407,24 @@ object GraphConnectivitySmokeTest {
 
     private fun test2DUrquhartGraph() {
         val points = listOf(
-            vec(0.0, 0.0),
             vec(1.0, 0.0),
-            vec(0.0, 1.0),
-            vec(1.0, 1.0)
+            vec(0.30901699437494745, 0.9510565162951535),
+            vec(-0.8090169943749473, 0.5877852522924732),
+            vec(-0.8090169943749476, -0.587785252292473),
+            vec(0.30901699437494723, -0.9510565162951536)
         )
-        
+
         val urquhart = vec2UrquhartGraph(points)
-        
-        require(urquhart.pointCount == 4) { "Expected 4 points" }
+        val mst = vec2MinimumSpanningTree(points)
+
+        require(urquhart.pointCount == 5) { "Expected 5 points" }
         require(urquhart.edges.isNotEmpty()) { "Urquhart graph should have edges" }
-        
-        // Urquhart is based on MST, so should have n-1 edges
-        require(urquhart.edges.size == 3) { "Urquhart (MST-based) should have 3 edges, got ${urquhart.edges.size}" }
-        
+
+        // For a convex pentagon, Urquhart keeps the hull cycle while the MST has n-1 edges.
+        require(mst.edges.size == 4) { "MST of 5 points should have 4 edges, got ${mst.edges.size}" }
+        require(urquhart.edges.size == 5) { "Urquhart graph should have 5 hull edges, got ${urquhart.edges.size}" }
+        require(urquhart.edges.size > mst.edges.size) { "Urquhart graph should be strictly larger than MST here" }
+
         println("  ✓ 2D Urquhart graph test passed")
     }
 
@@ -802,6 +835,56 @@ object GraphConnectivitySmokeTest {
         }
 
         println("  ✓ Graph diameter decomposition test passed")
+    }
+
+    private fun testFLineGraph() {
+        val a = FLine()
+            .moveTo(0.0, 0.0, 0.0)
+            .lineTo(1.0, 0.0, 0.0)
+
+        val b = FLine()
+            .moveTo(1.04, 0.02, 0.0)
+            .lineTo(2.0, 0.0, 0.0)
+
+        val welded = listOf(a, b).toFLineGraph(epsilon = 0.05)
+        require(welded.pointCount == 3) {
+            "FLine graph should weld nearby shared endpoints into 3 vertices, got ${welded.pointCount}"
+        }
+        require(welded.edges.size == 2) {
+            "FLine graph should preserve the two line segments, got ${welded.edges.size}"
+        }
+        require(welded.graph.degree(1) == 2) {
+            "Welded middle vertex should connect both segments"
+        }
+        require(welded.vertexSources.any { it.size == 2 }) {
+            "Expected one welded vertex to retain sources from both lines"
+        }
+
+        val curve = FLine()
+            .moveTo(0.0, 0.0, 0.0)
+            .cubicTo(
+                vec(0.0, 1.0, 0.0),
+                vec(1.0, 1.0, 0.0),
+                vec(1.0, 0.0, 0.0)
+            )
+        val curveGraph = curve.toFLineGraph(epsilon = 0.001, cubicFlatness = 0.05)
+        require(curveGraph.pointCount > 2) {
+            "Curved FLine graph should contain intermediate flattened vertices"
+        }
+        require(curveGraph.edges.size == curveGraph.pointCount - 1) {
+            "Single open curve should produce a chain of edges"
+        }
+
+        val isolated = FLine().moveTo(10.0, 10.0, 0.0)
+        val isolatedGraph = isolated.toFLineGraph(epsilon = 0.0)
+        require(isolatedGraph.pointCount == 1) {
+            "Move-only FLine should still produce an isolated graph vertex"
+        }
+        require(isolatedGraph.edges.isEmpty()) {
+            "Move-only FLine should not produce graph edges"
+        }
+
+        println("  ✓ FLine graph connectivity test passed")
     }
 
     private fun assertClose(label: String, got: Double, expected: Double, eps: Double) {

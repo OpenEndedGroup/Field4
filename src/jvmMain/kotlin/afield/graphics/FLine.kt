@@ -5,13 +5,18 @@ import afield.Rect
 import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.Cursor
+import kotlinx.serialization.Serializable
 import org.joml.Vector3d
+import org.joml.Vector3f
 import org.joml.minus
 import org.joml.plus
 import org.joml.times
+import java.lang.Math
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 var _flineSequenceNumber = 0L
 
@@ -24,6 +29,13 @@ operator fun List<FLine>.plus(offset: Vec3) = this.map { it + offset }
  * Scale all lines in the list component-wise by [scale].
  */
 operator fun List<FLine>.times(scale: Vec3) = this.map { it * scale }
+
+operator fun List<FLine>.plus(offset: Vec2) = this.map { it + offset }
+
+/**
+ * Scale all lines in the list component-wise by [scale].
+ */
+operator fun List<FLine>.times(scale: Vec2) = this.map { it * scale }
 
 /**
  * Rotate all lines in the list by [rotation].
@@ -68,7 +80,8 @@ operator fun FLineMap.times(scale: Number) = this.entries.associate { it.key to 
 /**
  * Rotate all lines in each map entry by [rotation].
  */
-operator fun Map<String, List<FLine>>.times(rotation: Quat) = this.entries.associate { it.key to it.value.times(rotation) }
+operator fun Map<String, List<FLine>>.times(rotation: Quat) =
+    this.entries.associate { it.key to it.value.times(rotation) }
 
 /**
  * Rotate all lines in an [FLineMap] by [rotation].
@@ -108,6 +121,7 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
  * [FLine] for chaining; use [here] to access the most recently added [Node] when you
  * need per-instruction properties (for example, `color` or `pointSize`).
  */
+@Serializable(with = FLineSerializer::class)
 class FLine : HasProperties {
 
     var nodes = arrayListOf<Node>()
@@ -145,6 +159,7 @@ class FLine : HasProperties {
         fun copy(transform: (Vec3) -> Vec3 = { it }): Node {
             val next = create()
             storage.forEach { next.storage.add(transform(it)) }
+            next.properties.putAll(properties)
             return next
         }
 
@@ -160,6 +175,9 @@ class FLine : HasProperties {
 
         override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
+        protected fun pointsSummary(): String =
+            if (storage.isEmpty()) "" else storage.joinToString(", ", prefix = "(", postfix = ")") { prettyVec3(it) }
+
     }
 
     /**
@@ -172,9 +190,7 @@ class FLine : HasProperties {
      */
     class MoveTo : Node(1) {
         override fun create(): Node = MoveTo()
-        override fun toString(): String {
-            return "MoveTo"
-        }
+        override fun toString(): String = "MoveTo${pointsSummary()}"
     }
 
     /**
@@ -182,9 +198,7 @@ class FLine : HasProperties {
      */
     class LineTo : Node(1) {
         override fun create(): Node = LineTo()
-        override fun toString(): String {
-            return "LineTo"
-        }
+        override fun toString(): String = "LineTo${pointsSummary()}"
     }
 
     /**
@@ -203,9 +217,7 @@ class FLine : HasProperties {
                 storage[2] = v
             }
 
-        override fun toString(): String {
-            return "CubicTo"
-        }
+        override fun toString(): String = "CubicTo${pointsSummary()}"
     }
 
     /**
@@ -213,9 +225,7 @@ class FLine : HasProperties {
      */
     class Close : Node(0) {
         override fun create(): Node = Close()
-        override fun toString(): String {
-            return "Close"
-        }
+        override fun toString(): String = "Close"
     }
 
     /**
@@ -442,6 +452,104 @@ class FLine : HasProperties {
         return r
     }
 
+    private fun anchor3(a: ListAnchor): Vec3 = when (a) {
+        ListAnchor.Start -> nodes.firstOrNull()?.to?.let(::Vec3) ?: Vec3()
+        ListAnchor.End -> nodes.lastOrNull()?.to?.let(::Vec3) ?: Vec3()
+        ListAnchor.Midpoint -> midPoint()
+        ListAnchor.Center -> center()
+    }
+
+    private fun anchor3(a: FractionAlongAnchor): Vec3 {
+        if (nodes.isEmpty()) return Vec3()
+        val c = cursor()
+        return c.setD(c.lengthD() * a.t.toFloat().coerceIn(0f, 1f)).position()
+    }
+
+    private fun anchor2(a: ListAnchor): Vec2 {
+        val p = anchor3(a)
+        return Vec2(p.x, p.y)
+    }
+
+    private fun anchor2(a: FractionAlongAnchor): Vec2 {
+        val p = anchor3(a)
+        return Vec2(p.x, p.y)
+    }
+
+    /**
+     * Rotate in the XY plane around [center], preserving Z.
+     */
+    fun rot(angle: Number, center: Vec2): FLine {
+        val c = cos(angle.toFloat())
+        val s = sin(angle.toFloat())
+        return transform {
+            val x = it.x - center.x
+            val y = it.y - center.y
+            Vec3(center.x + x * c - y * s, center.y + x * s + y * c, it.z)
+        }
+    }
+
+    /**
+     * Rotate around the Z axis and the line center by default.
+     */
+    fun rot(angle: Number): FLine = rot(angle, vec(0f, 0f, 1f), center())
+
+    fun rot(angle: Number, center: Vec3): FLine = rot(angle, vec(0f, 0f, 1f), center)
+    fun rot(angle: Number, center: ListAnchor): FLine = rot(angle, anchor3(center))
+    fun rot(angle: Number, center: FractionAlongAnchor): FLine = rot(angle, anchor3(center))
+
+    /**
+     * Rotate in 3D around [axis] and [center].
+     */
+    fun rot(angle: Number, axis: Vec3, center: Vec3 = center()): FLine {
+        val q = quat(angle, axis)
+        return transform { q.transform(Vec3(it).sub(center)).add(center) }
+    }
+
+    fun rot(angle: Number, axis: Vec3, center: ListAnchor): FLine = rot(angle, axis, anchor3(center))
+    fun rot(angle: Number, axis: Vec3, center: FractionAlongAnchor): FLine = rot(angle, axis, anchor3(center))
+
+    /**
+     * Uniform scale around the line center by default.
+     */
+    fun scale(scale: Number): FLine = scale(scale, center())
+
+    fun scale(scale: Number, center: Vec2): FLine = scale(Vec2(scale.toFloat(), scale.toFloat()), center)
+    fun scale(scale: Number, center: Vec3): FLine = transform { Vec3(center).add(Vec3(it).sub(center).mul(scale.toFloat())) }
+    fun scale(scale: Number, center: ListAnchor): FLine = scale(scale, anchor3(center))
+    fun scale(scale: Number, center: FractionAlongAnchor): FLine = scale(scale, anchor3(center))
+
+    /**
+     * XY component scale around [center], preserving Z.
+     */
+    fun scale(scale: Vec2, center: Vec2 = anchor2(ListAnchor.Center)): FLine {
+        return transform {
+            Vec3(
+                center.x + (it.x - center.x) * scale.x,
+                center.y + (it.y - center.y) * scale.y,
+                it.z
+            )
+        }
+    }
+
+    fun scale(scale: Vec2, center: ListAnchor): FLine = scale(scale, anchor2(center))
+    fun scale(scale: Vec2, center: FractionAlongAnchor): FLine = scale(scale, anchor2(center))
+
+    /**
+     * XYZ component scale around [center].
+     */
+    fun scale(scale: Vec3, center: Vec3 = center()): FLine {
+        return transform {
+            Vec3(
+                center.x + (it.x - center.x) * scale.x,
+                center.y + (it.y - center.y) * scale.y,
+                center.z + (it.z - center.z) * scale.z
+            )
+        }
+    }
+
+    fun scale(scale: Vec3, center: ListAnchor): FLine = scale(scale, anchor3(center))
+    fun scale(scale: Vec3, center: FractionAlongAnchor): FLine = scale(scale, anchor3(center))
+
     /**
      * Translate this line by [n].
      */
@@ -506,6 +614,18 @@ class FLine : HasProperties {
      * Deep copy of this line and its properties.
      */
     fun copy() = this.transform { Vec3(it) }
+
+    fun center(): Vector3f {
+        val (min, max) = this.fast3DBounds()
+        return min.lerp(max, 0.5f)
+    }
+
+    fun midPoint(): Vector3f {
+        val c = cursor()
+        return c.setD(c.lengthD() / 2).position()
+    }
+
+    fun closeMidPoint() = cursor(nodes.mapNotNull { it.storage.getOrNull(0) }.center()).position()
 
     /**
      * Copy this line and apply a mutating block to the clone.
@@ -581,7 +701,20 @@ class FLine : HasProperties {
     override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
     override fun toString(): String {
-        return "FLine[{${nodes.size}n]"
+        val bbox = runCatching { fast2DBounds() }.getOrNull()
+        return prettySummary(
+            "FLine",
+            "nodes" to nodes.size,
+            "pieces" to pieces().size,
+            "bounds" to bbox?.let {
+                "[${prettyNumber(it.x)} , ${prettyNumber(it.y)} , ${prettyNumber(it.w)} x ${
+                    prettyNumber(
+                        it.h
+                    )
+                }]"
+            },
+            "properties" to properties.keys.take(4)
+        )
     }
 
     /**
@@ -620,6 +753,21 @@ class FLine : HasProperties {
             }
         }
         return r!!
+    }
+
+    fun fast3DBounds(): Pair<Vec3, Vec3> {
+        var q = Vec3(
+            Float.POSITIVE_INFINITY,
+            Float.POSITIVE_INFINITY,
+            Float.NEGATIVE_INFINITY
+        ) to Vec3(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+        nodes.forEach {
+            it.storage.forEach { X ->
+                q.first.min(X)
+                q.second.max(X)
+            }
+        }
+        return q
     }
 
     /**
@@ -755,6 +903,17 @@ class FLine : HasProperties {
             val instr = ((1 - alpha) * fromInstr) + (alpha * toInstr)
             dest(storage, instr.f)
         }
+    }
+
+    @JvmName("invoke_1")
+    fun invoke(f: FLine.() -> FLine): FLine {
+        return f.invoke(this)
+    }
+
+    @JvmName("invoke_2")
+    fun invoke(f: FLine.() -> Unit): FLine {
+        f.invoke(this)
+        return this;
     }
 
     /**
@@ -922,6 +1081,12 @@ class FLine : HasProperties {
         }
     }
 
+    operator fun plusAssign(other: FLine) {
+        other.nodes.forEach {
+            this.copyTo(it)
+        }
+    }
+
     /**
      * One Vec4 color per drawing instruction. Resolution order:
      *  node.properties["color"] if Vec4 → previous color → fline.properties["color"] if Vec4 → default vec4(0.8,0.8,0.8,0.5)
@@ -963,6 +1128,8 @@ class FLine : HasProperties {
     }
 
 }
+
+private fun prettyVec3(v: Vec3): String = "(${prettyNumber(v.x)}, ${prettyNumber(v.y)}, ${prettyNumber(v.z)})"
 
 
 private fun FLine.parametersToPoints(params: List<Any>): MutableList<Vec3> {
@@ -1044,7 +1211,7 @@ private class Parser(private val s: String) {
                 i++; break
             }
             val atom = when (s[i]) {
-                'm', 'l', 'c', 'z' -> {
+                'm', 'l', 'c', 'z', 's' -> {
                     i++; Cmd(s[i - 1])
                 }
 
@@ -1052,7 +1219,7 @@ private class Parser(private val s: String) {
                     i++; parseSeq(')')
                 }
 
-                else -> error("Unexpected '${s[i]}' at ${here()}; expected m,l,c,z or '('")
+                else -> error("Unexpected '${s[i]}' at ${here()}; expected m,l,c,s, z or '('")
             }
             skip()
             val node = if (i < s.length && s[i] == '+') {
@@ -1129,6 +1296,12 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
                 f.lineTo(a)          // uses your Vec3 overload
             }
 
+            's' -> {
+                ensure(1, "smoothTo")
+                val a = take()
+                f.smoothTo(a)          // uses your Vec3 overload
+            }
+
             'c' -> {
                 ensure(3, "cubicTo")
                 val a = take();
@@ -1144,7 +1317,7 @@ private class Executor(private val f: FLine, private val pts: MutableList<Vec3>)
 
     private fun minPoints(n: Node): Int = when (n) {
         is Cmd -> when (n.kind) {
-            'm' -> 1; 'l' -> 1; 'c' -> 3; 'z' -> 0; else -> 0
+            'm' -> 1; 'l' -> 1; 's' -> 1; 'c' -> 3; 'z' -> 0; else -> 0
         }
 
         is Seq -> n.items.sumOf { minPoints(it) }

@@ -83,6 +83,8 @@ class Instance(validate: Boolean) {
                 if (supportsValidation && hasLayerSettings) add("VK_EXT_layer_settings")
                 if (usePortability && PORTABILITY_EXTENSION !in this) add(PORTABILITY_EXTENSION) // VK_KHR_portability_enumeration
                 if (Options.enableVR) addAll(getOpenXRRequiredInstanceExts())
+                // VK_EXT_swapchain_colorspace enables HDR surface format enumeration (scRGB, HDR10, etc.)
+                if (Options.enableHDR && SWAPCHAIN_COLORSPACE_EXTENSION in supportedExts) add(SWAPCHAIN_COLORSPACE_EXTENSION)
             }
 
             val requiredExtensions = stack.mallocPointer(extNames.size).apply {
@@ -220,6 +222,8 @@ class Instance(validate: Boolean) {
 
     companion object {
         private const val PORTABILITY_EXTENSION = "VK_KHR_portability_enumeration"
+        // Instance extension that exposes extended colorspaces (scRGB, HDR10, Display-P3, …)
+        internal const val SWAPCHAIN_COLORSPACE_EXTENSION = "VK_EXT_swapchain_colorspace"
 
         data class OpenXRBootstrap(
             val xrInstance: XrInstance,

@@ -162,7 +162,7 @@ The implementation is complete and ready to use. Optional next steps:
 ## Files Changed
 
 ```
-src/jvmMain/kotlin/afield/ValueVisualizer.kt  (new, 400+ lines)
+src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt  (new, 400+ lines)
 VALUE_VISUALIZER.md                           (new, documentation)
 VIZ_QUICK_REF.md                             (new, quick ref)
 TEST_VALUE_VISUALIZER.md                     (new, test guide)

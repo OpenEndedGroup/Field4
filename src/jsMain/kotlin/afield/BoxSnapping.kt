@@ -253,6 +253,9 @@ class BoxSnappingSystem {
         snapGuidesGroup?.let { it.innerHTML = "" }
         activeSnapTargets.clear()
     }
+
+    fun activeSnapReferenceBoxes(): List<HTMLElement> =
+        activeSnapTargets.mapNotNull { it.referenceBox }.distinct()
     
     /**
      * Apply snapping to a proposed position while dragging a box
@@ -748,7 +751,7 @@ class BoxSnappingSystem {
         val boxElements = document.getElementsByClassName("box")
         return (0 until boxElements.length)
             .mapNotNull { boxElements.item(it) as? HTMLElement }
-            .filter { it.unsafeCast<dynamic>().uid != undefined }
+            .filter { it.unsafeCast<dynamic>().uid != undefined && hasRenderableFrame(it) }
     }
     
     /**
