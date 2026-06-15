@@ -161,13 +161,13 @@ plugins {
 }
 
 jvmWrapper {
-    unixJvmInstallDir = "${"$"}{HOME}/.field4/  gradle-jvm"
+    unixJvmInstallDir = "${"$"}{HOME}/.field4/gradle-jvm"
     winJvmInstallDir = "%LOCALAPPDATA%\\gradle-jvm"
-    linuxAarch64JvmUrl = "https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz"
-    linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz"
-    macAarch64JvmUrl = "https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz"
-    macX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-macos-jdk.tar.gz"
-    windowsX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-11-x64-windows-jdk.zip"
+    linuxAarch64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz"
+    linuxX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz"
+    macAarch64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz"
+    macX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-macos-jdk.tar.gz"
+    windowsX64JvmUrl = "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip"
 }
 
 java {
@@ -895,7 +895,7 @@ tasks.register("runDesktop") {
         }
         val port = System.getenv("PORT")?.trim()?.takeIf { it.isNotEmpty() } ?: "9092"
 
-        val backendJvmArgs = (runJvmTask.jvmArgs ?: emptyList()).map { it.toString() }.toMutableList()
+        val backendJvmArgs = (runJvmTask.jvmArgs ?: emptyList()).toMutableList()
         requiredRunJvmArgs().forEach { arg ->
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
@@ -921,7 +921,7 @@ tasks.register("runDesktop") {
         }
 
         backendCommand += backendMain
-        backendCommand += (runJvmTask.args ?: emptyList()).map { it.toString() }
+        backendCommand += (runJvmTask.args ?: emptyList())
 
         logger.lifecycle("Starting backend process via runJvm settings.")
         val backendProcess = ProcessBuilder(backendCommand)
@@ -1204,21 +1204,25 @@ tasks.register("generateApiDocs") {
             throw GradleException("keytool not found at ${keytoolPath.absolutePath}")
         }
 
-        exec {
-            workingDir = projectDir
-            commandLine(
-                keytoolPath.absolutePath,
-                "-genkeypair",
-                "-alias", "field4",
-                "-keyalg", "RSA",
-                "-storetype", "PKCS12",
-                "-keystore", keystoreFile.absolutePath,
-                "-storepass", "changeit",
-                "-keypass", "changeit",
-                "-dname", "CN=localhost",
-                "-validity", "3650",
-                "-ext", "SAN=dns:localhost,ip:127.0.0.1"
-            )
+        val exit = ProcessBuilder(
+            keytoolPath.absolutePath,
+            "-genkeypair",
+            "-alias", "field4",
+            "-keyalg", "RSA",
+            "-storetype", "PKCS12",
+            "-keystore", keystoreFile.absolutePath,
+            "-storepass", "changeit",
+            "-keypass", "changeit",
+            "-dname", "CN=localhost",
+            "-validity", "3650",
+            "-ext", "SAN=dns:localhost,ip:127.0.0.1"
+        )
+            .directory(projectDir)
+            .inheritIO()
+            .start()
+            .waitFor()
+        if (exit != 0) {
+            throw GradleException("keytool failed with exit code $exit")
         }
     }
 }

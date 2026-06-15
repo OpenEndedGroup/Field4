@@ -665,6 +665,36 @@ private class FunctionCompiler(
             "and" -> binary(token, "and") { a, b -> "min(step(vec4(0.5), abs(${ref(a)})), step(vec4(0.5), abs(${ref(b)})))" }
             "or" -> binary(token, "or") { a, b -> "max(step(vec4(0.5), abs(${ref(a)})), step(vec4(0.5), abs(${ref(b)})))" }
             "not" -> unary(token, "not") { "vec4(1.0) - step(vec4(0.5), abs(${ref(it)}))" }
+            "xor", "bitxor" -> {
+                requiredHelpers += "bits"
+                binary(token, "xor") { a, b -> "${options.prefix}_xor(${ref(a)}, ${ref(b)})" }
+            }
+            "gray-code", "graycode", "gray-encode" -> {
+                requiredHelpers += "bits"
+                unary(token, "gray code") { "${options.prefix}_grayCode(${ref(it)})" }
+            }
+            "gray-decode", "ungray" -> {
+                requiredHelpers += "bits"
+                unary(token, "gray decode") { "${options.prefix}_grayDecode(${ref(it)})" }
+            }
+            "lfsr" -> {
+                requiredHelpers += "bits"
+                unary(token, "lfsr") { "${options.prefix}_lfsr(${ref(it)})" }
+            }
+            "bitcrush", "bit-crush" -> {
+                requiredHelpers += "bits"
+                val args = consumeArityArgs(
+                    token,
+                    raw,
+                    listOf(
+                        StackSLArg("value", "input"),
+                        StackSLArg("bits", "vec4(4.0)")
+                    ),
+                    requestedArity ?: if (stack.size < 2) 1 else 2
+                ) ?: return
+                val (value, bits) = args
+                push(expr("${options.prefix}_bitcrush(${ref(value)}, ${ref(bits)})", args, token, "bitcrush"))
+            }
 
             "mix", "lerp" -> {
                 val t = pop(token, "mix amount", "vec4(0.5)")
@@ -1543,7 +1573,9 @@ private val stackSLArityVariantArities = mapOf(
     "ema" to (1..3).toSet(),
     "ema-diff" to (1..3).toSet(),
     "diff-ema" to (1..3).toSet(),
-    "dema" to (1..3).toSet()
+    "dema" to (1..3).toSet(),
+    "bitcrush" to (1..2).toSet(),
+    "bit-crush" to (1..2).toSet()
 )
 private val stackSLAllVariantWords = setOf(
     "min", "max",
@@ -1703,7 +1735,8 @@ private val builtinWords = setOf(
     "sat", "saturate", "clamp", "mirror", "tonemap",
     "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "atan2",
     "dot", "cross", "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
-    "and", "or", "not", "mix", "lerp", "step", "smoothstep",
+    "and", "or", "not", "xor", "bitxor", "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr", "bitcrush", "bit-crush",
+    "mix", "lerp", "step", "smoothstep",
     "noise", "perlin", "fbm", "pulse", "fm", "fmchirp", "palette", "cos-palette", "cosine-palette",
     "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
     "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
@@ -1860,6 +1893,48 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine("    float c = min(v.z, v.w);")
             appendLine("    float d = max(v.z, v.w);")
             appendLine("    return 0.5 * (max(a, c) + min(b, d));")
+            appendLine("}")
+            appendLine()
+        }
+        if ("bits" in helpers) {
+            appendLine("uvec4 ${prefix}_toBits16(vec4 v) {")
+            appendLine("    return uvec4(round(clamp(v, vec4(0.0), vec4(1.0)) * 65535.0));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_fromBits16(uvec4 v) {")
+            appendLine("    return vec4(v & uvec4(65535u)) / 65535.0;")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_xor(vec4 a, vec4 b) {")
+            appendLine("    return ${prefix}_fromBits16(${prefix}_toBits16(a) ^ ${prefix}_toBits16(b));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_bitcrush(vec4 value, vec4 bits) {")
+            appendLine("    vec4 b = clamp(floor(abs(bits)), vec4(1.0), vec4(16.0));")
+            appendLine("    vec4 levels = exp2(b) - vec4(1.0);")
+            appendLine("    return floor(clamp(value, vec4(0.0), vec4(1.0)) * levels + vec4(0.5)) / levels;")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_grayCode(vec4 v) {")
+            appendLine("    uvec4 x = ${prefix}_toBits16(v);")
+            appendLine("    return ${prefix}_fromBits16(x ^ (x >> uvec4(1u)));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_grayDecode(vec4 v) {")
+            appendLine("    uvec4 x = ${prefix}_toBits16(v);")
+            appendLine("    x ^= x >> uvec4(1u);")
+            appendLine("    x ^= x >> uvec4(2u);")
+            appendLine("    x ^= x >> uvec4(4u);")
+            appendLine("    x ^= x >> uvec4(8u);")
+            appendLine("    return ${prefix}_fromBits16(x);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_lfsr(vec4 state) {")
+            appendLine("    uvec4 x = max(${prefix}_toBits16(state), uvec4(1u));")
+            appendLine("    uvec4 neighbor = x.yzwx;")
+            appendLine("    uvec4 feedback = (x ^ (x >> uvec4(2u)) ^ (x >> uvec4(3u)) ^ (x >> uvec4(5u)) ^ neighbor) & uvec4(1u);")
+            appendLine("    x = ((x >> uvec4(1u)) | (feedback << uvec4(15u))) & uvec4(65535u);")
+            appendLine("    return ${prefix}_fromBits16(x);")
             appendLine("}")
             appendLine()
         }

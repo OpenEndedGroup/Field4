@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# Copyright © 2015-2021 the original authors.
+# Copyright © 2015 the original authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@
 #       Darwin, MinGW, and NonStop.
 #
 #   (3) This script is generated from the Groovy template
-#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
+#       https://github.com/gradle/gradle/blob/3d91ce3b8caaf77ad09f381f43615b715b53f72c/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
 #       within the Gradle project.
 #
 #       You can find Gradle at https://github.com/gradle/gradle/.
@@ -86,8 +86,7 @@ done
 # shellcheck disable=SC2034
 APP_BASE_NAME=${0##*/}
 # Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
-APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
-' "$PWD" ) || exit
+APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
@@ -115,40 +114,39 @@ case "$( uname )" in                #(
   NONSTOP* )        nonstop=true ;;
 esac
 
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 
 # GRADLE JVM WRAPPER START MARKER
-BUILD_DIR="${HOME}/.field4/  gradle-jvm"
+BUILD_DIR="${HOME}/.field4/gradle-jvm"
 JVM_ARCH=$(uname -m)
 JVM_TEMP_FILE=$BUILD_DIR/gradle-jvm-temp.tar.gz
 if [ "$darwin" = "true" ]; then
     case $JVM_ARCH in
     x86_64)
-        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-11-x64-macos-jdk.tar.gz
-        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-11-x64-macos-jdk-378f50
+        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-macos-jdk.tar.gz
+        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-x64-macos-jdk-ba9887
         ;;
     arm64)
-        JVM_URL=https://cdn.azul.com/zulu/bin/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64.tar.gz
-        JVM_TARGET_DIR=$BUILD_DIR/zulu11.45.27-ca-jdk11.0.10-macosx_aarch64-9bac56
+        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz
+        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-aarch64-macos-jdk-61fa25
         ;;
     *) 
         die "Unknown architecture $JVM_ARCH"
         ;;
     esac
 elif [ "$cygwin" = "true" ] || [ "$msys" = "true" ]; then
-    JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-11-x64-windows-jdk.zip
-    JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-11-x64-windows-jdk-f3b61a
+    JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip
+    JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-x64-windows-jdk-aca311
 else
     JVM_ARCH=$(linux$(getconf LONG_BIT) uname -m)
      case $JVM_ARCH in
         x86_64)
-            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-11-x64-linux-jdk.tar.gz
-            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-11-x64-linux-jdk-e264c4
+            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz
+            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-x64-linux-jdk-f9fee4
             ;;
         aarch64)
-            JVM_URL=https://corretto.aws/downloads/resources/11.0.9.12.1/amazon-corretto-11.0.9.12.1-linux-aarch64.tar.gz
-            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-11.0.9.12.1-linux-aarch64-c61d04
+            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz
+            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-aarch64-linux-jdk-11b11b
             ;;
         *) 
             die "Unknown architecture $JVM_ARCH"
@@ -264,7 +262,6 @@ fi
 # For Cygwin or MSYS, switch paths to Windows format before running java
 if "$cygwin" || "$msys" ; then
     APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
-    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
 
     JAVACMD=$( cygpath --unix "$JAVACMD" )
 
@@ -297,15 +294,14 @@ fi
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
 # Collect all arguments for the java command:
-#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
 #     and any embedded shellness will be escaped.
 #   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
 #     treated as '${Hostname}' itself on the command line.
 
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
-        org.gradle.wrapper.GradleWrapperMain \
+        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
         "$@"
 
 # Stop when "xargs" is not available.

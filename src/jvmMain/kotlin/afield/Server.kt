@@ -15,6 +15,7 @@ import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
+import afield.server.installControllerRoutes
 import afield.server.writeFileProxyContents
 import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
@@ -652,7 +653,10 @@ fun _send(message: Message, document: String = ".*") {
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
-        if (!info.filename.matches(documentRegex)) return@forEach
+        val matchesDocument = info.filename.matches(documentRegex) ||
+            info.documentName.matches(documentRegex) ||
+            File(info.filename).name.matches(documentRegex)
+        if (!matchesDocument) return@forEach
         sendWithOutputBackPressure(session, message, m)
     }
     if (message.name == "is-running") {
@@ -2068,6 +2072,8 @@ class Server {
                     get("/health") {
                         call.respondText("ok", ContentType.Text.Plain)
                     }
+
+                    installControllerRoutes(::currentFieldPreferences)
 
                     get("/app-url") {
                         val preferences = currentFieldPreferences().also(::applyFieldPreferences)

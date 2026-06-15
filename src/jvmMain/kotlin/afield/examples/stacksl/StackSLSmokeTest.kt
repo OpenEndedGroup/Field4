@@ -38,6 +38,7 @@ object StackSLSmokeTest {
             compilesExplicitArityVariants()
             compilesStackBlastOperators()
             compilesFMChirpOperator()
+            compilesBitGlitchOperators()
             println("StackSL compiler smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -365,5 +366,35 @@ object StackSLSmokeTest {
         )
 
         require(eightParamWithPriorStack.ok) { eightParamWithPriorStack.diagnostics.joinToString("\n") }
+    }
+
+    private fun compilesBitGlitchOperators() {
+        val result = StackSLCompiler.compile(
+            """
+            p length
+            time gray-code
+            xor
+            dup gray-decode
+            lfsr
+            bitxor
+            4 bitcrush.2
+            bitcrush.1
+            saturate
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "bits")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("uvec4 bits_toBits16" in result.glsl) { result.glsl }
+        require("vec4 bits_xor" in result.glsl) { result.glsl }
+        require("vec4 bits_grayCode" in result.glsl) { result.glsl }
+        require("vec4 bits_grayDecode" in result.glsl) { result.glsl }
+        require("vec4 bits_lfsr" in result.glsl) { result.glsl }
+        require("vec4 bits_bitcrush" in result.glsl) { result.glsl }
+        require("bits_xor(" in result.glsl) { result.glsl }
+        require("bits_grayCode(" in result.glsl) { result.glsl }
+        require("bits_grayDecode(" in result.glsl) { result.glsl }
+        require("bits_lfsr(" in result.glsl) { result.glsl }
+        require("bits_bitcrush(" in result.glsl) { result.glsl }
     }
 }

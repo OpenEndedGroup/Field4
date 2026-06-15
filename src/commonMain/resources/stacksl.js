@@ -43,6 +43,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "average", "avg", "mean", "median", "med", "sort", "intermediate", "vmin", "minimum", "vmax", "maximum",
         "dot", "cross", "mix", "lerp", "step", "smoothstep",
         "lt", "lte", "gt", "gte", "eq", "neq", "and", "or", "not",
+        "xor", "bitxor", "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr",
         "<", "<=", ">", ">=", "=", "!=", "<>"
     ];
 
@@ -56,7 +57,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "ema", "ema-diff", "diff-ema", "dema",
         "sample", "sample0", "sample1", "sample2", "sample3",
         "sample-abs", "sample0-abs", "sample1-abs", "sample2-abs", "sample3-abs",
-        "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3"
+        "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
+        "bitcrush", "bit-crush"
     ];
 
     var arityVariantArities = Object.create(null);
@@ -94,7 +96,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         .concat(registerArityVariants("ema", 1, 3, false))
         .concat(registerArityVariants("ema-diff", 1, 3, false))
         .concat(registerArityVariants("diff-ema", 1, 3, false))
-        .concat(registerArityVariants("dema", 1, 3, false));
+        .concat(registerArityVariants("dema", 1, 3, false))
+        .concat(registerArityVariants("bitcrush", 1, 2, false))
+        .concat(registerArityVariants("bit-crush", 1, 2, false));
 
     mathWords = mathWords.concat(arityMathWords);
     creativeWords = creativeWords.concat(arityCreativeWords);
@@ -133,13 +137,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "sat", "saturate", "clamp", "mirror", "tonemap",
         "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
         "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
-        "noise", "perlin", "fbm", "not"
+        "noise", "perlin", "fbm", "not",
+        "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr"
     ]);
     var binaryWordSet = wordSet([
         "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow",
         "atan2", "dot", "cross",
         "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
-        "and", "or"
+        "and", "or", "xor", "bitxor"
     ]);
 
     function isPushToken(word) {
@@ -223,6 +228,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (word === "fmchirp") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 9);
         if (word === "palette" || word === "cos-palette" || word === "cosine-palette") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 5);
         if (word === "saturation" || word === "sat-color" || word === "contrast") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
+        if (word === "bitcrush" || word === "bit-crush") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
         if (word === "grade") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 4);
         if (word === "sample" || word === "sample0" || word === "sample1" || word === "sample2" || word === "sample3" ||
             word === "sample-abs" || word === "sample0-abs" || word === "sample1-abs" || word === "sample2-abs" || word === "sample3-abs" ||
@@ -459,13 +465,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
             "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
             "noise", "perlin", "fbm", "not",
+            "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr",
     ])
 
     const STACKSL_BINARY_WORDS = new Set([
             "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow",
             "atan2", "dot", "cross",
             "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
-            "and", "or",
+            "and", "or", "xor", "bitxor",
     ])
 
     const stackslEffect = (consume, produce, label = "") => ({ consume, produce, label })
@@ -511,6 +518,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["mul", "*"],
             ["div", "/"],
             ["lerp", "mix"],
+            ["bitxor", "xor"],
+            ["graycode", "gray-code"],
+            ["gray-encode", "gray-code"],
+            ["ungray", "gray-decode"],
+            ["bit-crush", "bitcrush"],
     ])
 
     const STACKSL_WORD_DOCS = new Map([
@@ -584,6 +596,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["and", stackslDoc("a b -- mask", "Boolean-ish and using threshold 0.5.")],
             ["or", stackslDoc("a b -- mask", "Boolean-ish or using threshold 0.5.")],
             ["not", stackslDoc("a -- mask", "Boolean-ish not using threshold 0.5.")],
+            ["xor", stackslDoc("a b -- out", "16-bit lane XOR, normalized back into 0..1.")],
+            ["gray-code", stackslDoc("value -- out", "Encode each 16-bit lane as Gray code.")],
+            ["gray-decode", stackslDoc("value -- out", "Decode Gray-coded 16-bit lanes back to binary.")],
+            ["lfsr", stackslDoc("state -- next", "Step coupled 16-bit LFSR lanes packed in vec4 state.")],
+            ["bitcrush", stackslDoc("value bits -- out", "Quantize normalized lanes to the requested bit depth; short form defaults to 4 bits.")],
             ["mix", stackslDoc("a b amount -- out", "Clamped component-wise mix.")],
             ["step", stackslDoc("edge x -- mask", "GLSL step, with defaults if needed.")],
             ["smoothstep", stackslDoc("low high x -- mask", "GLSL smoothstep, with defaults if needed.")],
@@ -735,6 +752,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                             3: "current previous alpha -- diff",
                     }
                     return stackslDoc(signatures[effect.consume] || signatures[3], effect.consume < 3 ? "Current minus EMA with trailing defaults." : "Current minus exponential moving average.")
+            }
+            if (canonical === "bitcrush") {
+                    return effect.consume === 1
+                            ? stackslDoc("value -- out", "Quantize normalized lanes to default 4-bit depth.")
+                            : stackslDoc("value bits -- out", "Quantize normalized lanes to a per-channel bit depth clamped to 1..16.")
             }
 
             if (/^sample[0-3]$/.test(word)) return STACKSL_WORD_DOCS.get("sample")
@@ -959,6 +981,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
             if (word === "saturation" || word === "sat-color" || word === "contrast") {
                     return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 2 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 2, "short form")
+            }
+            if (word === "bitcrush" || word === "bit-crush") {
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 2 ? "default depth" : "") : dynamicStackSLEffect(depth, 2, "short form")
             }
             if (word === "grade") {
                     return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 4 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 4, "short form")

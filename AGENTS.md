@@ -29,7 +29,7 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 ```
 
 - Use the same wrapper form for other Gradle tasks, replacing `compileKotlinJvm` with the task name, for example `.\gradlew runJvm`.
-- Before attempting any Gradle interaction in this checkout, run `killall -9 java` first. This is the expected local cleanup step for stale Field/Gradle/Kotlin daemon processes on this machine.
+- Do not preemptively run `killall -9 java` before Gradle interactions. With the Gradle 9 wrapper, try the requested Gradle task normally first and reserve Java cleanup for confirmed hangs, stale Field processes, or lock failures.
 - On Unix-like systems, use `./gradlew compileKotlinJvm` unless a task-specific note says otherwise.
 - Known local failure mode: if `./gradlew compileKotlinJvm` prints exactly this startup sequence and then sits at high CPU with no further output, treat it as a Gradle daemon hang, not a slow compile:
 
