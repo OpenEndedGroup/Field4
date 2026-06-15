@@ -33,6 +33,7 @@ import java.nio.file.Paths
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
 private val ai4Scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -855,6 +856,7 @@ fun installAi4() {
             if (trimmed.isBlank()) return FileRef(docName, box.id, defaultProperty)
             parseFileRef(trimmed, defaultProperty = defaultProperty)?.let { return it }
             if (boxByIdOrNull(trimmed) != null) return FileRef(docName, trimmed, defaultProperty)
+            resolveBoxByChatName(trimmed)?.let { return FileRef(docName, it.id, defaultProperty) }
             return FileRef(docName, box.id, trimmed.removePrefix("/").ifBlank { defaultProperty })
         }
 
@@ -868,6 +870,248 @@ fun installAi4() {
 
         fun visualVerificationAvailable(): Boolean =
             exec.images.isNotEmpty() || chatHistoryByKey[fileKey].orEmpty().contains("data:image/")
+
+        fun clipToolText(value: String, requestedMaxChars: Int): String {
+            val maxChars = requestedMaxChars.coerceIn(64, 100_000)
+            if (value.length <= maxChars) return value
+            return value.take(maxChars) + "\n...<truncated ${value.length - maxChars} chars>"
+        }
+
+        fun safeString(value: Any?): String = runCatching { value.toString() }
+            .getOrElse { throwable -> "<toString failed: ${throwable.message ?: throwable::class.java.simpleName}>" }
+
+        fun runtimeTypeName(value: Any?): String =
+            value?.let { shortenType(it::class.qualifiedName ?: it::class.java.name) } ?: "null"
+
+        fun primitiveKind(value: Any?): String = when (value) {
+            null -> "null"
+            is Boolean -> "Boolean"
+            is Byte -> "Byte"
+            is Short -> "Short"
+            is Int -> "Int"
+            is Long -> "Long"
+            is Float -> "Float"
+            is Double -> "Double"
+            is Char -> "Char"
+            is String -> "String"
+            else -> ""
+        }
+
+        fun primitiveToolValue(value: Any?): Any? = when (value) {
+            is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double, is String -> value
+            is Char -> value.toString()
+            else -> null
+        }
+
+        val listKotlinContextVariables: (ListKotlinContextVariablesRequest) -> ListKotlinContextVariablesResult =
+            listKotlinContextVariables@{ req ->
+                val ref = requestedRefOrCurrent(req.target, defaultProperty = "code")
+                if (ref.document != docName) {
+                    return@listKotlinContextVariables ListKotlinContextVariablesResult(
+                        success = false,
+                        target = req.target,
+                        boxUid = ref.uid,
+                        boxName = "",
+                        generation = 0,
+                        message = "Unknown document '${ref.document}'."
+                    )
+                }
+                val target = boxByIdOrNull(ref.uid)
+                    ?: return@listKotlinContextVariables ListKotlinContextVariablesResult(
+                        success = false,
+                        target = req.target,
+                        boxUid = ref.uid,
+                        boxName = "",
+                        generation = 0,
+                        message = "Unknown box '${ref.uid}'."
+                    )
+
+                val variables = target.ki.context.vars.values
+                    .sortedBy { it.name }
+                    .map { info ->
+                        val value = info.value
+                        KotlinContextVariableInfo(
+                            name = info.name,
+                            declaration = runCatching { shortenType(info.descriptor.toString()) }.getOrDefault(info.type),
+                            declaredType = runCatching { shortenType(info.descriptor.returnType.toString()) }.getOrDefault(""),
+                            runtimeType = runtimeTypeName(value),
+                            mutable = info.descriptor is kotlin.reflect.KMutableProperty<*>,
+                            valuePreview = clipToolText(safeString(value), req.maxValueChars),
+                            primitiveValue = primitiveToolValue(value),
+                            primitiveKind = primitiveKind(value)
+                        )
+                    }
+
+                ListKotlinContextVariablesResult(
+                    success = true,
+                    target = fileRefFor(docName, target.id, ref.property),
+                    boxUid = target.id,
+                    boxName = boxLabel(target),
+                    generation = target.ki.context.generation,
+                    message = "Found ${variables.size} Kotlin context variable(s) for ${target.id}.",
+                    variables = variables
+                )
+            }
+
+        val evaluateKotlinExpression: (EvaluateKotlinExpressionRequest) -> EvaluateKotlinExpressionResult =
+            evaluateKotlinExpression@{ req ->
+                val expression = req.expression.trim()
+                if (expression.isBlank()) {
+                    return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
+                        success = false,
+                        target = req.target,
+                        boxUid = "",
+                        boxName = "",
+                        expression = req.expression,
+                        valueKind = "error",
+                        message = "Expression is empty."
+                    )
+                }
+
+                val ref = requestedRefOrCurrent(req.target, defaultProperty = "code")
+                if (ref.document != docName) {
+                    return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
+                        success = false,
+                        target = req.target,
+                        boxUid = ref.uid,
+                        boxName = "",
+                        expression = expression,
+                        valueKind = "error",
+                        message = "Unknown document '${ref.document}'."
+                    )
+                }
+                val target = boxByIdOrNull(ref.uid)
+                    ?: return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
+                        success = false,
+                        target = req.target,
+                        boxUid = ref.uid,
+                        boxName = "",
+                        expression = expression,
+                        valueKind = "error",
+                        message = "Unknown box '${ref.uid}'."
+                    )
+
+                notify("Evaluating Kotlin expression for ${target.id}", "AI4")
+                val diagnostics = mutableListOf<CompileDiagnostic>()
+                var resultValue: ResultValue? = null
+
+                runCatching {
+                    runBlocking {
+                        Box.withBoxContext(target) {
+                            val prepared = target.ki.compileSnippet(
+                                expression,
+                                implicits = listOf(target),
+                                onCompileError = { list ->
+                                    diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                                }
+                            )
+                            if (prepared != null) {
+                                resultValue = withContext(Runloop.runLoop.main) {
+                                    prepared.eval(
+                                        updateContext = false,
+                                        implicits = listOf(target),
+                                        onEvalError = { list ->
+                                            diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                                        },
+                                        onEvalException = { throwable ->
+                                            diagnostics += CompileDiagnostic(
+                                                severity = "ERROR",
+                                                message = throwable.message ?: throwable::class.java.name
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }.onFailure { throwable ->
+                    diagnostics += CompileDiagnostic(
+                        severity = "ERROR",
+                        message = throwable.message ?: throwable::class.java.name
+                    )
+                }
+
+                val targetRef = fileRefFor(docName, target.id, ref.property)
+                when (val result = resultValue) {
+                    is ResultValue.Value -> {
+                        val value = result.value
+                        val kind = if (value == null) "null" else if (primitiveKind(value).isNotBlank()) "primitive" else "object"
+                        val stringValue = clipToolText(safeString(value), req.maxChars)
+                        val html = if (req.renderHtml) {
+                            clipToolText(
+                                runCatching { value.h }
+                                    .getOrElse { throwable ->
+                                        "<pre>.h visualization failed: ${safeString(throwable.message ?: throwable::class.java.simpleName)}</pre>"
+                                    },
+                                req.maxChars
+                            )
+                        } else ""
+                        EvaluateKotlinExpressionResult(
+                            success = true,
+                            target = targetRef,
+                            boxUid = target.id,
+                            boxName = boxLabel(target),
+                            expression = expression,
+                            valueKind = kind,
+                            type = runCatching { shortenType(result.type) }.getOrDefault(runtimeTypeName(value)),
+                            runtimeType = runtimeTypeName(value),
+                            primitiveValue = primitiveToolValue(value),
+                            primitiveKind = primitiveKind(value),
+                            stringValue = stringValue,
+                            html = html,
+                            diagnostics = diagnostics,
+                            message = "Expression evaluated."
+                        )
+                    }
+
+                    is ResultValue.Unit -> EvaluateKotlinExpressionResult(
+                        success = true,
+                        target = targetRef,
+                        boxUid = target.id,
+                        boxName = boxLabel(target),
+                        expression = expression,
+                        valueKind = "unit",
+                        type = "Unit",
+                        runtimeType = "Unit",
+                        stringValue = "Unit",
+                        diagnostics = diagnostics,
+                        message = "Expression evaluated to Unit."
+                    )
+
+                    is ResultValue.NotEvaluated -> EvaluateKotlinExpressionResult(
+                        success = false,
+                        target = targetRef,
+                        boxUid = target.id,
+                        boxName = boxLabel(target),
+                        expression = expression,
+                        valueKind = "not_evaluated",
+                        diagnostics = diagnostics,
+                        message = "Expression was not evaluated."
+                    )
+
+                    is ResultValue.Error -> EvaluateKotlinExpressionResult(
+                        success = false,
+                        target = targetRef,
+                        boxUid = target.id,
+                        boxName = boxLabel(target),
+                        expression = expression,
+                        valueKind = "error",
+                        diagnostics = diagnostics,
+                        message = result.error.message ?: result.error::class.java.name
+                    )
+
+                    null -> EvaluateKotlinExpressionResult(
+                        success = false,
+                        target = targetRef,
+                        boxUid = target.id,
+                        boxName = boxLabel(target),
+                        expression = expression,
+                        valueKind = "error",
+                        diagnostics = diagnostics,
+                        message = if (diagnostics.isEmpty()) "Expression did not produce a result." else "Expression failed."
+                    )
+                }
+            }
 
         val compileKotlin: (CompileKotlinRequest) -> CompileKotlinResult = compileKotlin@{ req ->
             val ref = requestedRefOrCurrent(req.file, defaultProperty = "code")
@@ -1466,6 +1710,8 @@ fun installAi4() {
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
+                            listKotlinContextVariables = listKotlinContextVariables,
+                            evaluateKotlinExpression = evaluateKotlinExpression,
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
@@ -1522,6 +1768,8 @@ fun installAi4() {
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
+                            listKotlinContextVariables = listKotlinContextVariables,
+                            evaluateKotlinExpression = evaluateKotlinExpression,
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
@@ -1560,6 +1808,8 @@ fun installAi4() {
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
+                            listKotlinContextVariables = listKotlinContextVariables,
+                            evaluateKotlinExpression = evaluateKotlinExpression,
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
@@ -1582,6 +1832,8 @@ fun installAi4() {
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
+                            listKotlinContextVariables = listKotlinContextVariables,
+                            evaluateKotlinExpression = evaluateKotlinExpression,
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
@@ -1604,6 +1856,8 @@ fun installAi4() {
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
                             listFileContents = listFileContents,
+                            listKotlinContextVariables = listKotlinContextVariables,
+                            evaluateKotlinExpression = evaluateKotlinExpression,
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,

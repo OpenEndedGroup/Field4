@@ -727,6 +727,14 @@ class OpenAiIdeCodexBridge(
             val preview = toolResult.definitions.take(5).joinToString(",") { it.name }
             "definitions=${toolResult.definitions.size}" + if (preview.isNotBlank()) " top=$preview" else ""
         }
+        is ListKotlinContextVariablesResult -> {
+            val preview = toolResult.variables.take(5).joinToString(",") { it.name }
+            "success=${toolResult.success} variables=${toolResult.variables.size}" +
+                if (preview.isNotBlank()) " top=$preview" else ""
+        }
+        is EvaluateKotlinExpressionResult ->
+            "success=${toolResult.success} kind=${toolResult.valueKind} type=${toolResult.type} " +
+                "string=${truncate(toolResult.stringValue.ifBlank { toolResult.message }, 200)}"
         is EditFileResponse ->
             "success=${toolResult.success}" + (toolResult.message?.let { " message=${truncate(it, 200)}" } ?: "")
         is Map<*, *> ->
@@ -789,6 +797,14 @@ class OpenAiIdeCodexBridge(
         tools.register(ListContentsRequest::class.java) { ctx, _ ->
             ctx.listFileContents?.invoke()
                 ?: throw IllegalStateException("ListContents not available for this request.")
+        }
+        tools.register(ListKotlinContextVariablesRequest::class.java) { ctx, req ->
+            ctx.listKotlinContextVariables?.invoke(req)
+                ?: throw IllegalStateException("ListKotlinContextVariables not available for this request.")
+        }
+        tools.register(EvaluateKotlinExpressionRequest::class.java) { ctx, req ->
+            ctx.evaluateKotlinExpression?.invoke(req)
+                ?: throw IllegalStateException("EvaluateKotlinExpression not available for this request.")
         }
         tools.register(EditFileRequest::class.java) { ctx, req ->
             ctx.editOtherFile?.invoke(req)

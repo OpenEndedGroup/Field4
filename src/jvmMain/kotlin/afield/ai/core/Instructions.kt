@@ -88,6 +88,12 @@ fun buildDynamicInstructions(
 
     val isKotlin = lang.name.equals("Kotlin", ignoreCase = true)
     if (isKotlin && ctx.listDefinitions != null) toolAds += "- ListDefinitions: list visible definitions (including shaders associated with Kotlin)."
+    if (isKotlin && ctx.listKotlinContextVariables != null) {
+        toolAds += "- ListKotlinContextVariablesRequest: list retained Kotlin runtime variables for the current or target box without evaluating code."
+    }
+    if (isKotlin && ctx.evaluateKotlinExpression != null) {
+        toolAds += "- EvaluateKotlinExpressionRequest: evaluate a read-oriented Kotlin expression in the current or target box's live Kotlin context; returns primitive values, toString, and optional `.h` HTML visualization."
+    }
     if (ctx.listFileContents != null) {
         toolAds += "- ListContents: get full contents of available text properties for the current box and graph-relevant boxes (code/shaders), with file refs, languages, box names, relation labels, and preamble hints."
     }
@@ -146,6 +152,7 @@ fun buildDynamicInstructions(
 - If verification succeeds, say what you verified briefly in the final answer.
 - If an exact match fails, try softer queries (short name, receiver+name, suffix, drop generics).
 - Do not keep reformulating the same WorkspaceSymbolSearch indefinitely. After one or two misses, switch to ListContents, AttachmentRequest, or answer with the grounded context you already have.
+- When the user asks about current runtime state, call ListKotlinContextVariablesRequest first. Use EvaluateKotlinExpressionRequest for specific read-only probes such as variable fields, sizes, summaries, or `.h` visualizations; avoid side-effecting expressions unless explicitly requested.
 - If you call a tool, wait for its output before continuing.
 $verificationChecklist
 $includeGuidance
@@ -163,6 +170,7 @@ $includeGuidance
 - If you make multiple edits across Kotlin and shaders, verify each affected surface before returning code.
 - If a verification tool reports failure, use the diagnostics to edit again, then rerun the same verification.
 - If verification succeeds but setupChanges reports preamble, intro, or attic changed, note that in Commentary.
+- When the user asks about current runtime state, call ListKotlinContextVariablesRequest first. Use EvaluateKotlinExpressionRequest for specific read-only probes such as variable fields, sizes, summaries, or `.h` visualizations; avoid side-effecting expressions unless explicitly requested.
 - If you call a tool, wait for its output before continuing.
 $verificationChecklist
 $includeGuidance

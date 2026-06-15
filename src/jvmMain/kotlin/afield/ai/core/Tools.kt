@@ -87,6 +87,58 @@ data class ListContentEntry(
     val relation: String = "current"
 )
 
+@JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref.")
+data class ListKotlinContextVariablesRequest(
+    val target: String = "",
+    val maxValueChars: Int = 300
+)
+
+data class KotlinContextVariableInfo(
+    val name: String,
+    val declaration: String,
+    val declaredType: String,
+    val runtimeType: String,
+    val mutable: Boolean,
+    val valuePreview: String,
+    val primitiveValue: Any? = null,
+    val primitiveKind: String = ""
+)
+
+data class ListKotlinContextVariablesResult(
+    val success: Boolean,
+    val target: String,
+    val boxUid: String,
+    val boxName: String,
+    val generation: Int,
+    val message: String,
+    val variables: List<KotlinContextVariableInfo> = emptyList()
+)
+
+@JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects.")
+data class EvaluateKotlinExpressionRequest(
+    val target: String = "",
+    val expression: String,
+    val renderHtml: Boolean = true,
+    val maxChars: Int = 12000
+)
+
+data class EvaluateKotlinExpressionResult(
+    val success: Boolean,
+    val target: String,
+    val boxUid: String,
+    val boxName: String,
+    val expression: String,
+    val valueKind: String,
+    val type: String = "",
+    val runtimeType: String = "",
+    val primitiveValue: Any? = null,
+    val primitiveKind: String = "",
+    val stringValue: String = "",
+    val html: String = "",
+    val diagnostics: List<CompileDiagnostic> = emptyList(),
+    val message: String = ""
+)
+
 /** Tool: edit another file by name (your integration decides how to apply this). */
 @JsonClassDescription("Edit another file by specifying its name and new content.")
 data class EditFileRequest(val file: String, val newContent: String)
@@ -401,6 +453,8 @@ data class ToolExecutionContext(
     // Kotlin-only providers (optional)
     val listDefinitions: (() -> ListDefinitionsResult)? = null,
     val listFileContents: (() -> ListContentsResult)? = null,
+    val listKotlinContextVariables: ((ListKotlinContextVariablesRequest) -> ListKotlinContextVariablesResult)? = null,
+    val evaluateKotlinExpression: ((EvaluateKotlinExpressionRequest) -> EvaluateKotlinExpressionResult)? = null,
     val editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
     val compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
     val reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
