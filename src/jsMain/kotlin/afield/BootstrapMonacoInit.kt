@@ -122,10 +122,24 @@ private fun computePropertyActionLabel(w: dynamic, baseLabel: String, propName: 
             } else {
                 js("Boolean(propValue)") as Boolean
             }
-            return baseLabel + if (hasContent) " ✓" else " ○"
+            return baseLabel + if (hasContent) " ●" else " ○"
         }
     }
     return baseLabel
+}
+
+private fun installDynamicPropertyActionLabel(action: dynamic, baseLabel: String, propName: String) {
+    val getter = {
+        computePropertyActionLabel(js("window"), baseLabel, propName)
+    }
+    js(
+        """(function(action, getter) {
+            Object.defineProperty(action, 'label', {
+                get: getter,
+                enumerable: true
+            });
+        })"""
+    )(action, getter)
 }
 
 private fun disposePropertySwitchActions(previous: dynamic) {
@@ -165,7 +179,7 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
 
         val action = js("{}")
         action.id = actionId
-        action.label = baseLabel
+        installDynamicPropertyActionLabel(action, baseLabel, propName)
         action.contextMenuGroupId = "navigation"
         action.contextMenuOrder = 2.0
 

@@ -1996,7 +1996,7 @@ private fun Box.installGraphicsShaderReloadAction() {
 
 private fun Box.installGraphicsShaderUpdateAction() {
     this.actions += "moduleHere_update" to Action(
-        "Update Shader|alt shift return",
+        "Update Shader|alt shift enter",
         "Updates the graphics shader only if its reflected ABI is unchanged"
     ) {
         runShaderUpdateAction(
@@ -2030,7 +2030,7 @@ private fun Box.installComputeShaderReloadAction() {
 
 private fun Box.installComputeShaderUpdateAction() {
     this.actions += "computeModuleHere_update" to Action(
-        "Update Compute Shader|alt shift return",
+        "Update Compute Shader|alt shift enter",
         "updates the compute shader only if its reflected ABI is unchanged"
     ) {
         runComputeShaderUpdateAction(

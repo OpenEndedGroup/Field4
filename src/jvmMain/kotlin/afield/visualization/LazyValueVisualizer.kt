@@ -22,6 +22,37 @@ private const val H2_TOKEN_TTL_MS = 10 * 60 * 1000L
 private const val H2_MAP_SNAPSHOT_THRESHOLD = 20_000
 private const val H2_OUTPUT_VIEW_THRESHOLD = 32
 
+data class H2ValueSnapshot(
+    val value: Any?,
+    val summary: String? = null,
+    val title: String? = null
+)
+
+object H2ValueRegistry {
+    private val adapters = mutableMapOf<Class<*>, (Any) -> H2ValueSnapshot>()
+
+    fun <T : Any> register(clazz: Class<T>, adapter: (T) -> H2ValueSnapshot) {
+        @Suppress("UNCHECKED_CAST")
+        adapters[clazz] = adapter as (Any) -> H2ValueSnapshot
+    }
+
+    internal fun adapt(value: Any): H2ValueSnapshot? {
+        adapters[value::class.java]?.let { return it(value) }
+
+        var clazz: Class<*>? = value::class.java
+        while (clazz != null) {
+            adapters[clazz]?.let { return it(value) }
+            clazz = clazz.superclass
+        }
+
+        value::class.java.interfaces.forEach { iface ->
+            adapters[iface]?.let { return it(value) }
+        }
+
+        return null
+    }
+}
+
 private object H2TokenRetention {
     private data class Entry(val raw: Any?, val createdAtMs: Long)
 
@@ -59,11 +90,13 @@ private object H2TokenRetention {
 
 object LazyValueVisualizer {
     fun visualize(value: Any?, appendable: Boolean = false): String {
-        if (!isHeavyStructure(value)) return ValueVisualizer.visualize(value, appendable = appendable)
+        val adapted = (value as? Any)?.let { H2ValueRegistry.adapt(it) }
+        if (adapted == null && !isHeavyStructure(value)) return ValueVisualizer.visualize(value, appendable = appendable)
 
-        val wrapped = wrapForInspector(value, title = "value")
+        val rawValue = adapted?.value ?: value
+        val wrapped = wrapForInspector(rawValue, title = adapted?.title ?: "value")
         val token = "h2-${UUID.randomUUID()}"
-        H2TokenRetention.remember(token, value)
+        H2TokenRetention.remember(token, rawValue)
         val outlinerPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_OUTLINER_PATH, uid = token)
         val columnsPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_COLUMNS_PATH, uid = token)
         val embeddedPath = "$H2_EMBED_EXPLORER_PATH?root=$token"
@@ -74,7 +107,7 @@ object LazyValueVisualizer {
             append("' style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.35;display:flex;flex-direction:column;align-items:stretch;width:100%;height:100%;min-height:0;box-sizing:border-box;'>")
             append("<div style='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;'>")
             append("<span style='color:#9cf;'>")
-            append(escapeHtml(summary(value)))
+            append(escapeHtml(adapted?.summary ?: summary(rawValue)))
             append("</span>")
             append("<a href='")
             append(escapeHtmlAttr(outlinerPath))
@@ -672,5 +705,9 @@ private fun escapeHtmlAttr(text: String): String = escapeHtml(text)
 
 val Any?.h2: String
     get() = LazyValueVisualizer.visualize(this)
+
+inline fun <reified T : Any> registerH2Value(noinline adapter: (T) -> H2ValueSnapshot) {
+    H2ValueRegistry.register(T::class.java, adapter)
+}
 
 internal fun h2GetRawValue(token: String): Any? = H2TokenRetention.fetch(token)

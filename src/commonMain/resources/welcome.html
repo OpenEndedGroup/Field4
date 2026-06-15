@@ -47,7 +47,7 @@
         #welcome-root {
             position: relative;
             z-index: 1;
-            width: min(1100px, 96vw);
+            width: min(1180px, 96vw);
             margin: 18px auto;
             padding: 14px;
             display: flex;
@@ -55,6 +55,45 @@
             gap: 12px;
             height: calc(100vh - 36px);
             min-height: 0;
+        }
+
+        .welcome-layout {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+            gap: 12px 2px;
+            align-items: stretch;
+        }
+
+        .welcome-primary,
+        .welcome-side {
+            min-height: 0;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .welcome-primary {
+            grid-template-rows: auto minmax(0, 1fr);
+            align-content: stretch;
+        }
+
+        .welcome-side {
+            grid-template-rows: minmax(0, 1fr);
+            align-content: stretch;
+        }
+
+        .welcome-primary > .running-panel {
+            grid-row: 1;
+        }
+
+        .welcome-primary > .running-panel[hidden] + .list-panel {
+            grid-row: 1 / -1;
+        }
+
+        .welcome-primary > .running-panel:not([hidden]) + .list-panel {
+            grid-row: 2;
         }
 
         .panel {
@@ -233,7 +272,6 @@
 
         #current-workspace,
         #ai-settings-state,
-        #ai-settings-path,
         #preferences-state,
         #osc-settings-state {
             min-width: 0;
@@ -247,7 +285,7 @@
         .ai-settings-controls,
         .osc-settings-controls {
             display: grid;
-            grid-template-columns: 1fr auto auto;
+            grid-template-columns: 1fr;
             gap: 8px;
             align-items: center;
         }
@@ -256,13 +294,20 @@
             grid-template-columns: 1fr auto;
         }
 
+        .workspace-button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
         #workspace-path,
         #openai-platform-key,
         #osc-editor-port,
         #osc-editor-float-address,
         #osc-editor-launch-address,
         #osc-editor-stop-address,
-        #osc-editor-debounce-ms {
+        #osc-editor-debounce-ms,
+        #osc-editor-max-execution-ms {
             width: 100%;
             background: rgba(0, 0, 0, 0.8);
             color: var(--field-cyan);
@@ -279,7 +324,8 @@
         #osc-editor-float-address::placeholder,
         #osc-editor-launch-address::placeholder,
         #osc-editor-stop-address::placeholder,
-        #osc-editor-debounce-ms::placeholder {
+        #osc-editor-debounce-ms::placeholder,
+        #osc-editor-max-execution-ms::placeholder {
             font-size: 12px;
             color: rgba(164, 193, 210, 0.8);
         }
@@ -290,7 +336,8 @@
         #osc-editor-float-address:focus,
         #osc-editor-launch-address:focus,
         #osc-editor-stop-address:focus,
-        #osc-editor-debounce-ms:focus {
+        #osc-editor-debounce-ms:focus,
+        #osc-editor-max-execution-ms:focus {
             border-color: var(--field-cyan);
         }
 
@@ -314,23 +361,22 @@
             padding: 0;
             overflow: hidden;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(240px, 0.6fr) minmax(240px, 0.6fr) minmax(280px, 0.75fr);
+            grid-template-columns: minmax(0, 1fr);
+            align-content: start;
+            min-height: 0;
         }
 
         .changelog-panel details {
-            display: grid;
             min-width: 0;
-            align-content: start;
         }
 
         .changelog-panel details + details {
-            border-left: 1px solid rgba(0, 0, 0, 0.62);
+            border-top: 1px solid rgba(0, 0, 0, 0.62);
         }
 
         .changelog-panel summary {
             display: flex;
             align-items: baseline;
-            justify-content: space-between;
             gap: 12px;
             padding: 10px 12px;
             cursor: pointer;
@@ -347,15 +393,22 @@
             content: "+";
             color: var(--field-cyan);
             font-size: 14px;
+            margin-left: 0;
         }
 
         .changelog-panel details[open] summary::after {
             content: "-";
         }
 
+        .changelog-panel details[open] {
+            min-height: 0;
+        }
+
         .changelog-count {
             color: var(--field-text-soft);
             font-size: 11px;
+            margin-left: auto;
+            text-align: right;
         }
 
         .workspace-details-body,
@@ -368,29 +421,83 @@
         }
 
         .osc-settings-panel {
-            padding: 10px 12px;
             display: grid;
             gap: 8px;
         }
 
         .osc-settings-controls {
-            grid-template-columns: minmax(110px, 0.4fr) minmax(150px, 1fr) minmax(135px, 0.85fr) minmax(120px, 0.8fr) minmax(82px, 0.28fr) minmax(82px, 0.28fr);
+            grid-template-columns: 1fr;
         }
 
         .osc-settings-enable {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
+            display: grid;
+            gap: 5px;
             min-width: 0;
             color: var(--field-text);
             font-size: 12px;
-            white-space: nowrap;
         }
 
         .osc-settings-enable input {
             width: 14px;
             height: 14px;
             accent-color: var(--field-cyan);
+        }
+
+        .osc-settings-toggle-line {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 29px;
+        }
+
+        .osc-settings-field {
+            display: grid;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .osc-settings-field > label,
+        .osc-settings-field > span:first-child,
+        .osc-settings-enable > span {
+            color: var(--field-text-soft);
+            font-size: 10px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .osc-settings-learn-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .osc-learn-button {
+            width: 29px;
+            min-width: 29px;
+            height: 29px;
+            min-height: 29px;
+            padding: 0;
+            display: inline-grid;
+            place-items: center;
+            color: var(--field-text-soft);
+            white-space: nowrap;
+        }
+
+        .osc-learn-button svg {
+            width: 15px;
+            height: 15px;
+            display: block;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .osc-learn-button.listening,
+        .osc-learn-button:hover {
+            color: var(--field-cyan);
         }
 
         .preference-grid {
@@ -414,24 +521,9 @@
             accent-color: var(--field-cyan);
         }
 
-        #editor-stickiness {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            color: var(--field-cyan);
-            border: 1px solid rgba(72, 201, 255, 0.35);
-            border-radius: 7px;
-            padding: 6px 8px;
-            font: inherit;
-            font-size: 12px;
-        }
-
-        #editor-stickiness:focus {
-            border-color: var(--field-cyan);
-        }
-
         .preferences-controls {
             display: grid;
-            gap: 5px;
+            gap: 6px;
         }
 
         .preference-select-label {
@@ -439,8 +531,41 @@
             font-size: 11px;
         }
 
+        .segmented-control {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            overflow: hidden;
+            border: 1px solid rgba(72, 201, 255, 0.3);
+            border-radius: 7px;
+            background: rgba(0, 0, 0, 0.72);
+        }
+
+        .segmented-button {
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: var(--field-text-soft);
+            padding: 6px 5px;
+            min-width: 0;
+            font-size: 11px;
+        }
+
+        .segmented-button + .segmented-button {
+            border-left: 1px solid rgba(72, 201, 255, 0.18);
+        }
+
+        .segmented-button.active {
+            color: var(--field-cyan);
+            background: rgba(72, 201, 255, 0.1);
+        }
+
+        .segmented-button:hover {
+            color: var(--field-text);
+        }
+
         #changelog-list {
-            max-height: min(260px, 32vh);
+            max-height: min(360px, 42vh);
             overflow: auto;
             margin: 0;
             padding: 0 12px 12px;
@@ -452,16 +577,16 @@
         .changelog-entry {
             display: grid;
             grid-template-columns: auto 1fr auto;
-            gap: 10px;
+            gap: 7px;
             align-items: baseline;
-            padding: 5px 0;
+            padding: 3px 0;
             border-top: 1px solid rgba(0, 0, 0, 0.62);
-            font-size: 12px;
+            font-size: 10px;
         }
 
         .changelog-hash {
             color: var(--field-cyan);
-            font-size: 11px;
+            font-size: 9px;
         }
 
         .changelog-summary {
@@ -474,12 +599,11 @@
 
         .changelog-date {
             color: var(--field-text-soft);
-            font-size: 10px;
+            font-size: 9px;
             white-space: nowrap;
         }
 
         .list-panel {
-            flex: 1 1 220px;
             padding: 10px;
             display: grid;
             grid-template-rows: auto auto minmax(0, 1fr);
@@ -884,6 +1008,17 @@
                 height: calc(100vh - 20px);
             }
 
+            .welcome-layout {
+                grid-template-columns: 1fr;
+                align-items: start;
+                overflow: auto;
+            }
+
+            .welcome-primary,
+            .welcome-side {
+                min-height: auto;
+            }
+
             .hero {
                 grid-template-columns: 1fr;
                 gap: 8px;
@@ -906,7 +1041,6 @@
             }
 
             .changelog-panel details + details {
-                border-left: none;
                 border-top: 1px solid rgba(0, 0, 0, 0.62);
             }
 
@@ -923,7 +1057,6 @@
 
             #current-workspace,
             #ai-settings-state,
-            #ai-settings-path,
             #preferences-state,
             #osc-settings-state {
                 white-space: normal;
@@ -1027,117 +1160,159 @@
         <div id="create-status" aria-live="polite"></div>
     </section>
 
-    <section class="panel changelog-panel">
-        <details id="welcome-changelog">
-            <summary>
-                <span>Changelog</span>
-                <span id="changelog-count" class="changelog-count">loading</span>
-            </summary>
-            <ol id="changelog-list"></ol>
-        </details>
-        <details id="workspace-details">
-            <summary>
-                <span>Workspace</span>
-                <span class="changelog-count">advanced</span>
-            </summary>
-            <div class="workspace-details-body">
-                <div class="workspace-header">
-                    <span class="workspace-label">Current</span>
-                    <span id="current-workspace">loading</span>
+    <div class="welcome-layout">
+        <div class="welcome-primary">
+            <section class="panel running-panel" id="running-panel" hidden>
+                <div class="running-header">
+                    <span>Running now</span>
+                    <span id="running-count">0</span>
                 </div>
-                <div class="workspace-controls">
-                    <input id="workspace-path" type="text" autocomplete="off" list="workspace-options" placeholder="~/Documents/AFieldWorkspace">
-                    <datalist id="workspace-options"></datalist>
-                    <button id="default-workspace" type="button">Default</button>
-                    <button id="open-workspace" type="button">Open</button>
-                </div>
-                <div id="workspace-status" aria-live="polite"></div>
-            </div>
-        </details>
-        <details id="ai-settings-details">
-            <summary>
-                <span>AI</span>
-                <span id="ai-settings-summary" class="changelog-count">checking</span>
-            </summary>
-            <div class="ai-settings-body">
-                <div class="ai-settings-header">
-                    <span class="ai-settings-label">OpenAI</span>
-                    <span id="ai-settings-state">checking</span>
-                </div>
-                <div class="ai-settings-controls">
-                    <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
-                    <button id="save-openai-platform-key" type="button">Save</button>
-                </div>
-                <div class="ai-settings-header">
-                    <span class="ai-settings-label">Path</span>
-                    <span id="ai-settings-path"></span>
-                </div>
-                <div id="ai-settings-status" aria-live="polite"></div>
-            </div>
-        </details>
-        <details id="preferences-details">
-            <summary>
-                <span>Preferences</span>
-                <span id="preferences-summary" class="changelog-count">loading</span>
-            </summary>
-            <div class="preferences-body">
-                <div class="preference-grid">
-                    <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
-                    <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
-                    <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
-                    <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
-                    <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
-                    <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
-                    <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
-                </div>
-                <div class="preferences-controls">
-                    <label class="preference-select-label" for="editor-stickiness">editor property</label>
-                    <select id="editor-stickiness">
-                        <option value="none">not sticky</option>
-                        <option value="per-box">per-box</option>
-                        <option value="global">global</option>
-                    </select>
-                </div>
-                <div id="preferences-status" aria-live="polite"></div>
-            </div>
-        </details>
-    </section>
+                <div id="running-list"></div>
+            </section>
 
-    <section class="panel osc-settings-panel">
-        <div class="osc-settings-header">
-            <span class="osc-settings-label">OSC editor</span>
-            <span id="osc-settings-state">disabled</span>
+            <section class="panel list-panel">
+                <div class="search-row">
+                    <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search workspace text or document name">
+                    <div id="recent-search-status" aria-live="polite"></div>
+                </div>
+                <div class="list-header">
+                    <span>Search</span>
+                    <span id="doc-count">0</span>
+                </div>
+                <div id="recent-list"></div>
+            </section>
         </div>
-        <div class="osc-settings-controls">
-            <label class="osc-settings-enable"><input id="osc-editor-enabled" type="checkbox"> enabled</label>
-            <input id="osc-editor-float-address" type="text" autocomplete="off" placeholder="/field/float">
-            <input id="osc-editor-launch-address" type="text" autocomplete="off" placeholder="/field/launch">
-            <input id="osc-editor-stop-address" type="text" autocomplete="off" placeholder="/field/stop">
-            <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
-            <input id="osc-editor-debounce-ms" type="number" min="0" max="5000" step="25" autocomplete="off" placeholder="200">
-        </div>
-        <div id="osc-settings-status" aria-live="polite"></div>
-    </section>
 
-    <section class="panel running-panel" id="running-panel" hidden>
-        <div class="running-header">
-            <span>Running now</span>
-            <span id="running-count">0</span>
-        </div>
-        <div id="running-list"></div>
-    </section>
-
-    <section class="panel list-panel">
-        <div class="search-row">
-            <input id="recent-search" type="text" autocomplete="off" autofocus placeholder="search workspace text or document name">
-            <div id="recent-search-status" aria-live="polite"></div>
-        </div>
-        <div class="list-header">
-            <span>Search</span>
-            <span id="doc-count">0</span>
-        </div>
-        <div id="recent-list"></div>
-    </section>
+        <aside class="welcome-side">
+            <section class="panel changelog-panel" data-accordion>
+                <details id="welcome-changelog" open>
+                    <summary>
+                        <span>Changelog</span>
+                        <span id="changelog-count" class="changelog-count">loading</span>
+                    </summary>
+                    <ol id="changelog-list"></ol>
+                </details>
+                <details id="workspace-details">
+                    <summary>
+                        <span>Workspace</span>
+                        <span class="changelog-count">advanced</span>
+                    </summary>
+                    <div class="workspace-details-body">
+                        <div class="workspace-controls">
+                            <input id="workspace-path" type="text" autocomplete="off" list="workspace-options" placeholder="~/Documents/AFieldWorkspace">
+                            <datalist id="workspace-options"></datalist>
+                            <input id="workspace-directory-picker" type="file" webkitdirectory directory hidden>
+                            <div class="workspace-button-row">
+                                <button id="default-workspace" type="button">Default</button>
+                                <button id="choose-workspace" type="button">Open</button>
+                                <button id="open-workspace" type="button">Use</button>
+                            </div>
+                        </div>
+                        <div id="workspace-status" aria-live="polite"></div>
+                    </div>
+                </details>
+                <details id="ai-settings-details">
+                    <summary>
+                        <span>AI</span>
+                        <span id="ai-settings-summary" class="changelog-count">checking</span>
+                    </summary>
+                    <div class="ai-settings-body">
+                        <div class="ai-settings-header">
+                            <span class="ai-settings-label">OpenAI</span>
+                            <span id="ai-settings-state">checking</span>
+                        </div>
+                        <div class="ai-settings-controls">
+                            <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
+                            <button id="save-openai-platform-key" type="button">Save</button>
+                        </div>
+                        <div id="ai-settings-status" aria-live="polite"></div>
+                    </div>
+                </details>
+                <details id="preferences-details">
+                    <summary>
+                        <span>Preferences</span>
+                        <span id="preferences-summary" class="changelog-count">loading</span>
+                    </summary>
+                    <div class="preferences-body">
+                        <div class="preference-grid">
+                            <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
+                            <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
+                            <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
+                            <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
+                            <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
+                            <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
+                            <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
+                        </div>
+                        <div class="preferences-controls">
+                            <span class="preference-select-label">track edited property</span>
+                            <div class="segmented-control" role="group" aria-label="track edited property">
+                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="none" aria-pressed="true">never</button>
+                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="per-box" aria-pressed="false">per-box</button>
+                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
+                            </div>
+                        </div>
+                        <div id="preferences-status" aria-live="polite"></div>
+                    </div>
+                </details>
+                <details id="osc-settings-details">
+                    <summary>
+                        <span>OSC editor</span>
+                        <span id="osc-settings-state" class="changelog-count">disabled</span>
+                    </summary>
+                    <div class="osc-settings-body osc-settings-panel">
+                        <div class="osc-settings-controls">
+                            <label class="osc-settings-enable">
+                                <span class="osc-settings-toggle-line"><input id="osc-editor-enabled" type="checkbox"> enabled</span>
+                            </label>
+                            <div class="osc-settings-field">
+                                <label for="osc-editor-float-address">float address</label>
+                                <span class="osc-settings-learn-row">
+                                    <input id="osc-editor-float-address" type="text" autocomplete="off" placeholder="/field/float">
+                                    <button class="osc-learn-button" type="button" data-osc-learn="osc-editor-float-address" aria-label="Learn float address" title="Learn float address">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5-9 4.5L3 8.5Z"></path><path d="M7 11v4.5c1.6 1.2 3.3 1.8 5 1.8s3.4-.6 5-1.8V11"></path><path d="M20 9.5v5"></path></svg>
+                                    </button>
+                                </span>
+                            </div>
+                            <div class="osc-settings-field">
+                                <label for="osc-editor-launch-address">launch address</label>
+                                <span class="osc-settings-learn-row">
+                                    <input id="osc-editor-launch-address" type="text" autocomplete="off" placeholder="/field/launch">
+                                    <button class="osc-learn-button" type="button" data-osc-learn="osc-editor-launch-address" aria-label="Learn launch address" title="Learn launch address">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5-9 4.5L3 8.5Z"></path><path d="M7 11v4.5c1.6 1.2 3.3 1.8 5 1.8s3.4-.6 5-1.8V11"></path><path d="M20 9.5v5"></path></svg>
+                                    </button>
+                                </span>
+                            </div>
+                            <div class="osc-settings-field">
+                                <label for="osc-editor-stop-address">stop address</label>
+                                <span class="osc-settings-learn-row">
+                                    <input id="osc-editor-stop-address" type="text" autocomplete="off" placeholder="/field/stop">
+                                    <button class="osc-learn-button" type="button" data-osc-learn="osc-editor-stop-address" aria-label="Learn stop address" title="Learn stop address">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5-9 4.5L3 8.5Z"></path><path d="M7 11v4.5c1.6 1.2 3.3 1.8 5 1.8s3.4-.6 5-1.8V11"></path><path d="M20 9.5v5"></path></svg>
+                                    </button>
+                                </span>
+                            </div>
+                            <label class="osc-settings-field">
+                                <span>UDP port</span>
+                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
+                            </label>
+                            <label class="osc-settings-field">
+                                <span>debounce ms</span>
+                                <input id="osc-editor-debounce-ms" type="number" min="0" max="5000" step="25" autocomplete="off" placeholder="200">
+                            </label>
+                            <label class="osc-settings-field">
+                                <span>max exec ms</span>
+                                <input id="osc-editor-max-execution-ms" type="number" min="0" max="60000" step="25" autocomplete="off" placeholder="750">
+                            </label>
+                            <label class="osc-settings-enable">
+                                <span class="osc-settings-toggle-line"><input id="osc-editor-delta-mode" type="checkbox"> delta mode</span>
+                            </label>
+                        </div>
+                        <div id="osc-settings-status" aria-live="polite"></div>
+                    </div>
+                </details>
+            </section>
+        </aside>
+    </div>
 </main>
 
 <div id="welcome-context-menu" aria-live="polite"></div>
@@ -1182,9 +1357,12 @@
             oscEditorFloatAddress: "/field/float",
             oscEditorLaunchAddress: "/field/launch",
             oscEditorStopAddress: "/field/stop",
-            oscEditorDebounceMs: 200
+            oscEditorDebounceMs: 200,
+            oscEditorMaxExecutionMs: 750,
+            oscEditorDeltaMode: false
         },
-        savingPreferences: false
+        savingPreferences: false,
+        learningOscField: ""
     };
     let searchController = null;
     let searchRequestSerial = 0;
@@ -1297,16 +1475,13 @@
     function renderAiSettings() {
         const summary = document.getElementById("ai-settings-summary");
         const stateNode = document.getElementById("ai-settings-state");
-        const pathNode = document.getElementById("ai-settings-path");
         const input = document.getElementById("openai-platform-key");
         const button = document.getElementById("save-openai-platform-key");
         const settings = state.aiSettings || {};
         const configured = !!settings.hasOpenAiPlatformKey;
-        const source = settings.source || "";
 
         if (summary) summary.textContent = configured ? "configured" : "missing key";
-        if (stateNode) stateNode.textContent = configured ? `configured${source ? ` (${source})` : ""}` : "missing OPENAI_PLATFORM_KEY";
-        if (pathNode) pathNode.textContent = settings.configPath || "";
+        if (stateNode) stateNode.textContent = configured ? "configured" : "missing OPENAI_PLATFORM_KEY";
         if (input) input.disabled = state.savingAiSettings;
         if (button) button.disabled = state.savingAiSettings;
     }
@@ -1321,7 +1496,7 @@
     function renderPreferences() {
         const prefs = state.preferences || {};
         const summary = document.getElementById("preferences-summary");
-        const stickiness = document.getElementById("editor-stickiness");
+        const stickiness = prefs.editorPropertyStickiness || "none";
         const enabledCount = [
             prefs.profiling,
             prefs.logShadercSource,
@@ -1346,9 +1521,11 @@
             if (!input) return;
             input.checked = !!prefs[key];
         });
-        if (stickiness) {
-            stickiness.value = prefs.editorPropertyStickiness || "none";
-        }
+        document.querySelectorAll("[data-stickiness-value]").forEach((button) => {
+            const active = button.getAttribute("data-stickiness-value") === stickiness;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
         if (summary) summary.textContent = `${enabledCount} enabled`;
     }
 
@@ -1368,10 +1545,14 @@
         const launchAddress = document.getElementById("osc-editor-launch-address");
         const stopAddress = document.getElementById("osc-editor-stop-address");
         const debounce = document.getElementById("osc-editor-debounce-ms");
+        const maxExecution = document.getElementById("osc-editor-max-execution-ms");
+        const deltaMode = document.getElementById("osc-editor-delta-mode");
+        const learnButtons = document.querySelectorAll("[data-osc-learn]");
 
         if (stateNode) {
+            const mode = prefs.oscEditorDeltaMode ? "delta" : "absolute";
             const label = prefs.oscEditorEnabled
-                ? `UDP ${prefs.oscEditorPort || 9000} · ${prefs.oscEditorFloatAddress || "/field/float"}`
+                ? `UDP ${prefs.oscEditorPort || 9000} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
                 : "disabled";
             stateNode.textContent = label;
         }
@@ -1381,9 +1562,18 @@
         if (launchAddress) launchAddress.value = prefs.oscEditorLaunchAddress || "/field/launch";
         if (stopAddress) stopAddress.value = prefs.oscEditorStopAddress || "/field/stop";
         if (debounce) debounce.value = String(prefs.oscEditorDebounceMs ?? 200);
+        if (maxExecution) maxExecution.value = String(prefs.oscEditorMaxExecutionMs ?? 750);
+        if (deltaMode) deltaMode.checked = !!prefs.oscEditorDeltaMode;
 
-        [enabled, port, floatAddress, launchAddress, stopAddress, debounce].forEach((node) => {
+        [enabled, port, floatAddress, launchAddress, stopAddress, debounce, maxExecution, deltaMode].forEach((node) => {
             if (node) node.disabled = state.savingPreferences;
+        });
+        learnButtons.forEach((button) => {
+            const target = button.getAttribute("data-osc-learn") || "";
+            const active = state.learningOscField === target;
+            button.disabled = !!state.learningOscField || state.savingPreferences;
+            button.classList.toggle("listening", active);
+            button.setAttribute("aria-label", active ? "Listening for OSC address" : (button.getAttribute("title") || "Learn OSC address"));
         });
     }
 
@@ -1396,6 +1586,7 @@
 
     function readPreferencesForm() {
         const parsedDebounce = Number.parseInt(document.getElementById("osc-editor-debounce-ms")?.value || "200", 10);
+        const parsedMaxExecution = Number.parseInt(document.getElementById("osc-editor-max-execution-ms")?.value || "750", 10);
         return {
             profiling: !!document.getElementById("pref-profiling")?.checked,
             logShadercSource: !!document.getElementById("pref-log-shaderc-source")?.checked,
@@ -1404,13 +1595,15 @@
             openXRDebugInput: !!document.getElementById("pref-openxr-debug-input")?.checked,
             validate: !!document.getElementById("pref-validate")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
-            editorPropertyStickiness: document.getElementById("editor-stickiness")?.value || "none",
+            editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
             oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000,
             oscEditorFloatAddress: String(document.getElementById("osc-editor-float-address")?.value || "/field/float").trim(),
             oscEditorLaunchAddress: String(document.getElementById("osc-editor-launch-address")?.value || "/field/launch").trim(),
             oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
-            oscEditorDebounceMs: Number.isFinite(parsedDebounce) ? parsedDebounce : 200
+            oscEditorDebounceMs: Number.isFinite(parsedDebounce) ? parsedDebounce : 200,
+            oscEditorMaxExecutionMs: Number.isFinite(parsedMaxExecution) ? parsedMaxExecution : 750,
+            oscEditorDeltaMode: !!document.getElementById("osc-editor-delta-mode")?.checked
         };
     }
 
@@ -2150,6 +2343,109 @@
         }
     }
 
+    function workspacePathFromDialogResult(result) {
+        if (!result) return "";
+        if (typeof result === "string") return result;
+        if (Array.isArray(result)) return String(result[0] || "");
+        if (result.canceled) return "";
+        if (typeof result.path === "string") return result.path;
+        if (typeof result.workspace === "string") return result.workspace;
+        if (Array.isArray(result.filePaths)) return String(result.filePaths[0] || "");
+        return "";
+    }
+
+    async function chooseWorkspaceViaElectronBridge() {
+        const candidates = [
+            window.field4?.selectWorkspaceDirectory,
+            window.field4?.chooseWorkspaceDirectory,
+            window.field4?.selectDirectory,
+            window.fieldElectron?.selectWorkspaceDirectory,
+            window.fieldElectron?.selectDirectory,
+            window.electronAPI?.selectWorkspaceDirectory,
+            window.electronAPI?.selectDirectory
+        ].filter((fn) => typeof fn === "function");
+
+        for (const fn of candidates) {
+            const selected = workspacePathFromDialogResult(await fn());
+            if (selected) return selected;
+        }
+
+        const electron = typeof window.require === "function"
+            ? (() => {
+                try {
+                    return window.require("electron");
+                } catch (_) {
+                    return null;
+                }
+            })()
+            : null;
+
+        if (electron?.ipcRenderer?.invoke) {
+            for (const channel of ["select-workspace-directory", "select-directory", "show-open-dialog"]) {
+                try {
+                    const selected = workspacePathFromDialogResult(await electron.ipcRenderer.invoke(channel, {
+                        properties: ["openDirectory", "createDirectory"]
+                    }));
+                    if (selected) return selected;
+                } catch (_) {
+                }
+            }
+        }
+
+        if (electron?.remote?.dialog?.showOpenDialog) {
+            const selected = workspacePathFromDialogResult(await electron.remote.dialog.showOpenDialog({
+                properties: ["openDirectory", "createDirectory"]
+            }));
+            if (selected) return selected;
+        }
+
+        return "";
+    }
+
+    function chooseWorkspaceViaDirectoryInput() {
+        const input = document.getElementById("workspace-directory-picker");
+        if (!input) return Promise.resolve("");
+        return new Promise((resolve) => {
+            const finish = () => {
+                input.removeEventListener("change", finish);
+                const file = input.files?.[0];
+                input.value = "";
+                if (!file || !file.path) {
+                    resolve("");
+                    return;
+                }
+                const fullPath = String(file.path);
+                const relativePath = String(file.webkitRelativePath || file.name || "");
+                if (relativePath && fullPath.endsWith(relativePath)) {
+                    resolve(fullPath.slice(0, fullPath.length - relativePath.length).replace(/[\\/]+$/, ""));
+                    return;
+                }
+                resolve(fullPath.replace(/[\\/][^\\/]*$/, ""));
+            };
+            input.addEventListener("change", finish, { once: true });
+            input.click();
+        });
+    }
+
+    async function chooseWorkspaceDirectory() {
+        const input = document.getElementById("workspace-path");
+        setWorkspaceStatus("Opening directory chooser...");
+
+        try {
+            const selected = await chooseWorkspaceViaElectronBridge() || await chooseWorkspaceViaDirectoryInput();
+            if (!selected) {
+                setWorkspaceStatus("This browser cannot expose a folder path here. Paste or type the workspace path.");
+                return;
+            }
+            if (input) input.value = selected;
+            rememberWorkspace(selected);
+            setWorkspaceStatus("Workspace path selected. Use it when ready.");
+        } catch (error) {
+            console.error("Failed to choose workspace directory", error);
+            setWorkspaceStatus(error?.message || "Could not choose a workspace directory.", true);
+        }
+    }
+
     async function saveAiSettings() {
         const input = document.getElementById("openai-platform-key");
         const key = String(input?.value || "").trim();
@@ -2190,6 +2486,62 @@
         }
     }
 
+    async function learnOscAddress(targetId) {
+        const target = document.getElementById(targetId);
+        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000;
+        if (!target) return;
+        const preferenceKeys = {
+            "osc-editor-float-address": "oscEditorFloatAddress",
+            "osc-editor-launch-address": "oscEditorLaunchAddress",
+            "osc-editor-stop-address": "oscEditorStopAddress"
+        };
+        const addressIds = [
+            "osc-editor-float-address",
+            "osc-editor-launch-address",
+            "osc-editor-stop-address"
+        ];
+        const ignoreAddresses = addressIds
+            .filter((id) => id !== targetId)
+            .map((id) => String(document.getElementById(id)?.value || "").trim())
+            .filter(Boolean);
+
+        clearTimeout(oscSettingsSaveTimer);
+        oscSettingsSaveTimer = null;
+        state.learningOscField = targetId;
+        renderOscSettings();
+        setOscSettingsStatus("Listening for the next OSC address...");
+
+        try {
+            const response = await fetch("/api/osc-editor-learn", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ port, timeoutMs: 10000, ignoreAddresses })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            target.value = payload.address || "";
+            const preferenceKey = preferenceKeys[targetId];
+            if (preferenceKey) {
+                state.preferences = {
+                    ...(state.preferences || {}),
+                    [preferenceKey]: target.value
+                };
+            }
+            setOscSettingsStatus(payload.message || `Learned ${target.value}.`);
+            queueOscSettingsSave(0);
+        } catch (error) {
+            console.error("Failed to learn OSC address", error);
+            setOscSettingsStatus(error?.message || "Could not learn OSC address.", true);
+        } finally {
+            state.learningOscField = "";
+            renderOscSettings();
+        }
+    }
+
     async function savePreferences(statusTarget = "preferences", options = {}) {
         const setStatus = statusTarget === "osc" ? setOscSettingsStatus : setPreferencesStatus;
         const background = !!options.background;
@@ -2219,7 +2571,7 @@
                 window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
             } catch (_) {
             }
-            setStatus(statusTarget === "osc" ? "OSC settings saved." : (payload.message || "Preferences saved."));
+            setStatus(statusTarget === "osc" ? "" : (payload.message || "Preferences saved."));
         } catch (error) {
             if (saveSerial !== preferencesSaveSerial) return;
             console.error("Failed to save preferences", error);
@@ -2239,6 +2591,19 @@
             oscSettingsSaveTimer = null;
             savePreferences("osc", { background: true });
         }, delay);
+    }
+
+    function installDisclosureAccordions() {
+        document.querySelectorAll("[data-accordion]").forEach((accordion) => {
+            accordion.querySelectorAll("details").forEach((details) => {
+                details.addEventListener("toggle", () => {
+                    if (!details.open) return;
+                    accordion.querySelectorAll("details[open]").forEach((other) => {
+                        if (other !== details) other.open = false;
+                    });
+                });
+            });
+        });
     }
 
     function installDocumentListHandlers(listNode) {
@@ -2318,18 +2683,24 @@
         const shutdownButton = document.getElementById("shutdown-instance");
         const workspaceInput = document.getElementById("workspace-path");
         const defaultWorkspaceButton = document.getElementById("default-workspace");
+        const chooseWorkspaceButton = document.getElementById("choose-workspace");
         const openWorkspaceButton = document.getElementById("open-workspace");
         const openAiKeyInput = document.getElementById("openai-platform-key");
         const saveOpenAiKeyButton = document.getElementById("save-openai-platform-key");
-        const editorStickiness = document.getElementById("editor-stickiness");
+        const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
         const oscInputs = [
             document.getElementById("osc-editor-enabled"),
             document.getElementById("osc-editor-port"),
             document.getElementById("osc-editor-float-address"),
             document.getElementById("osc-editor-launch-address"),
             document.getElementById("osc-editor-stop-address"),
-            document.getElementById("osc-editor-debounce-ms")
+            document.getElementById("osc-editor-debounce-ms"),
+            document.getElementById("osc-editor-max-execution-ms"),
+            document.getElementById("osc-editor-delta-mode")
         ].filter(Boolean);
+        const oscLearnButtons = document.querySelectorAll("[data-osc-learn]");
+
+        installDisclosureAccordions();
 
         const runCreate = () => {
             const name = nameInput.value.trim();
@@ -2375,6 +2746,10 @@
             switchWorkspace(path);
         });
 
+        chooseWorkspaceButton?.addEventListener("click", () => {
+            chooseWorkspaceDirectory();
+        });
+
         workspaceInput?.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
             event.preventDefault();
@@ -2404,13 +2779,21 @@
             });
         });
 
-        editorStickiness?.addEventListener("change", () => {
-            setPreferencesStatus("");
-            try {
-                window.localStorage.setItem("field4.editorPropertyStickiness", editorStickiness.value || "none");
-            } catch (_) {
-            }
-            savePreferences();
+        stickinessButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const value = button.getAttribute("data-stickiness-value") || "none";
+                state.preferences = {
+                    ...(state.preferences || {}),
+                    editorPropertyStickiness: value
+                };
+                renderPreferences();
+                setPreferencesStatus("");
+                try {
+                    window.localStorage.setItem("field4.editorPropertyStickiness", value);
+                } catch (_) {
+                }
+                savePreferences();
+            });
         });
 
         oscInputs.forEach((input) => {
@@ -2426,6 +2809,15 @@
                 clearTimeout(oscSettingsSaveTimer);
                 oscSettingsSaveTimer = null;
                 savePreferences("osc", { background: true });
+            });
+        });
+
+        oscLearnButtons.forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const target = button.getAttribute("data-osc-learn");
+                if (target) learnOscAddress(target);
             });
         });
 

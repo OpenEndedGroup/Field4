@@ -1,7 +1,9 @@
 package afield.four
 
 import afield.RunsAt
+import afield.H2ValueSnapshot
 import afield.newRoot
+import afield.registerH2Value
 import afield.registerValuePrinter
 import afield.four.buffers.*
 import afield.four.device.*
@@ -29,6 +31,8 @@ import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
+private const val H2_FRAMEBUFFERGROUP_MAX_FLOATS = 65_536
+
 // ── tiny helpers ──────────────────────────────────────────────────────
 
 private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -39,6 +43,58 @@ private fun formatBytes(bytes: Long): String = when {
     bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
     bytes < 1024 * 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024))
     else -> "%.2f GB".format(bytes / (1024.0 * 1024 * 1024))
+}
+
+private fun frameBufferGroupH2Snapshot(fb: FrameBufferGroup): H2ValueSnapshot {
+    if (fb.buffers.isEmpty()) {
+        return H2ValueSnapshot(
+            value = FloatArray(0),
+            summary = "FrameBufferGroup (empty)",
+            title = "FrameBufferGroup floats"
+        )
+    }
+
+    val buffer = fb.getLastWritten()
+    val totalFloats = (buffer.requestedSize / Float.SIZE_BYTES)
+        .coerceAtMost(Int.MAX_VALUE.toLong())
+        .toInt()
+    val snapshotFloats = minOf(totalFloats, H2_FRAMEBUFFERGROUP_MAX_FLOATS)
+    val snapshot = FloatArray(snapshotFloats)
+
+    val summary = buildString {
+        append("FrameBufferGroup read ")
+        append(snapshotFloats)
+        append("/")
+        append(totalFloats)
+        append(" floats")
+        if (snapshotFloats < totalFloats) append(" (truncated)")
+        append(" | ")
+        append(formatBytes(buffer.requestedSize))
+        append(" | n=")
+        append(fb.n)
+        append(" | lastWritten=")
+        append(if (fb.lastWritten < 0) "none" else fb.lastWritten.toString())
+    }
+
+    return try {
+        if (snapshotFloats > 0) {
+            buffer.mapAndRead {
+                position(0)
+                get(snapshot, 0, minOf(snapshot.size, remaining()))
+            }
+        }
+        H2ValueSnapshot(
+            value = snapshot,
+            summary = summary,
+            title = "FrameBufferGroup floats"
+        )
+    } catch (e: Throwable) {
+        H2ValueSnapshot(
+            value = listOf("error" to (e.message ?: e::class.java.simpleName)),
+            summary = "FrameBufferGroup read failed: ${e.message ?: e::class.java.simpleName}",
+            title = "FrameBufferGroup read error"
+        )
+    }
 }
 
 private fun hex(v: Long) = "0x${java.lang.Long.toHexString(v)}"
@@ -554,6 +610,10 @@ fun registerFourVisualizers() {
     }
 
     // ── FrameBufferGroup ─────────────────────────────────────────────
+    registerH2Value<FrameBufferGroup> { fb ->
+        frameBufferGroupH2Snapshot(fb)
+    }
+
     registerValuePrinter<FrameBufferGroup> { fb ->
         val sizes = fb.buffers.map { formatBytes(it.requestedSize) }
         table(

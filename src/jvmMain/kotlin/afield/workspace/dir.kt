@@ -70,7 +70,9 @@ data class FieldPreferences(
     val oscEditorFloatAddress: String = "/field/float",
     val oscEditorLaunchAddress: String = "/field/launch",
     val oscEditorStopAddress: String = "/field/stop",
-    val oscEditorDebounceMs: Int = 200
+    val oscEditorDebounceMs: Int = 200,
+    val oscEditorMaxExecutionMs: Int = 750,
+    val oscEditorDeltaMode: Boolean = false
 )
 
 @Serializable
@@ -82,6 +84,19 @@ data class FieldPreferencesUpdateRequest(
 data class FieldPreferencesUpdateResponse(
     val preferences: FieldPreferences,
     val message: String
+)
+
+@Serializable
+data class OscEditorLearnRequest(
+    val port: Int,
+    val timeoutMs: Long = 10_000,
+    val ignoreAddresses: List<String> = emptyList()
+)
+
+@Serializable
+data class OscEditorLearnResponse(
+    val address: String,
+    val message: String = ""
 )
 
 @Serializable

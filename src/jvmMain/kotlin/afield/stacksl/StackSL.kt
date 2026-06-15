@@ -86,6 +86,8 @@ data class StackSLCompileResult(
     val ok: Boolean get() = diagnostics.none { it.severity == StackSLSeverity.ERROR }
 }
 
+private data class StackSLArityVariant(val base: String, val arity: Int?, val all: Boolean = false)
+
 object StackSLCompiler {
     fun compile(source: String, options: StackSLCompileOptions = StackSLCompileOptions()): StackSLCompileResult {
         val diagnostics = mutableListOf<StackSLDiagnostic>()
@@ -459,7 +461,11 @@ private class FunctionCompiler(
 
     private fun process(token: Token) {
         val raw = token.text
-        val word = raw.lowercase(Locale.US)
+        val rawWord = raw.lowercase(Locale.US)
+        val arityVariant = parseStackSLArityVariant(rawWord)
+        val word = arityVariant?.base ?: rawWord
+        val requestedArity = arityVariant?.arity
+        val requestedAll = arityVariant?.all == true
 
         parseTopModifier(raw)?.let {
             applyTopModifier(it, token)
@@ -491,12 +497,12 @@ private class FunctionCompiler(
             return
         }
 
-        namedColors[word]?.let {
+        namedColors[rawWord]?.let {
             push(leaf(it, token, "color"))
             return
         }
 
-        parseSwizzle(word)?.let { swizzle ->
+        parseSwizzle(rawWord)?.let { swizzle ->
             val value = pop(token, "swizzle source")
             push(expr(swizzleExpression(ref(value), swizzle), listOf(value), token, "swizzle .$swizzle"))
             return
@@ -540,12 +546,32 @@ private class FunctionCompiler(
                 "vec4(dot(${ref(it)}.rgb, vec3(0.2126, 0.7152, 0.0722)))"
             }
             "average", "avg", "mean" -> {
-                requiredHelpers += "reduce"
-                unary(token, "average") { "vec4(${options.prefix}_avg4(${ref(it)}))" }
+                if (arityVariant != null) {
+                    val args = consumeBlastArgs(token, raw, requestedArity, requestedAll) ?: return
+                    push(expr(blastMeanExpression(args), args, token, "$raw mean"))
+                } else {
+                    requiredHelpers += "reduce"
+                    unary(token, "average") { "vec4(${options.prefix}_avg4(${ref(it)}))" }
+                }
             }
             "median", "med" -> {
-                requiredHelpers += "reduce"
-                unary(token, "median") { "vec4(${options.prefix}_median4(${ref(it)}))" }
+                if (arityVariant != null) {
+                    val args = consumeBlastArgs(token, raw, requestedArity, requestedAll) ?: return
+                    push(blastMedian(token, raw, args))
+                } else {
+                    requiredHelpers += "reduce"
+                    unary(token, "median") { "vec4(${options.prefix}_median4(${ref(it)}))" }
+                }
+            }
+            "sort" -> {
+                val args = consumeBlastArgs(token, raw, requestedArity, requestedAll || arityVariant == null) ?: return
+                blastSort(token, raw, args).forEach(::push)
+            }
+            "intermediate" -> {
+                val args = consumeBlastArgs(token, raw, requestedArity, requestedAll || arityVariant == null) ?: return
+                args.zipWithNext().forEachIndexed { index, (a, b) ->
+                    push(expr("((${ref(a)} + ${ref(b)}) * vec4(0.5))", listOf(a, b), token, "$raw midpoint $index"))
+                }
             }
             "sat", "saturate", "clamp" -> unary(token, "saturate") {
                 "clamp(${ref(it)}, vec4(0.0), vec4(1.0))"
@@ -593,11 +619,18 @@ private class FunctionCompiler(
                 unary(token, "component min") { "vec4(${options.prefix}_min4(${ref(it)}))" }
             }
             "min" -> {
-                if (shouldReduceTop()) {
-                    requiredHelpers += "reduce"
-                    unary(token, "component min") { "vec4(${options.prefix}_min4(${ref(it)}))" }
-                } else {
-                    binary(token, "min") { a, b -> "min(${ref(a)}, ${ref(b)})" }
+                if (requestedAll || (requestedArity ?: 0) >= 3) {
+                    val args = consumeBlastArgs(token, raw, requestedArity, requestedAll) ?: return
+                    push(expr(blastReduceExpression(args, "min"), args, token, "$raw blast min"))
+                    return
+                }
+                when (requestedArity ?: if (shouldReduceTop()) 1 else 2) {
+                    1 -> {
+                        requiredHelpers += "reduce"
+                        unary(token, "component min") { "vec4(${options.prefix}_min4(${ref(it)}))" }
+                    }
+                    2 -> binary(token, "min") { a, b -> "min(${ref(a)}, ${ref(b)})" }
+                    else -> unsupportedArity(token, raw, "min", requestedArity, setOf(1, 2))
                 }
             }
             "vmax", "maximum" -> {
@@ -605,11 +638,18 @@ private class FunctionCompiler(
                 unary(token, "component max") { "vec4(${options.prefix}_max4(${ref(it)}))" }
             }
             "max" -> {
-                if (shouldReduceTop()) {
-                    requiredHelpers += "reduce"
-                    unary(token, "component max") { "vec4(${options.prefix}_max4(${ref(it)}))" }
-                } else {
-                    binary(token, "max") { a, b -> "max(${ref(a)}, ${ref(b)})" }
+                if (requestedAll || (requestedArity ?: 0) >= 3) {
+                    val args = consumeBlastArgs(token, raw, requestedArity, requestedAll) ?: return
+                    push(expr(blastReduceExpression(args, "max"), args, token, "$raw blast max"))
+                    return
+                }
+                when (requestedArity ?: if (shouldReduceTop()) 1 else 2) {
+                    1 -> {
+                        requiredHelpers += "reduce"
+                        unary(token, "component max") { "vec4(${options.prefix}_max4(${ref(it)}))" }
+                    }
+                    2 -> binary(token, "max") { a, b -> "max(${ref(a)}, ${ref(b)})" }
+                    else -> unsupportedArity(token, raw, "max", requestedArity, setOf(1, 2))
                 }
             }
             "atan2" -> binary(token, "atan2") { y, x -> "atan(${ref(y)}, ${ref(x)})" }
@@ -654,188 +694,180 @@ private class FunctionCompiler(
             }
             "pulse" -> {
                 requiredHelpers += "pulse"
-                val (x, center, width) = if (stack.size < 3) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "pulse x", "input", wrap = false),
-                        optionalDefault(token, "pulse center", "vec4(0.5)"),
-                        optionalDefault(token, "pulse width", "vec4(0.08)")
-                    )
-                } else {
-                    val width = pop(token, "pulse width", "vec4(0.08)")
-                    val center = pop(token, "pulse center", "vec4(0.5)")
-                    val x = pop(token, "pulse x", "input")
-                    listOf(x, center, width)
-                }
-                push(expr("${options.prefix}_pulse(${ref(x)}, ${ref(center)}, ${ref(width)})", listOf(x, center, width), token, "pulse"))
+                        StackSLArg("x", "input"),
+                        StackSLArg("center", "vec4(0.5)"),
+                        StackSLArg("width", "vec4(0.08)")
+                    ),
+                    requestedArity ?: if (stack.size < 3) 1 else 3
+                ) ?: return
+                val (x, center, width) = args
+                push(expr("${options.prefix}_pulse(${ref(x)}, ${ref(center)}, ${ref(width)})", args, token, "pulse"))
             }
             "fm" -> {
                 requiredHelpers += "fm"
-                val (phase, carrier, modulator) = if (stack.size < 3) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "fm phase", "input", wrap = false),
-                        optionalDefault(token, "fm carrier", "input"),
-                        optionalDefault(token, "fm modulator", "vec4(1.0)")
-                    )
-                } else {
-                    val modulator = pop(token, "fm modulator", "vec4(1.0)")
-                    val carrier = pop(token, "fm carrier", "input")
-                    val phase = pop(token, "fm phase", "input")
-                    listOf(phase, carrier, modulator)
-                }
-                push(expr("${options.prefix}_fm(${ref(phase)}, ${ref(carrier)}, ${ref(modulator)})", listOf(phase, carrier, modulator), token, "fm"))
+                        StackSLArg("phase", "input"),
+                        StackSLArg("carrier", "input"),
+                        StackSLArg("modulator", "vec4(1.0)")
+                    ),
+                    requestedArity ?: if (stack.size < 3) 1 else 3
+                ) ?: return
+                val (phase, carrier, modulator) = args
+                push(expr("${options.prefix}_fm(${ref(phase)}, ${ref(carrier)}, ${ref(modulator)})", args, token, "fm"))
             }
             "fmchirp" -> {
                 requiredHelpers += "fmchirp"
-                val params = if (stack.size >= 9) {
-                    val outputPow = pop(token, "fmchirp outputPow", "vec4(1.0)", wrap = false)
-                    val inputPow = pop(token, "fmchirp inputPow", "vec4(1.0)", wrap = false)
-                    val modChirp = pop(token, "fmchirp modChirp", "vec4(0.0)", wrap = false)
-                    val chirp = pop(token, "fmchirp chirp", "vec4(0.0)", wrap = false)
-                    val phase = pop(token, "fmchirp phase", "vec4(0.0)", wrap = false)
-                    val modPhase = pop(token, "fmchirp modPhase", "vec4(0.0)", wrap = false)
-                    val mod = pop(token, "fmchirp mod", "vec4(0.0)", wrap = false)
-                    val freq = pop(token, "fmchirp freq", "vec4(0.0)", wrap = false)
-                    val x = pop(token, "fmchirp x", "input", wrap = false)
-                    listOf(x, freq, mod, modPhase, phase, chirp, modChirp, inputPow, outputPow)
-                } else if (stack.size == 8) {
-                    val outputPow = pop(token, "fmchirp outputPow", "vec4(1.0)", wrap = false)
-                    val inputPow = pop(token, "fmchirp inputPow", "vec4(1.0)", wrap = false)
-                    val modChirp = pop(token, "fmchirp modChirp", "vec4(0.0)", wrap = false)
-                    val chirp = pop(token, "fmchirp chirp", "vec4(0.0)", wrap = false)
-                    val phase = pop(token, "fmchirp phase", "vec4(0.0)", wrap = false)
-                    val modPhase = pop(token, "fmchirp modPhase", "vec4(0.0)", wrap = false)
-                    val mod = pop(token, "fmchirp mod", "vec4(0.0)", wrap = false)
-                    val freq = pop(token, "fmchirp freq", "vec4(0.0)", wrap = false)
-                    val x = inputExpr(token, "fmchirp implicit x") { "vec4($it.x)" }
-                    listOf(x, freq, mod, modPhase, phase, chirp, modChirp, inputPow, outputPow)
+                val arity = requestedArity ?: if (stack.size < 9) 1 else 9
+                val params = if (arity == 8) {
+                    val args = consumeArityArgs(
+                        token,
+                        raw,
+                        listOf(
+                            StackSLArg("freq", "vec4(0.0)"),
+                            StackSLArg("mod", "vec4(0.0)"),
+                            StackSLArg("modPhase", "vec4(0.0)"),
+                            StackSLArg("phase", "vec4(0.0)"),
+                            StackSLArg("chirp", "vec4(0.0)"),
+                            StackSLArg("modChirp", "vec4(0.0)"),
+                            StackSLArg("inputPow", "vec4(1.0)"),
+                            StackSLArg("outputPow", "vec4(1.0)")
+                        ),
+                        8
+                    ) ?: return
+                    listOf(inputExpr(token, "$raw implicit x") { "vec4($it.x)" }) + args
                 } else {
-                    listOf(
-                        pop(token, "fmchirp x", "input", wrap = false),
-                        optionalDefault(token, "fmchirp freq", "vec4(0.0)"),
-                        optionalDefault(token, "fmchirp mod", "vec4(0.0)"),
-                        optionalDefault(token, "fmchirp modPhase", "vec4(0.0)"),
-                        optionalDefault(token, "fmchirp phase", "vec4(0.0)"),
-                        optionalDefault(token, "fmchirp chirp", "vec4(0.0)"),
-                        optionalDefault(token, "fmchirp modChirp", "vec4(0.0)"),
-                        optionalDefault(token, "fmchirp inputPow", "vec4(1.0)"),
-                        optionalDefault(token, "fmchirp outputPow", "vec4(1.0)")
-                    )
+                    consumeArityArgs(
+                        token,
+                        raw,
+                        listOf(
+                            StackSLArg("x", "input"),
+                            StackSLArg("freq", "vec4(0.0)"),
+                            StackSLArg("mod", "vec4(0.0)"),
+                            StackSLArg("modPhase", "vec4(0.0)"),
+                            StackSLArg("phase", "vec4(0.0)"),
+                            StackSLArg("chirp", "vec4(0.0)"),
+                            StackSLArg("modChirp", "vec4(0.0)"),
+                            StackSLArg("inputPow", "vec4(1.0)"),
+                            StackSLArg("outputPow", "vec4(1.0)")
+                        ),
+                        arity
+                    ) ?: return
                 }
                 push(
                     expr(
                         "${options.prefix}_fmchirp(${params.joinToString(", ") { ref(it) }})",
                         params,
                         token,
-                        "fmchirp"
+                        raw
                     )
                 )
             }
             "palette", "cos-palette", "cosine-palette" -> {
                 requiredHelpers += "palette"
-                val (t, a, b, c, d) = if (stack.size < 5) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "palette t", "input", wrap = false),
-                        optionalDefault(token, "palette a", "vec4(0.50, 0.50, 0.50, 1.00)"),
-                        optionalDefault(token, "palette b", "vec4(0.50, 0.50, 0.50, 0.00)"),
-                        optionalDefault(token, "palette c", "vec4(1.00, 1.00, 1.00, 1.00)"),
-                        optionalDefault(token, "palette d", "vec4(0.00, 0.10, 0.20, 0.00)")
-                    )
-                } else {
-                    val d = pop(token, "palette d", "vec4(0.00, 0.10, 0.20, 0.00)", wrap = false)
-                    val c = pop(token, "palette c", "vec4(1.00, 1.00, 1.00, 1.00)", wrap = false)
-                    val b = pop(token, "palette b", "vec4(0.50, 0.50, 0.50, 0.00)", wrap = false)
-                    val a = pop(token, "palette a", "vec4(0.50, 0.50, 0.50, 1.00)", wrap = false)
-                    val t = pop(token, "palette t", "input", wrap = false)
-                    listOf(t, a, b, c, d)
-                }
-                push(expr("${options.prefix}_palette(${ref(t)}, ${ref(a)}, ${ref(b)}, ${ref(c)}, ${ref(d)})", listOf(t, a, b, c, d), token, "cosine palette"))
+                        StackSLArg("t", "input"),
+                        StackSLArg("a", "vec4(0.50, 0.50, 0.50, 1.00)"),
+                        StackSLArg("b", "vec4(0.50, 0.50, 0.50, 0.00)"),
+                        StackSLArg("c", "vec4(1.00, 1.00, 1.00, 1.00)"),
+                        StackSLArg("d", "vec4(0.00, 0.10, 0.20, 0.00)")
+                    ),
+                    requestedArity ?: if (stack.size < 5) 1 else 5
+                ) ?: return
+                val (t, a, b, c, d) = args
+                push(expr("${options.prefix}_palette(${ref(t)}, ${ref(a)}, ${ref(b)}, ${ref(c)}, ${ref(d)})", args, token, "cosine palette"))
             }
             "saturation", "sat-color" -> {
                 requiredHelpers += "saturation"
-                val (color, amount) = if (stack.size < 2) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "saturation color", "input", wrap = false),
-                        optionalDefault(token, "saturation amount", "vec4(1.0)")
-                    )
-                } else {
-                    val amount = pop(token, "saturation amount", "vec4(1.0)")
-                    val color = pop(token, "saturation color", "input")
-                    listOf(color, amount)
-                }
-                push(expr("${options.prefix}_saturation(${ref(color)}, ${ref(amount)}.x)", listOf(color, amount), token, "saturation"))
+                        StackSLArg("color", "input"),
+                        StackSLArg("amount", "vec4(1.0)")
+                    ),
+                    requestedArity ?: if (stack.size < 2) 1 else 2
+                ) ?: return
+                val (color, amount) = args
+                push(expr("${options.prefix}_saturation(${ref(color)}, ${ref(amount)}.x)", args, token, "saturation"))
             }
             "contrast" -> {
                 requiredHelpers += "contrast"
-                val (color, amount) = if (stack.size < 2) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "contrast color", "input", wrap = false),
-                        optionalDefault(token, "contrast amount", "vec4(1.2)")
-                    )
-                } else {
-                    val amount = pop(token, "contrast amount", "vec4(1.2)")
-                    val color = pop(token, "contrast color", "input")
-                    listOf(color, amount)
-                }
-                push(expr("${options.prefix}_contrast(${ref(color)}, ${ref(amount)})", listOf(color, amount), token, "contrast"))
+                        StackSLArg("color", "input"),
+                        StackSLArg("amount", "vec4(1.2)")
+                    ),
+                    requestedArity ?: if (stack.size < 2) 1 else 2
+                ) ?: return
+                val (color, amount) = args
+                push(expr("${options.prefix}_contrast(${ref(color)}, ${ref(amount)})", args, token, "contrast"))
             }
             "grade" -> {
                 requiredHelpers += "grade"
-                val (color, lift, gain, gamma) = if (stack.size < 4) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "grade color", "input", wrap = false),
-                        optionalDefault(token, "grade lift", "vec4(0.0)"),
-                        optionalDefault(token, "grade gain", "vec4(1.0)"),
-                        optionalDefault(token, "grade gamma", "vec4(1.0)")
-                    )
-                } else {
-                    val gamma = pop(token, "grade gamma", "vec4(1.0)")
-                    val gain = pop(token, "grade gain", "vec4(1.0)")
-                    val lift = pop(token, "grade lift", "vec4(0.0)")
-                    val color = pop(token, "grade color", "input")
-                    listOf(color, lift, gain, gamma)
-                }
-                push(expr("${options.prefix}_grade(${ref(color)}, ${ref(lift)}, ${ref(gain)}, ${ref(gamma)})", listOf(color, lift, gain, gamma), token, "grade"))
+                        StackSLArg("color", "input"),
+                        StackSLArg("lift", "vec4(0.0)"),
+                        StackSLArg("gain", "vec4(1.0)"),
+                        StackSLArg("gamma", "vec4(1.0)")
+                    ),
+                    requestedArity ?: if (stack.size < 4) 1 else 4
+                ) ?: return
+                val (color, lift, gain, gamma) = args
+                push(expr("${options.prefix}_grade(${ref(color)}, ${ref(lift)}, ${ref(gain)}, ${ref(gamma)})", args, token, "grade"))
             }
             "ema" -> {
                 requiredHelpers += "ema"
-                val (current, previous, alpha) = if (stack.size < 3) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "ema current", "input", wrap = false),
-                        optionalDefault(token, "ema previous", "input"),
-                        optionalDefault(token, "ema alpha", "vec4(0.08)")
-                    )
-                } else {
-                    val alpha = pop(token, "ema alpha", "vec4(0.08)")
-                    val previous = pop(token, "ema previous", "input")
-                    val current = pop(token, "ema current", "input")
-                    listOf(current, previous, alpha)
-                }
-                push(expr("${options.prefix}_ema(${ref(current)}, ${ref(previous)}, ${ref(alpha)})", listOf(current, previous, alpha), token, "ema"))
+                        StackSLArg("current", "input"),
+                        StackSLArg("previous", "input"),
+                        StackSLArg("alpha", "vec4(0.08)")
+                    ),
+                    requestedArity ?: if (stack.size < 3) 1 else 3
+                ) ?: return
+                val (current, previous, alpha) = args
+                push(expr("${options.prefix}_ema(${ref(current)}, ${ref(previous)}, ${ref(alpha)})", args, token, "ema"))
             }
             "ema-diff", "diff-ema", "dema" -> {
                 requiredHelpers += "ema"
-                val (current, previous, alpha) = if (stack.size < 3) {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
                     listOf(
-                        pop(token, "ema-diff current", "input", wrap = false),
-                        optionalDefault(token, "ema-diff previous", "input"),
-                        optionalDefault(token, "ema-diff alpha", "vec4(0.08)")
-                    )
-                } else {
-                    val alpha = pop(token, "ema-diff alpha", "vec4(0.08)")
-                    val previous = pop(token, "ema-diff previous", "input")
-                    val current = pop(token, "ema-diff current", "input")
-                    listOf(current, previous, alpha)
-                }
-                push(expr("(${ref(current)} - ${options.prefix}_ema(${ref(current)}, ${ref(previous)}, ${ref(alpha)}))", listOf(current, previous, alpha), token, "ema difference"))
+                        StackSLArg("current", "input"),
+                        StackSLArg("previous", "input"),
+                        StackSLArg("alpha", "vec4(0.08)")
+                    ),
+                    requestedArity ?: if (stack.size < 3) 1 else 3
+                ) ?: return
+                val (current, previous, alpha) = args
+                push(expr("(${ref(current)} - ${options.prefix}_ema(${ref(current)}, ${ref(previous)}, ${ref(alpha)}))", args, token, "ema difference"))
             }
             "sample", "sample0", "sample1", "sample2", "sample3",
             "sample-abs", "sample0-abs", "sample1-abs", "sample2-abs", "sample3-abs",
             "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3" -> sampleWord(word, token)
 
             else -> {
-                val definition = definitions[word]
+                val definition = definitions[rawWord]
                 if (definition != null) {
-                    callDefinition(word, token)
+                    callDefinition(rawWord, token)
                 } else {
                     errorOrWarning(token, "Unknown StackSL word '$raw'.")
                 }
@@ -1106,6 +1138,104 @@ private class FunctionCompiler(
         val b = operands[0]
         val a = operands[1]
         push(expr(op(a, b), listOf(a, b), token, note))
+    }
+
+    private data class StackSLArg(val role: String, val defaultExpression: String)
+
+    private fun consumeArityArgs(token: Token, word: String, args: List<StackSLArg>, arity: Int): List<Int>? {
+        if (arity !in 1..args.size) {
+            unsupportedArity(token, word, word.substringBefore('.'), arity, (1..args.size).toSet())
+            return null
+        }
+
+        val available = minOf(arity, stack.size)
+        val consumed = if (available == 0) {
+            emptyList()
+        } else {
+            val start = stack.size - available
+            val values = stack.subList(start, stack.size).toList()
+            repeat(available) { stack.removeAt(stack.lastIndex) }
+            values
+        }
+
+        val missing = if (available < arity) {
+            args.drop(available).take(arity - available).mapIndexed { index, arg ->
+                defaultValue(token, "$word ${arg.role}", available + index, arg.defaultExpression)
+            }
+        } else {
+            emptyList()
+        }
+
+        val defaults = args.drop(arity).map { arg ->
+            optionalDefault(token, "$word ${arg.role}", arg.defaultExpression)
+        }
+
+        return consumed + missing + defaults
+    }
+
+    private fun unsupportedArity(token: Token, word: String, base: String, arity: Int?, supported: Set<Int>) {
+        val suffix = arity?.let { ".$it" } ?: ""
+        errorOrWarning(token, "Unsupported StackSL arity '$base$suffix'; supported arities are ${supported.sorted().joinToString(", ")}.")
+    }
+
+    private fun consumeBlastArgs(token: Token, word: String, requestedArity: Int?, requestedAll: Boolean): List<Int>? {
+        val count = if (requestedAll) maxOf(2, stack.size) else requestedArity ?: maxOf(2, stack.size)
+        if (!requestedAll && count !in 2..8) {
+            errorOrWarning(token, "Unsupported StackSL blast arity '$word'; supported variants are .2 through .8 and .all.")
+            return null
+        }
+
+        val available = minOf(count, stack.size)
+        val consumed = if (available == 0) {
+            emptyList()
+        } else {
+            val start = stack.size - available
+            val values = stack.subList(start, stack.size).toList()
+            repeat(available) { stack.removeAt(stack.lastIndex) }
+            values
+        }
+
+        val missing = (available until count).map { index ->
+            defaultValue(token, "$word blast value", index, "input")
+        }
+        return consumed + missing
+    }
+
+    private fun blastMeanExpression(args: List<Int>): String {
+        return "((${args.joinToString(" + ") { ref(it) }}) / vec4(${args.size.toDouble().formatFloat()}))"
+    }
+
+    private fun blastReduceExpression(args: List<Int>, op: String): String {
+        return args.drop(1).fold(ref(args.first())) { acc, id -> "$op($acc, ${ref(id)})" }
+    }
+
+    private fun blastSort(token: Token, word: String, args: List<Int>): List<Int> {
+        val sorted = args.toMutableList()
+        for (i in 1 until sorted.size) {
+            var j = i
+            while (j > 0) {
+                val a = sorted[j - 1]
+                val b = sorted[j]
+                val low = expr("min(${ref(a)}, ${ref(b)})", listOf(a, b), token, "$word sort low")
+                val high = expr("max(${ref(a)}, ${ref(b)})", listOf(a, b), token, "$word sort high")
+                sorted[j - 1] = low
+                sorted[j] = high
+                j--
+            }
+        }
+        return sorted
+    }
+
+    private fun blastMedian(token: Token, word: String, args: List<Int>): Int {
+        val sorted = blastSort(token, word, args)
+        val middle = sorted.size / 2
+        return if (sorted.size % 2 == 1) {
+            sorted[middle]
+        } else {
+            val a = sorted[middle - 1]
+            val b = sorted[middle]
+            expr("((${ref(a)} + ${ref(b)}) * vec4(0.5))", listOf(a, b), token, "$word median")
+        }
     }
 
     private fun popOperands(
@@ -1389,6 +1519,41 @@ private val topModifierRegex = Regex(
 private val numberRangeRegex = Regex("^($numberPattern)_($numberPattern)$", RegexOption.IGNORE_CASE)
 private val defaultNumberRegex = Regex("""(?<![A-Za-z_])($numberPattern)(?![A-Za-z_])""")
 private val definitionNameRegex = Regex("""^[A-Za-z_][A-Za-z0-9_-]*$""")
+private val stackSLArityVariantRegex = Regex("""^(.+)\.(\d+|all)$""")
+private val stackSLArityVariantArities = mapOf(
+    "min" to (1..8).toSet(),
+    "max" to (1..8).toSet(),
+    "average" to (2..8).toSet(),
+    "avg" to (2..8).toSet(),
+    "mean" to (2..8).toSet(),
+    "median" to (2..8).toSet(),
+    "med" to (2..8).toSet(),
+    "sort" to (2..8).toSet(),
+    "intermediate" to (2..8).toSet(),
+    "pulse" to (1..3).toSet(),
+    "fm" to (1..3).toSet(),
+    "fmchirp" to (1..9).toSet(),
+    "palette" to (1..5).toSet(),
+    "cos-palette" to (1..5).toSet(),
+    "cosine-palette" to (1..5).toSet(),
+    "saturation" to (1..2).toSet(),
+    "sat-color" to (1..2).toSet(),
+    "contrast" to (1..2).toSet(),
+    "grade" to (1..4).toSet(),
+    "ema" to (1..3).toSet(),
+    "ema-diff" to (1..3).toSet(),
+    "diff-ema" to (1..3).toSet(),
+    "dema" to (1..3).toSet()
+)
+private val stackSLAllVariantWords = setOf(
+    "min", "max",
+    "average", "avg", "mean",
+    "median", "med",
+    "sort", "intermediate"
+)
+private val stackSLArityVariantWords = stackSLArityVariantArities.flatMap { (word, arities) ->
+    arities.map { "$word.$it" } + if (word in stackSLAllVariantWords) listOf("$word.all") else emptyList()
+}.toSet()
 
 private data class ParsedModifier(
     val mode: String?,
@@ -1402,6 +1567,19 @@ private data class ParsedModifier(
 private fun parseNumberLiteral(text: String): String? {
     if (!numberRegex.matches(text)) return null
     return normalizeFloat(text)
+}
+
+private fun parseStackSLArityVariant(text: String): StackSLArityVariant? {
+    val match = stackSLArityVariantRegex.matchEntire(text) ?: return null
+    val base = match.groupValues[1]
+    val rawArity = match.groupValues[2]
+    if (rawArity == "all") {
+        if (base !in stackSLAllVariantWords) return null
+        return StackSLArityVariant(base, null, all = true)
+    }
+    val arity = rawArity.toIntOrNull() ?: return null
+    if (base !in stackSLArityVariantArities) return null
+    return StackSLArityVariant(base, arity)
 }
 
 private fun parseNumberSuffix(text: String): Pair<String, String>? {
@@ -1521,7 +1699,7 @@ private val builtinWords = setOf(
     "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
     "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
     "len", "length", "len2", "length2", "len3", "length3", "len4", "length4", "luma",
-    "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
+    "average", "avg", "mean", "median", "med", "sort", "intermediate", "vmin", "minimum", "vmax", "maximum",
     "sat", "saturate", "clamp", "mirror", "tonemap",
     "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "atan2",
     "dot", "cross", "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
@@ -1534,7 +1712,7 @@ private val builtinWords = setOf(
     "sample-abs", "sample0-abs", "sample1-abs", "sample2-abs", "sample3-abs",
     "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
-) + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
+) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
 
 private fun helperSource(prefix: String, helpers: Set<String>): String {
     if (helpers.isEmpty()) return ""

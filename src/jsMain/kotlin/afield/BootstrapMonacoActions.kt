@@ -61,7 +61,9 @@ private const val shaderNoMatchScore = -1000000
 private const val shaderNavigationSelectionDelayMs = 90
 private const val shaderNavigationRetryDelayMs = 180
 private val oscEditorNumberPattern = Regex("""[-+]?(?:(?:\d+\.\d*)|(?:\d+)|(?:\.\d+))(?:[eE][-+]?\d+)?[fF]?""")
-private var oscEditorExecuteTimer: Int? = null
+private var oscEditorDebounceTimer: Int? = null
+private var oscEditorMaxTimer: Int? = null
+private var oscEditorPendingEditor: dynamic = null
 
 private fun oscEditorIdentifierChar(ch: Char): Boolean = ch == '_' || ch.isLetterOrDigit()
 
@@ -73,6 +75,17 @@ private fun oscEditorCurrentEditor(): dynamic = js(
         return (focused && focused.editor) || window.globalEditor || null;
     })()"""
 )
+
+private fun formatOscEditorNumber(value: Double): String {
+    if (!value.isFinite()) return "0"
+    val formatter = js(
+        """(v) => {
+            const precise = Number(v).toPrecision(7);
+            return String(Number(precise));
+        }"""
+    )
+    return formatter(value) as String
+}
 
 private fun shaderRelatedProperties(property: String): List<String> {
     val current = property.lowercase()
@@ -1086,7 +1099,7 @@ fun monacoRunOscEditorCommand(command: OscEditorCommand) {
     when (command.command.trim().lowercase()) {
         "float" -> {
             if (!monacoReplaceNumberUnderCursor(editor, command)) return
-            scheduleOscEditorExecute(editor, command.debounceMs)
+            scheduleOscEditorExecute(editor, command.debounceMs, command.maxExecutionMs)
         }
 
         "launch" -> monacoRunLaunchAll(editor)
@@ -1104,9 +1117,6 @@ private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCo
     val column = (position.column as Number).toInt()
     val line = model.getLineContent(lineNumber) as String
     val cursorIndex = (column - 1).coerceIn(0, line.length)
-    val replacementBase = command.text.takeIf { it.isNotBlank() }
-        ?: command.value?.toString()
-        ?: return false
 
     for (match in oscEditorNumberPattern.findAll(line)) {
         val start = match.range.first
@@ -1117,6 +1127,16 @@ private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCo
 
         val original = match.value
         val suffix = original.lastOrNull()?.takeIf { it == 'f' || it == 'F' }?.toString() ?: ""
+        val replacementBase = if (command.delta) {
+            val delta = command.value ?: return false
+            val originalNumber = if (suffix.isNotBlank()) original.dropLast(1) else original
+            val originalValue = originalNumber.toDoubleOrNull() ?: return false
+            formatOscEditorNumber(originalValue + delta)
+        } else {
+            command.text.takeIf { it.isNotBlank() }
+                ?: command.value?.let(::formatOscEditorNumber)
+                ?: return false
+        }
         val replacement = if (suffix.isNotBlank() && !replacementBase.endsWith("f", ignoreCase = true)) {
             replacementBase + suffix
         } else {
@@ -1152,14 +1172,38 @@ private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCo
     return false
 }
 
-private fun scheduleOscEditorExecute(editor: dynamic, debounceMs: Int) {
+private fun clearOscEditorTimers(w: dynamic) {
+    oscEditorDebounceTimer?.let { w.clearTimeout(it) }
+    oscEditorMaxTimer?.let { w.clearTimeout(it) }
+    oscEditorDebounceTimer = null
+    oscEditorMaxTimer = null
+}
+
+private fun runScheduledOscEditorExecute() {
     val w = js("window")
-    oscEditorExecuteTimer?.let { w.clearTimeout(it) }
-    val delay = debounceMs.coerceIn(0, 5_000)
-    oscEditorExecuteTimer = w.setTimeout({
-        oscEditorExecuteTimer = null
+    val editor = oscEditorPendingEditor
+    oscEditorPendingEditor = null
+    clearOscEditorTimers(w)
+    if (editor != null && editor != undefined) {
         monacoRunExecuteFragmentOrShaderReload(editor)
+    }
+}
+
+private fun scheduleOscEditorExecute(editor: dynamic, debounceMs: Int, maxExecutionMs: Int) {
+    val w = js("window")
+    oscEditorPendingEditor = editor
+    val delay = debounceMs.coerceIn(0, 5_000)
+    oscEditorDebounceTimer?.let { w.clearTimeout(it) }
+    oscEditorDebounceTimer = w.setTimeout({
+        runScheduledOscEditorExecute()
     }, delay)
+
+    val maxDelay = maxExecutionMs.coerceIn(0, 60_000)
+    if (maxDelay > 0 && oscEditorMaxTimer == null) {
+        oscEditorMaxTimer = w.setTimeout({
+            runScheduledOscEditorExecute()
+        }, maxDelay)
+    }
 }
 
 private fun extractSelectionOrScope(editor: dynamic): Triple<String, Int, Boolean> {
