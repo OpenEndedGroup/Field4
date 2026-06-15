@@ -145,7 +145,7 @@ cat <<'EOF' | python3 tools/field_backdoor.py --json \
   --command 'record-box @last /tmp/anim-box.mp4 --duration 3 --fps 30' \
   --command 'stop @last'
 var t = 0.0
-_r = {
+loop {
     t += 0.016
     display("main", "<div style=\"padding:24px;background:hsl(${(t*60)%360},70%,60%)\">frame $t</div>")
 }

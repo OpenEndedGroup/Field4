@@ -265,7 +265,7 @@ class KotlinInterface2(
         val root = chain.lastOrNull() ?: throwable
         val hasImplicitReceiverFailure = chain.any {
             it.message?.contains("SCRIPT_IMPLICIT_RECEIVER") == true ||
-                it.message?.contains("\$script_receiver_") == true
+                    it.message?.contains("\$script_receiver_") == true
         }
 
         val message = buildString {
@@ -305,7 +305,11 @@ class KotlinInterface2(
 
             lprintln(
                 "info,kotlin,perf",
-                "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${compileSnippetKind(s)} length=${s.length} preview=${compileSnippetPreview(s)}"
+                "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${
+                    compileSnippetKind(
+                        s
+                    )
+                } length=${s.length} preview=${compileSnippetPreview(s)}"
             )
             lprintln("info,kotlin,perf", "\t\t compile code $s")
 
@@ -537,12 +541,18 @@ class KotlinInterface2(
                 for ((name, info) in context.vars) {
                     if (!nameFilter(name)) continue
                     if (name.contains("$")) continue
-                    val type = try { shortenType(info.descriptor.returnType.toString()) } catch (_: Exception) { "Any?" }
+                    val type = try {
+                        shortenType(info.descriptor.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
                     val kind = if (info.descriptor is KMutableProperty<*>) "var" else "val"
-                    results.add(SourceCodeCompletionVariant(
-                        text = name, displayText = "$kind $name", tail = ": $type",
-                        icon = kind,
-                    ))
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "$kind $name", tail = ": $type",
+                            icon = kind,
+                        )
+                    )
                 }
 
                 // Functions from REPL context — with full parameter signatures
@@ -551,16 +561,26 @@ class KotlinInterface2(
                     if (name.contains("$") || name == "main") continue
                     val params = info.function.parameters.filter { it.kind == KParameter.Kind.VALUE }
                     val paramsStr = formatKotlinParams(params)
-                    val returnType = try { shortenType(info.function.returnType.toString()) } catch (_: Exception) { "Any?" }
-                    results.add(SourceCodeCompletionVariant(
-                        text = name, displayText = "fun $name$paramsStr", tail = ": $returnType",
-                        icon = "method",
-                    ))
+                    val returnType = try {
+                        shortenType(info.function.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnType",
+                            icon = "method",
+                        )
+                    )
                 }
 
                 // Members from implicit receivers (e.g., Box members are callable as top-level in the REPL)
                 for (kotlinType in implicitReceivers) {
-                    val klass = try { kotlinType.fromClass } catch (_: Exception) { null } ?: continue
+                    val klass = try {
+                        kotlinType.fromClass
+                    } catch (_: Exception) {
+                        null
+                    } ?: continue
                     addMembersFromClass(klass, completionSite.prefix, results)
                 }
 
@@ -581,7 +601,14 @@ class KotlinInterface2(
                 )
                 for (kw in keywords) {
                     if (nameFilter(kw)) {
-                        results.add(SourceCodeCompletionVariant(text = kw, displayText = kw, tail = "", icon = "keyword"))
+                        results.add(
+                            SourceCodeCompletionVariant(
+                                text = kw,
+                                displayText = kw,
+                                tail = "",
+                                icon = "keyword"
+                            )
+                        )
                     }
                 }
 
@@ -622,7 +649,11 @@ class KotlinInterface2(
 
     private fun formatKotlinParam(param: KParameter): String {
         val name = param.name
-        val type = try { shortenType(param.type.toString()) } catch (_: Exception) { "Any?" }
+        val type = try {
+            shortenType(param.type.toString())
+        } catch (_: Exception) {
+            "Any?"
+        }
         val sb = StringBuilder()
         if (param.isVararg) sb.append("vararg ")
         // If the name is null or synthetic (arg0, p0, etc.), show just the type
@@ -636,7 +667,11 @@ class KotlinInterface2(
     }
 
     private fun formatJavaMethodParams(method: java.lang.reflect.Method): String {
-        val kfunc = try { method.kotlinFunction } catch (_: Exception) { null }
+        val kfunc = try {
+            method.kotlinFunction
+        } catch (_: Exception) {
+            null
+        }
         if (kfunc != null) {
             val valueParams = kfunc.parameters.filter { it.kind == KParameter.Kind.VALUE }
             return formatKotlinParams(valueParams)
@@ -644,25 +679,37 @@ class KotlinInterface2(
         // Fallback to Java reflection
         val params = method.parameters
         if (params.isEmpty()) return "()"
-        return "(${params.joinToString(", ") { p ->
-            val name = p.name
-            val type = shortenType(p.type.kotlin.simpleName ?: p.type.simpleName)
-            // If the name is synthetic (arg0, p0, etc.), show just the type
-            if (name.matches(Regex("^(arg|p)\\d+$"))) type else "$name: $type"
-        }})"
+        return "(${
+            params.joinToString(", ") { p ->
+                val name = p.name
+                val type = shortenType(p.type.kotlin.simpleName ?: p.type.simpleName)
+                // If the name is synthetic (arg0, p0, etc.), show just the type
+                if (name.matches(Regex("^(arg|p)\\d+$"))) type else "$name: $type"
+            }
+        })"
     }
 
     private fun formatMethodReturnType(method: java.lang.reflect.Method): String {
-        val kfunc = try { method.kotlinFunction } catch (_: Exception) { null }
+        val kfunc = try {
+            method.kotlinFunction
+        } catch (_: Exception) {
+            null
+        }
         return try {
             kfunc?.let { shortenType(it.returnType.toString()) }
                 ?: shortenType(method.returnType.kotlin.simpleName ?: method.returnType.simpleName)
-        } catch (_: Exception) { "Any?" }
+        } catch (_: Exception) {
+            "Any?"
+        }
     }
 
     private fun isDeprecated(method: java.lang.reflect.Method): DeprecationLevel? {
         if (method.isAnnotationPresent(Deprecated::class.java)) return DeprecationLevel.WARNING
-        val kfunc = try { method.kotlinFunction } catch (_: Exception) { null }
+        val kfunc = try {
+            method.kotlinFunction
+        } catch (_: Exception) {
+            null
+        }
         if (kfunc?.annotations?.any { it is Deprecated } == true) return DeprecationLevel.WARNING
         return null
     }
@@ -671,6 +718,7 @@ class KotlinInterface2(
 
     private sealed class CompletionSite {
         abstract val prefix: String
+
         data class NameCompletion(override val prefix: String) : CompletionSite()
         data class DotCompletion(val receiverText: String, override val prefix: String) : CompletionSite()
         data class SafeDotCompletion(val receiverText: String, override val prefix: String) : CompletionSite()
@@ -707,10 +755,22 @@ class KotlinInterface2(
         while (pos >= 0) {
             val c = s[pos]
             when {
-                c == ')' -> { parenDepth++; pos-- }
-                c == '(' && parenDepth > 0 -> { parenDepth--; pos-- }
-                c == ']' -> { bracketDepth++; pos-- }
-                c == '[' && bracketDepth > 0 -> { bracketDepth--; pos-- }
+                c == ')' -> {
+                    parenDepth++; pos--
+                }
+
+                c == '(' && parenDepth > 0 -> {
+                    parenDepth--; pos--
+                }
+
+                c == ']' -> {
+                    bracketDepth++; pos--
+                }
+
+                c == '[' && bracketDepth > 0 -> {
+                    bracketDepth--; pos--
+                }
+
                 parenDepth > 0 || bracketDepth > 0 -> pos--
                 c.isLetterOrDigit() || c == '_' || c == '.' || c == '?' -> pos--
                 else -> break
@@ -800,7 +860,8 @@ class KotlinInterface2(
                 try {
                     val markMethod = script::class.java.getMethod("markAsReplSnippet")
                     markMethod.invoke(script)
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
             }
 
             // Get extension registrars from compiler configuration
@@ -810,7 +871,8 @@ class KotlinInterface2(
             val getExtensionsMethod = Class.forName(
                 "org.jetbrains.kotlin.compiler.plugin.FirExtensionRegistrarConfigurationUtilKt"
             ).methods.first { it.name == "getCompilerExtensions" }
-            val extensionRegistrars = getExtensionsMethod.invoke(null, configCopy, firExtensionRegistrarCompanion) as List<*>
+            val extensionRegistrars =
+                getExtensionsMethod.invoke(null, configCopy, firExtensionRegistrarCompanion) as List<*>
 
             // Record the module data history size before we add our temporary entry
             val moduleDataHistory = moduleDataProvider::class.java.getMethod("getModuleDataHistory")
@@ -886,18 +948,22 @@ class KotlinInterface2(
 
                 // Build FIR from KtFile: FirUtilsKt.buildFirFromKtFiles(session, listOf(ktFile))
                 val buildFirMethod = Class.forName("org.jetbrains.kotlin.fir.pipeline.FirUtilsKt")
-                    .getMethod("buildFirFromKtFiles",
+                    .getMethod(
+                        "buildFirFromKtFiles",
                         Class.forName("org.jetbrains.kotlin.fir.FirSession"),
-                        Collection::class.java)
+                        Collection::class.java
+                    )
                 val rawFir = buildFirMethod.invoke(null, sourceSession, listOf(ktFile)) as List<*>
 
                 lprintln("debug,kotlin", "FIR analysis: buildFirFromKtFiles returned ${rawFir.size} files")
 
                 // Run resolution: AnalyseKt.runResolution(session, rawFir)
                 val runResolutionMethod = Class.forName("org.jetbrains.kotlin.fir.pipeline.AnalyseKt")
-                    .getMethod("runResolution",
+                    .getMethod(
+                        "runResolution",
                         Class.forName("org.jetbrains.kotlin.fir.FirSession"),
-                        List::class.java)
+                        List::class.java
+                    )
                 val result = runResolutionMethod.invoke(null, sourceSession, rawFir) as kotlin.Pair<*, *>
                 val firFiles = result.second as List<*>
 
@@ -949,13 +1015,19 @@ class KotlinInterface2(
         val coneClassLikeTypeClass = Class.forName("org.jetbrains.kotlin.fir.types.ConeClassLikeType")
         val firAnonymousFunctionClass = try {
             Class.forName("org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction")
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
         val firAnonymousFunctionExpressionClass = try {
             Class.forName("org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression")
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
         val firValueParameterClass = try {
             Class.forName("org.jetbrains.kotlin.fir.declarations.FirValueParameter")
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
 
         for (firFile in firFiles) {
             if (firFile == null) continue
@@ -978,14 +1050,18 @@ class KotlinInterface2(
 
                         lprintln("debug,kotlin", "FIR walk: script decl type: ${scriptDecl::class.java.simpleName}")
 
-                        processDeclaration(scriptDecl, firPropertyClass, firNamedFunctionClass,
-                            firResolvedTypeRefClass, coneClassLikeTypeClass, varTypes, funcTypes)
+                        processDeclaration(
+                            scriptDecl, firPropertyClass, firNamedFunctionClass,
+                            firResolvedTypeRefClass, coneClassLikeTypeClass, varTypes, funcTypes
+                        )
 
                         // Walk into property initializers to extract lambda parameters (e.g. `it`)
                         if (firPropertyClass.isInstance(scriptDecl) && firAnonymousFunctionClass != null) {
-                            extractLambdaParameters(scriptDecl, firAnonymousFunctionClass,
+                            extractLambdaParameters(
+                                scriptDecl, firAnonymousFunctionClass,
                                 firAnonymousFunctionExpressionClass, firValueParameterClass,
-                                firResolvedTypeRefClass, coneClassLikeTypeClass, varTypes)
+                                firResolvedTypeRefClass, coneClassLikeTypeClass, varTypes
+                            )
                         }
                     }
                 }
@@ -1013,8 +1089,11 @@ class KotlinInterface2(
             // The initializer might be a FirAnonymousFunctionExpression wrapping a FirAnonymousFunction
             val anonFunction = when {
                 firAnonymousFunctionClass.isInstance(initializer) -> initializer
-                firAnonymousFunctionExpressionClass != null && firAnonymousFunctionExpressionClass.isInstance(initializer) ->
+                firAnonymousFunctionExpressionClass != null && firAnonymousFunctionExpressionClass.isInstance(
+                    initializer
+                ) ->
                     firAnonymousFunctionExpressionClass.getMethod("getAnonymousFunction").invoke(initializer)
+
                 else -> null
             } ?: return
 
@@ -1092,7 +1171,10 @@ class KotlinInterface2(
             return null
         }
         if (!firResolvedTypeRefClass.isInstance(returnTypeRef)) {
-            lprintln("debug,kotlin", "FIR type: returnTypeRef is ${returnTypeRef::class.java.simpleName}, not FirResolvedTypeRef")
+            lprintln(
+                "debug,kotlin",
+                "FIR type: returnTypeRef is ${returnTypeRef::class.java.simpleName}, not FirResolvedTypeRef"
+            )
             return null
         }
 
@@ -1193,14 +1275,19 @@ class KotlinInterface2(
 
             // Insert a probe that captures `this` — if we're inside a receiver lambda,
             // FIR will resolve `this` to the lambda's receiver type
-            val probeSource = "$introImports\n$contextDecls\n${codeContext}val __this_probe__ = this\n${s.substring(cursor)}\n"
+            val probeSource =
+                "$introImports\n$contextDecls\n${codeContext}val __this_probe__ = this\n${s.substring(cursor)}\n"
 
             val (varTypes, _) = resolveTypesViaFir(probeSource)
             val resolved = varTypes["__this_probe__"] ?: return emptyList()
 
             // Filter out the REPL-level implicit receivers since they're already included
             val implicitReceiverClasses = implicitReceivers.mapNotNull { kotlinType ->
-                try { kotlinType.fromClass } catch (_: Exception) { null }
+                try {
+                    kotlinType.fromClass
+                } catch (_: Exception) {
+                    null
+                }
             }.toSet()
 
             if (resolved in implicitReceiverClasses) return emptyList()
@@ -1246,13 +1333,22 @@ class KotlinInterface2(
                 val params = info.function.parameters.filter { it.kind == KParameter.Kind.VALUE }
                 val paramsDecl = params.joinToString(", ") { p ->
                     val pName = p.name ?: "p${p.index}"
-                    val pType = try { p.type.toString() } catch (_: Exception) { "Any?" }
+                    val pType = try {
+                        p.type.toString()
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
                     "$pName: $pType"
                 }
-                val returnType = try { info.function.returnType.toString() } catch (_: Exception) { "Any?" }
+                val returnType = try {
+                    info.function.returnType.toString()
+                } catch (_: Exception) {
+                    "Any?"
+                }
                 if (returnType.contains("$") || returnType.contains("<error>")) continue
                 sb.appendLine("fun $name($paramsDecl): $returnType = TODO()")
-            } catch (_: Exception) { /* skip functions we can't introspect */ }
+            } catch (_: Exception) { /* skip functions we can't introspect */
+            }
         }
         return sb.toString()
     }
@@ -1281,7 +1377,11 @@ class KotlinInterface2(
                 // Function call: check runtime context first
                 val funcInfo = context.functions[funcName]
                 if (funcInfo != null) {
-                    currentType = try { funcInfo.function.returnType.classifier as? KClass<*> } catch (_: Exception) { null }
+                    currentType = try {
+                        funcInfo.function.returnType.classifier as? KClass<*>
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
                 // Fallback: FIR-resolved function return types
                 if (currentType == null && sourceText.isNotEmpty()) {
@@ -1335,7 +1435,11 @@ class KotlinInterface2(
             if (isStepCall) {
                 val method = currentType.java.methods.firstOrNull { it.name == memberName }
                 if (method != null) {
-                    currentType = try { method.returnType.kotlin } catch (_: Exception) { null }
+                    currentType = try {
+                        method.returnType.kotlin
+                    } catch (_: Exception) {
+                        null
+                    }
                     currentValue = null
                     if (currentType == null) return null
                     continue
@@ -1372,10 +1476,13 @@ class KotlinInterface2(
             "Nothing", "kotlin.Nothing" -> return Nothing::class
             "List", "MutableList",
             "kotlin.collections.List", "kotlin.collections.MutableList" -> return List::class
+
             "Set", "MutableSet",
             "kotlin.collections.Set", "kotlin.collections.MutableSet" -> return Set::class
+
             "Map", "MutableMap",
             "kotlin.collections.Map", "kotlin.collections.MutableMap" -> return Map::class
+
             "Array", "kotlin.Array" -> return Array::class
             "IntArray", "kotlin.IntArray" -> return IntArray::class
             "DoubleArray", "kotlin.DoubleArray" -> return DoubleArray::class
@@ -1392,7 +1499,8 @@ class KotlinInterface2(
         // Direct classloader lookup
         try {
             return classLoader?.loadClass(baseName)?.kotlin
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
 
         // Try common packages
         val commonPackages = listOf(
@@ -1404,7 +1512,8 @@ class KotlinInterface2(
         for (pkg in commonPackages) {
             try {
                 return classLoader?.loadClass("$pkg$baseName")?.kotlin
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
 
         return null
@@ -1440,10 +1549,12 @@ class KotlinInterface2(
                     ?: prop.typeReference?.text
                     ?: "?"
                 val kind = if (prop.isVar) "var" else "val"
-                results.add(SourceCodeCompletionVariant(
-                    text = name, displayText = "$kind $name", tail = ": $typeStr",
-                    icon = kind,
-                ))
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = ": $typeStr",
+                        icon = kind,
+                    )
+                )
             }
 
             // Functions
@@ -1457,10 +1568,12 @@ class KotlinInterface2(
                 val returnType = funcReturnTypes[name]?.simpleName
                     ?: func.typeReference?.text
                     ?: "?"
-                results.add(SourceCodeCompletionVariant(
-                    text = name, displayText = "fun $name($params)", tail = ": $returnType",
-                    icon = "method",
-                ))
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "fun $name($params)", tail = ": $returnType",
+                        icon = "method",
+                    )
+                )
             }
 
             // Classes
@@ -1475,10 +1588,12 @@ class KotlinInterface2(
                     cls.isInterface() -> "interface"
                     else -> "class"
                 }
-                results.add(SourceCodeCompletionVariant(
-                    text = name, displayText = "$kind $name", tail = "",
-                    icon = "class",
-                ))
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = "",
+                        icon = "class",
+                    )
+                )
             }
         } catch (e: Exception) {
             lprintln("debug,kotlin", "FIR source declaration scan failed: ${e.message}")
@@ -1493,15 +1608,30 @@ class KotlinInterface2(
         var bracketDepth = 0
         for (c in text) {
             when {
-                c == '(' -> { parenDepth++; current.append(c) }
-                c == ')' -> { parenDepth--; current.append(c) }
-                c == '[' -> { bracketDepth++; current.append(c) }
-                c == ']' -> { bracketDepth--; current.append(c) }
+                c == '(' -> {
+                    parenDepth++; current.append(c)
+                }
+
+                c == ')' -> {
+                    parenDepth--; current.append(c)
+                }
+
+                c == '[' -> {
+                    bracketDepth++; current.append(c)
+                }
+
+                c == ']' -> {
+                    bracketDepth--; current.append(c)
+                }
+
                 c == '.' && parenDepth == 0 && bracketDepth == 0 -> {
                     if (current.isNotEmpty()) parts.add(current.toString())
                     current = StringBuilder()
                 }
-                c == '?' && parenDepth == 0 -> { /* skip safe-call ? */ }
+
+                c == '?' && parenDepth == 0 -> { /* skip safe-call ? */
+                }
+
                 else -> current.append(c)
             }
         }
@@ -1533,7 +1663,11 @@ class KotlinInterface2(
 
             // Try to load the class and get constructor info
             var fqName: String? = null
-            for (n in fqNames) { if (!n.contains("$")) { fqName = n; break } }
+            for (n in fqNames) {
+                if (!n.contains("$")) {
+                    fqName = n; break
+                }
+            }
             if (fqName == null) continue
             val constructorInfo = try {
                 val klass = classLoader?.loadClass(fqName)?.kotlin ?: Class.forName(fqName).kotlin
@@ -1548,10 +1682,12 @@ class KotlinInterface2(
             }
 
             val displayText = if (constructorInfo != null) "$simpleName$constructorInfo" else simpleName
-            results.add(SourceCodeCompletionVariant(
-                text = simpleName, displayText = displayText, tail = fqName,
-                icon = "class",
-            ))
+            results.add(
+                SourceCodeCompletionVariant(
+                    text = simpleName, displayText = displayText, tail = fqName,
+                    icon = "class",
+                )
+            )
         }
     }
 
@@ -1591,7 +1727,11 @@ class KotlinInterface2(
 
         // Get implicit receiver classes to identify extension functions callable as top-level
         val implicitReceiverClasses = implicitReceivers.mapNotNull { kotlinType ->
-            try { kotlinType.fromClass?.java } catch (_: Exception) { null }
+            try {
+                kotlinType.fromClass?.java
+            } catch (_: Exception) {
+                null
+            }
         }
 
         // Parse star-import packages from intro
@@ -1605,7 +1745,9 @@ class KotlinInterface2(
             for (fqClassName in fileClasses) {
                 val javaClass = try {
                     classLoader?.loadClass(fqClassName) ?: continue
-                } catch (_: Exception) { continue }
+                } catch (_: Exception) {
+                    continue
+                }
 
                 for (method in javaClass.declaredMethods) {
                     if (!Modifier.isPublic(method.modifiers) || !Modifier.isStatic(method.modifiers)) continue
@@ -1613,40 +1755,67 @@ class KotlinInterface2(
                     if (name.contains('$') || name.contains('-')) continue // skip internal/mangled names
                     if (!nameFilter(name) || !seen.add(name)) continue
 
-                    val kfunc = try { method.kotlinFunction } catch (_: Exception) { null }
+                    val kfunc = try {
+                        method.kotlinFunction
+                    } catch (_: Exception) {
+                        null
+                    }
 
                     if (kfunc != null) {
                         // Use Kotlin reflection — reliable extension receiver detection
-                        val extensionReceiver = kfunc.parameters.firstOrNull { it.kind == KParameter.Kind.EXTENSION_RECEIVER }
+                        val extensionReceiver =
+                            kfunc.parameters.firstOrNull { it.kind == KParameter.Kind.EXTENSION_RECEIVER }
                         if (extensionReceiver != null) {
                             // Extension function — only include if receiver matches an implicit receiver
-                            val receiverClass = try { extensionReceiver.type.classifier as? KClass<*> } catch (_: Exception) { null }
+                            val receiverClass = try {
+                                extensionReceiver.type.classifier as? KClass<*>
+                            } catch (_: Exception) {
+                                null
+                            }
                             val matchesImplicit = receiverClass != null &&
-                                implicitReceiverClasses.any { it.isAssignableFrom(receiverClass.java) }
+                                    implicitReceiverClasses.any { it.isAssignableFrom(receiverClass.java) }
                             if (!matchesImplicit) continue  // skip extension on unrelated type
 
                             val valueParams = kfunc.parameters.filter { it.kind == KParameter.Kind.VALUE }
                             val paramsStr = formatKotlinParams(valueParams)
-                            val returnTypeStr = try { shortenType(kfunc.returnType.toString()) } catch (_: Exception) { "Any?" }
+                            val returnTypeStr = try {
+                                shortenType(kfunc.returnType.toString())
+                            } catch (_: Exception) {
+                                "Any?"
+                            }
                             val variant = SourceCodeCompletionVariant(
                                 text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
                                 icon = "method",
                             )
                             // Embed KDoc for later use in documentation building
                             val qualifiedName = receiverClass?.simpleName?.let { "$it.$name" } ?: name
-                            val kdoc = try { KotlinSourceIndex.getKDocForSymbol(qualifiedName) ?: KotlinSourceIndex.getKDocForSymbol(name) } catch (_: Exception) { null }
+                            val kdoc = try {
+                                KotlinSourceIndex.getKDocForSymbol(qualifiedName) ?: KotlinSourceIndex.getKDocForSymbol(
+                                    name
+                                )
+                            } catch (_: Exception) {
+                                null
+                            }
                             if (kdoc != null) variant.extraInfo = mapOf("kdoc" to kdoc)
                             results.add(variant)
                         } else {
                             // Plain top-level function
                             val valueParams = kfunc.parameters.filter { it.kind == KParameter.Kind.VALUE }
                             val paramsStr = formatKotlinParams(valueParams)
-                            val returnTypeStr = try { shortenType(kfunc.returnType.toString()) } catch (_: Exception) { "Any?" }
+                            val returnTypeStr = try {
+                                shortenType(kfunc.returnType.toString())
+                            } catch (_: Exception) {
+                                "Any?"
+                            }
                             val variant = SourceCodeCompletionVariant(
                                 text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
                                 icon = "method",
                             )
-                            val kdoc = try { KotlinSourceIndex.getKDocForSymbol(name) } catch (_: Exception) { null }
+                            val kdoc = try {
+                                KotlinSourceIndex.getKDocForSymbol(name)
+                            } catch (_: Exception) {
+                                null
+                            }
                             if (kdoc != null) variant.extraInfo = mapOf("kdoc" to kdoc)
                             results.add(variant)
                         }
@@ -1654,12 +1823,17 @@ class KotlinInterface2(
                         // Java fallback — can't detect extension receivers, include as top-level
                         val params = method.parameters
                         val paramsStr = formatJavaParams(params.toList())
-                        val returnTypeStr = shortenType(method.returnType.kotlin.simpleName ?: method.returnType.simpleName)
+                        val returnTypeStr =
+                            shortenType(method.returnType.kotlin.simpleName ?: method.returnType.simpleName)
                         val variant = SourceCodeCompletionVariant(
                             text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
                             icon = "method",
                         )
-                        val kdoc = try { KotlinSourceIndex.getKDocForSymbol(name) } catch (_: Exception) { null }
+                        val kdoc = try {
+                            KotlinSourceIndex.getKDocForSymbol(name)
+                        } catch (_: Exception) {
+                            null
+                        }
                         if (kdoc != null) variant.extraInfo = mapOf("kdoc" to kdoc)
                         results.add(variant)
                     }
@@ -1670,14 +1844,20 @@ class KotlinInterface2(
 
     private fun formatJavaParams(params: List<java.lang.reflect.Parameter>): String {
         if (params.isEmpty()) return "()"
-        return "(${params.joinToString(", ") { p ->
-            val name = p.name
-            val type = shortenType(p.type.kotlin.simpleName ?: p.type.simpleName)
-            if (name.matches(Regex("^(arg|p)\\d+$"))) type else "$name: $type"
-        }})"
+        return "(${
+            params.joinToString(", ") { p ->
+                val name = p.name
+                val type = shortenType(p.type.kotlin.simpleName ?: p.type.simpleName)
+                if (name.matches(Regex("^(arg|p)\\d+$"))) type else "$name: $type"
+            }
+        })"
     }
 
-    private fun addMembersFromClass(klass: KClass<*>, prefix: String, results: MutableList<SourceCodeCompletionVariant>) {
+    private fun addMembersFromClass(
+        klass: KClass<*>,
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>
+    ) {
         val nameFilter: (String) -> Boolean = { name ->
             prefix.isEmpty() || name.startsWith(prefix, ignoreCase = true)
         }
@@ -1698,15 +1878,24 @@ class KotlinInterface2(
             for (prop in klass.memberProperties) {
                 val name = prop.name
                 if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
-                val typeStr = try { shortenType(prop.returnType.toString()) } catch (_: Exception) { "Any?" }
+                val typeStr = try {
+                    shortenType(prop.returnType.toString())
+                } catch (_: Exception) {
+                    "Any?"
+                }
                 val kind = if (prop is KMutableProperty<*>) "var" else "val"
                 val deprecated = if (prop.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
-                results.add(tagExtra(SourceCodeCompletionVariant(
-                    text = name, displayText = "$kind $name", tail = ": $typeStr",
-                    icon = kind, deprecationLevel = deprecated,
-                ), 0))
+                results.add(
+                    tagExtra(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "$kind $name", tail = ": $typeStr",
+                            icon = kind, deprecationLevel = deprecated,
+                        ), 0
+                    )
+                )
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
 
         // Extension properties from kotlin stdlib
         addCommonExtensions(klass, prefix, results, seen)
@@ -1727,13 +1916,21 @@ class KotlinInterface2(
 
                 val valueParams = func.parameters.filter { it.kind == KParameter.Kind.VALUE }
                 val paramsStr = formatKotlinParams(valueParams)
-                val returnTypeStr = try { shortenType(func.returnType.toString()) } catch (_: Exception) { "Any?" }
+                val returnTypeStr = try {
+                    shortenType(func.returnType.toString())
+                } catch (_: Exception) {
+                    "Any?"
+                }
                 val deprecated = if (func.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
 
-                results.add(tagExtra(SourceCodeCompletionVariant(
-                    text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
-                    icon = "method", deprecationLevel = deprecated,
-                ), 0))
+                results.add(
+                    tagExtra(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method", deprecationLevel = deprecated,
+                        ), 0
+                    )
+                )
             }
         } catch (e: Exception) {
             lprintln("debug,kotlin", "Kotlin reflection memberFunctions failed for ${klass.simpleName}: ${e.message}")
@@ -1751,29 +1948,66 @@ class KotlinInterface2(
                 val returnTypeStr = formatMethodReturnType(method)
                 val deprecated = isDeprecated(method)
 
-                results.add(tagExtra(SourceCodeCompletionVariant(
-                    text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
-                    icon = "method", deprecationLevel = deprecated,
-                ), 0))
+                results.add(
+                    tagExtra(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method", deprecationLevel = deprecated,
+                        ), 0
+                    )
+                )
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
 
         // Also add toString/hashCode/equals explicitly since they're commonly used
         if (!seen.contains("toString") && nameFilter("toString")) {
-            results.add(tagExtra(SourceCodeCompletionVariant(text = "toString", displayText = "fun toString()", tail = ": String", icon = "method"), 3))
+            results.add(
+                tagExtra(
+                    SourceCodeCompletionVariant(
+                        text = "toString",
+                        displayText = "fun toString()",
+                        tail = ": String",
+                        icon = "method"
+                    ), 3
+                )
+            )
             seen.add("toString")
         }
         if (!seen.contains("hashCode") && nameFilter("hashCode")) {
-            results.add(tagExtra(SourceCodeCompletionVariant(text = "hashCode", displayText = "fun hashCode()", tail = ": Int", icon = "method"), 3))
+            results.add(
+                tagExtra(
+                    SourceCodeCompletionVariant(
+                        text = "hashCode",
+                        displayText = "fun hashCode()",
+                        tail = ": Int",
+                        icon = "method"
+                    ), 3
+                )
+            )
             seen.add("hashCode")
         }
         if (!seen.contains("equals") && nameFilter("equals")) {
-            results.add(tagExtra(SourceCodeCompletionVariant(text = "equals", displayText = "fun equals(other: Any?)", tail = ": Boolean", icon = "method"), 3))
+            results.add(
+                tagExtra(
+                    SourceCodeCompletionVariant(
+                        text = "equals",
+                        displayText = "fun equals(other: Any?)",
+                        tail = ": Boolean",
+                        icon = "method"
+                    ), 3
+                )
+            )
             seen.add("equals")
         }
     }
 
-    private fun addCommonExtensions(klass: KClass<*>, prefix: String, results: MutableList<SourceCodeCompletionVariant>, seen: MutableSet<String>) {
+    private fun addCommonExtensions(
+        klass: KClass<*>,
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>,
+        seen: MutableSet<String>
+    ) {
         val nameFilter: (String) -> Boolean = { prefix.isEmpty() || it.startsWith(prefix, ignoreCase = true) }
 
         // Collection-like extensions
@@ -1905,7 +2139,11 @@ class KotlinInterface2(
         addExt("to", "(that: B)", "Pair<A, B>", sortGroup = 2)
     }
 
-    private fun addStaticMembersIfPackageOrClass(receiverText: String, prefix: String, results: MutableList<SourceCodeCompletionVariant>) {
+    private fun addStaticMembersIfPackageOrClass(
+        receiverText: String,
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>
+    ) {
         // Try to resolve as a class name (supports short names like "Math" → java.lang.Math)
         val klass = resolveTypeName(receiverText) ?: return
 
@@ -1921,27 +2159,40 @@ class KotlinInterface2(
                 for (prop in companion.memberProperties) {
                     val name = prop.name
                     if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
-                    val typeStr = try { shortenType(prop.returnType.toString()) } catch (_: Exception) { "Any?" }
+                    val typeStr = try {
+                        shortenType(prop.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
                     val kind = if (prop is KMutableProperty<*>) "var" else "val"
                     val deprecated = if (prop.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
-                    results.add(SourceCodeCompletionVariant(
-                        text = name, displayText = "$kind $name", tail = ": $typeStr",
-                        icon = kind, deprecationLevel = deprecated,
-                    ))
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "$kind $name", tail = ": $typeStr",
+                            icon = kind, deprecationLevel = deprecated,
+                        )
+                    )
                 }
                 for (func in companion.declaredFunctions) {
                     val name = func.name
                     if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
                     val paramsStr = formatKotlinParams(func.parameters.filter { it.kind == KParameter.Kind.VALUE })
-                    val returnTypeStr = try { shortenType(func.returnType.toString()) } catch (_: Exception) { "Any?" }
+                    val returnTypeStr = try {
+                        shortenType(func.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
                     val deprecated = if (func.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
-                    results.add(SourceCodeCompletionVariant(
-                        text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
-                        icon = "method", deprecationLevel = deprecated,
-                    ))
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method", deprecationLevel = deprecated,
+                        )
+                    )
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
 
         // Add Java static methods and fields (e.g., Math.random(), Math.PI)
         try {
@@ -1954,23 +2205,32 @@ class KotlinInterface2(
                 val paramsStr = formatJavaMethodParams(method)
                 val returnTypeStr = formatMethodReturnType(method)
                 val deprecated = isDeprecated(method)
-                results.add(SourceCodeCompletionVariant(
-                    text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
-                    icon = "method", deprecationLevel = deprecated,
-                ))
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                        icon = "method", deprecationLevel = deprecated,
+                    )
+                )
             }
             for (field in javaClass.fields) {
                 if (!Modifier.isStatic(field.modifiers)) continue
                 val name = field.name
                 if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
-                val typeStr = try { shortenType(field.type.kotlin.simpleName ?: field.type.simpleName) } catch (_: Exception) { "Any?" }
+                val typeStr = try {
+                    shortenType(field.type.kotlin.simpleName ?: field.type.simpleName)
+                } catch (_: Exception) {
+                    "Any?"
+                }
                 val kind = if (Modifier.isFinal(field.modifiers)) "val" else "var"
-                results.add(SourceCodeCompletionVariant(
-                    text = name, displayText = "$kind $name", tail = ": $typeStr",
-                    icon = kind,
-                ))
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = ": $typeStr",
+                        icon = kind,
+                    )
+                )
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     private fun extractPrefix(s: String, cursor: Int): String {
@@ -2017,7 +2277,8 @@ class KotlinInterface2(
                                             ns = ns.nextSibling
                                         }
 
-                                        val containingFunction = PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
+                                        val containingFunction =
+                                            PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
                                         val containingFunctionName = containingFunction?.name
                                         val valueParameterList =
                                             (containingFunction?.valueParameterList as? KtParameterList)?.text
@@ -2041,7 +2302,7 @@ class KotlinInterface2(
                                                     edits.add((0 to 0) to e.preamble)
                                                 }
                                                 if (e.afterImports.length > 0) {
-                                                        val a = findLastImport(rewritten)
+                                                    val a = findLastImport(rewritten)
                                                     edits.add((a to a) to e.afterImports)
                                                 }
                                             }
@@ -2095,25 +2356,6 @@ class KotlinInterface2(
     }
 
     override fun parseAndRewrite(s: String, rules: List<(PsiElement, String) -> String>): String {
-        if (s.contains("//%frames")) {
-            val ll = s.split("\n")
-            var imports = ""
-            var rest = ""
-            ll.forEach {
-                if (it.trim().lowercase().startsWith("import ")) {
-                    imports += it + "\n"
-                } else if (it.trim().lowercase().contains(" by ")) {
-                    imports += it + "\n"
-                } else if (it.trim().lowercase().startsWith("//%frames")) {
-                    rest += "var _r = frames {\n"
-                } else {
-                    rest += it + "\n"
-                }
-            }
-
-            return imports + rest + "}"
-        }
-
         return s;
     }
 
@@ -2167,6 +2409,7 @@ class KotlinInterface2(
 
         return null
     }
+
     override fun execAndWait(
         s: String,
         onCompileError: (List<ScriptDiagnostic>) -> Unit,
@@ -2221,6 +2464,7 @@ class KotlinInterface2(
                 }
             }
         }
+
         override fun evalAndWait(
             updateContext: Boolean,
             implicits: List<Any>,
@@ -2250,6 +2494,7 @@ class KotlinInterface2(
             }
         }
     }
+
     override fun compileSnippetAndWait(
         s: String,
         implicits: List<Any>,

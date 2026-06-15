@@ -22,42 +22,43 @@ const val returnValueRegistration = "returnValueRegistration" // register handle
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class RunsAt(val value: String, val priority : Int = 0)
+annotation class RunsAt(val value: String, val priority: Int = 0)
 
 val fieldSourceCache: Map<String, List<Pair<Int, Method>>> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val v = ConcurrentHashMap<String, MutableList<Pair<Int, Method>>>()
-    ClassGraph().enableClassInfo().enableAnnotationInfo().enableMethodInfo().enableMemoryMapping().addClassLoader(Thread.currentThread().contextClassLoader).acceptPackages("afield")//.disableJarScanning()
+    ClassGraph().enableClassInfo().enableAnnotationInfo().enableMethodInfo().enableMemoryMapping()
+        .addClassLoader(Thread.currentThread().contextClassLoader).acceptPackages("afield")//.disableJarScanning()
 //        .scanAsync(Runloop.miscPool, Runtime.getRuntime().availableProcessors()).get()
         .scan()
         .use { scanResult ->
             for (cz in scanResult.allStandardClasses) {
-               cz.methodInfo.forEach { methodInfo ->
-                   methodInfo.annotationInfo.forEach { annotationInfo ->
-                       if (annotationInfo.name == "afield.RunsAt") {
-                           val method = methodInfo.loadClassAndGetMethod()
-                           val time = annotationInfo.parameterValues.get("value").value.toString()
-                           val priority = annotationInfo.parameterValues.get("priority").value as Int
-                           v.computeIfAbsent(time) { mutableListOf()}.add(priority to method)
-                       }
-                   }
-               }
+                cz.methodInfo.forEach { methodInfo ->
+                    methodInfo.annotationInfo.forEach { annotationInfo ->
+                        if (annotationInfo.name == "afield.RunsAt") {
+                            val method = methodInfo.loadClassAndGetMethod()
+                            val time = annotationInfo.parameterValues.get("value").value.toString()
+                            val priority = annotationInfo.parameterValues.get("priority").value as Int
+                            v.computeIfAbsent(time) { mutableListOf() }.add(priority to method)
+                        }
+                    }
+                }
             }
         }
     v
 }
 
-fun runAll(time : String, vararg args : Any?) {
+fun runAll(time: String, vararg args: Any?) {
     val ns = measureNanoTime {
         fieldSourceCache
     }
-    if (ns/1_000_000 > 10)
-        lprintln("info,di", "runAll precache time is ${ns/1_000_000} ms")
+    if (ns / 1_000_000 > 10)
+        lprintln("info,di", "runAll precache time is ${ns / 1_000_000} ms")
 
     lblock("info,di", "runall at `$time`") {
         fieldSourceCache[time]?.sortedBy { it.first }?.forEach {
-            lblock("debug,di", "method ${it.second.name} (from ${it.second.declaringClass.name})") {
-                it.second.invoke(null, *selectInvocationArgs(it.second, args))
-            }
+            //lblock("debug,di", "method ${it.second.name} (from ${it.second.declaringClass.name})") {
+            it.second.invoke(null, *selectInvocationArgs(it.second, args))
+            //}
         }
     }
 }

@@ -109,7 +109,7 @@ private fun handleTouch(input: ControllerInput, preferences: FieldPreferences, t
 
 private fun sendControllerCommand(input: ControllerInput, preferences: FieldPreferences, targetDocument: String) {
     val command = input.command.trim().lowercase(Locale.US)
-    if (command !in setOf("launch", "stop")) return
+    if (command !in setOf("save", "restore", "lock", "unlock", "launch", "stop")) return
     val trigger = controllerAxisValue(input.valueAxis, input.x, input.y)
     if (abs(trigger) <= 1.0e-9) return
 

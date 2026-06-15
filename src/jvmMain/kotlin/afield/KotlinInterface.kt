@@ -203,7 +203,11 @@ class KotlinInterface(
 
         lprintln(
             "info,kotlin,perf",
-            "\t\t compile request engine=KotlinInterface filePrefix=$filePrefix source=${code.name} kind=${compileSnippetKind(s)} length=${s.length} preview=${compileSnippetPreview(s)}"
+            "\t\t compile request engine=KotlinInterface filePrefix=$filePrefix source=${code.name} kind=${
+                compileSnippetKind(
+                    s
+                )
+            } length=${s.length} preview=${compileSnippetPreview(s)}"
         )
         lprintln("info,kotlin,perf", "\t\t compile code $s")
 
@@ -370,14 +374,22 @@ class KotlinInterface(
 
 
                                         // won't work for inferred return types
-                                        val containingFunction = PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
+                                        val containingFunction =
+                                            PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
                                         val containingFunctionName = containingFunction?.name
-                                        val valueParameterList = (containingFunction?.valueParameterList as? KtParameterList)?.text
-                                        val returnParameterText = (containingFunction?.typeReference as? KtTypeReference)?.text
+                                        val valueParameterList =
+                                            (containingFunction?.valueParameterList as? KtParameterList)?.text
+                                        val returnParameterText =
+                                            (containingFunction?.typeReference as? KtTypeReference)?.text
 
-                                        val containingFunctionInfo = if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
-                                            ContainingFunction(containingFunctionName, valueParameterList, returnParameterText)
-                                        else null
+                                        val containingFunctionInfo =
+                                            if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
+                                                ContainingFunction(
+                                                    containingFunctionName,
+                                                    valueParameterList,
+                                                    returnParameterText
+                                                )
+                                            else null
 
                                         val e = MacroRegistry.rewrite(box, it.text, t, containingFunctionInfo)
 
@@ -444,28 +456,6 @@ class KotlinInterface(
     }
 
     override fun parseAndRewrite(s: String, rules: List<(PsiElement, String) -> String>): String {
-
-        // trying something new here
-
-        if (s.contains("//%frames")) {
-            val ll = s.split("\n")
-            var imports = ""
-            var rest = ""
-            ll.forEach {
-                if (it.trim().lowercase().startsWith("import ")) {
-                    imports += it + "\n"
-                } else if (it.trim().lowercase().contains(" by ")) {
-                    imports += it + "\n"
-                } else if (it.trim().lowercase().startsWith("//%frames")) {
-                    rest += "var _r = frames {\n"
-                } else {
-                    rest += it + "\n"
-                }
-            }
-
-            return imports + rest + "}"
-        }
-
         return s;
 
     }

@@ -360,7 +360,7 @@ Record the whole window:
 ```bash
 python3 tools/field_backdoor.py --json --with-playwright \
   --command 'new-box --name AnimBox' \
-  --command 'launch @last --value "var t=0.0; _r = { t+=0.016; display(\"main\",\"<div style=padding:24px;background:hsl(\${(t*60)%360},70%,60%)>frame \$t</div>\") }"' \
+  --command 'launch @last --value "var t=0.0; loop { t+=0.016; display(\"main\",\"<div style=padding:24px;background:hsl(\${(t*60)%360},70%,60%)>frame \$t</div>\") }"' \
   --command 'sleep 1' \
   --command 'record-window /tmp/anim-window.mp4 --uid @last --open-outputs --duration 5 --fps 30' \
   --command 'stop @last'
