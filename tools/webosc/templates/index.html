@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>webosc</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+      window.WEBOSC_CONFIG = {
+        normalized: {{ "true" if config.normalized else "false" }},
+        sendMode: {{ config.send_mode | tojson }},
+        oscHost: {{ config.host | tojson }},
+        oscPort: {{ config.port | tojson }},
+      };
+    </script>
+    <script defer src="{{ url_for('static', filename='touch.js') }}"></script>
+  </head>
+  <body>
+    <main class="surface" aria-label="OSC touch surface">
+      <div class="status" aria-live="polite">
+        <span id="connection">offline</span>
+        <span id="readout">x 0.000 y 0.000</span>
+      </div>
+      <section id="touch-area" class="touch-area" aria-label="Drag touch slider">
+        <div id="slider" class="slider" role="slider" aria-label="Touch slider" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="500" tabindex="0"></div>
+      </section>
+    </main>
+  </body>
+</html>
