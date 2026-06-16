@@ -2651,13 +2651,13 @@ class Server {
                         }
                     }
 
-                    staticFiles("/", File("./build/js/packages/afield/kotlin"), index = null)
-                    staticFiles("/", File("./src/jsChatMain/resources/static/"), index = null)
-                    staticFiles("/", File("./src/jsMain/kotlin/resources/"), index = null)
-                    staticFiles("/", File("./src/jsMain/resources/"), index = null)
-                    staticFiles("/", File("./src/jsMain/resources/monaco"), index = null)
-                    staticFiles("/", File("./src/commonMain/kotlin/resources/"), index = null)
-                    staticFiles("/", File("./src/commonMain/resources/"), index = null)
+                    files("./build/js/packages/afield/kotlin")
+                    files("./src/jsChatMain/resources/static/")
+                    files("./src/jsMain/kotlin/resources/")
+                    files("./src/jsMain/resources/")
+                    files("./src/jsMain/resources/monaco")
+                    files("./src/commonMain/kotlin/resources/")
+                    files("./src/commonMain/resources/")
 
                     route("/chat") {
                         handle {
@@ -2665,7 +2665,7 @@ class Server {
                         }
                     }
 
-                    route("/") {
+                    static("/") {
                         intercept(ApplicationCallPipeline.Call) {
                             var effectivePath = URI(call.request.uri).path
                             if (effectivePath.endsWith("/")) effectivePath = effectivePath + "index.html"
@@ -2694,7 +2694,7 @@ class Server {
                                 }
                             }
                         }
-                        staticFiles("/", File(home + "/"), index = null)
+                        files(home + "/")
                     }
 
                     route("/project") {
