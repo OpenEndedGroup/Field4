@@ -247,7 +247,7 @@ class KotlinInterface(
 
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
-                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    val scriptInstance = r.value.get().result.scriptInstance
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
                 if (updateContext) contextUpdater.update()
@@ -274,7 +274,7 @@ class KotlinInterface(
 
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
-                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    val scriptInstance = r.value.get().result.scriptInstance
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
                 if (updateContext) contextUpdater.update()
@@ -320,7 +320,7 @@ class KotlinInterface(
 
         return try {
             val cc = compiler.complete(code, cursor.toSourceCodePositionWithNewAbsolute(code, code)!!, compilerConfig)
-            cc?.valueOrNull()?.toList()?.let { completionList ->
+            cc.valueOrNull()?.toList()?.let { completionList ->
                 getResult(s, cursor, completionList)
             } ?: CompletionResult.Empty(s, cursor)
         } catch (e: Exception) {
@@ -332,13 +332,12 @@ class KotlinInterface(
     }
 
 
-    @JvmOverloads
     override fun completeAndWait(s: String, cursor: Int): CompletionResult {
         return runBlocking { complete(s, cursor) }
     }
 
-    override fun applyMacros(box: Box, _s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
-        var s = _s
+    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
+        var rewritten = s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {
             do {
@@ -348,7 +347,7 @@ class KotlinInterface(
 
                 val factory = PsiFileFactory.getInstance(project)
                 val lang = Language.findLanguageByID("kotlin")!!
-                val instance = factory.createFileFromText(lang, s)
+                val instance = factory.createFileFromText(lang, rewritten)
 
                 val edits = mutableListOf<Pair<Pair<Int, Int>, String>>()
 
@@ -377,10 +376,8 @@ class KotlinInterface(
                                         val containingFunction =
                                             PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
                                         val containingFunctionName = containingFunction?.name
-                                        val valueParameterList =
-                                            (containingFunction?.valueParameterList as? KtParameterList)?.text
-                                        val returnParameterText =
-                                            (containingFunction?.typeReference as? KtTypeReference)?.text
+                                        val valueParameterList = containingFunction?.valueParameterList?.text
+                                        val returnParameterText = containingFunction?.typeReference?.text
 
                                         val containingFunctionInfo =
                                             if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
@@ -399,7 +396,7 @@ class KotlinInterface(
                                                     edits.add((0 to 0) to e.preamble)
                                                 }
                                                 if (e.afterImports.length > 0) {
-                                                    val a = findLastImport(s)
+                                                    val a = findLastImport(rewritten)
                                                     edits.add((a to a) to e.afterImports)
                                                 }
                                             }
@@ -429,7 +426,7 @@ class KotlinInterface(
                 while (edits.size > 0) {
                     lprintln("debug,kotlin", "applying edits")
                     val e = edits.pop()
-                    s = s.replaceRange(e.first.first, e.first.second, e.second)
+                    rewritten = rewritten.replaceRange(e.first.first, e.first.second, e.second)
                     val shrink = (e.first.second - e.first.first) - e.second.length
                     edits.forEachIndexed { index, it ->
                         val a = if (it.first.first > e.first.first) it.first.first - shrink else it.first.first
@@ -439,9 +436,9 @@ class KotlinInterface(
                 }
             } while (needsRerun)
 
-            lprintln("debug,kotlin", "final string is:\n$s")
+            lprintln("debug,kotlin", "final string is:\n$rewritten")
         }
-        return s
+        return rewritten
     }
 
 
@@ -469,9 +466,9 @@ class KotlinInterface(
         implicits: List<Any>,
     ): ResultValue? {
 
-        when (val r = compile(s)) {
+        return when (val r = compile(s)) {
             is ResultWithDiagnostics.Success -> {
-                return when (val r2 = evaluate(r.value, implicits = implicits)) {
+                when (val r2 = evaluate(r.value, implicits = implicits)) {
                     is ResultWithDiagnostics.Success -> {
                         when (val e = r2.value.get().result) {
                             is ResultValue.Error -> {
@@ -508,11 +505,8 @@ class KotlinInterface(
                 null
             }
         }
-
-        return null
     }
 
-    @JvmOverloads
     override fun execAndWait(
         s: String,
         onCompileError: (List<ScriptDiagnostic>) -> Unit,
@@ -578,7 +572,6 @@ class KotlinInterface(
             }
         }
 
-        @JvmOverloads
         override fun evalAndWait(
             updateContext: Boolean,
             implicits: List<Any>,
@@ -622,7 +615,6 @@ class KotlinInterface(
     /**
      * Synchronous version of compileSnippet() that blocks until compilation completes.
      */
-    @JvmOverloads
     override fun compileSnippetAndWait(
         s: String,
         implicits: List<Any>,
@@ -827,29 +819,29 @@ class KotlinInterface(
         private fun createBoundFunctionReference(function: KFunction<*>, line: Any): Any {
             val arity = function.parameters.count { it.kind != KParameter.Kind.INSTANCE }
             val functionInterface = when (arity) {
-                0 -> kotlin.jvm.functions.Function0::class.java
-                1 -> kotlin.jvm.functions.Function1::class.java
-                2 -> kotlin.jvm.functions.Function2::class.java
-                3 -> kotlin.jvm.functions.Function3::class.java
-                4 -> kotlin.jvm.functions.Function4::class.java
-                5 -> kotlin.jvm.functions.Function5::class.java
-                6 -> kotlin.jvm.functions.Function6::class.java
-                7 -> kotlin.jvm.functions.Function7::class.java
-                8 -> kotlin.jvm.functions.Function8::class.java
-                9 -> kotlin.jvm.functions.Function9::class.java
-                10 -> kotlin.jvm.functions.Function10::class.java
-                11 -> kotlin.jvm.functions.Function11::class.java
-                12 -> kotlin.jvm.functions.Function12::class.java
-                13 -> kotlin.jvm.functions.Function13::class.java
-                14 -> kotlin.jvm.functions.Function14::class.java
-                15 -> kotlin.jvm.functions.Function15::class.java
-                16 -> kotlin.jvm.functions.Function16::class.java
-                17 -> kotlin.jvm.functions.Function17::class.java
-                18 -> kotlin.jvm.functions.Function18::class.java
-                19 -> kotlin.jvm.functions.Function19::class.java
-                20 -> kotlin.jvm.functions.Function20::class.java
-                21 -> kotlin.jvm.functions.Function21::class.java
-                22 -> kotlin.jvm.functions.Function22::class.java
+                0 -> Function0::class.java
+                1 -> Function1::class.java
+                2 -> Function2::class.java
+                3 -> Function3::class.java
+                4 -> Function4::class.java
+                5 -> Function5::class.java
+                6 -> Function6::class.java
+                7 -> Function7::class.java
+                8 -> Function8::class.java
+                9 -> Function9::class.java
+                10 -> Function10::class.java
+                11 -> Function11::class.java
+                12 -> Function12::class.java
+                13 -> Function13::class.java
+                14 -> Function14::class.java
+                15 -> Function15::class.java
+                16 -> Function16::class.java
+                17 -> Function17::class.java
+                18 -> Function18::class.java
+                19 -> Function19::class.java
+                20 -> Function20::class.java
+                21 -> Function21::class.java
+                22 -> Function22::class.java
                 else -> throw IllegalArgumentException("Cannot export function '${function.name}': arity $arity is not supported")
             }
 

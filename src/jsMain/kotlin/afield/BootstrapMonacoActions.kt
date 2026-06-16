@@ -1120,8 +1120,6 @@ private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
     )
 }
 
-@OptIn(ExperimentalJsExport::class)
-@JsExport
 fun monacoRunOscEditorCommand(command: OscEditorCommand) {
     val editor = oscEditorCurrentEditor()
     if (editor == null || editor == undefined) return

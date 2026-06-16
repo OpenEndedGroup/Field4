@@ -66,12 +66,12 @@ object HistoryMetrics {
                 executions = summary.executions,
                 launches = summary.launches,
                 executionDelta = if (sameFieldLaunch) {
-                    (summary.executions - (previous?.executions ?: 0)).coerceAtLeast(0)
+                    (summary.executions - previous.executions).coerceAtLeast(0)
                 } else {
                     summary.executions
                 },
                 launchDelta = if (sameFieldLaunch) {
-                    (summary.launches - (previous?.launches ?: 0)).coerceAtLeast(0)
+                    (summary.launches - previous.launches).coerceAtLeast(0)
                 } else {
                     summary.launches
                 },

@@ -2156,7 +2156,6 @@ private fun attachPanToNestedArea(container: HTMLElement) {
         panActive = false
         event?.preventDefault()
         event?.stopPropagation()
-        null
     }
 
     container.onmouseup = endPan
@@ -3705,11 +3704,9 @@ suspend fun main() {
 
     doubleTap["Escape"] = {
         removeNewestOutput()
-        null
     }
     tripleTap["Escape"] = {
         clearFocusedEditorOutputs()
-        null
     }
 
     doubleTap["Shift"] = {
@@ -3720,7 +3717,6 @@ suspend fun main() {
         } else {
             console.info("[palette] openAnywherePalette not available")
         }
-        null
     }
 
 

@@ -112,8 +112,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 }
             }
         }
-        needsResync.add((this as Box) to "actions")
-        needsResync.add((to as Box) to "actions")
+        needsResync.add(this to "actions")
+        needsResync.add(to to "actions")
     }
 
     fun disconnect(to: Box, property: String = "children") {
@@ -138,8 +138,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 onTopologyChange(this, false, to)
             }
         }
-        needsResync.add((this as Box) to "actions")
-        needsResync.add((to as Box) to "actions")
+        needsResync.add(this to "actions")
+        needsResync.add(to to "actions")
     }
 
 
@@ -449,7 +449,6 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     }
 
-    @JvmOverloads
     override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
         val oldValue = properties[name]
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
@@ -496,9 +495,7 @@ var actionTable = mutableMapOf<String, (List<Box>) -> Unit>()
 
 fun doResync() {
     needsResync.removeAll { (box, name) ->
-        try {
-            if (box.root == null) return@removeAll true
-        } catch (e: UninitializedPropertyAccessException) {
+        if (!box.isInsideInitialized()) {
             return@removeAll false
         }
         if (box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
@@ -579,7 +576,6 @@ fun doResync() {
 
             else -> {
                 message = when (value) {
-                    null -> Message("set-null").payload(Set_null(box.id, name))
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
                     is String -> {
                         lprintln("info,boxes", "sending set-string for $name = $value")

@@ -363,9 +363,9 @@ class OkHttpOpenAiFileUploader(
                 .build()
 
         http.newCall(req).execute().use { resp ->
-            val body = resp.body?.string()
-            if (!resp.isSuccessful || body == null) {
-                throw IOException("File upload failed HTTP ${resp.code}. body=${body ?: "<null>"}")
+            val body = resp.body.string()
+            if (!resp.isSuccessful) {
+                throw IOException("File upload failed HTTP ${resp.code}. body=$body")
             }
 
             val json = mapper.readTree(body)
