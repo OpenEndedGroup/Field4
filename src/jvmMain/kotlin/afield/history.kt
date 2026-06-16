@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.SaveReloadLog
 import afield.logger.lprintln
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -156,12 +157,18 @@ object HistoryManager {
      * @param timestamp The timestamp of the save (defaults to now)
      */
     fun onVersionSaved(documentPath: String, boxIds: Set<String>, timestamp: Long = System.currentTimeMillis()) {
+        val startedAt = System.nanoTime()
+        var cacheState = "unknown"
+        var backupCount = -1
+        var scannedFromDisk = false
         synchronized(versionCacheLock) {
             val cached = versionCache[documentPath]
 
             if (cached == null) {
-                return
+                cacheState = "miss"
+                return@synchronized
             } else {
+                cacheState = "hit"
                 val currentMetadata = File(documentPath, "metadata.edn")
                 if (currentMetadata.exists()) {
                     val lastVersion = cached.lastOrNull()
@@ -170,6 +177,7 @@ object HistoryManager {
                         val backupFiles = backupsDir.listFiles { file ->
                             file.name.startsWith("metadata_backup_") && file.name.endsWith(".edn")
                         }?.sortedBy { it.name }.orEmpty()
+                        backupCount = backupFiles.size
                         val replacementBackup = backupFiles.getOrNull(lastVersion.index)
                         if (replacementBackup != null) {
                             cached[lastVersion.index] = VersionInfo(
@@ -181,8 +189,9 @@ object HistoryManager {
                                 byteSize = replacementBackup.length()
                             )
                         } else if (lastVersion.index < backupFiles.size) {
+                            scannedFromDisk = true
                             versionCache[documentPath] = scanVersionsFromDisk(documentPath).toMutableList()
-                            return
+                            return@synchronized
                         }
                     }
 
@@ -210,6 +219,19 @@ object HistoryManager {
                 }
             }
         }
+        SaveReloadLog.logTiming(
+            "history-on-version-saved",
+            startedAt,
+            "doc=$documentPath cache=$cacheState scannedFromDisk=$scannedFromDisk backupCount=$backupCount boxCount=${boxIds.size}",
+            thresholdMs = 0L
+        )
+        val elapsedMs = SaveReloadLog.elapsedMillis(startedAt)
+        if (elapsedMs >= 500L) {
+            lprintln(
+                "warning,history",
+                "slow onVersionSaved doc=$documentPath ms=$elapsedMs cache=$cacheState scannedFromDisk=$scannedFromDisk backupCount=$backupCount"
+            )
+        }
     }
 
     /**
@@ -234,10 +256,17 @@ object HistoryManager {
      * This is the expensive operation we want to minimize.
      */
     private fun scanVersionsFromDisk(documentPath: String): List<VersionInfo> {
+        val startedAt = System.nanoTime()
         val docDir = File(documentPath)
+        var backupCount = 0
 
         if (!docDir.exists()) {
             lprintln("warning,history", "Document directory does not exist: ${docDir.absolutePath}")
+            SaveReloadLog.logTiming(
+                "history-scan-versions",
+                startedAt,
+                "doc=$documentPath missing=true backupCount=0 totalFiles=0"
+            )
             return emptyList()
         }
 
@@ -252,6 +281,7 @@ object HistoryManager {
             lprintln("info,history", "No backups directory found at ${backupsDir.absolutePath}")
             emptyList()
         }
+        backupCount = backupFiles.size
 
         // Add the current metadata.edn as the latest version (if it exists)
         val currentMetadata = File(docDir, "metadata.edn")
@@ -263,10 +293,15 @@ object HistoryManager {
 
         if (allFiles.isEmpty()) {
             lprintln("info,history", "No version history found for document at $documentPath")
+            SaveReloadLog.logTiming(
+                "history-scan-versions",
+                startedAt,
+                "doc=$documentPath empty=true backupCount=$backupCount totalFiles=0"
+            )
             return emptyList()
         }
 
-        return allFiles.mapIndexed { index, file ->
+        val versions = allFiles.mapIndexed { index, file ->
             val timestamp = file.lastModified()
             VersionInfo(
                 index = index,
@@ -277,6 +312,19 @@ object HistoryManager {
                 byteSize = file.length()
             )
         }
+        val elapsedMs = SaveReloadLog.logTiming(
+            "history-scan-versions",
+            startedAt,
+            "doc=$documentPath backupCount=$backupCount totalFiles=${versions.size}",
+            thresholdMs = 0L
+        )
+        if (elapsedMs >= 500L) {
+            lprintln(
+                "warning,history",
+                "slow history scan doc=$documentPath ms=$elapsedMs backupCount=$backupCount totalFiles=${versions.size}"
+            )
+        }
+        return versions
     }
 
     fun boxIdsForVersion(documentPath: String, version: VersionInfo): Set<String> {

@@ -12,6 +12,17 @@ object SaveReloadLog {
     private val lock = Any()
     private val formatter = DateTimeFormatter.ISO_INSTANT
 
+    fun elapsedMillis(startedAtNs: Long): Long =
+        (System.nanoTime() - startedAtNs) / 1_000_000L
+
+    fun logTiming(event: String, startedAtNs: Long, message: String, thresholdMs: Long = 0L): Long {
+        val elapsedMs = elapsedMillis(startedAtNs)
+        if (elapsedMs >= thresholdMs) {
+            log(event, "ms=$elapsedMs $message")
+        }
+        return elapsedMs
+    }
+
     fun log(event: String, message: String) {
         val line = buildString {
             append(formatter.format(Instant.now()))

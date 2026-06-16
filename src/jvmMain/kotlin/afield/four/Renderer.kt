@@ -23,6 +23,7 @@ import afield.four.util.Window
 import afield.util.PngEncoder
 import afield.logTime
 import afield.logTime_
+import afield.logger.SaveReloadLog
 import afield.logger.lprintln
 import kotlinx.coroutines.*
 import org.joml.primitives.Rectanglef
@@ -173,7 +174,8 @@ class Renderer(
 
     private data class WindowCaptureRequest(
         val outputPath: String,
-        val completion: CompletableDeferred<String>
+        val completion: CompletableDeferred<String>,
+        val requestedAtNs: Long = System.nanoTime()
     )
 
     private data class RecordedWindowCapture(
@@ -743,17 +745,44 @@ class Renderer(
         outputPath: String,
         timeoutMs: Long = 15_000L
     ): String {
+        val startedAt = System.nanoTime()
         val windowIndex = windows.indexOf(window)
         require(windowIndex >= 0) { "Window is not owned by this renderer" }
         require(supportsDirectWindowCapture(window)) { "Swapchain does not support transfer-source capture" }
 
         val completion = CompletableDeferred<String>()
+        var queueSize = 0
+        val request = WindowCaptureRequest(outputPath, completion, startedAt)
         synchronized(windowCaptureLock) {
-            pendingWindowCaptures
-                .getOrPut(windowIndex) { ArrayDeque() }
-                .addLast(WindowCaptureRequest(outputPath, completion))
+            val queue = pendingWindowCaptures.getOrPut(windowIndex) { ArrayDeque() }
+            queue.addLast(request)
+            queueSize = queue.size
         }
-        return withTimeout(timeoutMs) { completion.await() }
+        SaveReloadLog.log(
+            "window-capture-requested",
+            "path=$outputPath windowIndex=$windowIndex queueSize=$queueSize size=${window.width}x${window.height} timeoutMs=$timeoutMs"
+        )
+        try {
+            val result = withTimeout(timeoutMs) { completion.await() }
+            val totalMs = SaveReloadLog.logTiming(
+                "window-capture-total",
+                startedAt,
+                "path=$outputPath windowIndex=$windowIndex queueSizeAtRequest=$queueSize size=${window.width}x${window.height}"
+            )
+            if (totalMs >= 1000L) {
+                lprintln(
+                    "warning,graphics",
+                    "slow direct window capture path=$outputPath ms=$totalMs size=${window.width}x${window.height}"
+                )
+            }
+            return result
+        } catch (t: Throwable) {
+            SaveReloadLog.log(
+                "window-capture-total",
+                "ms=${SaveReloadLog.elapsedMillis(startedAt)} path=$outputPath windowIndex=$windowIndex ok=false error=${t.message ?: t::class.simpleName}"
+            )
+            throw t
+        }
     }
 
     private fun dequeueWindowCaptureRequests(windowIndex: Int): List<WindowCaptureRequest> {
@@ -771,6 +800,7 @@ class Renderer(
         imageIndex: Int,
         cmd: CommandBuffer
     ): List<RecordedWindowCapture> {
+        val startedAt = System.nanoTime()
         val requests = dequeueWindowCaptureRequests(ctxIndex)
         if (requests.isEmpty()) return emptyList()
 
@@ -794,7 +824,7 @@ class Renderer(
                     renderer = this,
                     requestedSize = byteCount,
                     usage = VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    reqMask = VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                    reqMask = VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT
                 ),
                 width = width,
                 height = height,
@@ -860,6 +890,11 @@ class Renderer(
             )
         }
 
+        SaveReloadLog.logTiming(
+            "window-capture-recorded",
+            startedAt,
+            "windowIndex=$ctxIndex imageIndex=$imageIndex requests=${requests.size} size=${width}x${height} format=$format bytesPerPixel=$bytesPerPixel"
+        )
         return captures
     }
 
@@ -906,7 +941,26 @@ class Renderer(
     }
 
     private fun completeWindowCapture(capture: RecordedWindowCapture) {
-        val pixels = readWindowCapturePixels(capture) ?: return
+        val readStartedAt = System.nanoTime()
+        val pixels = readWindowCapturePixels(capture)
+        if (pixels == null) {
+            SaveReloadLog.log(
+                "window-capture-readback",
+                "ms=${SaveReloadLog.elapsedMillis(readStartedAt)} path=${capture.request.outputPath} ok=false size=${capture.width}x${capture.height} queuedMs=${SaveReloadLog.elapsedMillis(capture.request.requestedAtNs)}"
+            )
+            return
+        }
+        val readMs = SaveReloadLog.elapsedMillis(readStartedAt)
+        SaveReloadLog.log(
+            "window-capture-readback",
+            "ms=$readMs path=${capture.request.outputPath} size=${capture.width}x${capture.height} queuedMs=${SaveReloadLog.elapsedMillis(capture.request.requestedAtNs)}"
+        )
+        if (readMs >= 500L) {
+            lprintln(
+                "warning,graphics",
+                "slow window capture readback path=${capture.request.outputPath} ms=$readMs size=${capture.width}x${capture.height}"
+            )
+        }
         GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             encodeWindowCapture(pixels)
         }
@@ -987,8 +1041,10 @@ class Renderer(
     }
 
     private fun encodeWindowCapture(capture: WindowCapturePixels) {
+        val startedAt = System.nanoTime()
+        var extension = ""
         try {
-            val extension = Path.of(capture.request.outputPath).fileName.toString()
+            extension = Path.of(capture.request.outputPath).fileName.toString()
                 .substringAfterLast('.', "")
                 .lowercase(Locale.getDefault())
             if (extension == "jpg" || extension == "jpeg") {
@@ -997,14 +1053,34 @@ class Renderer(
                 writeWindowCapturePng(capture)
             }
             capture.request.completion.complete(capture.request.outputPath)
+            val path = Path.of(capture.request.outputPath)
+            val byteSize = runCatching { Files.size(path) }.getOrDefault(-1L)
+            val totalMs = SaveReloadLog.logTiming(
+                "window-capture-encode",
+                startedAt,
+                "path=${capture.request.outputPath} extension=$extension size=${capture.width}x${capture.height} bytes=$byteSize queuedMs=${SaveReloadLog.elapsedMillis(capture.request.requestedAtNs)}"
+            )
+            if (totalMs >= 1000L) {
+                lprintln(
+                    "warning,graphics",
+                    "slow window capture encode path=${capture.request.outputPath} ms=$totalMs extension=$extension size=${capture.width}x${capture.height}"
+                )
+            }
         } catch (t: Throwable) {
             capture.request.completion.completeExceptionally(t)
+            SaveReloadLog.log(
+                "window-capture-encode",
+                "ms=${SaveReloadLog.elapsedMillis(startedAt)} path=${capture.request.outputPath} extension=$extension ok=false error=${t.message ?: t::class.simpleName}"
+            )
             lprintln("warning,graphics", "direct window capture encode failed: ${t.message}")
         }
     }
 
     private fun writeWindowCapturePng(capture: WindowCapturePixels) {
+        val startedAt = System.nanoTime()
         val pngBytes = PngEncoder.encodeFromBuffer(ByteBuffer.wrap(capture.rgba), capture.width, capture.height)
+        val encodeMs = SaveReloadLog.elapsedMillis(startedAt)
+        val writeStartedAt = System.nanoTime()
         Files.write(
             Path.of(capture.request.outputPath),
             pngBytes,
@@ -1012,9 +1088,14 @@ class Renderer(
             StandardOpenOption.TRUNCATE_EXISTING,
             StandardOpenOption.WRITE
         )
+        SaveReloadLog.log(
+            "window-capture-png",
+            "ms=${SaveReloadLog.elapsedMillis(startedAt)} path=${capture.request.outputPath} size=${capture.width}x${capture.height} encodedBytes=${pngBytes.size} encodeMs=$encodeMs writeMs=${SaveReloadLog.elapsedMillis(writeStartedAt)}"
+        )
     }
 
     private fun writeWindowCaptureJpeg(capture: WindowCapturePixels) {
+        val startedAt = System.nanoTime()
         val rgb = ByteBuffer.allocateDirect(capture.width * capture.height * 3)
         for (y in capture.height - 1 downTo 0) {
             var src = y * capture.width * 4
@@ -1026,13 +1107,21 @@ class Renderer(
             }
         }
         rgb.flip()
+        val packMs = SaveReloadLog.elapsedMillis(startedAt)
+        val writeStartedAt = System.nanoTime()
+        val quality = windowCaptureJpegQuality()
         val ok = stbi_write_jpg(
             capture.request.outputPath,
             capture.width,
             capture.height,
             3,
             rgb,
-            windowCaptureJpegQuality()
+            quality
+        )
+        val writeMs = SaveReloadLog.elapsedMillis(writeStartedAt)
+        SaveReloadLog.log(
+            "window-capture-jpeg",
+            "ms=${SaveReloadLog.elapsedMillis(startedAt)} path=${capture.request.outputPath} size=${capture.width}x${capture.height} quality=$quality packMs=$packMs writeMs=$writeMs"
         )
         if (!ok) {
             throw IllegalStateException("stbi_write_jpg failed")

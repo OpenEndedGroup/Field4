@@ -72,10 +72,16 @@ class SavingContext {
     }
 
     fun exportDocumentMarkdown(boxes: Set<Box>, directory: String): String {
+        val transfers = toTransferInline(boxes, directory)
         val snapshot = SaveSnapshot(
-            transfers = toTransferInline(boxes, directory),
+            transfers = transfers,
             persistentProperties = Box.ioPersistentProperties.toList(),
-            fileWatchManager = null
+            fileWatchManager = null,
+            propertyCount = transfers.sumOf { it.properties.size },
+            sidecarCount = transfers.sumOf { transfer -> transfer.properties.values.count { it is FileInline } },
+            sidecarChars = transfers.sumOf { transfer ->
+                transfer.properties.values.sumOf { (it as? FileInline)?.inline?.length?.toLong() ?: 0L }
+            }
         )
         return buildDocumentMarkdown(snapshot, File(directory).name)
     }
@@ -251,10 +257,22 @@ class SavingContext {
      */
     fun save(fn: String, boxes: Set<Box>, message: String? = null, onComplete: (() -> Unit)? = null) {
         // Phase 1: Snapshot in main thread - capture all data we need
+        val snapshotStartedAt = System.nanoTime()
         val snapshot = snapshotBoxes(boxes, fn)
+        val snapshotMs = SaveReloadLog.logTiming(
+            "save-snapshot",
+            snapshotStartedAt,
+            "doc=$fn boxes=${snapshot.transfers.size} properties=${snapshot.propertyCount} sidecars=${snapshot.sidecarCount} sidecarChars=${snapshot.sidecarChars}"
+        )
+        if (snapshotMs >= 250L) {
+            lprintln(
+                "warning,save",
+                "slow save snapshot doc=$fn ms=$snapshotMs boxes=${snapshot.transfers.size} properties=${snapshot.propertyCount} sidecars=${snapshot.sidecarCount}"
+            )
+        }
         
         // Phase 2: Perform I/O operations in background thread
-        saveInBackground(snapshot, fn, boxes, message, onComplete)
+        saveInBackground(snapshot, fn, boxes, message, onComplete, System.nanoTime())
     }
     
     /**
@@ -263,6 +281,9 @@ class SavingContext {
      */
     private fun snapshotBoxes(boxes: Set<Box>, directory: String): SaveSnapshot {
         val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        var propertyCount = 0
+        var sidecarCount = 0
+        var sidecarChars = 0L
         val boxSnapshots = boxes.map { box ->
             val properties = LinkedHashMap<String, Any?>()
             box.properties.forEach { (name, value) ->
@@ -275,10 +296,14 @@ class SavingContext {
                     val extension = Box.ioSeparateProperties[name]!!
                     val contents = value as? String ?: value.toString()
                     properties[name] = FileInline(filenameFor(box.id, name, extension), contents)
+                    propertyCount++
+                    sidecarCount++
+                    sidecarChars += contents.length.toLong()
                 } else {
                     val normalized = normalizeValue(value)
                     if (normalized != null) {
                         properties[name] = normalized
+                        propertyCount++
                     }
                 }
             }
@@ -294,7 +319,10 @@ class SavingContext {
         return SaveSnapshot(
             transfers = boxSnapshots,
             persistentProperties = Box.ioPersistentProperties.toList(),
-            fileWatchManager = watchManager
+            fileWatchManager = watchManager,
+            propertyCount = propertyCount,
+            sidecarCount = sidecarCount,
+            sidecarChars = sidecarChars
         )
     }
     
@@ -302,22 +330,60 @@ class SavingContext {
      * Phase 2: Perform all I/O operations in a background thread.
      * This includes file writing and backups.
      */
-    private fun saveInBackground(snapshot: SaveSnapshot, fn: String, boxes: Set<Box>, message: String?, onComplete: (() -> Unit)?) {
+    private fun saveInBackground(
+        snapshot: SaveSnapshot,
+        fn: String,
+        boxes: Set<Box>,
+        message: String?,
+        onComplete: (() -> Unit)?,
+        scheduledAtNs: Long
+    ) {
         // Launch on background thread pool - using the project's standard miscPool
         GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
+            val totalStartedAt = System.nanoTime()
+            val launchDelayMs = (totalStartedAt - scheduledAtNs) / 1_000_000L
+            var root = fn
+            var ensureMs = 0L
+            var lockWaitMs = 0L
+            var guardMs = 0L
+            var sidecarMs = 0L
+            var ednMs = 0L
+            var metadataMs = 0L
+            var markdownBuildMs = 0L
+            var markdownSaveMs = 0L
+            var recorderMs = 0L
+            var historyMs = 0L
+            var metricsMs = 0L
+            var versionIndexMs = 0L
+            var screenshotMs = 0L
+            var notifyMs = 0L
+            var mainScheduleMs = 0L
+            var altered = false
+            var metadataChanged = false
+            var markdownChanged = false
+            var changedCount = 0
+            var touchedCount = 0
+            var versionIndex = -1
             try {
-                val root = ensureDirectory(fn)
+                val ensureStartedAt = System.nanoTime()
+                root = ensureDirectory(fn)
+                ensureMs = SaveReloadLog.elapsedMillis(ensureStartedAt)
                 val lock = saveLocks.computeIfAbsent(File(root).canonicalPath) { Any() }
+                val lockStartedAt = System.nanoTime()
                 synchronized(lock) {
-                    suspiciousPartialAutosave(root, snapshot, message)?.let { blocked ->
+                    lockWaitMs = SaveReloadLog.elapsedMillis(lockStartedAt)
+                    val guardStartedAt = System.nanoTime()
+                    val blocked = suspiciousPartialAutosave(root, snapshot, message)
+                    guardMs = SaveReloadLog.elapsedMillis(guardStartedAt)
+                    blocked?.let {
                         val detail =
-                            "doc=$fn boxes=${blocked.snapshotCount}/${blocked.existingCount} missing=${blocked.missingCount} missingPreview=${blocked.missingPreview}"
+                            "doc=$fn boxes=${it.snapshotCount}/${it.existingCount} missing=${it.missingCount} missingPreview=${it.missingPreview}"
                         SaveReloadLog.log("save-blocked-partial", detail)
                         lprintln("error,save", "Blocked suspicious partial autosave: $detail")
                         _send(
                             Message("notify").payload(
                                 Notify(
-                                    "Blocked suspicious partial autosave: ${blocked.snapshotCount}/${blocked.existingCount} boxes. metadata.edn was left untouched.",
+                                    "Blocked suspicious partial autosave: ${it.snapshotCount}/${it.existingCount} boxes. metadata.edn was left untouched.",
                                     "save"
                                 )
                             ),
@@ -326,10 +392,10 @@ class SavingContext {
                         return@launch
                     }
 
-                    var altered = false
                     val touched = mutableListOf<String>()
                     val alteredFiles = mutableListOf<String>()
                     // Write all files based on the snapshot
+                    val sidecarStartedAt = System.nanoTime()
                     snapshot.transfers.forEach { transfer ->
                         transfer.properties.forEach { (name, value) ->
                             if (value is FileInline) {
@@ -341,8 +407,10 @@ class SavingContext {
                             }
                         }
                     }
+                    sidecarMs = SaveReloadLog.elapsedMillis(sidecarStartedAt)
 
                     // Build and write the EDN metadata
+                    val ednStartedAt = System.nanoTime()
                     val payloadBoxes = snapshot.transfers.map { transfer ->
                         linkedMapOf<String, Any?>(
                             "id" to transfer.id,
@@ -355,21 +423,32 @@ class SavingContext {
                         "persistentProperties" to snapshot.persistentProperties
                     )
                     val ednText = Edn.write(payload, ednCustom)
+                    ednMs = SaveReloadLog.elapsedMillis(ednStartedAt)
                     val metadataPath = File(root, METADATA_EDN).path
                     touched.add(metadataPath)
-                    val metadataChanged = checkDifference(metadataPath, ednText)
+                    val metadataStartedAt = System.nanoTime()
+                    metadataChanged = checkDifference(metadataPath, ednText)
+                    metadataMs = SaveReloadLog.elapsedMillis(metadataStartedAt)
                     altered = altered || metadataChanged
                     if (metadataChanged) alteredFiles.add(metadataPath)
 
+                    val markdownBuildStartedAt = System.nanoTime()
                     val markdownText = buildDocumentMarkdown(snapshot, File(root).name)
+                    markdownBuildMs = SaveReloadLog.elapsedMillis(markdownBuildStartedAt)
                     val markdownPath = File(root, DOCUMENT_MARKDOWN).path
                     touched.add(markdownPath)
-                    val markdownChanged = checkDifference(markdownPath, markdownText)
+                    val markdownSaveStartedAt = System.nanoTime()
+                    markdownChanged = checkDifference(markdownPath, markdownText)
+                    markdownSaveMs = SaveReloadLog.elapsedMillis(markdownSaveStartedAt)
                     altered = altered || markdownChanged
                     if (markdownChanged) alteredFiles.add(markdownPath)
+                    touchedCount = touched.size
+                    changedCount = alteredFiles.size
 
                     if (metadataChanged) {
+                        val recorderStartedAt = System.nanoTime()
                         FlightRecorder.checkpointOnMetadataChange(fn)
+                        recorderMs = SaveReloadLog.elapsedMillis(recorderStartedAt)
                     }
 
                     SaveReloadLog.log(
@@ -381,10 +460,19 @@ class SavingContext {
                         // Notify history manager about the new version
                         val savedAt = System.currentTimeMillis()
                         val boxIds = snapshot.transfers.map { it.id }.toSet()
+                        val historyStartedAt = System.nanoTime()
                         HistoryManager.onVersionSaved(fn, boxIds, savedAt)
+                        historyMs = SaveReloadLog.elapsedMillis(historyStartedAt)
+                        val metricsStartedAt = System.nanoTime()
                         HistoryMetrics.recordCurrentSave(fn, savedAt)
-                        val versionIndex = HistoryMetrics.currentVersionIndex(fn)
+                        metricsMs = SaveReloadLog.elapsedMillis(metricsStartedAt)
+                        val versionStartedAt = System.nanoTime()
+                        versionIndex = HistoryMetrics.currentVersionIndex(fn)
+                        versionIndexMs = SaveReloadLog.elapsedMillis(versionStartedAt)
+                        val screenshotStartedAt = System.nanoTime()
                         HistoryScreenshotCapture.captureFourWindowsOnSave(fn, versionIndex, savedAt)
+                        screenshotMs = SaveReloadLog.elapsedMillis(screenshotStartedAt)
+                        val notifyStartedAt = System.nanoTime()
                         _send(
                             Message("history-changed").payload(
                                 HistoryChanged(
@@ -398,9 +486,12 @@ class SavingContext {
                             ),
                             document = Regex.escape(fn)
                         )
+                        notifyMs = SaveReloadLog.elapsedMillis(notifyStartedAt)
 
                         // Mark saved sidecar files - needs to be done in main thread
+                        val mainScheduleStartedAt = System.nanoTime()
                         inMain {
+                            val mainStartedAt = System.nanoTime()
                             notify("saved file at <<timeago:${System.currentTimeMillis()}>>", "*saved")
 
                             val watchManager = snapshot.fileWatchManager
@@ -421,18 +512,45 @@ class SavingContext {
                             }
                             onComplete?.invoke()
                             Ai4AutoBoxNamer.scheduleAfterSave(fn, boxes, message)
+                            val mainMs = SaveReloadLog.elapsedMillis(mainStartedAt)
+                            SaveReloadLog.log(
+                                "save-main-timing",
+                                "ms=$mainMs doc=$fn watchManager=${watchManager != null} touched=$touchedCount"
+                            )
                         }
+                        mainScheduleMs = SaveReloadLog.elapsedMillis(mainScheduleStartedAt)
                     } else {
+                        val mainScheduleStartedAt = System.nanoTime()
                         inMain {
+                            val mainStartedAt = System.nanoTime()
                             onComplete?.invoke()
                             Ai4AutoBoxNamer.scheduleAfterSave(fn, boxes, message)
+                            SaveReloadLog.logTiming(
+                                "save-main-timing",
+                                mainStartedAt,
+                                "doc=$fn unchanged=true",
+                                thresholdMs = 25L
+                            )
                         }
+                        mainScheduleMs = SaveReloadLog.elapsedMillis(mainScheduleStartedAt)
                     }
                 }
             } catch (e: Exception) {
                 SaveReloadLog.log("save-error", "doc=$fn error=${e.message}")
                 lprintln("error,save", "Error during background save: ${e.message}")
                 e.printStackTrace()
+            } finally {
+                val totalMs = SaveReloadLog.elapsedMillis(totalStartedAt)
+                SaveReloadLog.log(
+                    "save-timing",
+                    "totalMs=$totalMs doc=$fn root=$root altered=$altered metadataChanged=$metadataChanged markdownChanged=$markdownChanged touched=$touchedCount changed=$changedCount versionIndex=$versionIndex launchDelayMs=$launchDelayMs ensureMs=$ensureMs lockWaitMs=$lockWaitMs guardMs=$guardMs sidecarMs=$sidecarMs ednMs=$ednMs metadataMs=$metadataMs markdownBuildMs=$markdownBuildMs markdownSaveMs=$markdownSaveMs recorderMs=$recorderMs historyMs=$historyMs metricsMs=$metricsMs versionIndexMs=$versionIndexMs screenshotScheduleMs=$screenshotMs notifyMs=$notifyMs mainScheduleMs=$mainScheduleMs"
+                )
+                if (totalMs >= 1000L) {
+                    lprintln(
+                        "warning,save",
+                        "slow save doc=$fn totalMs=$totalMs sidecarMs=$sidecarMs metadataMs=$metadataMs markdownBuildMs=$markdownBuildMs markdownSaveMs=$markdownSaveMs historyMs=$historyMs metricsMs=$metricsMs screenshotScheduleMs=$screenshotMs"
+                    )
+                }
             }
         }
     }
@@ -443,7 +561,10 @@ class SavingContext {
     private data class SaveSnapshot(
         val transfers: List<BoxTransferEdn>,
         val persistentProperties: List<String>,
-        val fileWatchManager: FileWatchManager?
+        val fileWatchManager: FileWatchManager?,
+        val propertyCount: Int,
+        val sidecarCount: Int,
+        val sidecarChars: Long
     )
 
     private fun suspiciousPartialAutosave(root: String, snapshot: SaveSnapshot, message: String?): PartialSaveBlock? {
@@ -1438,33 +1559,77 @@ class SavingContext {
  */
 fun File.safeSave(text: String): Boolean {
     val file = this
-    if (file.exists()) {
-        // Read current file content
-        val currentContent = file.readText()
-        if (currentContent != text) {
-            val backupDir = File(file.parentFile, "backups")
-            val latestBackup = file.latestSafeSaveBackup(backupDir)
-            val currentAlreadyBackedUp = latestBackup?.let { backup ->
-                runCatching { backup.readText() == currentContent }.getOrDefault(false)
-            } ?: false
+    val startedAt = System.nanoTime()
+    val existed = file.exists()
+    var changed = false
+    var currentChars = -1
+    var readCurrentMs = 0L
+    var latestBackupMs = 0L
+    var backupCompareMs = 0L
+    var nextBackupMs = 0L
+    var renameMs = 0L
+    var writeMs = 0L
+    var backupCreated = false
+    var alreadyBackedUp = false
+    var latestBackupName = ""
+    try {
+        if (existed) {
+            // Read current file content
+            val readStartedAt = System.nanoTime()
+            val currentContent = file.readText()
+            readCurrentMs = SaveReloadLog.elapsedMillis(readStartedAt)
+            currentChars = currentContent.length
+            if (currentContent != text) {
+                val backupDir = File(file.parentFile, "backups")
+                val latestStartedAt = System.nanoTime()
+                val latestBackup = file.latestSafeSaveBackup(backupDir)
+                latestBackupMs = SaveReloadLog.elapsedMillis(latestStartedAt)
+                latestBackupName = latestBackup?.name ?: ""
+                val compareStartedAt = System.nanoTime()
+                alreadyBackedUp = latestBackup?.let { backup ->
+                    runCatching { backup.readText() == currentContent }.getOrDefault(false)
+                } ?: false
+                backupCompareMs = SaveReloadLog.elapsedMillis(compareStartedAt)
 
-            if (!currentAlreadyBackedUp) {
-                if (!backupDir.exists()) {
-                    backupDir.mkdirs()
+                if (!alreadyBackedUp) {
+                    if (!backupDir.exists()) {
+                        backupDir.mkdirs()
+                    }
+
+                    val nextStartedAt = System.nanoTime()
+                    val backupFile = file.nextSafeSaveBackup(backupDir)
+                    nextBackupMs = SaveReloadLog.elapsedMillis(nextStartedAt)
+                    // Rename the current file to the backup file name in the backup directory
+                    val renameStartedAt = System.nanoTime()
+                    backupCreated = file.renameTo(backupFile)
+                    renameMs = SaveReloadLog.elapsedMillis(renameStartedAt)
                 }
-
-                val backupFile = file.nextSafeSaveBackup(backupDir)
-                // Rename the current file to the backup file name in the backup directory
-                file.renameTo(backupFile)
+            } else {
+                // If the content is the same, do nothing.
+                return false
             }
-        } else {
-            // If the content is the same, do nothing.
-            return false
+        }
+        // Write the new text to the file
+        val writeStartedAt = System.nanoTime()
+        file.writeText(text)
+        writeMs = SaveReloadLog.elapsedMillis(writeStartedAt)
+        changed = true
+        return true
+    } finally {
+        val totalMs = SaveReloadLog.elapsedMillis(startedAt)
+        if (changed || totalMs >= 250L) {
+            SaveReloadLog.log(
+                "safe-save-timing",
+                "ms=$totalMs path=${file.path} changed=$changed existed=$existed inputChars=${text.length} currentChars=$currentChars readCurrentMs=$readCurrentMs latestBackupMs=$latestBackupMs backupCompareMs=$backupCompareMs nextBackupMs=$nextBackupMs renameMs=$renameMs writeMs=$writeMs backupCreated=$backupCreated alreadyBackedUp=$alreadyBackedUp latestBackup=$latestBackupName"
+            )
+        }
+        if (totalMs >= 1000L) {
+            lprintln(
+                "warning,save",
+                "slow safeSave path=${file.path} ms=$totalMs readCurrentMs=$readCurrentMs latestBackupMs=$latestBackupMs backupCompareMs=$backupCompareMs nextBackupMs=$nextBackupMs renameMs=$renameMs writeMs=$writeMs"
+            )
         }
     }
-    // Write the new text to the file
-    file.writeText(text)
-    return true
 }
 
 private fun File.safeSaveBackupPrefix(): String = "${nameWithoutExtension}_backup_"

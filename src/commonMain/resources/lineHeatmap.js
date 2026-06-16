@@ -173,6 +173,23 @@ const LineHeatmap = (() => {
         return Math.max(1, Math.min(LEVELS, Math.round(normalized * (LEVELS - 1)) + 1));
     }
 
+    function escapeHtml(text) {
+        return String(text || "").replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[ch]);
+    }
+
+    function heatmapHoverLabel(title) {
+        return {
+            value: `<span style="font-size:70%">${escapeHtml(title)}</span>`,
+            supportHtml: true
+        };
+    }
+
     function buildDecorations(lines, kind) {
         const values = lines.map((item) => Number(item.score || item.count || 0)).filter((v) => v > 0);
         const min = values.length ? Math.min(...values) : 0;
@@ -191,7 +208,7 @@ const LineHeatmap = (() => {
                     isWholeLine: true,
                     lineNumberClassName: `afield-line-heat afield-line-heat-${kind} afield-line-heat-${kind}-${l}`,
                     stickiness: 1,
-                    hoverMessage: { value: title }
+                    hoverMessage: heatmapHoverLabel(title)
                 }
             };
         }).filter(Boolean);

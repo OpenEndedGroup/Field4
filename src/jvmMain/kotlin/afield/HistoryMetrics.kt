@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.SaveReloadLog
 import afield.logger.lprintln
 import java.io.File
 import java.util.Base64
@@ -9,13 +10,37 @@ object HistoryMetrics {
     private val metricsLock = Any()
 
     fun recordCurrentSave(documentPath: String, timestamp: Long = System.currentTimeMillis()) {
+        val startedAt = System.nanoTime()
+        var versionMs = 0L
+        var summaryMs = 0L
+        var lockWaitMs = 0L
+        var loadMs = 0L
+        var computeMs = 0L
+        var saveMs = 0L
+        var recordCount = 0
+        val versionStartedAt = System.nanoTime()
         val versionIndex = currentVersionIndex(documentPath)
-        if (versionIndex < 0) return
+        versionMs = SaveReloadLog.elapsedMillis(versionStartedAt)
+        if (versionIndex < 0) {
+            SaveReloadLog.logTiming(
+                "history-metrics-record-save",
+                startedAt,
+                "doc=$documentPath skipped=true reason=no-current-version versionMs=$versionMs"
+            )
+            return
+        }
 
+        val summaryStartedAt = System.nanoTime()
         val summary = FlightRecorder.activitySummaryForDocument(documentPath, untilMillis = timestamp)
+        summaryMs = SaveReloadLog.elapsedMillis(summaryStartedAt)
 
+        val lockStartedAt = System.nanoTime()
         synchronized(metricsLock) {
+            lockWaitMs = SaveReloadLog.elapsedMillis(lockStartedAt)
+            val loadStartedAt = System.nanoTime()
             val existing = loadRecords(documentPath).toMutableList()
+            loadMs = SaveReloadLog.elapsedMillis(loadStartedAt)
+            val computeStartedAt = System.nanoTime()
             val previous = existing
                 .filter { it.versionIndex < versionIndex }
                 .maxByOrNull { it.versionIndex }
@@ -58,7 +83,22 @@ object HistoryMetrics {
 
             existing.removeAll { it.versionIndex == versionIndex }
             existing += MetricRecord(versionIndex, timestamp, activity)
+            recordCount = existing.size
+            computeMs = SaveReloadLog.elapsedMillis(computeStartedAt)
+            val saveStartedAt = System.nanoTime()
             saveRecords(documentPath, existing.sortedBy { it.versionIndex })
+            saveMs = SaveReloadLog.elapsedMillis(saveStartedAt)
+        }
+        val totalMs = SaveReloadLog.logTiming(
+            "history-metrics-record-save",
+            startedAt,
+            "doc=$documentPath versionIndex=$versionIndex records=$recordCount versionMs=$versionMs summaryMs=$summaryMs lockWaitMs=$lockWaitMs loadMs=$loadMs computeMs=$computeMs saveMs=$saveMs"
+        )
+        if (totalMs >= 500L) {
+            lprintln(
+                "warning,history",
+                "slow history metrics record save doc=$documentPath ms=$totalMs versionMs=$versionMs summaryMs=$summaryMs loadMs=$loadMs saveMs=$saveMs"
+            )
         }
     }
 
@@ -102,8 +142,17 @@ object HistoryMetrics {
         width: Int = 0,
         height: Int = 0
     ) {
+        val startedAt = System.nanoTime()
+        var lockWaitMs = 0L
+        var loadMs = 0L
+        var saveMs = 0L
+        var recordCount = 0
+        val lockStartedAt = System.nanoTime()
         synchronized(metricsLock) {
+            lockWaitMs = SaveReloadLog.elapsedMillis(lockStartedAt)
+            val loadStartedAt = System.nanoTime()
             val records = loadRecords(documentPath).toMutableList()
+            loadMs = SaveReloadLog.elapsedMillis(loadStartedAt)
             val index = records.indexOfFirst { it.versionIndex == versionIndex }
             val record = if (index >= 0) {
                 records[index]
@@ -124,7 +173,21 @@ object HistoryMetrics {
             } else {
                 records += nextRecord
             }
+            recordCount = records.size
+            val saveStartedAt = System.nanoTime()
             saveRecords(documentPath, records.sortedBy { it.versionIndex })
+            saveMs = SaveReloadLog.elapsedMillis(saveStartedAt)
+        }
+        val totalMs = SaveReloadLog.logTiming(
+            "history-metrics-add-screenshot",
+            startedAt,
+            "doc=$documentPath versionIndex=$versionIndex channel=$channel path=$path records=$recordCount lockWaitMs=$lockWaitMs loadMs=$loadMs saveMs=$saveMs"
+        )
+        if (totalMs >= 500L) {
+            lprintln(
+                "warning,history",
+                "slow history metrics screenshot doc=$documentPath ms=$totalMs channel=$channel loadMs=$loadMs saveMs=$saveMs"
+            )
         }
     }
 
@@ -137,15 +200,39 @@ object HistoryMetrics {
         height: Int = 0,
         timestamp: Long = System.currentTimeMillis()
     ): HistoryScreenshotRef? {
-        if (versionIndex < 0) return null
+        val startedAt = System.nanoTime()
+        var decodeMs = 0L
+        var writeMs = 0L
+        var addRefMs = 0L
+        if (versionIndex < 0) {
+            SaveReloadLog.logTiming(
+                "history-store-screenshot-data-url",
+                startedAt,
+                "doc=$documentPath channel=$channel skipped=true reason=no-current-version"
+            )
+            return null
+        }
         val safeChannel = sanitizeChannel(channel)
         val base64 = dataUrl.substringAfter(",", dataUrl).trim()
+        val decodeStartedAt = System.nanoTime()
         val bytes = runCatching { Base64.getDecoder().decode(base64) }.getOrElse {
+            decodeMs = SaveReloadLog.elapsedMillis(decodeStartedAt)
+            SaveReloadLog.logTiming(
+                "history-store-screenshot-data-url",
+                startedAt,
+                "doc=$documentPath versionIndex=$versionIndex channel=$safeChannel ok=false error=decode-failed decodeMs=$decodeMs"
+            )
             lprintln("warning,history", "Failed to decode screenshot for $documentPath: ${it.message}")
             return null
         }
+        decodeMs = SaveReloadLog.elapsedMillis(decodeStartedAt)
         val extension = screenshotExtension(dataUrl, bytes)
         if (extension == null) {
+            SaveReloadLog.logTiming(
+                "history-store-screenshot-data-url",
+                startedAt,
+                "doc=$documentPath versionIndex=$versionIndex channel=$safeChannel ok=false error=invalid-screenshot decodeMs=$decodeMs bytes=${bytes.size}"
+            )
             lprintln("warning,history", "Ignoring empty or invalid screenshot for $documentPath channel $safeChannel")
             return null
         }
@@ -153,7 +240,9 @@ object HistoryMetrics {
         root.mkdirs()
         val file = File(root, "v%05d_%d.$extension".format(versionIndex, timestamp))
         return runCatching {
+            val writeStartedAt = System.nanoTime()
             file.writeBytes(bytes)
+            writeMs = SaveReloadLog.elapsedMillis(writeStartedAt)
             val ref = HistoryScreenshotRef(
                 channel = safeChannel,
                 path = file.relativeTo(File(documentPath)).path,
@@ -161,9 +250,27 @@ object HistoryMetrics {
                 width = width,
                 height = height
             )
-        addScreenshotRef(documentPath, versionIndex, safeChannel, ref.path, timestamp, width, height)
+            val addRefStartedAt = System.nanoTime()
+            addScreenshotRef(documentPath, versionIndex, safeChannel, ref.path, timestamp, width, height)
+            addRefMs = SaveReloadLog.elapsedMillis(addRefStartedAt)
+            val totalMs = SaveReloadLog.logTiming(
+                "history-store-screenshot-data-url",
+                startedAt,
+                "doc=$documentPath versionIndex=$versionIndex channel=$safeChannel ok=true extension=$extension bytes=${bytes.size} decodeMs=$decodeMs writeMs=$writeMs addRefMs=$addRefMs path=${ref.path}"
+            )
+            if (totalMs >= 500L) {
+                lprintln(
+                    "warning,history",
+                    "slow data-url history screenshot doc=$documentPath channel=$safeChannel ms=$totalMs decodeMs=$decodeMs writeMs=$writeMs addRefMs=$addRefMs"
+                )
+            }
             ref
         }.getOrElse {
+            SaveReloadLog.logTiming(
+                "history-store-screenshot-data-url",
+                startedAt,
+                "doc=$documentPath versionIndex=$versionIndex channel=$safeChannel ok=false error=${it.message ?: it::class.simpleName} decodeMs=$decodeMs writeMs=$writeMs addRefMs=$addRefMs bytes=${bytes.size}"
+            )
             lprintln("warning,history", "Failed to write screenshot for $documentPath: ${it.message}")
             null
         }
@@ -217,11 +324,25 @@ object HistoryMetrics {
     )
 
     fun currentVersionIndex(documentPath: String): Int {
+        val startedAt = System.nanoTime()
         val docDir = File(documentPath)
         val backups = File(docDir, "backups").listFiles { file ->
             file.name.startsWith("metadata_backup_") && file.name.endsWith(".edn")
         }?.size ?: 0
-        return if (File(docDir, SavingContext.METADATA_EDN).exists()) backups else backups - 1
+        val result = if (File(docDir, SavingContext.METADATA_EDN).exists()) backups else backups - 1
+        val elapsedMs = SaveReloadLog.logTiming(
+            "history-current-version-index",
+            startedAt,
+            "doc=$documentPath backups=$backups result=$result",
+            thresholdMs = 100L
+        )
+        if (elapsedMs >= 500L) {
+            lprintln(
+                "warning,history",
+                "slow currentVersionIndex doc=$documentPath ms=$elapsedMs backups=$backups result=$result"
+            )
+        }
+        return result
     }
 
     private fun sanitizeChannel(channel: String): String =

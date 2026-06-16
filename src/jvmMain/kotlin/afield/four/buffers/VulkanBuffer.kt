@@ -170,13 +170,24 @@ class VulkanBuffer(
 
             val allocCI = VmaAllocationCreateInfo.calloc(stack).apply {
                 usage(Vma.VMA_MEMORY_USAGE_AUTO)
-                // Hint: small, CPU-updated buffers
+                val hostAccessFlag =
+                    if (reqMask and VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0 &&
+                        usageBits and VK_BUFFER_USAGE_TRANSFER_DST_BIT != 0 &&
+                        usageBits and VK_BUFFER_USAGE_TRANSFER_SRC_BIT == 0
+                    ) {
+                        Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT
+                    } else {
+                        Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+                    }
                 flags(
-                    Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT or
-                            Vma.VMA_ALLOCATION_CREATE_MAPPED_BIT
+                    hostAccessFlag or Vma.VMA_ALLOCATION_CREATE_MAPPED_BIT
                 )
-                // If you must force HOST_VISIBLE|COHERENT, uncomment:
-                // requiredFlags(reqMask)
+                if (reqMask != 0) {
+                    requiredFlags(reqMask and VK_MEMORY_PROPERTY_HOST_CACHED_BIT.inv())
+                    if (reqMask and VK_MEMORY_PROPERTY_HOST_CACHED_BIT != 0) {
+                        preferredFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+                    }
+                }
             }
 
             val pBuffer = stack.mallocLong(1)
@@ -309,6 +320,12 @@ class VulkanBuffer(
         }
     }
 
+    private fun invalidate(offset: Long = 0, size: Long = requestedSize) {
+        if (!cpuOnly) {
+            Vma.vmaInvalidateAllocation(allocatorForRenderer(renderer), allocation, offset, size)
+        }
+    }
+
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VulkanBuffer {
         synchronized(writeLock) {
             hint_write = true
@@ -382,6 +399,7 @@ class VulkanBuffer(
     override fun mapAndRead(builder: FloatBuffer.() -> Unit): VulkanBuffer {
         hint_read = true
         readWatermark++
+        invalidate(0, requestedSize)
         val m = map()
         val data = MemoryUtil.memFloatBuffer(m, requestedSize.toInt() / 4)
         builder.invoke(data)
@@ -391,6 +409,7 @@ class VulkanBuffer(
     override fun mapAndRead_bytes(builder: ByteBuffer.() -> Unit): VulkanBuffer {
         hint_read = true
         readWatermark++
+        invalidate(0, requestedSize)
         val m = map()
         val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
         builder.invoke(data)
@@ -400,6 +419,7 @@ class VulkanBuffer(
     override fun mapAndRead_ints(builder: IntBuffer.() -> Unit): VulkanBuffer {
         hint_read = true
         readWatermark++
+        invalidate(0, requestedSize)
         val m = map()
         val data = MemoryUtil.memIntBuffer(m, requestedSize.toInt() / 4)
         builder.invoke(data)

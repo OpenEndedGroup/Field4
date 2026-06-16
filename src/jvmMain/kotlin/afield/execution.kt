@@ -369,6 +369,22 @@ private fun renderDisplayContent(content: Any?): String {
     }
 }
 
+private val renderedValueVisualizerHtmlRegex = Regex(
+    pattern = """^\s*<div\b[^>]*\bclass\s*=\s*(['"])[^'"]*\bvalue-viz(?:-h2)?\b""",
+    options = setOf(RegexOption.IGNORE_CASE)
+)
+
+private fun isRenderedValueVisualizerHtml(text: String): Boolean {
+    return renderedValueVisualizerHtmlRegex.containsMatchIn(text)
+}
+
+private fun renderReturnValueOutput(value: Any?): String {
+    return when (value) {
+        is String -> if (isRenderedValueVisualizerHtml(value)) value else value.h
+        else -> value.h
+    }
+}
+
 private val printedHtmlOpenTagRegex = Regex("<\\s*([A-Za-z][A-Za-z0-9:-]*)(?:\\s+[^<>]*?)?/?>")
 private val printedHtmlVoidTags = setOf(
     "area",
@@ -1177,7 +1193,7 @@ class KotlinExecution : BoxExecution {
                         val type = simplifyTypeForOutput(returnValue.type)
                         val annotation = "<i>${returnValue.name}=</i>${type}"
                         audioPatch?.inlineSummaryTarget = InlineAudioSummaryTarget(line = line, annotation = annotation)
-                        val value = returnValue.value.h
+                        val value = renderReturnValueOutput(returnValue.value)
                         if (value.isNotEmpty()) {
                             dispatchExecutionOutput(
                                 box,
@@ -1651,7 +1667,7 @@ class KotlinExecution : BoxExecution {
                                     line = ln + dur,
                                     annotation = annotation
                                 )
-                                val value = returnValue.value.h
+                                val value = renderReturnValueOutput(returnValue.value)
 
                                 if (value.length > 0) {
                                     dispatchExecutionOutput(
